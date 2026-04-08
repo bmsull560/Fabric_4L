@@ -1,0 +1,380 @@
+"""Workflow API routes - OpenAPI spec compliant.
+
+Implements the workflow API as specified in value_fabric_backend_logic_specifications.md:
+- POST /api/v1/workflows - Submit workflow
+- GET /api/v1/workflows/{instance_id} - Get status
+- GET /api/v1/workflows/{instance_id}/events - Event streaming
+- DELETE /api/v1/workflows/{instance_id} - Cancel workflow
+"""
+
+from typing import Any, Dict, List, Optional
+from datetime import datetime
+
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+import asyncio
+import json
+
+from ..engine.executor import OrchestrationController
+from ..engine.scheduler import TaskPriority
+from ..workflows import list_workflow_types
+from ...tenant.context import get_current_tenant, TenantContext
+
+
+router = APIRouter()
+
+
+# ============================================================================
+# Request/Response Models (OpenAPI Spec Compliant)
+# ============================================================================
+
+class WorkflowInputs(BaseModel):
+    """Workflow inputs wrapper per spec."""
+    prospect_id: Optional[str] = None
+    prospect_company: Optional[str] = None
+    use_case_ids: Optional[List[str]] = None
+    prospect_metrics: Optional[Dict[str, Any]] = None
+    custom_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+
+class WorkflowCreateRequest(BaseModel):
+    """Request to submit a new workflow - OpenAPI spec compliant.
+    
+    Spec requires:
+    - workflow_type: enum [whitespace_analysis, business_case_generation]
+    - tenant_id: string
+    - user_id: string
+    - inputs: object
+    """
+    workflow_type: str = Field(
+        ...,
+        description="Type of workflow to run",
+        enum=["roi_calculator", "whitespace_analysis", "business_case", "orchestrator"]
+    )
+    tenant_id: str = Field(..., description="Tenant identifier")
+    user_id: str = Field(..., description="User identifier")
+    inputs: WorkflowInputs = Field(default_factory=WorkflowInputs, description="Workflow inputs")
+    priority: str = Field(default="NORMAL", description="Execution priority")
+    workflow_id: Optional[str] = Field(None, description="Optional workflow ID")
+
+
+class WorkflowCreateResponse(BaseModel):
+    """Response from workflow creation - OpenAPI spec compliant.
+    
+    Spec requires:
+    - workflow_instance_id: string
+    - status: string
+    - estimated_duration_seconds: integer
+    """
+    workflow_instance_id: str = Field(..., alias="workflow_instance_id")
+    status: str = Field(..., description="Workflow status")
+    estimated_duration_seconds: int = Field(default=300, description="Estimated execution time")
+    
+    class Config:
+        populate_by_name = True
+
+
+class WorkflowStatusResponse(BaseModel):
+    """Workflow status response - OpenAPI spec compliant.
+    
+    Spec requires:
+    - workflow_instance_id: string
+    - workflow_type: string
+    - status: string
+    - current_state: string
+    - progress_percentage: number
+    - started_at: datetime
+    - completed_at: datetime
+    - results: object
+    """
+    workflow_instance_id: str = Field(..., alias="workflow_instance_id")
+    workflow_type: str
+    status: str
+    current_state: Optional[str] = Field(None, alias="current_state")
+    current_node: Optional[str] = None
+    progress_percentage: float = Field(default=0.0, ge=0.0, le=100.0, alias="progress_percentage")
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    error_count: int = 0
+    has_output: bool = False
+    results: Optional[Dict[str, Any]] = None
+    tenant_id: Optional[str] = None
+    user_id: Optional[str] = None
+    priority: Optional[int] = None
+    scheduler_status: Optional[str] = None
+    
+    class Config:
+        populate_by_name = True
+
+
+class WorkflowEvent(BaseModel):
+    """Workflow event for streaming.
+    
+    Spec requires:
+    - event_id: string
+    - event_type: string
+    - timestamp: datetime
+    - message: string
+    """
+    event_id: str
+    event_type: str
+    timestamp: str
+    message: str
+    payload: Optional[Dict[str, Any]] = None
+
+
+def get_executor() -> OrchestrationController:
+    """Get workflow executor instance."""
+    from .main import workflow_executor
+    if workflow_executor is None:
+        raise HTTPException(status_code=503, detail="Workflow executor not initialized")
+    return workflow_executor
+
+
+@router.post("/workflows", response_model=WorkflowCreateResponse, status_code=201)
+async def create_workflow(
+    request: WorkflowCreateRequest,
+    executor: OrchestrationController = Depends(get_executor)
+) -> WorkflowCreateResponse:
+    """Create and execute a new workflow - OpenAPI spec compliant.
+    
+    Example:
+        POST /v1/workflows
+        {
+            "workflow_type": "roi_calculator",
+            "tenant_id": "tenant-001",
+            "user_id": "user-001",
+            "inputs": {
+                "prospect_id": "prospect-001",
+                "use_case_ids": ["uc-001", "uc-002"]
+            },
+            "priority": "HIGH"
+        }
+    
+    Returns:
+        201 Created with workflow_instance_id and estimated duration
+    """
+    try:
+        # Map priority string to enum
+        priority_map = {
+            "CRITICAL": TaskPriority.CRITICAL,
+            "HIGH": TaskPriority.HIGH,
+            "NORMAL": TaskPriority.NORMAL,
+            "LOW": TaskPriority.LOW,
+            "BACKGROUND": TaskPriority.BACKGROUND,
+        }
+        priority = priority_map.get(request.priority.upper(), TaskPriority.NORMAL)
+        
+        # Convert inputs to dict for execution
+        input_data = request.inputs.dict(exclude_none=True) if request.inputs else {}
+        
+        # Execute workflow (async - returns immediately with scheduled task)
+        result = await executor.execute_workflow(
+            workflow_type=request.workflow_type,
+            input_data=input_data,
+            workflow_id=request.workflow_id,
+            priority=priority,
+            tenant_id=request.tenant_id,
+            user_id=request.user_id,
+        )
+        
+        # Estimate duration based on workflow type
+        estimated_duration = {
+            "roi_calculator": 120,
+            "whitespace_analysis": 300,
+            "business_case": 400,
+            "orchestrator": 180,
+        }.get(request.workflow_type, 300)
+        
+        return WorkflowCreateResponse(
+            workflow_instance_id=result.workflow_id,
+            status=result.status.value if hasattr(result.status, 'value') else str(result.status),
+            estimated_duration_seconds=estimated_duration,
+        )
+    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Workflow execution failed: {str(e)}")
+
+
+@router.get("/workflows/{workflow_id}", response_model=WorkflowStatusResponse)
+async def get_workflow_status(
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor)
+) -> WorkflowStatusResponse:
+    """Get status of a workflow - OpenAPI spec compliant.
+    
+    Returns detailed status including:
+    - progress_percentage (0-100)
+    - current_state
+    - tenant_id, user_id
+    """
+    status = await executor.get_workflow_status(workflow_id)
+    
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+    
+    return WorkflowStatusResponse(
+        workflow_instance_id=status.get("workflow_id", workflow_id),
+        workflow_type=status.get("workflow_type", "unknown"),
+        status=status.get("status", "unknown"),
+        current_state=status.get("current_node"),
+        current_node=status.get("current_node"),
+        progress_percentage=status.get("progress_percentage", 0.0),
+        started_at=status.get("started_at"),
+        completed_at=status.get("completed_at"),
+        error_count=status.get("error_count", 0),
+        has_output=status.get("has_output", False),
+        results=status.get("output"),
+        tenant_id=status.get("tenant_id"),
+        user_id=status.get("user_id"),
+        priority=status.get("priority"),
+        scheduler_status=status.get("scheduler_status"),
+    )
+
+
+@router.get("/workflows/{workflow_id}/result")
+async def get_workflow_result(
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor)
+) -> Dict[str, Any]:
+    """Get result of a completed workflow."""
+    status = await executor.get_workflow_status(workflow_id)
+    
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+    
+    if status.get("status") not in ["completed", "failed", "cancelled"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Workflow {workflow_id} not complete (status: {status.get('status')})"
+        )
+    
+    return {
+        "workflow_id": workflow_id,
+        "status": status.get("status"),
+        "output": status.get("output"),
+        "errors": status.get("errors", []),
+        "completed_at": status.get("completed_at"),
+    }
+
+
+@router.delete("/workflows/{workflow_id}")
+async def cancel_workflow(
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor)
+) -> Dict[str, Any]:
+    """Cancel a running workflow - OpenAPI spec compliant (DELETE method)."""
+    cancelled = await executor.cancel_workflow(workflow_id)
+    
+    if not cancelled:
+        raise HTTPException(status_code=400, detail=f"Workflow {workflow_id} could not be cancelled")
+    
+    return {"workflow_id": workflow_id, "status": "cancelled"}
+
+
+@router.get("/workflows/types")
+async def list_available_workflows() -> Dict[str, Any]:
+    """List available workflow types."""
+    types = list_workflow_types()
+    
+    return {
+        "workflows": [
+            {
+                "type": key,
+                "name": info["name"],
+                "description": info["description"]
+            }
+            for key, info in types.items()
+        ]
+    }
+
+
+@router.get("/workflows/active")
+async def list_active_workflows(
+    request: Request,
+    executor: OrchestrationController = Depends(get_executor)
+) -> List[Dict[str, Any]]:
+    """List currently active workflows.
+    
+    Filters by tenant_id if provided in context.
+    """
+    tenant = get_current_tenant()
+    tenant_id = tenant.tenant_id if tenant else None
+    
+    active = await executor.list_active_workflows(tenant_id=tenant_id)
+    return active
+
+
+@router.get("/workflows/{workflow_id}/events")
+async def get_workflow_events(
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor)
+) -> StreamingResponse:
+    """Get workflow events via Server-Sent Events (SSE).
+    
+    Streams real-time workflow progress events.
+    
+    Example:
+        GET /v1/workflows/{id}/events
+        
+        Event: workflow_event
+        data: {"event_id": "...", "event_type": "node_started", ...}
+    """
+    async def event_generator():
+        """Generate SSE events for workflow."""
+        last_status = None
+        
+        while True:
+            # Get current status
+            status = await executor.get_workflow_status(workflow_id)
+            
+            if not status:
+                yield f"event: error\ndata: {json.dumps({'message': 'Workflow not found'})}\n\n"
+                break
+            
+            # Send event if status changed
+            if status != last_status:
+                event = WorkflowEvent(
+                    event_id=f"evt-{datetime.utcnow().timestamp()}",
+                    event_type="status_update",
+                    timestamp=datetime.utcnow().isoformat(),
+                    message=f"Workflow status: {status.get('status')}",
+                    payload={
+                        "workflow_id": workflow_id,
+                        "status": status.get("status"),
+                        "progress": status.get("progress_percentage"),
+                        "current_node": status.get("current_node"),
+                    }
+                )
+                
+                yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
+                
+                last_status = status
+            
+            # Check if workflow is complete
+            if status.get("status") in ["completed", "failed", "cancelled"]:
+                # Send completion event
+                event = WorkflowEvent(
+                    event_id=f"evt-{datetime.utcnow().timestamp()}",
+                    event_type="workflow_complete",
+                    timestamp=datetime.utcnow().isoformat(),
+                    message=f"Workflow {status.get('status')}",
+                    payload={"workflow_id": workflow_id, "status": status.get("status")},
+                )
+                yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
+                break
+            
+            # Wait before next poll
+            await asyncio.sleep(1)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
