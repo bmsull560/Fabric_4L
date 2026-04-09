@@ -1,7 +1,10 @@
 """Business Case Generator workflow implementation."""
 
-from typing import Any, Dict, List
+import logging
+import os
+from typing import Any, Dict, List, Optional
 
+from ..integration.layer5_client import Layer5GroundTruthClient, get_layer5_client
 from ..models.agent_state import (
     BusinessCaseAgentState,
     BusinessCaseInputData,
@@ -12,6 +15,8 @@ from ..models.workflow_config import BUSINESS_CASE_WORKFLOW_CONFIG
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
 from .roi_calculator import ROICalculatorWorkflow
+
+logger = logging.getLogger(__name__)
 
 
 class BusinessCaseGeneratorWorkflow(BaseWorkflow):
@@ -255,7 +260,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         }
     
     async def _execute_assemble_document(self, state: BusinessCaseAgentState) -> Dict[str, Any]:
-        """Assemble sections into final document."""
+        """Assemble sections into final document, then sync ground truths to KG."""
         if not state.case_input:
             return {"error": "No business case input configured"}
         
@@ -275,6 +280,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             })
         
         # Assemble document
+        assemble_result: Dict[str, Any] = {}
         try:
             result = await self.tool_registry.execute(
                 "assemble_document",
@@ -288,18 +294,81 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                     }
                 }
             )
-            
-            return {
+            assemble_result = {
                 "document_bytes": result.get("document_bytes"),
                 "document_url": result.get("document_url"),
                 "page_count": result.get("page_count", len(assembly_sections)),
                 "file_size_bytes": result.get("file_size_bytes", 0),
-                "format": state.case_input.output_format
+                "format": state.case_input.output_format,
             }
-            
         except Exception as e:
-            return {
+            assemble_result = {
                 "error": str(e),
                 "document_bytes": None,
-                "document_url": None
+                "document_url": None,
             }
+
+        # ── Layer 5 Ground Truth sync ──────────────────────────────────────
+        # After the business case document is assembled, trigger a bulk sync
+        # of all APPROVED TruthObjects for this tenant to the Layer 3
+        # Knowledge Graph.  This is best-effort: a Layer 5 outage must not
+        # block document delivery.
+        sync_result = await self._sync_ground_truths_to_kg(state)
+        assemble_result["ground_truth_sync"] = sync_result
+
+        return assemble_result
+
+    async def _sync_ground_truths_to_kg(
+        self, state: BusinessCaseAgentState
+    ) -> Dict[str, Any]:
+        """Best-effort sync of approved TruthObjects to the KG via Layer 5.
+
+        Resolves the tenant/organization ID from (in priority order):
+          1. ``state.case_input.custom_inputs["organization_id"]``
+          2. ``state.metadata["tenant_id"]`` (set by TenantMiddleware)
+          3. The LAYER5_DEFAULT_ORG_ID environment variable (dev fallback)
+
+        Returns a dict with sync statistics or an ``error`` key.
+        """
+        organization_id: Optional[str] = None
+
+        if state.case_input and state.case_input.custom_inputs:
+            organization_id = state.case_input.custom_inputs.get("organization_id")
+
+        if not organization_id and state.metadata:
+            organization_id = state.metadata.get("tenant_id")
+
+        if not organization_id:
+            organization_id = os.getenv("LAYER5_DEFAULT_ORG_ID")
+
+        # Resolve service token for Layer 5 auth
+        service_token: Optional[str] = os.getenv("LAYER5_SERVICE_TOKEN")
+        layer5_url: Optional[str] = os.getenv(
+            "LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005"
+        )
+
+        client = Layer5GroundTruthClient(
+            base_url=layer5_url,
+            service_token=service_token,
+            tenant_id=organization_id if not service_token else None,
+        )
+
+        try:
+            sync_result = await client.sync_approved_truths(
+                organization_id=organization_id
+            )
+            logger.info(
+                "Business case ground-truth sync complete for org=%s: %s",
+                organization_id,
+                sync_result,
+            )
+            return sync_result
+        except Exception as exc:
+            logger.warning(
+                "Ground-truth sync failed (non-blocking) for org=%s: %s",
+                organization_id,
+                exc,
+            )
+            return {"error": str(exc), "synced": 0, "failed": 0}
+        finally:
+            await client.close()

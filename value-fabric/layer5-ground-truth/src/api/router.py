@@ -35,6 +35,7 @@ from ..services.truth_service import (
     soft_delete_truth_object,
     validate_truth_object,
 )
+from .auth import TokenClaims, get_current_user
 from .schemas import (
     AddSourceRequest,
     HealthResponse,
@@ -53,33 +54,6 @@ from .schemas import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["ground-truth"])
-
-# ---------------------------------------------------------------------------
-# Dependency: resolve organization_id from request header
-# In production this would be extracted from a validated JWT.
-# ---------------------------------------------------------------------------
-
-def get_organization_id(
-    x_organization_id: Optional[str] = Query(
-        default=None,
-        alias="organization_id",
-        description="Organization (tenant) UUID — required for all endpoints",
-    ),
-) -> UUID:
-    """
-    Extract and validate organization_id.
-
-    TODO: Replace with JWT-based extraction once auth middleware is in place.
-    """
-    settings = get_settings()
-    raw = x_organization_id or settings.default_tenant_id
-    try:
-        return UUID(raw)
-    except (ValueError, AttributeError):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid organization_id: {raw!r}",
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -103,14 +77,15 @@ def get_organization_id(
 )
 async def create_truth(
     payload: TruthObjectCreate,
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TruthObjectResponse:
+    organization_id = caller.organization_id
     sources_data = [s.model_dump() for s in payload.sources] if payload.sources else None
 
     truth = await create_truth_object(
         db=db,
-        organization_id=organization_id,
+        organization_id=organization_id,  # resolved from JWT
         claim=payload.claim,
         claim_type=payload.claim_type,
         confidence=payload.confidence,
@@ -155,7 +130,7 @@ async def create_truth(
     description="Paginated, filterable list of TruthObjects for the organization.",
 )
 async def list_truths(
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     status_filter: Optional[TruthStatus] = Query(
         default=None,
@@ -189,6 +164,7 @@ async def list_truths(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> TruthObjectListResponse:
+    organization_id = caller.organization_id
     items, total = await list_truth_objects(
         db=db,
         organization_id=organization_id,
@@ -244,9 +220,10 @@ async def list_truths(
 )
 async def get_truth(
     truth_id: UUID,
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TruthObjectResponse:
+    organization_id = caller.organization_id
     truth = await get_truth_object(db, truth_id, organization_id)
     if not truth:
         raise HTTPException(
@@ -278,9 +255,10 @@ async def get_truth(
 async def validate_truth(
     truth_id: UUID,
     payload: ValidateRequest,
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ValidateResponse:
+    organization_id = caller.organization_id
     truth = await get_truth_object(db, truth_id, organization_id)
     if not truth:
         raise HTTPException(
@@ -362,9 +340,10 @@ async def validate_truth(
 async def add_truth_source(
     truth_id: UUID,
     payload: AddSourceRequest,
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TruthSourceResponse:
+    organization_id = caller.organization_id
     truth = await get_truth_object(db, truth_id, organization_id)
     if not truth:
         raise HTTPException(
@@ -394,9 +373,10 @@ async def add_truth_source(
 )
 async def get_audit_trail(
     truth_id: UUID,
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ValidationEventResponse]:
+    organization_id = caller.organization_id
     truth = await get_truth_object(db, truth_id, organization_id)
     if not truth:
         raise HTTPException(
@@ -418,10 +398,12 @@ async def get_audit_trail(
 )
 async def delete_truth(
     truth_id: UUID,
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     deleted_by: Optional[str] = Query(default=None),
 ) -> None:
+    organization_id = caller.organization_id
+    deleted_by = deleted_by or caller.user_id
     truth = await get_truth_object(db, truth_id, organization_id)
     if not truth:
         raise HTTPException(
@@ -444,9 +426,10 @@ async def delete_truth(
     ),
 )
 async def sync_to_kg(
-    organization_id: UUID = Depends(get_organization_id),
+    caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    organization_id = caller.organization_id
     from sqlalchemy import and_, select
     from ..models.truth_object import TruthObject
 

@@ -81,6 +81,38 @@ class Settings(BaseSettings):
         alias="DEFAULT_TENANT_ID",
     )
 
+    # JWT / Auth Configuration
+    jwt_secret: str = Field(
+        default="changeme-in-production",
+        alias="JWT_SECRET",
+        description="HMAC secret for signing/verifying JWTs",
+    )
+    jwt_algorithm: str = Field(
+        default="HS256",
+        alias="JWT_ALGORITHM",
+    )
+    jwt_tenant_claim: str = Field(
+        default="tenant_id",
+        alias="JWT_TENANT_CLAIM",
+        description="JWT claim key that holds the tenant/organization UUID",
+    )
+    jwt_user_claim: str = Field(
+        default="sub",
+        alias="JWT_USER_CLAIM",
+        description="JWT claim key that holds the user identity",
+    )
+    jwt_roles_claim: str = Field(
+        default="roles",
+        alias="JWT_ROLES_CLAIM",
+        description="JWT claim key that holds the user roles list",
+    )
+    # When true, a missing/invalid JWT falls back to the organization_id query param
+    # (useful for local dev and integration tests). Set false in production.
+    jwt_fallback_to_query_param: bool = Field(
+        default=True,
+        alias="JWT_FALLBACK_TO_QUERY_PARAM",
+    )
+
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, v: str) -> str:
