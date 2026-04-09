@@ -1,4 +1,4 @@
-"""Value Fabric Layer 5: Ground Truth Layer"""
+# Value Fabric Layer 5: Ground Truth Layer
 
 [project]
 name = "layer5-ground-truth"
