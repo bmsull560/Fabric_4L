@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from layer5_ground_truth.src.models.truth_object import (
+from layer5_ground_truth.models.truth_object import (
     DisputeReason,
     MaturityLevel,
     TruthObject,
@@ -27,7 +27,7 @@ from layer5_ground_truth.src.models.truth_object import (
     TruthStatus,
     ValidationEvent,
 )
-from layer5_ground_truth.src.services.state_machine import (
+from layer5_ground_truth.services.state_machine import (
     InsufficientEvidenceError,
     InvalidTransitionError,
     ValidationStateMachine,
@@ -58,12 +58,15 @@ def make_truth(
     )
 
 
-def make_source(truth_id: uuid.UUID) -> TruthSource:
+def make_source(
+    truth_id: uuid.UUID,
+    source_type: str = "call_transcript",
+) -> TruthSource:
     return TruthSource(
         id=uuid.uuid4(),
         truth_object_id=truth_id,
         organization_id=TEST_ORG_ID,
-        source_type="call_transcript",
+        source_type=source_type,
         confidence_contribution=0.8,
         created_at=datetime.now(timezone.utc),
     )
@@ -161,8 +164,9 @@ class TestAdvanceToCorroborated:
         sm = ValidationStateMachine()
         truth = make_truth(TruthStatus.SUPPORTED, maturity=MaturityLevel.SUPPORTED.value)
         db.add(truth)
-        db.add(make_source(truth.id))
-        db.add(make_source(truth.id))
+        # Create two distinct sources (different types required for corroboration)
+        db.add(make_source(truth.id, source_type="call_transcript"))
+        db.add(make_source(truth.id, source_type="crm_field"))
         await db.flush()
 
         result = await sm.advance_to_corroborated(db, truth)
@@ -179,7 +183,7 @@ class TestAdvanceToCorroborated:
         db.add(make_source(truth.id))
         await db.flush()
 
-        with pytest.raises(InsufficientEvidenceError, match="2 sources"):
+        with pytest.raises(InsufficientEvidenceError, match="2 distinct sources"):
             await sm.advance_to_corroborated(db, truth)
 
     @pytest.mark.asyncio
@@ -378,8 +382,9 @@ class TestAutoAdvance:
         sm = ValidationStateMachine()
         truth = make_truth(TruthStatus.EXTRACTED, confidence=0.9)
         db.add(truth)
-        db.add(make_source(truth.id))
-        db.add(make_source(truth.id))
+        # Create two distinct sources (different types required for corroboration)
+        db.add(make_source(truth.id, source_type="call_transcript"))
+        db.add(make_source(truth.id, source_type="crm_field"))
         await db.flush()
 
         result = await sm.auto_advance(db, truth)

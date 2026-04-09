@@ -31,10 +31,11 @@ os.environ["LAYER3_SYNC_ENABLED"] = "false"
 os.environ["AUTO_ADVANCE_TO_SUPPORTED"] = "true"
 os.environ["MIN_CONFIDENCE_FOR_SUPPORTED"] = "0.5"
 os.environ["MIN_SOURCES_FOR_CORROBORATED"] = "2"
+os.environ["JWT_FALLBACK_TO_QUERY_PARAM"] = "true"
 
-from layer5_ground_truth.src.api.main import create_app  # noqa: E402
-from layer5_ground_truth.src.models import Base  # noqa: E402
-from layer5_ground_truth.src import database as db_module  # noqa: E402
+from layer5_ground_truth.api.main import create_app  # noqa: E402
+from layer5_ground_truth.models import Base  # noqa: E402
+from layer5_ground_truth import database as db_module  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Shared test organization ID
@@ -108,7 +109,7 @@ async def client(db) -> AsyncGenerator[AsyncClient, None]:
     Provide an httpx.AsyncClient that overrides the get_db dependency
     to use the test session.
     """
-    from layer5_ground_truth.src.database import get_db
+    from layer5_ground_truth.database import get_db
 
     app = create_app()
 
