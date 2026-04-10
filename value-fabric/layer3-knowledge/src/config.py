@@ -71,6 +71,7 @@ class Settings(BaseSettings):
         default="sentence-transformers/all-MiniLM-L6-v2",
         alias="EMBEDDING_MODEL",
     )
+    embedding_dimension: int = Field(default=384, alias="EMBEDDING_DIMENSION")
     embedding_batch_size: int = Field(default=32, alias="EMBEDDING_BATCH_SIZE")
 
     # GraphRAG Configuration

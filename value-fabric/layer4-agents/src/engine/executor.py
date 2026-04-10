@@ -15,7 +15,16 @@ from datetime import datetime
 import asyncio
 import logging
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
+
 from ..models.agent_state import AgentState, WorkflowStatus
+
+
+class WorkflowExecutionError(Exception):
+    """Raised when workflow execution fails."""
+    pass
+
+
 from ..tools.registry import ToolRegistry
 from ..workflows.base import BaseWorkflow
 from ..workflows import create_workflow
@@ -28,6 +37,7 @@ from .state_manager import StateManager
 from .scheduler import TaskScheduler, ScheduledTask, TaskPriority
 
 logger = logging.getLogger(__name__)
+
 
 
 class OrchestrationController:
@@ -63,6 +73,7 @@ class OrchestrationController:
         message_bus: Optional[MessageBus] = None,
         max_concurrent: int = 100,
         scaling_config: Optional[Dict[str, Any]] = None,
+        checkpoint_saver: Optional[BaseCheckpointSaver] = None,
     ):
         """Initialize orchestration controller.
         
@@ -72,10 +83,12 @@ class OrchestrationController:
             message_bus: Message bus for agent communication
             max_concurrent: Maximum concurrent tasks
             scaling_config: Scaling policy configuration
+            checkpoint_saver: LangGraph checkpoint saver for workflow persistence
         """
         self.tool_registry = tool_registry
         self.state_manager = state_manager or StateManager()
         self.message_bus = message_bus or InMemoryMessageBus()
+        self.checkpoint_saver = checkpoint_saver
         self.max_concurrent = max_concurrent
         
         # Scaling configuration per spec
@@ -200,8 +213,8 @@ class OrchestrationController:
         Returns:
             Final workflow state
         """
-        # Create workflow
-        workflow = create_workflow(workflow_type, self.tool_registry)
+        # Create workflow with checkpointing if available
+        workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
         initial_state = workflow.create_initial_state(input_data)
         workflow_id = workflow_id or initial_state.workflow_id
         
@@ -418,6 +431,75 @@ class OrchestrationController:
         
         return cancelled
     
+    async def resume_workflow(
+        self,
+        workflow_id: str,
+        user_id: str,
+        resume_data: Optional[Dict[str, Any]] = None,
+    ) -> AgentState:
+        """Resume a workflow from its last checkpoint.
+        
+        Reloads workflow state from checkpoint storage and continues execution
+        from the last completed node. Supports human-in-the-loop workflows where
+        execution pauses for user input/decisions.
+        
+        Args:
+            workflow_id: Workflow to resume
+            user_id: User initiating resume
+            resume_data: Optional user input/decision data to merge into state
+            
+        Returns:
+            Final or updated workflow state
+            
+        Raises:
+            WorkflowExecutionError: If workflow not found, completed, or resume fails
+        """
+        # Load existing state
+        state = await self.state_manager.load_state(workflow_id)
+        if not state:
+            raise WorkflowExecutionError(f"No state found for workflow {workflow_id}")
+        
+        # Check if workflow is in a resumable state
+        # Only PAUSED or RUNNING workflows can be resumed
+        if state.status not in [WorkflowStatus.PAUSED, WorkflowStatus.RUNNING, WorkflowStatus.PENDING]:
+            raise WorkflowExecutionError(
+                f"Workflow {workflow_id} is {state.status.value} and cannot be resumed. "
+                f"Only PAUSED, RUNNING, or PENDING workflows can be resumed."
+            )
+        
+        # Validate workflow_id matches state
+        if state.workflow_id != workflow_id:
+            raise WorkflowExecutionError(
+                f"Workflow ID mismatch: requested {workflow_id} but state has {state.workflow_id}"
+            )
+        
+        # Merge resume data into state if provided
+        # Store in output_data to avoid mutating original input_data
+        if resume_data:
+            state.output_data["resume_decision"] = resume_data
+            state.output_data["resumed_by"] = user_id
+            state.output_data["resumed_at"] = datetime.utcnow().isoformat()
+        
+        # Get workflow type from metadata
+        metadata = self._workflow_metadata.get(workflow_id, {})
+        workflow_type = metadata.get("workflow_type")
+        
+        if not workflow_type:
+            raise WorkflowExecutionError(f"No workflow type found for {workflow_id}")
+        
+        # Re-create workflow with checkpoint saver
+        workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
+        
+        # Update metadata
+        metadata["resumed_at"] = datetime.utcnow().isoformat()
+        metadata["resumed_by"] = user_id
+        
+        # Resume execution - LangGraph will load from checkpoint via thread_id
+        # The workflow continues from where it left off
+        result = await workflow.run(state, thread_id=workflow_id)
+        
+        return result
+    
     async def list_active_workflows(
         self,
         tenant_id: Optional[str] = None,
@@ -578,8 +660,3 @@ class OrchestrationController:
 
 # Backward compatibility alias
 WorkflowExecutor = OrchestrationController
-
-
-class WorkflowExecutionError(Exception):
-    """Raised when workflow execution fails."""
-    pass

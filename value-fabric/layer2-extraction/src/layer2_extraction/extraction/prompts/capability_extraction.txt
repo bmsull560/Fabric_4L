@@ -1,0 +1,10 @@
+Extract all product/technical capabilities mentioned in this text.
+
+Text:
+{text}
+
+Instructions:
+- Only extract capabilities you're highly confident about (confidence >= {confidence_threshold})
+- Include specific technical features when mentioned
+- Focus on what the product/service CAN DO (capabilities), not benefits
+- Return empty array if no clear capabilities are mentioned

@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 VF = Namespace("http://valuefabric.io/ontology/")
 PROV = Namespace("http://www.w3.org/ns/prov#")
 
+# Current retrieval entities that receive ingestion-time embeddings.
+VECTOR_ENTITY_TYPES = {"Capability", "UseCase", "Persona", "ValueDriver"}
+
 
 class RDFLoadError(Exception):
     """Raised when RDF loading fails."""
@@ -55,6 +58,7 @@ class Neo4jLoader:
         self.batch_size = batch_size
         self._driver = driver
         self._owned_driver = driver is None
+        self._embedding_model = None
         # When use_apoc=True the loader uses APOC procedures for richer merge
         # semantics.  Defaults to False so the service works on vanilla Neo4j
         # (including Neo4j Aura) without requiring the APOC plugin.
@@ -209,6 +213,64 @@ class Neo4jLoader:
                 return str(literal)  # Keep as ISO string
         return str(literal)
 
+    def _get_embedding_model(self):
+        """Lazily load sentence-transformers model for ingestion embeddings."""
+        if self._embedding_model is None:
+            from sentence_transformers import SentenceTransformer
+
+            model_name = getattr(
+                self.settings,
+                "embedding_model",
+                "sentence-transformers/all-MiniLM-L6-v2",
+            )
+            self._embedding_model = SentenceTransformer(model_name)
+            logger.info("Loaded ingestion embedding model: %s", model_name)
+        return self._embedding_model
+
+    def _build_embedding_text(self, entity: dict) -> str:
+        """Build deterministic embedding text from core entity fields."""
+        text_parts = []
+        for key in ("name", "description", "summary", "title"):
+            value = entity.get(key)
+            if isinstance(value, str) and value.strip():
+                text_parts.append(value.strip())
+        if not text_parts:
+            text_parts.append(str(entity.get("id", "")))
+        return "\n".join(text_parts)[:4000]
+
+    def _generate_embedding(self, text: str) -> Optional[List[float]]:
+        """Generate embedding vector using local sentence-transformers model."""
+        if not text.strip():
+            return None
+        try:
+            model = self._get_embedding_model()
+            return model.encode(text, normalize_embeddings=True).tolist()
+        except Exception as exc:
+            logger.warning("Embedding generation failed during ingestion: %s", exc)
+            return None
+
+    def _attach_embeddings(self, entity_type: str, entities: List[dict]) -> List[dict]:
+        """Attach embeddings to retrieval entity records before persistence."""
+        if entity_type not in VECTOR_ENTITY_TYPES or not entities:
+            return entities
+
+        prepared: List[dict] = []
+        for entity in entities:
+            entity_copy = dict(entity)
+            existing_embedding = entity_copy.get("embedding")
+            if isinstance(existing_embedding, list) and existing_embedding:
+                prepared.append(entity_copy)
+                continue
+
+            text = self._build_embedding_text(entity_copy)
+            embedding = self._generate_embedding(text)
+            if embedding:
+                entity_copy["embedding"] = embedding
+                entity_copy["embedding_text"] = text[:2000]
+            prepared.append(entity_copy)
+
+        return prepared
+
     async def _load_entities_batch(
         self,
         session,
@@ -225,6 +287,8 @@ class Neo4jLoader:
         """
         if not entities:
             return 0
+
+        entities = self._attach_embeddings(entity_type, entities)
 
         entity_data = {
             "entities": entities,

@@ -91,7 +91,14 @@ class SchemaInitializer:
         """Create all schema indexes."""
         for index in INDEXES:
             try:
-                await session.run(index.cypher)
+                query = index.cypher
+                if index.index_type == "vector":
+                    query = self._build_vector_index_cypher(
+                        index_name=index.name,
+                        entity_type=index.entity_type,
+                        property_name=index.properties[0],
+                    )
+                await session.run(query)
                 logger.info(f"Created index: {index.name}")
             except ClientError as e:
                 if "already exists" in str(e):
@@ -108,6 +115,25 @@ class SchemaInitializer:
             except Exception as e:
                 logger.error(f"Unexpected error creating index {index.name}: {e}")
                 raise
+
+    def _build_vector_index_cypher(
+        self,
+        index_name: str,
+        entity_type: str,
+        property_name: str,
+    ) -> str:
+        """Build vector index Cypher using configured embedding dimension."""
+        embedding_dimension = getattr(self.settings, "embedding_dimension", 384)
+        return (
+            f"CREATE VECTOR INDEX {index_name} "
+            "IF NOT EXISTS "
+            f"FOR (n:{entity_type}) "
+            f"ON (n.{property_name}) "
+            "OPTIONS {indexConfig: {"
+            f"`vector.dimensions`: {embedding_dimension}, "
+            "`vector.similarity_function`: 'cosine'"
+            "}}"
+        )
 
     async def _drop_all_constraints_and_indexes(self, session) -> None:
         """Drop all existing constraints and indexes."""

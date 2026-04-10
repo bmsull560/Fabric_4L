@@ -1,0 +1,15 @@
+Extract all quantifiable business value drivers mentioned in this text.
+
+Text:
+{text}
+
+Categories:
+- revenue: Increases revenue (up-sell, cross-sell, retention)
+- cost: Reduces costs (automation, efficiency)
+- risk: Reduces risk (compliance, security)
+- capital: Optimizes capital (cash flow, inventory)
+
+Instructions:
+- Look for specific metrics and formulas
+- Include time-to-value if mentioned
+- Return empty array if no clear value drivers are mentioned

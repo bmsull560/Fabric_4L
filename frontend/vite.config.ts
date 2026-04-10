@@ -184,5 +184,34 @@ export default defineConfig({
       strict: true,
       deny: ["**/.*"],
     },
+    // Proxy configuration for multi-layer API routing
+    // Each layer runs on a different port; unified under /api/v1 for future gateway compatibility
+    proxy: {
+      '/api/v1/ingest': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1\/ingest/, ''),
+      },
+      '/api/v1/extract': {
+        target: 'http://localhost:8002',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1\/extract/, ''),
+      },
+      '/api/v1/graph': {
+        target: 'http://localhost:8003',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1\/graph/, ''),
+      },
+      '/api/v1/agents': {
+        target: 'http://localhost:8004',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1\/agents/, ''),
+      },
+      '/api/v1/truths': {
+        target: 'http://localhost:8005',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1\/truths/, ''),
+      },
+    },
   },
 });

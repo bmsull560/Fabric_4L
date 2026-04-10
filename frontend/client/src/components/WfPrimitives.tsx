@@ -30,7 +30,7 @@ export function EntityBadge({ type, label }: { type: EntityType; label?: string 
 }
 
 /* ── Status badge ── */
-type StatusType = "completed" | "processing" | "failed" | "running" | "paused" | "pending";
+type StatusType = "completed" | "processing" | "failed" | "running" | "paused" | "pending" | "cancelled";
 const STATUS_STYLES: Record<StatusType, string> = {
   completed:  "bg-emerald-100 text-emerald-800 border-emerald-200",
   running:    "bg-amber-100   text-amber-800   border-amber-200",
@@ -38,9 +38,10 @@ const STATUS_STYLES: Record<StatusType, string> = {
   failed:     "bg-red-100     text-red-800     border-red-200",
   paused:     "bg-neutral-100 text-neutral-600 border-neutral-200",
   pending:    "bg-blue-100    text-blue-800    border-blue-200",
+  cancelled:  "bg-gray-100    text-gray-600    border-gray-200",
 };
 const STATUS_ICONS: Record<StatusType, string> = {
-  completed: "✓", running: "↻", processing: "↻", failed: "✕", paused: "⏸", pending: "…",
+  completed: "✓", running: "↻", processing: "↻", failed: "✕", paused: "⏸", pending: "…", cancelled: "⊘",
 };
 
 export function StatusBadge({ status }: { status: StatusType }) {
@@ -163,24 +164,26 @@ export function Toolbar({ children }: { children: React.ReactNode }) {
 
 /* ── Ghost / primary buttons ── */
 export function Btn({
-  children, variant = "ghost", onClick, className,
+  children, variant = "ghost", onClick, className, disabled,
 }: {
   children: React.ReactNode;
   variant?: "primary" | "ghost" | "outline" | "danger";
   onClick?: () => void;
   className?: string;
+  disabled?: boolean;
 }) {
   const styles = {
-    primary: "bg-blue-700 text-white hover:bg-blue-800 border-blue-700",
-    ghost:   "bg-white text-neutral-600 hover:bg-neutral-100 border-neutral-200",
-    outline: "bg-transparent text-neutral-600 hover:bg-neutral-100 border-neutral-300",
-    danger:  "bg-white text-red-600 hover:bg-red-50 border-red-200",
+    primary: "bg-blue-700 text-white hover:bg-blue-800 border-blue-700 disabled:bg-blue-300 disabled:border-blue-300",
+    ghost:   "bg-white text-neutral-600 hover:bg-neutral-100 border-neutral-200 disabled:text-neutral-300",
+    outline: "bg-transparent text-neutral-600 hover:bg-neutral-100 border-neutral-300 disabled:text-neutral-300",
+    danger:  "bg-white text-red-600 hover:bg-red-50 border-red-200 disabled:text-red-300",
   };
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={cn(
-        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold border transition-colors",
+        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-semibold border transition-colors disabled:cursor-not-allowed",
         styles[variant],
         className
       )}
@@ -191,13 +194,27 @@ export function Btn({
 }
 
 /* ── Search input ── */
-export function SearchInput({ placeholder }: { placeholder?: string }) {
+export function SearchInput({
+  placeholder,
+  value,
+  onChange,
+}: {
+  placeholder?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
   return (
-    <div className="flex items-center gap-2 h-8 px-3 bg-white border border-neutral-200 rounded-md text-[12px] text-neutral-400 min-w-[200px]">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <div className="flex items-center gap-2 h-8 px-3 bg-white border border-neutral-200 rounded-md text-[12px] min-w-[200px]">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-neutral-400">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
-      <span>{placeholder ?? "Search…"}</span>
+      <input
+        type="text"
+        value={value || ''}
+        onChange={onChange}
+        placeholder={placeholder ?? "Search…"}
+        className="flex-1 bg-transparent outline-none text-neutral-700 placeholder:text-neutral-400"
+      />
     </div>
   );
 }

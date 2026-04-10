@@ -1,0 +1,13 @@
+Extract all stakeholder personas mentioned in this text.
+
+Text:
+{text}
+
+Role Types:
+- economic_buyer: Makes purchasing decisions (CFO, VP, Director)
+- operational_user: Uses the product day-to-day (analyst, specialist)
+- stakeholder: Influenced by outcomes but not direct user (auditor, customer)
+
+Instructions:
+- Include pain points and success metrics if mentioned
+- Return empty array if no clear personas are mentioned

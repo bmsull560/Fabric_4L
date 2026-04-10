@@ -9,7 +9,10 @@ import traceback
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from config import Settings, get_settings
+try:
+    from .config import Settings, get_settings
+except ImportError:  # pragma: no cover - fallback for top-level module imports
+    from config import Settings, get_settings
 
 
 class JSONFormatter(logging.Formatter):

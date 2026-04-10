@@ -142,6 +142,7 @@ services:
       - LAYER3_API_URL=http://layer3-knowledge:8001
       - LAYER5_GROUND_TRUTH_URL=http://layer5-ground-truth:8005
       - PINECONE_API_KEY=${PINECONE_API_KEY:-}
+      - CHECKPOINT_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
       - LOG_LEVEL=info
     depends_on:
       redis:

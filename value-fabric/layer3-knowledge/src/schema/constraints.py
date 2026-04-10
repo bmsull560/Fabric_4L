@@ -80,7 +80,7 @@ class Index:
                 f"IF NOT EXISTS "
                 f"FOR (n:{self.entity_type}) "
                 f"ON (n.{self.properties[0]}) "
-                f"OPTIONS {{indexConfig: {{`vector.dimensions`: 768, `vector.similarity_function`: 'cosine'}}}}"
+                f"OPTIONS {{indexConfig: {{`vector.dimensions`: 384, `vector.similarity_function`: 'cosine'}}}}"
             )
         elif self.index_type == "lookup":
             return f"CREATE LOOKUP INDEX {self.name} IF NOT EXISTS FOR () ON EACH labels()"
@@ -168,6 +168,15 @@ RELATIONSHIP_TYPES = [
     "supersedes",  # Entity -> Entity (versioning)
 ]
 
+# Current retrieval set for vector similarity search.
+# Keep this list aligned with src/retrieval/vector_store.py VECTOR_ENTITY_TYPES.
+VECTOR_INDEX_ENTITY_TYPES = [
+    "Capability",
+    "UseCase",
+    "Persona",
+    "ValueDriver",
+]
+
 # Constraints for data integrity
 CONSTRAINTS: List[Constraint] = [
     # Unique constraints on entity IDs
@@ -195,15 +204,11 @@ CONSTRAINTS: List[Constraint] = [
     Constraint("datasource_id", "DataSource", "id", "unique"),
     Constraint("extractionevent_id", "ExtractionEvent", "id", "unique"),
     Constraint("confidencescore_id", "ConfidenceScore", "id", "unique"),
-    # Existence constraints on required properties
-    Constraint("capability_name_exists", "Capability", "name", "exists"),
-    Constraint("usecase_name_exists", "UseCase", "name", "exists"),
-    Constraint("persona_name_exists", "Persona", "name", "exists"),  # Fixed: was "title"
-    Constraint("persona_description_exists", "Persona", "description", "exists"),  # Added
-    Constraint("valuedriver_name_exists", "ValueDriver", "name", "exists"),
-    Constraint("valuemetric_name_exists", "ValueMetric", "name", "exists"),
-    Constraint("product_name_exists", "Product", "name", "exists"),
-    Constraint("feature_name_exists", "Feature", "name", "exists"),
+    # NOTE: Property existence constraints require Neo4j Enterprise Edition.
+    # For Community Edition compatibility, we skip these and rely on:
+    # 1. Application-level validation
+    # 2. Full-text indexes for name search (not null enforcement)
+    # 3. Required field validation in API models
 ]
 
 # Indexes for query performance
@@ -236,8 +241,11 @@ INDEXES: List[Index] = [
     Index("valuemetric_fulltext", "ValueMetric", ["name", "description"], "fulltext"),
     Index("product_fulltext", "Product", ["name", "description"], "fulltext"),
     Index("feature_fulltext", "Feature", ["name", "description"], "fulltext"),
-    # Vector index for semantic search (applies to all entity types with embeddings)
-    Index("entity_embedding_idx", "Capability", ["embedding"], "vector"),
+    # Vector indexes for current retrieval entities.
+    Index("capability_embedding_idx", "Capability", ["embedding"], "vector"),
+    Index("usecase_embedding_idx", "UseCase", ["embedding"], "vector"),
+    Index("persona_embedding_idx", "Persona", ["embedding"], "vector"),
+    Index("valuedriver_embedding_idx", "ValueDriver", ["embedding"], "vector"),
     # Lookup index for efficient label scanning
     Index("entity_lookup", "", [], "lookup"),
 ]

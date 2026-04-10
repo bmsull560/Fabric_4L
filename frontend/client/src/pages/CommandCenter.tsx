@@ -1,26 +1,13 @@
 /**
  * Screen 1 — Ingestion Command Center
  * Design: Refined Enterprise SaaS
- * Spec change: simple-by-default with progressive disclosure for advanced config
+ * Data Flow: React Query for server state, Zustand for UI state
  */
 import { useState } from "react";
 import { Globe, ChevronDown, ChevronUp, Settings2, Zap, Clock, CheckCircle2, AlertCircle, Loader2, ArrowRight } from "lucide-react";
+import { useRecentIngestionJobs, useIngestionStats, useSubmitDomain, type IngestionJob } from "@/hooks/useIngestion";
+import { useIngestionUIStore } from "@/stores";
 import { MetricCard, PageHeader, DataTable, StatusBadge, Btn } from "@/components/WfPrimitives";
-
-const recentMaps = [
-  { domain: "acmecorp.com",        entities: "1,402", status: "completed" as const, updated: "2 mins ago" },
-  { domain: "globex.io",           entities: "845",   status: "completed" as const, updated: "1 hour ago" },
-  { domain: "initech.com",         entities: "120",   status: "processing" as const, updated: "Just now" },
-  { domain: "massive-dynamic.com", entities: "3,105", status: "completed" as const, updated: "Yesterday" },
-  { domain: "soylent.co",          entities: "—",     status: "failed" as const,    updated: "2 days ago" },
-];
-
-const recentActivity = [
-  { icon: <CheckCircle2 size={13} className="text-emerald-500"/>, text: "acmecorp.com synthesis complete — 1,402 entities extracted", time: "2m ago" },
-  { icon: <Loader2 size={13} className="text-blue-500 animate-spin"/>, text: "initech.com NER extraction in progress (68%)", time: "Just now" },
-  { icon: <AlertCircle size={13} className="text-red-400"/>, text: "soylent.co crawl failed — domain unreachable", time: "2d ago" },
-  { icon: <Zap size={13} className="text-violet-500"/>, text: "Business case generated for globex.io", time: "1h ago" },
-];
 
 const EXTRACTION_PROFILES = ["Default", "Deep Crawl", "Financial Focus", "Technical Focus"];
 const ONTOLOGY_TARGETS = ["General", "SaaS / B2B", "Financial Services", "Healthcare"];
@@ -30,6 +17,16 @@ export default function CommandCenter() {
   const [profile, setProfile] = useState("Default");
   const [ontology, setOntology] = useState("SaaS / B2B");
   const [depth, setDepth] = useState("3");
+
+  // UI state: Zustand
+  const { domainInput, setDomainInput } = useIngestionUIStore();
+
+  // Server state: React Query
+  const { data: recentJobs = [], isLoading: jobsLoading } = useRecentIngestionJobs(5);
+  const { data: kpiData = { totalDomains: 0, pagesSynthesized: 0, sourcesAnalyzed: 0, avgProcessingTime: 0 } } = useIngestionStats();
+  const submitDomain = useSubmitDomain();
+
+  const isLoading = jobsLoading || submitDomain.isPending;
 
   return (
     <div className="p-6 max-w-5xl">
@@ -44,12 +41,21 @@ export default function CommandCenter() {
         <div className="flex items-center gap-3 px-4 py-3.5">
           <Globe size={16} className="text-neutral-400 shrink-0"/>
           <input
-            readOnly
+            value={domainInput}
+            onChange={(e) => setDomainInput(e.target.value)}
             placeholder="Enter company domain to synthesize (e.g., https://example.com)…"
-            className="flex-1 text-[13px] text-neutral-500 bg-transparent outline-none placeholder:text-neutral-400"
+            className="flex-1 text-[13px] text-neutral-700 bg-transparent outline-none placeholder:text-neutral-400"
           />
-          <Btn variant="primary">
-            Synthesize <ArrowRight size={13} className="inline ml-1"/>
+          <Btn
+            variant="primary"
+            onClick={() => domainInput && submitDomain.mutate(domainInput, {
+              onSuccess: () => setDomainInput('')
+            })}
+            disabled={isLoading || !domainInput}
+          >
+            {submitDomain.isPending ? <Loader2 size={13} className="animate-spin" /> : <>
+              Synthesize <ArrowRight size={13} className="inline ml-1"/>
+            </>}
           </Btn>
         </div>
 
@@ -114,9 +120,23 @@ export default function CommandCenter() {
 
       {/* ── KPI row ────────────────────────────────────────────────────────── */}
       <div className="flex gap-4 mb-6">
-        <MetricCard label="Total Processed Nodes"   value="14,208" trend="+12%" trendUp />
-        <MetricCard label="Verified Relationships"  value="8,451"  trend="+5%"  trendUp />
-        <MetricCard label="Total Accounts"          value="124"    trend="Active" />
+        <MetricCard
+          label="Total Processed Nodes"
+          value={kpiData.totalDomains.toLocaleString()}
+          trend="+12%"
+          trendUp
+        />
+        <MetricCard
+          label="Verified Relationships"
+          value={kpiData.pagesSynthesized.toLocaleString()}
+          trend="+5%"
+          trendUp
+        />
+        <MetricCard
+          label="Total Accounts"
+          value={kpiData.sourcesAnalyzed.toString()}
+          trend="Active"
+        />
       </div>
 
       {/* ── Two-column lower section ───────────────────────────────────────── */}
@@ -128,15 +148,15 @@ export default function CommandCenter() {
             <button className="text-[11px] text-blue-600 hover:underline">View all</button>
           </div>
           <DataTable
-            columns={["Domain", "Entities", "Status", "Updated"]}
-            rows={recentMaps.map(r => [
+            columns={["Domain", "Pages", "Status", "Updated"]}
+            rows={recentJobs.map(job => [
               <span className="flex items-center gap-2">
                 <span className="text-neutral-300 text-[14px]">🏢</span>
-                <span className="font-medium text-neutral-800">{r.domain}</span>
+                <span className="font-medium text-neutral-800">{job.domain}</span>
               </span>,
-              <span className="text-neutral-600">{r.entities}</span>,
-              <StatusBadge status={r.status}/>,
-              <span className="text-neutral-400 text-[11px]">{r.updated}</span>,
+              <span className="text-neutral-600">{job.pagesProcessed || 0}</span>,
+              <StatusBadge status={job.status}/>,
+              <span className="text-neutral-400 text-[11px]">{job.updatedAt ? new Date(job.updatedAt).toLocaleDateString() : '-'}</span>,
             ])}
           />
         </div>
@@ -148,15 +168,29 @@ export default function CommandCenter() {
             <h2 className="text-[13px] font-bold text-neutral-800">Recent Activity</h2>
           </div>
           <div className="divide-y divide-neutral-100">
-            {recentActivity.map((a, i) => (
-              <div key={i} className="px-4 py-3 flex items-start gap-2.5">
-                <span className="mt-0.5 shrink-0">{a.icon}</span>
+            {recentJobs.slice(0, 4).map((job: IngestionJob, idx: number) => (
+              <div key={idx} className="px-4 py-3 flex items-start gap-2.5">
+                <span className="mt-0.5 shrink-0">
+                  {job.status === 'completed' ? <CheckCircle2 size={13} className="text-emerald-500"/> :
+                   job.status === 'processing' ? <Loader2 size={13} className="text-blue-500 animate-spin"/> :
+                   job.status === 'failed' ? <AlertCircle size={13} className="text-red-400"/> :
+                   <Zap size={13} className="text-violet-500"/>}
+                </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-neutral-700 leading-snug">{a.text}</p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">{a.time}</p>
+                  <p className="text-[11px] text-neutral-700 leading-snug">
+                    {job.domain} — {job.status} ({job.progress}%)
+                  </p>
+                  <p className="text-[10px] text-neutral-400 mt-0.5">
+                    {job.updatedAt ? new Date(job.updatedAt).toLocaleDateString() : 'Just now'}
+                  </p>
                 </div>
               </div>
             ))}
+            {recentJobs.length === 0 && (
+              <div className="px-4 py-8 text-center text-neutral-400 text-[11px]">
+                No recent activity
+              </div>
+            )}
           </div>
         </div>
       </div>

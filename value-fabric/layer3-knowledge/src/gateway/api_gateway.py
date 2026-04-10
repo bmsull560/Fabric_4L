@@ -328,6 +328,14 @@ class ServiceRegistry:
             for key in keys:
                 data = await self.redis_client.hgetall(key)
                 if data:
+                    try:
+                        metadata = json.loads(data.get("metadata", "{}"))
+                    except json.JSONDecodeError:
+                        metadata = {}
+                    try:
+                        tags = set(json.loads(data.get("tags", "[]")))
+                    except json.JSONDecodeError:
+                        tags = set()
                     endpoint = ServiceEndpoint(
                         service_name=data.get("service_name", ""),
                         endpoint_id=data.get("endpoint_id", ""),
@@ -337,11 +345,11 @@ class ServiceRegistry:
                         path=data.get("path", "/"),
                         weight=int(data.get("weight", 1)),
                         healthy=data.get("healthy", "true").lower() == "true",
-                        metadata=json.loads(data.get("metadata", "{}")),
-                        tags=set(json.loads(data.get("tags", "[]")))
+                        metadata=metadata,
+                        tags=tags
                     )
                     endpoints.append(endpoint)
-            
+
             return endpoints
         
         return []
@@ -361,6 +369,14 @@ class ServiceRegistry:
                 data = await self.redis_client.hgetall(key)
                 if data:
                     service_name = data.get("service_name", "")
+                    try:
+                        metadata = json.loads(data.get("metadata", "{}"))
+                    except json.JSONDecodeError:
+                        metadata = {}
+                    try:
+                        tags = set(json.loads(data.get("tags", "[]")))
+                    except json.JSONDecodeError:
+                        tags = set()
                     endpoint = ServiceEndpoint(
                         service_name=service_name,
                         endpoint_id=data.get("endpoint_id", ""),
@@ -370,8 +386,8 @@ class ServiceRegistry:
                         path=data.get("path", "/"),
                         weight=int(data.get("weight", 1)),
                         healthy=data.get("healthy", "true").lower() == "true",
-                        metadata=json.loads(data.get("metadata", "{}")),
-                        tags=set(json.loads(data.get("tags", "[]")))
+                        metadata=metadata,
+                        tags=tags
                     )
                     services[service_name].append(endpoint)
             

@@ -1024,8 +1024,13 @@ async def ingest_rdf(
             content_hash=request.content_hash,
         )
 
+        raw_status = stats.get("status", "unknown")
+        status = "success" if raw_status in {"synced", "success"} else raw_status
+        if status not in {"success", "partial", "failed"}:
+            status = "failed"
+
         return IngestResponse(
-            status=stats.get("status", "unknown"),
+            status=status,
             source_id=request.source_id,
             entities_loaded=stats.get("entities_loaded", 0),
             relationships_loaded=stats.get("relationships_loaded", 0),
@@ -1075,12 +1080,19 @@ async def delete_source(
 
 
 # Query endpoints
+# Canonical route. Legacy `/v1/query` remains for backward compatibility.
+@app.post("/v1/query/graph", response_model=GraphRAGResponse)
 @app.post("/v1/query", response_model=GraphRAGResponse)
 async def graph_rag_query(
     query: GraphRAGQuery,
     graph_rag=Depends(get_graph_rag),
 ):
-    """Execute a GraphRAG query with multi-hop traversal."""
+    """Execute a GraphRAG query with multi-hop traversal.
+
+    Notes:
+    - Preferred route: `/v1/query/graph`
+    - Legacy route retained: `/v1/query` (deprecate later)
+    """
     start_time = time.time()
 
     try:
@@ -1108,12 +1120,19 @@ async def graph_rag_query(
 
 
 # Search endpoints
+# Canonical route. Legacy `/v1/search` remains for backward compatibility.
+@app.post("/v1/search/hybrid", response_model=SearchResponse)
 @app.post("/v1/search", response_model=SearchResponse)
 async def hybrid_search(
     request: SearchRequest,
     hybrid_search=Depends(get_hybrid_search),
 ):
-    """Execute hybrid search combining BM25, vector, and graph signals."""
+    """Execute hybrid search combining BM25, vector, and graph signals.
+
+    Notes:
+    - Preferred route: `/v1/search/hybrid`
+    - Legacy route retained: `/v1/search` (deprecate later)
+    """
     try:
         if request.search_type == "vector":
             results = await hybrid_search.semantic_search(

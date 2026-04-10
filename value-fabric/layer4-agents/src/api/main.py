@@ -10,22 +10,41 @@ from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
 from ..tools import create_default_registry
 from ..tenant.middleware import TenantMiddleware
+from ..config.checkpoint import CheckpointConfig
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 
 # Global service instances
 workflow_executor: OrchestrationController | None = None
 state_manager: StateManager | None = None
+checkpoint_saver: AsyncPostgresSaver | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global workflow_executor, state_manager
+    global workflow_executor, state_manager, checkpoint_saver
     
     # Startup
     tool_registry = create_default_registry()
     state_manager = StateManager()  # Add Redis client if configured
-    workflow_executor = OrchestrationController(tool_registry, state_manager)
+    
+    # Initialize checkpoint saver if database is configured
+    checkpoint_saver = None
+    try:
+        checkpoint_saver = await CheckpointConfig.create_saver()
+    except Exception:
+        # Checkpointing is optional - log warning but continue
+        import logging
+        logging.getLogger(__name__).warning(
+            "Checkpointing not available - workflows will not be resumable"
+        )
+    
+    workflow_executor = OrchestrationController(
+        tool_registry, 
+        state_manager,
+        checkpoint_saver=checkpoint_saver
+    )
     
     # Start the orchestration controller
     await workflow_executor.start()
@@ -35,8 +54,14 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if workflow_executor:
         await workflow_executor.stop()
+    
+    # Close checkpoint saver connection
+    if checkpoint_saver:
+        await CheckpointConfig.close_saver(checkpoint_saver)
+    
     workflow_executor = None
     state_manager = None
+    checkpoint_saver = None
 
 
 app = FastAPI(

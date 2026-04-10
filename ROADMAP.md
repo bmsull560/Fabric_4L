@@ -15,11 +15,11 @@ The Value Fabric platform has substantial implementation across all 4 original l
 | Layer | Completion | Status | Key Gaps |
 |-------|-----------|--------|----------|
 | **L1: Ingestion** | ~75% | Advanced | Celery/Redis wiring, monitoring |
-| **L2: Extraction** | ~85% | Advanced | `/extract-and-ingest` endpoint, L3 pipeline |
-| **L3: Knowledge Graph** | ~75% | Advanced | Vector indexes, GraphRAG tuning |
-| **L4: Agents** | ~70% | Advanced | LangGraph wiring, resume endpoints |
+| **L2: Extraction** | ~90% | Advanced | Production smoke verification |
+| **L3: Knowledge Graph** | ~82% | Advanced | Runtime verification, performance tuning |
+| **L4: Agents** | ~78% | Advanced | Pause controls, orchestration hardening |
 | **L5: Ground Truth** | ~100% | Production Ready | ✅ Complete |
-| **Frontend** | ~65% | Advanced | TanStack Query, API integration |
+| **Frontend** | ~72% | Advanced | Remaining static screens, real-time streams |
 | **DevOps/Infra** | ~40% | Intermediate | Docker Compose ready, needs CI/CD |
 
 ---
@@ -142,8 +142,8 @@ value-fabric/layer3-knowledge/src/schema/initializer.py
 **What's Missing:**
 - ✅ LangGraph state machine (base classes implemented)
 - ⚠️ Workflow executor engine (partial, needs OrchestrationController wiring)
-- ⚠️ State manager persistence (AsyncPostgresSaver configured)
-- ❌ Human-in-the-loop integration (`/resume` endpoint)
+- ✅ State manager persistence (AsyncPostgresSaver configured)
+- ✅ Human-in-the-loop integration (`/resume` endpoint)
 - ✅ Workflow scheduler (TaskScheduler implemented)
 - ✅ Tool execution orchestration (ToolRegistry wired)
 - ❌ Agent decision logic (which workflow to run)
@@ -329,7 +329,7 @@ frontend/client/src/components/ui/    # shadcn components
 ---
 
 ### **Task 3: Connect Neo4j (L3)** 🔄 IN PROGRESS
-**Priority:** P0 | **Effort:** 2-3 days | **Status:** ~70% Complete
+**Priority:** P0 | **Effort:** 2-3 days | **Status:** ~85% Complete
 
 **Current State:**
 - ✅ `layer3-knowledge/src/db/driver.py` - Async Neo4j driver with retry logic (159 lines)
@@ -355,12 +355,14 @@ frontend/client/src/components/ui/    # shadcn components
 - ✅ `layer4-agents/src/engine/executor.py` - OrchestrationController with task scheduler (586 lines)
 - ✅ `layer4-agents/src/tools/registry.py` - ToolRegistry with 24+ skills (342 lines)
 
-**Remaining:**
-- [ ] AsyncPostgresSaver configuration for checkpointing
+**Current State (Post-Checkpoint Implementation):**
+- ✅ AsyncPostgresSaver configuration for checkpointing
+- ✅ `POST /v1/workflows/{id}/resume` endpoint
+- ✅ Workflow resumption after interruption
+
+**Remaining (Deferred):**
 - [ ] OrchestrationController → LangGraph facade refactoring
 - [ ] `interrupt_before` / `interrupt_after` for human-in-the-loop
-- [ ] `POST /v1/workflows/{id}/resume` endpoint
-- [ ] Workflow resumption after interruption
 - [ ] Tool execution error recovery
 
 ---
@@ -388,7 +390,7 @@ frontend/client/src/components/ui/    # shadcn components
 ## New Approved Tasks (Added 2026-04-10)
 
 ### **Task 6: L2→L3 Pipeline Endpoint (L2)** ⭐ CRITICAL
-**Priority:** P0 | **Effort:** 1 day | **Status:** 0% Complete | **Unblocks:** End-to-end extraction
+**Priority:** P0 | **Effort:** 1 day | **Status:** ~90% Complete | **Unblocks:** End-to-end extraction
 
 **Gap:** L2 has `Layer3KnowledgeClient` but no `/extract-and-ingest` endpoint to trigger it.
 
@@ -405,7 +407,7 @@ frontend/client/src/components/ui/    # shadcn components
 ---
 
 ### **Task 7: Neo4j Vector Indexes + E2E Verification (L3)** ⭐ CRITICAL
-**Priority:** P0 | **Effort:** 2 days | **Status:** ~50% Complete | **Unblocks:** GraphRAG, Hybrid Search
+**Priority:** P0 | **Effort:** 2 days | **Status:** ~85% Complete | **Unblocks:** GraphRAG, Hybrid Search
 
 **Gap:** Neo4j driver exists but vector indexes and end-to-end pipeline need verification.
 
@@ -424,17 +426,25 @@ frontend/client/src/components/ui/    # shadcn components
 
 ---
 
-### **Task 8: LangGraph Checkpointing + Resume (L4)** ⭐ CRITICAL
-**Priority:** P0 | **Effort:** 3 days | **Status:** ~40% Complete | **Unblocks:** Human-in-the-loop, fault tolerance
+### **Task 8: LangGraph Checkpointing + Resume (L4)** ⭐ CRITICAL ✅ COMPLETE
+**Priority:** P0 | **Effort:** 3 days | **Status:** COMPLETED 2026-04-10 | **Unblocks:** Human-in-the-loop, fault tolerance
 
 **Gap:** BaseWorkflow has LangGraph but no checkpointing or resume capability.
 
+**Delivered:**
+- `layer4-agents/src/config/checkpoint.py` - AsyncPostgresSaver configuration (103 lines)
+- `layer4-agents/src/engine/executor.py` - `resume_workflow()` method added
+- `layer4-agents/src/api/routes/workflows.py` - `POST /v1/workflows/{id}/resume` endpoint
+- `layer4-agents/src/api/main.py` - Checkpoint saver wired in lifespan
+- `docker-compose.yml` - `CHECKPOINT_DATABASE_URL` env var added
+- `layer4-agents/tests/test_checkpoint_resume.py` - Integration tests
+
 **Acceptance Criteria:**
-- [ ] `AsyncPostgresSaver` configured in `docker-compose.yml`
-- [ ] `POST /v1/workflows/{id}/resume` endpoint works
-- [ ] Workflows pause at `interrupt_before` nodes
-- [ ] Resume with user input continues workflow
-- [ ] State survives container restart
+- [x] `AsyncPostgresSaver` configured in `docker-compose.yml`
+- [x] `POST /v1/workflows/{id}/resume` endpoint works
+- [ ] Workflows pause at `interrupt_before` nodes (deferred)
+- [x] Resume with user input continues workflow
+- [x] State survives container restart
 
 **Implementation:**
 - Modify: `layer4-agents/src/workflows/base.py` (add checkpointer to compile())
@@ -445,7 +455,7 @@ frontend/client/src/components/ui/    # shadcn components
 ---
 
 ### **Task 9: Frontend Core API Integration** ⭐ CRITICAL
-**Priority:** P0 | **Effort:** 3 days | **Status:** 0% Complete | **Blocked by:** Task 6, 7 | **Unblocks:** User testing
+**Priority:** P0 | **Effort:** 3 days | **Status:** ~40% Complete | **Blocked by:** Task 6, 7 | **Unblocks:** User testing
 
 **Gap:** 10-screen UI exists but all mock data. Cannot connect until backend APIs work.
 
@@ -563,6 +573,94 @@ frontend/client/src/components/ui/    # shadcn components
 
 ---
 
+## Newly Approved Additions (Added 2026-04-10)
+
+### **Task 20: Cross-Layer Production Smoke Gate (DEVOPS)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 2 days | **Status:** 0% Complete | **Unblocks:** Evidence-based production readiness
+
+**Gap:** Task statuses outpaced roadmap assumptions; need repeatable cross-layer verification gate.
+
+**Acceptance Criteria:**
+- [ ] Single command runs smoke checks across Layer 1-4 critical endpoints
+- [ ] Includes `extract → ingest → query/graph → search/hybrid` happy path
+- [ ] Fails CI on contract/status code regressions
+- [ ] Stores pass/fail + timing artifact for each run
+
+**Implementation:**
+- Create: `.github/workflows/smoke-gate.yml`
+- Create: `scripts/smoke/production_smoke.ps1`
+- Modify: `README.md` (local smoke-gate usage)
+
+---
+
+### **Task 21: Frontend Reality Pass for Remaining Static Screens (Frontend)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 3 days | **Status:** 0% Complete | **Unblocks:** Frontend real-data production criterion
+
+**Gap:** Core query/hook wiring exists, but several high-visibility screens still render static/demo data.
+
+**Acceptance Criteria:**
+- [ ] `GraphExplorer` consumes real graph query data
+- [ ] `ExtractionEngine` consumes real job status/events stream
+- [ ] `BusinessCase` and `DecisionTrace` consume backend data
+- [ ] Loading/error/empty states implemented for all updated screens
+
+**Implementation:**
+- Modify: `frontend/client/src/pages/GraphExplorer.tsx`
+- Modify: `frontend/client/src/pages/ExtractionEngine.tsx`
+- Modify: `frontend/client/src/pages/BusinessCase.tsx`
+- Modify: `frontend/client/src/pages/DecisionTrace.tsx`
+
+---
+
+### **Task 22: Workflow Control API Parity (L4)**
+**Priority:** P1 | **Effort:** 1 day | **Status:** 0% Complete | **Unblocks:** Full workflow operator controls
+
+**Gap:** Resume exists, but pause/control parity and contract docs are incomplete.
+
+**Acceptance Criteria:**
+- [ ] `POST /v1/workflows/{id}/pause` implemented
+- [ ] Resume contract documented and tested against running/completed edge cases
+- [ ] `/workflows/active` and `/workflows/{id}/events` examples added to API docs
+
+**Implementation:**
+- Modify: `value-fabric/layer4-agents/src/api/routes/workflows.py`
+- Create: `value-fabric/layer4-agents/tests/test_workflow_controls.py`
+
+---
+
+### **Task 23: Formula + Value Tree Backend Contract Pack (L3)**
+**Priority:** P1 | **Effort:** 2 days | **Status:** 0% Complete | **Unblocks:** Functional Formula Builder and Value Tree Explorer
+
+**Gap:** Formula/value tree pages remain partially static without full backend contracts.
+
+**Acceptance Criteria:**
+- [ ] `POST /v1/formulas/evaluate` executes formulas with typed inputs
+- [ ] `GET /v1/formulas/variables` returns registry-backed variable metadata
+- [ ] `GET /v1/value-trees/{id}` returns resolved value tree payload
+
+**Implementation:**
+- Create: `value-fabric/layer3-knowledge/src/api/routes/formulas.py`
+- Create: `value-fabric/layer3-knowledge/src/api/routes/value_trees.py`
+- Modify: `value-fabric/layer3-knowledge/src/api/main.py`
+
+---
+
+### **Task 24: Coverage/Quality Enforcement in CI (DEVOPS)**
+**Priority:** P2 | **Effort:** 1 day | **Status:** 0% Complete | **Unblocks:** Test coverage production criterion
+
+**Gap:** Coverage target is defined, but not enforced for changed codepaths.
+
+**Acceptance Criteria:**
+- [ ] CI fails when coverage drops below 80% on touched modules
+- [ ] Integration stage runs L2/L3 pipeline checks via Docker Compose
+- [ ] Coverage artifact uploaded for every PR
+
+**Implementation:**
+- Modify: `.github/workflows/pr-checks.yml`
+- Modify: `.github/workflows/integration-tests.yml`
+
+---
+
 ## Updated Dependency Graph
 
 ```
@@ -646,9 +744,9 @@ If you have resources to work in parallel:
 
 | Criterion | Current | Target | Responsible Task |
 |-----------|---------|--------|------------------|
-| End-to-end workflow | ❌ | ✅ | Task 6 + 7 |
-| All APIs responding | ⚠️ (partial) | ✅ | Task 6 + 8 |
-| Frontend showing real data | ❌ | ✅ | Task 9 |
+| End-to-end workflow | ⚠️ (implemented, pending smoke gate) | ✅ | Task 20 |
+| All APIs responding | ⚠️ (partial) | ✅ | Task 20 + 22 |
+| Frontend showing real data | ⚠️ (partial) | ✅ | Task 21 |
 | Tests passing | ⚠️ (~60%) | >80% | Task 7 (E2E) |
 | Docker deployment | ✅ | ✅ | Task 9 (compose ready) |
 | Monitoring | ⚠️ (stubs) | ✅ | Task 13 |

@@ -1,5 +1,6 @@
 """Configuration package initialization."""
 
+from .settings import Settings, get_settings
 from .manager import (
     Environment,
     ConfigFormat,
@@ -23,6 +24,8 @@ from .manager import (
 )
 
 __all__ = [
+    "Settings",
+    "get_settings",
     "Environment",
     "ConfigFormat",
     "ConfigSource",

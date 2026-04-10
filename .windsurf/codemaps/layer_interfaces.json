@@ -1,0 +1,188 @@
+{
+  "codemap_type": "layer_interface_map",
+  "version": "1.0.0",
+  "description": "API contracts and data flow between Value Fabric 4-layer architecture",
+  "generated_at": "2026-04-09",
+  "architecture": {
+    "layers": [
+      {
+        "id": "layer1",
+        "name": "Ingestion",
+        "path": "value-fabric/layer1-ingestion",
+        "purpose": "Document processing, OCR, chunking, vectorization",
+        "port": 8000,
+        "base_url": "/api/v1/ingestion",
+        "primary_file": "value-fabric/layer1-ingestion/src/api/main.py"
+      },
+      {
+        "id": "layer2",
+        "name": "Extraction",
+        "path": "value-fabric/layer2-extraction",
+        "purpose": "Entity extraction, relationship mapping, NLP",
+        "port": 8000,
+        "base_url": "/",
+        "primary_file": "value-fabric/layer2-extraction/src/api/main.py"
+      },
+      {
+        "id": "layer3",
+        "name": "Knowledge",
+        "path": "value-fabric/layer3-knowledge",
+        "purpose": "Knowledge graph, embeddings, query engine",
+        "port": 8001,
+        "base_url": "/",
+        "primary_file": "value-fabric/layer3-knowledge/src/api/models.py"
+      },
+      {
+        "id": "layer4",
+        "name": "Agents",
+        "path": "value-fabric/layer4-agents",
+        "purpose": "AI skills, workflows, business logic",
+        "port": 8002,
+        "base_url": "/v1",
+        "primary_file": "value-fabric/layer4-agents/src/api/main.py"
+      }
+    ]
+  },
+  "interfaces": {
+    "layer1_to_layer2": {
+      "direction": "L1 → L2",
+      "protocol": "Internal/Python API",
+      "data_format": "Markdown chunks with provenance",
+      "trigger": "ScrapingJob completion",
+      "models": {
+        "input": {
+          "file": "value-fabric/layer1-ingestion/src/shared/models.py",
+          "key_classes": ["RawContent", "ScrapingJob", "ExtractedData"]
+        },
+        "output": {
+          "file": "value-fabric/layer2-extraction/src/api/main.py",
+          "schema": "ExtractRequest",
+          "fields": ["content_id", "source_url", "markdown_content", "extraction_config"]
+        }
+      },
+      "flow": [
+        "ScrapingTarget configured with extraction method",
+        "ScrapingJob processes source → RawContent",
+        "Content chunked → passed to Layer 2 extraction",
+        "Provenance chain initialized with content_hash"
+      ]
+    },
+    "layer2_to_layer3": {
+      "direction": "L2 → L3",
+      "protocol": "REST API (HTTP + JSON)",
+      "client_file": "value-fabric/layer2-extraction/src/integration/layer3_client.py",
+      "endpoint": "POST /ingest",
+      "data_format": "RDF/Turtle triples",
+      "models": {
+        "input": {
+          "file": "value-fabric/layer2-extraction/src/models/ontology.py",
+          "key_classes": ["Capability", "UseCase", "Persona", "ValueDriver", "Relationship"],
+          "enums": ["RoleType", "ValueCategory"]
+        },
+        "output": {
+          "file": "value-fabric/layer3-knowledge/src/api/models.py",
+          "schema": "IngestRequest",
+          "fields": ["rdf_data", "source_id", "extraction_job_id", "content_hash"]
+        }
+      },
+      "flow": [
+        "Layer 2 extracts entities (6-stage pipeline)",
+        "RDF generated via output/rdf_generator.py",
+        "Layer3KnowledgeClient.ingest_extraction_result() called",
+        "Batching for large extractions (default 100)",
+        "Retry with exponential backoff (max 3)"
+      ],
+      "env_vars": ["LAYER3_API_URL", "LAYER3_API_KEY"]
+    },
+    "layer3_to_layer4": {
+      "direction": "L3 → L4",
+      "protocol": "REST API (HTTP + JSON)",
+      "endpoint": "GET /search, POST /graph-rag",
+      "data_format": "JSON entities and relationships",
+      "models": {
+        "input": {
+          "file": "value-fabric/layer3-knowledge/src/api/models.py",
+          "schemas": ["SearchRequest", "GraphRAGQuery", "EntityContextRequest"],
+          "entity_types": [
+            "Capability", "UseCase", "Persona", "ValueDriver", "ValueMetric",
+            "Product", "Feature", "Service", "Solution", "Technology",
+            "Organization", "BusinessUnit", "Process", "Activity"
+          ]
+        },
+        "output": {
+          "file": "value-fabric/layer3-knowledge/src/api/models.py",
+          "schemas": ["SearchResponse", "GraphRAGResponse", "EntityContextResponse"],
+          "key_fields": ["entities", "relationships", "confidence_score", "sources"]
+        }
+      },
+      "flow": [
+        "Layer 4 tools query Layer 3 for knowledge",
+        "Hybrid search (BM25 + vector + graph)",
+        "GraphRAG for complex reasoning",
+        "Value tree traversal for ROI calculation",
+        "Confidence scoring on all results"
+      ]
+    },
+    "layer4_tools_to_layer3": {
+      "direction": "L4 (tools) → L3",
+      "protocol": "REST API (async via httpx)",
+      "client_location": "Layer 4 tools registry",
+      "tools_using": [
+        "knowledge_navigation",
+        "semantic_search",
+        "resolve_value_tree",
+        "find_path",
+        "multi_hop_reason"
+      ],
+      "response_model": "value-fabric/layer4-agents/src/models/tool_schemas.py"
+    }
+  },
+  "data_contracts": {
+    "core_entities": {
+      "description": "Ontology taxonomy flowing through all layers",
+      "hierarchy": "Capability → UseCase → Persona → ValueDriver",
+      "relationship_types": ["ENABLES", "BENEFITS", "DRIVES", "CONTRIBUTES_TO", "HAS_FORMULA", "APPLIES_TO"],
+      "confidence_range": "0.0 - 1.0",
+      "provenance_chain": "Business Case → Narrative → Value Tree → Relationships → Extractions → Chunks → Documents"
+    },
+    "chunk_format": {
+      "content": "Markdown text",
+      "metadata": ["source_url", "chunk_index", "total_chunks", "content_hash"],
+      "boundaries": "Semantic (headings, paragraphs)",
+      "size": "Default 2000 tokens, overlap 200"
+    },
+    "extraction_result": {
+      "file": "value-fabric/layer2-extraction/src/models/ontology.py",
+      "contains": ["entities", "relationships", "provenance", "confidence_scores"],
+      "output_formats": ["RDF/Turtle", "JSON-LD"]
+    }
+  },
+  "error_handling": {
+    "layer2_to_layer3": {
+      "retry_policy": "Exponential backoff, max 3 attempts",
+      "timeout": "60 seconds",
+      "fallback": "Queue for retry, alert on failure"
+    },
+    "provenance": {
+      "required": true,
+      "fields": ["timestamp", "processing_version", "confidence", "evidence_quotes"]
+    }
+  },
+  "usage_with_cascade": {
+    "debugging": [
+      "Trace data flow: Which layer has the content?",
+      "Check content_hash consistency across layers",
+      "Verify extraction_job_id propagation"
+    ],
+    "adding_features": [
+      "Identify affected interfaces when modifying entity schema",
+      "Check downstream impact: ontology.py affects all layers",
+      "Update layer3_client.py when adding new ingestion fields"
+    ],
+    "optimization": [
+      "Layer 2 → 3 batching threshold (100 entities)",
+      "Confidence threshold alignment across layers",
+      "Graph traversal depth limits (max 5 hops)"
+    ]
+  }
+}

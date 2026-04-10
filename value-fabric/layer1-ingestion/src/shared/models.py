@@ -353,7 +353,7 @@ class JobStageDetail(Base):
     duration_ms = Column(Integer, nullable=True)
     
     error_message = Column(Text, nullable=True)
-    metadata = Column(JSONB, default=dict)  # Stage-specific details
+    meta = Column(JSONB, default=dict)  # Stage-specific details
     
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
     
@@ -600,7 +600,7 @@ class ComplianceLog(Base):
     
     # Metadata
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-    metadata = Column(JSONB, default=dict)
+    meta = Column(JSONB, default=dict)
     
     # Relationships
     job = relationship("ScrapingJob", back_populates="compliance_logs")

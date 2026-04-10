@@ -159,7 +159,8 @@ class TestXBRLParser:
         assert len(result.all_facts) == 1
         fact = result.all_facts[0]
         assert fact.concept == "Revenues"
-        assert fact.value == 394328000000
+        # Value is 394328000000 with decimals="-6" (scale by 10^-6)
+        assert fact.value == 394328.0
         assert fact.unit == "iso4217:USD"
     
     def test_extract_key_metrics(self, parser):

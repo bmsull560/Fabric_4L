@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from ...config import Settings, get_settings
+from ..config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 

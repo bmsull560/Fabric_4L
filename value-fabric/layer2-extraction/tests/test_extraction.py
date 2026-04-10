@@ -3,12 +3,13 @@
 Tests the 6-stage extraction pipeline with sample documents.
 """
 
+import os
 import pytest
 from datetime import datetime
 
-from models.ontology import Capability, UseCase, Persona, ValueDriver, Feature, RoleType, ValueCategory
-from models.relationships import Relationship, PredicateType
-from extraction.chunker import chunk_markdown, SemanticChunker
+from layer2_extraction.models import Capability, UseCase, Persona, ValueDriver, Feature, RoleType, ValueCategory
+from layer2_extraction.models import Relationship, PredicateType
+from layer2_extraction.extraction import chunk_markdown, SemanticChunker
 
 
 class TestOntologyModels:
@@ -127,7 +128,7 @@ class TestOntologyModels:
     
     def test_feature_extraction_result(self):
         """Test ExtractionResult with features."""
-        from models.ontology import ExtractionResult
+        from layer2_extraction.models import ExtractionResult
         
         cap = Capability(name="Cap", description="Test")
         feature = Feature(name="Feature1", description="Test feature")
@@ -210,7 +211,7 @@ class TestRelationships:
     
     def test_relationship_graph(self):
         """Test RelationshipGraph operations."""
-        from models.relationships import RelationshipGraph
+        from layer2_extraction.models import RelationshipGraph
         
         cap = Capability(name="Test", description="Test")
         uc = UseCase(name="Test UC", description="Test")
@@ -289,7 +290,7 @@ class TestRelationships:
     
     def test_feature_relationship(self):
         """Test Feature implements Capability relationship."""
-        from models.ontology import Feature
+        from layer2_extraction.models import Feature
         
         cap = Capability(name="Analytics", description="Analytics capability")
         feature = Feature(name="Dashboard", description="Dashboard feature")
@@ -368,7 +369,7 @@ class TestExtractionPipeline:
     async def test_entity_extraction(self):
         """Test entity extraction with real LLM."""
         import os
-        from extraction.llm_extractor import EntityExtractor
+        from layer2_extraction.extraction import EntityExtractor
         
         extractor = EntityExtractor(api_key=os.getenv("OPENAI_API_KEY"))
         
@@ -394,8 +395,8 @@ class TestEntailmentValidator:
     
     def test_validation_required_properties(self):
         """Test VAL-001: Required properties validation."""
-        from validation import EntailmentValidator, ValidationSeverity
-        from models.ontology import ExtractionResult, ValueDriver, ValueCategory
+        from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+        from layer2_extraction.models import ExtractionResult, ValueDriver, ValueCategory
         
         validator = EntailmentValidator()
         
@@ -420,8 +421,8 @@ class TestEntailmentValidator:
     
     def test_validation_confidence_scores(self):
         """Test VAL-006: Confidence score bounds validation."""
-        from validation import EntailmentValidator, ValidationSeverity
-        from models.ontology import ExtractionResult
+        from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+        from layer2_extraction.models import ExtractionResult
         
         validator = EntailmentValidator()
         
@@ -441,8 +442,8 @@ class TestEntailmentValidator:
     
     def test_validation_domain_range(self):
         """Test VAL-002: Domain/range constraints."""
-        from validation import EntailmentValidator, ValidationSeverity
-        from models.ontology import ExtractionResult
+        from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+        from layer2_extraction.models import ExtractionResult
         
         validator = EntailmentValidator()
         
@@ -482,7 +483,7 @@ class TestCoreferenceResolver:
     
     def test_exact_name_match(self):
         """Test exact name matching for coreference."""
-        from coreference import CoreferenceResolver
+        from layer2_extraction.coreference import CoreferenceResolver
         
         resolver = CoreferenceResolver()
         
@@ -497,8 +498,8 @@ class TestCoreferenceResolver:
     
     def test_semantically_equivalent_relationship(self):
         """Test coreference via semantically_equivalent relationship."""
-        from coreference import CoreferenceResolver
-        from models.relationships import Relationship
+        from layer2_extraction.coreference import CoreferenceResolver
+        from layer2_extraction.models import Relationship
         
         resolver = CoreferenceResolver()
         
@@ -526,7 +527,7 @@ class TestSemanticAligner:
     
     def test_alignment_cache_key(self):
         """Test cache key generation."""
-        from alignment import SemanticAligner
+        from layer2_extraction.alignment import SemanticAligner
         
         aligner = SemanticAligner()
         
@@ -540,7 +541,7 @@ class TestSemanticAligner:
     
     def test_normalize_name(self):
         """Test name normalization for comparison."""
-        from alignment import SemanticAligner
+        from layer2_extraction.alignment import SemanticAligner
         
         aligner = SemanticAligner()
         

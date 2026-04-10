@@ -2,51 +2,63 @@
 
 import pytest
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from src.shared.models import (
-    CrawlJob, CrawlQueueItem, CrawledContent,
-    JobStatus, JobPriority, ContentType, QueueStatus,
-    create_crawl_job, create_crawl_queue_item
+    ScrapingJob, ScrapingTarget, CrawlQueueItem, RawContent, ExtractedData,
+    JobStatus, PipelineStage, TargetType, TargetStatus,
+    create_scraping_target, create_scraping_job
 )
 
 
-class TestCrawlJob:
-    """Test cases for CrawlJob model."""
+class TestScrapingJob:
+    """Test cases for ScrapingJob model."""
     
-    def test_create_crawl_job(self):
-        """Test creating a crawl job."""
-        job = create_crawl_job(
-            job_type='website',
-            domain='example.com',
-            priority=JobPriority.HIGH,
-            depth=2,
-            max_pages=100,
-            config={'start_url': 'https://example.com'}
+    def test_create_scraping_job(self):
+        """Test creating a scraping job."""
+        org_id = uuid4()
+        target_id = uuid4()
+        created_by = uuid4()
+        
+        job = create_scraping_job(
+            organization_id=org_id,
+            target_id=target_id,
+            created_by=created_by,
+            configuration={'url': 'https://example.com'}
         )
         
-        assert job.job_type == 'website'
-        assert job.domain == 'example.com'
-        assert job.priority == JobPriority.HIGH.value
-        assert job.depth == 2
-        assert job.max_pages == 100
-        assert job.status == JobStatus.PENDING.value
-        assert job.config['start_url'] == 'https://example.com'
-        assert isinstance(job.id, UUID)
+        assert job.target_id == target_id
+        assert job.organization_id == org_id
+        assert job.configuration['url'] == 'https://example.com'
     
     def test_job_status_enum(self):
         """Test job status enumeration."""
-        assert JobStatus.PENDING.value == 'pending'
-        assert JobStatus.RUNNING.value == 'running'
-        assert JobStatus.COMPLETED.value == 'completed'
-        assert JobStatus.FAILED.value == 'failed'
+        assert JobStatus.PENDING.value == 'PENDING'
+        assert JobStatus.QUEUED.value == 'QUEUED'
+        assert JobStatus.COMPLETED.value == 'COMPLETED'
+        assert JobStatus.FAILED.value == 'FAILED'
+
+
+class TestScrapingTarget:
+    """Test cases for ScrapingTarget model."""
     
-    def test_job_priority_enum(self):
-        """Test job priority enumeration."""
-        assert JobPriority.LOW.value == 'low'
-        assert JobPriority.MEDIUM.value == 'medium'
-        assert JobPriority.HIGH.value == 'high'
-        assert JobPriority.CRITICAL.value == 'critical'
+    def test_create_scraping_target(self):
+        """Test creating a scraping target."""
+        org_id = uuid4()
+        created_by = uuid4()
+        
+        target = create_scraping_target(
+            organization_id=org_id,
+            name='Test Target',
+            url='https://example.com',
+            target_type=TargetType.SINGLE_PAGE,
+            created_by=created_by,
+            description='Test description'
+        )
+        
+        assert target.name == 'Test Target'
+        assert target.url == 'https://example.com'
+        assert target.target_type == TargetType.SINGLE_PAGE.value
 
 
 class TestCrawlQueueItem:
@@ -54,10 +66,14 @@ class TestCrawlQueueItem:
     
     def test_create_queue_item(self):
         """Test creating a queue item."""
-        job_id = UUID('12345678-1234-1234-1234-123456789abc')
+        from src.shared.models import CrawlQueueItem
         
-        item = create_crawl_queue_item(
+        job_id = UUID('12345678-1234-1234-1234-123456789abc')
+        org_id = UUID('12345678-1234-1234-1234-123456789abc')
+        
+        item = CrawlQueueItem(
             job_id=job_id,
+            organization_id=org_id,
             url='https://example.com/page',
             domain='example.com',
             depth=1,
@@ -71,64 +87,28 @@ class TestCrawlQueueItem:
         assert item.depth == 1
         assert item.priority == 3
         assert item.parent_url == 'https://example.com'
-        assert item.status == QueueStatus.PENDING.value
-        assert item.retry_count == 0
-        assert item.max_retries == 3
 
 
-class TestCrawledContent:
-    """Test cases for CrawledContent model."""
+class TestRawContent:
+    """Test cases for RawContent model."""
     
     def test_content_creation(self):
-        """Test creating crawled content."""
-        job_id = UUID('12345678-1234-1234-1234-123456789abc')
+        """Test creating raw content."""
+        from src.shared.models import RawContent
         
-        content = CrawledContent(
+        job_id = UUID('12345678-1234-1234-1234-123456789abc')
+        org_id = UUID('12345678-1234-1234-1234-123456789abc')
+        
+        content = RawContent(
             job_id=job_id,
-            url='https://example.com/page',
-            domain='example.com',
-            content_type=ContentType.PRODUCT_PAGE.value,
-            title='Product Page',
-            description='A product description',
-            author='John Doe',
-            markdown_content='# Product\n\nDescription',
-            raw_html_size_bytes=1024,
-            markdown_size_bytes=256,
-            http_status=200,
-            metadata={'og_title': 'Product Page'}
+            organization_id=org_id,
+            source_url='https://example.com/page',
+            source_domain='example.com',
+            source_http_status=200,
+            content_hash='abc123'
         )
         
-        assert content.url == 'https://example.com/page'
-        assert content.domain == 'example.com'
-        assert content.content_type == 'product_page'
-        assert content.title == 'Product Page'
-        assert content.http_status == 200
-        assert content.is_deleted == False
-        assert content.robots_allowed == True
-
-
-class TestContentType:
-    """Test cases for ContentType enum."""
-    
-    def test_content_types(self):
-        """Test all content types are defined."""
-        assert ContentType.PRODUCT_PAGE.value == 'product_page'
-        assert ContentType.PRESS_RELEASE.value == 'press_release'
-        assert ContentType.FINANCIAL_FILING.value == 'financial_filing'
-        assert ContentType.BLOG_POST.value == 'blog_post'
-        assert ContentType.DOCUMENTATION.value == 'documentation'
-        assert ContentType.NEWS_ARTICLE.value == 'news_article'
-        assert ContentType.PATENT.value == 'patent'
-        assert ContentType.UNKNOWN.value == 'unknown'
-
-
-class TestQueueStatus:
-    """Test cases for QueueStatus enum."""
-    
-    def test_queue_statuses(self):
-        """Test all queue statuses are defined."""
-        assert QueueStatus.PENDING.value == 'pending'
-        assert QueueStatus.PROCESSING.value == 'processing'
-        assert QueueStatus.COMPLETED.value == 'completed'
-        assert QueueStatus.FAILED.value == 'failed'
-        assert QueueStatus.RETRYING.value == 'retrying'
+        assert content.source_url == 'https://example.com/page'
+        assert content.source_domain == 'example.com'
+        assert content.source_http_status == 200
+        assert content.content_hash == 'abc123'

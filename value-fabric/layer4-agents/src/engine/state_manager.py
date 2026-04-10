@@ -67,25 +67,29 @@ class StateManager:
     
     async def load_state(self, workflow_id: str) -> Optional[AgentState]:
         """Load workflow state.
-        
+
         Args:
             workflow_id: Workflow identifier
-            
+
         Returns:
             Workflow state or None if not found
         """
         key = self._get_key(workflow_id)
-        
+
         if self.redis:
             data = await self.redis.get(key)
             if data:
-                state_dict = json.loads(data)
-                return self._deserialize_state(state_dict)
+                try:
+                    state_dict = json.loads(data)
+                    return self._deserialize_state(state_dict)
+                except json.JSONDecodeError:
+                    logger.error(f"Failed to parse state JSON for workflow {workflow_id}")
+                    return None
         else:
             stored = self._memory_store.get(key)
             if stored and stored["expires"] > datetime.utcnow().timestamp():
                 return self._deserialize_state(stored["data"])
-        
+
         return None
     
     def _deserialize_state(self, state_dict: Dict[str, Any]) -> AgentState:
@@ -173,10 +177,17 @@ class StateManager:
     async def get_history(self, workflow_id: str, limit: int = 50) -> list:
         """Get execution history for workflow."""
         key = self._get_history_key(workflow_id)
-        
+
         if self.redis:
             data = await self.redis.lrange(key, 0, limit - 1)
-            return [json.loads(d) for d in data]
+            history = []
+            for d in data:
+                try:
+                    history.append(json.loads(d))
+                except json.JSONDecodeError:
+                    logger.warning(f"Failed to parse history entry for workflow {workflow_id}")
+                    continue
+            return history
         else:
             history_key = f"{workflow_id}:history"
             history = self._memory_store.get(history_key, [])

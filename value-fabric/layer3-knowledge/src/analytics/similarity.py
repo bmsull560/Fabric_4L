@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
-from ...config import Settings, get_settings
+from ..config import Settings, get_settings
 from ..retrieval.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)

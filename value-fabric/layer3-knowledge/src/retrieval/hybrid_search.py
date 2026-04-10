@@ -33,6 +33,7 @@ class HybridSearchResult:
     vector_score: float
     graph_score: float
     combined_score: float
+    confidence: float
     metadata: Dict[str, Any]
 
 
@@ -125,6 +126,15 @@ class HybridSearch:
             query, [entity_type] if entity_type else None, top_k
         )
 
+    async def fulltext_search(
+        self,
+        query: str,
+        entity_type: Optional[str] = None,
+        top_k: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Backward-compatible alias for keyword/BM25 search."""
+        return await self.keyword_search(query, entity_type, top_k)
+
     async def _bm25_search(
         self,
         query: str,
@@ -135,11 +145,37 @@ class HybridSearch:
         driver = await self._get_driver()
         results = []
 
+        if entity_types:
+            unions = []
+            for etype in entity_types:
+                idx = f"{etype.lower()}_fulltext"
+                unions.append(
+                    f"CALL db.index.fulltext.queryNodes('{idx}', $query) "
+                    "YIELD node, score RETURN node, score"
+                )
+            fulltext_call = "\nUNION\n".join(unions)
+        else:
+            fulltext_call = """
+                CALL db.index.fulltext.queryNodes('capability_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('usecase_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('persona_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('valuedriver_fulltext', $query)
+                YIELD node, score RETURN node, score
+            """
+
         async with driver.session(database=self.settings.neo4j_database) as session:
             escaped_query = query.replace('"', '\\"')
-            cypher = """
-            CALL db.index.fulltext.queryNodes('entity_fulltext', $query)
-            YIELD node as n, score
+            cypher = f"""
+            CALL {{
+                {fulltext_call}
+            }}
+            WITH node as n, score
             RETURN n.id as id, labels(n)[0] as entity_type, n.name as name,
                    n.description as description, score
             ORDER BY score DESC
@@ -218,16 +254,37 @@ class HybridSearch:
         driver = await self._get_driver()
         results = []
 
+        if entity_types:
+            unions = []
+            for etype in entity_types:
+                idx = f"{etype.lower()}_fulltext"
+                unions.append(
+                    f"CALL db.index.fulltext.queryNodes('{idx}', $query) "
+                    "YIELD node, score RETURN node, score"
+                )
+            fulltext_call = "\nUNION\n".join(unions)
+        else:
+            fulltext_call = """
+                CALL db.index.fulltext.queryNodes('capability_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('usecase_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('persona_fulltext', $query)
+                YIELD node, score RETURN node, score
+                UNION
+                CALL db.index.fulltext.queryNodes('valuedriver_fulltext', $query)
+                YIELD node, score RETURN node, score
+            """
+
         async with driver.session(database=self.settings.neo4j_database) as session:
             escaped_query = query.replace('"', '\\"')
-            entity_filter = ""
-            if entity_types:
-                entity_filter = f"AND ANY(label IN labels(n) WHERE label IN {entity_types})"
-
             cypher = f"""
-            CALL db.index.fulltext.queryNodes('entity_fulltext', $query)
-            YIELD node as n, score as text_score
-            {entity_filter}
+            CALL {{
+                {fulltext_call}
+            }}
+            WITH node as n, score as text_score
             WITH n, text_score
             OPTIONAL MATCH (n)-[r]-()
             WITH n, text_score, count(r) as degree
@@ -310,6 +367,7 @@ class HybridSearch:
                     vector_score=vector_score,
                     graph_score=graph_score,
                     combined_score=combined,
+                    confidence=combined,
                     metadata=source.get("metadata", {}),
                 )
             )

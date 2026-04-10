@@ -9,6 +9,7 @@ Implements the workflow API as specified in value_fabric_backend_logic_specifica
 
 from typing import Any, Dict, List, Optional
 from datetime import datetime
+import logging
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
@@ -16,13 +17,15 @@ from pydantic import BaseModel, Field
 import asyncio
 import json
 
-from ..engine.executor import OrchestrationController
+from ..engine.executor import OrchestrationController, WorkflowExecutionError
 from ..engine.scheduler import TaskPriority
+from ...models.agent_state import WorkflowStatus
 from ..workflows import list_workflow_types
 from ...tenant.context import get_current_tenant, TenantContext
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -122,6 +125,35 @@ class WorkflowEvent(BaseModel):
     timestamp: str
     message: str
     payload: Optional[Dict[str, Any]] = None
+
+
+class WorkflowResumeRequest(BaseModel):
+    """Request to resume a paused or interrupted workflow.
+    
+    Supports human-in-the-loop workflows where execution pauses
+    for user input or approval, then resumes with decision data.
+    """
+    user_id: str = Field(..., description="User resuming the workflow")
+    resume_data: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, 
+        description="Optional user decision/input data"
+    )
+    tenant_id: Optional[str] = None
+
+
+class WorkflowResumeResponse(BaseModel):
+    """Response from workflow resume."""
+    workflow_instance_id: str = Field(..., alias="workflow_instance_id")
+    status: str = Field(..., description="resumed, completed, or failed")
+    resumed_from_node: Optional[str] = Field(
+        None, 
+        description="Node from which execution resumed"
+    )
+    message: str
+    estimated_completion_seconds: int = Field(default=60)
+    
+    class Config:
+        populate_by_name = True
 
 
 def get_executor() -> OrchestrationController:
@@ -273,6 +305,83 @@ async def cancel_workflow(
         raise HTTPException(status_code=400, detail=f"Workflow {workflow_id} could not be cancelled")
     
     return {"workflow_id": workflow_id, "status": "cancelled"}
+
+
+@router.post("/workflows/{workflow_id}/resume", response_model=WorkflowResumeResponse)
+async def resume_workflow(
+    workflow_id: str,
+    request: WorkflowResumeRequest,
+    executor: OrchestrationController = Depends(get_executor)
+) -> WorkflowResumeResponse:
+    """Resume a paused or interrupted workflow from its last checkpoint.
+    
+    This endpoint enables human-in-the-loop workflows by allowing execution
+to pause for user input/decisions, then resume from the exact point
+    where it stopped.
+    
+    The workflow state is loaded from Postgres checkpoint storage, and
+    execution continues from the last completed node.
+    
+    Example:
+        POST /v1/workflows/wf-123/resume
+        {
+            "user_id": "user-001",
+            "resume_data": {"approved": true, "notes": "Proceed with ROI calc"}
+        }
+    
+    Returns:
+        200 OK - Workflow resumed and running (or completed if fast)
+        404 Not Found - Workflow not found or no checkpoint exists
+        400 Bad Request - Workflow not in resumable state (completed/failed/cancelled)
+        503 Service Unavailable - Checkpointing not configured
+    """
+    # Verify checkpointing is available
+    if executor.checkpoint_saver is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="Checkpointing not configured - cannot resume workflows"
+        )
+    
+    # Check current status
+    status = await executor.get_workflow_status(workflow_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+    
+    if status.get("status") in ["completed", "failed", "cancelled"]:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Workflow {workflow_id} is {status.get('status')} and cannot be resumed"
+        )
+    
+    # Resume execution
+    try:
+        result = await executor.resume_workflow(
+            workflow_id=workflow_id,
+            user_id=request.user_id,
+            resume_data=request.resume_data,
+        )
+        
+        # Determine response status based on result
+        result_status = str(result.status.value if hasattr(result.status, 'value') else result.status)
+        is_complete = result_status in ["completed", "failed"]
+        
+        return WorkflowResumeResponse(
+            workflow_instance_id=workflow_id,
+            status=result_status if is_complete else "resumed",
+            resumed_from_node=status.get("current_node"),
+            message=(
+                f"Workflow {'completed' if is_complete else 'resumed'} "
+                f"from node: {status.get('current_node', 'unknown')}"
+            ),
+            estimated_completion_seconds=0 if is_complete else 60,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except WorkflowExecutionError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error resuming workflow {workflow_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to resume workflow: {str(e)}")
 
 
 @router.get("/workflows/types")

@@ -1,0 +1,10 @@
+Extract all business use cases mentioned in this text.
+
+Text:
+{text}
+
+Instructions:
+- A use case is a specific business problem being solved
+- Include workflow steps if described
+- Note applicable industries
+- Return empty array if no clear use cases are mentioned

@@ -1,0 +1,28 @@
+Given the text and the list of extracted entities, identify relationships between them.
+
+Text:
+{text}
+
+Entities:
+{entities_json}
+
+Relationship Types:
+- enables: Capability → UseCase (capability makes use case possible)
+- requires: UseCase → Capability (use case needs capability)
+- benefits: UseCase → Persona (use case helps persona)
+- drives: Persona → ValueDriver (persona cares about value)
+- contributes_to: Capability → ValueDriver (capability creates value)
+- depends_on: Capability → Capability (capability needs another)
+- alternative_to: Capability → Capability (alternative solution)
+- capability_subtype_of: Capability → Capability (specialization hierarchy)
+- capability_requires_capability: Capability → Capability (dependency chain)
+- semantically_equivalent: Entity → Entity (same concept, different names)
+- implements: Feature → Capability (feature delivers capability)
+- delivers: UseCase → ValueDriver (use case produces value outcome)
+- involves: UseCase → Persona (use case includes persona participation)
+
+Instructions:
+- ONLY create relationships if EXPLICIT evidence exists in the text
+- Include direct quote as evidence_text
+- Be conservative: low confidence if evidence is indirect
+- Return empty array if no clear relationships exist

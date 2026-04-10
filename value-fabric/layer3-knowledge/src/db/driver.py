@@ -131,6 +131,11 @@ async def close_driver() -> None:
         logger.info("Neo4j driver closed")
 
 
+async def reset_driver() -> None:
+    """Backward-compatible alias for closing and resetting the singleton driver."""
+    await close_driver()
+
+
 async def health_check(settings: Optional[Settings] = None) -> dict:
     """Check Neo4j connectivity without raising.
 
