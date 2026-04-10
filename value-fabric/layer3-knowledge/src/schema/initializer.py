@@ -3,7 +3,8 @@
 import logging
 from typing import List, Optional
 
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver
+from ..db.driver import get_driver
 from neo4j.exceptions import (
     ClientError,
     ConfigurationError,
@@ -33,13 +34,9 @@ class SchemaInitializer:
         self._owned_driver = driver is None
 
     async def _get_driver(self) -> AsyncDriver:
-        """Get or create Neo4j driver."""
+        """Get or create Neo4j driver via the shared singleton factory."""
         if self._driver is None:
-            self._driver = AsyncGraphDatabase.driver(
-                self.settings.neo4j_uri,
-                auth=self.settings.neo4j_auth,
-                max_connection_pool_size=self.settings.neo4j_max_pool_size,
-            )
+            self._driver = await get_driver(self.settings)
         return self._driver
 
     async def close(self) -> None:

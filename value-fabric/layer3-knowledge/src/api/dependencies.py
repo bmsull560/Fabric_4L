@@ -15,6 +15,7 @@ from ..agents import (
 )
 from ..analytics import CentralityAnalyzer, CommunityDetector, SimilarityAnalyzer
 from ..config import Settings, get_settings
+from ..db.driver import get_driver, reset_driver
 from ..ingestion import Neo4jLoader, SyncManager
 from ..retrieval import GraphRAGEngine, HybridSearch, VectorStore
 from ..schema import SchemaInitializer
@@ -46,26 +47,42 @@ class AppState:
 
 
 async def init_app_state(app: FastAPI) -> AppState:
-    """Initialize application state with all dependencies."""
+    """Initialize application state with all dependencies.
+
+    Neo4j connection failures are non-fatal at startup: the service starts in
+    a degraded mode and each component retries the connection on first use.
+    """
     state = AppState()
     state.settings = get_settings()
 
+    # ── 1. Neo4j driver ──────────────────────────────────────────────────────
+    try:
+        state.neo4j_driver = await get_driver(state.settings)
+        logger.info("Neo4j driver connected successfully")
+    except Exception as exc:
+        logger.warning(
+            "Neo4j unavailable at startup (%s). Service will retry on first request.",
+            exc,
+        )
+        state.neo4j_driver = None
+
     try:
         # Initialize schema (constraints and indexes)
-        state.schema_initializer = SchemaInitializer(settings=state.settings)
-        await state.schema_initializer.initialize_schema()
-        logger.info("Schema initialized successfully")
+        state.schema_initializer = SchemaInitializer(
+            driver=state.neo4j_driver,
+            settings=state.settings,
+        )
+        if state.neo4j_driver is not None:
+            await state.schema_initializer.initialize_schema()
+            logger.info("Schema initialized successfully")
 
-        # Store driver reference for other components
-        state.neo4j_driver = await state.schema_initializer._get_driver()
-
-        # Initialize optional vector store
+        # Initialize Neo4j-native vector store (no Pinecone dependency)
         try:
-            if state.settings.pinecone_api_key:
-                state.vector_store = VectorStore(settings=state.settings)
-                logger.info("Vector store initialized")
-            else:
-                logger.warning("Pinecone API key not set, vector store unavailable")
+            state.vector_store = VectorStore(
+                driver=state.neo4j_driver,
+                settings=state.settings,
+            )
+            logger.info("Neo4j-native vector store initialized")
         except Exception as e:
             logger.warning(f"Could not initialize vector store: {e}")
             state.vector_store = None
@@ -126,15 +143,18 @@ async def init_app_state(app: FastAPI) -> AppState:
 
         # Attach state to app
         app.state.app_state = state
-        logger.info("Application state initialized")
+        logger.info(
+            "Application state initialized (neo4j_connected=%s)",
+            state.neo4j_driver is not None,
+        )
 
         return state
 
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
-        # Clean up any resources that were successfully initialized
         await _cleanup_partial_state(state)
-        raise
+        app.state.app_state = state  # attach partial state so health check can report it
+        return state
 
 
 async def _cleanup_partial_state(state: AppState) -> None:
@@ -240,6 +260,12 @@ async def close_app_state(app: FastAPI) -> None:
             except Exception as e:
                 cleanup_errors.append(f"schema_initializer: {e}")
 
+        # Close the shared driver singleton
+        try:
+            await reset_driver()
+        except Exception as exc:
+            cleanup_errors.append(f"neo4j_driver_singleton: {exc}")
+
         if cleanup_errors:
             logger.warning(f"Errors during resource cleanup: {cleanup_errors}")
         else:
@@ -258,7 +284,13 @@ def get_settings_from_state(request: Request) -> Settings:
 
 def get_neo4j_driver(request: Request) -> AsyncDriver:
     """Get Neo4j driver from application state."""
-    return get_app_state(request).neo4j_driver
+    driver = get_app_state(request).neo4j_driver
+    if driver is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Neo4j database is currently unavailable. Please retry shortly.",
+        )
+    return driver
 
 
 def get_vector_store(request: Request) -> VectorStore:

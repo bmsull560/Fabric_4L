@@ -5,9 +5,10 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import uuid4
 
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver
 
 from ..config import Settings, get_settings
+from ..db.driver import get_driver
 from .vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
@@ -52,13 +53,9 @@ class GraphRAGEngine:
         self.vector_store = vector_store
 
     async def _get_driver(self) -> AsyncDriver:
-        """Get or create Neo4j driver."""
+        """Get or create Neo4j driver via the shared singleton factory."""
         if self._driver is None:
-            self._driver = AsyncGraphDatabase.driver(
-                self.settings.neo4j_uri,
-                auth=self.settings.neo4j_auth,
-                max_connection_pool_size=self.settings.neo4j_max_pool_size,
-            )
+            self._driver = await get_driver(self.settings)
         return self._driver
 
     async def close(self) -> None:
@@ -274,11 +271,21 @@ class GraphRAGEngine:
             return await self._fulltext_search(query_text, entity_type, max_results)
 
         # Use vector store for semantic search
-        results = await self.vector_store.search(
-            query=query_text,
+        # New VectorStore.search() uses query_text= kwarg and returns tuples
+        raw_results = await self.vector_store.search(
+            query_text=query_text,
             entity_type=entity_type,
             top_k=max_results,
         )
+        # Normalise: new VectorStore returns (entity_id, score, meta) tuples
+        results = []
+        for item in raw_results:
+            if isinstance(item, tuple):
+                entity_id, score, meta = item
+                results.append({"id": entity_id, "score": score, **meta})
+            else:
+                item.setdefault("id", item.get("entity_id", ""))
+                results.append(item)
 
         # Enrich with full entity data from Neo4j
         driver = await self._get_driver()
@@ -294,9 +301,8 @@ class GraphRAGEngine:
 
                 if record:
                     entity_data = dict(record["n"])
-                    entity_data["vector_score"] = result["score"]
+                    entity_data["vector_score"] = result.get("score", 0.0)
                     enriched_results.append(entity_data)
-
         return enriched_results
 
     async def _fulltext_search(

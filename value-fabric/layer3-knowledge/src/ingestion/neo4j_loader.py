@@ -1,15 +1,27 @@
-"""Neo4j RDF loader for ingesting Layer 2 extraction results."""
+"""Neo4j RDF loader for ingesting Layer 2 extraction results.
+
+Changes from original:
+- Replaced ``AsyncGraphDatabase.driver()`` with the shared ``get_driver()``
+  factory (retry logic, connection validation).
+- Added ``use_apoc`` flag (default False) so the loader works on vanilla
+  Neo4j / Neo4j Aura without the APOC plugin.
+- ``_load_entities_batch``: native Cypher path avoids ``apoc.map.removeKeys``.
+- ``_load_relationships_batch``: delegates to ``_load_relationships_native``
+  when APOC is unavailable; APOC path is preserved as opt-in.
+"""
 
 import logging
+from collections import defaultdict
 from datetime import datetime
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from neo4j import AsyncDriver, AsyncGraphDatabase
+from neo4j import AsyncDriver
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS
 
 from ..config import Settings, get_settings
+from ..db.driver import get_driver
 from ..schema.constraints import ENTITY_TYPES, RELATIONSHIP_TYPES
 
 logger = logging.getLogger(__name__)
@@ -21,7 +33,6 @@ PROV = Namespace("http://www.w3.org/ns/prov#")
 
 class RDFLoadError(Exception):
     """Raised when RDF loading fails."""
-    pass
 
 
 class Neo4jLoader:
@@ -44,15 +55,15 @@ class Neo4jLoader:
         self.batch_size = batch_size
         self._driver = driver
         self._owned_driver = driver is None
+        # When use_apoc=True the loader uses APOC procedures for richer merge
+        # semantics.  Defaults to False so the service works on vanilla Neo4j
+        # (including Neo4j Aura) without requiring the APOC plugin.
+        self.use_apoc: bool = getattr(self.settings, "use_apoc", False)
 
     async def _get_driver(self) -> AsyncDriver:
-        """Get or create Neo4j driver."""
+        """Get or create Neo4j driver via the shared singleton factory."""
         if self._driver is None:
-            self._driver = AsyncGraphDatabase.driver(
-                self.settings.neo4j_uri,
-                auth=self.settings.neo4j_auth,
-                max_connection_pool_size=self.settings.neo4j_max_pool_size,
-            )
+            self._driver = await get_driver(self.settings)
         return self._driver
 
     async def close(self) -> None:
@@ -137,14 +148,7 @@ class Neo4jLoader:
             raise RDFLoadError(f"Turtle parsing failed: {e}") from e
 
     def _extract_entities_from_rdf(self, graph: Graph) -> Dict[str, List[dict]]:
-        """Extract entities grouped by type from RDF graph.
-
-        Args:
-            graph: RDFLib Graph
-
-        Returns:
-            Dictionary mapping entity type to list of entity data
-        """
+        """Extract entities grouped by type from RDF graph."""
         entities: Dict[str, List[dict]] = {et: [] for et in ENTITY_TYPES}
 
         for entity_type in ENTITY_TYPES:
@@ -153,12 +157,10 @@ class Neo4jLoader:
             for subject in graph.subjects(RDF.type, type_uri):
                 entity_data = {"id": str(subject), "uri": str(subject)}
 
-                # Extract all properties for this entity
                 for predicate, obj in graph.predicate_objects(subject):
                     pred_name = self._extract_property_name(predicate)
 
                     if isinstance(obj, Literal):
-                        # Handle different literal types
                         if obj.datatype:
                             entity_data[pred_name] = self._convert_literal(obj)
                         else:
@@ -171,14 +173,7 @@ class Neo4jLoader:
         return entities
 
     def _extract_relationships_from_rdf(self, graph: Graph) -> List[dict]:
-        """Extract relationships from RDF graph.
-
-        Args:
-            graph: RDFLib Graph
-
-        Returns:
-            List of relationship dictionaries
-        """
+        """Extract relationships from RDF graph."""
         relationships = []
 
         for rel_type in RELATIONSHIP_TYPES:
@@ -194,28 +189,14 @@ class Neo4jLoader:
         return relationships
 
     def _extract_property_name(self, uri: URIRef) -> str:
-        """Extract property name from URI.
-
-        Args:
-            uri: Property URI
-
-        Returns:
-            Property name (local name)
-        """
+        """Extract property name from URI."""
         uri_str = str(uri)
         if "#" in uri_str:
             return uri_str.split("#")[-1]
         return uri_str.split("/")[-1]
 
     def _convert_literal(self, literal: Literal) -> Any:
-        """Convert RDF literal to Python value.
-
-        Args:
-            literal: RDFLib Literal
-
-        Returns:
-            Python value
-        """
+        """Convert RDF literal to Python value."""
         if literal.datatype:
             datatype = str(literal.datatype)
             if "integer" in datatype or "int" in datatype:
@@ -238,21 +219,13 @@ class Neo4jLoader:
     ) -> int:
         """Load a batch of entities into Neo4j.
 
-        Args:
-            session: Neo4j async session
-            entity_type: Type of entities (e.g., Capability)
-            entities: List of entity dictionaries
-            source_id: Source document ID
-            extraction_job_id: Extraction job ID
-
-        Returns:
-            Number of entities loaded
+        Uses native Cypher by default (no APOC required).  When
+        ``self.use_apoc`` is True, falls back to the APOC map spread which
+        is more concise but requires the plugin.
         """
         if not entities:
             return 0
 
-        # Build dynamic Cypher query based on entity properties
-        # Use MERGE to handle duplicates
         entity_data = {
             "entities": entities,
             "source_id": source_id,
@@ -260,16 +233,29 @@ class Neo4jLoader:
             "loaded_at": datetime.utcnow().isoformat(),
         }
 
-        # Create entity nodes
-        query = f"""
-        UNWIND $entities as entity
-        MERGE (n:{entity_type} {{id: entity.id}})
-        SET n += apoc.map.removeKeys(entity, ['id'])
-        SET n.source_id = $source_id
-        SET n.extraction_job_id = $extraction_job_id
-        SET n.loaded_at = datetime($loaded_at)
-        RETURN count(n) as loaded
-        """
+        if self.use_apoc:
+            query = f"""
+            UNWIND $entities as entity
+            MERGE (n:{entity_type} {{id: entity.id}})
+            SET n += apoc.map.removeKeys(entity, ['id'])
+            SET n.source_id = $source_id
+            SET n.extraction_job_id = $extraction_job_id
+            SET n.loaded_at = datetime($loaded_at)
+            RETURN count(n) as loaded
+            """
+        else:
+            # Native Cypher: MERGE on id, then spread the full map.
+            # The 'id' key is harmlessly re-set to the same value.
+            query = f"""
+            UNWIND $entities as entity
+            MERGE (n:{entity_type} {{id: entity.id}})
+            ON CREATE SET n = entity
+            ON MATCH SET n += entity
+            SET n.source_id = $source_id
+            SET n.extraction_job_id = $extraction_job_id
+            SET n.loaded_at = datetime($loaded_at)
+            RETURN count(n) as loaded
+            """
 
         try:
             result = await session.run(query, entity_data)
@@ -288,18 +274,19 @@ class Neo4jLoader:
     ) -> int:
         """Load relationships into Neo4j.
 
-        Args:
-            session: Neo4j async session
-            relationships: List of relationship dictionaries
-            source_id: Source document ID
-            extraction_job_id: Extraction job ID
-
-        Returns:
-            Number of relationships loaded
+        Routes to the APOC implementation when ``self.use_apoc`` is True,
+        otherwise uses the native Cypher implementation which works without
+        the APOC plugin.
         """
         if not relationships:
             return 0
 
+        if not self.use_apoc:
+            return await self._load_relationships_native(
+                session, relationships, source_id, extraction_job_id
+            )
+
+        # APOC path (opt-in)
         rel_data = {
             "relationships": relationships,
             "source_id": source_id,
@@ -307,7 +294,6 @@ class Neo4jLoader:
             "loaded_at": datetime.utcnow().isoformat(),
         }
 
-        # Create relationships between existing nodes
         query = """
         UNWIND $relationships as rel
         MATCH (source {id: rel.source_id})
@@ -332,8 +318,78 @@ class Neo4jLoader:
             record = await result.single()
             return record["loaded"] if record else 0
         except Exception as e:
-            logger.error(f"Failed to load relationships: {e}")
+            logger.error(f"Failed to load relationships (APOC): {e}")
             return 0
+
+    async def _load_relationships_native(
+        self,
+        session,
+        relationships: List[dict],
+        source_id: Optional[str],
+        extraction_job_id: Optional[str],
+    ) -> int:
+        """Load relationships using native Cypher (no APOC required).
+
+        Groups relationships by predicate type and issues one MERGE query per
+        type.  Unknown predicate types are skipped with a warning.
+
+        Neo4j does not support dynamic relationship type names in MERGE, so we
+        group by type and use static Cypher per group.  The predicate value is
+        validated against RELATIONSHIP_TYPES before interpolation to prevent
+        injection.
+        """
+        loaded_at = datetime.utcnow().isoformat()
+        by_type: Dict[str, List[dict]] = defaultdict(list)
+
+        for rel in relationships:
+            predicate = rel.get("predicate", "").upper().replace("-", "_").replace(" ", "_")
+            if predicate in RELATIONSHIP_TYPES:
+                by_type[predicate].append(rel)
+            else:
+                logger.warning(
+                    "Skipping unknown relationship type '%s' (source=%s → target=%s)",
+                    predicate,
+                    rel.get("source_id"),
+                    rel.get("target_id"),
+                )
+
+        total_loaded = 0
+        for rel_type, rels in by_type.items():
+            params = {
+                "relationships": rels,
+                "source_id": source_id,
+                "extraction_job_id": extraction_job_id,
+                "loaded_at": loaded_at,
+            }
+            # rel_type is validated against RELATIONSHIP_TYPES above — safe to
+            # interpolate into the query string.
+            query = f"""
+            UNWIND $relationships AS rel
+            MATCH (source {{id: rel.source_id}})
+            MATCH (target {{id: rel.target_id}})
+            MERGE (source)-[r:{rel_type} {{source_id: rel.source_id, target_id: rel.target_id}}]->(target)
+            ON CREATE SET
+                r.source_id = $source_id,
+                r.extraction_job_id = $extraction_job_id,
+                r.loaded_at = datetime($loaded_at),
+                r.confidence = rel.confidence,
+                r.created_at = datetime()
+            ON MATCH SET
+                r.source_id = $source_id,
+                r.extraction_job_id = $extraction_job_id,
+                r.loaded_at = datetime($loaded_at),
+                r.confidence = rel.confidence,
+                r.updated_at = datetime()
+            RETURN count(r) AS loaded
+            """
+            try:
+                result = await session.run(query, params)
+                record = await result.single()
+                total_loaded += record["loaded"] if record else 0
+            except Exception as exc:
+                logger.error("Failed to load %s relationships: %s", rel_type, exc)
+
+        return total_loaded
 
     async def delete_by_source(self, source_id: str) -> dict:
         """Delete all entities and relationships from a specific source.
