@@ -17,12 +17,24 @@ const WORKFLOW_KEYS = {
   detail: (id: string) => [...WORKFLOW_KEYS.all, 'detail', id] as const,
 };
 
+function normalizeWorkflow(raw: any): Workflow {
+  return {
+    id: raw.workflow_id || raw.workflow_instance_id || raw.id,
+    name: raw.name || raw.workflow_type || 'workflow',
+    status: (raw.status || 'pending') as Workflow['status'],
+    progress: raw.progress ?? raw.progress_percentage ?? 0,
+    createdAt: raw.createdAt || raw.created_at || raw.started_at,
+    updatedAt: raw.updatedAt || raw.updated_at || raw.completed_at,
+  };
+}
+
 export function useActiveWorkflows() {
   return useQuery({
     queryKey: WORKFLOW_KEYS.active(),
     queryFn: async () => {
       const response = await apiClient.get('l4', '/workflows/active');
-      return (response.data?.workflows || []) as Workflow[];
+      const workflows = Array.isArray(response.data) ? response.data : [];
+      return workflows.map(normalizeWorkflow) as Workflow[];
     },
     staleTime: 30 * 1000,
     refetchInterval: 5000,
@@ -33,8 +45,9 @@ export function useWorkflowHistory() {
   return useQuery({
     queryKey: WORKFLOW_KEYS.history(),
     queryFn: async () => {
-      const response = await apiClient.get('l4', '/workflows?limit=50&sort=created_at:desc');
-      return (response.data?.workflows || []) as Workflow[];
+      const response = await apiClient.get('l4', '/workflows/active');
+      const workflows = Array.isArray(response.data) ? response.data : [];
+      return workflows.map(normalizeWorkflow) as Workflow[];
     },
     staleTime: 60 * 1000,
   });

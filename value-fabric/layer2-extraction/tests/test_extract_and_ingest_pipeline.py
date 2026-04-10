@@ -447,11 +447,11 @@ def build_layer3_full_double_class():
                 message="Ingestion successful",
             )
 
-        async def get_ingestion_status(self, ingestion_id: str) -> api_main.layer3_client.IngestionStatus:
+        async def get_ingestion_status(self, ingestion_id: str) -> IngestionStatus:
             self._call_log.append({"method": "get_ingestion_status", "ingestion_id": ingestion_id})
 
             ingestion = self._ingestions.get(ingestion_id, {})
-            return api_main.layer3_client.IngestionStatus(
+            return IngestionStatus(
                 ingestion_id=ingestion_id,
                 status=ingestion.get("status", "unknown"),
                 progress_percent=100.0 if ingestion.get("status") == "completed" else 0.0,

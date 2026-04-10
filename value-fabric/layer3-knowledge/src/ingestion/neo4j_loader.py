@@ -423,7 +423,7 @@ class Neo4jLoader:
         by_type: Dict[str, List[dict]] = defaultdict(list)
 
         for rel in relationships:
-            predicate = rel.get("predicate", "").upper().replace("-", "_").replace(" ", "_")
+            predicate = rel.get("predicate", "").lower().replace("-", "_").replace(" ", "_")
             if predicate in RELATIONSHIP_TYPES:
                 by_type[predicate].append(rel)
             else:

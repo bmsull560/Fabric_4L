@@ -76,6 +76,7 @@ class HybridSearch:
         query: str,
         entity_types: Optional[List[str]] = None,
         top_k: int = 10,
+        limit: Optional[int] = None,
         weights: Optional[Dict[str, float]] = None,
     ) -> List[HybridSearchResult]:
         """Execute hybrid search across all signals.
@@ -83,12 +84,16 @@ class HybridSearch:
         Args:
             query: Search query text
             entity_types: Filter by entity types
-            top_k: Number of results to return
+            top_k: Number of results to return (alias: limit)
+            limit: Alias for top_k for API compatibility
             weights: Custom weights for bm25, vector, graph
 
         Returns:
             List of ranked search results
         """
+        # Use limit if provided, otherwise top_k
+        result_limit = limit if limit is not None else top_k
+
         weights = weights or {
             "bm25": self.settings.hybrid_bm25_weight,
             "vector": self.settings.hybrid_vector_weight,
@@ -97,12 +102,12 @@ class HybridSearch:
         total = sum(weights.values())
         weights = {k: v / total for k, v in weights.items()}
 
-        bm25_results = await self._bm25_search(query, entity_types, top_k * 2)
-        vector_results = await self._vector_search(query, entity_types, top_k * 2)
-        graph_results = await self._graph_search(query, entity_types, top_k * 2)
+        bm25_results = await self._bm25_search(query, entity_types, result_limit * 2)
+        vector_results = await self._vector_search(query, entity_types, result_limit * 2)
+        graph_results = await self._graph_search(query, entity_types, result_limit * 2)
 
         merged = self._merge_results(bm25_results, vector_results, graph_results, weights)
-        return merged[:top_k]
+        return merged[:result_limit]
 
     async def semantic_search(
         self,

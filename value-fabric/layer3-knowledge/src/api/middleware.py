@@ -180,10 +180,12 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if violations:
             logger.warning(
                 "Security violations detected",
-                violations=violations,
-                path=request.url.path,
-                method=request.method,
-                client_host=request.client.host if request.client else None,
+                extra={
+                    "violations": violations,
+                    "path": request.url.path,
+                    "method": request.method,
+                    "client_host": request.client.host if request.client else None,
+                }
             )
             
             if self.strict_mode:
