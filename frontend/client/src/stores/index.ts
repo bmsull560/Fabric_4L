@@ -15,6 +15,10 @@ export type { TruthStatement } from './truthStore';
 
 export { useUIStore } from './uiStore';
 
+// User Tier Store (Three-Tier UX Model)
+export { useUserTierStore, getRouteTier } from './userTierStore';
+export type { UserTier, UserPermissions } from './userTierStore';
+
 // Server State Hooks (React Query) - Data fetching, caching, mutations
 export {
   useActiveWorkflows,

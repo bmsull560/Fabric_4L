@@ -1,9 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AppShell from "./components/AppShell";
+import { useUserTierStore, getRouteTier, type UserTier } from "./stores/userTierStore";
 
 // Pages
 import CommandCenter     from "./pages/CommandCenter";
@@ -17,48 +18,122 @@ import AgentWorkflows    from "./pages/AgentWorkflows";
 import BusinessCase      from "./pages/BusinessCase";
 import DecisionTrace     from "./pages/DecisionTrace";
 import ValuePacks        from "./pages/ValuePacks";
-import { FormulaGovernance, BenchmarkPolicies, VariableRegistry } from "./pages/AdminScreens";
+import { FormulaGovernance, BenchmarkPolicies, VariableRegistry } from "./pages/admin";
 import NotFound          from "./pages/NotFound";
 
+/**
+ * Route Guard Component — Enforces tier-based access control
+ * Redirects users to appropriate tier if they lack permissions
+ */
+const TIER_HIERARCHY: Record<UserTier, number> = {
+  standard: 1,
+  advanced: 2,
+  admin: 3,
+};
+
+function getMaxTier(a: UserTier, b: UserTier): UserTier {
+  return TIER_HIERARCHY[a] >= TIER_HIERARCHY[b] ? a : b;
+}
+
+function RouteGuard({ 
+  children, 
+  requiredTier = "standard" 
+}: { 
+  children: React.ReactNode; 
+  requiredTier?: UserTier;
+}) {
+  const [location] = useLocation();
+  const canAccessRoute = useUserTierStore(state => state.canAccessRoute);
+  const effectiveTier = useUserTierStore(state => state.effectiveTier);
+  
+  // Get the route's inherent tier requirement
+  const routeTier = getRouteTier(location);
+  
+  // Use the MORE restrictive of: prop-specified tier OR route's inherent tier
+  const effectiveRequiredTier = getMaxTier(requiredTier, routeTier);
+  
+  // Check if user can access this route
+  if (!canAccessRoute(effectiveRequiredTier)) {
+    // Redirect based on user's effective tier
+    if (effectiveTier === "standard") {
+      return <Redirect to="/command-center" />;
+    } else if (effectiveTier === "advanced") {
+      return <Redirect to="/extraction-engine" />;
+    }
+    return <Redirect to="/command-center" />;
+  }
+  
+  return <>{children}</>;
+}
+
 function Router() {
+  const currentTier = useUserTierStore(state => state.currentTier);
+  const effectiveTier = useUserTierStore(state => state.effectiveTier);
+  
   return (
-    <AppShell>
+    <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
       <Switch>
         <Route path="/">
           <Redirect to="/command-center"/>
         </Route>
 
-        {/* ── Core ── */}
-        <Route path="/command-center"          component={CommandCenter}/>
-        <Route path="/extraction-engine"       component={ExtractionEngine}/>
+        {/* ── Tier 1: Standard User Routes ── */}
+        <Route path="/command-center">
+          <RouteGuard><CommandCenter /></RouteGuard>
+        </Route>
+        
+        {/* ── Tier 2: Advanced Routes (protected) ── */}
+        <Route path="/extraction-engine">
+          <RouteGuard requiredTier="advanced"><ExtractionEngine /></RouteGuard>
+        </Route>
 
         {/* ── Standard user: Value Packs ── */}
         <Route path="/value-packs"             component={ValuePacks}/>
 
-        {/* ── Ontology sub-routes ── */}
+        {/* ── Tier 2: Ontology sub-routes ── */}
         <Route path="/ontology">
           <Redirect to="/ontology/entities"/>
         </Route>
-        <Route path="/ontology/entities"       component={OntologyBrowser}/>
-        <Route path="/ontology/entity-detail"  component={EntityDetail}/>
-        <Route path="/ontology/extractions"    component={OntologyBrowser}/>
-        <Route path="/ontology/validation"     component={OntologyBrowser}/>
+        <Route path="/ontology/entities">
+          <RouteGuard requiredTier="advanced"><OntologyBrowser /></RouteGuard>
+        </Route>
+        <Route path="/ontology/entity-detail">
+          <RouteGuard requiredTier="advanced"><EntityDetail /></RouteGuard>
+        </Route>
+        <Route path="/ontology/extractions">
+          <RouteGuard requiredTier="advanced"><OntologyBrowser /></RouteGuard>
+        </Route>
+        <Route path="/ontology/validation">
+          <RouteGuard requiredTier="advanced"><OntologyBrowser /></RouteGuard>
+        </Route>
 
-        {/* ── Value Models / Formula Studio sub-routes ── */}
+        {/* ── Tier 2: Value Models / Formula Studio sub-routes ── */}
         <Route path="/value-trees">
           <Redirect to="/value-trees/explorer"/>
         </Route>
-        <Route path="/value-trees/explorer"      component={ValueTreeExplorer}/>
-        <Route path="/value-trees/normalization" component={ValueTreeExplorer}/>
-        <Route path="/value-trees/formulas"      component={FormulaBuilder}/>
+        <Route path="/value-trees/explorer">
+          <RouteGuard requiredTier="advanced"><ValueTreeExplorer /></RouteGuard>
+        </Route>
+        <Route path="/value-trees/normalization">
+          <RouteGuard requiredTier="advanced"><ValueTreeExplorer /></RouteGuard>
+        </Route>
+        <Route path="/value-trees/formulas">
+          <RouteGuard requiredTier="advanced"><FormulaBuilder /></RouteGuard>
+        </Route>
 
-        {/* ── Knowledge Graph sub-routes ── */}
+        {/* ── Tier 2: Knowledge Graph sub-routes ── */}
         <Route path="/graph">
           <Redirect to="/graph/explorer"/>
         </Route>
-        <Route path="/graph/explorer"          component={GraphExplorer}/>
-        <Route path="/graph/query"             component={GraphExplorer}/>
-        <Route path="/graph/communities"       component={GraphExplorer}/>
+        <Route path="/graph/explorer">
+          <RouteGuard requiredTier="advanced"><GraphExplorer /></RouteGuard>
+        </Route>
+        <Route path="/graph/query">
+          <RouteGuard requiredTier="advanced"><GraphExplorer /></RouteGuard>
+        </Route>
+        <Route path="/graph/communities">
+          <RouteGuard requiredTier="advanced"><GraphExplorer /></RouteGuard>
+        </Route>
 
         {/* ── Agent Workflows sub-routes ── */}
         <Route path="/agents">
@@ -82,30 +157,34 @@ function Router() {
         <Route path="/data-sources/targets"    component={CommandCenter}/>
         <Route path="/data-sources/jobs"       component={ExtractionEngine}/>
 
-        {/* ── Admin screens ── */}
+        {/* ── Tier 3: Admin Control Plane ── */}
         <Route path="/admin/formulas">
-          <FormulaGovernance/>
+          <RouteGuard requiredTier="admin"><FormulaGovernance /></RouteGuard>
         </Route>
         <Route path="/admin/formulas/versions">
-          <FormulaGovernance/>
+          <RouteGuard requiredTier="admin"><FormulaGovernance /></RouteGuard>
         </Route>
         <Route path="/admin/formulas/approvals">
-          <FormulaGovernance/>
+          <RouteGuard requiredTier="admin"><FormulaGovernance /></RouteGuard>
         </Route>
         <Route path="/admin/benchmarks">
-          <BenchmarkPolicies/>
+          <RouteGuard requiredTier="admin"><BenchmarkPolicies /></RouteGuard>
         </Route>
         <Route path="/admin/benchmarks/policies">
-          <BenchmarkPolicies/>
+          <RouteGuard requiredTier="admin"><BenchmarkPolicies /></RouteGuard>
         </Route>
         <Route path="/admin/variables">
-          <VariableRegistry/>
+          <RouteGuard requiredTier="admin"><VariableRegistry /></RouteGuard>
         </Route>
         <Route path="/admin/variables/bindings">
-          <VariableRegistry/>
+          <RouteGuard requiredTier="admin"><VariableRegistry /></RouteGuard>
         </Route>
-        <Route path="/admin/permissions"       component={CommandCenter}/>
-        <Route path="/admin/permissions/teams" component={CommandCenter}/>
+        <Route path="/admin/permissions">
+          <RouteGuard requiredTier="admin"><CommandCenter /></RouteGuard>
+        </Route>
+        <Route path="/admin/permissions/teams">
+          <RouteGuard requiredTier="admin"><CommandCenter /></RouteGuard>
+        </Route>
 
         {/* ── Settings placeholder ── */}
         <Route path="/settings"               component={CommandCenter}/>

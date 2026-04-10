@@ -274,7 +274,12 @@ async def close_app_state(app: FastAPI) -> None:
 
 def get_app_state(request: Request) -> AppState:
     """Get application state from request."""
-    return request.app.state.app_state
+    state = getattr(request.app.state, "app_state", None)
+    if state is None:
+        # Create minimal state for health checks when app not fully initialized
+        state = AppState()
+        state.settings = get_settings()
+    return state
 
 
 def get_settings_from_state(request: Request) -> Settings:

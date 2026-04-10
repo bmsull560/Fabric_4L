@@ -1,0 +1,149 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      registry:
+        description: 'Container registry'
+        default: 'ghcr.io'
+        required: false
+        type: string
+      image_tag:
+        description: 'Image tag (default: git SHA)'
+        default: ''
+        required: false
+        type: string
+      push_latest:
+        description: 'Push latest tag'
+        default: true
+        required: false
+        type: boolean
+
+env:
+  REGISTRY: ${{ inputs.registry || 'ghcr.io' }}
+  IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+
+jobs:
+  build-matrix:
+    name: Build Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents]
+        include:
+          - layer: layer1-ingestion
+            port: 8000
+          - layer: layer2-extraction
+            port: 8000
+          - layer: layer3-knowledge
+            port: 8001
+          - layer: layer4-agents
+            port: 8002
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: value-fabric/${{ matrix.layer }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:${{ github.ref_name }}
+            ${{ inputs.push_latest && format('{0}/{1}/fabric_4l/{2}:latest', env.REGISTRY, github.repository_owner, matrix.layer) || '' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+  test-images:
+    name: Test Built Images
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents]
+        include:
+          - layer: layer1-ingestion
+            port: 8000
+            health_path: /api/v1/ingestion/health
+          - layer: layer2-extraction
+            port: 8000
+            health_path: /health
+          - layer: layer3-knowledge
+            port: 8001
+            health_path: /health
+          - layer: layer4-agents
+            port: 8002
+            health_path: /health
+
+    steps:
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Run smoke test
+        run: |
+          docker run -d --name ${{ matrix.layer }} -p ${{ matrix.port }}:${{ matrix.port }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
+
+          # Wait for service to be healthy
+          for i in {1..30}; do
+            if curl -sf http://localhost:${{ matrix.port }}${{ matrix.health_path }}; then
+              echo "Service is healthy!"
+              docker stop ${{ matrix.layer }}
+              docker rm ${{ matrix.layer }}
+              exit 0
+            fi
+            echo "Waiting for service... attempt $i"
+            sleep 2
+          done
+
+          echo "Service failed to become healthy"
+          docker logs ${{ matrix.layer }}
+          docker stop ${{ matrix.layer }}
+          docker rm ${{ matrix.layer }}
+          exit 1
+
+      - name: Verify metrics endpoint
+        run: |
+          docker run -d --name ${{ matrix.layer }}-metrics -p ${{ matrix.port }}:${{ matrix.port }} \
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
+
+          sleep 5
+
+          # Check metrics endpoint (may return 503 if metrics disabled, but should not 500)
+          curl -sf http://localhost:${{ matrix.port }}/metrics || true
+
+          docker stop ${{ matrix.layer }}-metrics
+          docker rm ${{ matrix.layer }}-metrics

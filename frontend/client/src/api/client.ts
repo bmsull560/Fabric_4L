@@ -66,12 +66,10 @@ class ApiClient {
 
     this.mockAdapter = new MockAdapter(l4Client, { delayResponse: 500 });
 
-    this.mockAdapter.onGet('/workflows/active').reply(200, {
-      workflows: [
-        { id: 'wf-1', name: 'Market Analysis', status: 'running', progress: 65 },
-        { id: 'wf-2', name: 'Entity Extraction', status: 'pending', progress: 0 },
-      ],
-    });
+    this.mockAdapter.onGet('/workflows/active').reply(200, [
+      { workflow_id: 'wf-1', workflow_type: 'market_analysis', status: 'running', progress_percentage: 65 },
+      { workflow_id: 'wf-2', workflow_type: 'entity_extraction', status: 'pending', progress_percentage: 0 },
+    ]);
 
     this.mockAdapter.onPost('/workflows').reply(200, {
       workflow_id: 'wf-new',

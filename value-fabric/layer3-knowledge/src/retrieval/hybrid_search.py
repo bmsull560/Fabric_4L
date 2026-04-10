@@ -76,22 +76,23 @@ class HybridSearch:
         query: str,
         entity_types: Optional[List[str]] = None,
         top_k: int = 10,
-        limit: Optional[int] = None,
         weights: Optional[Dict[str, float]] = None,
+        limit: Optional[int] = None,
     ) -> List[HybridSearchResult]:
         """Execute hybrid search across all signals.
 
         Args:
             query: Search query text
             entity_types: Filter by entity types
-            top_k: Number of results to return (alias: limit)
-            limit: Alias for top_k for API compatibility
+            top_k: Number of results to return
             weights: Custom weights for bm25, vector, graph
+            limit: Alias for top_k for API compatibility
 
         Returns:
             List of ranked search results
         """
-        # Use limit if provided, otherwise top_k
+        # Use limit if provided, otherwise top_k (keeping positional compatibility
+        # with existing callers that pass weights as the 4th argument).
         result_limit = limit if limit is not None else top_k
 
         weights = weights or {

@@ -3,65 +3,66 @@
  * Design: Refined Enterprise SaaS
  */
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, Circle, Loader2 } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowLeft, CheckCircle2, Circle, Loader2, AlertCircle } from "lucide-react";
+import { Link, useRoute } from "wouter";
 import { PageHeader } from "@/components/WfPrimitives";
-
-const STEPS = [
-  { id: 1, label: "Crawling",         sub: "Acquired 4,209 nodes from domain.", done: true },
-  { id: 2, label: "NER Extraction",   sub: "Identifying entities, capabilities, and outcomes.", active: true, pct: 68 },
-  { id: 3, label: "Semantic Mapping", sub: "", done: false },
-  { id: 4, label: "Fabric Assembly",  sub: "", done: false },
-];
-
-const LOG_LINES = [
-  { t: null,         type: "sys",     text: "Initializing NLP models…",                                                           extra: "[OK]",    extraColor: "text-emerald-400" },
-  { t: null,         type: "sys",     text: "Loading target domain: example.com" },
-  { t: "09:41:02",   type: "info",    text: "Crawling phase complete. 4,209 valid pages parsed." },
-  { t: "09:41:05",   type: "warn",    text: "Skipping deeply nested node /assets/legacy…" },
-  { t: "09:41:12",   type: "info",    text: "Initiating Named Entity Recognition (Spacy/RoBERTa)" },
-  { t: "09:41:14",   type: "extract", text: "Parsed Node 102: Capability →", link: "Single Sign-On",       conf: "0.94" },
-  { t: "09:41:15",   type: "extract", text: "Parsed Node 103: Outcome →",    link: "Churn Reduction",      conf: "0.88" },
-  { t: "09:41:16",   type: "map",     text: "Linking Capability(102) to Outcome(103)" },
-  { t: "09:41:18",   type: "extract", text: "Parsed Node 144: Capability →", link: "RBAC",                 conf: "0.97" },
-  { t: "09:41:20",   type: "extract", text: "Parsed Node 145: Capability →", link: "Audit Logging",        conf: "0.91" },
-  { t: "09:41:22",   type: "extract", text: "Parsed Node 149: Outcome →",    link: "Compliance Automation",conf: "0.85" },
-  { t: "09:41:25",   type: "map",     text: "Linking Capability(144, 145) to Outcome(149)" },
-  { t: "09:41:28",   type: "extract", text: "Parsed Node 210: Outcome →",    link: "Cost Savings",         conf: "0.92" },
-  { t: "09:41:29",   type: "extract", text: "Parsed Node 212: Capability →", link: "Automated Provisioning",conf:"0.89" },
-  { t: "09:41:31",   type: "plain",   text: "Scanning batch 4/10" },
-];
-
-const TYPE_COLORS: Record<string, string> = {
-  sys:     "text-neutral-400",
-  info:    "text-cyan-400",
-  warn:    "text-amber-400",
-  extract: "text-neutral-300",
-  map:     "text-neutral-300",
-  plain:   "text-neutral-400",
-};
-const TYPE_LABELS: Record<string, string> = {
-  sys: "[SYS]", info: "[INFO]", warn: "[WARN]", extract: "[EXTRACT]", map: "[MAP]", plain: "",
-};
-
-const CHIPS = [
-  { label: "Outcome: Churn Reduction",       color: "bg-emerald-900/40 text-emerald-300 border-emerald-700" },
-  { label: "Capability: RBAC",               color: "bg-violet-900/40 text-violet-300 border-violet-700" },
-  { label: "Capability: Audit Logging",      color: "bg-violet-900/40 text-violet-300 border-violet-700" },
-  { label: "Outcome: Compliance Automation", color: "bg-emerald-900/40 text-emerald-300 border-emerald-700" },
-  { label: "Outcome: Cost Savings",          color: "bg-emerald-900/40 text-emerald-300 border-emerald-700" },
-  { label: "Capability: Automated Provisioning", color: "bg-violet-900/40 text-violet-300 border-violet-700" },
-];
+import { useExtractionJob, TYPE_COLORS, TYPE_LABELS } from "@/hooks/useExtraction";
 
 export default function ExtractionEngine() {
-  const [visibleLines, setVisibleLines] = useState(8);
+  // Get job ID from URL query param: /extraction-engine?jobId=xxx
+  const [match, params] = useRoute('/extraction-engine');
+  const searchParams = new URLSearchParams(window.location.search);
+  const jobId = searchParams.get('jobId');
 
+  const { data: job, isLoading, error } = useExtractionJob(jobId);
+  const [visibleLines, setVisibleLines] = useState(20);
+
+  // Auto-scroll logs as new ones arrive
   useEffect(() => {
-    const t = setInterval(() => {
-      setVisibleLines(v => Math.min(v + 1, LOG_LINES.length));
-    }, 600);
-    return () => clearInterval(t);
-  }, []);
+    if (job?.logs) {
+      setVisibleLines(job.logs.length);
+    }
+  }, [job?.logs?.length]);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
+        <span className="text-sm text-neutral-600">Loading extraction job...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <AlertCircle className="w-8 h-8 text-red-500 mb-3" />
+        <span className="text-sm text-red-600">{(error as Error).message || 'Failed to load job'}</span>
+        <Link href="/command-center">
+          <span className="text-sm text-blue-600 mt-2 hover:underline">Back to Command Center</span>
+        </Link>
+      </div>
+    );
+  }
+
+  // Empty state - no job ID
+  if (!jobId) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <span className="text-sm text-neutral-600">No job specified</span>
+        <Link href="/command-center">
+          <span className="text-sm text-blue-600 mt-2 hover:underline">Start a new extraction</span>
+        </Link>
+      </div>
+    );
+  }
+
+  const steps = job?.steps || [];
+  const logs = job?.logs || [];
+  const chips = job?.entitiesFound || [];
+  const isRunning = job?.status === 'running' || job?.status === 'pending';
 
   return (
     <div className="flex flex-col h-full">
@@ -73,8 +74,11 @@ export default function ExtractionEngine() {
           </span>
         </Link>
         <div className="flex items-center gap-2 text-[12px] text-neutral-500">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"/>
-          Processing domain: <span className="font-semibold text-neutral-800">example.com</span>
+          {isRunning && <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"/>}
+          <span className={isRunning ? 'text-amber-600' : job?.status === 'completed' ? 'text-emerald-600' : 'text-red-600'}>
+            {job?.status === 'running' ? 'Processing' : job?.status}
+          </span>
+          <span className="font-semibold text-neutral-800">{job?.domain}</span>
         </div>
       </div>
 
@@ -83,7 +87,7 @@ export default function ExtractionEngine() {
         <div className="w-[240px] shrink-0 p-5 border-r border-neutral-200 bg-white overflow-y-auto">
           <PageHeader title="Extraction Engine" subtitle="Mapping structural ontology to value fabric." />
           <div className="space-y-4 mt-4">
-            {STEPS.map(step => (
+            {steps.map(step => (
               <div key={step.id} className="flex gap-3">
                 <div className="flex flex-col items-center">
                   {step.done ? (
@@ -116,8 +120,8 @@ export default function ExtractionEngine() {
             ))}
           </div>
           <div className="mt-4 pt-4 border-t border-neutral-100 flex justify-between text-[11px] text-neutral-500">
-            <span>Estimated time left:</span>
-            <span className="font-mono font-semibold text-neutral-800">01:42</span>
+            <span>Job ID:</span>
+            <span className="font-mono font-semibold text-neutral-800">{jobId?.slice(0, 8)}...</span>
           </div>
         </div>
 
@@ -139,7 +143,10 @@ export default function ExtractionEngine() {
 
           {/* Log lines */}
           <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] leading-relaxed space-y-0.5">
-            {LOG_LINES.slice(0, visibleLines).map((line, i) => (
+            {logs.length === 0 && (
+              <div className="text-neutral-500">No logs available yet...</div>
+            )}
+            {logs.slice(0, visibleLines).map((line, i) => (
               <div key={i} className="flex gap-2">
                 <span className="text-neutral-600 shrink-0 w-[68px]">
                   {line.t ? `[${line.t}]` : ""}
@@ -161,10 +168,10 @@ export default function ExtractionEngine() {
                 </span>
               </div>
             ))}
-            {visibleLines >= LOG_LINES.length && (
+            {logs.length > 0 && isRunning && (
               <div className="flex gap-2">
-                <span className="text-neutral-600 w-[68px]">[09:41:31]</span>
-                <span className="text-neutral-400">Scanning batch 4/10</span>
+                <span className="text-neutral-600 w-[68px]">[{new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                <span className="text-neutral-400">Processing...</span>
                 <span className="cursor-blink"/>
               </div>
             )}
@@ -172,7 +179,10 @@ export default function ExtractionEngine() {
 
           {/* Entity chips */}
           <div className="flex gap-2 px-4 py-3 border-t border-[#30363d] bg-[#161b22] overflow-x-auto">
-            {CHIPS.map(chip => (
+            {chips.length === 0 && (
+              <span className="text-[10px] text-neutral-500">No entities extracted yet...</span>
+            )}
+            {chips.map(chip => (
               <span key={chip.label} className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${chip.color}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"/>
                 {chip.label}

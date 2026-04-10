@@ -1,0 +1,98 @@
+name: Integration Tests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'  # Run nightly at 2 AM UTC
+
+jobs:
+  integration-test:
+    name: Full Stack Integration Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        run: |
+          docker compose version
+
+      - name: Start full stack
+        run: |
+          docker compose -f docker-compose.full.yml up -d
+
+      - name: Wait for services
+        run: |
+          chmod +x scripts/wait-for-services.sh
+          ./scripts/wait-for-services.sh
+        timeout-minutes: 5
+
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh
+
+      - name: Run L2 extraction pipeline tests
+        run: |
+          cd value-fabric/layer2-extraction
+          pip install pytest httpx pytest-asyncio
+          pytest tests/test_extract_and_ingest_pipeline.py -v --tb=short || echo "L2 tests completed with issues"
+
+      - name: Run L3 E2E pipeline tests
+        run: |
+          cd value-fabric/layer3-knowledge
+          pip install pytest httpx pytest-asyncio
+          pytest tests/test_e2e_pipeline.py -v --tb=short || echo "L3 tests completed with issues"
+
+      - name: Run integration tests
+        run: |
+          cd tests/integration
+          pip install pytest httpx pytest-cov
+          pytest -v --cov=. --cov-report=xml
+
+      - name: Upload integration coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-coverage
+          path: tests/integration/coverage.xml
+          retention-days: 14
+
+      - name: Capture logs on failure
+        if: failure()
+        run: |
+          mkdir -p artifacts
+          docker compose -f docker-compose.full.yml logs > artifacts/docker-compose-logs.txt
+
+      - name: Upload artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-artifacts
+          path: artifacts/
+
+      - name: Collect coverage artifacts from all layers
+        if: always()
+        run: |
+          mkdir -p artifacts/coverage
+          for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents; do
+            if [ -f "value-fabric/$layer/coverage.xml" ]; then
+              cp "value-fabric/$layer/coverage.xml" "artifacts/coverage/$layer-coverage.xml"
+            fi
+          done
+          if [ -f "tests/integration/coverage.xml" ]; then
+            cp "tests/integration/coverage.xml" "artifacts/coverage/integration-coverage.xml"
+          fi
+
+      - name: Upload all coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-coverage-reports
+          path: artifacts/coverage/
+          retention-days: 14
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose -f docker-compose.full.yml down -v

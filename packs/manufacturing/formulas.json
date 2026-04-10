@@ -1,0 +1,485 @@
+{
+  "pack_id": "manufacturing-v1",
+  "formulas": [
+    {
+      "formula_id": "mfg-f-001",
+      "name": "OEE Improvement ROI",
+      "description": "Calculate ROI from OEE improvement initiatives including availability, performance, and quality gains",
+      "formula_type": "ROI",
+      "version": "1.2.0",
+      "status": "active",
+      "governance": {
+        "owner": "Manufacturing Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2024-03-15",
+        "validated_by": "Manufacturing CoE"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(((Current_OEE - Baseline_OEE) / 100) * Annual_Production_Value * Margin_Percentage) - Annual_Implementation_Cost",
+        "variables": [
+          "Current_OEE",
+          "Baseline_OEE", 
+          "Annual_Production_Value",
+          "Margin_Percentage",
+          "Annual_Implementation_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -10000000,
+        "max": 100000000
+      },
+      "required_variables": [
+        {
+          "name": "Current_OEE",
+          "display_name": "Current OEE Percentage",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 75,
+          "source": "MES",
+          "description": "Current Overall Equipment Effectiveness percentage"
+        },
+        {
+          "name": "Baseline_OEE",
+          "display_name": "Baseline OEE",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 60,
+          "source": "Historical",
+          "description": "OEE before improvement initiative"
+        },
+        {
+          "name": "Annual_Production_Value",
+          "display_name": "Annual Production Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000000 },
+          "source": "ERP",
+          "description": "Total annual value of production output"
+        },
+        {
+          "name": "Margin_Percentage",
+          "display_name": "Gross Margin Percentage",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 25,
+          "source": "Financial",
+          "description": "Gross margin on production"
+        },
+        {
+          "name": "Annual_Implementation_Cost",
+          "display_name": "Annual Implementation Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "source": "Manual",
+          "description": "Annual cost of OEE improvement program"
+        }
+      ],
+      "benchmarks": {
+        "world_class_oee": 85,
+        "average_oee": 60,
+        "typical_improvement": 15
+      },
+      "tags": ["oee", "roi", "efficiency", "manufacturing"]
+    },
+    {
+      "formula_id": "mfg-f-002",
+      "name": "Unplanned Downtime Cost",
+      "description": "Calculate annual cost of unplanned equipment downtime including lost production and emergency repair costs",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Manufacturing Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2024-02-20"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Average_Downtime_Hours_Per_Month * Hourly_Production_Value * 12) + (Annual_Emergency_Repairs * Avg_Emergency_Repair_Cost)",
+        "variables": [
+          "Average_Downtime_Hours_Per_Month",
+          "Hourly_Production_Value",
+          "Annual_Emergency_Repairs",
+          "Avg_Emergency_Repair_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": 0,
+        "max": 500000000
+      },
+      "required_variables": [
+        {
+          "name": "Average_Downtime_Hours_Per_Month",
+          "display_name": "Monthly Downtime Hours",
+          "type": "float",
+          "unit": "hours",
+          "valid_range": { "min": 0, "max": 720 },
+          "source": "CMMS",
+          "description": "Average unplanned downtime per month"
+        },
+        {
+          "name": "Hourly_Production_Value",
+          "display_name": "Hourly Production Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 1000000 },
+          "source": "ERP",
+          "description": "Value of production per hour at capacity"
+        },
+        {
+          "name": "Annual_Emergency_Repairs",
+          "display_name": "Annual Emergency Repairs",
+          "type": "integer",
+          "unit": "count",
+          "valid_range": { "min": 0, "max": 1000 },
+          "source": "CMMS",
+          "description": "Number of emergency repair events per year"
+        },
+        {
+          "name": "Avg_Emergency_Repair_Cost",
+          "display_name": "Average Emergency Repair Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 1000000 },
+          "default_value": 25000,
+          "source": "Historical",
+          "description": "Average cost per emergency repair including parts and labor"
+        }
+      ],
+      "benchmarks": {
+        "typical_downtime_hours": 40,
+        "best_in_class_downtime": 10
+      },
+      "tags": ["downtime", "maintenance", "cost", "reliability"]
+    },
+    {
+      "formula_id": "mfg-f-003",
+      "name": "Quality Defect Cost",
+      "description": "Calculate total cost of quality defects including scrap, rework, warranty, and reputation impact",
+      "formula_type": "CUSTOM",
+      "version": "1.1.0",
+      "status": "active",
+      "governance": {
+        "owner": "Quality Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2024-03-01"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Annual_Units_Produced * Defect_Rate * (Scrap_Cost_Per_Unit + Rework_Cost_Per_Unit * Rework_Rate)) + Annual_Warranty_Costs",
+        "variables": [
+          "Annual_Units_Produced",
+          "Defect_Rate",
+          "Scrap_Cost_Per_Unit",
+          "Rework_Cost_Per_Unit",
+          "Rework_Rate",
+          "Annual_Warranty_Costs"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "required_variables": [
+        {
+          "name": "Annual_Units_Produced",
+          "display_name": "Annual Production Volume",
+          "type": "integer",
+          "unit": "units",
+          "source": "MES"
+        },
+        {
+          "name": "Defect_Rate",
+          "display_name": "Defect Rate",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "source": "Quality",
+          "description": "Percentage of units with defects"
+        },
+        {
+          "name": "Scrap_Cost_Per_Unit",
+          "display_name": "Scrap Cost Per Unit",
+          "type": "currency",
+          "unit": "USD",
+          "source": "ERP"
+        },
+        {
+          "name": "Rework_Cost_Per_Unit",
+          "display_name": "Rework Cost Per Unit",
+          "type": "currency",
+          "unit": "USD",
+          "source": "ERP"
+        },
+        {
+          "name": "Rework_Rate",
+          "display_name": "Rework Rate",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 60,
+          "description": "Percentage of defects that can be reworked"
+        },
+        {
+          "name": "Annual_Warranty_Costs",
+          "display_name": "Annual Warranty Costs",
+          "type": "currency",
+          "unit": "USD",
+          "source": "Financial"
+        }
+      ],
+      "tags": ["quality", "defects", "scrap", "rework", "cost"]
+    },
+    {
+      "formula_id": "mfg-f-004",
+      "name": "Energy Cost Savings",
+      "description": "Calculate savings from energy efficiency improvements and peak demand reduction",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "draft",
+      "governance": {
+        "owner": "Sustainability Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "pending_review"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Baseline_Annual_kWh - Current_Annual_kWh) * Average_kWh_Rate + Peak_Demand_Savings",
+        "variables": [
+          "Baseline_Annual_kWh",
+          "Current_Annual_kWh",
+          "Average_kWh_Rate",
+          "Peak_Demand_Savings"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "required_variables": [
+        {
+          "name": "Baseline_Annual_kWh",
+          "display_name": "Baseline Annual Energy Use",
+          "type": "float",
+          "unit": "kWh",
+          "source": "Energy_Management"
+        },
+        {
+          "name": "Current_Annual_kWh",
+          "display_name": "Current Annual Energy Use",
+          "type": "float",
+          "unit": "kWh",
+          "source": "Energy_Management"
+        },
+        {
+          "name": "Average_kWh_Rate",
+          "display_name": "Average Electricity Rate",
+          "type": "currency",
+          "unit": "USD/kWh",
+          "default_value": 0.12,
+          "source": "Utility"
+        },
+        {
+          "name": "Peak_Demand_Savings",
+          "display_name": "Peak Demand Savings",
+          "type": "currency",
+          "unit": "USD",
+          "default_value": 0,
+          "source": "Calculated"
+        }
+      ],
+      "tags": ["energy", "sustainability", "savings", "efficiency"]
+    },
+    {
+      "formula_id": "mfg-f-005",
+      "name": "Predictive Maintenance ROI",
+      "description": "Return on investment for predictive maintenance program including avoided downtime and maintenance cost optimization",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Maintenance Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2024-03-10"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Avoided_Downtime_Value + Maintenance_Cost_Savings - PdM_Program_Cost) / PdM_Program_Cost * 100",
+        "variables": [
+          "Avoided_Downtime_Value",
+          "Maintenance_Cost_Savings",
+          "PdM_Program_Cost"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -100,
+        "max": 1000
+      },
+      "required_variables": [
+        {
+          "name": "Avoided_Downtime_Value",
+          "display_name": "Avoided Downtime Value",
+          "type": "currency",
+          "unit": "USD",
+          "source": "Calculated",
+          "description": "Value of production loss avoided through prediction"
+        },
+        {
+          "name": "Maintenance_Cost_Savings",
+          "display_name": "Maintenance Cost Savings",
+          "type": "currency",
+          "unit": "USD",
+          "source": "CMMS",
+          "description": "Savings from planned vs emergency maintenance"
+        },
+        {
+          "name": "PdM_Program_Cost",
+          "display_name": "PdM Program Annual Cost",
+          "type": "currency",
+          "unit": "USD",
+          "source": "Financial",
+          "description": "Total annual cost of predictive maintenance program"
+        }
+      ],
+      "benchmarks": {
+        "typical_roi": 300,
+        "break_even_months": 12
+      },
+      "tags": ["predictive-maintenance", "roi", "reliability", "maintenance"]
+    },
+    {
+      "formula_id": "mfg-f-006",
+      "name": "Throughput Improvement Value",
+      "description": "Calculate value of production throughput improvements including capacity expansion and revenue enablement",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Operations Excellence",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2024-02-28"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Additional_Units_Per_Year * Unit_Margin - Incremental_Operating_Cost",
+        "variables": [
+          "Additional_Units_Per_Year",
+          "Unit_Margin",
+          "Incremental_Operating_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "required_variables": [
+        {
+          "name": "Additional_Units_Per_Year",
+          "display_name": "Additional Annual Production",
+          "type": "integer",
+          "unit": "units",
+          "source": "MES",
+          "description": "Additional units produced due to throughput improvements"
+        },
+        {
+          "name": "Unit_Margin",
+          "display_name": "Margin Per Unit",
+          "type": "currency",
+          "unit": "USD",
+          "source": "ERP"
+        },
+        {
+          "name": "Incremental_Operating_Cost",
+          "display_name": "Incremental Operating Cost",
+          "type": "currency",
+          "unit": "USD",
+          "source": "Financial",
+          "description": "Additional costs to support higher throughput"
+        }
+      ],
+      "tags": ["throughput", "capacity", "revenue", "production"]
+    },
+    {
+      "formula_id": "mfg-f-007",
+      "name": "First Pass Yield Improvement Value",
+      "description": "Value generated by improving first pass yield through quality improvements and reduced rework",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "draft",
+      "governance": {
+        "owner": "Quality Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "pending_review"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Annual_Units * (Target_FPY - Current_FPY) / 100 * (Rework_Cost + Inspection_Cost_Savings)",
+        "variables": [
+          "Annual_Units",
+          "Target_FPY",
+          "Current_FPY",
+          "Rework_Cost",
+          "Inspection_Cost_Savings"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "required_variables": [
+        {
+          "name": "Annual_Units",
+          "display_name": "Annual Production Units",
+          "type": "integer",
+          "unit": "units",
+          "source": "MES"
+        },
+        {
+          "name": "Target_FPY",
+          "display_name": "Target First Pass Yield",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 98,
+          "source": "Quality"
+        },
+        {
+          "name": "Current_FPY",
+          "display_name": "Current First Pass Yield",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "source": "Quality"
+        },
+        {
+          "name": "Rework_Cost",
+          "display_name": "Average Rework Cost",
+          "type": "currency",
+          "unit": "USD",
+          "source": "ERP"
+        },
+        {
+          "name": "Inspection_Cost_Savings",
+          "display_name": "Inspection Cost Savings",
+          "type": "currency",
+          "unit": "USD",
+          "default_value": 0,
+          "source": "Calculated"
+        }
+      ],
+      "benchmarks": {
+        "world_class_fpy": 99,
+        "industry_average_fpy": 95
+      },
+      "tags": ["first-pass-yield", "quality", "fpy", "rework"]
+    }
+  ]
+}

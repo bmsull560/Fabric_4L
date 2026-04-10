@@ -385,3 +385,121 @@ class SchemaStatistics(BaseModel):
     relationships: Dict[str, int]
     total_nodes: int
     total_relationships: int
+
+
+# Provenance Models
+class ProvenanceStep(BaseModel):
+    """Single step in a provenance chain."""
+    step: int = Field(..., description="Step sequence number")
+    label: str = Field(..., description="Step label")
+    detail: str = Field(..., description="Step detail description")
+    timestamp: datetime = Field(..., description="When step occurred")
+    agent: Optional[str] = Field(None, description="Agent responsible for step")
+    entity_id: Optional[str] = Field(None, description="Entity ID if applicable")
+
+
+class ProvenanceTrailResponse(BaseModel):
+    """Full provenance trail for an entity."""
+    entity_id: str = Field(..., description="Entity ID")
+    entity_type: str = Field(..., description="Entity type")
+    entity_name: str = Field(..., description="Entity name")
+    created_at: datetime = Field(..., description="When entity was created")
+    source: str = Field(..., description="Source document or system")
+    extraction_job_id: Optional[str] = Field(None, description="L2 extraction job ID")
+    steps: List[ProvenanceStep] = Field(..., description="Provenance steps")
+    confidence_score: Optional[float] = Field(None, description="Overall confidence")
+
+
+class AuditLogEntry(BaseModel):
+    """Single audit log entry."""
+    id: str = Field(..., description="Audit event ID")
+    timestamp: datetime = Field(..., description="When event occurred")
+    source: str = Field(..., description="Source: 'provenance' or 'access_log'")
+    event_type: str = Field(..., description="Event type")
+    entity_id: Optional[str] = Field(None, description="Related entity ID")
+    entity_type: Optional[str] = Field(None, description="Entity type")
+    action: str = Field(..., description="Action performed")
+    agent: str = Field(..., description="Agent (user, system, or AI)")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Additional details")
+
+
+class AuditLogFilter(BaseModel):
+    """Filter parameters for audit log queries."""
+    source: Optional[str] = Field(None, description="Filter by source: 'provenance', 'access', or 'all'")
+    from_date: Optional[datetime] = Field(None, description="Start date filter")
+    to_date: Optional[datetime] = Field(None, description="End date filter")
+    entity_type: Optional[str] = Field(None, description="Filter by entity type")
+    event_type: Optional[str] = Field(None, description="Filter by event type")
+    agent: Optional[str] = Field(None, description="Filter by agent")
+
+
+class AuditLogResponse(BaseModel):
+    """Audit log query response."""
+    entries: List[AuditLogEntry] = Field(..., description="Audit log entries")
+    total: int = Field(..., description="Total entries matching filter")
+    page: int = Field(1, description="Current page")
+    per_page: int = Field(50, description="Entries per page")
+
+
+class DocumentExportRequest(BaseModel):
+    """Request for document export."""
+    document_type: str = Field("business_case", description="Type of document to export")
+    business_case_id: str = Field(..., description="Business case ID")
+    format: str = Field("pdf", description="Export format: pdf, html")
+    include_provenance: bool = Field(True, description="Include provenance information")
+
+
+class DocumentExportResponse(BaseModel):
+    """Response from document export request."""
+    export_id: str = Field(..., description="Export job ID")
+    status: str = Field(..., description="Export status: pending, completed, failed")
+    download_url: Optional[str] = Field(None, description="Download URL when ready")
+    format: str = Field(..., description="Export format")
+    expires_at: Optional[datetime] = Field(None, description="URL expiration time")
+
+
+# Graph Models
+class GraphNode(BaseModel):
+    """Node in the knowledge graph."""
+    id: str = Field(..., description="Unique node identifier")
+    label: str = Field(..., description="Display label")
+    type: str = Field(..., description="Node type (Capability, UseCase, Persona, ValueDriver)")
+    confidence: float = Field(default=0.8, ge=0.0, le=1.0, description="Confidence score")
+    x: Optional[float] = Field(None, description="X position for visualization")
+    y: Optional[float] = Field(None, description="Y position for visualization")
+    r: Optional[float] = Field(None, description="Radius for visualization")
+    properties: Dict[str, Any] = Field(default_factory=dict, description="Additional node properties")
+
+
+class GraphEdge(BaseModel):
+    """Edge/relationship in the knowledge graph."""
+    source: str = Field(..., description="Source node ID")
+    target: str = Field(..., description="Target node ID")
+    type: str = Field(..., description="Relationship type (ENABLES, BENEFITS, DRIVES)")
+    weight: float = Field(default=1.0, ge=0.0, description="Edge weight/strength")
+    properties: Dict[str, Any] = Field(default_factory=dict, description="Additional edge properties")
+
+
+class GraphStats(BaseModel):
+    """Statistics for the knowledge graph."""
+    total_nodes: int = Field(..., ge=0, description="Total number of nodes")
+    total_edges: int = Field(..., ge=0, description="Total number of edges")
+    node_types: Dict[str, int] = Field(default_factory=dict, description="Count by node type")
+    communities: int = Field(default=0, ge=0, description="Number of detected communities")
+    density: float = Field(default=0.0, ge=0.0, description="Graph density")
+
+
+class GraphResponse(BaseModel):
+    """Full graph response for visualization."""
+    nodes: List[GraphNode] = Field(..., description="Graph nodes")
+    edges: List[GraphEdge] = Field(..., description="Graph edges")
+    stats: GraphStats = Field(..., description="Graph statistics")
+
+
+class SubgraphResponse(BaseModel):
+    """Subgraph centered on a specific entity."""
+    root_entity_id: str = Field(..., description="ID of the central entity")
+    nodes: List[GraphNode] = Field(..., description="Connected nodes including root")
+    edges: List[GraphEdge] = Field(..., description="Edges between returned nodes")
+    depth: int = Field(..., ge=1, le=5, description="Traversal depth used")
+    stats: GraphStats = Field(..., description="Subgraph statistics")

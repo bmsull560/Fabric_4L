@@ -1,15 +1,17 @@
 """FastAPI application for Layer 3: Knowledge Graph & Semantic Layer."""
 
 import logging
+import platform
 import time
 import uuid
 import psutil
 import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from types import SimpleNamespace
+from typing import Any, Dict, List, Literal, Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
@@ -80,21 +82,31 @@ from .versioning import (
     VersionedResponse,
 )
 from .models import (
+    AuditLogEntry,
+    AuditLogResponse,
     CentralityRequest,
     CentralityResponse,
     CommunityDetectionRequest,
     CommunityDetectionResponse,
     DependencyStatus,
     DetailedHealthResponse,
+    DocumentExportRequest,
+    DocumentExportResponse,
     EntityComparisonRequest,
     EntityComparisonResponse,
     EntityContextRequest,
     EntityContextResponse,
+    GraphEdge,
+    GraphNode,
     GraphRAGQuery,
     GraphRAGResponse,
+    GraphResponse,
+    GraphStats,
     HealthResponse,
     IngestRequest,
     IngestResponse,
+    ProvenanceStep,
+    ProvenanceTrailResponse,
     SchemaStatistics,
     SchemaStatus,
     SearchRequest,
@@ -102,6 +114,7 @@ from .models import (
     ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
+    SubgraphResponse,
     SyncStatusResponse,
     ValueTreeTraversal,
     ValueTreeResponse,
@@ -111,6 +124,20 @@ logger = get_logger(__name__)
 
 # Track application startup time for uptime calculation
 _app_start_time = time.time()
+
+
+def _get_settings_with_fallback() -> Any:
+    try:
+        return get_settings()
+    except Exception:
+        return SimpleNamespace(
+            log_request_id_header="X-Request-ID",
+            log_level="INFO",
+            neo4j_uri="bolt://localhost:7687",
+            neo4j_database="neo4j",
+            pinecone_api_key=None,
+            pinecone_index="value-fabric",
+        )
 
 
 @asynccontextmanager
@@ -280,14 +307,36 @@ app = FastAPI(
             "name": "Ingestion",
             "description": "Data ingestion and synchronization",
         },
+        {
+            "name": "Value Trees",
+            "description": "Value tree traversal and exploration",
+        },
+        {
+            "name": "Formulas",
+            "description": "Formula evaluation and variable registry",
+        },
+        {
+            "name": "Graph",
+            "description": "Graph visualization endpoints",
+        },
     ],
 )
+
+
+# Include routers from routes modules
+from .routes import value_trees, formulas, value_packs, formula_governance, variables
+
+app.include_router(value_trees.router, prefix="/v1")
+app.include_router(formulas.router, prefix="/v1")
+app.include_router(value_packs.router, prefix="/v1")
+app.include_router(formula_governance.router, prefix="/v1")
+app.include_router(variables.router, prefix="/v1")
 
 
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     """Add request ID to logs and response headers."""
-    settings = get_settings()
+    settings = _get_settings_with_fallback()
     request_id = request.headers.get(settings.log_request_id_header) or str(uuid.uuid4())
     
     # Add request ID to logger context
@@ -326,17 +375,27 @@ app.add_middleware(
 add_security_middleware(app, strict_mode=True)
 
 # Rate limiting middleware
-settings = get_settings()
+try:
+    settings = get_settings()
+except Exception:
+    logger.warning("Falling back to default rate-limit settings during import")
+    settings = None
+
 add_rate_limiting(
     app,
-    requests_per_minute=settings.rate_limit_requests_per_minute,
-    burst_size=settings.rate_limit_burst_size,
-    enabled=settings.rate_limit_enabled,
+    requests_per_minute=settings.rate_limit_requests_per_minute if settings else 100,
+    burst_size=settings.rate_limit_burst_size if settings else 200,
+    enabled=settings.rate_limit_enabled if settings else False,
 )
 
 # Versioning middleware
 version_middleware = VersionMiddleware(get_version_compatibility())
 app.middleware("http")(version_middleware)
+
+
+def _exception_trace(exc: Exception):
+    """Return explicit exception tuple for logger.exc_info."""
+    return (type(exc), exc, exc.__traceback__)
 
 
 # Exception handlers
@@ -345,7 +404,7 @@ async def value_fabric_exception_handler(request: Request, exc: ValueFabricExcep
     """Handle Value Fabric custom exceptions."""
     logger.error(
         f"Value Fabric exception occurred: {exc.error_code} at {request.method} {request.url.path} - {exc.message}",
-        exc_info=exc,
+        exc_info=_exception_trace(exc),
     )
     
     # Record error metrics
@@ -397,7 +456,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions."""
     logger.error(
         f"Unhandled {type(exc).__name__} at {request.method} {request.url.path}: {str(exc)}",
-        exc_info=True,
+        exc_info=_exception_trace(exc),
     )
     
     # Record error metrics
@@ -418,7 +477,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     }
     
     # In development, include more details
-    settings = get_settings()
+    settings = _get_settings_with_fallback()
     if settings.log_level.upper() == "DEBUG":
         error_response["debug_info"] = {
             "exception": str(exc),
@@ -522,7 +581,7 @@ async def get_metrics(request: Request):
 async def check_dependencies() -> List[DependencyStatus]:
     """Check health of all dependencies."""
     dependencies = []
-    settings = get_settings()
+    settings = _get_settings_with_fallback()
     
     # Check Neo4j
     try:
@@ -575,19 +634,57 @@ async def check_dependencies() -> List[DependencyStatus]:
 
 
 def get_system_metrics() -> ServiceMetrics:
-    """Collect system and application metrics."""
+    """Collect system and application metrics from Prometheus."""
     uptime = time.time() - _app_start_time
-    
+
     # System metrics
     memory_info = psutil.virtual_memory()
     memory_usage_mb = memory_info.used / (1024 * 1024)
     cpu_percent = psutil.cpu_percent()
+
+    # Use global _metrics variable directly, not get_metrics() endpoint
+    total_requests = 0
+    active_connections = 0
+    error_rate_percent = 0.0
+    metric_source = globals().get("_metrics")
     
-    # Application metrics (simplified)
-    active_connections = 0  # Would need connection tracking
-    total_requests = 0  # Would need request counter
-    error_rate_percent = 0.0  # Would need error tracking
-    
+    if metric_source is not None:
+        try:
+            active_connections = int(
+                metric_source._metrics.get("active_connections", {})
+                .get("total", {})
+                .get("_value", 0)
+            )
+        except (AttributeError, TypeError):
+            active_connections = 0
+
+        # Calculate total requests from counter
+        try:
+            requests_counter = metric_source._metrics.get("requests_total", {})
+            total_requests = sum(
+                v.get("_value", 0)
+                for method_dict in requests_counter.values()
+                for endpoint_dict in method_dict.values()
+                for status_dict in endpoint_dict.values()
+                for v in status_dict.values()
+            )
+        except (AttributeError, TypeError):
+            total_requests = 0
+
+        # Calculate error rate from error counter vs total requests
+        try:
+            errors_counter = metric_source._metrics.get("errors_total", {})
+            total_errors = sum(
+                v.get("_value", 0)
+                for error_dict in errors_counter.values()
+                for component_dict in error_dict.values()
+                for v in component_dict.values()
+            )
+            if total_requests > 0:
+                error_rate_percent = (total_errors / total_requests) * 100
+        except (AttributeError, TypeError):
+            error_rate_percent = 0.0
+
     return ServiceMetrics(
         uptime_seconds=uptime,
         memory_usage_mb=memory_usage_mb,
@@ -714,7 +811,6 @@ def get_system_metrics() -> ServiceMetrics:
         }
     }
 )
-@versioned_route(version="v1")
 async def health_check(
     request: Request,
     schema_initializer=Depends(get_schema_initializer),
@@ -753,15 +849,8 @@ async def health_check(
         "schema_status": schema_status
     }
     
-    # Apply versioning
-    version_compatibility = get_version_compatibility()
-    versioned_response = version_compatibility.create_versioned_response(
-        data=response_data,
-        version=getattr(request.state, 'api_version', 'v1'),
-        endpoint="/health"
-    )
-    
-    return versioned_response
+    # Response model expects health payload directly (version headers are applied by middleware).
+    return response_data
 
 
 @app.get(
@@ -881,8 +970,8 @@ async def detailed_health_check(
     
     # System information
     system_info = {
-        "platform": psutil.platform.platform(),
-        "python_version": psutil.platform.python_version(),
+        "platform": platform.platform(),
+        "python_version": platform.python_version(),
         "cpu_count": psutil.cpu_count(),
         "memory_total_gb": psutil.virtual_memory().total / (1024**3),
         "disk_usage_gb": psutil.disk_usage('/').used / (1024**3),
@@ -1516,6 +1605,518 @@ async def agent_workflow(
     except Exception as e:
         logger.error(f"Agent workflow failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# PROVENANCE & AUDIT ENDPOINTS
+# =============================================================================
+
+@app.get(
+    "/v1/provenance/{entity_id}",
+    response_model=ProvenanceTrailResponse,
+    tags=["Provenance"],
+    summary="Get Entity Provenance Trail",
+    description="Returns full audit trail and provenance chain for an entity",
+)
+async def get_provenance(
+    entity_id: str,
+    app_state: AppState = Depends(get_app_state),
+):
+    """Get full provenance trail for an entity."""
+    # Validate entity_id
+    if not entity_id or not entity_id.strip():
+        raise HTTPException(status_code=400, detail="entity_id is required")
+    
+    # Sanitize entity_id to prevent injection
+    entity_id = entity_id.strip()
+    if len(entity_id) > 255:
+        raise HTTPException(status_code=400, detail="entity_id too long (max 255 chars)")
+    
+    try:
+        # Query Neo4j for entity and its provenance
+        neo4j = app_state.neo4j_manager
+        if not neo4j:
+            raise HTTPException(status_code=503, detail="Neo4j not available")
+
+        # Get entity details with parameterized query (safe from injection)
+        entity_query = """
+        MATCH (e:Entity {id: $entity_id})
+        RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
+               e.created_at as created_at, e.source as source,
+               e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
+        LIMIT 1
+        """
+        entity_result = await neo4j.execute_query(entity_query, {"entity_id": entity_id})
+
+        if not entity_result:
+            raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
+
+        record = entity_result[0]
+
+        # Build provenance steps from related audit events (OPTIONAL MATCH handles missing schema)
+        steps_query = """
+        MATCH (e:Entity {id: $entity_id})
+        OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
+        WITH a
+        WHERE a IS NOT NULL
+        RETURN a.step as step, a.label as label, a.detail as detail,
+               a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
+        ORDER BY a.step
+        """
+        steps_result = await neo4j.execute_query(steps_query, {"entity_id": entity_id})
+
+        steps = [
+            ProvenanceStep(
+                step=s.get("step", i + 1),
+                label=s.get("label", f"Step {i + 1}"),
+                detail=s.get("detail", ""),
+                timestamp=s.get("timestamp", datetime.utcnow()),
+                agent=s.get("agent"),
+                entity_id=s.get("step_entity_id"),
+            )
+            for i, s in enumerate(steps_result)
+        ]
+
+        # If no steps found, provide default extraction steps
+        if not steps:
+            steps = [
+                ProvenanceStep(
+                    step=1,
+                    label="Entity Created",
+                    detail=f"Entity {entity_id} created from source",
+                    timestamp=record.get("created_at", datetime.utcnow()),
+                    agent="ExtractionEngine-v2.1",
+                )
+            ]
+
+        return ProvenanceTrailResponse(
+            entity_id=record.get("entity_id", entity_id),
+            entity_type=record.get("entity_type", "Unknown"),
+            entity_name=record.get("entity_name", "Unknown"),
+            created_at=record.get("created_at", datetime.utcnow()),
+            source=record.get("source", "unknown"),
+            extraction_job_id=record.get("extraction_job_id"),
+            steps=steps,
+            confidence_score=record.get("confidence_score"),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Provenance query failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get(
+    "/v1/audit/logs",
+    response_model=AuditLogResponse,
+    tags=["Audit"],
+    summary="List Audit Logs",
+    description="Query system audit events from Neo4j provenance or API access logs",
+)
+async def list_audit_logs(
+    source: Literal["all", "provenance", "access"] = Query("all", description="Source: 'provenance', 'access', or 'all'"),
+    from_date: Optional[datetime] = Query(None, description="Start date filter"),
+    to_date: Optional[datetime] = Query(None, description="End date filter"),
+    entity_type: Optional[str] = Query(None, description="Filter by entity type"),
+    event_type: Optional[str] = Query(None, description="Filter by event type"),
+    agent: Optional[str] = Query(None, description="Filter by agent"),
+    page: int = Query(1, ge=1, description="Page number"),
+    per_page: int = Query(50, ge=1, le=100, description="Entries per page"),
+    app_state: AppState = Depends(get_app_state),
+):
+    """List audit log entries with filtering."""
+    try:
+        entries: List[AuditLogEntry] = []
+
+        # Query Neo4j provenance if source is 'provenance' or 'all'
+        if source in ("provenance", "all"):
+            neo4j = app_state.neo4j_manager
+            if neo4j:
+                try:
+                    # Use OPTIONAL MATCH to handle case where AuditEvent nodes don't exist yet
+                    query = """
+                    OPTIONAL MATCH (a:AuditEvent)
+                    WHERE ($from_date IS NULL OR a.timestamp >= $from_date)
+                      AND ($to_date IS NULL OR a.timestamp <= $to_date)
+                      AND ($entity_type IS NULL OR a.entity_type = $entity_type)
+                      AND ($event_type IS NULL OR a.event_type = $event_type)
+                      AND ($agent IS NULL OR a.agent = $agent)
+                    WITH a
+                    WHERE a IS NOT NULL
+                    RETURN a.id as id, a.timestamp as timestamp, a.event_type as event_type,
+                           a.entity_id as entity_id, a.entity_type as entity_type,
+                           a.action as action, a.agent as agent, a.details as details
+                    ORDER BY a.timestamp DESC
+                    SKIP $skip LIMIT $limit
+                    """
+                    params = {
+                        "from_date": from_date.isoformat() if from_date else None,
+                        "to_date": to_date.isoformat() if to_date else None,
+                        "entity_type": entity_type,
+                        "event_type": event_type,
+                        "agent": agent,
+                        "skip": (page - 1) * per_page,
+                        "limit": per_page,
+                    }
+
+                    result = await neo4j.execute_query(query, params)
+                    for r in result:
+                        if r.get("id"):  # Only add valid records
+                            entries.append(
+                                AuditLogEntry(
+                                    id=r.get("id", str(uuid.uuid4())),
+                                    timestamp=r.get("timestamp", datetime.utcnow()),
+                                    source="provenance",
+                                    event_type=r.get("event_type", "unknown"),
+                                    entity_id=r.get("entity_id"),
+                                    entity_type=r.get("entity_type"),
+                                    action=r.get("action", "unknown"),
+                                    agent=r.get("agent", "system"),
+                                    details=r.get("details") or {},
+                                )
+                            )
+                except Exception as neo4j_error:
+                    logger.warning(f"Neo4j audit query failed (schema may not exist yet): {neo4j_error}")
+                    # Continue with empty entries - don't fail the whole request
+
+        # TODO: Query API access logs from separate table when implemented
+        # if source in ("access", "all"):
+        #     access_entries = await query_access_logs(...)
+        #     entries.extend(access_entries)
+
+        # Sort by timestamp descending (already sorted from Neo4j but ensure consistency)
+        entries.sort(key=lambda x: x.timestamp, reverse=True)
+
+        return AuditLogResponse(
+            entries=entries,
+            total=len(entries),
+            page=page,
+            per_page=per_page,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Audit log query failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to query audit logs")
+
+
+@app.post(
+    "/v1/documents/export",
+    response_model=DocumentExportResponse,
+    tags=["Documents"],
+    summary="Export Document",
+    description="Generate PDF from business case via L4 workflow",
+)
+async def export_document(
+    request: DocumentExportRequest,
+    app_state: AppState = Depends(get_app_state),
+):
+    """Export business case to PDF via L4 workflow."""
+    try:
+        # Trigger L4 workflow for document generation
+        export_id = f"exp-{uuid.uuid4().hex[:8]}"
+
+        # TODO: Call L4 workflow endpoint when available
+        # For now, return pending status
+        return DocumentExportResponse(
+            export_id=export_id,
+            status="pending",
+            download_url=None,
+            format=request.format,
+            expires_at=datetime.utcnow(),  # Will be set when completed
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Document export failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =============================================================================
+# GRAPH VISUALIZATION ENDPOINTS
+# =============================================================================
+
+@app.get(
+    "/graph",
+    response_model=GraphResponse,
+    tags=["Graph"],
+    summary="Get Full Graph",
+    description="Returns the complete knowledge graph with nodes, edges, and statistics for visualization.",
+    responses={
+        200: {
+            "description": "Graph data retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "nodes": [
+                            {"id": "cap-1", "label": "CRM Integration", "type": "Capability", "confidence": 0.95},
+                            {"id": "uc-1", "label": "Pipeline Forecast", "type": "UseCase", "confidence": 0.88}
+                        ],
+                        "edges": [
+                            {"source": "cap-1", "target": "uc-1", "type": "ENABLES", "weight": 1.0}
+                        ],
+                        "stats": {
+                            "total_nodes": 8532,
+                            "total_edges": 24156,
+                            "node_types": {"Capability": 2847, "UseCase": 1923},
+                            "communities": 47,
+                            "density": 0.03
+                        }
+                    }
+                }
+            }
+        },
+        503: {"description": "Database unavailable"}
+    }
+)
+async def get_full_graph(
+    limit: int = 1000,
+    app_state: AppState = Depends(get_app_state),
+) -> GraphResponse:
+    """Get the full knowledge graph for visualization.
+
+    Returns nodes, edges, and statistics. Results are limited for performance.
+    """
+    try:
+        neo4j = app_state.neo4j_manager
+        if not neo4j:
+            raise HTTPException(status_code=503, detail="Neo4j not available")
+
+        # Query for nodes with limit
+        nodes_query = """
+        MATCH (n)
+        WHERE n.id IS NOT NULL
+        RETURN n.id as id, n.name as label, n.type as type,
+               n.confidence as confidence, n.x as x, n.y as y
+        LIMIT $limit
+        """
+        nodes_result = await neo4j.execute_query(nodes_query, {"limit": limit})
+
+        nodes = []
+        node_ids = set()
+        node_types: Dict[str, int] = {}
+
+        for r in nodes_result:
+            node_type = r.get("type", "Unknown")
+            node_types[node_type] = node_types.get(node_type, 0) + 1
+
+            node = GraphNode(
+                id=r.get("id"),
+                label=r.get("label") or r.get("id"),
+                type=node_type,
+                confidence=r.get("confidence") or 0.8,
+                x=r.get("x"),
+                y=r.get("y"),
+                properties={"name": r.get("label")}
+            )
+            nodes.append(node)
+            node_ids.add(r.get("id"))
+
+        # Query for edges between returned nodes
+        edges_query = """
+        MATCH (a)-[r]->(b)
+        WHERE a.id IN $node_ids AND b.id IN $node_ids
+        RETURN a.id as source, b.id as target, type(r) as rel_type,
+               r.weight as weight
+        """
+        edges_result = await neo4j.execute_query(edges_query, {"node_ids": list(node_ids)})
+
+        edges = []
+        for r in edges_result:
+            edges.append(GraphEdge(
+                source=r.get("source"),
+                target=r.get("target"),
+                type=r.get("rel_type", "RELATED_TO"),
+                weight=r.get("weight") or 1.0
+            ))
+
+        # Calculate stats
+        total_nodes_query = "MATCH (n) RETURN count(n) as total"
+        total_edges_query = "MATCH ()-[r]->() RETURN count(r) as total"
+
+        total_nodes_result = await neo4j.execute_query(total_nodes_query)
+        total_edges_result = await neo4j.execute_query(total_edges_query)
+
+        total_nodes = total_nodes_result[0].get("total", 0) if total_nodes_result else 0
+        total_edges = total_edges_result[0].get("total", 0) if total_edges_result else 0
+
+        # Calculate density: 2*E / (N*(N-1)) for directed graph
+        density = 0.0
+        if total_nodes > 1:
+            density = (2 * total_edges) / (total_nodes * (total_nodes - 1))
+
+        stats = GraphStats(
+            total_nodes=total_nodes,
+            total_edges=total_edges,
+            node_types=node_types,
+            communities=0,  # Would require running community detection
+            density=round(density, 4)
+        )
+
+        return GraphResponse(nodes=nodes, edges=edges, stats=stats)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve graph: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve graph: {str(e)}")
+
+
+@app.get(
+    "/entities/{entity_id}/subgraph",
+    response_model=SubgraphResponse,
+    tags=["Graph"],
+    summary="Get Entity Subgraph",
+    description="Returns a subgraph centered on the specified entity with connected nodes up to the specified depth.",
+    responses={
+        200: {
+            "description": "Subgraph retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "root_entity_id": "cap-1",
+                        "nodes": [
+                            {"id": "cap-1", "label": "CRM Integration", "type": "Capability"},
+                            {"id": "uc-1", "label": "Pipeline Forecast", "type": "UseCase"}
+                        ],
+                        "edges": [
+                            {"source": "cap-1", "target": "uc-1", "type": "ENABLES"}
+                        ],
+                        "depth": 2,
+                        "stats": {
+                            "total_nodes": 15,
+                            "total_edges": 22,
+                            "node_types": {"Capability": 1, "UseCase": 3}
+                        }
+                    }
+                }
+            }
+        },
+        404: {"description": "Entity not found"},
+        503: {"description": "Database unavailable"}
+    }
+)
+async def get_entity_subgraph(
+    entity_id: str,
+    depth: int = 2,
+    app_state: AppState = Depends(get_app_state),
+) -> SubgraphResponse:
+    """Get subgraph centered on a specific entity.
+
+    - **entity_id**: ID of the central entity
+    - **depth**: How many hops to traverse (1-5, default 2)
+    """
+    try:
+        neo4j = app_state.neo4j_manager
+        if not neo4j:
+            raise HTTPException(status_code=503, detail="Neo4j not available")
+
+        # Clamp depth
+        depth = max(1, min(depth, 5))
+
+        # Query for root entity
+        root_query = """
+        MATCH (n {id: $entity_id})
+        RETURN n.id as id, n.name as label, n.type as type,
+               n.confidence as confidence
+        """
+        root_result = await neo4j.execute_query(root_query, {"entity_id": entity_id})
+
+        if not root_result:
+            raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
+
+        root_record = root_result[0]
+
+        # Query for connected nodes up to depth
+        subgraph_query = """
+        MATCH path = (root {id: $entity_id})-[*1..$depth]-(connected)
+        WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+        RETURN root, connected, relationships(path) as rels,
+               length(path) as path_length
+        """
+        subgraph_result = await neo4j.execute_query(
+            subgraph_query,
+            {"entity_id": entity_id, "depth": depth}
+        )
+
+        # Collect unique nodes and edges
+        nodes_map: Dict[str, GraphNode] = {}
+        edges_map: Dict[str, GraphEdge] = {}
+        node_types: Dict[str, int] = {}
+
+        # Add root node
+        root_type = root_record.get("type", "Unknown")
+        node_types[root_type] = node_types.get(root_type, 0) + 1
+        nodes_map[entity_id] = GraphNode(
+            id=entity_id,
+            label=root_record.get("label") or entity_id,
+            type=root_type,
+            confidence=root_record.get("confidence") or 0.8,
+            properties={"is_root": True}
+        )
+
+        # Process subgraph results
+        for r in subgraph_result:
+            connected = r.get("connected")
+            rels = r.get("rels", [])
+
+            if connected and connected.get("id"):
+                conn_id = connected.get("id")
+                conn_type = connected.get("type", "Unknown")
+
+                if conn_id not in nodes_map:
+                    node_types[conn_type] = node_types.get(conn_type, 0) + 1
+                    nodes_map[conn_id] = GraphNode(
+                        id=conn_id,
+                        label=connected.get("name") or conn_id,
+                        type=conn_type,
+                        confidence=connected.get("confidence") or 0.8,
+                        properties={}
+                    )
+
+                # Add relationships
+                for rel in rels:
+                    start_id = rel.get("start_node", {}).get("id")
+                    end_id = rel.get("end_node", {}).get("id")
+                    rel_type = rel.get("type", "RELATED_TO")
+
+                    if start_id and end_id:
+                        edge_key = f"{start_id}-{end_id}-{rel_type}"
+                        if edge_key not in edges_map:
+                            edges_map[edge_key] = GraphEdge(
+                                source=start_id,
+                                target=end_id,
+                                type=rel_type,
+                                weight=rel.get("weight", 1.0)
+                            )
+
+        nodes = list(nodes_map.values())
+        edges = list(edges_map.values())
+
+        stats = GraphStats(
+            total_nodes=len(nodes),
+            total_edges=len(edges),
+            node_types=node_types,
+            communities=0,
+            density=0.0 if len(nodes) <= 1 else (2 * len(edges)) / (len(nodes) * (len(nodes) - 1))
+        )
+
+        return SubgraphResponse(
+            root_entity_id=entity_id,
+            nodes=nodes,
+            edges=edges,
+            depth=depth,
+            stats=stats
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve subgraph for {entity_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve subgraph: {str(e)}")
 
 
 if __name__ == "__main__":

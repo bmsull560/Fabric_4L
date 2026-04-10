@@ -17,15 +17,68 @@ const WORKFLOW_KEYS = {
   detail: (id: string) => [...WORKFLOW_KEYS.all, 'detail', id] as const,
 };
 
-function normalizeWorkflow(raw: any): Workflow {
+function normalizeWorkflowStatus(status: unknown): Workflow['status'] {
+  const value = typeof status === 'string' ? status.toLowerCase() : '';
+  if (value === 'pending' || value === 'running' || value === 'completed' || value === 'failed' || value === 'cancelled') {
+    return value;
+  }
+  return 'pending';
+}
+
+function normalizeWorkflowProgress(rawProgress: unknown): number {
+  const numeric = typeof rawProgress === 'number' ? rawProgress : Number(rawProgress);
+  if (Number.isNaN(numeric)) {
+    return 0;
+  }
+  return Math.min(100, Math.max(0, numeric));
+}
+
+function normalizeWorkflow(raw: any): Workflow | null {
+  const normalizedId = raw.workflow_id || raw.workflow_instance_id || raw.id;
+  const normalizedIdText = String(normalizedId || '').trim();
+  if (!normalizedIdText) {
+    return null;
+  }
+
+  const normalizedName = raw.name || raw.workflow_type || 'workflow';
+  const normalizedProgress = normalizeWorkflowProgress(raw.progress ?? raw.progress_percentage ?? 0);
+
   return {
-    id: raw.workflow_id || raw.workflow_instance_id || raw.id,
-    name: raw.name || raw.workflow_type || 'workflow',
-    status: (raw.status || 'pending') as Workflow['status'],
-    progress: raw.progress ?? raw.progress_percentage ?? 0,
+    id: normalizedIdText,
+    name: String(normalizedName),
+    status: normalizeWorkflowStatus(raw.status),
+    progress: normalizedProgress,
     createdAt: raw.createdAt || raw.created_at || raw.started_at,
     updatedAt: raw.updatedAt || raw.updated_at || raw.completed_at,
   };
+}
+
+function normalizeWorkflowList(data: unknown): Workflow[] {
+  const normalized: Workflow[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of extractWorkflowList(data)) {
+    const workflow = normalizeWorkflow(raw);
+    if (!workflow || seen.has(workflow.id)) {
+      continue;
+    }
+    seen.add(workflow.id);
+    normalized.push(workflow);
+  }
+
+  return normalized;
+}
+
+function extractWorkflowList(data: unknown): any[] {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (data && typeof data === 'object' && Array.isArray((data as { workflows?: unknown[] }).workflows)) {
+    return (data as { workflows: unknown[] }).workflows;
+  }
+
+  return [];
 }
 
 export function useActiveWorkflows() {
@@ -33,8 +86,7 @@ export function useActiveWorkflows() {
     queryKey: WORKFLOW_KEYS.active(),
     queryFn: async () => {
       const response = await apiClient.get('l4', '/workflows/active');
-      const workflows = Array.isArray(response.data) ? response.data : [];
-      return workflows.map(normalizeWorkflow) as Workflow[];
+      return normalizeWorkflowList(response.data);
     },
     staleTime: 30 * 1000,
     refetchInterval: 5000,
@@ -45,9 +97,9 @@ export function useWorkflowHistory() {
   return useQuery({
     queryKey: WORKFLOW_KEYS.history(),
     queryFn: async () => {
+      // TODO: Switch to paginated GET /workflows when Layer 4 exposes a list-all endpoint.
       const response = await apiClient.get('l4', '/workflows/active');
-      const workflows = Array.isArray(response.data) ? response.data : [];
-      return workflows.map(normalizeWorkflow) as Workflow[];
+      return normalizeWorkflowList(response.data);
     },
     staleTime: 60 * 1000,
   });
@@ -63,10 +115,15 @@ export function useCreateWorkflow() {
         workflow_type: params.type,
         config: params.config || {},
       });
-      return response.data.workflow_instance_id || response.data.workflow_id;
+      const workflowId = response.data?.workflow_instance_id || response.data?.workflow_id;
+      if (!workflowId) {
+        throw new Error('Workflow creation response missing workflow id');
+      }
+      return String(workflowId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.active() });
+      queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.history() });
     },
   });
 }
@@ -80,6 +137,7 @@ export function useCancelWorkflow() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.active() });
+      queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.history() });
     },
   });
 }
@@ -98,14 +156,37 @@ export function useWorkflowSSE(workflowId: string | null) {
         const l4Prefix = import.meta.env.VITE_L4_PREFIX || '/agents';
         const eventSource = new EventSource(`${baseUrl}${l4Prefix}/workflows/${workflowId}/events`);
         let resolved = false;
+        const timeoutId = setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            eventSource.close();
+            reject(new Error('SSE connection timeout after 30s'));
+          }
+        }, 30000);
+
+        const resolveOnce = (workflow: Workflow) => {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timeoutId);
+          eventSource.close();
+          resolve(workflow);
+        };
+
+        const rejectOnce = (error: Error) => {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(timeoutId);
+          eventSource.close();
+          reject(error);
+        };
 
         eventSource.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            if (data.payload?.workflow_id && data.payload?.status) {
-              if (!resolved) {
-                resolved = true;
-                resolve(data.payload as Workflow);
+            if (data.payload) {
+              const normalized = normalizeWorkflow(data.payload);
+              if (normalized) {
+                resolveOnce(normalized);
               }
             }
           } catch {
@@ -114,21 +195,12 @@ export function useWorkflowSSE(workflowId: string | null) {
         };
 
         eventSource.onerror = () => {
-          if (!resolved) {
-            reject(new Error('SSE connection failed'));
-          }
-          eventSource.close();
+          rejectOnce(new Error('SSE connection failed'));
         };
-
-        setTimeout(() => {
-          if (!resolved) {
-            eventSource.close();
-            reject(new Error('SSE connection timeout after 30s'));
-          }
-        }, 30000);
       });
     },
     enabled: !!workflowId,
     staleTime: Infinity,
+    retry: false,
   });
 }

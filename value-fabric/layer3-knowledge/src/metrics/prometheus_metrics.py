@@ -19,7 +19,7 @@ except ImportError:
     class Gauge: pass
     class Info: pass
 
-from logging_config import get_logger
+from ..logging_config import get_logger
 
 logger = get_logger(__name__)
 

@@ -511,7 +511,7 @@ class TestAPIEndpoints:
                 graph_payload = {
                     "query": "Predictive Maintenance",
                     "max_hops": 2,
-                    "max_results": 10,
+                    "top_k": 10,
                 }
 
                 alias_query_resp = await client.post("/v1/query/graph", json=graph_payload)

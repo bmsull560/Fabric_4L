@@ -436,8 +436,8 @@ class GraphRAGEngine:
         # Calculate confidence score based on entity confidence and vector scores
         confidences = []
         for entity in expanded_context["entities"]:
-            entity_conf = entity.get("confidence", 0.5)
-            vector_score = entity.get("vector_score", 0.5)
+            entity_conf = float(entity.get("confidence", 0.5))
+            vector_score = float(entity.get("vector_score", 0.5))
             # Combine scores
             combined = 0.6 * entity_conf + 0.4 * vector_score
             confidences.append(combined)

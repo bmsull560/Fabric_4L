@@ -146,12 +146,31 @@ class WorkflowResumeResponse(BaseModel):
     workflow_instance_id: str = Field(..., alias="workflow_instance_id")
     status: str = Field(..., description="resumed, completed, or failed")
     resumed_from_node: Optional[str] = Field(
-        None, 
+        None,
         description="Node from which execution resumed"
     )
     message: str
     estimated_completion_seconds: int = Field(default=60)
-    
+
+    class Config:
+        populate_by_name = True
+
+
+class WorkflowPauseRequest(BaseModel):
+    """Request to pause a running workflow."""
+    user_id: str = Field(..., description="User pausing the workflow")
+    reason: Optional[str] = Field(None, description="Reason for pausing")
+    tenant_id: Optional[str] = None
+
+
+class WorkflowPauseResponse(BaseModel):
+    """Response from workflow pause."""
+    workflow_instance_id: str = Field(..., alias="workflow_instance_id")
+    status: str = Field(..., description="paused")
+    paused_at: str = Field(..., description="ISO timestamp when paused")
+    current_node: Optional[str] = Field(None, description="Current node when paused")
+    message: str
+
     class Config:
         populate_by_name = True
 
@@ -382,6 +401,73 @@ async def resume_workflow(
     except Exception as e:
         logger.error(f"Unexpected error resuming workflow {workflow_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to resume workflow: {str(e)}")
+
+
+@router.post("/workflows/{workflow_id}/pause", response_model=WorkflowPauseResponse)
+async def pause_workflow(
+    workflow_id: str,
+    request: WorkflowPauseRequest,
+    executor: OrchestrationController = Depends(get_executor)
+) -> WorkflowPauseResponse:
+    """Pause a running workflow.
+
+    This endpoint pauses workflow execution at the current node.
+    The workflow can be resumed later using the resume endpoint.
+
+    Example:
+        POST /v1/workflows/wf-123/pause
+        {
+            "user_id": "user-001",
+            "reason": "Human review required"
+        }
+
+    Returns:
+        200 OK - Workflow paused
+        404 Not Found - Workflow not found
+        400 Bad Request - Workflow not in pausable state (completed/failed/cancelled)
+        503 Service Unavailable - Workflow executor not available
+    """
+    # Check current status
+    status = await executor.get_workflow_status(workflow_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+
+    current_status = status.get("status")
+    if current_status in ["completed", "failed", "cancelled"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Workflow {workflow_id} is {current_status} and cannot be paused"
+        )
+
+    if current_status == "paused":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Workflow {workflow_id} is already paused"
+        )
+
+    # Pause execution
+    try:
+        paused = await executor.pause_workflow(
+            workflow_id=workflow_id,
+            user_id=request.user_id,
+            reason=request.reason,
+        )
+
+        if not paused:
+            raise HTTPException(status_code=500, detail="Failed to pause workflow")
+
+        return WorkflowPauseResponse(
+            workflow_instance_id=workflow_id,
+            status="paused",
+            paused_at=datetime.utcnow().isoformat(),
+            current_node=status.get("current_node"),
+            message=f"Workflow paused at node: {status.get('current_node', 'unknown')}",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error pausing workflow {workflow_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to pause workflow: {str(e)}")
 
 
 @router.get("/workflows/types")

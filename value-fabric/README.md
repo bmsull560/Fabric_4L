@@ -162,6 +162,80 @@ curl -X POST http://localhost:8000/v1/extract \
 EOF
 ```
 
+## Smoke Gate (Cross-Layer Integration Test)
+
+Validate the complete L2→L3→L4 integration pipeline with a single command.
+
+### Quick Test
+
+```bash
+# From repo root
+python scripts/smoke/production_smoke.py
+```
+
+### With Docker Compose
+
+```bash
+# 1. Start all services
+cd value-fabric
+docker-compose up -d
+
+# 2. Run smoke test (from repo root)
+python scripts/smoke/production_smoke.py
+
+# 3. View detailed report
+cat artifacts/smoke-report-*.json
+```
+
+### Smoke Test Stages
+
+The smoke test validates 6 critical integration points:
+
+| Stage | Test | Success Criteria |
+|-------|------|------------------|
+| 1 | L2 Health | `GET /health` returns 200 with healthy status |
+| 2 | L3 Health + Neo4j | `GET /health` returns 200 with Neo4j connected |
+| 3 | L4 Health + Postgres | `GET /health` returns 200 with checkpoint DB ready |
+| 4 | L2→L3 Extract-Ingest | Round-trip extraction completes successfully |
+| 5 | L3 Graph Query | `POST /v1/query/graph` returns entities/relationships |
+| 6 | L3 Hybrid Search | `POST /v1/search/hybrid` returns search results |
+
+### Configuration
+
+Override default URLs via environment variables or CLI args:
+
+```bash
+# Environment variables
+export L2_URL=http://localhost:8002
+export L3_URL=http://localhost:8003
+export L4_URL=http://localhost:8004
+python scripts/smoke/production_smoke.py
+
+# CLI arguments
+python scripts/smoke/production_smoke.py \
+  --l2-url http://localhost:8002 \
+  --l3-url http://localhost:8003 \
+  --l4-url http://localhost:8004 \
+  --output-dir ./reports
+```
+
+### CI Integration
+
+The smoke gate runs automatically on:
+- Every PR to `main` branch
+- Daily at 2 AM UTC (scheduled)
+- Manual trigger via GitHub Actions
+
+See `.github/workflows/smoke-gate.yml` for workflow configuration.
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | All stages passed |
+| 1 | One or more stages failed |
+| 2 | Configuration error (invalid URLs) |
+
 ## Project Structure
 
 ```

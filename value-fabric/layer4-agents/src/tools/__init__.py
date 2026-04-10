@@ -36,6 +36,7 @@ from .generation_tools import (
     FormatTableTool,
     GenerateSectionTool,
 )
+from .document_export import DocumentExportTool, PDFGenerator
 from .integration_tools import (
     CreateTaskTool,
     ExportToCRMTool,
@@ -77,11 +78,12 @@ def create_default_registry(config: dict | None = None) -> ToolRegistry:
     registry.register(FetchInteractionHistoryTool(cfg))
     registry.register(ScoreLeadTool(cfg))
     
-    # Generation Tools (4)
+    # Generation Tools (5)
     registry.register(GenerateSectionTool(cfg))
     registry.register(CreateChartTool(cfg))
     registry.register(FormatTableTool(cfg))
     registry.register(AssembleDocumentTool(cfg))
+    registry.register(DocumentExportTool(cfg))
     
     # Integration Tools (4)
     registry.register(SendNotificationTool(cfg))
@@ -127,6 +129,8 @@ __all__ = [
     "CreateChartTool",
     "FormatTableTool",
     "AssembleDocumentTool",
+    "DocumentExportTool",
+    "PDFGenerator",
     # Integration
     "SendNotificationTool",
     "CreateTaskTool",

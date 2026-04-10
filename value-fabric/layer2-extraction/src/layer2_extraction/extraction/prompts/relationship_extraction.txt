@@ -25,4 +25,6 @@ Instructions:
 - ONLY create relationships if EXPLICIT evidence exists in the text
 - Include direct quote as evidence_text
 - Be conservative: low confidence if evidence is indirect
+- Only use source_id and target_id values from the provided Entities list
+- Use calibrated confidence values and avoid inflated scores
 - Return empty array if no clear relationships exist

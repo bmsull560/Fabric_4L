@@ -14,7 +14,7 @@ from .api_keys import (
     get_api_key_manager,
     get_authorization_checker,
 )
-from logging_config import get_logger
+from ..logging_config import get_logger
 
 logger = get_logger(__name__)
 

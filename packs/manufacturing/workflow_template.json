@@ -1,0 +1,476 @@
+{
+  "pack_id": "manufacturing-v1",
+  "template_id": "mfg-wf-001",
+  "template_name": "Manufacturing Operations Excellence Assessment",
+  "description": "Comprehensive business case workflow for manufacturing operations improvement initiatives. Evaluates OEE, quality, maintenance, and energy opportunities.",
+  "version": "1.0.0",
+  "industry": "Manufacturing",
+  "estimated_duration": "2-3 weeks",
+  "required_roles": ["analyst", "value_engineer"],
+  "phases": [
+    {
+      "phase_id": "discovery",
+      "name": "Discovery & Data Collection",
+      "order": 1,
+      "description": "Gather baseline metrics and operational data",
+      "estimated_duration_days": 3,
+      "tasks": [
+        {
+          "task_id": "disc-001",
+          "name": "Baseline OEE Assessment",
+          "description": "Collect current OEE metrics and identify improvement opportunities",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "analyst",
+          "estimated_hours": 4,
+          "dependencies": [],
+          "deliverables": [
+            "Current OEE breakdown (Availability, Performance, Quality)",
+            "Equipment performance data",
+            "Downtime logs and categorization"
+          ],
+          "input_variables": [
+            "Current_OEE",
+            "Availability",
+            "Performance",
+            "Quality_Rate"
+          ],
+          "automated_data_sources": ["MES", "CMMS"],
+          "manual_inputs_required": [
+            {
+              "variable": "Baseline_OEE",
+              "description": "Historical OEE before any improvement initiatives",
+              "default_value": 60
+            }
+          ],
+          "validation_rules": [
+            "OEE data must cover minimum 30 days",
+            "All three OEE components must be provided"
+          ]
+        },
+        {
+          "task_id": "disc-002",
+          "name": "Quality Metrics Analysis",
+          "description": "Analyze defect rates, scrap, and rework costs",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "analyst",
+          "estimated_hours": 3,
+          "dependencies": [],
+          "deliverables": [
+            "Defect rate trends",
+            "Scrap and rework cost analysis",
+            "First pass yield calculation"
+          ],
+          "input_variables": [
+            "Defect_Rate",
+            "First_Pass_Yield",
+            "Scrap_Cost_Per_Unit"
+          ],
+          "automated_data_sources": ["Quality", "ERP"]
+        },
+        {
+          "task_id": "disc-003",
+          "name": "Maintenance Cost Assessment",
+          "description": "Review maintenance spend and downtime patterns",
+          "type": "data_collection",
+          "priority": "medium",
+          "assigned_role": "analyst",
+          "estimated_hours": 3,
+          "dependencies": [],
+          "deliverables": [
+            "Emergency repair frequency and costs",
+            "Planned vs unplanned maintenance ratio",
+            "Critical equipment reliability metrics"
+          ],
+          "input_variables": [
+            "Annual_Emergency_Repairs",
+            "Average_Downtime_Hours_Per_Month"
+          ],
+          "automated_data_sources": ["CMMS"]
+        },
+        {
+          "task_id": "disc-004",
+          "name": "Energy Consumption Baseline",
+          "description": "Establish current energy usage patterns and costs",
+          "type": "data_collection",
+          "priority": "medium",
+          "assigned_role": "analyst",
+          "estimated_hours": 2,
+          "dependencies": [],
+          "deliverables": [
+            "Annual kWh consumption by production line",
+            "Peak demand charges",
+            "Energy cost breakdown"
+          ],
+          "input_variables": [
+            "Current_Annual_kWh",
+            "Baseline_Annual_kWh"
+          ],
+          "automated_data_sources": ["Energy_Management"]
+        }
+      ]
+    },
+    {
+      "phase_id": "analysis",
+      "name": "Value Analysis & Opportunity Sizing",
+      "order": 2,
+      "description": "Calculate improvement potential and ROI for each opportunity area",
+      "estimated_duration_days": 5,
+      "tasks": [
+        {
+          "task_id": "anal-001",
+          "name": "OEE Improvement Value Calculation",
+          "description": "Calculate ROI from OEE improvement initiatives",
+          "type": "value_calculation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 4,
+          "dependencies": ["disc-001"],
+          "formulas_used": ["mfg-f-001"],
+          "deliverables": [
+            "OEE improvement ROI projection",
+            "Sensitivity analysis by improvement lever"
+          ],
+          "input_variables": [
+            "Current_OEE",
+            "Target_OEE",
+            "Annual_Production_Value",
+            "Implementation_Cost"
+          ],
+          "automated_calculations": ["mfg-f-001"]
+        },
+        {
+          "task_id": "anal-002",
+          "name": "Predictive Maintenance ROI",
+          "description": "Evaluate value of predictive maintenance program",
+          "type": "value_calculation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 4,
+          "dependencies": ["disc-003"],
+          "formulas_used": ["mfg-f-005"],
+          "deliverables": [
+            "PdM program ROI analysis",
+            "Break-even timeline",
+            "Risk-adjusted value scenarios"
+          ]
+        },
+        {
+          "task_id": "anal-003",
+          "name": "Quality Improvement Value",
+          "description": "Quantify value of defect reduction and yield improvement",
+          "type": "value_calculation",
+          "priority": "medium",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 3,
+          "dependencies": ["disc-002"],
+          "formulas_used": ["mfg-f-003", "mfg-f-007"],
+          "deliverables": [
+            "Defect cost quantification",
+            "FPY improvement value"
+          ]
+        },
+        {
+          "task_id": "anal-004",
+          "name": "Energy Savings Assessment",
+          "description": "Calculate potential energy cost savings",
+          "type": "value_calculation",
+          "priority": "low",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 2,
+          "dependencies": ["disc-004"],
+          "formulas_used": ["mfg-f-004"],
+          "deliverables": [
+            "Energy savings projection",
+            "Sustainability impact metrics"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "validation",
+      "name": "Validation & Benchmarking",
+      "order": 3,
+      "description": "Validate assumptions against industry benchmarks and expert review",
+      "estimated_duration_days": 3,
+      "tasks": [
+        {
+          "task_id": "val-001",
+          "name": "Industry Benchmark Comparison",
+          "description": "Compare metrics and targets against industry benchmarks",
+          "type": "validation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 3,
+          "dependencies": ["anal-001", "anal-002", "anal-003"],
+          "deliverables": [
+            "Benchmark comparison report",
+            "Target validation rationale"
+          ],
+          "benchmarks_referenced": [
+            "OEE - World Class: 85%, Average: 60%",
+            "FPY - World Class: 99%, Average: 95%",
+            "Downtime - Best in Class: 10 hrs/month"
+          ]
+        },
+        {
+          "task_id": "val-002",
+          "name": "Technical Feasibility Review",
+          "description": "Validate technical assumptions with subject matter experts",
+          "type": "validation",
+          "priority": "high",
+          "assigned_role": "analyst",
+          "estimated_hours": 4,
+          "dependencies": ["anal-001", "anal-002"],
+          "deliverables": [
+            "Technical feasibility assessment",
+            "Implementation risk identification"
+          ],
+          "required_reviews": ["Plant Manager", "Maintenance Manager", "Quality Engineer"]
+        },
+        {
+          "task_id": "val-003",
+          "name": "Financial Model Validation",
+          "description": "Review financial assumptions and sensitivity analysis",
+          "type": "validation",
+          "priority": "medium",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 2,
+          "dependencies": ["anal-001", "anal-002", "anal-003", "anal-004"],
+          "deliverables": [
+            "Financial model sensitivity analysis",
+            "Risk-adjusted value ranges"
+          ],
+          "sensitivity_scenarios": [
+            "Conservative (75% of base case)",
+            "Base case",
+            "Optimistic (125% of base case)"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "recommendation",
+      "name": "Recommendations & Business Case",
+      "order": 4,
+      "description": "Develop final recommendations and comprehensive business case",
+      "estimated_duration_days": 4,
+      "tasks": [
+        {
+          "task_id": "rec-001",
+          "name": "Prioritized Initiative Roadmap",
+          "description": "Rank improvement initiatives by value and feasibility",
+          "type": "recommendation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 4,
+          "dependencies": ["val-001", "val-002", "val-003"],
+          "deliverables": [
+            "Prioritized initiative list",
+            "Implementation sequencing recommendations"
+          ],
+          "prioritization_criteria": [
+            "ROI / NPV",
+            "Implementation complexity",
+            "Risk level",
+            "Strategic alignment"
+          ]
+        },
+        {
+          "task_id": "rec-002",
+          "name": "Investment Requirements Summary",
+          "description": "Consolidate all investment requirements by initiative",
+          "type": "recommendation",
+          "priority": "high",
+          "assigned_role": "analyst",
+          "estimated_hours": 3,
+          "dependencies": ["rec-001"],
+          "deliverables": [
+            "Total investment summary",
+            "Phased investment schedule",
+            "Resource requirements"
+          ]
+        },
+        {
+          "task_id": "rec-003",
+          "name": "Business Case Documentation",
+          "description": "Create comprehensive business case document",
+          "type": "documentation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 6,
+          "dependencies": ["rec-001", "rec-002"],
+          "deliverables": [
+            "Executive summary",
+            "Detailed value calculations",
+            "Risk assessment",
+            "Implementation plan"
+          ],
+          "document_sections": [
+            "Executive Summary",
+            "Current State Assessment",
+            "Opportunity Analysis",
+            "Proposed Solutions",
+            "Value Quantification",
+            "Implementation Approach",
+            "Risk and Mitigation",
+            "Financial Summary",
+            "Next Steps"
+          ]
+        },
+        {
+          "task_id": "rec-004",
+          "name": "Stakeholder Presentation",
+          "description": "Prepare executive presentation materials",
+          "type": "documentation",
+          "priority": "medium",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 4,
+          "dependencies": ["rec-003"],
+          "deliverables": [
+            "Executive presentation deck",
+            "Value summary one-pager",
+            "FAQ document"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "approval",
+      "name": "Review & Approval",
+      "order": 5,
+      "description": "Formal review process and approval workflow",
+      "estimated_duration_days": 2,
+      "tasks": [
+        {
+          "task_id": "app-001",
+          "name": "Internal Review",
+          "description": "Internal team review and quality check",
+          "type": "review",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 2,
+          "dependencies": ["rec-003"],
+          "deliverables": ["Review sign-off"]
+        },
+        {
+          "task_id": "app-002",
+          "name": "Stakeholder Review",
+          "description": "Present to key stakeholders for feedback",
+          "type": "review",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 2,
+          "dependencies": ["app-001"],
+          "deliverables": [
+            "Stakeholder feedback incorporated",
+            "Review meeting minutes"
+          ],
+          "required_attendees": ["Plant Manager", "Operations Director", "Finance"]
+        },
+        {
+          "task_id": "app-003",
+          "name": "Final Approval",
+          "description": "Obtain formal approval for business case",
+          "type": "approval",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 1,
+          "dependencies": ["app-002"],
+          "approvers": ["Operations Director", "Finance Director"],
+          "deliverables": ["Signed approval documentation"]
+        }
+      ]
+    }
+  ],
+  "variables_used": [
+    "Current_OEE",
+    "Baseline_OEE",
+    "Annual_Production_Value",
+    "Margin_Percentage",
+    "Annual_Implementation_Cost",
+    "Average_Downtime_Hours_Per_Month",
+    "Hourly_Production_Value",
+    "Annual_Emergency_Repairs",
+    "Avg_Emergency_Repair_Cost",
+    "Defect_Rate",
+    "Scrap_Cost_Per_Unit",
+    "Rework_Cost_Per_Unit",
+    "Rework_Rate",
+    "Annual_Warranty_Costs",
+    "Baseline_Annual_kWh",
+    "Current_Annual_kWh",
+    "Average_kWh_Rate",
+    "Peak_Demand_Savings",
+    "Avoided_Downtime_Value",
+    "Maintenance_Cost_Savings",
+    "PdM_Program_Cost",
+    "Additional_Units_Per_Year",
+    "Unit_Margin",
+    "Incremental_Operating_Cost",
+    "Target_FPY",
+    "Current_FPY",
+    "Inspection_Cost_Savings"
+  ],
+  "formulas_used": [
+    "mfg-f-001",
+    "mfg-f-002",
+    "mfg-f-003",
+    "mfg-f-004",
+    "mfg-f-005",
+    "mfg-f-006",
+    "mfg-f-007"
+  ],
+  "output_metrics": [
+    {
+      "metric": "Total_NPV",
+      "description": "Combined Net Present Value of all initiatives",
+      "aggregation": "sum"
+    },
+    {
+      "metric": "Total_ROI",
+      "description": "Blended ROI across initiative portfolio",
+      "aggregation": "weighted_average"
+    },
+    {
+      "metric": "Implementation_Timeline",
+      "description": "Phased implementation schedule",
+      "aggregation": "concatenate"
+    },
+    {
+      "metric": "Risk_Score",
+      "description": "Overall risk assessment score",
+      "aggregation": "weighted_average"
+    }
+  ],
+  "approval_workflow": {
+    "stages": [
+      {
+        "stage": "analyst_review",
+        "role": "analyst",
+        "action": "submit_for_review"
+      },
+      {
+        "stage": "value_engineer_approval",
+        "role": "value_engineer",
+        "action": "technical_approval"
+      },
+      {
+        "stage": "stakeholder_review",
+        "role": "stakeholder",
+        "action": "feedback"
+      },
+      {
+        "stage": "final_approval",
+        "role": "director",
+        "action": "approve"
+      }
+    ],
+    "escalation_rules": [
+      "Auto-escalate if value exceeds $1M NPV",
+      "Require finance review if ROI < 100%",
+      "Mandatory ops review for downtime-related initiatives"
+    ]
+  }
+}

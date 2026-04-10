@@ -1,0 +1,47 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'value-fabric'
+    replica: '{{.ExternalURL}}'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+
+rule_files:
+  - 'alerting/rules.yml'
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'layer1-ingestion'
+    static_configs:
+      - targets: ['layer1:8000']
+    metrics_path: '/api/v1/ingestion/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  - job_name: 'layer2-extraction'
+    static_configs:
+      - targets: ['layer2:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  - job_name: 'layer3-knowledge'
+    static_configs:
+      - targets: ['layer3:8001']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  - job_name: 'layer4-agents'
+    static_configs:
+      - targets: ['layer4:8002']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s

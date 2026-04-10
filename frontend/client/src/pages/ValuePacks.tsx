@@ -4,7 +4,7 @@
  * Spec: Value Packs as first-class product objects — reusable domain-specific
  * packages combining ontology, value drivers, formulas, benchmarks, and workflows.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
 import {
   Sparkles, Package, GitBranch, FlaskConical, BarChart3, Bot,
@@ -13,58 +13,51 @@ import {
 
 interface ValuePack {
   id: string;
+  pack_id: string;
   name: string;
   industry: string;
   description: string;
-  drivers: number;
-  formulas: number;
-  benchmarks: number;
-  workflows: number;
-  status: "active" | "draft" | "archived";
+  driver_count: number;
+  formula_count: number;
+  benchmark_count: number;
+  workflow_count: number;
+  status: "active" | "draft" | "archived" | "published";
   scope: "global" | "tenant";
   lastUpdated: string;
+  updated_at?: string;
 }
 
-const PACKS: ValuePack[] = [
+// API base URL - adjust for your environment
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001";
+
+// Fallback mock data when API is unavailable
+const MOCK_PACKS: ValuePack[] = [
   {
     id: "vp-001",
+    pack_id: "vp-001",
     name: "Enterprise Security ROI",
     industry: "SaaS / B2B",
     description: "Quantify the financial impact of security investments — RBAC, SSO, compliance automation, and audit logging.",
-    drivers: 8, formulas: 5, benchmarks: 12, workflows: 3,
+    driver_count: 8, formula_count: 5, benchmark_count: 12, workflow_count: 3,
     status: "active", scope: "global", lastUpdated: "2 days ago",
   },
   {
     id: "vp-002",
+    pack_id: "vp-002",
     name: "Cloud Cost Optimization",
     industry: "Infrastructure / DevOps",
     description: "Model savings from automated provisioning, rightsizing, and multi-cloud governance.",
-    drivers: 6, formulas: 4, benchmarks: 9, workflows: 2,
+    driver_count: 6, formula_count: 4, benchmark_count: 9, workflow_count: 2,
     status: "active", scope: "global", lastUpdated: "1 week ago",
   },
   {
     id: "vp-003",
+    pack_id: "vp-003",
     name: "Customer Success Efficiency",
     industry: "SaaS / B2B",
     description: "Measure churn reduction, NRR improvement, and support deflection through intelligent automation.",
-    drivers: 7, formulas: 6, benchmarks: 8, workflows: 4,
+    driver_count: 7, formula_count: 6, benchmark_count: 8, workflow_count: 4,
     status: "active", scope: "tenant", lastUpdated: "3 days ago",
-  },
-  {
-    id: "vp-004",
-    name: "Financial Services Compliance",
-    industry: "Financial Services",
-    description: "Regulatory compliance cost avoidance, audit preparation, and risk-adjusted ROI for FinServ.",
-    drivers: 10, formulas: 7, benchmarks: 15, workflows: 5,
-    status: "draft", scope: "tenant", lastUpdated: "Just now",
-  },
-  {
-    id: "vp-005",
-    name: "Healthcare Data Governance",
-    industry: "Healthcare",
-    description: "HIPAA compliance, data access controls, and interoperability value modeling.",
-    drivers: 9, formulas: 5, benchmarks: 11, workflows: 3,
-    status: "draft", scope: "tenant", lastUpdated: "5 days ago",
   },
 ];
 
@@ -101,10 +94,10 @@ function PackCard({ pack }: { pack: ValuePack }) {
       {/* Composition stats */}
       <div className="px-5 py-3 grid grid-cols-4 gap-2">
         {[
-          { icon: <GitBranch size={11}/>, label: "Drivers",    value: pack.drivers },
-          { icon: <FlaskConical size={11}/>, label: "Formulas", value: pack.formulas },
-          { icon: <BarChart3 size={11}/>, label: "Benchmarks", value: pack.benchmarks },
-          { icon: <Bot size={11}/>, label: "Workflows",        value: pack.workflows },
+          { icon: <GitBranch size={11}/>, label: "Drivers",    value: pack.driver_count },
+          { icon: <FlaskConical size={11}/>, label: "Formulas", value: pack.formula_count },
+          { icon: <BarChart3 size={11}/>, label: "Benchmarks", value: pack.benchmark_count },
+          { icon: <Bot size={11}/>, label: "Workflows",        value: pack.workflow_count },
         ].map(s => (
           <div key={s.label} className="text-center">
             <div className="flex items-center justify-center gap-1 text-neutral-400 mb-0.5">
@@ -133,8 +126,59 @@ function PackCard({ pack }: { pack: ValuePack }) {
 export default function ValuePacks() {
   const [industry, setIndustry] = useState("All Industries");
   const [search, setSearch] = useState("");
+  const [packs, setPacks] = useState<ValuePack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filtered = PACKS.filter(p =>
+  // Fetch packs from API
+  useEffect(() => {
+    const fetchPacks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch(`${API_BASE}/v1/packs`);
+        
+        if (!response.ok) {
+          // If API fails, fall back to mock data
+          console.warn("API unavailable, using mock data");
+          setPacks(MOCK_PACKS);
+          return;
+        }
+        
+        const data = await response.json();
+        
+        // Transform API response to match our interface
+        const transformed: ValuePack[] = data.map((p: any) => ({
+          id: p.pack_id,
+          pack_id: p.pack_id,
+          name: p.name,
+          industry: p.industry,
+          description: p.description || "",
+          driver_count: p.driver_count ?? 0,
+          formula_count: p.formula_count ?? 0,
+          benchmark_count: p.benchmark_count ?? 0,
+          workflow_count: p.workflow_count ?? 0,
+          status: p.status === "published" ? "active" : (p.status || "draft"),
+          scope: p.scope || "global",
+          lastUpdated: p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "Unknown",
+          updated_at: p.updated_at,
+        }));
+        
+        setPacks(transformed);
+      } catch (err) {
+        console.error("Failed to fetch packs:", err);
+        setError("Failed to load value packs. Using fallback data.");
+        setPacks(MOCK_PACKS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchPacks();
+  }, []);
+
+  const filtered = packs.filter(p =>
     (industry === "All Industries" || p.industry === industry) &&
     (search === "" || p.name.toLowerCase().includes(search.toLowerCase()) || p.description.toLowerCase().includes(search.toLowerCase()))
   );
@@ -195,15 +239,31 @@ export default function ValuePacks() {
         </div>
       </div>
 
+      {/* Loading state */}
+      {loading && (
+        <div className="text-center py-16 text-neutral-400 text-[13px]">
+          <div className="animate-pulse">Loading value packs...</div>
+        </div>
+      )}
+      
+      {/* Error state */}
+      {error && !loading && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
+          <p className="text-[12px] text-amber-700">{error}</p>
+        </div>
+      )}
+      
       {/* Pack grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {filtered.map(pack => <PackCard key={pack.id} pack={pack}/>)}
-        {filtered.length === 0 && (
-          <div className="col-span-2 text-center py-16 text-neutral-400 text-[13px]">
-            No value packs match your filters.
-          </div>
-        )}
-      </div>
+      {!loading && (
+        <div className="grid grid-cols-2 gap-4">
+          {filtered.map(pack => <PackCard key={pack.id} pack={pack}/>)}
+          {filtered.length === 0 && (
+            <div className="col-span-2 text-center py-16 text-neutral-400 text-[13px]">
+              No value packs match your filters.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

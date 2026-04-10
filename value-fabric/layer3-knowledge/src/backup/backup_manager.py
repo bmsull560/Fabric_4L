@@ -15,7 +15,7 @@ import tempfile
 
 from pydantic import BaseModel, Field
 
-from logging_config import get_logger
+from ..logging_config import get_logger
 
 logger = get_logger(__name__)
 

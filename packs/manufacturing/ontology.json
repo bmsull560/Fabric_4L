@@ -1,0 +1,256 @@
+{
+  "pack_id": "manufacturing-v1",
+  "pack_name": "Manufacturing Value Pack",
+  "version": "1.0.0",
+  "description": "Complete value model for manufacturing industry - operational excellence, efficiency metrics, and ROI calculations",
+  "industry": "Manufacturing",
+  "created_at": "2024-04-10",
+  "ontology": {
+    "node_types": {
+      "Capability": {
+        "description": "Manufacturing capabilities and technologies",
+        "examples": [
+          "Predictive Maintenance",
+          "Quality Control Automation",
+          "Supply Chain Visibility",
+          "Energy Management System",
+          "Production Scheduling Optimization"
+        ]
+      },
+      "UseCase": {
+        "description": "Manufacturing use cases and operational scenarios",
+        "examples": [
+          "Unplanned Downtime Reduction",
+          "Defect Rate Improvement",
+          "Inventory Optimization",
+          "Energy Cost Reduction",
+          "Throughput Maximization"
+        ]
+      },
+      "Persona": {
+        "description": "Manufacturing stakeholders and decision makers",
+        "examples": [
+          "Plant Manager",
+          "Production Supervisor",
+          "Quality Engineer",
+          "Maintenance Manager",
+          "Operations Director"
+        ]
+      },
+      "ValueDriver": {
+        "description": "Manufacturing value drivers and KPIs",
+        "examples": [
+          "Overall Equipment Effectiveness (OEE)",
+          "Cost Per Unit",
+          "First Pass Yield",
+          "Mean Time Between Failures",
+          "Energy Efficiency"
+        ]
+      }
+    },
+    "relationships": {
+      "ENABLES": {
+        "from": "Capability",
+        "to": "UseCase",
+        "properties": {
+          "enablement_type": ["REQUIRED", "ENHANCES", "OPTIONAL"],
+          "contribution_weight": "Float (0.0-1.0)"
+        }
+      },
+      "BENEFITS": {
+        "from": "UseCase",
+        "to": "Persona",
+        "properties": {
+          "benefit_type": ["TIME_SAVINGS", "ERROR_REDUCTION", "VISIBILITY", "EFFICIENCY"],
+          "impact_level": ["TRANSFORMATIONAL", "SIGNIFICANT", "MODERATE", "MINOR"]
+        }
+      },
+      "DRIVES": {
+        "from": "Persona",
+        "to": "ValueDriver",
+        "properties": {
+          "driver_type": ["PRIMARY", "SECONDARY", "TERTIARY"],
+          "influence_weight": "Float (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "entities": [
+    {
+      "type": "Capability",
+      "id": "mfg-cap-001",
+      "name": "Predictive Maintenance",
+      "description": "AI-driven predictive maintenance to reduce unplanned equipment downtime",
+      "category": "AUTOMATION",
+      "technical_specs": {
+        "data_sources": ["IoT sensors", "SCADA systems", "Maintenance logs"],
+        "ml_models": ["Failure prediction", "Anomaly detection"],
+        "integration": ["ERP", "CMMS", "MES"]
+      },
+      "confidence_score": 0.92
+    },
+    {
+      "type": "Capability",
+      "id": "mfg-cap-002",
+      "name": "Quality Control Automation",
+      "description": "Automated visual inspection and quality testing systems",
+      "category": "AUTOMATION",
+      "technical_specs": {
+        "technologies": ["Computer vision", "AI inspection", "Automated testing"],
+        "deployment": ["Inline inspection", "End-of-line testing"]
+      },
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Capability",
+      "id": "mfg-cap-003",
+      "name": "Smart Energy Management",
+      "description": "Intelligent energy monitoring and optimization across production lines",
+      "category": "INFRASTRUCTURE",
+      "technical_specs": {
+        "monitoring": ["Real-time consumption tracking", "Peak demand management"],
+        "optimization": ["Load balancing", "Renewable integration"]
+      },
+      "confidence_score": 0.85
+    },
+    {
+      "type": "UseCase",
+      "id": "mfg-uc-001",
+      "name": "Unplanned Downtime Reduction",
+      "description": "Reduce equipment failures through predictive maintenance and condition monitoring",
+      "operational_context": "Production line operations",
+      "business_process": "Equipment maintenance and reliability",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.90
+    },
+    {
+      "type": "UseCase",
+      "id": "mfg-uc-002",
+      "name": "First Pass Yield Improvement",
+      "description": "Increase manufacturing quality to reduce rework and scrap rates",
+      "operational_context": "Quality control operations",
+      "business_process": "Quality assurance and testing",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.87
+    },
+    {
+      "type": "Persona",
+      "id": "mfg-per-001",
+      "name": "Plant Manager",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Operations",
+      "seniority_level": "DIRECTOR",
+      "pain_points": [
+        "Meeting production targets",
+        "Managing operational costs",
+        "Ensuring workforce safety"
+      ],
+      "success_metrics": ["OEE", "Production volume", "Cost per unit"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "mfg-per-002",
+      "name": "Quality Engineer",
+      "role_type": "TECHNICAL_EVALUATOR",
+      "department": "Quality",
+      "seniority_level": "MANAGER",
+      "pain_points": [
+        "Reducing defect rates",
+        "Compliance with standards",
+        "Quality data analysis"
+      ],
+      "success_metrics": ["First pass yield", "Defect rate", "Customer complaints"],
+      "decision_making_authority": "INFLUENCER"
+    },
+    {
+      "type": "ValueDriver",
+      "id": "mfg-vd-001",
+      "name": "Overall Equipment Effectiveness (OEE)",
+      "description": "Composite metric of availability, performance, and quality",
+      "category": "CAPITAL_EFFICIENCY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 60.0,
+      "typical_range_max": 85.0,
+      "industry_benchmarks": {
+        "world_class": 85.0,
+        "average": 60.0,
+        "below_average": 40.0
+      },
+      "kpis": ["Availability", "Performance", "Quality Rate"]
+    },
+    {
+      "type": "ValueDriver",
+      "id": "mfg-vd-002",
+      "name": "Manufacturing Cost Per Unit",
+      "description": "Total manufacturing cost divided by units produced",
+      "category": "COST_REDUCTION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Currency per unit",
+      "typical_range_min": 10.0,
+      "typical_range_max": 500.0
+    },
+    {
+      "type": "ValueDriver",
+      "id": "mfg-vd-003",
+      "name": "Energy Efficiency Improvement",
+      "description": "Reduction in energy consumption per unit produced",
+      "category": "COST_REDUCTION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "kWh per unit",
+      "typical_range_min": 0.5,
+      "typical_range_max": 50.0
+    }
+  ],
+  "relationships": [
+    {
+      "type": "ENABLES",
+      "from": "mfg-cap-001",
+      "to": "mfg-uc-001",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.8,
+      "evidence_quote": "Predictive maintenance directly enables downtime reduction"
+    },
+    {
+      "type": "ENABLES",
+      "from": "mfg-cap-002",
+      "to": "mfg-uc-002",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.9,
+      "evidence_quote": "Automated QC is essential for yield improvement"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "mfg-uc-001",
+      "to": "mfg-per-001",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Plant managers benefit from improved uptime metrics"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "mfg-uc-002",
+      "to": "mfg-per-002",
+      "benefit_type": "ERROR_REDUCTION",
+      "impact_level": "TRANSFORMATIONAL",
+      "evidence_quote": "Quality engineers see dramatic defect reduction"
+    },
+    {
+      "type": "DRIVES",
+      "from": "mfg-per-001",
+      "to": "mfg-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.9,
+      "evidence_quote": "Plant managers are directly accountable for OEE"
+    },
+    {
+      "type": "DRIVES",
+      "from": "mfg-per-002",
+      "to": "mfg-vd-002",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.8,
+      "evidence_quote": "Quality engineers drive cost per unit through defect reduction"
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
+
+export interface ProvenanceStep {
+  step: number;
+  label: string;
+  detail: string;
+  timestamp: string;
+  agent?: string;
+  entity_id?: string;
+}
+
+export interface ProvenanceTrail {
+  entity_id: string;
+  entity_type: string;
+  entity_name: string;
+  created_at: string;
+  source: string;
+  extraction_job_id?: string;
+  steps: ProvenanceStep[];
+  confidence_score?: number;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  source: 'provenance' | 'access_log';
+  event_type: string;
+  entity_id?: string;
+  entity_type?: string;
+  action: string;
+  agent: string;
+  details: Record<string, unknown>;
+}
+
+export interface AuditLogFilter {
+  source?: 'provenance' | 'access' | 'all';
+  from_date?: string;
+  to_date?: string;
+  entity_type?: string;
+  event_type?: string;
+  agent?: string;
+}
+
+export interface AuditLogResponse {
+  entries: AuditLogEntry[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+const PROVENANCE_KEYS = {
+  all: ['provenance'] as const,
+  trail: (entityId: string) => [...PROVENANCE_KEYS.all, 'trail', entityId] as const,
+  audit: (filters: AuditLogFilter) => [...PROVENANCE_KEYS.all, 'audit', filters] as const,
+};
+
+export function useProvenanceTrail(entityId: string | null) {
+  return useQuery({
+    queryKey: PROVENANCE_KEYS.trail(entityId || ''),
+    queryFn: async () => {
+      if (!entityId) throw new Error('No entity ID provided');
+      const response = await apiClient.get('l3', `/provenance/${encodeURIComponent(entityId)}`);
+      return response.data as ProvenanceTrail;
+    },
+    enabled: !!entityId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useAuditLogs(filters: AuditLogFilter = {}) {
+  return useQuery({
+    queryKey: PROVENANCE_KEYS.audit(filters),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters.source) params.set('source', filters.source);
+      if (filters.from_date) params.set('from_date', filters.from_date);
+      if (filters.to_date) params.set('to_date', filters.to_date);
+      if (filters.entity_type) params.set('entity_type', filters.entity_type);
+      if (filters.event_type) params.set('event_type', filters.event_type);
+      if (filters.agent) params.set('agent', filters.agent);
+
+      const response = await apiClient.get('l3', `/audit/logs?${params.toString()}`);
+      return response.data as AuditLogResponse;
+    },
+    staleTime: 30 * 1000, // 30 seconds
+  });
+}
+
+export function useExportProvenance() {
+  return useMutation({
+    mutationFn: async ({
+      entityId,
+      format = 'json',
+    }: {
+      entityId: string;
+      format?: 'json' | 'prov-o';
+    }) => {
+      const response = await apiClient.get(
+        'l3',
+        `/provenance/${encodeURIComponent(entityId)}?format=${format}`
+      );
+      return response.data;
+    },
+  });
+}

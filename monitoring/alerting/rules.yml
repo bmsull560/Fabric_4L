@@ -1,0 +1,124 @@
+groups:
+  - name: value-fabric-alerts
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(layer1_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer1_http_requests_total[5m])) > 0.05
+            or
+            sum(rate(layer2_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer2_http_requests_total[5m])) > 0.05
+            or
+            sum(rate(value_fabric_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(value_fabric_http_requests_total[5m])) > 0.05
+            or
+            sum(rate(layer4_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer4_http_requests_total[5m])) > 0.05
+          )
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected in Value Fabric"
+          description: "Error rate is above 5% for more than 5 minutes"
+
+      # Slow queries alert (p95 latency > 2s)
+      - alert: SlowQueries
+        expr: |
+          (
+            histogram_quantile(0.95, sum(rate(layer1_http_request_duration_seconds_bucket[10m])) by (le)) > 2
+            or
+            histogram_quantile(0.95, sum(rate(layer2_http_request_duration_seconds_bucket[10m])) by (le)) > 2
+            or
+            histogram_quantile(0.95, sum(rate(value_fabric_http_request_duration_seconds_bucket[10m])) by (le)) > 2
+            or
+            histogram_quantile(0.95, sum(rate(layer4_http_request_duration_seconds_bucket[10m])) by (le)) > 2
+          )
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow queries detected"
+          description: "p95 latency is above 2 seconds for more than 10 minutes"
+
+      # Dependency down alerts
+      - alert: Neo4jDown
+        expr: value_fabric_health_status{component="neo4j"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Neo4j is down"
+          description: "Neo4j database is unreachable"
+
+      - alert: PostgresDown
+        expr: layer4_health_status{component="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down"
+          description: "PostgreSQL database is unreachable"
+
+      - alert: RedisDown
+        expr: |
+          (
+            layer1_health_status{component="redis"} == 0
+            or
+            layer4_health_status{component="redis"} == 0
+          )
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache is unreachable"
+
+      # Workflow stalled alert
+      - alert: WorkflowStalled
+        expr: |
+          increase(layer4_workflow_executions_total{status="running"}[30m]) == 0
+          and
+          layer4_workflow_executions_total{status="running"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Workflow may be stalled"
+          description: "Running workflows show no progress for 30+ minutes"
+
+      # Memory usage alert
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            layer1_memory_usage_bytes / (1024 * 1024 * 1024) > 4
+            or
+            layer2_memory_usage_bytes / (1024 * 1024 * 1024) > 4
+            or
+            value_fabric_memory_usage_bytes / (1024 * 1024 * 1024) > 4
+            or
+            layer4_memory_usage_bytes / (1024 * 1024 * 1024) > 4
+          )
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage exceeds 4GB"
+
+      # CPU usage alert
+      - alert: HighCPUUsage
+        expr: |
+          (
+            layer1_cpu_usage_percent > 80
+            or
+            layer2_cpu_usage_percent > 80
+            or
+            value_fabric_cpu_usage_percent > 80
+            or
+            layer4_cpu_usage_percent > 80
+          )
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage exceeds 80% for more than 10 minutes"

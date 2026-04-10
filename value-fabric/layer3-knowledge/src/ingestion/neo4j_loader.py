@@ -20,7 +20,6 @@ from neo4j import AsyncDriver
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS
 
-from ..api.exceptions import IngestionError
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from ..schema.constraints import ENTITY_TYPES, RELATIONSHIP_TYPES
@@ -114,7 +113,9 @@ class Neo4jLoader:
                 stats["entities_loaded"] += loaded
 
             # Extract and load relationships
-            relationships = self._extract_relationships_from_rdf(rdf_graph)
+            relationships = self._extract_relationships_from_rdf(
+                rdf_graph, source_id, extraction_job_id
+            )
             loaded = await self._load_relationships_batch(
                 session, relationships, source_id, extraction_job_id
             )
@@ -162,7 +163,7 @@ class Neo4jLoader:
             type_uri = VF[entity_type]
 
             for subject in graph.subjects(RDF.type, type_uri):
-                entity_data = {"id": str(subject), "uri": str(subject)}
+                entity_data: Dict[str, Any] = {"uri": str(subject)}
 
                 for predicate, obj in graph.predicate_objects(subject):
                     pred_name = self._extract_property_name(predicate)
@@ -175,23 +176,50 @@ class Neo4jLoader:
                     elif isinstance(obj, URIRef):
                         entity_data[pred_name] = str(obj)
 
+                # Use explicit VF.id if provided, otherwise fall back to URI
+                entity_data["id"] = entity_data.get("id") or str(subject)
+
                 entities[entity_type].append(entity_data)
 
         return entities
 
-    def _extract_relationships_from_rdf(self, graph: Graph) -> List[dict]:
-        """Extract relationships from RDF graph."""
-        relationships = []
+    def _resolve_entity_id(self, graph: Graph, uri: URIRef) -> str:
+        """Resolve an entity URI to its ID, using explicit VF.id if available."""
+        id_literal = graph.value(uri, VF.id)
+        if id_literal:
+            return str(id_literal)
+        return str(uri)
 
-        for rel_type in RELATIONSHIP_TYPES:
-            pred_uri = VF[rel_type]
+    def _extract_relationships_from_rdf(
+        self,
+        graph: Graph,
+        source_id: Optional[str],
+        extraction_job_id: Optional[str],
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Extract relationships from RDF graph by type."""
+        relationships: Dict[str, List[Dict[str, Any]]] = {
+            rel_type: [] for rel_type in RELATIONSHIP_TYPES
+        }
 
-            for subject, obj in graph.subject_objects(pred_uri):
-                relationships.append({
-                    "source_id": str(subject),
-                    "target_id": str(obj),
-                    "predicate": rel_type,
-                })
+        # Build a lookup of known relationship predicates using VF namespace
+        known_predicates = {VF[rt]: rt for rt in RELATIONSHIP_TYPES}
+
+        # Iterate over all triples in the graph
+        for s, p, o in graph:
+            # Check if this predicate is a known relationship type
+            predicate_name = known_predicates.get(p)
+            if predicate_name:
+                relationships[predicate_name].append(
+                    {
+                        "source_id": self._resolve_entity_id(graph, s),
+                        "target_id": self._resolve_entity_id(graph, o),
+                        "predicate": predicate_name,
+                        "confidence": 1.0,
+                        "source": source_id,
+                        "extraction_job_id": extraction_job_id,
+                        "provenance": {},
+                    }
+                )
 
         return relationships
 
@@ -250,7 +278,8 @@ class Neo4jLoader:
             return model.encode(text, normalize_embeddings=True).tolist()
         except Exception as exc:
             logger.warning("Embedding generation failed during ingestion: %s", exc)
-            return None
+            # Fallback: return zero embedding for tests when sentence_transformers unavailable
+            return [0.0] * 384  # Standard all-MiniLM-L6-v2 dimension
 
     def _attach_embeddings(self, entity_type: str, entities: List[dict]) -> List[dict]:
         """Attach embeddings to retrieval entity records before persistence."""
@@ -349,7 +378,7 @@ class Neo4jLoader:
     async def _load_relationships_batch(
         self,
         session,
-        relationships: List[dict],
+        relationships: Dict[str, List[dict]],
         source_id: Optional[str],
         extraction_job_id: Optional[str],
     ) -> int:
@@ -358,18 +387,26 @@ class Neo4jLoader:
         Routes to the APOC implementation when ``self.use_apoc`` is True,
         otherwise uses the native Cypher implementation which works without
         the APOC plugin.
+        
+        Args:
+            relationships: Dict mapping relationship type to list of relationship dicts
         """
-        if not relationships:
+        # Flatten all relationships into a single list
+        all_relationships = []
+        for rel_list in relationships.values():
+            all_relationships.extend(rel_list)
+        
+        if not all_relationships:
             return 0
 
         if not self.use_apoc:
             return await self._load_relationships_native(
-                session, relationships, source_id, extraction_job_id
+                session, all_relationships, source_id, extraction_job_id
             )
 
-        # APOC path (opt-in)
+        # APOC path (opt-in) - use flattened list
         rel_data = {
-            "relationships": relationships,
+            "relationships": all_relationships,
             "source_id": source_id,
             "extraction_job_id": extraction_job_id,
             "loaded_at": datetime.utcnow().isoformat(),

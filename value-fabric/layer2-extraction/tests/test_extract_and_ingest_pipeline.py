@@ -495,6 +495,27 @@ async def test_cross_layer_extract_ingest_status_flow(
 
     monkeypatch.setattr(api_main, "Layer3KnowledgeClient", make_double)
 
+    # Mock run_extraction to complete synchronously (avoid background task race)
+    async def fake_run_extraction(
+        job_id: str,
+        source_url: str,
+        content: str,
+        config: dict,
+        mark_pipeline_complete: bool = True,
+    ) -> api_main.ExtractionArtifacts:
+        artifacts = build_artifacts(job_id, source_url)
+        # Set pipeline job state to completed for extraction
+        api_main._set_pipeline_job(
+            job_id,
+            extraction_status="completed",
+            entities_extracted=len(artifacts.result.capabilities) + len(artifacts.result.use_cases),
+            relationships_extracted=len(artifacts.relationships),
+            completed_at=None,  # Don't mark pipeline complete yet, let ingestion do it
+        )
+        return artifacts
+
+    monkeypatch.setattr(api_main, "run_extraction", fake_run_extraction)
+
     # Trigger extract-and-ingest
     payload = request_payload()
     kickoff = await async_client.post("/v1/extract-and-ingest", json=payload)

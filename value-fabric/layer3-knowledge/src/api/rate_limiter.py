@@ -10,7 +10,7 @@ from fastapi import Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from logging_config import get_logger
+from ..logging_config import get_logger
 
 logger = get_logger(__name__)
 

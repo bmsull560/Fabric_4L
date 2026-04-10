@@ -10,4 +10,6 @@ Role Types:
 
 Instructions:
 - Include pain points and success metrics if mentioned
+- Return only data that can be justified by explicit evidence in the text
+- Use calibrated confidence values and avoid inflated scores
 - Return empty array if no clear personas are mentioned

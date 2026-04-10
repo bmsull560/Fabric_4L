@@ -1,0 +1,342 @@
+"""Layer 6 Benchmark Service - FastAPI main application.
+
+Standalone service on port 8006 for comparative intelligence.
+"""
+
+import os
+from contextlib import asynccontextmanager
+from decimal import Decimal
+from typing import Dict, List, Optional
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+from ..models.benchmark_dataset import (
+    BenchmarkDataset,
+    BenchmarkMetric,
+    ComparisonRequest,
+    ComparisonResult,
+    RangeValidationRequest,
+    RangeValidationResult,
+    StatisticalProfile,
+    MANUFACTURING_BENCHMARK_SEED,
+)
+
+# In-memory storage (replace with Neo4j in production)
+_benchmark_store: Dict[str, BenchmarkDataset] = {}
+
+
+def _init_seed_data():
+    """Initialize with manufacturing benchmark dataset."""
+    seed = MANUFACTURING_BENCHMARK_SEED
+    dataset = BenchmarkDataset(
+        dataset_id=seed["dataset_id"],
+        name=seed["name"],
+        description=seed["description"],
+        industry=seed["industry"],
+        segment=seed["segment"],
+        geography=seed["geography"],
+        version=seed["version"],
+        data_source=seed["data_source"],
+        is_public=seed["is_public"],
+    )
+    
+    for metric_data in seed["metrics"].values():
+        profile = StatisticalProfile.from_dict(metric_data["profile"])
+        metric = BenchmarkMetric(
+            name=metric_data["name"],
+            unit=metric_data["unit"],
+            description=metric_data["description"],
+            profile=profile,
+            lower_bound=Decimal(metric_data.get("lower_bound", "0")) if "lower_bound" in metric_data else None,
+            upper_bound=Decimal(metric_data.get("upper_bound", "0")) if "upper_bound" in metric_data else None,
+            is_higher_better=metric_data.get("is_higher_better", True),
+        )
+        dataset.add_metric(metric)
+    
+    _benchmark_store[dataset.dataset_id] = dataset
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager."""
+    # Startup
+    _init_seed_data()
+    print(f"Layer 6 Benchmark Service started with {len(_benchmark_store)} datasets")
+    yield
+    # Shutdown
+    _benchmark_store.clear()
+
+
+app = FastAPI(
+    title="Value Fabric - Benchmark Service",
+    description="Comparative intelligence and peer benchmarking API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# Pydantic models for API
+class DatasetSummary(BaseModel):
+    """Summary of benchmark dataset."""
+    dataset_id: str
+    name: str
+    industry: str
+    segment: Optional[str]
+    metrics: List[str]
+    version: str
+
+
+class DatasetDetail(BaseModel):
+    """Detailed benchmark dataset."""
+    dataset_id: str
+    name: str
+    description: str
+    industry: str
+    segment: Optional[str]
+    geography: Optional[str]
+    metrics: Dict[str, dict]
+    version: str
+    data_source: Optional[str]
+
+
+class ComparisonRequestPayload(BaseModel):
+    """Payload for comparison request."""
+    dataset_id: str
+    metric: str
+    company_value: str = Field(..., description="Company value as string (Decimal)")
+    industry: str
+    segment: Optional[str] = None
+
+
+class ComparisonResponse(BaseModel):
+    """Response from comparison."""
+    percentile: int
+    peer_median: str
+    peer_range: tuple[str, str]
+    sample_size: int
+    confidence: str
+    assessment: str
+
+
+class ValidationRequestPayload(BaseModel):
+    """Payload for validation request."""
+    dataset_id: str
+    metric: str
+    value: str = Field(..., description="Value as string (Decimal)")
+    tolerance_percent: int = 10
+
+
+class ValidationResponse(BaseModel):
+    """Response from validation."""
+    is_valid: bool
+    expected_range: tuple[str, str]
+    actual_value: str
+    deviation_percent: Optional[float]
+    severity: str
+    message: str
+
+
+# API Routes
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "service": "layer6-benchmarks", "version": "1.0.0"}
+
+
+@app.get("/v1/benchmarks/datasets", response_model=List[DatasetSummary])
+async def list_datasets(
+    industry: Optional[str] = Query(None, description="Filter by industry"),
+    segment: Optional[str] = Query(None, description="Filter by segment"),
+):
+    """List available benchmark datasets."""
+    datasets = []
+    for dataset in _benchmark_store.values():
+        if industry and dataset.industry != industry:
+            continue
+        if segment and dataset.segment != segment:
+            continue
+        datasets.append(DatasetSummary(
+            dataset_id=dataset.dataset_id,
+            name=dataset.name,
+            industry=dataset.industry,
+            segment=dataset.segment,
+            metrics=list(dataset.metrics.keys()),
+            version=dataset.version,
+        ))
+    return datasets
+
+
+@app.get("/v1/benchmarks/datasets/{dataset_id}", response_model=DatasetDetail)
+async def get_dataset(dataset_id: str):
+    """Get benchmark dataset by ID."""
+    dataset = _benchmark_store.get(dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    return DatasetDetail(
+        dataset_id=dataset.dataset_id,
+        name=dataset.name,
+        description=dataset.description,
+        industry=dataset.industry,
+        segment=dataset.segment,
+        geography=dataset.geography,
+        metrics={
+            name: {
+                "name": m.name,
+                "unit": m.unit,
+                "description": m.description,
+                "profile": m.profile.to_dict(),
+            }
+            for name, m in dataset.metrics.items()
+        },
+        version=dataset.version,
+        data_source=dataset.data_source,
+    )
+
+
+@app.post("/v1/benchmarks/compare", response_model=ComparisonResponse)
+async def compare(payload: ComparisonRequestPayload):
+    """Execute peer comparison."""
+    dataset = _benchmark_store.get(payload.dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    metric = dataset.get_metric(payload.metric)
+    if not metric:
+        raise HTTPException(status_code=404, detail=f"Metric '{payload.metric}' not found")
+    
+    try:
+        company_value = Decimal(payload.company_value)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid company_value format")
+    
+    profile = metric.profile
+    
+    # Calculate percentile (simplified)
+    if company_value <= profile.p10:
+        percentile = 5
+    elif company_value <= profile.p25:
+        percentile = 17
+    elif company_value <= profile.p50:
+        percentile = 37
+    elif company_value <= profile.p75:
+        percentile = 62
+    elif company_value <= profile.p90:
+        percentile = 82
+    else:
+        percentile = 95
+    
+    # Assessment
+    if percentile >= 80:
+        assessment = "top performer"
+    elif percentile >= 60:
+        assessment = "above average"
+    elif percentile >= 40:
+        assessment = "average"
+    elif percentile >= 20:
+        assessment = "below average"
+    else:
+        assessment = "needs improvement"
+    
+    # Confidence based on sample size
+    if profile.sample_size >= 1000:
+        confidence = "high"
+    elif profile.sample_size >= 500:
+        confidence = "medium"
+    else:
+        confidence = "low"
+    
+    return ComparisonResponse(
+        percentile=percentile,
+        peer_median=str(profile.p50),
+        peer_range=(str(profile.p10), str(profile.p90)),
+        sample_size=profile.sample_size,
+        confidence=confidence,
+        assessment=assessment,
+    )
+
+
+@app.post("/v1/benchmarks/validate", response_model=ValidationResponse)
+async def validate(payload: ValidationRequestPayload):
+    """Validate value against benchmark range."""
+    dataset = _benchmark_store.get(payload.dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    metric = dataset.get_metric(payload.metric)
+    if not metric:
+        raise HTTPException(status_code=404, detail=f"Metric '{payload.metric}' not found")
+    
+    try:
+        value = Decimal(payload.value)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid value format")
+    
+    profile = metric.profile
+    
+    # Calculate expected range with tolerance
+    tolerance_factor = Decimal(payload.tolerance_percent) / Decimal(100)
+    range_min = profile.p10 * (Decimal(1) - tolerance_factor)
+    range_max = profile.p90 * (Decimal(1) + tolerance_factor)
+    
+    # Check if within range
+    is_valid = range_min <= value <= range_max
+    
+    # Calculate deviation
+    median = profile.p50
+    if value != median:
+        deviation_percent = float((value - median) / median * 100)
+    else:
+        deviation_percent = 0.0
+    
+    # Determine severity
+    if is_valid:
+        severity = "info"
+        message = f"Value {value} is within expected range ({range_min} - {range_max})"
+    else:
+        abs_deviation = abs(deviation_percent)
+        if abs_deviation > 50:
+            severity = "error"
+            message = f"Value {value} significantly deviates from benchmark median ({median})"
+        elif abs_deviation > 25:
+            severity = "warning"
+            message = f"Value {value} moderately deviates from benchmark median ({median})"
+        else:
+            severity = "info"
+            message = f"Value {value} slightly outside tolerance range"
+    
+    return ValidationResponse(
+        is_valid=is_valid,
+        expected_range=(str(range_min), str(range_max)),
+        actual_value=str(value),
+        deviation_percent=deviation_percent,
+        severity=severity,
+        message=message,
+    )
+
+
+@app.get("/v1/benchmarks/industries")
+async def list_industries():
+    """List available industries."""
+    industries = set()
+    for dataset in _benchmark_store.values():
+        industries.add(dataset.industry)
+    return {"industries": sorted(industries)}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", "8006"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -132,6 +132,10 @@ ENTITY_TYPES = [
     "DataSource",
     "ExtractionEvent",
     "ConfidenceScore",
+    # Phase 2 Extensions
+    "ValuePack",
+    "Variable",
+    "BenchmarkDataset",
 ]
 
 # Relationship types (aligned with value_fabric_ontology_schema.py spec)
@@ -174,6 +178,13 @@ RELATIONSHIP_TYPES = [
     "generatedBy",  # Any -> ExtractionEvent
     "validatedBy",  # Any -> Agent
     "supersedes",  # Entity -> Entity (versioning)
+    # Phase 2: Value Pack Relationships
+    "hasDriver",  # ValuePack -> ValueDriver
+    "hasFormula",  # ValuePack -> Formula
+    "hasBenchmark",  # ValuePack -> BenchmarkDataset
+    "belongsToPack",  # Variable/Formula -> ValuePack
+    "usedIn",  # Variable -> Formula
+    "dependsOn",  # Formula -> Formula
 ]
 
 # Current retrieval set for vector similarity search.
@@ -212,6 +223,10 @@ CONSTRAINTS: List[Constraint] = [
     Constraint("datasource_id", "DataSource", "id", "unique"),
     Constraint("extractionevent_id", "ExtractionEvent", "id", "unique"),
     Constraint("confidencescore_id", "ConfidenceScore", "id", "unique"),
+    # Phase 2: Value Pack and Variable constraints
+    Constraint("valuepack_id", "ValuePack", "id", "unique"),
+    Constraint("variable_id", "Variable", "id", "unique"),
+    Constraint("benchmarkdataset_id", "BenchmarkDataset", "id", "unique"),
     # NOTE: Property existence constraints require Neo4j Enterprise Edition.
     # For Community Edition compatibility, we skip these and rely on:
     # 1. Application-level validation
@@ -256,6 +271,17 @@ INDEXES: List[Index] = [
     Index("valuedriver_embedding_idx", "ValueDriver", ["embedding"], "vector"),
     # Lookup index for efficient label scanning
     Index("entity_lookup", "", [], "lookup"),
+    # Phase 2: Value Pack and Variable indexes
+    Index("valuepack_name_idx", "ValuePack", ["name"], "btree"),
+    Index("valuepack_industry_idx", "ValuePack", ["industry"], "btree"),
+    Index("valuepack_status_idx", "ValuePack", ["status"], "btree"),
+    Index("valuepack_fulltext", "ValuePack", ["name", "description"], "fulltext"),
+    Index("variable_name_idx", "Variable", ["name"], "btree"),
+    Index("variable_datatype_idx", "Variable", ["dataType"], "btree"),
+    Index("variable_industry_idx", "Variable", ["industry"], "btree"),
+    Index("variable_fulltext", "Variable", ["name", "description"], "fulltext"),
+    Index("benchmarkdataset_name_idx", "BenchmarkDataset", ["name"], "btree"),
+    Index("benchmarkdataset_industry_idx", "BenchmarkDataset", ["industry"], "btree"),
 ]
 
 # Schema initialization order

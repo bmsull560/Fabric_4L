@@ -1,0 +1,430 @@
+{
+  "pack_id": "manufacturing-v1",
+  "variables": [
+    {
+      "variable_id": "mfg-var-001",
+      "variable_name": "Current_OEE",
+      "display_name": "Current OEE Percentage",
+      "description": "Current Overall Equipment Effectiveness as a percentage. Combines availability, performance, and quality metrics.",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 75.0,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "(Availability * Performance * Quality) / 10000",
+        "components": ["Availability", "Performance", "Quality_Rate"]
+      },
+      "source_binding": {
+        "system": "MES",
+        "entity": "ProductionLine",
+        "attribute": "oee_percentage",
+        "refresh_frequency": "realtime"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100,
+          "error_message": "OEE must be between 0% and 100%"
+        },
+        {
+          "type": "trend",
+          "max_change_percent": 50,
+          "window": "1h",
+          "error_message": "OEE change exceeds normal variance"
+        }
+      ],
+      "tags": ["oee", "efficiency", "kpi", "realtime"],
+      "industry_benchmarks": {
+        "world_class": 85,
+        "average": 60,
+        "poor": 40
+      },
+      "used_in_formulas": ["mfg-f-001"]
+    },
+    {
+      "variable_id": "mfg-var-002",
+      "variable_name": "Availability",
+      "display_name": "Equipment Availability",
+      "description": "Percentage of scheduled time that equipment is available for production",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 90.0,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "(Planned_Production_Time - Downtime) / Planned_Production_Time * 100"
+      },
+      "source_binding": {
+        "system": "MES",
+        "entity": "Equipment",
+        "attribute": "availability_percent",
+        "refresh_frequency": "realtime"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "tags": ["availability", "uptime", "downtime"],
+      "used_in_formulas": ["mfg-f-001"]
+    },
+    {
+      "variable_id": "mfg-var-003",
+      "variable_name": "Performance",
+      "display_name": "Equipment Performance",
+      "description": "Ratio of actual output to theoretical maximum output",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 150
+      },
+      "default_value": 95.0,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "(Actual_Output / Theoretical_Output) * 100"
+      },
+      "source_binding": {
+        "system": "MES",
+        "entity": "ProductionLine",
+        "attribute": "performance_percent",
+        "refresh_frequency": "realtime"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 150,
+          "warning_above": 105,
+          "warning_message": "Performance above 105% may indicate data error"
+        }
+      ],
+      "tags": ["performance", "speed", "throughput"],
+      "used_in_formulas": ["mfg-f-001"]
+    },
+    {
+      "variable_id": "mfg-var-004",
+      "variable_name": "Quality_Rate",
+      "display_name": "Quality Rate",
+      "description": "Percentage of units produced that meet quality standards on first pass",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 98.0,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Good_Units / Total_Units * 100"
+      },
+      "source_binding": {
+        "system": "Quality",
+        "entity": "ProductionBatch",
+        "attribute": "quality_rate",
+        "refresh_frequency": "hourly"
+      },
+      "tags": ["quality", "defects", "fpy"],
+      "used_in_formulas": ["mfg-f-001", "mfg-f-007"]
+    },
+    {
+      "variable_id": "mfg-var-005",
+      "variable_name": "Average_Downtime_Hours_Per_Month",
+      "display_name": "Monthly Downtime Hours",
+      "description": "Average hours of unplanned equipment downtime per month",
+      "data_type": "FLOAT",
+      "unit_of_measure": "hours",
+      "valid_range": {
+        "min": 0,
+        "max": 720
+      },
+      "default_value": 40.0,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "SUM(Unplanned_Downtime_Events) / 12",
+        "aggregation": "monthly"
+      },
+      "source_binding": {
+        "system": "CMMS",
+        "entity": "DowntimeRecord",
+        "attribute": "duration_hours",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 720
+        }
+      ],
+      "industry_benchmarks": {
+        "best_in_class": 10,
+        "average": 40,
+        "poor": 100
+      },
+      "tags": ["downtime", "maintenance", "reliability"],
+      "used_in_formulas": ["mfg-f-002"]
+    },
+    {
+      "variable_id": "mfg-var-006",
+      "variable_name": "Hourly_Production_Value",
+      "display_name": "Hourly Production Value",
+      "description": "Value of production output per hour at full capacity",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000
+      },
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Annual_Production_Value / Planned_Production_Hours"
+      },
+      "source_binding": {
+        "system": "ERP",
+        "entity": "Product",
+        "attribute": "hourly_value",
+        "refresh_frequency": "daily"
+      },
+      "tags": ["value", "production", "capacity"],
+      "used_in_formulas": ["mfg-f-002"]
+    },
+    {
+      "variable_id": "mfg-var-007",
+      "variable_name": "Defect_Rate",
+      "display_name": "Defect Rate",
+      "description": "Percentage of units produced with quality defects",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 2.0,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Defective_Units / Total_Units_Produced * 100"
+      },
+      "source_binding": {
+        "system": "Quality",
+        "entity": "InspectionRecord",
+        "attribute": "defect_rate",
+        "refresh_frequency": "hourly"
+      },
+      "industry_benchmarks": {
+        "six_sigma": 0.00034,
+        "good": 1.0,
+        "average": 3.0,
+        "poor": 10.0
+      },
+      "tags": ["defects", "quality", "scrap"],
+      "used_in_formulas": ["mfg-f-003"]
+    },
+    {
+      "variable_id": "mfg-var-008",
+      "variable_name": "First_Pass_Yield",
+      "display_name": "First Pass Yield",
+      "description": "Percentage of units that pass quality inspection without rework",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 95.0,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "(Total_Units - Rework_Units - Scrap_Units) / Total_Units * 100"
+      },
+      "source_binding": {
+        "system": "Quality",
+        "entity": "ProductionBatch",
+        "attribute": "first_pass_yield",
+        "refresh_frequency": "hourly"
+      },
+      "industry_benchmarks": {
+        "world_class": 99,
+        "average": 95,
+        "needs_improvement": 85
+      },
+      "tags": ["fpy", "quality", "rework"],
+      "used_in_formulas": ["mfg-f-007"]
+    },
+    {
+      "variable_id": "mfg-var-009",
+      "variable_name": "Annual_Emergency_Repairs",
+      "display_name": "Annual Emergency Repairs",
+      "description": "Count of unplanned emergency repair events per year",
+      "data_type": "INTEGER",
+      "unit_of_measure": "count",
+      "valid_range": {
+        "min": 0,
+        "max": 1000
+      },
+      "default_value": 12,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "CMMS",
+        "entity": "WorkOrder",
+        "attribute": "emergency_count",
+        "query": "SELECT COUNT(*) FROM work_orders WHERE type='emergency' AND year=current_year",
+        "refresh_frequency": "daily"
+      },
+      "tags": ["maintenance", "emergency", "reliability"],
+      "used_in_formulas": ["mfg-f-002"]
+    },
+    {
+      "variable_id": "mfg-var-010",
+      "variable_name": "Annual_Production_Value",
+      "display_name": "Annual Production Value",
+      "description": "Total annual value of production output at selling price",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000000
+      },
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "ERP",
+        "entity": "FinancialSummary",
+        "attribute": "annual_production_value",
+        "refresh_frequency": "daily"
+      },
+      "tags": ["revenue", "production", "value"],
+      "used_in_formulas": ["mfg-f-001", "mfg-f-006"]
+    },
+    {
+      "variable_id": "mfg-var-011",
+      "variable_name": "Current_Annual_kWh",
+      "display_name": "Current Annual Energy Use",
+      "description": "Total energy consumption in kilowatt-hours for current period",
+      "data_type": "FLOAT",
+      "unit_of_measure": "kWh",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Energy_Management",
+        "entity": "Meter",
+        "attribute": "annual_kwh",
+        "refresh_frequency": "hourly"
+      },
+      "tags": ["energy", "consumption", "sustainability"],
+      "used_in_formulas": ["mfg-f-004"]
+    },
+    {
+      "variable_id": "mfg-var-012",
+      "variable_name": "PdM_Program_Cost",
+      "display_name": "PdM Program Annual Cost",
+      "description": "Total annual cost of predictive maintenance program including sensors, software, and personnel",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 150000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["predictive-maintenance", "cost", "investment"],
+      "used_in_formulas": ["mfg-f-005"]
+    },
+    {
+      "variable_id": "mfg-var-013",
+      "variable_name": "Avoided_Downtime_Value",
+      "display_name": "Avoided Downtime Value",
+      "description": "Calculated value of production loss avoided through predictive maintenance",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Predicted_Failures * Avg_Downtime_Per_Failure * Hourly_Production_Value",
+        "assumptions": [
+          "Predicted failures from ML model",
+          "Average downtime if failure occurred"
+        ]
+      },
+      "source_binding": {
+        "system": "ML_Service",
+        "entity": "Prediction",
+        "attribute": "avoided_downtime_value",
+        "refresh_frequency": "daily"
+      },
+      "tags": ["predictive-maintenance", "value", "avoided-cost"],
+      "used_in_formulas": ["mfg-f-005"]
+    },
+    {
+      "variable_id": "mfg-var-014",
+      "variable_name": "Throughput_Units_Per_Hour",
+      "display_name": "Throughput Rate",
+      "description": "Current production throughput in units per hour",
+      "data_type": "FLOAT",
+      "unit_of_measure": "units/hour",
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
+      "default_value": 100,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Units_Produced / Production_Hours",
+        "aggregation": "moving_average_24h"
+      },
+      "source_binding": {
+        "system": "MES",
+        "entity": "ProductionLine",
+        "attribute": "throughput_rate",
+        "refresh_frequency": "realtime"
+      },
+      "tags": ["throughput", "production", "rate"],
+      "used_in_formulas": ["mfg-f-006"]
+    },
+    {
+      "variable_id": "mfg-var-015",
+      "variable_name": "Scrap_Cost_Per_Unit",
+      "display_name": "Scrap Cost Per Unit",
+      "description": "Average cost of scrapped unit including materials, labor, and overhead",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Material_Cost + Labor_Cost + Overhead_Allocation"
+      },
+      "source_binding": {
+        "system": "ERP",
+        "entity": "ProductCost",
+        "attribute": "standard_cost",
+        "refresh_frequency": "daily"
+      },
+      "tags": ["scrap", "cost", "quality"],
+      "used_in_formulas": ["mfg-f-003"]
+    }
+  ]
+}

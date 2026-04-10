@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-value-fabric
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  # Dashboard JSON is loaded from the value-fabric-overview.json file
+  # This ConfigMap is referenced by Grafana's sidecar dashboard loader
+  # Place the JSON file in the same directory and mount via ConfigMap volume

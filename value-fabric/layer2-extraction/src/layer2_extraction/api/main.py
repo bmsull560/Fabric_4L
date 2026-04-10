@@ -12,14 +12,18 @@ import json
 import asyncio
 import hashlib
 import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Dict
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
+
+from layer2_extraction.metrics import initialize_metrics, MetricsMiddleware, get_metrics
 
 from layer2_extraction.models import (
     Capability, UseCase, Persona, ValueDriver, Feature,
@@ -45,12 +49,23 @@ from layer2_extraction.integration.pending_ingestion_store import (
 
 logger = logging.getLogger(__name__)
 
+# App start time for uptime calculation
+_app_start_time = time.time()
+
+# Initialize Prometheus metrics
+metrics = initialize_metrics()
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Value Fabric - Extraction Pipeline",
     description="Ontology-guided extraction of entities from unstructured text to RDF/OWL",
     version="1.0.0"
 )
+
+# Add metrics middleware if available
+if metrics:
+    metrics_middleware = MetricsMiddleware(metrics)
+    app.middleware("http")(metrics_middleware)
 
 # CORS middleware
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
@@ -726,8 +741,74 @@ async def run_extract_and_ingest(
 # API Endpoints
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "layer2-extraction"}
+    """Health check endpoint with real metrics."""
+    import psutil
+    uptime = time.time() - _app_start_time
+    memory_info = psutil.virtual_memory()
+
+    metrics = get_metrics()
+    total_requests = 0
+    active_connections = 0
+
+    if metrics and metrics.config.enabled:
+        try:
+            requests_counter = metrics._metrics.get("requests_total", {})
+            total_requests = sum(
+                v._value.get() if hasattr(v._value, 'get') else v._value
+                for method_dict in requests_counter._metrics.values()
+                for endpoint_dict in method_dict.values()
+                for v in endpoint_dict.values()
+            ) if hasattr(requests_counter, '_metrics') else 0
+        except (AttributeError, TypeError):
+            total_requests = 0
+
+        try:
+            active_connections = int(
+                metrics._metrics.get("active_connections", {})
+                .get("total", {})
+                .get("_value", 0)
+            )
+        except (AttributeError, TypeError):
+            active_connections = 0
+
+    return {
+        "status": "healthy",
+        "service": "layer2-extraction",
+        "version": "1.0.0",
+        "uptime_seconds": uptime,
+        "metrics": {
+            "memory_usage_mb": memory_info.used / (1024 * 1024),
+            "cpu_percent": psutil.cpu_percent(),
+            "active_connections": active_connections,
+            "total_requests": total_requests
+        }
+    }
+
+
+@app.get("/metrics")
+async def metrics_endpoint(request: Request):
+    """Prometheus metrics endpoint."""
+    metrics = get_metrics()
+
+    if not metrics:
+        return Response(
+            content="Metrics collection is disabled",
+            status_code=503,
+            media_type="text/plain"
+        )
+
+    try:
+        metrics_data = metrics.get_metrics()
+        return Response(
+            content=metrics_data,
+            media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
+    except Exception as e:
+        return Response(
+            content=f"Error generating metrics: {e}",
+            status_code=500,
+            media_type="text/plain"
+        )
 
 
 @app.post("/v1/extract", response_model=ExtractResponse)

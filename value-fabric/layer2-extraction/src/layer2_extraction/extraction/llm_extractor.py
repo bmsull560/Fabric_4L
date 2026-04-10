@@ -5,16 +5,8 @@ using structured LLM outputs with strict schema compliance.
 """
 
 import json
-from typing import Dict, List, Optional, Type, Any
-from datetime import datetime
-
-# OpenAI import with graceful fallback
-try:
-    from openai import AsyncOpenAI
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
-    AsyncOpenAI = None
+import math
+from typing import Dict, List, Optional, Any
 
 from pydantic import BaseModel
 
@@ -22,11 +14,80 @@ from layer2_extraction.models import (
     Capability, UseCase, Persona, ValueDriver, Feature,
     Relationship, PredicateType, RoleType, ValueCategory
 )
+from layer2_extraction.shared.llm_client import CostRecord, LLMClient
+
+from .prompt_loader import render_entity_prompt, render_relationship_prompt
 
 
 class LLMExtractionError(Exception):
     """Raised when LLM extraction fails or returns invalid data."""
     pass
+
+
+def _logprob_confidence_from_response(response: Any) -> Optional[float]:
+    choices = getattr(response, "choices", None)
+    if not choices:
+        return None
+
+    first_choice = choices[0]
+    logprobs = getattr(first_choice, "logprobs", None)
+    content = getattr(logprobs, "content", None) if logprobs else None
+    if not content:
+        return None
+
+    values = [getattr(token, "logprob", None) for token in content]
+    valid_logprobs = [v for v in values if v is not None]
+    if not valid_logprobs:
+        return None
+
+    avg_logprob = sum(valid_logprobs) / len(valid_logprobs)
+    return max(0.0, min(1.0, math.exp(avg_logprob)))
+
+
+def _effective_confidence(item_confidence: float, logprob_confidence: Optional[float]) -> float:
+    item = max(0.0, min(1.0, item_confidence))
+    if logprob_confidence is None:
+        return item
+
+    token_conf = max(0.0, min(1.0, logprob_confidence))
+    return max(0.0, min(1.0, (0.7 * item) + (0.3 * token_conf)))
+
+
+def _parse_tool_arguments(response: Any, method_name: str) -> Dict[str, Any]:
+    try:
+        tool_calls = response.choices[0].message.tool_calls
+        if not tool_calls:
+            raise ValueError("No tool calls returned")
+        return json.loads(tool_calls[0].function.arguments)
+    except Exception as exc:
+        raise LLMExtractionError(f"{method_name}: invalid function-call payload: {exc}") from exc
+
+
+def _strict_array_tool(
+    function_name: str,
+    description: str,
+    array_field_name: str,
+    item_schema: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    return [{
+        "type": "function",
+        "function": {
+            "name": function_name,
+            "description": description,
+            "strict": True,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    array_field_name: {
+                        "type": "array",
+                        "items": item_schema,
+                    }
+                },
+                "required": [array_field_name],
+                "additionalProperties": False,
+            },
+        },
+    }]
 
 
 class EntityExtractor:
@@ -64,7 +125,8 @@ class EntityExtractor:
                 "description": "Confidence 0.0-1.0"
             }
         },
-        "required": ["name", "description", "confidence"]
+        "required": ["name", "description", "confidence"],
+        "additionalProperties": False,
     }
     
     USECASE_SCHEMA = {
@@ -93,7 +155,8 @@ class EntityExtractor:
                 "maximum": 1
             }
         },
-        "required": ["name", "description", "confidence"]
+        "required": ["name", "description", "confidence"],
+        "additionalProperties": False,
     }
     
     PERSONA_SCHEMA = {
@@ -122,7 +185,8 @@ class EntityExtractor:
                 "maximum": 1
             }
         },
-        "required": ["role_type", "title", "department", "confidence"]
+        "required": ["role_type", "title", "department", "confidence"],
+        "additionalProperties": False,
     }
     
     VALUEDRIVER_SCHEMA = {
@@ -155,7 +219,8 @@ class EntityExtractor:
                 "maximum": 1
             }
         },
-        "required": ["category", "name", "description", "unit", "confidence"]
+        "required": ["category", "name", "description", "unit", "confidence"],
+        "additionalProperties": False,
     }
     
     FEATURE_SCHEMA = {
@@ -182,7 +247,8 @@ class EntityExtractor:
                 "maximum": 1
             }
         },
-        "required": ["name", "description", "confidence"]
+        "required": ["name", "description", "confidence"],
+        "additionalProperties": False,
     }
     
     def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o", timeout: float = 60.0):
@@ -193,10 +259,23 @@ class EntityExtractor:
             model: Model to use (gpt-4o, gpt-4o-mini, etc.)
             timeout: Timeout for API calls in seconds (default: 60.0)
         """
-        if not OPENAI_AVAILABLE:
-            raise ImportError("openai package not installed. Run: pip install openai")
-        self.client = AsyncOpenAI(api_key=api_key, timeout=timeout)
-        self.model = model
+        self.client = LLMClient(
+            provider="openai",
+            api_key=api_key,
+            model=model,
+            timeout=timeout,
+            max_retries=3,
+            cost_tracking_enabled=True,
+        )
+        self.model = self.client.model
+
+    def get_cost_records(self) -> List[CostRecord]:
+        """Return per-call cost records for this extractor."""
+        return self.client.get_cost_records()
+
+    def get_total_cost(self) -> float:
+        """Return cumulative cost in USD for this extractor."""
+        return self.client.get_total_cost()
     
     async def extract_entities(
         self,
@@ -251,61 +330,51 @@ class EntityExtractor:
         confidence_threshold: float
     ) -> List[Capability]:
         """Extract capabilities from text."""
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "extract_capabilities",
-                "description": "Extract product/technical capabilities from text. Only extract high-confidence capabilities.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "capabilities": {
-                            "type": "array",
-                            "items": self.CAPABILITY_SCHEMA
-                        }
-                    },
-                    "required": ["capabilities"]
-                }
-            }
-        }]
-        
-        prompt = f"""Extract all product/technical capabilities mentioned in this text.
+        tools = _strict_array_tool(
+            function_name="extract_capabilities",
+            description="Extract product/technical capabilities from text. Only extract high-confidence capabilities.",
+            array_field_name="capabilities",
+            item_schema=self.CAPABILITY_SCHEMA,
+        )
 
-Text:
-{text}
-
-Instructions:
-- Only extract capabilities you're highly confident about (confidence >= {confidence_threshold})
-- Include specific technical features when mentioned
-- Focus on what the product/service CAN DO (capabilities), not benefits
-- Return empty array if no clear capabilities are mentioned
-"""
+        prompt = render_entity_prompt(
+            entity_type="capability",
+            text=text,
+            confidence_threshold=confidence_threshold,
+        )
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            response, _ = await self.client.chat_completion(
                 messages=[
                     {"role": "system", "content": "You are an enterprise ontology extractor. Be precise and conservative."},
                     {"role": "user", "content": prompt}
                 ],
+                extraction_job_id=extraction_job_id,
+                endpoint="extract_capabilities",
                 tools=tools,
                 tool_choice={"type": "function", "function": {"name": "extract_capabilities"}},
-                temperature=0.0
+                temperature=0.0,
+                logprobs=True,
+                top_logprobs=1,
             )
-            
-            tool_call = response.choices[0].message.tool_calls[0]
-            args = json.loads(tool_call.function.arguments)
+
+            args = _parse_tool_arguments(response, "extract_capabilities")
+            logprob_confidence = _logprob_confidence_from_response(response)
             
             capabilities = []
             for cap_data in args.get("capabilities", []):
-                if cap_data.get("confidence", 0) >= confidence_threshold:
+                calibrated_confidence = _effective_confidence(
+                    float(cap_data.get("confidence", 0.0)),
+                    logprob_confidence,
+                )
+                if calibrated_confidence >= confidence_threshold:
                     cap = Capability(
                         name=cap_data["name"],
                         description=cap_data["description"],
                         technical_features=cap_data.get("technical_features", []),
                         api_endpoints=cap_data.get("api_endpoints", []),
                         integrations=cap_data.get("integrations", []),
-                        confidence=cap_data["confidence"],
+                        confidence=calibrated_confidence,
                         source_refs=[source_url],
                         extraction_job_id=extraction_job_id
                     )
@@ -324,61 +393,51 @@ Instructions:
         confidence_threshold: float
     ) -> List[UseCase]:
         """Extract use cases from text."""
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "extract_use_cases",
-                "description": "Extract business use cases from text.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "use_cases": {
-                            "type": "array",
-                            "items": self.USECASE_SCHEMA
-                        }
-                    },
-                    "required": ["use_cases"]
-                }
-            }
-        }]
-        
-        prompt = f"""Extract all business use cases mentioned in this text.
+        tools = _strict_array_tool(
+            function_name="extract_use_cases",
+            description="Extract business use cases from text.",
+            array_field_name="use_cases",
+            item_schema=self.USECASE_SCHEMA,
+        )
 
-Text:
-{text}
-
-Instructions:
-- A use case is a specific business problem being solved
-- Include workflow steps if described
-- Note applicable industries
-- Return empty array if no clear use cases are mentioned
-"""
+        prompt = render_entity_prompt(
+            entity_type="usecase",
+            text=text,
+            confidence_threshold=confidence_threshold,
+        )
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            response, _ = await self.client.chat_completion(
                 messages=[
                     {"role": "system", "content": "You are an enterprise ontology extractor. Be precise and conservative."},
                     {"role": "user", "content": prompt}
                 ],
+                extraction_job_id=extraction_job_id,
+                endpoint="extract_use_cases",
                 tools=tools,
                 tool_choice={"type": "function", "function": {"name": "extract_use_cases"}},
-                temperature=0.0
+                temperature=0.0,
+                logprobs=True,
+                top_logprobs=1,
             )
-            
-            tool_call = response.choices[0].message.tool_calls[0]
-            args = json.loads(tool_call.function.arguments)
+
+            args = _parse_tool_arguments(response, "extract_use_cases")
+            logprob_confidence = _logprob_confidence_from_response(response)
             
             use_cases = []
             for uc_data in args.get("use_cases", []):
-                if uc_data.get("confidence", 0) >= confidence_threshold:
+                calibrated_confidence = _effective_confidence(
+                    float(uc_data.get("confidence", 0.0)),
+                    logprob_confidence,
+                )
+                if calibrated_confidence >= confidence_threshold:
                     uc = UseCase(
                         name=uc_data["name"],
                         description=uc_data["description"],
                         industry_context=uc_data.get("industry_context", []),
                         workflow_steps=uc_data.get("workflow_steps", []),
                         kpis=uc_data.get("kpis", []),
-                        confidence=uc_data["confidence"],
+                        confidence=calibrated_confidence,
                         extraction_job_id=extraction_job_id
                     )
                     use_cases.append(uc)
@@ -396,64 +455,51 @@ Instructions:
         confidence_threshold: float
     ) -> List[Persona]:
         """Extract personas from text."""
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "extract_personas",
-                "description": "Extract stakeholder personas from text.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "personas": {
-                            "type": "array",
-                            "items": self.PERSONA_SCHEMA
-                        }
-                    },
-                    "required": ["personas"]
-                }
-            }
-        }]
-        
-        prompt = f"""Extract all stakeholder personas mentioned in this text.
+        tools = _strict_array_tool(
+            function_name="extract_personas",
+            description="Extract stakeholder personas from text.",
+            array_field_name="personas",
+            item_schema=self.PERSONA_SCHEMA,
+        )
 
-Text:
-{text}
-
-Role Types:
-- economic_buyer: Makes purchasing decisions (CFO, VP, Director)
-- operational_user: Uses the product day-to-day (analyst, specialist)
-- stakeholder: Influenced by outcomes but not direct user (auditor, customer)
-
-Instructions:
-- Include pain points and success metrics if mentioned
-- Return empty array if no clear personas are mentioned
-"""
+        prompt = render_entity_prompt(
+            entity_type="persona",
+            text=text,
+            confidence_threshold=confidence_threshold,
+        )
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            response, _ = await self.client.chat_completion(
                 messages=[
                     {"role": "system", "content": "You are an enterprise ontology extractor. Be precise and conservative."},
                     {"role": "user", "content": prompt}
                 ],
+                extraction_job_id=extraction_job_id,
+                endpoint="extract_personas",
                 tools=tools,
                 tool_choice={"type": "function", "function": {"name": "extract_personas"}},
-                temperature=0.0
+                temperature=0.0,
+                logprobs=True,
+                top_logprobs=1,
             )
-            
-            tool_call = response.choices[0].message.tool_calls[0]
-            args = json.loads(tool_call.function.arguments)
+
+            args = _parse_tool_arguments(response, "extract_personas")
+            logprob_confidence = _logprob_confidence_from_response(response)
             
             personas = []
             for p_data in args.get("personas", []):
-                if p_data.get("confidence", 0) >= confidence_threshold:
+                calibrated_confidence = _effective_confidence(
+                    float(p_data.get("confidence", 0.0)),
+                    logprob_confidence,
+                )
+                if calibrated_confidence >= confidence_threshold:
                     p = Persona(
                         role_type=RoleType(p_data["role_type"]),
                         title=p_data["title"],
                         department=p_data["department"],
                         pain_points=p_data.get("pain_points", []),
                         success_metrics=p_data.get("success_metrics", []),
-                        confidence=p_data["confidence"],
+                        confidence=calibrated_confidence,
                         extraction_job_id=extraction_job_id
                     )
                     personas.append(p)
@@ -471,59 +517,44 @@ Instructions:
         confidence_threshold: float
     ) -> List[ValueDriver]:
         """Extract value drivers from text."""
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "extract_value_drivers",
-                "description": "Extract quantifiable business value drivers from text.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "value_drivers": {
-                            "type": "array",
-                            "items": self.VALUEDRIVER_SCHEMA
-                        }
-                    },
-                    "required": ["value_drivers"]
-                }
-            }
-        }]
-        
-        prompt = f"""Extract all quantifiable business value drivers mentioned in this text.
+        tools = _strict_array_tool(
+            function_name="extract_value_drivers",
+            description="Extract quantifiable business value drivers from text.",
+            array_field_name="value_drivers",
+            item_schema=self.VALUEDRIVER_SCHEMA,
+        )
 
-Text:
-{text}
-
-Categories:
-- revenue: Increases revenue (up-sell, cross-sell, retention)
-- cost: Reduces costs (automation, efficiency)
-- risk: Reduces risk (compliance, security)
-- capital: Optimizes capital (cash flow, inventory)
-
-Instructions:
-- Look for specific metrics and formulas
-- Include time-to-value if mentioned
-- Return empty array if no clear value drivers are mentioned
-"""
+        prompt = render_entity_prompt(
+            entity_type="valuedriver",
+            text=text,
+            confidence_threshold=confidence_threshold,
+        )
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            response, _ = await self.client.chat_completion(
                 messages=[
                     {"role": "system", "content": "You are an enterprise ontology extractor. Be precise and conservative."},
                     {"role": "user", "content": prompt}
                 ],
+                extraction_job_id=extraction_job_id,
+                endpoint="extract_value_drivers",
                 tools=tools,
                 tool_choice={"type": "function", "function": {"name": "extract_value_drivers"}},
-                temperature=0.0
+                temperature=0.0,
+                logprobs=True,
+                top_logprobs=1,
             )
-            
-            tool_call = response.choices[0].message.tool_calls[0]
-            args = json.loads(tool_call.function.arguments)
+
+            args = _parse_tool_arguments(response, "extract_value_drivers")
+            logprob_confidence = _logprob_confidence_from_response(response)
             
             value_drivers = []
             for vd_data in args.get("value_drivers", []):
-                if vd_data.get("confidence", 0) >= confidence_threshold:
+                calibrated_confidence = _effective_confidence(
+                    float(vd_data.get("confidence", 0.0)),
+                    logprob_confidence,
+                )
+                if calibrated_confidence >= confidence_threshold:
                     vd = ValueDriver(
                         category=ValueCategory(vd_data["category"]),
                         name=vd_data["name"],
@@ -532,7 +563,7 @@ Instructions:
                         formula_string=vd_data.get("formula_string"),
                         unit=vd_data["unit"],
                         time_to_value=vd_data.get("time_to_value"),
-                        confidence=vd_data["confidence"],
+                        confidence=calibrated_confidence,
                         extraction_job_id=extraction_job_id
                     )
                     value_drivers.append(vd)
@@ -550,61 +581,51 @@ Instructions:
         confidence_threshold: float
     ) -> List[Feature]:
         """Extract features from text."""
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "extract_features",
-                "description": "Extract product features from text. Features are concrete product functionality that implements capabilities.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "features": {
-                            "type": "array",
-                            "items": self.FEATURE_SCHEMA
-                        }
-                    },
-                    "required": ["features"]
-                }
-            }
-        }]
-        
-        prompt = f"""Extract all product features mentioned in this text.
+        tools = _strict_array_tool(
+            function_name="extract_features",
+            description="Extract product features from text. Features are concrete product functionality that implements capabilities.",
+            array_field_name="features",
+            item_schema=self.FEATURE_SCHEMA,
+        )
 
-Text:
-{text}
-
-Instructions:
-- A feature is a concrete product functionality (e.g., "Dashboard Widget", "API Endpoint")
-- Features implement capabilities - they are the "how" to capability's "what"
-- Note the implementation status if mentioned (planned, beta, generally available, deprecated)
-- Return empty array if no clear features are mentioned
-"""
+        prompt = render_entity_prompt(
+            entity_type="feature",
+            text=text,
+            confidence_threshold=confidence_threshold,
+        )
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            response, _ = await self.client.chat_completion(
                 messages=[
                     {"role": "system", "content": "You are an enterprise ontology extractor. Be precise and conservative."},
                     {"role": "user", "content": prompt}
                 ],
+                extraction_job_id=extraction_job_id,
+                endpoint="extract_features",
                 tools=tools,
                 tool_choice={"type": "function", "function": {"name": "extract_features"}},
-                temperature=0.0
+                temperature=0.0,
+                logprobs=True,
+                top_logprobs=1,
             )
-            
-            tool_call = response.choices[0].message.tool_calls[0]
-            args = json.loads(tool_call.function.arguments)
+
+            args = _parse_tool_arguments(response, "extract_features")
+            logprob_confidence = _logprob_confidence_from_response(response)
             
             features = []
             for f_data in args.get("features", []):
-                if f_data.get("confidence", 0) >= confidence_threshold:
+                calibrated_confidence = _effective_confidence(
+                    float(f_data.get("confidence", 0.0)),
+                    logprob_confidence,
+                )
+                if calibrated_confidence >= confidence_threshold:
                     f = Feature(
                         name=f_data["name"],
                         description=f_data["description"],
                         parent_capability_id=f_data.get("parent_capability_id"),
                         technical_spec=f_data.get("technical_spec"),
                         implementation_status=f_data.get("implementation_status", "ga"),
-                        confidence=f_data["confidence"],
+                        confidence=calibrated_confidence,
                         source_refs=[source_url],
                         extraction_job_id=extraction_job_id
                     )
@@ -620,10 +641,23 @@ class RelationshipExtractor:
     """Extract relationships between entities using LLM."""
     
     def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o", timeout: float = 60.0):
-        if not OPENAI_AVAILABLE:
-            raise ImportError("openai package not installed. Run: pip install openai")
-        self.client = AsyncOpenAI(api_key=api_key, timeout=timeout)
-        self.model = model
+        self.client = LLMClient(
+            provider="openai",
+            api_key=api_key,
+            model=model,
+            timeout=timeout,
+            max_retries=3,
+            cost_tracking_enabled=True,
+        )
+        self.model = self.client.model
+
+    def get_cost_records(self) -> List[CostRecord]:
+        """Return per-call cost records for this extractor."""
+        return self.client.get_cost_records()
+
+    def get_total_cost(self) -> float:
+        """Return cumulative cost in USD for this extractor."""
+        return self.client.get_total_cost()
     
     async def extract_relationships(
         self,
@@ -645,109 +679,71 @@ class RelationshipExtractor:
         Returns:
             List of relationships with evidence
         """
-        # Build entity index for reference
-        entity_list = []
-        for entity_type, entity_items in entities.items():
-            for entity in entity_items:
-                entity_list.append({
-                    "id": entity.id,
-                    "type": entity_type,
-                    "name": getattr(entity, "name", getattr(entity, "title", "Unknown"))
-                })
-        
-        if len(entity_list) < 2:
+        total_entities = sum(len(entity_items) for entity_items in entities.values())
+        if total_entities < 2:
             return []
         
-        tools = [{
-            "type": "function",
-            "function": {
-                "name": "extract_relationships",
-                "description": "Extract relationships between entities. Only create relationships if explicit evidence exists in text.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "relationships": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "source_id": {"type": "string", "description": "Source entity ID"},
-                                    "predicate": {
-                                        "type": "string",
-                                        "enum": [
-                                            "enables", "requires", "benefits", "drives", "contributes_to", "depends_on", "alternative_to",
-                                            "capability_subtype_of", "capability_requires_capability", "semantically_equivalent",
-                                            "implements", "delivers", "involves"
-                                        ],
-                                        "description": "Relationship type"
-                                    },
-                                    "target_id": {"type": "string", "description": "Target entity ID"},
-                                    "evidence_text": {"type": "string", "description": "Direct quote from text supporting this relationship"},
-                                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-                                    "impact_level": {"type": "string", "enum": ["high", "medium", "low"]}
-                                },
-                                "required": ["source_id", "predicate", "target_id", "evidence_text", "confidence"]
-                            }
-                        }
-                    },
-                    "required": ["relationships"]
-                }
-            }
-        }]
-        
-        prompt = f"""Given the text and the list of extracted entities, identify relationships between them.
+        relationship_schema = {
+            "type": "object",
+            "properties": {
+                "source_id": {"type": "string", "description": "Source entity ID"},
+                "predicate": {
+                    "type": "string",
+                    "enum": [
+                        "enables", "requires", "benefits", "drives", "contributes_to", "depends_on", "alternative_to",
+                        "capability_subtype_of", "capability_requires_capability", "semantically_equivalent",
+                        "implements", "delivers", "involves"
+                    ],
+                    "description": "Relationship type"
+                },
+                "target_id": {"type": "string", "description": "Target entity ID"},
+                "evidence_text": {"type": "string", "description": "Direct quote from text supporting this relationship"},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                "impact_level": {"type": "string", "enum": ["high", "medium", "low"]}
+            },
+            "required": ["source_id", "predicate", "target_id", "evidence_text", "confidence"],
+            "additionalProperties": False,
+        }
 
-Text:
-{text}
+        tools = _strict_array_tool(
+            function_name="extract_relationships",
+            description="Extract relationships between entities. Only create relationships if explicit evidence exists in text.",
+            array_field_name="relationships",
+            item_schema=relationship_schema,
+        )
 
-Entities:
-{json.dumps(entity_list, indent=2)}
-
-Relationship Types:
-- enables: Capability → UseCase (capability makes use case possible)
-- requires: UseCase → Capability (use case needs capability)
-- benefits: UseCase → Persona (use case helps persona)
-- drives: Persona → ValueDriver (persona cares about value)
-- contributes_to: Capability → ValueDriver (capability creates value)
-- depends_on: Capability → Capability (capability needs another)
-- alternative_to: Capability → Capability (alternative solution)
-- capability_subtype_of: Capability → Capability (specialization hierarchy)
-- capability_requires_capability: Capability → Capability (dependency chain)
-- semantically_equivalent: Entity → Entity (same concept, different names)
-- implements: Feature → Capability (feature delivers capability)
-- delivers: UseCase → ValueDriver (use case produces value outcome)
-- involves: UseCase → Persona (use case includes persona participation)
-
-Instructions:
-- ONLY create relationships if EXPLICIT evidence exists in the text
-- Include direct quote as evidence_text
-- Be conservative: low confidence if evidence is indirect
-- Return empty array if no clear relationships exist
-"""
+        prompt = render_relationship_prompt(text=text, entities=entities)
         
         try:
-            response = await self.client.chat.completions.create(
-                model=self.model,
+            response, _ = await self.client.chat_completion(
                 messages=[
                     {"role": "system", "content": "You are an enterprise ontology extractor. Be conservative - only extract relationships with explicit evidence."},
                     {"role": "user", "content": prompt}
                 ],
+                extraction_job_id=extraction_job_id,
+                endpoint="extract_relationships",
                 tools=tools,
                 tool_choice={"type": "function", "function": {"name": "extract_relationships"}},
-                temperature=0.0
+                temperature=0.0,
+                logprobs=True,
+                top_logprobs=1,
             )
-            
-            tool_call = response.choices[0].message.tool_calls[0]
-            args = json.loads(tool_call.function.arguments)
+
+            args = _parse_tool_arguments(response, "extract_relationships")
+            logprob_confidence = _logprob_confidence_from_response(response)
             
             relationships = []
             for rel_data in args.get("relationships", []):
-                if rel_data.get("confidence", 0) >= confidence_threshold:
+                calibrated_confidence = _effective_confidence(
+                    float(rel_data.get("confidence", 0.0)),
+                    logprob_confidence,
+                )
+                if calibrated_confidence >= confidence_threshold:
                     rel = Relationship(
                         source_id=rel_data["source_id"],
                         predicate=PredicateType(rel_data["predicate"]),
                         target_id=rel_data["target_id"],
-                        confidence=rel_data["confidence"],
+                        confidence=calibrated_confidence,
                         evidence_text=rel_data["evidence_text"],
                         source_url=source_url,
                         impact_level=rel_data.get("impact_level"),

@@ -6,6 +6,7 @@ cost tracking, retry logic, and token counting.
 
 import asyncio
 import os
+import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -151,6 +152,7 @@ class LLMClient:
         tools: Optional[List[Dict]] = None,
         tool_choice: Optional[Dict] = None,
         logprobs: bool = False,
+        top_logprobs: Optional[int] = None,
     ) -> tuple[ChatCompletion, Optional[CostRecord]]:
         """Execute chat completion with cost tracking.
         
@@ -162,6 +164,7 @@ class LLMClient:
             tools: Function calling tools (OpenAI only)
             tool_choice: Force specific tool (OpenAI only)
             logprobs: Request logprobs (OpenAI only)
+            top_logprobs: Number of alternative logprobs per token (OpenAI only)
             
         Returns:
             Tuple of (response, cost_record)
@@ -169,7 +172,7 @@ class LLMClient:
         if self.provider == LLMProvider.OPENAI:
             return await self._openai_completion(
                 messages, extraction_job_id, endpoint,
-                temperature, tools, tool_choice, logprobs
+                temperature, tools, tool_choice, logprobs, top_logprobs
             )
         else:
             return await self._anthropic_completion(
@@ -185,6 +188,7 @@ class LLMClient:
         tools: Optional[List[Dict]],
         tool_choice: Optional[Dict],
         logprobs: bool,
+        top_logprobs: Optional[int],
     ) -> tuple[ChatCompletion, Optional[CostRecord]]:
         """Execute OpenAI chat completion."""
         
@@ -197,6 +201,7 @@ class LLMClient:
                     tools=tools,
                     tool_choice=tool_choice,
                     logprobs=logprobs if logprobs else None,
+                    top_logprobs=top_logprobs if logprobs and top_logprobs else None,
                 )
                 
                 # Calculate cost
@@ -214,10 +219,10 @@ class LLMClient:
                 
                 return response, cost_record
                 
-            except Exception as e:
+            except Exception:
                 if attempt == self.max_retries - 1:
                     raise
-                wait_time = 2 ** attempt  # Exponential backoff
+                wait_time = (2 ** attempt) + random.uniform(0, 0.25)
                 await asyncio.sleep(wait_time)
         
         raise RuntimeError("Max retries exceeded")
@@ -272,10 +277,10 @@ class LLMClient:
                 
                 return response, cost_record
                 
-            except Exception as e:
+            except Exception:
                 if attempt == self.max_retries - 1:
                     raise
-                wait_time = 2 ** attempt
+                wait_time = (2 ** attempt) + random.uniform(0, 0.25)
                 await asyncio.sleep(wait_time)
         
         raise RuntimeError("Max retries exceeded")

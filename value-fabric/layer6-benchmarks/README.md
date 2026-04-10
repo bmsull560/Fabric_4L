@@ -1,0 +1,41 @@
+# Layer 6: Benchmark Service
+
+Standalone service for comparative intelligence and peer benchmarking.
+
+## Overview
+
+The Benchmark Service provides curated datasets for peer comparison and statistical validation. Unlike Ground Truth (validated claims), benchmarks are reference datasets for comparative analysis.
+
+## Features
+
+- **Benchmark Dataset Management**: By industry and segment
+- **Peer Comparison APIs**: Percentile ranking against peers
+- **Range Validation**: Sanity checks against benchmark ranges
+- **Manufacturing Reference Dataset**: Included as seed data
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| GET | `/v1/benchmarks/datasets` | List datasets |
+| GET | `/v1/benchmarks/datasets/{id}` | Get dataset details |
+| POST | `/v1/benchmarks/compare` | Peer comparison |
+| POST | `/v1/benchmarks/validate` | Range validation |
+| GET | `/v1/benchmarks/industries` | List industries |
+
+## Quick Start
+
+```bash
+# Run with Docker
+docker build -t layer6-benchmarks .
+docker run -p 8006:8006 layer6-benchmarks
+
+# Or run locally
+cd value-fabric/layer6-benchmarks
+python -m uvicorn src.api.main:app --port 8006
+```
+
+## Integration
+
+Layer 6 integrates with Layer 4 Agents via the `IBenchmarkClient` interface (see `layer4-agents/src/interfaces/benchmark_client.py`).

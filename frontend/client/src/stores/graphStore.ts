@@ -8,6 +8,8 @@ export interface GraphNode {
   confidence: number;
   x?: number;
   y?: number;
+  r?: number;
+  properties?: Record<string, unknown>;
 }
 
 export interface GraphEdge {
@@ -15,11 +17,21 @@ export interface GraphEdge {
   target: string;
   type: string;
   weight: number;
+  properties?: Record<string, unknown>;
+}
+
+export interface GraphStats {
+  total_nodes: number;
+  total_edges: number;
+  node_types: Record<string, number>;
+  communities: number;
+  density: number;
 }
 
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
+  stats?: GraphStats;
 }
 
 interface GraphState {
@@ -56,9 +68,17 @@ export const useGraphStore = create<GraphState>((set, get) => ({
     try {
       const url = rootEntityId ? `/graph?root=${rootEntityId}` : '/graph';
       const response = await apiClient.get('l3', url);
-      set({ graphData: response.data, isLoading: false });
+      const data = response.data;
+      set({
+        graphData: {
+          nodes: data.nodes || [],
+          edges: data.edges || [],
+          stats: data.stats,
+        },
+        isLoading: false
+      });
     } catch (err) {
-      const message = (err as any).response?.data?.detail || (err as Error).message;
+      const message = (err as any).response?.data?.detail || (err as any).response?.data?.message || (err as Error).message;
       set({ error: message, isLoading: false });
     }
   },
@@ -70,9 +90,17 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         'l3',
         `/entities/${entityId}/subgraph?depth=${depth}`
       );
-      set({ graphData: response.data, isLoading: false });
+      const data = response.data;
+      set({
+        graphData: {
+          nodes: data.nodes || [],
+          edges: data.edges || [],
+          stats: data.stats,
+        },
+        isLoading: false
+      });
     } catch (err) {
-      const message = (err as any).response?.data?.detail || (err as Error).message;
+      const message = (err as any).response?.data?.detail || (err as any).response?.data?.message || (err as Error).message;
       set({ error: message, isLoading: false });
     }
   },

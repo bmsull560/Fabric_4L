@@ -13,17 +13,21 @@ Provides endpoints for:
 import os
 import json
 import hashlib
+import time
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Query, APIRouter
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Query, APIRouter, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field, HttpUrl, validator
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import structlog
+
+from ..metrics import initialize_metrics, MetricsMiddleware, get_metrics
 
 from ..shared.config import settings
 from ..shared.database import get_db, engine
@@ -62,6 +66,9 @@ logger = structlog.get_logger()
 # FASTAPI APP INITIALIZATION
 # =============================================================================
 
+# Initialize Prometheus metrics
+metrics = initialize_metrics()
+
 app = FastAPI(
     title="Value Fabric - Layer 1: Intelligent Data Ingestion",
     description="Production-grade web data ingestion service with spec-compliant API",
@@ -69,6 +76,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Add metrics middleware if available
+if metrics:
+    metrics_middleware = MetricsMiddleware(metrics)
+    app.middleware("http")(metrics_middleware)
 
 # CORS middleware
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
@@ -1708,23 +1720,29 @@ async def health_check(
 
 
 @router.get("/metrics")
-async def get_metrics():
+async def metrics_endpoint(request: Request):
     """Prometheus-compatible metrics endpoint."""
-    # TODO: Implement proper Prometheus metrics
-    metrics_text = f"""
-# HELP layer1_active_jobs Number of active jobs
-# TYPE layer1_active_jobs gauge
-layer1_active_jobs 0
+    metrics = get_metrics()
 
-# HELP layer1_queued_jobs Number of queued jobs
-# TYPE layer1_queued_jobs gauge
-layer1_queued_jobs 0
+    if not metrics:
+        return Response(
+            content="Metrics collection is disabled",
+            status_code=503,
+            media_type="text/plain"
+        )
 
-# HELP layer1_jobs_completed_total Total completed jobs
-# TYPE layer1_jobs_completed_total counter
-layer1_jobs_completed_total 0
-"""
-    return metrics_text
+    try:
+        metrics_data = metrics.get_metrics()
+        return Response(
+            content=metrics_data,
+            media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
+    except Exception as e:
+        return Response(
+            content=f"Error generating metrics: {e}",
+            status_code=500,
+            media_type="text/plain"
+        )
 
 
 @router.post("/admin/cleanup")

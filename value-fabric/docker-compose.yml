@@ -141,6 +141,7 @@ services:
       - LAYER1_API_URL=http://layer1-ingestion:8000
       - LAYER3_API_URL=http://layer3-knowledge:8001
       - LAYER5_GROUND_TRUTH_URL=http://layer5-ground-truth:8005
+      - LAYER6_BENCHMARKS_URL=http://layer6-benchmarks:8006
       - PINECONE_API_KEY=${PINECONE_API_KEY:-}
       - CHECKPOINT_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
       - LOG_LEVEL=info
@@ -217,6 +218,30 @@ services:
     networks:
       - value-fabric-network
     restart: "no"
+
+  # Layer 6: Benchmark Service
+  layer6-benchmarks:
+    build:
+      context: ./layer6-benchmarks
+      dockerfile: Dockerfile
+    container_name: value-fabric-layer6
+    ports:
+      - "8006:8006"
+    environment:
+      - PORT=8006
+      - LOG_LEVEL=info
+    depends_on:
+      layer4-agents:
+        condition: service_healthy
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
 
   # Redis (shared across all layers)
   redis:

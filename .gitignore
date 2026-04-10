@@ -58,6 +58,12 @@ redis_data/
 minio_data/
 neo4j_data/
 
+# SQLite databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
 # Build artifacts
 build/
 dist/

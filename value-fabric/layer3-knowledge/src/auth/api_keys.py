@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, Field, validator
 
-from logging_config import get_logger
+from ..logging_config import get_logger
 
 logger = get_logger(__name__)
 

@@ -60,6 +60,7 @@ class ClaimType(str, PyEnum):
     MARKET_BENCHMARK = "market_benchmark"
     PERSONA_PAIN_POINT = "persona_pain_point"
     VALUE_DRIVER_METRIC = "value_driver_metric"
+    VARIABLE_VALUE = "variable_value"  # Phase 2: Variable Registry integration
     OTHER = "other"
 
 
