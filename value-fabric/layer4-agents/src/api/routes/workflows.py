@@ -316,7 +316,7 @@ async def resume_workflow(
     """Resume a paused or interrupted workflow from its last checkpoint.
     
     This endpoint enables human-in-the-loop workflows by allowing execution
-to pause for user input/decisions, then resume from the exact point
+    to pause for user input/decisions, then resume from the exact point
     where it stopped.
     
     The workflow state is loaded from Postgres checkpoint storage, and

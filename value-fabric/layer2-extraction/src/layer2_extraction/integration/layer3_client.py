@@ -262,16 +262,19 @@ class Layer3KnowledgeClient:
         )
 
     async def get_ingestion_status(self, ingestion_id: str) -> IngestionStatus:
-        """Check status of an ingestion job.
+        """Check status of an ingestion job via canonical L3 endpoint.
+
+        Calls GET /v1/ingest/status/{ingestion_id} (canonical route).
+        L3 also provides backward-compatible alias /v1/ingest/{id}/status.
 
         Args:
-            ingestion_id: Ingestion job ID
+            ingestion_id: Ingestion job ID (treated as source_id in L3)
 
         Returns:
             IngestionStatus with current state
         """
         try:
-            response = await self._client.get(f"/v1/ingest/{ingestion_id}/status")
+            response = await self._client.get(f"/v1/ingest/status/{ingestion_id}")
             response.raise_for_status()
             data = response.json()
 

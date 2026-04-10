@@ -343,13 +343,8 @@ app.middleware("http")(version_middleware)
 async def value_fabric_exception_handler(request: Request, exc: ValueFabricException):
     """Handle Value Fabric custom exceptions."""
     logger.error(
-        "Value Fabric exception occurred",
+        f"Value Fabric exception occurred: {exc.error_code} at {request.method} {request.url.path} - {exc.message}",
         exc_info=exc,
-        error_code=exc.error_code,
-        details=exc.details,
-        path=request.url.path,
-        method=request.method,
-        client_host=request.client.host if request.client else None,
     )
     
     # Record error metrics
@@ -387,12 +382,7 @@ async def value_fabric_exception_handler(request: Request, exc: ValueFabricExcep
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle FastAPI HTTP exceptions with structured logging."""
     logger.warning(
-        "HTTP exception occurred",
-        status_code=exc.status_code,
-        detail=exc.detail,
-        path=request.url.path,
-        method=request.method,
-        client_host=request.client.host if request.client else None,
+        f"HTTP exception {exc.status_code} at {request.method} {request.url.path}: {exc.detail}"
     )
     
     return JSONResponse(
@@ -405,12 +395,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle unexpected exceptions."""
     logger.error(
-        "Unhandled exception in request",
+        f"Unhandled {type(exc).__name__} at {request.method} {request.url.path}: {str(exc)}",
         exc_info=True,
-        exception_type=type(exc).__name__,
-        path=request.url.path,
-        method=request.method,
-        client_host=request.client.host if request.client else None,
     )
     
     # Record error metrics
@@ -1062,6 +1048,17 @@ async def get_sync_status(
         status=status.get("status"),
         error=status.get("error"),
     )
+
+
+# Alias for L2 client compatibility (canonical route is /v1/ingest/status/{source_id})
+# TODO: Consider unifying ID schemes in future; treat ingestion_id as source_id for now
+@app.get("/v1/ingest/{source_id}/status", response_model=SyncStatusResponse)
+async def get_sync_status_alias(
+    source_id: str,
+    sync_manager=Depends(get_sync_manager),
+):
+    """Get synchronization status for a source (backward-compatible alias)."""
+    return await get_sync_status(source_id, sync_manager)
 
 
 @app.delete("/v1/ingest/{source_id}")

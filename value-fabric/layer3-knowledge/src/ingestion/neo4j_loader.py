@@ -20,9 +20,11 @@ from neo4j import AsyncDriver
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS
 
+from ..api.exceptions import IngestionError
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from ..schema.constraints import ENTITY_TYPES, RELATIONSHIP_TYPES
+from .validators import RequiredFieldValidator
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,7 @@ class Neo4jLoader:
         self._driver = driver
         self._owned_driver = driver is None
         self._embedding_model = None
+        self._validator = RequiredFieldValidator()
         # When use_apoc=True the loader uses APOC procedures for richer merge
         # semantics.  Defaults to False so the service works on vanilla Neo4j
         # (including Neo4j Aura) without requiring the APOC plugin.
@@ -284,9 +287,23 @@ class Neo4jLoader:
         Uses native Cypher by default (no APOC required).  When
         ``self.use_apoc`` is True, falls back to the APOC map spread which
         is more concise but requires the plugin.
+
+        Validates required fields before loading to enforce data integrity
+        on Neo4j Community Edition (property existence constraints are
+        Enterprise-only).
         """
         if not entities:
             return 0
+
+        # Validate required fields (Community Edition compatibility)
+        for entity in entities:
+            entity_id = entity.get("id", "unknown")
+            self._validator.validate_and_raise(
+                entity_type=entity_type,
+                data=entity,
+                entity_id=entity_id,
+                source_id=source_id,
+            )
 
         entities = self._attach_embeddings(entity_type, entities)
 

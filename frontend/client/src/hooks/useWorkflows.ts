@@ -22,7 +22,7 @@ export function useActiveWorkflows() {
     queryKey: WORKFLOW_KEYS.active(),
     queryFn: async () => {
       const response = await apiClient.get('l4', '/workflows/active');
-      return (response.data || []) as Workflow[];
+      return (response.data?.workflows || []) as Workflow[];
     },
     staleTime: 30 * 1000,
     refetchInterval: 5000,
@@ -33,8 +33,8 @@ export function useWorkflowHistory() {
   return useQuery({
     queryKey: WORKFLOW_KEYS.history(),
     queryFn: async () => {
-      const response = await apiClient.get('l4', '/workflows/active');
-      return (response.data || []) as Workflow[];
+      const response = await apiClient.get('l4', '/workflows?limit=50&sort=created_at:desc');
+      return (response.data?.workflows || []) as Workflow[];
     },
     staleTime: 60 * 1000,
   });
@@ -81,7 +81,9 @@ export function useWorkflowSSE(workflowId: string | null) {
           return;
         }
 
-        const eventSource = new EventSource(`/api/v1/agents/workflows/${workflowId}/events`);
+        const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1';
+        const l4Prefix = import.meta.env.VITE_L4_PREFIX || '/agents';
+        const eventSource = new EventSource(`${baseUrl}${l4Prefix}/workflows/${workflowId}/events`);
         let resolved = false;
 
         eventSource.onmessage = (event) => {
@@ -108,6 +110,7 @@ export function useWorkflowSSE(workflowId: string | null) {
         setTimeout(() => {
           if (!resolved) {
             eventSource.close();
+            reject(new Error('SSE connection timeout after 30s'));
           }
         }, 30000);
       });

@@ -290,7 +290,7 @@ class TestCheckpointConfiguration:
         """CheckpointConfig creates saver when database available."""
         # This test would require a real Postgres connection
         # For now, we mock the connection to verify the interface
-        with patch("asyncpg.connect") as mock_connect:
+        with patch("src.config.checkpoint.asyncpg.connect") as mock_connect:
             mock_conn = AsyncMock()
             mock_connect.return_value = mock_conn
             
@@ -316,7 +316,7 @@ class TestCheckpointConfiguration:
     async def test_get_checkpoint_saver_returns_none_on_failure(self):
         """Factory returns None if checkpointing fails (graceful degradation)."""
         # When database is unavailable, should return None
-        with patch("asyncpg.connect") as mock_connect:
+        with patch("src.config.checkpoint.asyncpg.connect") as mock_connect:
             mock_connect.side_effect = Exception("Database unavailable")
             
             result = await CheckpointConfig.get_checkpoint_saver()

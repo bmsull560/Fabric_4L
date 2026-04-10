@@ -1,4 +1,12 @@
-"""Neo4j schema definitions for Value Fabric Knowledge Graph."""
+"""Neo4j schema definitions for Value Fabric Knowledge Graph.
+
+NOTE: Property existence constraints (constraint_type="exists") require Neo4j
+Enterprise Edition. For Community Edition compatibility, use application-level
+validation via ingestion.validators.RequiredFieldValidator instead.
+
+The CONSTRAINTS list below uses only unique constraints (constraint_type="unique")
+which are supported on both Community and Enterprise editions.
+"""
 
 from dataclasses import dataclass
 from typing import List, Optional
@@ -11,7 +19,7 @@ class Constraint:
     name: str
     entity_type: str
     property_name: str
-    constraint_type: str = "unique"  # unique, exists, node_key
+    constraint_type: str = "unique"  # unique (Community+Enterprise), exists (Enterprise only), node_key (Enterprise only)
 
     @property
     def cypher(self) -> str:
@@ -83,7 +91,7 @@ class Index:
                 f"OPTIONS {{indexConfig: {{`vector.dimensions`: 384, `vector.similarity_function`: 'cosine'}}}}"
             )
         elif self.index_type == "lookup":
-            return f"CREATE LOOKUP INDEX {self.name} IF NOT EXISTS FOR () ON EACH labels()"
+            return f"CREATE LOOKUP INDEX {self.name} IF NOT EXISTS FOR (n) ON EACH labels(n)"
         return ""
 
     @property

@@ -42,7 +42,7 @@ export default function OntologyBrowser() {
       result = result.filter((e: Entity) => e.name.toLowerCase().includes(query));
     }
     if (selectedType) {
-      result = result.filter((e: Entity) => e.type === selectedType);
+      result = result.filter((e: Entity) => mapEntityType(e.type) === selectedType);
     }
     return result;
   }, [entities, searchQuery, selectedType]);
@@ -83,12 +83,9 @@ export default function OntologyBrowser() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <Btn
-          variant={selectedType ? "primary" : "ghost"}
-          onClick={() => setSelectedType(selectedType ? null : 'Capability')}
-        >
-          Type: {selectedType || 'All'} ▾
-        </Btn>
+        <span className="text-[12px] text-neutral-500">
+          Filter by type: {selectedType || 'All'}
+        </span>
         <Btn variant="ghost" onClick={clearFilters}>Clear Filters</Btn>
       </Toolbar>
 

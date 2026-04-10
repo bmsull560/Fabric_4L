@@ -461,7 +461,7 @@ class TestEntailmentValidator:
         )
         
         # Create invalid relationship: Persona enables Capability (should be Capability enables UseCase)
-        from models.relationships import Relationship
+        from layer2_extraction.models.relationships import Relationship
         rel = Relationship(
             source_id=persona.id,
             predicate=PredicateType.ENABLES,

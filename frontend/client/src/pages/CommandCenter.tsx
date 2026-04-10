@@ -133,7 +133,7 @@ export default function CommandCenter() {
           trendUp
         />
         <MetricCard
-          label="Total Accounts"
+          label="Sources Analyzed"
           value={kpiData.sourcesAnalyzed.toString()}
           trend="Active"
         />

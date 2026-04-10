@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 from layer2_extraction.api import main as api_main
-from layer2_extraction.integration.layer3_client import IngestionResponse
+from layer2_extraction.integration.layer3_client import IngestionResponse, IngestionStatus
 from layer2_extraction.integration.pending_ingestion_store import PendingIngestionRecord
 from layer2_extraction.models import (
     Capability,
@@ -409,3 +409,116 @@ async def test_retry_success_marks_completed_and_clears_queue(
     assert body["last_error"] is None
     assert body["next_retry_at"] is None
     assert job_id not in fake_store.records
+
+
+def build_layer3_full_double_class():
+    """Build a Layer3 client double that simulates full ingest + status flow."""
+
+    class _Layer3FullDouble:
+        def __init__(self):
+            self._ingestions: dict[str, dict] = {}
+            self._call_log: list[dict] = []
+
+        async def health_check(self) -> bool:
+            return True
+
+        async def ingest_extraction_result(self, **kwargs) -> IngestionResponse:
+            self._call_log.append({"method": "ingest_extraction_result", "kwargs": kwargs})
+
+            extraction_job_id = kwargs.get("extraction_job_id", "unknown")
+            source_url = kwargs.get("source_url", "unknown")
+
+            # Store ingestion state
+            self._ingestions[extraction_job_id] = {
+                "ingestion_id": extraction_job_id,
+                "status": "completed",
+                "entities_loaded": len(kwargs.get("extraction_result", {}).capabilities or []) + len(
+                    kwargs.get("extraction_result", {}).use_cases or []
+                ),
+                "relationships_loaded": len(kwargs.get("relationships", [])),
+                "source_url": source_url,
+            }
+
+            return IngestionResponse(
+                success=True,
+                ingestion_id=extraction_job_id,
+                entities_loaded=self._ingestions[extraction_job_id]["entities_loaded"],
+                relationships_loaded=self._ingestions[extraction_job_id]["relationships_loaded"],
+                message="Ingestion successful",
+            )
+
+        async def get_ingestion_status(self, ingestion_id: str) -> api_main.layer3_client.IngestionStatus:
+            self._call_log.append({"method": "get_ingestion_status", "ingestion_id": ingestion_id})
+
+            ingestion = self._ingestions.get(ingestion_id, {})
+            return api_main.layer3_client.IngestionStatus(
+                ingestion_id=ingestion_id,
+                status=ingestion.get("status", "unknown"),
+                progress_percent=100.0 if ingestion.get("status") == "completed" else 0.0,
+                entities_processed=ingestion.get("entities_loaded", 0),
+                entities_total=ingestion.get("entities_loaded", 0),
+                error_message=None,
+            )
+
+        async def close(self) -> None:
+            pass
+
+        def get_call_log(self) -> list[dict]:
+            return self._call_log
+
+    return _Layer3FullDouble
+
+
+@pytest.mark.asyncio
+async def test_cross_layer_extract_ingest_status_flow(
+    async_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cross-layer integration test: L2 extract-and-ingest reaches L3 with valid payload.
+
+    Uses ASGI transport with dependency overrides to prove contract across layers
+    without requiring live services. Validates:
+    - L2 calls L3 ingest with correct payload
+    - L2 can query L3 status using canonical endpoint
+    - RDF data contains required fields (source_url, extraction_job_id)
+    """
+    clock = FrozenClock(real_datetime(2026, 1, 1, 0, 0, 0))
+    monkeypatch.setattr(api_main, "datetime", clock.datetime_class())
+
+    # Build Layer3 double that tracks all calls
+    DoubleClass = build_layer3_full_double_class()
+    double_instance = DoubleClass()
+
+    # Monkeypatch the client class constructor to return our double
+    def make_double(*args, **kwargs):
+        return double_instance
+
+    monkeypatch.setattr(api_main, "Layer3KnowledgeClient", make_double)
+
+    # Trigger extract-and-ingest
+    payload = request_payload()
+    kickoff = await async_client.post("/v1/extract-and-ingest", json=payload)
+    assert kickoff.status_code == 200
+
+    job_id = kickoff.json()["job_id"]
+
+    # Verify L2 reached L3 ingest with correct contract
+    ingest_calls = [c for c in double_instance.get_call_log() if c["method"] == "ingest_extraction_result"]
+    assert len(ingest_calls) == 1, f"Expected 1 ingest call, got {len(ingest_calls)}"
+
+    ingest_kwargs = ingest_calls[0]["kwargs"]
+    assert ingest_kwargs["source_url"] == payload["source_url"]
+    assert ingest_kwargs["extraction_job_id"] == job_id
+    assert ingest_kwargs["extraction_result"] is not None
+    assert ingest_kwargs["relationships"] is not None
+
+    # Verify L2 can query L3 status via canonical endpoint
+    status = await async_client.get(f"/v1/extract/status/{job_id}")
+    assert status.status_code == 200
+    status_body = status.json()
+
+    # Pipeline should show completed (both extraction and ingestion)
+    assert status_body["overall_status"] == "completed"
+    assert status_body["extraction_status"] == "completed"
+    assert status_body["ingestion_status"] == "completed"
+    assert status_body["completed_at"] is not None

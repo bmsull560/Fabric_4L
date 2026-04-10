@@ -39,7 +39,7 @@ export function useIngestionJobs() {
         domain: j.configuration?.url || 'unknown',
         status: mapJobStatus(j.status),
         progress: j.progress_percent_complete || 0,
-        pagesProcessed: j.progress_percent_complete || 0,
+        pagesProcessed: j.progress_processed_pages || 0,
         createdAt: j.created_at,
         updatedAt: j.started_at || j.created_at,
       })) as IngestionJob[];
@@ -59,7 +59,7 @@ export function useRecentIngestionJobs(limit = 5) {
         domain: j.configuration?.url || 'unknown',
         status: mapJobStatus(j.status),
         progress: j.progress_percent_complete || 0,
-        pagesProcessed: j.progress_percent_complete || 0,
+        pagesProcessed: j.progress_processed_pages || 0,
         createdAt: j.created_at,
         updatedAt: j.started_at || j.created_at,
       })) as IngestionJob[];
