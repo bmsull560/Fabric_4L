@@ -389,16 +389,39 @@ frontend/client/src/components/ui/    # shadcn components
 
 ## New Approved Tasks (Added 2026-04-10)
 
+### **Stabilization Sprint: L3 Runtime + L2/L3 Contract Alignment** ✅ COMPLETED 2026-04-10
+**Priority:** P0 | **Effort:** 2 days | **Status:** COMPLETE | **Unblocks:** L2→L3 ingestion, Frontend integration
+
+**Summary:** Replaced Enterprise-only Neo4j constraints with Community-safe app-level validation, fixed structured logging misuse, aligned status endpoint contracts (dual contract with backward-compatible alias), and added ASGI-based cross-layer integration test.
+
+**Test Pass/Fail Matrix (2026-04-10):**
+
+| Test Suite | Status | Notes |
+|------------|--------|-------|
+| `layer2-extraction/tests/test_extract_and_ingest_pipeline.py` | ✅ 5 passed | Cross-layer test validates L2→L3 contract |
+| `layer3-knowledge/tests/test_required_field_validator.py` | ✅ 13 passed | App-level validation enforces entity integrity |
+| `layer3-knowledge/tests/test_e2e_pipeline.py` | ⚠️ 7 passed, 5 failed | Schema/GraphRAG/HybridSearch pass; Ingestion tests require Docker Neo4j |
+
+**Key Deliverables:**
+- ✅ `value-fabric/layer3-knowledge/src/schema/constraints.py` - Community Edition compatibility docs
+- ✅ `value-fabric/layer3-knowledge/src/ingestion/validators.py` - RequiredFieldValidator with entity-type coverage
+- ✅ `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py` - Validation before entity loading
+- ✅ `value-fabric/layer3-knowledge/src/api/main.py` - Standard logger formatting, status endpoint alias
+- ✅ `value-fabric/layer2-extraction/src/layer2_extraction/integration/layer3_client.py` - Canonical endpoint route
+- ✅ `value-fabric/layer2-extraction/tests/test_extract_and_ingest_pipeline.py` - Cross-layer ASGI integration test
+
+---
+
 ### **Task 6: L2→L3 Pipeline Endpoint (L2)** ⭐ CRITICAL
-**Priority:** P0 | **Effort:** 1 day | **Status:** ~90% Complete | **Unblocks:** End-to-end extraction
+**Priority:** P0 | **Effort:** 1 day | **Status:** ✅ COMPLETE | **Unblocks:** End-to-end extraction
 
 **Gap:** L2 has `Layer3KnowledgeClient` but no `/extract-and-ingest` endpoint to trigger it.
 
 **Acceptance Criteria:**
-- [ ] `POST /v1/extract-and-ingest` endpoint in `layer2-extraction/src/api/main.py`
-- [ ] Background task calls `Layer3KnowledgeClient.ingest_extraction_result()`
-- [ ] Returns job ID that tracks both extraction and ingestion status
-- [ ] Configurable: skip ingestion if L3 unavailable (queue for retry)
+- [x] `POST /v1/extract-and-ingest` endpoint in `layer2-extraction/src/api/main.py`
+- [x] Background task calls `Layer3KnowledgeClient.ingest_extraction_result()`
+- [x] Returns job ID that tracks both extraction and ingestion status
+- [x] Configurable: skip ingestion if L3 unavailable (queue for retry)
 
 **Implementation:**
 - Modify: `layer2-extraction/src/api/main.py` (add endpoint, lines ~410-420)
@@ -658,6 +681,133 @@ frontend/client/src/components/ui/    # shadcn components
 **Implementation:**
 - Modify: `.github/workflows/pr-checks.yml`
 - Modify: `.github/workflows/integration-tests.yml`
+
+---
+
+### **Task 25: Vector Index E2E Verification (L3)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 1 day | **Status:** 0% Complete | **Unblocks:** GraphRAG production confidence
+
+**Gap:** Task 7 at ~85%; vector index verification needs final E2E proof with real embeddings.
+
+**Acceptance Criteria:**
+- [ ] Vector index creation verified with real embeddings in Neo4j 5.x
+- [ ] `POST /v1/ingest` creates nodes with `embedding` property
+- [ ] `POST /v1/search/hybrid` returns results ranked by vector+graph score
+- [ ] E2E test passes: Extract → Ingest → Hybrid Search without mocks
+
+**Implementation:**
+- Modify: `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py` (embedding generation)
+- Modify: `value-fabric/layer3-knowledge/src/schema/initializer.py` (vector index setup)
+- Create: `value-fabric/layer3-knowledge/tests/test_vector_e2e.py`
+
+---
+
+### **Task 26: Cross-Layer Production Smoke Gate (DEVOPS)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 2 days | **Status:** 0% Complete | **Unblocks:** Evidence-based production readiness
+
+**Gap:** No repeatable cross-layer verification; cannot prove E2E workflow works.
+
+**Acceptance Criteria:**
+- [ ] Single command `scripts/smoke/production_smoke.ps1` runs cross-layer checks
+- [ ] Validates: L2 extract → L3 ingest → Graph query → Hybrid search happy path
+- [ ] Fails CI on contract/status code regressions
+- [ ] Produces JSON artifact with pass/fail + timing per stage
+- [ ] Runs in GitHub Actions against docker-compose stack
+
+**Implementation:**
+- Create: `.github/workflows/smoke-gate.yml`
+- Create: `scripts/smoke/production_smoke.ps1`
+- Modify: `README.md` (smoke gate usage docs)
+
+---
+
+### **Task 27: Frontend Reality Pass — Static Screens (Frontend)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 3 days | **Status:** 0% Complete | **Unblocks:** User testing, production UI criterion
+
+**Gap:** Core query/hook wiring exists, but GraphExplorer, ExtractionEngine, BusinessCase, DecisionTrace still render static/demo data.
+
+**Acceptance Criteria:**
+- [ ] `GraphExplorer` consumes real `POST /v1/graph/query` data with loading/error states
+- [ ] `ExtractionEngine` consumes real `GET /v1/jobs/{id}` + SSE events stream
+- [ ] `BusinessCase` fetches real case data from `GET /v1/business-cases/{id}`
+- [ ] `DecisionTrace` shows real provenance from `GET /v1/provenance/{entity_id}`
+- [ ] All updated screens have skeleton loaders and error boundaries
+
+**Implementation:**
+- Modify: `frontend/client/src/pages/GraphExplorer.tsx`
+- Modify: `frontend/client/src/pages/ExtractionEngine.tsx`
+- Modify: `frontend/client/src/pages/BusinessCase.tsx`
+- Modify: `frontend/client/src/pages/DecisionTrace.tsx`
+- Create: `frontend/client/src/hooks/useGraphQuery.ts`, `useJobStream.ts`
+
+---
+
+### **Task 28: Workflow Control API Parity (L4)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 1 day | **Status:** 0% Complete | **Unblocks:** Full workflow operator controls
+
+**Gap:** Resume exists, but pause/control parity and contract docs are incomplete.
+
+**Acceptance Criteria:**
+- [ ] `POST /v1/workflows/{id}/pause` implemented with state transition to PAUSED
+- [ ] Resume contract documented for running/completed/failed edge cases
+- [ ] `GET /v1/workflows/active` lists running workflows with progress
+- [ ] `GET /v1/workflows/{id}/events` returns step-level event stream
+
+**Implementation:**
+- Modify: `value-fabric/layer4-agents/src/api/routes/workflows.py`
+- Create: `value-fabric/layer4-agents/tests/test_workflow_controls.py`
+- Create: `docs/api/workflow_controls.md`
+
+---
+
+### **Task 29: Formula + Value Tree Backend Contracts (L3)**
+**Priority:** P1 | **Effort:** 2 days | **Status:** 0% Complete | **Unblocks:** Functional Formula Builder and Value Tree Explorer
+
+**Gap:** Formula/value tree pages remain partially static without full backend contracts.
+
+**Acceptance Criteria:**
+- [ ] `POST /v1/formulas/evaluate` executes formulas with typed variable inputs
+- [ ] `GET /v1/formulas/variables` returns registry-backed variable metadata
+- [ ] `GET /v1/value-trees/{id}` returns resolved tree with node values
+- [ ] Error responses include validation details for malformed formulas
+
+**Implementation:**
+- Create: `value-fabric/layer3-knowledge/src/api/routes/formulas.py`
+- Create: `value-fabric/layer3-knowledge/src/api/routes/value_trees.py`
+- Modify: `value-fabric/layer3-knowledge/src/api/main.py`
+
+---
+
+### **Task 30: Coverage/Quality Enforcement in CI (DEVOPS)**
+**Priority:** P1 | **Effort:** 1 day | **Status:** 0% Complete | **Unblocks:** Test coverage production criterion
+
+**Gap:** Coverage target is defined, but not enforced for changed codepaths.
+
+**Acceptance Criteria:**
+- [ ] CI fails when coverage drops below 80% on touched modules
+- [ ] Integration stage runs L2/L3 pipeline checks via Docker Compose
+- [ ] Coverage artifact uploaded for every PR
+- [ ] PR comment with coverage delta summary
+
+**Implementation:**
+- Modify: `.github/workflows/pr-checks.yml`
+- Modify: `.github/workflows/integration-tests.yml`
+
+---
+
+### **Task 31: L4 Checkpoint/Resume Test Stabilization (L4)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 1 day | **Status:** 0% Complete | **Unblocks:** Reliable L4 verification, CI stability
+
+**Gap:** `tests/test_checkpoint_resume.py` fails during collection with `ModuleNotFoundError` importing 'src'.
+
+**Acceptance Criteria:**
+- [ ] `tests/test_checkpoint_resume.py` passes without `ModuleNotFoundError`
+- [ ] Import paths resolved (absolute → relative or PYTHONPATH)
+- [ ] Tests run in CI without collection failures
+
+**Implementation:**
+- Modify: `value-fabric/layer4-agents/tests/conftest.py` (path resolution)
+- Modify: `value-fabric/layer4-agents/pyproject.toml` (pytest paths if needed)
 
 ---
 
@@ -1006,22 +1156,23 @@ Requirements:
 ## Summary
 
 **Estimated Time to Production:**
-- **Current State:** ~72% overall, 0% production-ready (no E2E workflow)
-- **After Task 6-9 (P0):** ~85% overall, 80% production-ready (E2E working)
-- **After All Tasks (6-14):** ~90% overall, 95% production-ready
+- **Current State:** ~75% overall, ~60% production-ready (partial E2E)
+- **After Tasks 25-28 (P0):** ~88% overall, 90% production-ready (smoke-gate verified)
+- **After All Tasks (6-14, 20-31):** ~92% overall, 95% production-ready
 - **Sequential:** 2-3 weeks
 - **Parallel (3 tracks):** 1-1.5 weeks
 
 **Estimated Time to Full Architecture (Phase 1 + Phase 2):**
-- **Phase 1 (Production):** 2-3 weeks (Tasks 6-14)
+- **Phase 1 (Production):** 2-3 weeks (Tasks 6-14, 20-31)
 - **Phase 2 (Extensions):** 6-8 weeks (Tasks 15-19 + Layer 6 Benchmark Service)
 - **Total Sequential:** 8-11 weeks
 - **Total Parallel (4 tracks):** 5-6 weeks
 
 **Biggest Risks (Phase 1):**
-1. **Task 7 (Neo4j Vector Indexes):** Neo4j 5.x vector index syntax may differ from expectations
-2. **Task 8 (LangGraph Resume):** Checkpointing with Postgres may require schema migrations
-3. **Task 9 (Frontend):** Large surface area (10 screens) could reveal more backend gaps
+1. **Task 25 (Vector Index E2E):** Neo4j Community vector index limitations vs Enterprise
+2. **Task 26 (Smoke Gate):** Cross-layer integration complexity may reveal hidden contract drift
+3. **Task 27 (Frontend Reality):** Static screens may have deeper API contract mismatches
+4. **Task 31 (L4 Test Stabilization):** Import path fixes may require structural changes
 
 **Biggest Risks (Phase 2):**
 1. **Layer 6 Benchmark Service:** New layer means new deployment, monitoring, operational overhead
@@ -1036,16 +1187,47 @@ Requirements:
 5. **Enterprise-ready:** Phase 2 adds governance, benchmarking, tiered UX for enterprise sales
 
 **Next Action:**
-🚀 **Start Task 6 (L2→L3 Endpoint)** — Add `/extract-and-ingest` to bridge extraction → knowledge graph. This is the final pipe to complete the data flow.
+🚀 **Start Task 31 (L4 Test Stabilization)** — Fix import paths in `test_checkpoint_resume.py` to unblock CI. Then proceed to Task 25 (Vector E2E) for final Neo4j verification.
 
 **Critical Path (Phase 1):**
 ```
-Task 6 (1d) → Task 7 (2d) → Task 8 (3d) → Task 9 (3d) = 9 days to user-visible E2E
+Task 31 (1d) → Task 25 (1d) → Task 26 (2d) → Task 27 (3d) = 7 days to production-ready E2E
+```
+
+**Updated Dependency Graph (Tasks 20-31 Added 2026-04-10):**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              NEW TASKS DEPENDENCY FLOW                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Task 31: L4 Test Fix ─────────┐                               │
+│  (P0 - Test Stabilization)      │                               │
+│                                ▼                                 │
+│  Task 25: Vector E2E ──────────┼──────┐                          │
+│  (P0 - Backend)               │       │                          │
+│                                ▼       ▼                         │
+│  Task 26: Smoke Gate ───────────┘       │                         │
+│  (P0 - DevOps)                         │                         │
+│                                ▼       ▼                         │
+│  Task 28: L4 Controls ──────────────────┘                         │
+│  (P0 - Agents)                                                   │
+│                                │                                 │
+│            ┌───────────────────┼───────────────────┐             │
+│            ▼                   ▼                   ▼             │
+│      Task 27:            Task 29:            Task 30:          │
+│      Frontend             Formulas            CI/CD              │
+│      Reality              (P1)                Coverage           │
+│      (P0)                                                        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 **Complete Roadmap Scope:**
 - **Tasks 1-5:** ✅ Completed (Freshness, LLM, partial Neo4j, partial LangGraph, Frontend planned)
-- **Tasks 6-14:** 🔄 Phase 1 - Production Readiness (9 tasks, 4 P0, 3 P1, 2 P2)
+- **Tasks 6-14:** 🔄 Phase 1A - Core Production (9 tasks, 4 P0, 3 P1, 2 P2)
+- **Tasks 20-24:** ✅ Completed/Added Stabilization Sprint + New Frontend Tasks
+- **Tasks 25-31:** 🔄 Phase 1B - Production Evidence (7 tasks, 5 P0, 2 P1) ⭐ NEW
 - **Tasks 15-19:** 📋 Phase 2 - Architecture Extensions (5 tasks, 4 P1, 1 P2 + New Layer 6)
-- **Total Tasks:** 19 tasks + 1 new layer
+- **Total Tasks:** 31 tasks + 1 new layer
 - **Estimated Effort:** 8-11 weeks (full implementation)
+- **New Additions (2026-04-10):** 7 tasks added (Tasks 25-31), 5 P0, 2 P1
