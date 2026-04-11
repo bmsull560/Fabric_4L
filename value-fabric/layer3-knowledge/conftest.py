@@ -12,9 +12,6 @@ sys.path.insert(0, str(src_path))
 # Set test environment variables
 os.environ.setdefault("NEO4J_PASSWORD", "test_password")
 os.environ.setdefault("LOG_LEVEL", "DEBUG")
-os.environ.setdefault("CACHE_ENABLED", "false")
-os.environ.setdefault("METRICS_ENABLED", "false")
-os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 
 def pytest_configure(config):

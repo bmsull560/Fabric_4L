@@ -1,4 +1,5 @@
 ---
+name: log-decision
 description: Log agent decisions with context and reasoning
 ---
 

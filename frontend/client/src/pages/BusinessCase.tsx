@@ -3,47 +3,123 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, Eye, Loader2 } from "lucide-react";
-import { useSearchParams } from "wouter";
-import { PageHeader, Btn, SectionCard, EntityBadge, DataTable } from "@/components/WfPrimitives";
-import { useBusinessCase, useDocumentExport, downloadExport } from "@/hooks/useDocuments";
+import { Download, Share2, AlertCircle, Loader2 } from "lucide-react";
+import { useSearchParams, useLocation } from "wouter";
+import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useBusinessCase, useBusinessCaseExport, downloadExport } from "@/hooks/useDocuments";
 
 export default function BusinessCase() {
   const [searchParams] = useSearchParams();
-  const businessCaseId = searchParams.get("id") || "default";
+  const [, navigate] = useLocation();
+  const businessCaseId = searchParams.get("id");
   const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const { data: businessCase, isLoading, error } = useBusinessCase(businessCaseId);
-  const exportMutation = useDocumentExport();
+  const exportMutation = useBusinessCaseExport();
+
+  // Handle missing ID gracefully
+  if (!businessCaseId) {
+    return (
+      <div className="p-6 max-w-5xl">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700">
+          No business case ID provided. Please select a business case to view.
+        </div>
+      </div>
+    );
+  }
 
   const handleExportPDF = async () => {
     if (!businessCase) return;
     setIsExporting(true);
+    setExportError(null);
     try {
       const result = await exportMutation.mutateAsync({
-        document_type: "business_case",
-        business_case_id: businessCaseId,
+        caseId: businessCaseId,
         format: "pdf",
-        include_provenance: true,
       });
 
-      if (result.download_url) {
-        downloadExport(result.download_url, result.download_url.split("/").pop() || "business_case.pdf");
+      if (result.document_url) {
+        downloadExport(result.document_url, `business_case_${businessCaseId}.pdf`);
+      } else if (!result.download_ready) {
+        setExportError("Document not ready for download yet.");
       }
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : "Export failed");
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleViewTrace = (useCaseId: string) => {
-    // Navigate to DecisionTrace with entity ID
-    window.location.href = `/decision-trace?entityId=${encodeURIComponent(useCaseId)}`;
+  const handleViewTrace = () => {
+    // Navigate to DecisionTrace
+    if (businessCaseId) {
+      navigate(`/decision-trace?caseId=${encodeURIComponent(businessCaseId)}`);
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-5xl flex items-center justify-center h-64">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
+      <div className="p-6 max-w-5xl">
+        {/* Header skeleton */}
+        <div className="mb-5">
+          <Skeleton className="h-4 w-48 mb-2" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Skeleton className="h-8 w-64 mb-1" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-8 w-28" />
+              <Skeleton className="h-8 w-28" />
+            </div>
+          </div>
+        </div>
+
+        {/* Hero ROI card skeleton */}
+        <div className="rounded-xl p-6 mb-6 bg-gradient-to-br from-blue-700/20 to-blue-900/20 border border-blue-200">
+          <Skeleton className="h-3 w-32 mb-1" />
+          <Skeleton className="h-12 w-48 mb-1" />
+          <Skeleton className="h-4 w-64 mb-4" />
+          <div className="flex gap-6">
+            <div>
+              <Skeleton className="h-3 w-16 mb-1" />
+              <Skeleton className="h-6 w-12" />
+            </div>
+            <div>
+              <Skeleton className="h-3 w-24 mb-1" />
+              <Skeleton className="h-6 w-20" />
+            </div>
+            <div>
+              <Skeleton className="h-3 w-12 mb-1" />
+              <Skeleton className="h-6 w-8" />
+            </div>
+          </div>
+        </div>
+
+        {/* Recommendations skeleton */}
+        <SectionCard title="Recommendations" className="mb-5">
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-start gap-2">
+                <Skeleton className="h-4 w-4 shrink-0" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        {/* Executive Summary skeleton */}
+        <SectionCard title="Executive Summary">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+        </SectionCard>
       </div>
     );
   }
@@ -52,99 +128,88 @@ export default function BusinessCase() {
     return (
       <div className="p-6 max-w-5xl">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          Failed to load business case. Please try again.
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>{error instanceof Error ? error.message : 'Failed to load business case. Please try again.'}</span>
+          </div>
         </div>
       </div>
     );
   }
-
-  const useCases = businessCase.use_cases || [];
 
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
         breadcrumbs={["Agent Workflows", "Business Cases"]}
         title={businessCase.title || "Business Case"}
-        subtitle={`Generated by ${businessCase.generator} · ${new Date(businessCase.created_at).toLocaleDateString()}`}
+        subtitle={`Status: ${businessCase.status} · ${businessCase.created_at ? new Date(businessCase.created_at).toLocaleDateString() : 'Unknown'}`}
         actions={
           <>
             <Btn
               variant="ghost"
               onClick={handleExportPDF}
-              disabled={isExporting}
+              disabled={isExporting || !businessCase.document_url}
             >
               {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
               Export PDF
             </Btn>
-            <Btn variant="ghost"><Share2 size={12}/> Share</Btn>
+            <Btn variant="ghost" onClick={handleViewTrace}><Share2 size={12}/> View Trace</Btn>
           </>
         }
       />
 
+      {/* Export error */}
+      {exportError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-700 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          <span>{exportError}</span>
+        </div>
+      )}
+
       {/* Hero ROI card */}
       <div className="bg-gradient-to-br from-blue-700 to-blue-900 rounded-xl p-6 mb-6 text-white shadow-lg">
         <div className="text-[11px] font-bold uppercase tracking-wider opacity-70 mb-1">Total Estimated Value</div>
-        <div className="text-[48px] font-extrabold leading-none mb-1">{businessCase.total_value}</div>
+        <div className="text-[48px] font-extrabold leading-none mb-1">
+          ${businessCase.total_value.toLocaleString()}
+        </div>
         <div className="text-[13px] opacity-80">
-          Across {businessCase.use_case_count} use cases · Avg. payback: {businessCase.avg_payback}
+          ROI Ratio: {businessCase.roi_ratio.toFixed(2)}x · Payback: {businessCase.payback_months} months
         </div>
         <div className="flex gap-6 mt-4">
           <div>
             <div className="text-[10px] uppercase tracking-wider opacity-60">Confidence</div>
-            <div className="text-[18px] font-bold">{businessCase.avg_confidence}%</div>
+            <div className="text-[18px] font-bold">{Math.round(businessCase.confidence_score * 100)}%</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider opacity-60">Use Cases</div>
-            <div className="text-[18px] font-bold">{businessCase.use_case_count}</div>
+            <div className="text-[10px] uppercase tracking-wider opacity-60">Implementation Cost</div>
+            <div className="text-[18px] font-bold">${businessCase.implementation_cost.toLocaleString()}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider opacity-60">Personas</div>
-            <div className="text-[18px] font-bold">{businessCase.persona_count}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wider opacity-60">Value Drivers</div>
-            <div className="text-[18px] font-bold">{businessCase.driver_count}</div>
+            <div className="text-[10px] uppercase tracking-wider opacity-60">Pages</div>
+            <div className="text-[18px] font-bold">{businessCase.page_count}</div>
           </div>
         </div>
       </div>
 
-      {/* Use case breakdown */}
-      <SectionCard title="Use Case Breakdown" noPad className="mb-5">
-        <DataTable
-          columns={["Use Case", "Persona", "Value Driver", "Est. ROI", "Payback", "Confidence", "Actions"]}
-          rows={useCases.map((uc) => [
-            <span className="font-semibold text-neutral-800" key="name">{uc.name}</span>,
-            <EntityBadge type="persona" label={uc.persona} key="persona" />,
-            <EntityBadge type="valuedriver" label={uc.driver} key="driver" />,
-            <span className="font-bold text-emerald-700" key="roi">{uc.roi}</span>,
-            <span className="text-neutral-600 text-[11px]" key="payback">{uc.payback}</span>,
-            <div className="flex items-center gap-2" key="confidence">
-              <div className="h-1.5 w-16 bg-neutral-100 rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${uc.confidence}%` }} />
-              </div>
-              <span className={`text-[11px] font-semibold ${uc.confidence >= 90 ? "text-emerald-700" : "text-amber-700"}`}>
-                {uc.confidence}%
-              </span>
-            </div>,
-            <div className="flex gap-2" key="actions">
-              <Btn
-                variant="ghost"
-                className="text-[11px]"
-                onClick={() => handleViewTrace(uc.id)}
-              >
-                <Eye size={10} /> View Trace
-              </Btn>
-            </div>,
-          ])}
-        />
-      </SectionCard>
+      {/* Recommendations */}
+      {businessCase.recommendations.length > 0 && (
+        <SectionCard title="Recommendations" className="mb-5">
+          <ul className="space-y-2">
+            {businessCase.recommendations.map((rec, idx) => (
+              <li key={idx} className="flex items-start gap-2 text-[13px] text-neutral-700">
+                <span className="text-blue-600 font-bold">{idx + 1}.</span>
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
 
-      {/* Executive narrative */}
+      {/* Executive Summary */}
       <SectionCard title="Executive Summary">
-        <div
-          className="prose prose-sm max-w-none text-neutral-700 text-[13px] leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: businessCase.executive_summary }}
-        />
+        <div className="prose prose-sm max-w-none text-neutral-700 text-[13px] leading-relaxed whitespace-pre-wrap">
+          {businessCase.summary}
+        </div>
       </SectionCard>
     </div>
   );

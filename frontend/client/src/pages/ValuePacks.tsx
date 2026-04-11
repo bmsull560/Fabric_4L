@@ -4,67 +4,60 @@
  * Spec: Value Packs as first-class product objects — reusable domain-specific
  * packages combining ontology, value drivers, formulas, benchmarks, and workflows.
  */
-import { useState, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import {
+  useValuePacks,
+  useApplyValuePack,
+  type ValuePack,
+  type PackStatus,
+} from "@/hooks/useValuePacks";
 import {
   Sparkles, Package, GitBranch, FlaskConical, BarChart3, Bot,
-  Users, ChevronRight, Search, Filter, CheckCircle2, Lock, Globe,
+  ChevronRight, Search, Filter, Lock, Globe, AlertCircle,
+  RefreshCw, Loader2,
 } from "lucide-react";
-
-interface ValuePack {
-  id: string;
-  pack_id: string;
-  name: string;
-  industry: string;
-  description: string;
-  driver_count: number;
-  formula_count: number;
-  benchmark_count: number;
-  workflow_count: number;
-  status: "active" | "draft" | "archived" | "published";
-  scope: "global" | "tenant";
-  lastUpdated: string;
-  updated_at?: string;
-}
-
-// API base URL - adjust for your environment
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8001";
-
-// Fallback mock data when API is unavailable
-const MOCK_PACKS: ValuePack[] = [
-  {
-    id: "vp-001",
-    pack_id: "vp-001",
-    name: "Enterprise Security ROI",
-    industry: "SaaS / B2B",
-    description: "Quantify the financial impact of security investments — RBAC, SSO, compliance automation, and audit logging.",
-    driver_count: 8, formula_count: 5, benchmark_count: 12, workflow_count: 3,
-    status: "active", scope: "global", lastUpdated: "2 days ago",
-  },
-  {
-    id: "vp-002",
-    pack_id: "vp-002",
-    name: "Cloud Cost Optimization",
-    industry: "Infrastructure / DevOps",
-    description: "Model savings from automated provisioning, rightsizing, and multi-cloud governance.",
-    driver_count: 6, formula_count: 4, benchmark_count: 9, workflow_count: 2,
-    status: "active", scope: "global", lastUpdated: "1 week ago",
-  },
-  {
-    id: "vp-003",
-    pack_id: "vp-003",
-    name: "Customer Success Efficiency",
-    industry: "SaaS / B2B",
-    description: "Measure churn reduction, NRR improvement, and support deflection through intelligent automation.",
-    driver_count: 7, formula_count: 6, benchmark_count: 8, workflow_count: 4,
-    status: "active", scope: "tenant", lastUpdated: "3 days ago",
-  },
-];
 
 const INDUSTRIES = ["All Industries", "SaaS / B2B", "Infrastructure / DevOps", "Financial Services", "Healthcare"];
 
-function PackCard({ pack }: { pack: ValuePack }) {
-  const statusColor = pack.status === "active" ? "completed" : pack.status === "draft" ? "processing" : "failed";
+function formatLastUpdated(dateStr: string | undefined): string {
+  if (!dateStr) return "Unknown";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return date.toLocaleDateString();
+}
+
+function getStatusColor(status: PackStatus): "completed" | "processing" | "failed" {
+  switch (status) {
+    case "active":
+    case "published":
+      return "completed";
+    case "draft":
+      return "processing";
+    case "archived":
+      return "failed";
+    default:
+      return "processing";
+  }
+}
+
+interface PackCardProps {
+  pack: ValuePack;
+  onApply?: (id: string) => void;
+  isApplying?: boolean;
+}
+
+function PackCard({ pack, onApply, isApplying }: PackCardProps) {
+  const statusColor = getStatusColor(pack.status);
+  const lastUpdated = formatLastUpdated(pack.updated_at);
 
   return (
     <div className="bg-white border border-neutral-200 rounded-xl shadow-sm hover:shadow-md hover:border-neutral-300 transition-all cursor-pointer group">
@@ -85,19 +78,19 @@ function PackCard({ pack }: { pack: ValuePack }) {
               ? <span title="Global pack" className="text-neutral-300"><Globe size={12}/></span>
               : <span title="Tenant pack" className="text-neutral-300"><Lock size={12}/></span>
             }
-            <StatusBadge status={statusColor as any}/>
+            <StatusBadge status={statusColor}/>
           </div>
         </div>
-        <p className="text-[11px] text-neutral-500 leading-relaxed">{pack.description}</p>
+        <p className="text-[11px] text-neutral-500 leading-relaxed">{pack.description || "No description available"}</p>
       </div>
 
       {/* Composition stats */}
       <div className="px-5 py-3 grid grid-cols-4 gap-2">
         {[
-          { icon: <GitBranch size={11}/>, label: "Drivers",    value: pack.driver_count },
-          { icon: <FlaskConical size={11}/>, label: "Formulas", value: pack.formula_count },
-          { icon: <BarChart3 size={11}/>, label: "Benchmarks", value: pack.benchmark_count },
-          { icon: <Bot size={11}/>, label: "Workflows",        value: pack.workflow_count },
+          { icon: <GitBranch size={11}/>, label: "Drivers",    value: pack.driver_count ?? 0 },
+          { icon: <FlaskConical size={11}/>, label: "Formulas", value: pack.formula_count ?? 0 },
+          { icon: <BarChart3 size={11}/>, label: "Benchmarks", value: pack.benchmark_count ?? 0 },
+          { icon: <Bot size={11}/>, label: "Workflows",        value: pack.workflow_count ?? 0 },
         ].map(s => (
           <div key={s.label} className="text-center">
             <div className="flex items-center justify-center gap-1 text-neutral-400 mb-0.5">
@@ -111,11 +104,22 @@ function PackCard({ pack }: { pack: ValuePack }) {
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-neutral-100 flex items-center justify-between">
-        <span className="text-[10px] text-neutral-400">Updated {pack.lastUpdated}</span>
+        <span className="text-[10px] text-neutral-400">Updated {lastUpdated}</span>
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button className="text-[11px] text-blue-600 font-medium hover:underline">Preview</button>
-          <button className="text-[11px] bg-blue-600 text-white px-2.5 py-1 rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center gap-1">
-            Apply <ChevronRight size={10}/>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onApply?.(pack.pack_id);
+            }}
+            disabled={isApplying}
+            className="text-[11px] bg-blue-600 text-white px-2.5 py-1 rounded-md font-medium hover:bg-blue-700 transition-colors flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isApplying ? (
+              <><Loader2 size={10} className="animate-spin" /> Applying...</>
+            ) : (
+              <>Apply <ChevronRight size={10}/></>
+            )}
           </button>
         </div>
       </div>
@@ -123,65 +127,77 @@ function PackCard({ pack }: { pack: ValuePack }) {
   );
 }
 
-export default function ValuePacks() {
+function PackCardSkeleton() {
+  return (
+    <div className="bg-white border border-neutral-200 rounded-xl shadow-sm">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-4 border-b border-neutral-100">
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2.5">
+            <Skeleton className="w-8 h-8 rounded-lg" />
+            <div className="space-y-1">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          </div>
+          <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+        <Skeleton className="h-3 w-full mt-2" />
+        <Skeleton className="h-3 w-2/3 mt-1" />
+      </div>
+
+      {/* Composition stats */}
+      <div className="px-5 py-3 grid grid-cols-4 gap-2">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="text-center space-y-1">
+            <Skeleton className="h-4 w-8 mx-auto" />
+            <Skeleton className="h-2 w-12 mx-auto" />
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="px-5 py-3 border-t border-neutral-100 flex items-center justify-between">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-6 w-16 rounded" />
+      </div>
+    </div>
+  );
+}
+
+function ValuePacksContent() {
   const [industry, setIndustry] = useState("All Industries");
   const [search, setSearch] = useState("");
-  const [packs, setPacks] = useState<ValuePack[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // Memoize filter config to prevent unnecessary query re-fetches
+  const filters = useMemo(() => ({
+    industry: industry === "All Industries" ? "all" : industry,
+    search: search || undefined,
+  }), [industry, search]);
+  
+  const { data: packs = [], isLoading, error, refetch } = useValuePacks(filters);
+  const applyMutation = useApplyValuePack();
 
-  // Fetch packs from API
-  useEffect(() => {
-    const fetchPacks = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch(`${API_BASE}/v1/packs`);
-        
-        if (!response.ok) {
-          // If API fails, fall back to mock data
-          console.warn("API unavailable, using mock data");
-          setPacks(MOCK_PACKS);
-          return;
-        }
-        
-        const data = await response.json();
-        
-        // Transform API response to match our interface
-        const transformed: ValuePack[] = data.map((p: any) => ({
-          id: p.pack_id,
-          pack_id: p.pack_id,
-          name: p.name,
-          industry: p.industry,
-          description: p.description || "",
-          driver_count: p.driver_count ?? 0,
-          formula_count: p.formula_count ?? 0,
-          benchmark_count: p.benchmark_count ?? 0,
-          workflow_count: p.workflow_count ?? 0,
-          status: p.status === "published" ? "active" : (p.status || "draft"),
-          scope: p.scope || "global",
-          lastUpdated: p.updated_at ? new Date(p.updated_at).toLocaleDateString() : "Unknown",
-          updated_at: p.updated_at,
-        }));
-        
-        setPacks(transformed);
-      } catch (err) {
-        console.error("Failed to fetch packs:", err);
-        setError("Failed to load value packs. Using fallback data.");
-        setPacks(MOCK_PACKS);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchPacks();
-  }, []);
+  // Client-side filtering for industry/search (API returns all, we filter)
+  const filtered = useMemo(() => {
+    const searchLower = search.toLowerCase();
+    return packs.filter(p =>
+      (industry === "All Industries" || p.industry === industry) &&
+      (search === "" || 
+       p.name.toLowerCase().includes(searchLower) || 
+       p.description?.toLowerCase().includes(searchLower))
+    );
+  }, [packs, industry, search]);
 
-  const filtered = packs.filter(p =>
-    (industry === "All Industries" || p.industry === industry) &&
-    (search === "" || p.name.toLowerCase().includes(search.toLowerCase()) || p.description.toLowerCase().includes(search.toLowerCase()))
-  );
+  const handleApply = useCallback(async (packId: string) => {
+    try {
+      await applyMutation.mutateAsync(packId);
+      // Success feedback could be added here (toast, etc.)
+    } catch (err) {
+      console.error("Failed to apply pack:", err);
+      // Error is handled by mutation state
+    }
+  }, [applyMutation]);
 
   return (
     <div className="p-6 max-w-5xl">
@@ -239,31 +255,63 @@ export default function ValuePacks() {
         </div>
       </div>
 
-      {/* Loading state */}
-      {loading && (
-        <div className="text-center py-16 text-neutral-400 text-[13px]">
-          <div className="animate-pulse">Loading value packs...</div>
+      {/* Error state */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-4 mb-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-[13px] font-medium text-red-800">Failed to load value packs</p>
+              <p className="text-[12px] text-red-600 mt-1">
+                {error instanceof Error ? error.message : "An unexpected error occurred"}
+              </p>
+              <button 
+                onClick={() => refetch()}
+                className="mt-3 flex items-center gap-1.5 text-[12px] font-medium text-red-700 hover:text-red-800"
+              >
+                <RefreshCw size={12} /> Try again
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
-      {/* Error state */}
-      {error && !loading && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-4">
-          <p className="text-[12px] text-amber-700">{error}</p>
+      {/* Loading state with skeletons */}
+      {isLoading && (
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <PackCardSkeleton key={i} />
+          ))}
         </div>
       )}
       
       {/* Pack grid */}
-      {!loading && (
+      {!isLoading && !error && (
         <div className="grid grid-cols-2 gap-4">
-          {filtered.map(pack => <PackCard key={pack.id} pack={pack}/>)}
+          {filtered.map(pack => (
+            <PackCard 
+              key={pack.pack_id} 
+              pack={pack} 
+              onApply={handleApply}
+              isApplying={applyMutation.isPending}
+            />
+          ))}
           {filtered.length === 0 && (
             <div className="col-span-2 text-center py-16 text-neutral-400 text-[13px]">
-              No value packs match your filters.
+              <Package size={48} className="mx-auto mb-4 text-neutral-300"/>
+              <p>No value packs match your filters.</p>
             </div>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+export default function ValuePacks() {
+  return (
+    <ErrorBoundary>
+      <ValuePacksContent />
+    </ErrorBoundary>
   );
 }

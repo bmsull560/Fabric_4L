@@ -1,4 +1,5 @@
 ---
+name: graph-traverse
 description: Navigate the Knowledge Graph via relationships to find connected entities
 ---
 

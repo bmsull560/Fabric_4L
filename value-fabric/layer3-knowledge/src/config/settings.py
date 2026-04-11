@@ -73,6 +73,8 @@ class Settings(BaseSettings):
     pinecone_namespace: str = Field(default="entities", alias="PINECONE_NAMESPACE")
     pinecone_dimension: int = Field(default=768, alias="PINECONE_DIMENSION")
     pinecone_metric: str = Field(default="cosine", alias="PINECONE_METRIC")
+    pinecone_cloud: str = Field(default="aws", alias="PINECONE_CLOUD")
+    pinecone_region: str = Field(default="us-west-2", alias="PINECONE_REGION")
 
     # Embeddings Configuration
     embedding_model: str = Field(

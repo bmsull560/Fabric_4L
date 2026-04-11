@@ -497,4 +497,5 @@ class ValidationStateMachine:
             new_maturity,
             actor,
         )
+        await db.flush()  # Persist event and history before returning
         return truth_object

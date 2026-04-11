@@ -75,15 +75,16 @@ class SemanticAligner:
         
         Args:
             similarity_threshold: Cosine similarity threshold for alignment (0.0-1.0)
-            api_key: OpenAI API key for embeddings
+            api_key: OpenAI API key for embeddings (required for align_* methods)
             model: Embedding model to use
         """
         if not OPENAI_AVAILABLE:
             raise ImportError("openai package not installed. Run: pip install openai")
         self.similarity_threshold = similarity_threshold
-        self.client = AsyncOpenAI(api_key=api_key)
         self.model = model
         self.alignment_cache: Dict[str, AlignmentResult] = {}
+        # API key is optional - only required for embedding-based alignment methods
+        self.client = AsyncOpenAI(api_key=api_key) if api_key else None
     
     async def align_result(
         self,
@@ -298,32 +299,34 @@ class SemanticAligner:
         entity_type = type(entity).__name__
         entity_name = self._get_entity_name(entity)
         key_data = f"{entity_type}:{entity_name}"
-        return hashlib.md5(key_data.encode()).hexdigest()
+        return hashlib.sha256(key_data.encode()).hexdigest()
     
     async def _get_embeddings(self, texts: List[str]) -> List[Optional[List[float]]]:
         """Generate embeddings for texts using OpenAI API."""
         if not texts:
             return []
-        
-        try:
-            # Batch in chunks of 100 (OpenAI limit)
-            all_embeddings = []
-            batch_size = 100
-            
-            for i in range(0, len(texts), batch_size):
-                batch = texts[i:i + batch_size]
+
+        if self.client is None:
+            raise RuntimeError("OpenAI API key required for embeddings. Pass api_key to SemanticAligner.")
+
+        # Batch in chunks of 100 (OpenAI limit)
+        all_embeddings: List[Optional[List[float]]] = []
+        batch_size = 100
+
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            try:
                 response = await self.client.embeddings.create(
                     model=self.model,
                     input=batch
                 )
                 batch_embeddings = [item.embedding for item in response.data]
                 all_embeddings.extend(batch_embeddings)
-            
-            return all_embeddings
-            
-        except Exception:
-            # Return None for failed embeddings
-            return [None] * len(texts)
+            except Exception:
+                # Return None for failed batch only
+                all_embeddings.extend([None] * len(batch))
+
+        return all_embeddings
     
     def _compute_similarity(
         self,

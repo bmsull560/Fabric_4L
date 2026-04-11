@@ -11,11 +11,12 @@ from jinja2 import Template
 try:
     from weasyprint import HTML
     WEASYPRINT_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError):
+    # OSError: missing GTK system libraries on Windows
     WEASYPRINT_AVAILABLE = False
     HTML = None  # type: ignore
 
-from ..models.tool_schemas import ToolCategory
+from ..models.tool_schemas import ToolCategory, ExportDocumentInput, ExportDocumentOutput
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -275,46 +276,43 @@ class DocumentExportTool(BaseTool):
     name = "export_document"
     category = ToolCategory.GENERATION
     description = "Export business cases and documents to PDF format"
-    input_schema = dict  # TODO: Define proper Pydantic schema
-    output_schema = dict  # TODO: Define proper Pydantic schema
+    input_schema = ExportDocumentInput
+    output_schema = ExportDocumentOutput
     timeout_seconds = 60
 
-    async def execute(
-        self,
-        document_type: str,
-        business_case_data: Dict[str, Any],
-        template: Optional[str] = None,
-        branding: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+    async def execute(self, input_data: ExportDocumentInput) -> ExportDocumentOutput:
         """Generate PDF from business case data.
 
         Args:
-            document_type: Type of document ("business_case", "audit_report", etc.)
-            business_case_data: Structured business case data
-            template: Optional custom HTML template
-            branding: Optional branding config (logo_url, primary_color, etc.)
+            input_data: Validated ExportDocumentInput with document_type, business_case_data, etc.
 
         Returns:
-            Dict with pdf_bytes, content_type, filename
+            ExportDocumentOutput with pdf_bytes, content_type, filename, success status
         """
         try:
-            if document_type == "business_case":
+            if input_data.document_type == "business_case":
                 return await self._generate_business_case_pdf(
-                    business_case_data, template, branding
+                    input_data.business_case_data,
+                    input_data.template,
+                    input_data.branding,
                 )
             else:
-                raise ValueError(f"Unsupported document type: {document_type}")
+                raise ValueError(f"Unsupported document type: {input_data.document_type}")
 
         except Exception as e:
             logger.error(f"PDF generation failed: {e}")
-            raise
+            return ExportDocumentOutput(
+                success=False,
+                error=str(e),
+                filename="error.pdf",
+            )
 
     async def _generate_business_case_pdf(
         self,
         data: Dict[str, Any],
         custom_template: Optional[str] = None,
         branding: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+    ) -> ExportDocumentOutput:
         """Generate business case PDF."""
         template_str = custom_template or BUSINESS_CASE_TEMPLATE
         template = Template(template_str)
@@ -365,12 +363,13 @@ class DocumentExportTool(BaseTool):
                 for c in data.get("title", "business_case")
             ).lower()
             filename = f"{safe_title}_{datetime.now().strftime('%Y%m%d')}.html"
-            return {
-                "pdf_bytes": html_bytes,
-                "content_type": "text/html",
-                "filename": filename,
-                "size_bytes": len(html_bytes),
-            }
+            return ExportDocumentOutput(
+                pdf_bytes=html_bytes,
+                content_type="text/html",
+                filename=filename,
+                success=True,
+                file_size_bytes=len(html_bytes),
+            )
 
         pdf_buffer = BytesIO()
         HTML(string=html_content).write_pdf(pdf_buffer)  # type: ignore
@@ -383,12 +382,13 @@ class DocumentExportTool(BaseTool):
         ).lower()
         filename = f"{safe_title}_{datetime.now().strftime('%Y%m%d')}.pdf"
 
-        return {
-            "pdf_bytes": pdf_bytes,
-            "content_type": "application/pdf",
-            "filename": filename,
-            "size_bytes": len(pdf_bytes),
-        }
+        return ExportDocumentOutput(
+            pdf_bytes=pdf_bytes,
+            content_type="application/pdf",
+            filename=filename,
+            success=True,
+            file_size_bytes=len(pdf_bytes),
+        )
 
     def _format_currency(self, amount: float) -> str:
         """Format amount as currency string."""
@@ -457,7 +457,7 @@ class PDFGenerator:
         self.template_dir = template_dir
         self.logger = logging.getLogger(__name__)
 
-    def generate_business_case_pdf(
+    async def generate_business_case_pdf(
         self,
         data: Dict[str, Any],
         output_path: Optional[str] = None,
@@ -472,9 +472,9 @@ class PDFGenerator:
             PDF bytes
         """
         tool = DocumentExportTool()
-        result = tool._generate_business_case_pdf(data)
+        result = await tool._generate_business_case_pdf(data)
 
-        pdf_bytes = result["pdf_bytes"]
+        pdf_bytes = result.pdf_bytes
 
         if output_path:
             with open(output_path, "wb") as f:

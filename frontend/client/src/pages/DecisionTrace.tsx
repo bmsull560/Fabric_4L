@@ -4,8 +4,9 @@
  */
 import { useState } from "react";
 import { useSearchParams } from "wouter";
-import { Shield, Download, CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { Shield, Download, CheckCircle2, Loader2 } from "lucide-react";
 import { PageHeader, Btn, Toolbar, SectionCard, StatusBadge, DataTable } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useProvenanceTrail, useAuditLogs, useExportProvenance, type AuditLogEntry, type AuditLogFilter } from "@/hooks/useProvenance";
 
 function formatTimestamp(timestamp: string): string {
@@ -13,14 +14,9 @@ function formatTimestamp(timestamp: string): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function formatDate(timestamp: string): string {
-  const date = new Date(timestamp);
-  return date.toLocaleDateString();
-}
-
 export default function DecisionTrace() {
   const [searchParams] = useSearchParams();
-  const entityIdFromUrl = searchParams.get("entityId");
+  const entityIdFromUrl = searchParams.get("entityId") || searchParams.get("caseId");
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(entityIdFromUrl);
   const [sourceFilter, setSourceFilter] = useState<AuditLogFilter['source']>("all");
 
@@ -86,8 +82,63 @@ export default function DecisionTrace() {
 
   if (isLoading) {
     return (
-      <div className="p-6 max-w-5xl flex items-center justify-center h-64">
-        <Loader2 className="animate-spin text-blue-600" size={32} />
+      <div className="p-6 max-w-5xl">
+        {/* Header skeleton */}
+        <div className="mb-5">
+          <Skeleton className="h-4 w-48 mb-2" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Skeleton className="h-8 w-48 mb-1" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+            <Skeleton className="h-8 w-32" />
+          </div>
+        </div>
+
+        {/* Toolbar skeleton */}
+        <Toolbar>
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-8 w-24" />
+        </Toolbar>
+
+        <div className="flex gap-5">
+          {/* Audit log table skeleton */}
+          <div className="flex-1">
+            <SectionCard title="Audit Log" noPad>
+              {/* Table header skeleton */}
+              <div className="flex bg-neutral-50 border-b border-neutral-200 px-4 py-2.5">
+                {["Trace ID", "Entity", "Action", "Agent", "Timestamp", "Status", "Actions"].map((_, i) => (
+                  <Skeleton key={i} className="h-3 w-16 mr-4" />
+                ))}
+              </div>
+              {/* Table rows skeleton */}
+              <div className="divide-y divide-neutral-100">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center px-4 py-3">
+                    <Skeleton className="h-3 w-20 mr-4" />
+                    <Skeleton className="h-3 w-16 mr-4" />
+                    <Skeleton className="h-3 w-20 mr-4" />
+                    <Skeleton className="h-3 w-24 mr-4" />
+                    <Skeleton className="h-3 w-16 mr-4" />
+                    <Skeleton className="h-5 w-16 mr-4 rounded-full" />
+                    <Skeleton className="h-3 w-8" />
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          </div>
+
+          {/* Provenance timeline skeleton */}
+          <div className="w-[260px] shrink-0">
+            <SectionCard title="Select an Entity">
+              <div className="text-center py-8">
+                <Skeleton className="h-4 w-40 mx-auto mb-2" />
+                <Skeleton className="h-3 w-32 mx-auto" />
+              </div>
+            </SectionCard>
+          </div>
+        </div>
       </div>
     );
   }

@@ -353,8 +353,9 @@ Follow semantic versioning:
 See `packs/manufacturing/` for a complete reference implementation including:
 - 10 entities (capabilities, use cases, personas, value drivers)
 - 7 formulas covering OEE, maintenance, quality, and energy
-- 15 variables with MES/ERP/CMMS source bindings
-- 1 complete workflow template with 5 phases
+- 35 variables with MES/ERP/CMMS source bindings
+- 1 complete workflow template with 5 phases and 21 tasks
+- Pack test suite with 38 integration tests
 
 ## Best Practices
 

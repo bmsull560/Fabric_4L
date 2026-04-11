@@ -210,7 +210,7 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDe
             drivers=drivers,
             formulas=formulas,
             benchmarks=benchmarks,
-            created_at=vp.get("createdAt", datetime.utcnow().isoformat()),
+            created_at=vp.get("createdAt", datetime.now(timezone.utc).isoformat()),
             updated_at=vp.get("updatedAt"),
             created_by=vp.get("createdBy"),
             workspace_id=vp.get("workspaceId"),
@@ -360,7 +360,7 @@ async def update_pack(
     set_clauses = ["vp.updatedAt = $updated_at"]
     params = {
         "pack_id": pack_id,
-        "updated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     
     if request.name is not None:
@@ -502,7 +502,7 @@ async def execute_pack(
             execution_id=execution_id,
             status="success",
             outputs=outputs,
-            completed_at=datetime.utcnow().isoformat(),
+            completed_at=datetime.now(timezone.utc).isoformat(),
         )
     
     return PackExecuteResponse(

@@ -146,9 +146,9 @@ async def lifespan(app: FastAPI):
     # Setup structured logging
     settings = get_settings()
     setup_logging(settings)
-    logger.info("Starting Value Fabric Knowledge Graph API", 
-                component="layer3-knowledge", 
-                version="1.0.0")
+    logger.info("Starting Value Fabric Knowledge Graph API",
+                extra={"component": "layer3-knowledge",
+                       "version": "1.0.0"})
     
     # Initialize cache if enabled
     cache_manager = None
@@ -203,6 +203,9 @@ async def lifespan(app: FastAPI):
     app.state.cache_manager = cache_manager
     app.state.metrics = metrics
     app.state.version_compatibility = version_compatibility
+    
+    # Set global metrics reference for health check access
+    set_app_metrics(metrics)
     
     # Add metrics middleware if available
     if metrics:
@@ -633,62 +636,71 @@ async def check_dependencies() -> List[DependencyStatus]:
     return dependencies
 
 
+_app_metrics: Optional[Any] = None
+
+
+def set_app_metrics(metrics: Optional[Any]) -> None:
+    """Set the global metrics instance for health check access."""
+    global _app_metrics
+    _app_metrics = metrics
+
+
 def get_system_metrics() -> ServiceMetrics:
-    """Collect system and application metrics from Prometheus."""
+    """Collect system and application metrics from Prometheus.
+    
+    Extracts real counter values from the Prometheus registry by iterating
+    through collected metrics and summing sample values for counters.
+    """
     uptime = time.time() - _app_start_time
 
-    # System metrics
+    # System metrics from psutil
     memory_info = psutil.virtual_memory()
     memory_usage_mb = memory_info.used / (1024 * 1024)
-    cpu_percent = psutil.cpu_percent()
+    cpu_percent = psutil.cpu_percent(interval=None)
 
-    # Use global _metrics variable directly, not get_metrics() endpoint
+    # Application metrics from Prometheus registry
     total_requests = 0
+    total_errors = 0
     active_connections = 0
     error_rate_percent = 0.0
-    metric_source = globals().get("_metrics")
+    metrics_instance = _app_metrics
     
-    if metric_source is not None:
+    if metrics_instance is not None:
         try:
-            active_connections = int(
-                metric_source._metrics.get("active_connections", {})
-                .get("total", {})
-                .get("_value", 0)
-            )
-        except (AttributeError, TypeError):
-            active_connections = 0
-
-        # Calculate total requests from counter
-        try:
-            requests_counter = metric_source._metrics.get("requests_total", {})
-            total_requests = sum(
-                v.get("_value", 0)
-                for method_dict in requests_counter.values()
-                for endpoint_dict in method_dict.values()
-                for status_dict in endpoint_dict.values()
-                for v in status_dict.values()
-            )
-        except (AttributeError, TypeError):
-            total_requests = 0
-
-        # Calculate error rate from error counter vs total requests
-        try:
-            errors_counter = metric_source._metrics.get("errors_total", {})
-            total_errors = sum(
-                v.get("_value", 0)
-                for error_dict in errors_counter.values()
-                for component_dict in error_dict.values()
-                for v in component_dict.values()
-            )
+            registry = metrics_instance.config.registry
+            prefix = metrics_instance.config.prefix
+            
+            # Iterate through all metrics in registry and extract values
+            for metric in registry.collect():
+                if metric.name == f"{prefix}active_connections":
+                    # Gauge: take the value directly (connection_type="total")
+                    for sample in metric.samples:
+                        if sample.labels.get("connection_type") == "total":
+                            active_connections = int(sample.value)
+                            break
+                
+                elif metric.name == f"{prefix}http_requests_total":
+                    # Counter: sum all sample values across all labels
+                    for sample in metric.samples:
+                        total_requests += int(sample.value)
+                
+                elif metric.name == f"{prefix}errors_total":
+                    # Counter: sum all error samples across all labels
+                    for sample in metric.samples:
+                        total_errors += int(sample.value)
+            
+            # Calculate error rate as percentage
             if total_requests > 0:
-                error_rate_percent = (total_errors / total_requests) * 100
-        except (AttributeError, TypeError):
-            error_rate_percent = 0.0
+                error_rate_percent = round((total_errors / total_requests) * 100, 2)
+                
+        except Exception as e:
+            logger.warning(f"Failed to extract Prometheus metrics: {e}")
+            # Keep default zero values on any extraction failure
 
     return ServiceMetrics(
         uptime_seconds=uptime,
-        memory_usage_mb=memory_usage_mb,
-        cpu_percent=cpu_percent,
+        memory_usage_mb=round(memory_usage_mb, 2),
+        cpu_percent=round(cpu_percent, 2),
         active_connections=active_connections,
         total_requests=total_requests,
         error_rate_percent=error_rate_percent
@@ -817,38 +829,60 @@ async def health_check(
 ):
     """Check service health and Neo4j connectivity."""
     start_time = time.time()
-    
+    request_id = getattr(request.state, 'request_id', 'unknown')
+
     # Check dependencies
     dependencies = await check_dependencies()
-    
+
     # Get metrics
     metrics = get_system_metrics()
-    
-    # Check Neo4j health
-    neo4j_health = await schema_initializer.health_check()
-    
-    # Check schema status
-    schema_status = await schema_initializer.verify_schema()
-    
-    # Determine overall status
+
+    # Check Neo4j health (handle case where schema_initializer is None)
+    neo4j_health = {"status": "unavailable", "message": "Neo4j not initialized"}
+    schema_status = {"status": "unknown", "message": "Schema initializer not available"}
+
+    if schema_initializer is not None:
+        try:
+            neo4j_health = await schema_initializer.health_check()
+            schema_status = await schema_initializer.verify_schema()
+        except Exception as e:
+            logger.warning("Health check failed for Neo4j", exc_info=e, request_id=request_id)
+            error_msg = "Neo4j health check failed"
+            neo4j_health = {"status": "error", "message": error_msg}
+            schema_status = {"status": "error", "message": error_msg}
+
+    # Determine overall status (priority: unhealthy > degraded > healthy)
     overall_status = "healthy"
-    if any(dep.status == "unhealthy" for dep in dependencies):
+    if schema_initializer is None:
+        overall_status = "degraded"
+    elif any(dep.status == "unhealthy" for dep in dependencies):
         overall_status = "unhealthy"
     elif any(dep.status == "degraded" for dep in dependencies):
         overall_status = "degraded"
-    
+
+    response_time_ms = (time.time() - start_time) * 1000
+
+    logger.info(
+        "Health check completed",
+        request_id=request_id,
+        status=overall_status,
+        response_time_ms=round(response_time_ms, 2),
+        neo4j_status=neo4j_health.get("status"),
+    )
+
     # Create response data
     response_data = {
         "status": overall_status,
         "version": "1.0.0",
         "timestamp": datetime.utcnow(),
         "uptime_seconds": metrics.uptime_seconds,
+        "response_time_ms": round(response_time_ms, 2),
         "dependencies": dependencies,
         "metrics": metrics,
         "neo4j": neo4j_health,
         "schema_status": schema_status
     }
-    
+
     # Response model expects health payload directly (version headers are applied by middleware).
     return response_data
 
@@ -1053,6 +1087,12 @@ async def get_schema_status(
     schema_initializer=Depends(get_schema_initializer),
 ):
     """Get schema initialization status."""
+    if schema_initializer is None:
+        return SchemaStatus(
+            constraints={},
+            indexes={},
+            valid=False,
+        )
     verification = await schema_initializer.verify_schema()
     return SchemaStatus(
         constraints=verification["constraints"],
@@ -1067,6 +1107,8 @@ async def init_schema(
     schema_initializer=Depends(get_schema_initializer),
 ):
     """Initialize or reinitialize schema."""
+    if schema_initializer is None:
+        raise HTTPException(status_code=503, detail="Schema initializer not available")
     await schema_initializer.initialize_schema(drop_existing=drop_existing)
     return {"status": "initialized", "drop_existing": drop_existing}
 
@@ -1076,6 +1118,8 @@ async def get_schema_statistics(
     schema_initializer=Depends(get_schema_initializer),
 ):
     """Get database statistics."""
+    if schema_initializer is None:
+        raise HTTPException(status_code=503, detail="Schema initializer not available")
     stats = await schema_initializer.get_statistics()
     return SchemaStatistics(
         nodes=stats["nodes"],

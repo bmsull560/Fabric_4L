@@ -1,0 +1,358 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Value Fabric Core Metrics - Product KPIs and Usage Analytics",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 1,
+      "panels": [],
+      "title": "Entity Growth & Knowledge Graph",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 1},
+      "id": 2,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "rate(value_fabric_entities_processed_total[5m])", "legendFormat": "{{entity_type}} - {{operation}}", "refId": "A"}
+      ],
+      "title": "Entity Processing Rate (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "fixed": "green"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "none"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 1},
+      "id": 3,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(value_fabric_entities_processed_total{operation=\"create\"})", "legendFormat": "Total Entities Created", "refId": "A"}
+      ],
+      "title": "Total Entities Created",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "fixed": "blue"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "blue", "value": null}]},
+          "unit": "none"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 1},
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(value_fabric_database_operations_total{operation=\"create_relationship\"})", "legendFormat": "Relationships Created", "refId": "A"}
+      ],
+      "title": "Graph Relationships",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"},
+          "unit": "ops"
+        }
+      },
+      "gridPos": {"h": 4, "w": 12, "x": 12, "y": 5},
+      "id": 5,
+      "options": {"legend": {"displayMode": "table", "placement": "right"}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "rate(value_fabric_database_operations_total[5m])", "legendFormat": "{{operation}} - {{database}}", "refId": "A"}
+      ],
+      "title": "Database Operations Rate",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9},
+      "id": 6,
+      "panels": [],
+      "title": "Search & Analytics Usage",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 20},
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 10},
+      "id": 7,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "rate(value_fabric_search_queries_total[5m])", "legendFormat": "{{search_type}} - {{entity_type}}", "refId": "A"}
+      ],
+      "title": "Search Query Rate by Type",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"},
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 10},
+      "id": 8,
+      "options": {"legend": {"displayMode": "table", "placement": "right"}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(value_fabric_search_query_duration_seconds_bucket[5m])) by (le, search_type))", "legendFormat": "{{search_type}} p95", "refId": "A"}
+      ],
+      "title": "Search Latency (p95 by type)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+      "id": 9,
+      "panels": [],
+      "title": "Ingestion Pipeline",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 15},
+          "unit": "ops"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
+      "id": 10,
+      "options": {"legend": {"displayMode": "table", "placement": "right"}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "rate(value_fabric_ingestion_operations_total[5m])", "legendFormat": "{{status}} - {{source_type}}", "refId": "A"}
+      ],
+      "title": "Ingestion Rate by Source",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Error"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Success"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "percent"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19},
+      "id": 11,
+      "options": {"legend": {"displayMode": "table", "placement": "right"}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "(sum(rate(value_fabric_ingestion_operations_total{status=\"success\"}[5m])) / sum(rate(value_fabric_ingestion_operations_total[5m]))) * 100 or vector(0)", "legendFormat": "Success Rate %", "refId": "A"}
+      ],
+      "title": "Ingestion Success Rate",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 27},
+      "id": 12,
+      "panels": [],
+      "title": "Cache & System Performance",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "0%"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "yellow", "value": 50}, {"color": "green", "value": 80}]}, "unit": "percent"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 28},
+      "id": 13,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "value_fabric_cache_hit_ratio{cache_type=\"redis\"} * 100", "legendFormat": "Redis Cache Hit %", "refId": "A"}
+      ],
+      "title": "Cache Hit Ratio",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"},
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {"h": 4, "w": 8, "x": 8, "y": 28},
+      "id": 14,
+      "options": {"legend": {"displayMode": "table", "placement": "right"}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "value_fabric_memory_usage_bytes", "legendFormat": "{{component}}", "refId": "A"}
+      ],
+      "title": "Memory Usage by Component",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"},
+          "unit": "percent"
+        }
+      },
+      "gridPos": {"h": 4, "w": 8, "x": 16, "y": 28},
+      "id": 15,
+      "options": {"legend": {"displayMode": "table", "placement": "right"}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "value_fabric_cpu_usage_percent", "legendFormat": "{{component}}", "refId": "A"}
+      ],
+      "title": "CPU Usage by Component",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 32},
+      "id": 16,
+      "panels": [],
+      "title": "Business KPIs",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "fixed": "purple"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "purple", "value": null}]},
+          "unit": "none"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 33},
+      "id": 17,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(value_fabric_search_queries_total)", "legendFormat": "Total Searches", "refId": "A"}
+      ],
+      "title": "Total Searches",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "fixed": "orange"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "orange", "value": null}]},
+          "unit": "none"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 33},
+      "id": 18,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(value_fabric_ingestion_operations_total{status=\"success\"})", "legendFormat": "Docs Ingested", "refId": "A"}
+      ],
+      "title": "Docs Successfully Ingested",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "fixed": "green"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]},
+          "unit": "none"
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 33},
+      "id": 19,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["sum"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(value_fabric_database_operations_total{operation=\"traversal\"})", "legendFormat": "Graph Traversals", "refId": "A"}
+      ],
+      "title": "Graph Traversals",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "green", "text": "Healthy"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 33},
+      "id": 20,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "value_fabric_health_status{component=\"api\"} or vector(0)", "legendFormat": "API Health", "refId": "A"}
+      ],
+      "title": "Service Health",
+      "type": "stat"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["value-fabric", "core-metrics", "product-kpis", "business-analytics"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {"refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]},
+  "timezone": "browser",
+  "title": "Value Fabric - Core Metrics",
+  "uid": "value-fabric-core",
+  "version": 1
+}

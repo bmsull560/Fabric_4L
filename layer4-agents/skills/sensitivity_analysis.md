@@ -1,4 +1,5 @@
 ---
+name: sensitivity-analysis
 description: Run Monte Carlo simulation on formula variables
 ---
 

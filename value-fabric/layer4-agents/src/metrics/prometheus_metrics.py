@@ -97,6 +97,16 @@ class PrometheusMetrics:
             registry=self.config.registry
         )
 
+        # Health status gauge (for alerting)
+        self._metrics["health_status"] = Gauge(
+            f"{prefix}health_status",
+            "Health status (1=healthy, 0=unhealthy)",
+            ["component"],
+            registry=self.config.registry
+        )
+        # Initialize with healthy status
+        self._metrics["health_status"].labels(component="api").set(1)
+
         # Error metrics
         self._metrics["errors_total"] = Counter(
             f"{prefix}errors_total",
@@ -157,6 +167,12 @@ class PrometheusMetrics:
             self._metrics["active_connections"].labels(
                 connection_type=connection_type
             ).set(count)
+
+    def set_health_status(self, healthy: bool, component: str = "api") -> None:
+        """Set health status gauge (1=healthy, 0=unhealthy)."""
+        if self.config.enabled:
+            status = 1 if healthy else 0
+            self._metrics["health_status"].labels(component=component).set(status)
 
     def increment_errors(self, error_type: str, component: str) -> None:
         if self.config.enabled:

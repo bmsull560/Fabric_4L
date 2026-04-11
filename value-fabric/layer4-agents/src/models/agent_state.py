@@ -4,11 +4,28 @@ Defines typed state schemas for all workflow types in Layer 4.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional
 from datetime import datetime
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
+
+
+def _last_value(left: Any, right: Any) -> Any:
+    """Reducer that keeps the rightmost (last) value.
+    
+    Used with Annotated for LangGraph state fields that may receive
+    multiple updates per step. Always returns the most recent value.
+    """
+    return right
+
+
+def _merge_dicts(left: Dict[str, Any], right: Dict[str, Any]) -> Dict[str, Any]:
+    """Reducer that merges two dicts, with right values taking precedence.
+    
+    Used with Annotated for output_data to accumulate node results.
+    """
+    return {**left, **right}
 
 
 class WorkflowStatus(str, Enum):
@@ -84,10 +101,10 @@ class BaseAgentState(BaseModel):
     """
     workflow_id: str = Field(default_factory=lambda: str(uuid4()))
     workflow_type: WorkflowType
-    status: WorkflowStatus = WorkflowStatus.PENDING
-    current_node: Optional[str] = None
-    input_data: Dict[str, Any] = Field(default_factory=dict)
-    output_data: Dict[str, Any] = Field(default_factory=dict)
+    status: Annotated[WorkflowStatus, _last_value] = WorkflowStatus.PENDING
+    current_node: Annotated[Optional[str], _last_value] = None
+    input_data: Annotated[Dict[str, Any], _merge_dicts] = Field(default_factory=dict)
+    output_data: Annotated[Dict[str, Any], _merge_dicts] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     started_at: Optional[datetime] = None

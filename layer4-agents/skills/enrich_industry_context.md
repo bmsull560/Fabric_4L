@@ -1,4 +1,5 @@
 ---
+name: enrich-industry-context
 description: Add industry-specific benchmarks and trends to analysis
 ---
 

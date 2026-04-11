@@ -1,4 +1,5 @@
 ---
+name: research-web
 description: Search web for additional context not in Knowledge Graph
 ---
 

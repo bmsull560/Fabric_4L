@@ -87,6 +87,7 @@ class DatabaseError(ValueFabricException):
         operation: Optional[str] = None,
         query: Optional[str] = None,
         database: Optional[str] = None,
+        error_code: str = "DATABASE_ERROR",
         **kwargs
     ):
         """Initialize database error.
@@ -96,6 +97,7 @@ class DatabaseError(ValueFabricException):
             operation: Database operation that failed
             query: Query that failed (sanitized)
             database: Database name
+            error_code: Error code for this exception type
         """
         details = kwargs.pop("details", {})
         
@@ -109,7 +111,7 @@ class DatabaseError(ValueFabricException):
         if database:
             details["database"] = database
         
-        super().__init__(message, error_code="DATABASE_ERROR", details=details, **kwargs)
+        super().__init__(message, error_code=error_code, details=details, **kwargs)
 
 
 class Neo4jError(DatabaseError):

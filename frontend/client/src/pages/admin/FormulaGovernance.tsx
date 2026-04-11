@@ -12,147 +12,71 @@
  * - Governance metadata tracking
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   FlaskConical, CheckCircle2, Clock, AlertCircle, History, ChevronRight,
   Plus, Search, Filter, Tag, Users, Eye, Edit3, Trash2, GitBranch,
   ArrowUpDown, MoreHorizontal, Download, FileText, Check, X,
-  MessageSquare, Shield
+  MessageSquare, Shield, Loader2, RefreshCw,
 } from "lucide-react";
 import { PageHeader, Btn, SectionCard, StatusBadge } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
+import {
+  useFormulas,
+  useFormulaApprovals,
+  useApproveFormula,
+  type Formula,
+  type ApprovalRequest,
+  type FormulaStatus,
+} from "@/hooks/useFormulas";
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
-type FormulaStatus = "active" | "draft" | "pending" | "deprecated" | "archived";
 type ApprovalAction = "approve" | "reject" | "request_changes";
 
-interface Formula {
-  id: string;
-  name: string;
-  pack: string;
-  version: string;
-  status: FormulaStatus;
-  owner: string;
-  updated: string;
-  created: string;
-  usedIn: number;
-  description?: string;
-  governanceScore?: number;
-  lastReviewed?: string;
-  reviewers?: string[];
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const DATE_FORMAT = {
+  LOCALE: 'en-US' as const,
+  SHORT_DATE: { month: 'short' as const, day: 'numeric' as const },
+} as const;
+
+const TIME_RANGES = {
+  MS_PER_DAY: 1000 * 60 * 60 * 24,
+  TODAY: 0,
+  YESTERDAY: 1,
+  DAYS_THRESHOLD: 7,
+} as const;
+
+// ── Helper Functions ───────────────────────────────────────────────────────────
+
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / TIME_RANGES.MS_PER_DAY);
+  
+  // Handle future dates gracefully
+  if (diffDays < TIME_RANGES.TODAY) {
+    return date.toLocaleDateString(DATE_FORMAT.LOCALE, DATE_FORMAT.SHORT_DATE);
+  }
+  if (diffDays === TIME_RANGES.TODAY) return "Today";
+  if (diffDays === TIME_RANGES.YESTERDAY) return "Yesterday";
+  if (diffDays < TIME_RANGES.DAYS_THRESHOLD) return `${diffDays} days ago`;
+  return date.toLocaleDateString(DATE_FORMAT.LOCALE, DATE_FORMAT.SHORT_DATE);
 }
 
-interface ApprovalRequest {
-  id: string;
-  formulaId: string;
-  formulaName: string;
-  submittedBy: string;
-  submittedAt: string;
-  changeSummary: string;
-  previousVersion: string;
-  status: "pending" | "approved" | "rejected";
+function toggleSelection<T>(set: Set<T>, item: T): Set<T> {
+  const newSet = new Set(set);
+  if (newSet.has(item)) {
+    newSet.delete(item);
+  } else {
+    newSet.add(item);
+  }
+  return newSet;
 }
-
-// ── Mock Data ───────────────────────────────────────────────────────────────────
-
-const FORMULAS: Formula[] = [
-  { 
-    id: "f-001", 
-    name: "Customer Churn Reduction ROI",  
-    pack: "Enterprise Security ROI",  
-    version: "v3.2", 
-    status: "draft",   
-    owner: "J. Rivera",  
-    updated: "Today",     
-    created: "2024-03-15",
-    usedIn: 3,
-    description: "Calculates ROI from churn reduction initiatives",
-    governanceScore: 85,
-  },
-  { 
-    id: "f-002", 
-    name: "Cloud Cost Avoidance",          
-    pack: "Cloud Cost Optimization",  
-    version: "v2.1", 
-    status: "active",  
-    owner: "M. Chen",    
-    updated: "Apr 7",     
-    created: "2024-01-10",
-    usedIn: 7,
-    description: "Estimates cloud infrastructure cost savings",
-    governanceScore: 92,
-    lastReviewed: "2024-04-01",
-  },
-  { 
-    id: "f-003", 
-    name: "Compliance Cost Reduction",     
-    pack: "Enterprise Security ROI",  
-    version: "v1.0", 
-    status: "active",  
-    owner: "S. Park",    
-    updated: "Apr 3",     
-    created: "2024-02-20",
-    usedIn: 5,
-    description: "Quantifies compliance-related cost savings",
-    governanceScore: 88,
-    lastReviewed: "2024-03-15",
-  },
-  { 
-    id: "f-004", 
-    name: "Support Deflection Savings",    
-    pack: "Customer Success",          
-    version: "v2.0", 
-    status: "pending", 
-    owner: "J. Rivera",  
-    updated: "Apr 8",     
-    created: "2024-04-01",
-    usedIn: 2,
-    description: "Calculates savings from support ticket deflection",
-    governanceScore: 78,
-  },
-  { 
-    id: "f-005", 
-    name: "NRR Improvement Model",         
-    pack: "Customer Success",          
-    version: "v1.0", 
-    status: "deprecated",
-    owner: "M. Chen", 
-    updated: "Mar 20",    
-    created: "2023-11-01",
-    usedIn: 0,
-    description: "Legacy NRR calculation (superseded by f-006)",
-    governanceScore: 45,
-    lastReviewed: "2024-03-20",
-  },
-  { 
-    id: "f-006", 
-    name: "Net Revenue Retention",         
-    pack: "Customer Success",          
-    version: "v1.0", 
-    status: "active",  
-    owner: "M. Chen",    
-    updated: "Apr 5",     
-    created: "2024-03-25",
-    usedIn: 12,
-    description: "Modern NRR calculation with expansion revenue",
-    governanceScore: 95,
-    lastReviewed: "2024-04-05",
-  },
-];
-
-const PENDING_APPROVALS: ApprovalRequest[] = [
-  {
-    id: "req-001",
-    formulaId: "f-004",
-    formulaName: "Support Deflection Savings",
-    submittedBy: "J. Rivera",
-    submittedAt: "2024-04-08T10:30:00Z",
-    changeSummary: "Updated deflection rate calculation methodology",
-    previousVersion: "v1.5",
-    status: "pending",
-  },
-];
 
 // ── Status Configuration ───────────────────────────────────────────────────────
 
@@ -233,15 +157,15 @@ function ApprovalQueueCard({ request, onAction }: {
               Pending Approval
             </span>
             <span className="text-[11px] text-neutral-500">
-              Submitted {new Date(request.submittedAt).toLocaleDateString()}
+              Submitted {new Date(request.submitted_at).toLocaleDateString()}
             </span>
           </div>
-          <h3 className="text-[14px] font-semibold text-neutral-800">{request.formulaName}</h3>
-          <p className="text-[12px] text-neutral-600 mt-1">{request.changeSummary}</p>
+          <h3 className="text-[14px] font-semibold text-neutral-800">{request.formula_name}</h3>
+          <p className="text-[12px] text-neutral-600 mt-1">{request.change_summary}</p>
         </div>
         <div className="text-[11px] text-neutral-500 text-right">
-          <p>By {request.submittedBy}</p>
-          <p>v{request.previousVersion} → new version</p>
+          <p>By {request.submitted_by}</p>
+          <p>v{request.previous_version} → new version</p>
         </div>
       </div>
       
@@ -273,37 +197,133 @@ function ApprovalQueueCard({ request, onAction }: {
 
 type TabType = "registry" | "versions" | "approvals";
 
-export default function FormulaGovernance() {
+function FormulaGovernanceSkeleton() {
+  return (
+    <div className="p-6 max-w-6xl">
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <Skeleton className="h-9 w-28" />
+      </div>
+
+      {/* Stats Row Skeleton */}
+      <div className="grid grid-cols-5 gap-4 mb-6">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+            <Skeleton className="h-4 w-24 mb-2" />
+            <Skeleton className="h-7 w-12" />
+          </div>
+        ))}
+      </div>
+
+      {/* Table Skeleton */}
+      <div className="bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-neutral-50 border-b border-neutral-100 px-4 py-3 flex gap-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="px-4 py-4 border-b border-neutral-100 flex gap-4">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FormulaGovernanceContent() {
   const [activeTab, setActiveTab] = useState<TabType>("registry");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | FormulaStatus>("all");
   const [selectedFormulas, setSelectedFormulas] = useState<Set<string>>(new Set());
 
-  const filteredFormulas = FORMULAS.filter(f =>
-    (statusFilter === "all" || f.status === statusFilter) &&
-    (search === "" || f.name.toLowerCase().includes(search.toLowerCase()))
-  );
+  const { 
+    data: formulas = [], 
+    isLoading, 
+    error,
+    refetch: refetchFormulas
+  } = useFormulas({ 
+    status: statusFilter, 
+    search: search || undefined 
+  });
+  
+  const { 
+    data: pendingApprovals = [],
+    refetch: refetchApprovals
+  } = useFormulaApprovals();
 
-  const stats = {
-    total: FORMULAS.length,
-    active: FORMULAS.filter(f => f.status === "active").length,
-    pending: FORMULAS.filter(f => f.status === "pending").length,
-    deprecated: FORMULAS.filter(f => f.status === "deprecated").length,
-    avgGovernanceScore: Math.round(FORMULAS.reduce((s, f) => s + (f.governanceScore || 0), 0) / FORMULAS.length),
-  };
+  const approveMutation = useApproveFormula();
 
-  const handleApprovalAction = (id: string, action: ApprovalAction) => {
-    console.log(`Approval ${action} for request ${id}`);
-    // In real implementation, call API
-  };
+  const stats = useMemo(() => {
+    return formulas.reduce(
+      (acc, formula) => {
+        acc.total++;
+        if (formula.status === "active") acc.active++;
+        if (formula.status === "pending") acc.pending++;
+        if (formula.status === "deprecated") acc.deprecated++;
+        acc.governanceScoreSum += formula.governance_score || 0;
+        return acc;
+      },
+      { total: 0, active: 0, pending: 0, deprecated: 0, governanceScoreSum: 0 }
+    );
+  }, [formulas]);
 
-  const toggleSelectAll = () => {
-    if (selectedFormulas.size === filteredFormulas.length) {
-      setSelectedFormulas(new Set());
-    } else {
-      setSelectedFormulas(new Set(filteredFormulas.map(f => f.id)));
+  const avgGovernanceScore = stats.total > 0 
+    ? Math.round(stats.governanceScoreSum / stats.total) 
+    : 0;
+
+  const handleApprovalAction = async (id: string, action: ApprovalAction) => {
+    try {
+      await approveMutation.mutateAsync({ 
+        formulaId: id, 
+        action,
+        reason: action === "request_changes" ? "Changes requested by admin" : undefined
+      });
+    } catch (err) {
+      console.error(`Failed to ${action} formula:`, err);
     }
   };
+
+  const toggleSelectAll = useMemo(() => {
+    const allSelected = selectedFormulas.size === formulas.length && formulas.length > 0;
+    return () => {
+      setSelectedFormulas(allSelected ? new Set() : new Set(formulas.map((f) => f.id)));
+    };
+  }, [selectedFormulas.size, formulas]);
+
+  if (isLoading) {
+    return <FormulaGovernanceSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-6xl">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-8 h-8 text-red-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-[14px] font-semibold text-red-800 mb-1">Failed to load formula governance</h3>
+              <p className="text-[12px] text-red-600">
+                {error instanceof Error ? error.message : "An unexpected error occurred"}
+              </p>
+              <button 
+                onClick={() => { refetchFormulas(); refetchApprovals(); }}
+                className="mt-4 flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 text-[12px] font-medium rounded-lg hover:bg-red-200 transition-colors"
+              >
+                <RefreshCw size={14} /> Try again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-6xl">
@@ -323,7 +343,7 @@ export default function FormulaGovernance() {
           { label: "Active", value: stats.active, icon: <CheckCircle2 size={14}/>, color: "text-emerald-600" },
           { label: "Pending Review", value: stats.pending, icon: <AlertCircle size={14}/>, color: "text-amber-600" },
           { label: "Deprecated", value: stats.deprecated, icon: <History size={14}/>, color: "text-red-500" },
-          { label: "Avg Gov Score", value: stats.avgGovernanceScore, icon: <Shield size={14}/>, color: "text-blue-600" },
+          { label: "Avg Gov Score", value: avgGovernanceScore, icon: <Shield size={14}/>, color: "text-blue-600" },
         ].map(s => (
           <div key={s.label} className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
             <div className="flex items-center gap-2 mb-1">
@@ -336,13 +356,13 @@ export default function FormulaGovernance() {
       </div>
 
       {/* Pending Approvals Callout */}
-      {PENDING_APPROVALS.length > 0 && (
+      {pendingApprovals.length > 0 && (
         <div className="mb-6">
           <h3 className="text-[13px] font-semibold text-neutral-700 mb-3 flex items-center gap-2">
             <AlertCircle size={14} className="text-amber-600"/> 
-            Pending Approvals ({PENDING_APPROVALS.length})
+            Pending Approvals ({pendingApprovals.length})
           </h3>
-          {PENDING_APPROVALS.map(req => (
+          {pendingApprovals.map((req: ApprovalRequest) => (
             <ApprovalQueueCard 
               key={req.id} 
               request={req} 
@@ -355,9 +375,9 @@ export default function FormulaGovernance() {
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-neutral-200 mb-4">
         {[
-          { id: "registry" as const, label: "Formula Registry", count: FORMULAS.length },
+          { id: "registry" as const, label: "Formula Registry", count: formulas.length },
           { id: "versions" as const, label: "Version History" },
-          { id: "approvals" as const, label: "Approval Queue", count: PENDING_APPROVALS.length },
+          { id: "approvals" as const, label: "Approval Queue", count: pendingApprovals.length },
         ].map(tab => (
           <button
             key={tab.id}
@@ -432,7 +452,7 @@ export default function FormulaGovernance() {
                 <input 
                   type="checkbox" 
                   className="rounded border-neutral-300"
-                  checked={selectedFormulas.size === filteredFormulas.length && filteredFormulas.length > 0}
+                  checked={selectedFormulas.size === formulas.length && formulas.length > 0}
                   onChange={toggleSelectAll}
                 />
               </th>
@@ -444,22 +464,14 @@ export default function FormulaGovernance() {
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
-            {filteredFormulas.map(f => (
+            {formulas.map((f: Formula) => (
               <tr key={f.id} className="hover:bg-neutral-50 transition-colors group">
                 <td className="px-3 py-3">
                   <input 
                     type="checkbox" 
                     className="rounded border-neutral-300"
                     checked={selectedFormulas.has(f.id)}
-                    onChange={() => {
-                      const newSet = new Set(selectedFormulas);
-                      if (newSet.has(f.id)) {
-                        newSet.delete(f.id);
-                      } else {
-                        newSet.add(f.id);
-                      }
-                      setSelectedFormulas(newSet);
-                    }}
+                    onChange={() => setSelectedFormulas(toggleSelection(selectedFormulas, f.id))}
                   />
                 </td>
                 <td className="px-3 py-3">
@@ -473,13 +485,13 @@ export default function FormulaGovernance() {
                     </div>
                   </div>
                 </td>
-                <td className="px-3 py-3 text-neutral-500">{f.pack}</td>
+                <td className="px-3 py-3 text-neutral-500">{f.pack_name || "—"}</td>
                 <td className="px-3 py-3 font-mono text-neutral-600">{f.version}</td>
                 <td className="px-3 py-3"><FormulaStatusChip status={f.status}/></td>
                 <td className="px-3 py-3 text-neutral-500">{f.owner}</td>
-                <td className="px-3 py-3"><GovernanceScoreBadge score={f.governanceScore}/></td>
-                <td className="px-3 py-3 text-neutral-600">{f.usedIn} assets</td>
-                <td className="px-3 py-3 text-neutral-400">{f.updated}</td>
+                <td className="px-3 py-3"><GovernanceScoreBadge score={f.governance_score}/></td>
+                <td className="px-3 py-3 text-neutral-600">{f.used_in_count || 0} assets</td>
+                <td className="px-3 py-3 text-neutral-400">{formatDate(f.updated_at)}</td>
                 <td className="px-3 py-3">
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button className="p-1.5 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700" title="View">
@@ -497,7 +509,7 @@ export default function FormulaGovernance() {
             ))}
           </tbody>
         </table>
-        {filteredFormulas.length === 0 && (
+        {formulas.length === 0 && (
           <div className="text-center py-12 text-neutral-400 text-[12px]">
             <FlaskConical size={32} className="mx-auto mb-3 text-neutral-300"/>
             No formulas match your filters.
@@ -531,5 +543,13 @@ export default function FormulaGovernance() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FormulaGovernance() {
+  return (
+    <ErrorBoundary>
+      <FormulaGovernanceContent />
+    </ErrorBoundary>
   );
 }

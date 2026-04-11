@@ -6,6 +6,16 @@ from io import BytesIO
 
 from openai import AsyncOpenAI
 
+# Optional weasyprint import - allows tests to run without GTK libraries
+try:
+    from weasyprint import HTML, CSS
+    WEASYPRINT_AVAILABLE = True
+except (ImportError, OSError):
+    # OSError: missing GTK system libraries on Windows
+    WEASYPRINT_AVAILABLE = False
+    HTML = None  # type: ignore
+    CSS = None  # type: ignore
+
 from ..models.tool_schemas import (
     AssembleDocumentInput,
     AssembleDocumentOutput,
@@ -295,14 +305,15 @@ class AssembleDocumentTool(BaseTool):
         )
     
     async def _generate_pdf(self, sections: List[Dict], branding: Dict) -> bytes:
-        """Generate PDF using WeasyPrint."""
-        from weasyprint import HTML, CSS
-        
+        """Generate PDF using WeasyPrint (or return HTML if unavailable)."""
+        if not WEASYPRINT_AVAILABLE:
+            logger.warning("weasyprint not available, returning HTML instead of PDF")
+            html_content = await self._generate_html_content(sections, branding)
+            return html_content.encode('utf-8')
+
         html_content = await self._generate_html_content(sections, branding)
-        
         html = HTML(string=html_content)
         pdf_bytes = html.write_pdf()
-        
         return pdf_bytes
     
     async def _generate_docx(self, sections: List[Dict], branding: Dict) -> bytes:

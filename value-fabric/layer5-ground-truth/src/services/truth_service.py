@@ -91,6 +91,7 @@ async def create_truth_object(
         notes="Initial extraction",
     )
     db.add(initial_event)
+    await db.flush()  # Ensure ValidationEvent is persisted
 
     # Attach sources if provided
     if sources:

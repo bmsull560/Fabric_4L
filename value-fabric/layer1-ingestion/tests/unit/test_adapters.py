@@ -1,7 +1,7 @@
 """Unit tests for SEC EDGAR adapter."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 
 from src.adapters.sec_edgar import SECEdgarAdapter
@@ -61,38 +61,60 @@ class TestSECEdgarAdapter:
     
     @pytest.mark.asyncio
     async def test_search_filings(self, adapter):
-        """Test filing search."""
-        mock_response = Mock()
-        mock_response.json.return_value = {
-            "cik": "0000320193",
+        """Test filing search filters by form type and date range."""
+        # Constants for test data
+        TEST_CIK = "0000320193"
+        TEST_TICKER = "AAPL"
+        DATE_RANGE_DAYS = 365
+
+        # First call is for CIK lookup (company_tickers.json format)
+        mock_cik_response = Mock()
+        mock_cik_response.json.return_value = {
+            "0": {"cik_str": 320193, "ticker": TEST_TICKER, "title": "Apple Inc."}
+        }
+        mock_cik_response.status_code = 200
+
+        # Second call is for submissions data
+        # Use fixed dates for deterministic tests
+        # Date within range: 2024-01-15 (between Jan 1 and Dec 31, 2024)
+        # Date outside range: 2022-06-01 (before Jan 1, 2024)
+        fixed_end_date = datetime(2024, 12, 31, tzinfo=timezone.utc)
+        fixed_start_date = fixed_end_date - timedelta(days=DATE_RANGE_DAYS)
+
+        mock_submissions_response = Mock()
+        mock_submissions_response.json.return_value = {
+            "cik": TEST_CIK,
             "entityName": "Apple Inc.",
             "filings": {
                 "recent": {
-                    "form": ["10-K", "10-Q", "8-K"],
-                    "filingDate": ["2023-11-03", "2023-08-04", "2023-11-02"],
-                    "accessionNumber": ["0000320193-23-000106", "0000320193-23-000070", "0000320193-23-000104"],
-                    "primaryDocument": ["aapl-20230930.htm", "aapl-20230701.htm", "aapl-20231102.htm"],
-                    "primaryDocDescription": ["Annual Report", "Quarterly Report", "Current Report"]
+                    "form": ["10-K", "10-Q", "8-K", "10-Q"],
+                    "filingDate": ["2024-01-15", "2024-06-20", "2024-09-10", "2022-06-01"],
+                    "accessionNumber": ["0000320193-24-000106", "0000320193-24-000070", "0000320193-24-000104", "0000320193-22-000050"],
+                    "primaryDocument": ["aapl-20231231.htm", "aapl-20240630.htm", "aapl-20240930.htm", "aapl-20220630.htm"],
+                    "primaryDocDescription": ["Annual Report", "Quarterly Report", "Current Report", "Old Report"]
                 }
             }
         }
-        mock_response.status_code = 200
-        
+        mock_submissions_response.status_code = 200
+
         with patch.object(adapter, '_rate_limited_request', new_callable=AsyncMock) as mock_request:
-            mock_request.return_value = mock_response
-            
-            end_date = datetime.utcnow()
-            start_date = end_date - timedelta(days=365)
-            
+            # Use side_effect to return different responses for each call
+            mock_request.side_effect = [mock_cik_response, mock_submissions_response]
+
             results = await adapter.search(
-                query="AAPL",
-                start_date=start_date,
-                end_date=end_date,
+                query=TEST_TICKER,
+                start_date=fixed_start_date,
+                end_date=fixed_end_date,
                 form_types=["10-K", "10-Q"]
             )
-            
-            assert len(results) == 2  # Should filter to 10-K and 10-Q only
-            assert all(r.metadata['form_type'] in ["10-K", "10-Q"] for r in results)
+
+            # Verify form type filtering: only 10-K and 10-Q should be returned
+            assert len(results) == 2, f"Expected 2 results (10-K and 10-Q), got {len(results)}"
+            assert all(r.metadata['form_type'] in ["10-K", "10-Q"] for r in results), "All results should be 10-K or 10-Q"
+
+            # Verify date filtering: the old 2022 filing should be excluded
+            result_dates = [r.published_date for r in results if r.published_date]
+            assert all(fixed_start_date <= d <= fixed_end_date for d in result_dates), "All results should be within date range"
     
     @pytest.mark.asyncio
     async def test_rate_limiting_config(self, adapter):

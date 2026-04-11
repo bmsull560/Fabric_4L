@@ -331,6 +331,24 @@ class AssembleDocumentOutput(BaseModel):
     file_size_bytes: int = 0
 
 
+class ExportDocumentInput(BaseModel):
+    """Input for export_document tool."""
+    document_type: Literal["business_case", "audit_report", "roi_analysis"] = "business_case"
+    business_case_data: Dict[str, Any] = Field(default_factory=dict, description="Structured business case data with title, organization, use_cases, etc.")
+    template: Optional[str] = Field(None, description="Optional custom HTML template string")
+    branding: Optional[Dict[str, str]] = Field(None, description="Branding config: logo_url, primary_color, company_name")
+
+
+class ExportDocumentOutput(BaseModel):
+    """Output from export_document tool."""
+    pdf_bytes: Optional[bytes] = None
+    content_type: str = "application/pdf"
+    filename: str = "document.pdf"
+    success: bool = False
+    error: Optional[str] = None
+    file_size_bytes: int = 0
+
+
 # ============================================================================
 # INTEGRATION TOOLS (4)
 # ============================================================================

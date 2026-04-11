@@ -259,7 +259,7 @@ class SECEdgarAdapter(DataSourceAdapter):
                     source_id=accession,
                     title=f"{ticker} - {form} ({filing_date_str})",
                     url=html_url,
-                    published_date=datetime.strptime(filing_date_str, "%Y-%m-%d") if filing_date_str else None,
+                    published_date=datetime.strptime(filing_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc) if filing_date_str else None,
                     summary=desc,
                     metadata={
                         "ticker": ticker,

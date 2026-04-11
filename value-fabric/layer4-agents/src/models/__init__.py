@@ -53,6 +53,8 @@ from .tool_schemas import (
     GenerateSectionOutput,
     AssembleDocumentInput,
     AssembleDocumentOutput,
+    ExportDocumentInput,
+    ExportDocumentOutput,
     # Integration tools
     SendNotificationInput,
     SendNotificationOutput,
@@ -109,6 +111,8 @@ __all__ = [
     "GenerateSectionOutput",
     "AssembleDocumentInput",
     "AssembleDocumentOutput",
+    "ExportDocumentInput",
+    "ExportDocumentOutput",
     "SendNotificationInput",
     "SendNotificationOutput",
     "ValidateInputInput",

@@ -61,7 +61,16 @@ class BusinessCaseRequest(BaseModel):
 class BusinessCaseResponse(BaseModel):
     """Business case generation response."""
     case_id: str
-    status: str
+    title: str = "Business Case"
+    summary: str = ""
+    total_value: float = 0.0
+    implementation_cost: float = 0.0
+    roi_ratio: float = 0.0
+    payback_months: int = 0
+    confidence_score: float = 0.0
+    recommendations: List[str] = Field(default_factory=list)
+    status: str = "unknown"
+    created_at: Optional[str] = None
     document_url: Optional[str] = None
     page_count: int = 0
     file_size_bytes: int = 0
@@ -206,6 +215,36 @@ async def generate_business_case(
         raise HTTPException(status_code=500, detail=f"Business case generation failed: {str(e)}")
 
 
+@router.get("/cases/{case_id}", response_model=BusinessCaseResponse)
+async def get_business_case(
+    case_id: str,
+    executor: WorkflowExecutor = Depends(get_executor)
+) -> BusinessCaseResponse:
+    """Get a generated business case by ID."""
+    result = await executor.get_result(case_id)
+
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
+
+    output = result.get("output", {})
+    assemble_data = output.get("assemble_document", {})
+    narrative_data = output.get("synthesize_narrative", {})
+
+    return BusinessCaseResponse(
+        case_id=case_id,
+        title=assemble_data.get("title", "Business Case"),
+        summary=assemble_data.get("executive_summary", narrative_data.get("narrative", "")),
+        total_value=assemble_data.get("total_estimated_value", 0.0),
+        implementation_cost=assemble_data.get("implementation_cost_estimate", 0.0),
+        roi_ratio=assemble_data.get("roi_ratio", 0.0),
+        payback_months=assemble_data.get("payback_months", 0),
+        confidence_score=assemble_data.get("confidence_score", 0.0),
+        recommendations=assemble_data.get("recommendations", []),
+        created_at=result.get("created_at"),
+        status=result.get("status", "unknown"),
+    )
+
+
 @router.get("/cases/{case_id}/export")
 async def export_business_case(
     case_id: str,
@@ -214,12 +253,12 @@ async def export_business_case(
 ) -> Dict[str, Any]:
     """Export a generated business case."""
     result = await executor.get_result(case_id)
-    
+
     if not result:
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
-    
+
     assemble_data = result.get("output", {}).get("assemble_document", {})
-    
+
     return {
         "case_id": case_id,
         "format": format,

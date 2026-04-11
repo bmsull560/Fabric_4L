@@ -1,5 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/api/client';
+
+// Constants for workflow polling and SSE
+const POLL_INTERVAL_MS = 5000;
+const STALE_TIME_MS = 30 * 1000;
+const SSE_TIMEOUT_MS = 30 * 1000;
+const CANCEL_DELAY_MS = 500;
 
 export interface Workflow {
   id: string;
@@ -33,7 +40,24 @@ function normalizeWorkflowProgress(rawProgress: unknown): number {
   return Math.min(100, Math.max(0, numeric));
 }
 
-function normalizeWorkflow(raw: any): Workflow | null {
+interface RawWorkflow {
+  workflow_id?: string;
+  workflow_instance_id?: string;
+  id?: string;
+  name?: string;
+  workflow_type?: string;
+  status?: unknown;
+  progress?: unknown;
+  progress_percentage?: unknown;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+function normalizeWorkflow(raw: RawWorkflow): Workflow | null {
   const normalizedId = raw.workflow_id || raw.workflow_instance_id || raw.id;
   const normalizedIdText = String(normalizedId || '').trim();
   if (!normalizedIdText) {
@@ -69,18 +93,22 @@ function normalizeWorkflowList(data: unknown): Workflow[] {
   return normalized;
 }
 
-function extractWorkflowList(data: unknown): any[] {
+function extractWorkflowList(data: unknown): RawWorkflow[] {
   if (Array.isArray(data)) {
-    return data;
+    return data as RawWorkflow[];
   }
 
   if (data && typeof data === 'object' && Array.isArray((data as { workflows?: unknown[] }).workflows)) {
-    return (data as { workflows: unknown[] }).workflows;
+    return (data as { workflows: RawWorkflow[] }).workflows;
   }
 
   return [];
 }
 
+/**
+ * Fetch and poll active workflows from Layer 4.
+ * Polls every 5 seconds, stops on window focus (already polling).
+ */
 export function useActiveWorkflows() {
   return useQuery({
     queryKey: WORKFLOW_KEYS.active(),
@@ -88,8 +116,9 @@ export function useActiveWorkflows() {
       const response = await apiClient.get('l4', '/workflows/active');
       return normalizeWorkflowList(response.data);
     },
-    staleTime: 30 * 1000,
-    refetchInterval: 5000,
+    staleTime: STALE_TIME_MS,
+    refetchInterval: POLL_INTERVAL_MS,
+    refetchOnWindowFocus: false, // Already polling, avoid duplicate fetches
   });
 }
 
@@ -97,7 +126,9 @@ export function useWorkflowHistory() {
   return useQuery({
     queryKey: WORKFLOW_KEYS.history(),
     queryFn: async () => {
-      // TODO: Switch to paginated GET /workflows when Layer 4 exposes a list-all endpoint.
+      // NOTE: Currently using /workflows/active as a proxy for history.
+      // When Layer 4 adds GET /workflows with pagination, update this to use
+      // the paginated endpoint with proper limit/offset parameters.
       const response = await apiClient.get('l4', '/workflows/active');
       return normalizeWorkflowList(response.data);
     },
@@ -128,6 +159,10 @@ export function useCreateWorkflow() {
   });
 }
 
+/**
+ * Cancel a running workflow and refresh the workflow lists.
+ * Includes a brief delay to allow backend state propagation.
+ */
 export function useCancelWorkflow() {
   const queryClient = useQueryClient();
 
@@ -135,72 +170,98 @@ export function useCancelWorkflow() {
     mutationFn: async (id: string) => {
       await apiClient.delete('l4', `/workflows/${id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.active() });
-      queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.history() });
+    onSuccess: async () => {
+      // Brief delay to allow backend to process cancellation
+      // before refetching to avoid stale "running" state
+      await new Promise((resolve) => setTimeout(resolve, CANCEL_DELAY_MS));
+      await queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.active() });
+      await queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.history() });
     },
   });
 }
 
+/**
+ * Subscribe to workflow updates via Server-Sent Events.
+ * Uses useEffect for proper cleanup guarantee when component unmounts.
+ */
 export function useWorkflowSSE(workflowId: string | null) {
-  return useQuery({
-    queryKey: [...WORKFLOW_KEYS.all, 'sse', workflowId],
-    queryFn: () => {
-      return new Promise<Workflow>((resolve, reject) => {
-        if (!workflowId) {
-          reject(new Error('No workflow ID provided'));
-          return;
+  const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!workflowId) {
+      setWorkflow(null);
+      setError(null);
+      setIsConnected(false);
+      return;
+    }
+
+    const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1';
+    const l4Prefix = import.meta.env.VITE_L4_PREFIX || '/agents';
+    const url = `${baseUrl}${l4Prefix}/workflows/${workflowId}/events`;
+
+    // Close any existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const es = new EventSource(url);
+    eventSourceRef.current = es;
+    setIsConnected(true);
+    setError(null);
+
+    // Set up timeout
+    timeoutRef.current = setTimeout(() => {
+      if (eventSourceRef.current === es) {
+        es.close();
+        eventSourceRef.current = null;
+        setIsConnected(false);
+        setError(new Error(`SSE connection timeout after ${SSE_TIMEOUT_MS / 1000}s`));
+      }
+    }, SSE_TIMEOUT_MS);
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.payload) {
+          const normalized = normalizeWorkflow(data.payload);
+          if (normalized) {
+            setWorkflow(normalized);
+            // Keep connection open for ongoing updates, don't close
+          }
         }
+      } catch (err) {
+        // Log parse errors for debugging but don't break the connection
+        console.warn('[WorkflowSSE] Failed to parse SSE message:', err);
+      }
+    };
 
-        const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1';
-        const l4Prefix = import.meta.env.VITE_L4_PREFIX || '/agents';
-        const eventSource = new EventSource(`${baseUrl}${l4Prefix}/workflows/${workflowId}/events`);
-        let resolved = false;
-        const timeoutId = setTimeout(() => {
-          if (!resolved) {
-            resolved = true;
-            eventSource.close();
-            reject(new Error('SSE connection timeout after 30s'));
-          }
-        }, 30000);
+    es.onerror = () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (eventSourceRef.current === es) {
+        setIsConnected(false);
+        setError(new Error('SSE connection failed'));
+      }
+      es.close();
+    };
 
-        const resolveOnce = (workflow: Workflow) => {
-          if (resolved) return;
-          resolved = true;
-          clearTimeout(timeoutId);
-          eventSource.close();
-          resolve(workflow);
-        };
+    // Cleanup function - guaranteed to run on unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      es.close();
+      if (eventSourceRef.current === es) {
+        eventSourceRef.current = null;
+        setIsConnected(false);
+      }
+    };
+  }, [workflowId]);
 
-        const rejectOnce = (error: Error) => {
-          if (resolved) return;
-          resolved = true;
-          clearTimeout(timeoutId);
-          eventSource.close();
-          reject(error);
-        };
-
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.payload) {
-              const normalized = normalizeWorkflow(data.payload);
-              if (normalized) {
-                resolveOnce(normalized);
-              }
-            }
-          } catch {
-            // Ignore invalid JSON
-          }
-        };
-
-        eventSource.onerror = () => {
-          rejectOnce(new Error('SSE connection failed'));
-        };
-      });
-    },
-    enabled: !!workflowId,
-    staleTime: Infinity,
-    retry: false,
-  });
+  return { workflow, error, isConnected };
 }

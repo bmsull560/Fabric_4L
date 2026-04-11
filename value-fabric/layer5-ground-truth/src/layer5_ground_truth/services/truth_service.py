@@ -93,6 +93,7 @@ async def create_truth_object(
         notes="Initial extraction",
     )
     db.add(initial_event)
+    await db.flush()  # Flush so the event has an ID and can be loaded by refresh
 
     # Attach sources if provided
     if sources:
@@ -105,11 +106,11 @@ async def create_truth_object(
             db.add(source)
         await db.flush()
 
-        # Refresh to populate the relationships needed for the response
-        await db.refresh(truth, attribute_names=["sources", "validation_events", "maturity_history"])
-
         # Attempt auto-advance
         truth = await _state_machine.auto_advance(db, truth)
+
+    # Refresh to populate the relationships needed for the response
+    await db.refresh(truth, attribute_names=["sources", "validation_events", "maturity_history"])
 
     logger.info(
         "Created TruthObject %s (org=%s, status=%s, confidence=%.2f)",
@@ -334,5 +335,6 @@ async def soft_delete_truth_object(
     """Soft-delete a TruthObject by setting deleted_at."""
     truth_object.deleted_at = datetime.now(timezone.utc)
     truth_object.updated_at = datetime.now(timezone.utc)
+    await db.flush()  # Persist changes to DB immediately
     logger.info("Soft-deleted TruthObject %s by %s", truth_object.id, deleted_by)
     return truth_object

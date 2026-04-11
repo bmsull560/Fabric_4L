@@ -87,7 +87,7 @@ export function useExtractionJob(jobId: string | null) {
       // Build steps from job phases
       const steps: ExtractionStep[] = [
         { id: 1, label: 'Crawling', sub: `Acquired ${job.progress_pages_found || 0} nodes from domain.`, done: ['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status) || ['EXTRACTING', 'TRANSFORMING', 'STORING'].includes(job.status), active: job.status === 'NAVIGATING' || job.status === 'BROWSER_ACQUIRING', pct: job.status === 'NAVIGATING' ? Math.min(100, (job.progress_processed_pages / job.progress_pages_found) * 100) : undefined },
-        { id: 2, label: 'NER Extraction', sub: 'Identifying entities, capabilities, and outcomes.', done: ['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status) || ['TRANSFORMING', 'STORING'].includes(job.status), active: job.status === 'EXTRACTING', pct: job.status === 'EXTRACTING' ? 68 : undefined },
+        { id: 2, label: 'NER Extraction', sub: 'Identifying entities, capabilities, and outcomes.', done: ['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status) || ['TRANSFORMING', 'STORING'].includes(job.status), active: job.status === 'EXTRACTING', pct: job.status === 'EXTRACTING' ? Math.min(100, job.progress_percent_complete || 0) : undefined },
         { id: 3, label: 'Semantic Mapping', sub: '', done: ['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status) || ['STORING'].includes(job.status), active: job.status === 'TRANSFORMING' },
         { id: 4, label: 'Fabric Assembly', sub: '', done: job.status === 'COMPLETED', active: job.status === 'STORING' },
       ];

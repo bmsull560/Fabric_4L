@@ -5,8 +5,9 @@ state management, and node execution.
 """
 
 import asyncio
+import logging
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Type
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Type, Union
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -14,6 +15,12 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from ..models.agent_state import AgentState, BaseAgentState, WorkflowStatus
 from ..models.workflow_config import EdgeConfig, NodeConfig, NodeType, WorkflowConfig
 from ..tools.registry import ToolRegistry
+
+# Default recursion limit for LangGraph workflows
+# Prevents infinite loops in malformed workflows
+DEFAULT_RECURSION_LIMIT = 100
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowError(Exception):
@@ -299,33 +306,59 @@ class BaseWorkflow(ABC):
         self,
         initial_state: AgentState,
         thread_id: Optional[str] = None,
+        recursion_limit: Optional[int] = None,
         **kwargs
     ) -> AgentState:
         """Execute the workflow.
-        
+
         Args:
             initial_state: Starting workflow state
             thread_id: Optional thread ID for checkpointing
+            recursion_limit: Maximum recursion steps (default: DEFAULT_RECURSION_LIMIT)
             **kwargs: Additional run parameters
-            
+
         Returns:
             Final workflow state
+
+        Raises:
+            ValueError: If recursion_limit is not a positive integer
         """
+        # Validate recursion_limit
+        if recursion_limit is not None:
+            if not isinstance(recursion_limit, int) or recursion_limit <= 0:
+                raise ValueError(f"recursion_limit must be a positive integer, got {recursion_limit}")
+        else:
+            recursion_limit = DEFAULT_RECURSION_LIMIT
+
         compiled = self.compile()
-        
-        config = {"configurable": {}}
+
+        config = {
+            "configurable": {},
+            "recursion_limit": recursion_limit
+        }
         if thread_id:
             config["configurable"]["thread_id"] = thread_id
-        
-        # Execute
-        result = await compiled.ainvoke(
-            initial_state.model_dump(),
-            config=config,
-            **kwargs
+
+        workflow_id = getattr(initial_state, 'workflow_id', 'unknown')
+        logger.info(
+            "Starting workflow execution",
+            workflow_id=workflow_id,
+            workflow_type=getattr(initial_state, 'workflow_type', 'unknown'),
+            thread_id=thread_id,
+            recursion_limit=recursion_limit
         )
-        
-        # Convert back to state object
-        return self._state_from_dict(result)
+
+        try:
+            result = await compiled.ainvoke(
+                initial_state.model_dump(),
+                config=config,
+                **kwargs
+            )
+            logger.info("Workflow execution completed", workflow_id=workflow_id)
+            return self._state_from_dict(result)
+        except Exception as e:
+            logger.error("Workflow execution failed", workflow_id=workflow_id, exc_info=e)
+            raise
     
     def _state_from_dict(self, data: Dict[str, Any]) -> AgentState:
         """Convert dict result back to state object."""

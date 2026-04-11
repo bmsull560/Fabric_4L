@@ -1,7 +1,6 @@
 """Test configuration and fixtures for Value Fabric Layer 3 API."""
 
 import pytest
-import asyncio
 import json
 from typing import AsyncGenerator, Dict, Any, Optional
 from unittest.mock import AsyncMock, MagicMock
@@ -33,14 +32,6 @@ class TestSettings(Settings):
         }
         test_defaults.update(kwargs)
         super().__init__(**test_defaults)
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest.fixture

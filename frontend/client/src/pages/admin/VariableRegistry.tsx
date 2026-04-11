@@ -12,7 +12,7 @@
  * - Usage tracking
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ListChecks, Plus, Search, Filter, Edit3, Trash2, Eye, Link2,
   CheckCircle2, AlertCircle, Database, Code2, Hash, DollarSign,
@@ -20,214 +20,19 @@ import {
   Upload, RefreshCw, ExternalLink, Check, X
 } from "lucide-react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
-
-// ── Types ───────────────────────────────────────────────────────────────────────
-
-type VariableType = "rate" | "currency" | "integer" | "float" | "boolean" | "string";
-type SourceType = "CRM" | "Billing" | "ERP" | "Manual" | "Model" | "API" | "Database";
-type ValidationStatus = "validated" | "pending" | "failed" | "deprecated";
-
-interface Variable {
-  id: string;
-  name: string;
-  displayName: string;
-  description: string;
-  type: VariableType;
-  unit: string;
-  source: SourceType;
-  binding: string;
-  bindingPath?: string;
-  defaultValue?: string;
-  validRange?: { min: number; max: number };
-  usedIn: number;
-  validationStatus: ValidationStatus;
-  validationMessage?: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  version: string;
-}
-
-interface Binding {
-  id: string;
-  name: string;
-  sourceType: SourceType;
-  connectionString: string;
-  status: "connected" | "disconnected" | "error";
-  lastSync?: string;
-  variablesBound: number;
-  errorMessage?: string;
-}
-
-// ── Mock Data ───────────────────────────────────────────────────────────────────
-
-const VARIABLES: Variable[] = [
-  { 
-    id: "v-001", 
-    name: "Current_Churn_Rate",       
-    displayName: "Current Churn Rate",
-    description: "Monthly customer churn rate percentage",
-    type: "rate",     
-    unit: "%",   
-    source: "CRM",     
-    binding: "salesforce.churn_rate",
-    bindingPath: "Account.metrics.churn_rate",
-    defaultValue: "5.0",
-    validRange: { min: 0, max: 100 },
-    usedIn: 4, 
-    validationStatus: "validated",
-    tags: ["retention", "customer-success"],
-    createdAt: "2024-01-15",
-    updatedAt: "2024-03-20",
-    version: "v1.2",
-  },
-  { 
-    id: "v-002", 
-    name: "Average_Contract_Value",   
-    displayName: "Average Contract Value",
-    description: "Average annual contract value in USD",
-    type: "currency", 
-    unit: "USD", 
-    source: "Billing", 
-    binding: "stripe.avg_contract_value",
-    bindingPath: "Subscription.avg_value",
-    defaultValue: "50000",
-    validRange: { min: 0, max: 10000000 },
-    usedIn: 7, 
-    validationStatus: "validated",
-    tags: ["revenue", "pricing"],
-    createdAt: "2024-01-10",
-    updatedAt: "2024-04-01",
-    version: "v2.0",
-  },
-  { 
-    id: "v-003", 
-    name: "Customer_Count",           
-    displayName: "Total Customer Count",
-    description: "Total number of active customers",
-    type: "integer",  
-    unit: "—",   
-    source: "CRM",     
-    binding: "salesforce.account_count",
-    usedIn: 6, 
-    validationStatus: "validated",
-    tags: ["account", "count"],
-    createdAt: "2024-01-20",
-    updatedAt: "2024-02-15",
-    version: "v1.0",
-  },
-  { 
-    id: "v-004", 
-    name: "Implementation_Cost",      
-    displayName: "Implementation Cost",
-    description: "One-time implementation cost estimate",
-    type: "currency", 
-    unit: "USD", 
-    source: "Manual",  
-    binding: "manual.impl_cost",
-    defaultValue: "25000",
-    validRange: { min: 0, max: 1000000 },
-    usedIn: 3, 
-    validationStatus: "pending",
-    validationMessage: "Awaiting manual verification",
-    tags: ["cost", "services"],
-    createdAt: "2024-03-01",
-    updatedAt: "2024-03-01",
-    version: "v1.0",
-  },
-  { 
-    id: "v-005", 
-    name: "Projected_Retention_Lift", 
-    displayName: "Projected Retention Lift",
-    description: "ML-predicted retention improvement percentage",
-    type: "rate",     
-    unit: "%",   
-    source: "Model",   
-    binding: "ml_model.retention_lift",
-    usedIn: 5, 
-    validationStatus: "validated",
-    tags: ["ml", "prediction", "retention"],
-    createdAt: "2024-02-10",
-    updatedAt: "2024-03-15",
-    version: "v1.5",
-  },
-  { 
-    id: "v-006", 
-    name: "Support_Ticket_Volume",    
-    displayName: "Support Ticket Volume",
-    description: "Monthly support ticket count",
-    type: "integer",  
-    unit: "—",   
-    source: "CRM",     
-    binding: "zendesk.ticket_count",
-    usedIn: 2, 
-    validationStatus: "failed",
-    validationMessage: "Connection timeout - check API credentials",
-    tags: ["support", "operations"],
-    createdAt: "2024-01-05",
-    updatedAt: "2024-04-05",
-    version: "v1.1",
-  },
-  { 
-    id: "v-007", 
-    name: "Manufacturing_OEE",    
-    displayName: "Manufacturing OEE",
-    description: "Overall Equipment Effectiveness percentage",
-    type: "rate",  
-    unit: "%",   
-    source: "ERP",     
-    binding: "sap.oee_value",
-    defaultValue: "75.0",
-    validRange: { min: 0, max: 100 },
-    usedIn: 3, 
-    validationStatus: "validated",
-    tags: ["manufacturing", "efficiency", "oee"],
-    createdAt: "2024-03-10",
-    updatedAt: "2024-03-10",
-    version: "v1.0",
-  },
-];
-
-const BINDINGS: Binding[] = [
-  {
-    id: "b-001",
-    name: "Salesforce CRM",
-    sourceType: "CRM",
-    connectionString: "salesforce://prod.instance",
-    status: "connected",
-    lastSync: "2024-04-10T08:30:00Z",
-    variablesBound: 3,
-  },
-  {
-    id: "b-002",
-    name: "Stripe Billing",
-    sourceType: "Billing",
-    connectionString: "stripe://api.stripe.com",
-    status: "connected",
-    lastSync: "2024-04-10T09:15:00Z",
-    variablesBound: 1,
-  },
-  {
-    id: "b-003",
-    name: "Zendesk Support",
-    sourceType: "CRM",
-    connectionString: "zendesk://support.api",
-    status: "error",
-    lastSync: "2024-04-09T14:20:00Z",
-    variablesBound: 1,
-    errorMessage: "API rate limit exceeded",
-  },
-  {
-    id: "b-004",
-    name: "ML Prediction Service",
-    sourceType: "Model",
-    connectionString: "internal://ml-service",
-    status: "connected",
-    lastSync: "2024-04-10T07:45:00Z",
-    variablesBound: 1,
-  },
-];
+import {
+  useVariables,
+  useSourceBindings,
+  useVariableStats,
+  type Variable,
+  type SourceBinding,
+  type VariableType,
+  type SourceType,
+  type ValidationStatus,
+} from "@/hooks/useVariables";
 
 // ── Styling Constants ───────────────────────────────────────────────────────────
 
@@ -282,8 +87,8 @@ function ValidationIcon({ status }: { status: ValidationStatus }) {
   return <span className={config.color} title={config.label}>{config.icon}</span>;
 }
 
-function BindingCard({ binding, onTest }: { binding: Binding; onTest: (id: string) => void }) {
-  const statusColors = {
+function BindingCard({ binding, onTest }: { binding: SourceBinding; onTest: (id: string) => void }) {
+  const statusColors: Record<string, string> = {
     connected: "bg-emerald-50 text-emerald-700 border-emerald-200",
     disconnected: "bg-neutral-100 text-neutral-600 border-neutral-200",
     error: "bg-red-50 text-red-600 border-red-200",
@@ -298,7 +103,7 @@ function BindingCard({ binding, onTest }: { binding: Binding; onTest: (id: strin
           </div>
           <div>
             <h4 className="text-[13px] font-semibold text-neutral-800">{binding.name}</h4>
-            <p className="text-[11px] text-neutral-500 font-mono">{binding.connectionString}</p>
+            <p className="text-[11px] text-neutral-500 font-mono">{binding.connection_string || "—"}</p>
           </div>
         </div>
         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusColors[binding.status]}`}>
@@ -309,11 +114,11 @@ function BindingCard({ binding, onTest }: { binding: Binding; onTest: (id: strin
       <div className="flex items-center justify-between text-[11px]">
         <div className="flex items-center gap-4">
           <span className="text-neutral-500">
-            <span className="font-semibold text-neutral-700">{binding.variablesBound}</span> variables bound
+            <span className="font-semibold text-neutral-700">{binding.variables_bound}</span> variables bound
           </span>
-          {binding.lastSync && (
+          {binding.last_sync && (
             <span className="text-neutral-400">
-              Last sync: {new Date(binding.lastSync).toLocaleString()}
+              Last sync: {new Date(binding.last_sync).toLocaleString()}
             </span>
           )}
         </div>
@@ -330,11 +135,54 @@ function BindingCard({ binding, onTest }: { binding: Binding; onTest: (id: strin
         </div>
       </div>
       
-      {binding.errorMessage && (
+      {binding.error_message && (
         <div className="mt-3 p-2 bg-red-50 border border-red-100 rounded-lg text-[11px] text-red-600">
-          {binding.errorMessage}
+          {binding.error_message}
         </div>
       )}
+    </div>
+  );
+}
+
+function VariableRegistrySkeleton() {
+  return (
+    <div className="p-6 max-w-6xl">
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-24" />
+          <Skeleton className="h-9 w-36" />
+        </div>
+      </div>
+
+      {/* Stats Row Skeleton */}
+      <div className="grid grid-cols-5 gap-4 mb-6">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+            <Skeleton className="h-4 w-24 mb-2" />
+            <Skeleton className="h-7 w-12" />
+          </div>
+        ))}
+      </div>
+
+      {/* Table Skeleton */}
+      <div className="bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-neutral-50 border-b border-neutral-100 px-4 py-3 flex gap-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-20" />
+        </div>
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="px-4 py-4 border-b border-neutral-100 flex gap-4">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -343,33 +191,77 @@ function BindingCard({ binding, onTest }: { binding: Binding; onTest: (id: strin
 
 type TabType = "catalog" | "bindings";
 
-export default function VariableRegistry() {
+function VariableRegistryContent() {
   const [activeTab, setActiveTab] = useState<TabType>("catalog");
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | VariableType>("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | SourceType>("all");
   const [expandedVariable, setExpandedVariable] = useState<string | null>(null);
 
-  const filteredVariables = VARIABLES.filter(v =>
-    (typeFilter === "all" || v.type === typeFilter) &&
-    (sourceFilter === "all" || v.source === sourceFilter) &&
-    (search === "" || 
-     v.name.toLowerCase().includes(search.toLowerCase()) ||
-     v.displayName.toLowerCase().includes(search.toLowerCase()))
-  );
+  const { 
+    data: variables = [], 
+    isLoading: variablesLoading, 
+    error: variablesError,
+    refetch: refetchVariables
+  } = useVariables({
+    type: typeFilter === "all" ? undefined : typeFilter,
+    source: sourceFilter === "all" ? undefined : sourceFilter,
+    search: search || undefined,
+  });
 
-  const stats = {
-    total: VARIABLES.length,
-    validated: VARIABLES.filter(v => v.validationStatus === "validated").length,
-    pending: VARIABLES.filter(v => v.validationStatus === "pending").length,
-    failed: VARIABLES.filter(v => v.validationStatus === "failed").length,
-    totalUsage: VARIABLES.reduce((s, v) => s + v.usedIn, 0),
-  };
+  const { 
+    data: bindings = [], 
+    isLoading: bindingsLoading,
+    error: bindingsError,
+    refetch: refetchBindings
+  } = useSourceBindings();
+
+  const { data: stats } = useVariableStats();
+
+  const filteredVariables = useMemo(() => {
+    return variables.filter(v =>
+      (typeFilter === "all" || v.type === typeFilter) &&
+      (sourceFilter === "all" || v.source === sourceFilter) &&
+      (search === "" || 
+       v.name.toLowerCase().includes(search.toLowerCase()) ||
+       v.display_name.toLowerCase().includes(search.toLowerCase()))
+    );
+  }, [variables, typeFilter, sourceFilter, search]);
+
+  const isLoading = variablesLoading || bindingsLoading;
+  const error = variablesError || bindingsError;
 
   const handleTestBinding = (id: string) => {
     console.log(`Testing binding ${id}`);
-    // In real implementation, call API to test connection
   };
+
+  if (isLoading) {
+    return <VariableRegistrySkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-6xl">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-8 h-8 text-red-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-[14px] font-semibold text-red-800 mb-1">Failed to load variable registry</h3>
+              <p className="text-[12px] text-red-600">
+                {error instanceof Error ? error.message : "An unexpected error occurred"}
+              </p>
+              <button 
+                onClick={() => { refetchVariables(); refetchBindings(); }}
+                className="mt-4 flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 text-[12px] font-medium rounded-lg hover:bg-red-200 transition-colors"
+              >
+                <RefreshCw size={14} /> Try again
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-6xl">
@@ -388,11 +280,11 @@ export default function VariableRegistry() {
       {/* Stats Row */}
       <div className="grid grid-cols-5 gap-4 mb-6">
         {[
-          { label: "Total Variables", value: stats.total, icon: <ListChecks size={14}/> },
-          { label: "Validated", value: stats.validated, icon: <CheckCircle2 size={14}/>, color: "text-emerald-600" },
-          { label: "Pending", value: stats.pending, icon: <AlertCircle size={14}/>, color: "text-amber-600" },
-          { label: "Failed", value: stats.failed, icon: <X size={14}/>, color: "text-red-600" },
-          { label: "Total Usage", value: stats.totalUsage, icon: <Link2 size={14}/>, color: "text-blue-600" },
+          { label: "Total Variables", value: stats?.total ?? variables.length, icon: <ListChecks size={14}/> },
+          { label: "Validated", value: stats?.validated ?? variables.filter(v => v.validation_status === "validated").length, icon: <CheckCircle2 size={14}/>, color: "text-emerald-600" },
+          { label: "Pending", value: stats?.pending ?? variables.filter(v => v.validation_status === "pending").length, icon: <AlertCircle size={14}/>, color: "text-amber-600" },
+          { label: "Failed", value: stats?.failed ?? variables.filter(v => v.validation_status === "failed").length, icon: <X size={14}/>, color: "text-red-600" },
+          { label: "Total Usage", value: stats?.avg_usage ?? variables.reduce((s, v) => s + (v.used_in_count || 0), 0), icon: <Link2 size={14}/>, color: "text-blue-600" },
         ].map(s => (
           <div key={s.label} className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
             <div className="flex items-center gap-2 mb-1">
@@ -407,8 +299,8 @@ export default function VariableRegistry() {
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-neutral-200 mb-4">
         {[
-          { id: "catalog" as const, label: "Variable Catalog", count: VARIABLES.length },
-          { id: "bindings" as const, label: "Source Bindings", count: BINDINGS.length },
+          { id: "catalog" as const, label: "Variable Catalog", count: variables.length },
+          { id: "bindings" as const, label: "Source Bindings", count: bindings.length },
         ].map(tab => (
           <button
             key={tab.id}
@@ -453,7 +345,10 @@ export default function VariableRegistry() {
             </div>
             <select
               value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value as any)}
+              onChange={e => {
+                const value = e.target.value;
+                setTypeFilter(value === "all" ? "all" : value as VariableType);
+              }}
               className="px-3 py-2 text-[11px] border border-neutral-200 rounded-lg bg-white text-neutral-600 outline-none focus:border-blue-300"
             >
               <option value="all">All Types</option>
@@ -463,7 +358,10 @@ export default function VariableRegistry() {
             </select>
             <select
               value={sourceFilter}
-              onChange={e => setSourceFilter(e.target.value as any)}
+              onChange={e => {
+                const value = e.target.value;
+                setSourceFilter(value === "all" ? "all" : value as SourceType);
+              }}
               className="px-3 py-2 text-[11px] border border-neutral-200 rounded-lg bg-white text-neutral-600 outline-none focus:border-blue-300"
             >
               <option value="all">All Sources</option>
@@ -495,12 +393,12 @@ export default function VariableRegistry() {
                 {filteredVariables.map(v => (
                   <>
                     <tr 
-                      key={v.id} 
+                      key={v.variable_id} 
                       className="hover:bg-neutral-50 transition-colors group cursor-pointer"
-                      onClick={() => setExpandedVariable(expandedVariable === v.id ? null : v.id)}
+                      onClick={() => setExpandedVariable(expandedVariable === v.variable_id ? null : v.variable_id)}
                     >
                       <td className="px-3 py-3">
-                        {expandedVariable === v.id ? 
+                        {expandedVariable === v.variable_id ? 
                           <ChevronDown size={14} className="text-neutral-400"/> : 
                           <ChevronRight size={14} className="text-neutral-400"/>
                         }
@@ -510,7 +408,7 @@ export default function VariableRegistry() {
                           <ListChecks size={14} className="text-violet-500 shrink-0"/>
                           <div>
                             <span className="font-mono font-medium text-neutral-800 block">{v.name}</span>
-                            <span className="text-[10px] text-neutral-500">{v.displayName}</span>
+                            <span className="text-[10px] text-neutral-500">{v.display_name}</span>
                           </div>
                         </div>
                       </td>
@@ -518,8 +416,8 @@ export default function VariableRegistry() {
                       <td className="px-3 py-3 text-neutral-500">{v.unit}</td>
                       <td className="px-3 py-3"><SourceBadge source={v.source}/></td>
                       <td className="px-3 py-3 font-mono text-[11px] text-neutral-500">{v.binding}</td>
-                      <td className="px-3 py-3 text-neutral-600">{v.usedIn} formulas</td>
-                      <td className="px-3 py-3"><ValidationIcon status={v.validationStatus}/></td>
+                      <td className="px-3 py-3 text-neutral-600">{v.used_in_count} formulas</td>
+                      <td className="px-3 py-3"><ValidationIcon status={v.validation_status}/></td>
                       <td className="px-3 py-3">
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button className="p-1.5 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700" title="View">
@@ -534,38 +432,38 @@ export default function VariableRegistry() {
                         </div>
                       </td>
                     </tr>
-                    {expandedVariable === v.id && (
+                    {expandedVariable === v.variable_id && (
                       <tr className="bg-neutral-50/50">
                         <td colSpan={9} className="px-3 py-4">
                           <div className="grid grid-cols-3 gap-4">
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold mb-1">Description</p>
-                              <p className="text-[12px] text-neutral-700">{v.description}</p>
+                              <p className="text-[12px] text-neutral-700">{v.description || "—"}</p>
                             </div>
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold mb-1">Binding Details</p>
-                              <p className="text-[11px] font-mono text-neutral-600">{v.bindingPath || v.binding}</p>
-                              {v.defaultValue && (
-                                <p className="text-[11px] text-neutral-500 mt-1">Default: {v.defaultValue}</p>
+                              <p className="text-[11px] font-mono text-neutral-600">{v.binding_path || v.binding}</p>
+                              {v.default_value && (
+                                <p className="text-[11px] text-neutral-500 mt-1">Default: {v.default_value}</p>
                               )}
                             </div>
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold mb-1">Metadata</p>
                               <div className="space-y-1 text-[11px] text-neutral-600">
                                 <p>Version: {v.version}</p>
-                                <p>Created: {new Date(v.createdAt).toLocaleDateString()}</p>
-                                <p>Updated: {new Date(v.updatedAt).toLocaleDateString()}</p>
-                                {v.validRange && (
-                                  <p>Range: {v.validRange.min} - {v.validRange.max}</p>
+                                <p>Created: {new Date(v.created_at).toLocaleDateString()}</p>
+                                <p>Updated: {new Date(v.updated_at).toLocaleDateString()}</p>
+                                {v.valid_range && (
+                                  <p>Range: {v.valid_range.min} - {v.valid_range.max}</p>
                                 )}
                               </div>
                             </div>
                           </div>
-                          {v.validationMessage && (
+                          {v.validation_message && (
                             <div className={`mt-3 p-2 rounded-lg text-[11px] ${
-                              v.validationStatus === "failed" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"
+                              v.validation_status === "failed" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"
                             }`}>
-                              {v.validationMessage}
+                              {v.validation_message}
                             </div>
                           )}
                         </td>
@@ -592,7 +490,7 @@ export default function VariableRegistry() {
               <Btn variant="outline"><Plus size={12} className="mr-1"/> Add Connection</Btn>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              {BINDINGS.map(binding => (
+              {bindings.map(binding => (
                 <BindingCard 
                   key={binding.id} 
                   binding={binding} 
@@ -609,14 +507,14 @@ export default function VariableRegistry() {
               <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
                 <CheckCircle2 size={20} className="text-emerald-600"/>
                 <div>
-                  <p className="text-[18px] font-bold text-emerald-700">{BINDINGS.filter(b => b.status === "connected").length}</p>
+                  <p className="text-[18px] font-bold text-emerald-700">{bindings.filter(b => b.status === "connected").length}</p>
                   <p className="text-[11px] text-emerald-600">Connected</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
                 <X size={20} className="text-red-600"/>
                 <div>
-                  <p className="text-[18px] font-bold text-red-700">{BINDINGS.filter(b => b.status === "error").length}</p>
+                  <p className="text-[18px] font-bold text-red-700">{bindings.filter(b => b.status === "error").length}</p>
                   <p className="text-[11px] text-red-600">Errors</p>
                 </div>
               </div>
@@ -624,7 +522,7 @@ export default function VariableRegistry() {
                 <RefreshCw size={20} className="text-neutral-600"/>
                 <div>
                   <p className="text-[18px] font-bold text-neutral-700">
-                    {BINDINGS.filter(b => b.lastSync).length}
+                    {bindings.filter(b => b.last_sync).length}
                   </p>
                   <p className="text-[11px] text-neutral-600">Synced Today</p>
                 </div>
@@ -634,5 +532,13 @@ export default function VariableRegistry() {
         </>
       )}
     </div>
+  );
+}
+
+export default function VariableRegistry() {
+  return (
+    <ErrorBoundary>
+      <VariableRegistryContent />
+    </ErrorBoundary>
   );
 }

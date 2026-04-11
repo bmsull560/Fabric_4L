@@ -20,6 +20,34 @@ groups:
           summary: "High error rate detected in Value Fabric"
           description: "Error rate is above 5% for more than 5 minutes"
 
+      # Disk space alerts (using node-exporter host-level metrics)
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="proc",fstype!="sysfs",fstype!="cgroup"} / node_filesystem_size_bytes) < 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Disk usage on {{ $labels.mountpoint }} is above 90% ({{ $value | humanizePercentage }} remaining)"
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="proc",fstype!="sysfs",fstype!="cgroup"} / node_filesystem_size_bytes) < 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Disk usage on {{ $labels.mountpoint }} is above 95% ({{ $value | humanizePercentage }} remaining). Immediate action required!"
+
+      - alert: DiskInodeExhaustion
+        expr: (node_filesystem_files_free{fstype!="tmpfs",fstype!="proc",fstype!="sysfs",fstype!="cgroup"} / node_filesystem_files) < 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low inodes on {{ $labels.instance }}"
+          description: "Inode usage on {{ $labels.mountpoint }} is above 90% ({{ $value | humanizePercentage }} remaining). New file creation may fail."
+
       # Slow queries alert (p95 latency > 2s)
       - alert: SlowQueries
         expr: |

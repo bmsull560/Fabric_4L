@@ -1,4 +1,5 @@
 ---
+name: find-path
 description: Find shortest or strongest path between two entities
 ---
 

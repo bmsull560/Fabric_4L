@@ -1,4 +1,5 @@
 ---
+name: trace-provenance
 description: Show complete lineage of any generated output
 ---
 

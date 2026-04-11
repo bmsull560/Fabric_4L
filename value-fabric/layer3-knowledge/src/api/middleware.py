@@ -43,10 +43,14 @@ NOSQL_INJECTION_PATTERNS = [
 ]
 
 COMMAND_INJECTION_PATTERNS = [
-    r"[;&|`$(){}[\]\\]",
-    r"(curl|wget|nc|netcat|ssh|ftp|telnet)",
-    r"(rm\s+-|mv\s+.*\s+/dev/null|dd\s+if=)",
-    r"(python\s+-|perl\s+-|ruby\s+-|php\s+-)",
+    # Command separators and redirections (require surrounding context)
+    r"(;\s*\||\|\s*|\|\||&&|\$\(|\`\s*\w+|\|\s*\w+)",
+    # Common command-line tools used in attacks
+    r"\b(curl|wget|nc|netcat|ssh|ftp|telnet)\b",
+    # Dangerous file operations
+    r"\b(rm\s+-rf|mv\s+.*\s+/dev/null|dd\s+if=)\b",
+    # Scripting language invocations
+    r"\b(python|perl|ruby|php)\s+(-c|-e|--eval)",
 ]
 
 
@@ -128,24 +132,48 @@ class SecurityValidator:
 
 class SecurityMiddleware(BaseHTTPMiddleware):
     """Security middleware for input validation and sanitization."""
-    
+
+    # Paths that skip security validation (RDF/Turtle data triggers false positives)
+    # Also skip graph query endpoints that accept natural language queries
+    SKIP_VALIDATION_PATHS = frozenset({
+        "/v1/ingest", "/v1/sync", "/v1/batch/ingest",
+        "/v1/query/graph", "/v1/query", "/v1/graph/query", "/query/graph", "/graph/query",
+    })
+
     def __init__(self, app, strict_mode: bool = True):
         """Initialize security middleware.
-        
+
         Args:
             app: FastAPI application
             strict_mode: If True, blocks requests on security violations
         """
         super().__init__(app)
         self.strict_mode = strict_mode
-    
-    # Paths that skip security validation (RDF/Turtle data triggers false positives)
-    SKIP_VALIDATION_PATHS = {"/v1/ingest", "/v1/sync", "/v1/batch/ingest"}
+        # Pre-compute normalized paths for efficient lookup
+        self._normalized_skip_paths = frozenset(
+            p.rstrip('/').lower() for p in self.SKIP_VALIDATION_PATHS
+        )
+
+    def _should_skip_validation(self, path: str) -> bool:
+        """Check if path should skip security validation.
+
+        Handles trailing slashes and case-insensitive matching for robustness.
+
+        Args:
+            path: Request path to check
+
+        Returns:
+            True if path should skip validation
+        """
+        # Normalize path: remove trailing slash, lowercase
+        normalized = path.rstrip('/').lower()
+        return normalized in self._normalized_skip_paths
 
     async def dispatch(self, request: Request, call_next) -> Response:
         """Process request through security validation."""
-        # Skip validation for RDF ingestion endpoints
-        if request.url.path in self.SKIP_VALIDATION_PATHS:
+        # Skip validation for RDF ingestion endpoints and graph query endpoints
+        if self._should_skip_validation(request.url.path):
+            logger.debug(f"Skipping validation for {request.url.path}")
             return await call_next(request)
 
         violations = []
@@ -186,8 +214,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Log violations and handle response
         if violations:
             logger.warning(
-                "Security violations detected: %s",
-                violations,
+                "Security violations detected",
                 extra={
                     "violations": violations,
                     "path": request.url.path,
@@ -264,6 +291,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Skip injection checks for legitimate RDF/Turtle data which contains
         # URLs with special characters like < > : that trigger false positives
         if self._is_rdf_data(value):
+            return
+
+        # Skip short common text patterns that trigger false positives
+        if len(value) < 50 and " " in value and not any(c in value for c in "<>;|&`$()[]"):
             return
 
         if SecurityValidator.detect_injection(value, SQL_INJECTION_PATTERNS):

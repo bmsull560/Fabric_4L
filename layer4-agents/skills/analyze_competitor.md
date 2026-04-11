@@ -1,4 +1,5 @@
 ---
+name: analyze-competitor
 description: Compare competitor capabilities against our Value Tree
 ---
 

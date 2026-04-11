@@ -1,4 +1,5 @@
 ---
+name: multi-hop-reason
 description: Answer complex questions requiring multiple graph traversals
 ---
 

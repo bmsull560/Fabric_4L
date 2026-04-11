@@ -1,9 +1,6 @@
 """Tests for Layer 4 interfaces package exports and basic interface behavior.
 
-NOTE: These imports rely on pytest configuration in pyproject.toml:
-    pythonpath = [".", "src"]
-This adds the src/ directory to the path, allowing 'from src.interfaces' imports.
-Run tests from the layer4-agents/ directory for imports to resolve correctly.
+Uses src.* imports with pytest pythonpath configuration.
 """
 
 import pytest
@@ -32,7 +29,26 @@ from src.interfaces import (
 )
 
 
+@pytest.fixture
+def sample_pack_id():
+    """Sample pack ID for testing."""
+    return "pack-1"
+
+
+@pytest.fixture
+def sample_workspace_id():
+    """Sample workspace ID for testing."""
+    return "ws-1"
+
+
+@pytest.fixture
+def sample_formula_id():
+    """Sample formula ID for testing."""
+    return "f-1"
+
+
 def test_interfaces_module_exports_core_symbols():
+    """Verify all core interface symbols are exported from the interfaces module."""
     assert IBenchmarkClient is not None
     assert HTTPBenchmarkClient is not None
     assert IValuePackService is not None
@@ -43,20 +59,23 @@ def test_interfaces_module_exports_core_symbols():
 
 
 def test_http_benchmark_client_normalizes_base_url():
+    """Verify HTTPBenchmarkClient removes trailing slash from base URL."""
     client = HTTPBenchmarkClient(base_url="http://localhost:8006/")
     assert client.base_url == "http://localhost:8006"
 
 
 @pytest.mark.asyncio
 async def test_http_benchmark_client_close_is_safe_without_open_client():
+    """Verify closing an unopened HTTPBenchmarkClient is safe (no-op)."""
     client = HTTPBenchmarkClient(base_url="http://localhost:8006")
     await client.close()
     assert client._client is None
 
 
-def test_interface_dataclasses_construct_with_expected_types():
+def test_value_pack_construction(sample_pack_id):
+    """Verify ValuePack dataclass constructs with expected fields."""
     pack = ValuePack(
-        pack_id="pack-1",
+        pack_id=sample_pack_id,
         name="Manufacturing Pack",
         description="desc",
         industry="manufacturing",
@@ -64,35 +83,90 @@ def test_interface_dataclasses_construct_with_expected_types():
         status=PackStatus.DRAFT,
         version="1.0.0",
     )
+    assert pack.pack_id == sample_pack_id
+    assert pack.status == PackStatus.DRAFT
+
+
+def test_pack_execution_request_construction(sample_pack_id, sample_workspace_id):
+    """Verify PackExecutionRequest dataclass constructs with expected fields."""
     req = PackExecutionRequest(
-        pack_id=pack.pack_id,
-        workspace_id="ws-1",
+        pack_id=sample_pack_id,
+        workspace_id=sample_workspace_id,
         variables={"revenue": 1000},
     )
+    assert req.pack_id == sample_pack_id
+    assert req.workspace_id == sample_workspace_id
+
+
+def test_formula_governance_construction(sample_formula_id):
+    """Verify FormulaGovernance dataclass constructs with expected fields."""
     gov = FormulaGovernance(
-        formula_id="f-1",
+        formula_id=sample_formula_id,
         current_version="1.0.0",
         status=FormulaStatus.DRAFT,
     )
+    assert gov.formula_id == sample_formula_id
+    assert gov.status == FormulaStatus.DRAFT
+
+
+def test_activation_request_construction(sample_formula_id):
+    """Verify ActivationRequest dataclass constructs with expected fields."""
     activation = ActivationRequest(
-        formula_id="f-1",
+        formula_id=sample_formula_id,
         version="1.0.0",
         requested_by="user-1",
         justification="go live",
     )
+    assert activation.formula_id == sample_formula_id
+    assert activation.requested_by == "user-1"
+
+
+def test_governance_transition_result_construction(sample_formula_id):
+    """Verify GovernanceTransitionResult dataclass constructs with expected fields."""
     transition = GovernanceTransitionResult(
         success=True,
-        formula_id="f-1",
+        formula_id=sample_formula_id,
         old_status=FormulaStatus.DRAFT,
         new_status=FormulaStatus.ACTIVE,
     )
+    assert transition.formula_id == sample_formula_id
+    assert transition.new_status == FormulaStatus.ACTIVE
+
+
+def test_variable_construction():
+    """Verify Variable dataclass constructs with expected fields."""
     variable = Variable(
         variable_id="v-1",
         name="Annual Revenue",
         description="Revenue in USD",
         data_type=VariableDataType.DECIMAL,
     )
-    context = ResolutionContext(workspace_id="ws-1")
+    assert variable.variable_id == "v-1"
+    assert variable.data_type == VariableDataType.DECIMAL
+
+
+def test_resolution_context_construction(sample_workspace_id):
+    """Verify ResolutionContext dataclass constructs with expected fields."""
+    context = ResolutionContext(workspace_id=sample_workspace_id)
+    assert context.workspace_id == sample_workspace_id
+
+
+def test_benchmark_dataset_construction():
+    """Verify BenchmarkDataset dataclass constructs with expected fields."""
+    dataset = BenchmarkDataset(
+        id="ds-1",
+        name="Bench",
+        industry="manufacturing",
+        segment=None,
+        metrics=["revenue"],
+        statistical_profile={"p50": 123},
+    )
+    assert dataset.id == "ds-1"
+    assert dataset.industry == "manufacturing"
+
+
+def test_comparison_request_construction():
+    """Verify ComparisonRequest dataclass constructs with expected fields."""
     dataset = BenchmarkDataset(
         id="ds-1",
         name="Bench",
@@ -107,11 +181,10 @@ def test_interface_dataclasses_construct_with_expected_types():
         company_value=100,
         industry="manufacturing",
     )
-
-    assert req.pack_id == pack.pack_id
-    assert activation.formula_id == gov.formula_id
-    assert transition.new_status == FormulaStatus.ACTIVE
-    assert variable.data_type == VariableDataType.DECIMAL
-    assert context.workspace_id == "ws-1"
     assert comparison.dataset_id == dataset.id
+    assert comparison.metric == "revenue"
+
+
+def test_variable_source_type_enum_values():
+    """Verify VariableSourceType enum has expected string values."""
     assert VariableSourceType.BENCHMARK_LOOKUP.value == "benchmark_lookup"

@@ -1,4 +1,5 @@
 ---
+name: analyze-gaps
 description: Identify missing capabilities or disconnected value chains
 ---
 

@@ -22,7 +22,15 @@
 
 **Contained/Deferred:**
 - Embedding generation dependency will be addressed as part of Task 25 (Vector E2E)
-- Full E2E pipeline stabilization is Phase 1B work, not a Phase 2 blocker
+- Full E2E pipeline stabilization is Phase 1 work, not a Phase 2 blocker
+
+### 3. Cross-Layer Smoke Gate ✅ COMPLETE
+**Issue:** No repeatable cross-layer verification; cannot prove E2E workflow works  
+**Solution:** 
+- `scripts/smoke/production_smoke.py` - 6-stage Python script with retry logic
+- `.github/workflows/smoke-gate.yml` - CI integration with Docker Compose
+- JSON artifacts with pass/fail + timing per stage
+**Assessment:** Smoke gate operational; validates L2→L3→L4 integration in CI
 
 ---
 
@@ -30,8 +38,8 @@
 
 | Blocker | Justification | Resolution Path |
 |---------|--------------|-----------------|
-| L3 embedding dependency (`sentence_transformers`) | Test infrastructure, not core Phase 2 dependency | Task 25 (Vector E2E) |
-| L3 entity ingestion test failures | Data flow completion, not schema/constraint issues | Task 26 (Smoke Gate) |
+| L3 embedding dependency (`sentence_transformers`) | Test infrastructure, not core Phase 2 dependency | Task 25 (Vector E2E) - Phase 1 |
+| L3 entity ingestion data flow | Data flow completion for full E2E | Task 25 + Task 27 - Phase 1 |
 
 ---
 
@@ -51,8 +59,10 @@
 | Component | Test Status | Blocker Status |
 |-----------|-------------|----------------|
 | L4 Checkpoint/Resume | ✅ 11 tests pass | **FIXED** |
+| L4 Workflow Controls | ✅ 11 tests pass | **FIXED** |
 | L3 Schema Initialization | ✅ Pass (8/13 tests) | **CONTAINED** |
 | L3 Vector Indexes | ⚠️ Needs dependency | Deferred to Task 25 |
+| Cross-Layer Smoke Gate | ✅ Operational in CI | **COMPLETE** |
 | Core Data Contracts | ✅ Stable | None |
 
 ---
@@ -66,6 +76,24 @@ The identified issues are contained and do not block Phase 2 workstreams:
 2. Value Pack Domain (Sprint 2)
 3. Formula Governance (Sprint 3)
 4. Variable Registry (Sprint 4)
+
+---
+
+## Task Progress Updates
+
+### Task 25: Vector Index E2E 🔄 IN PROGRESS (~60%)
+- ✅ `test_vector_e2e.py` created (5 focused tests, 320 lines)
+- ✅ `sentence-transformers` verified working (real 384-dim embeddings)
+- 🔄 `test_e2e_pipeline.py` fixes pending (needs Docker environment)
+
+---
+
+## Related Documents
+
+- **Launch Readiness Assessment:** `.windsurf/plans/launch-readiness-2026-04-10.md` - Detailed sprint plan and production checklist
+- **Execution Status:** `.windsurf/plans/execution-status-sync-20250410-1204.md` - Task-level evidence
+- **Task 25 Plan:** `.windsurf/plans/task-25-vector-e2e-320af0.md` - Detailed implementation plan
+- **Critical Path:** Task 25 → Task 27 = 3 days to production-ready E2E
 
 ---
 

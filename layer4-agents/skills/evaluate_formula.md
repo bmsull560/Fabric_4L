@@ -1,4 +1,5 @@
 ---
+name: evaluate-formula
 description: Execute mathematical formulas from Value Drivers with variable substitution
 ---
 

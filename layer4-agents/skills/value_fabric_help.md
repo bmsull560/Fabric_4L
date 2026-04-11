@@ -1,4 +1,5 @@
 ---
+name: value-fabric-help
 description: Overview of all Value Fabric agent skills and workflows
 ---
 

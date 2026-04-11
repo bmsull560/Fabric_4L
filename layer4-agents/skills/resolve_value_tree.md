@@ -1,4 +1,5 @@
 ---
+name: resolve-value-tree
 description: Build complete Value Tree from any starting node
 ---
 

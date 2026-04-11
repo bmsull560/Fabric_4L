@@ -1,4 +1,5 @@
 ---
+name: semantic-search
 description: Find entities by meaning, not just keywords
 ---
 

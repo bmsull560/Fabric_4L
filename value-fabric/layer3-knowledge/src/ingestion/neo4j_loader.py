@@ -296,7 +296,7 @@ class Neo4jLoader:
 
             text = self._build_embedding_text(entity_copy)
             embedding = self._generate_embedding(text)
-            if embedding:
+            if embedding is not None:
                 entity_copy["embedding"] = embedding
                 entity_copy["embedding_text"] = text[:2000]
             prepared.append(entity_copy)

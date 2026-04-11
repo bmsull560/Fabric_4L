@@ -470,7 +470,7 @@ class TestEntailmentValidator:
             predicate=PredicateType.ENABLES,
             target_id=cap.id,
             confidence=0.8,
-            evidence_text="Test",
+            evidence_text="Test evidence for validation",
             source_url="https://test.com"
         )
         

@@ -192,11 +192,20 @@ class ValueDriver(BaseModel):
     @field_validator("formula_string")
     @classmethod
     def validate_formula(cls, v: Optional[str]) -> Optional[str]:
-        """Basic validation that formula uses only allowed characters."""
+        """Basic validation that formula uses only allowed characters.
+
+        Allows:
+        - Numbers (0-9)
+        - Operators (+, -, *, /)
+        - Parentheses ((), {})
+        - Underscore (_) for variable names
+        - Whitespace
+        - Letters (a-z, A-Z) for variable names inside {}
+        """
         if v is None:
             return v
-        # Allow: variables in {}, numbers, operators, parentheses, whitespace
-        allowed = set("0123456789+-*/().{}_ ")
+        # Allow: numbers, operators, parentheses, braces, underscore, whitespace, letters
+        allowed = set("0123456789+-*/().{}_ abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
         invalid_chars = set(v) - allowed
         if invalid_chars:
             raise ValueError(

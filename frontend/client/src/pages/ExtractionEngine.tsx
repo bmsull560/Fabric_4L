@@ -2,36 +2,91 @@
  * Screen 2 — Extraction Engine Live Run
  * Design: Refined Enterprise SaaS
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, CheckCircle2, Circle, Loader2, AlertCircle } from "lucide-react";
-import { Link, useRoute } from "wouter";
+import { Link } from "wouter";
 import { PageHeader } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useExtractionJob, TYPE_COLORS, TYPE_LABELS } from "@/hooks/useExtraction";
+import { useJobStream } from "@/hooks/useJobStream";
+
+// Types for log entries
+type LogType = 'sys' | 'info' | 'warn' | 'extract' | 'map' | 'plain';
+interface StreamLog {
+  timestamp: string;
+  level: string;
+  message: string;
+}
+interface StreamEntity {
+  type: string;
+  name: string;
+}
+
+// Constants for log level mapping
+const LOG_LEVEL_MAP: Record<string, LogType> = {
+  'error': 'warn',
+  'warning': 'warn',
+  'warn': 'warn',
+  'info': 'info',
+  'debug': 'sys',
+  'extract': 'extract',
+  'map': 'map',
+};
+
+/** Map log level string to display type */
+function mapLogType(level: string): LogType {
+  return LOG_LEVEL_MAP[level?.toLowerCase()] || 'plain';
+}
 
 export default function ExtractionEngine() {
   // Get job ID from URL query param: /extraction-engine?jobId=xxx
-  const [match, params] = useRoute('/extraction-engine');
   const searchParams = new URLSearchParams(window.location.search);
   const jobId = searchParams.get('jobId');
 
-  const { data: job, isLoading, error } = useExtractionJob(jobId);
+  const { data: job, isLoading, error: jobError } = useExtractionJob(jobId);
+  const { progress: streamProgress, status: streamStatus, logs: streamLogs, entities: streamEntities, isConnected, error: streamError } = useJobStream(jobId);
   const [visibleLines, setVisibleLines] = useState(20);
+
+  // Use streamed data when available, fall back to polled job data
+  const liveProgress = streamProgress || job?.progress || 0;
+  const liveStatus = streamStatus || job?.status || 'pending';
+
+  // Memoize log transformation to prevent recalculation on every render
+  const liveLogs = useMemo(() => {
+    if (streamLogs && streamLogs.length > 0) {
+      return streamLogs.map((log) => ({
+        t: new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        type: mapLogType(log.level),
+        text: log.message,
+      }));
+    }
+    return job?.logs || [];
+  }, [streamLogs, job?.logs]);
+
+  // Memoize entity chip transformation
+  const liveEntities = useMemo(() => {
+    if (streamEntities && streamEntities.length > 0) {
+      return streamEntities.map((e) => ({
+        label: `${e.type}: ${e.name}`,
+        color: TYPE_COLORS[e.type.toLowerCase()] || 'text-neutral-400',
+      }));
+    }
+    return job?.entitiesFound || [];
+  }, [streamEntities, job?.entitiesFound]);
+
+  // Combined error state
+  const error = jobError || streamError;
 
   // Auto-scroll logs as new ones arrive
   useEffect(() => {
-    if (job?.logs) {
-      setVisibleLines(job.logs.length);
+    if (liveLogs.length > 0) {
+      setVisibleLines(liveLogs.length);
     }
-  }, [job?.logs?.length]);
+  }, [liveLogs.length]);
 
-  // Loading state
+  // Loading state - skeleton loader for terminal panel
   if (isLoading) {
-    return (
-      <div className="flex flex-col h-full items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mb-3" />
-        <span className="text-sm text-neutral-600">Loading extraction job...</span>
-      </div>
-    );
+    return <ExtractionEngineSkeleton />;
   }
 
   // Error state
@@ -60,9 +115,9 @@ export default function ExtractionEngine() {
   }
 
   const steps = job?.steps || [];
-  const logs = job?.logs || [];
-  const chips = job?.entitiesFound || [];
-  const isRunning = job?.status === 'running' || job?.status === 'pending';
+  const logs = liveLogs;
+  const chips = liveEntities;
+  const isRunning = liveStatus === 'running' || liveStatus === 'pending';
 
   return (
     <div className="flex flex-col h-full">
@@ -74,9 +129,14 @@ export default function ExtractionEngine() {
           </span>
         </Link>
         <div className="flex items-center gap-2 text-[12px] text-neutral-500">
-          {isRunning && <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"/>}
-          <span className={isRunning ? 'text-amber-600' : job?.status === 'completed' ? 'text-emerald-600' : 'text-red-600'}>
-            {job?.status === 'running' ? 'Processing' : job?.status}
+          {isRunning && (
+            <>
+              <span className={`w-2 h-2 rounded-full animate-pulse ${isConnected ? 'bg-emerald-400' : 'bg-amber-400'}`}/>
+              {isConnected && <span className="text-[10px] text-emerald-600">LIVE</span>}
+            </>
+          )}
+          <span className={isRunning ? 'text-amber-600' : liveStatus === 'completed' ? 'text-emerald-600' : 'text-red-600'}>
+            {liveStatus === 'running' ? 'Processing' : liveStatus}
           </span>
           <span className="font-semibold text-neutral-800">{job?.domain}</span>
         </div>
@@ -156,15 +216,6 @@ export default function ExtractionEngine() {
                 </span>
                 <span className="text-[#c9d1d9]">
                   {line.text}
-                  {line.link && (
-                    <span className="text-cyan-400 ml-1">{line.link}</span>
-                  )}
-                  {line.conf && (
-                    <span className="text-neutral-500 ml-1">(Conf: {line.conf})</span>
-                  )}
-                  {line.extra && (
-                    <span className={`ml-1 ${line.extraColor}`}>{line.extra}</span>
-                  )}
                 </span>
               </div>
             ))}
@@ -182,11 +233,78 @@ export default function ExtractionEngine() {
             {chips.length === 0 && (
               <span className="text-[10px] text-neutral-500">No entities extracted yet...</span>
             )}
-            {chips.map(chip => (
-              <span key={chip.label} className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${chip.color}`}>
+            {chips.map((chip, index) => (
+              <span key={`${chip.label}-${index}`} className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${chip.color}`}>
                 <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"/>
                 {chip.label}
               </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton loader for the extraction engine loading state */
+function ExtractionEngineSkeleton() {
+  return (
+    <div className="flex flex-col h-full">
+      {/* Sub-header skeleton */}
+      <div className="flex items-center justify-between px-6 py-3 bg-white border-b border-neutral-200">
+        <Skeleton className="h-4 w-32" />
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left panel skeleton */}
+        <div className="w-[240px] shrink-0 p-5 border-r border-neutral-200 bg-white">
+          <Skeleton className="h-6 w-40 mb-1" />
+          <Skeleton className="h-4 w-56 mb-6" />
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex gap-3">
+                <Skeleton className="h-5 w-5 rounded-full shrink-0" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-24 mb-1" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right panel - terminal skeleton */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-[#0d1117]">
+          {/* Terminal header skeleton */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-[#161b22] border-b border-[#30363d]">
+            <div className="flex items-center gap-2">
+              <Skeleton className="w-3 h-3 rounded-full bg-red-500/50" />
+              <Skeleton className="w-3 h-3 rounded-full bg-amber-400/50" />
+              <Skeleton className="w-3 h-3 rounded-full bg-emerald-500/50" />
+              <Skeleton className="ml-2 h-3 w-32 bg-neutral-700" />
+            </div>
+            <Skeleton className="h-3 w-12 bg-emerald-700/50" />
+          </div>
+
+          {/* Log lines skeleton */}
+          <div className="flex-1 p-4 space-y-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="flex gap-2">
+                <Skeleton className="h-3 w-16 shrink-0 bg-neutral-800" />
+                <Skeleton className="h-3 w-12 shrink-0 bg-neutral-700" />
+                <Skeleton className="h-3 w-96 bg-neutral-800" />
+              </div>
+            ))}
+          </div>
+
+          {/* Entity chips skeleton */}
+          <div className="flex gap-2 px-4 py-3 border-t border-[#30363d] bg-[#161b22]">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-6 w-24 rounded-full bg-neutral-800" />
             ))}
           </div>
         </div>

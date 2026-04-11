@@ -106,8 +106,9 @@ app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint with real metrics."""
+    """Health check endpoint with real metrics and dependency status."""
     import psutil
+    from datetime import datetime
     uptime = time.time() - _app_start_time
     memory_info = psutil.virtual_memory()
 
@@ -136,12 +137,94 @@ async def health_check():
         except (AttributeError, TypeError):
             active_connections = 0
 
+    # Check dependencies
+    dependencies = []
+    overall_status = "healthy"
+
+    # Check PostgreSQL (via checkpoint_saver)
+    try:
+        start_time = time.time()
+        if checkpoint_saver is not None:
+            # Try to access the connection to verify it's alive
+            if hasattr(checkpoint_saver, 'conn') and checkpoint_saver.conn:
+                await checkpoint_saver.conn.execute("SELECT 1")
+                response_time = (time.time() - start_time) * 1000
+                dependencies.append({
+                    "name": "postgres",
+                    "status": "healthy",
+                    "response_time_ms": round(response_time, 2),
+                    "error": None
+                })
+            else:
+                dependencies.append({
+                    "name": "postgres",
+                    "status": "degraded",
+                    "response_time_ms": None,
+                    "error": "Checkpoint saver not fully initialized"
+                })
+                overall_status = "degraded"
+        else:
+            dependencies.append({
+                "name": "postgres",
+                "status": "degraded",
+                "response_time_ms": None,
+                "error": "Checkpointing not configured"
+            })
+            overall_status = "degraded"
+    except Exception as e:
+        dependencies.append({
+            "name": "postgres",
+            "status": "unhealthy",
+            "response_time_ms": None,
+            "error": str(e)
+        })
+        overall_status = "degraded"
+
+    # Check Redis (via state_manager)
+    try:
+        start_time = time.time()
+        if state_manager is not None and hasattr(state_manager, 'redis_client') and state_manager.redis_client:
+            await state_manager.redis_client.ping()
+            response_time = (time.time() - start_time) * 1000
+            dependencies.append({
+                "name": "redis",
+                "status": "healthy",
+                "response_time_ms": round(response_time, 2),
+                "error": None
+            })
+        else:
+            dependencies.append({
+                "name": "redis",
+                "status": "degraded",
+                "response_time_ms": None,
+                "error": "Redis not configured"
+            })
+    except Exception as e:
+        dependencies.append({
+            "name": "redis",
+            "status": "unhealthy",
+            "response_time_ms": None,
+            "error": str(e)
+        })
+
+    # Update health status metric for alerting
+    if metrics:
+        metrics.set_health_status(overall_status == "healthy", component="api")
+        if checkpoint_saver is not None:
+            postgres_healthy = any(d["name"] == "postgres" and d["status"] == "healthy" for d in dependencies)
+            metrics.set_health_status(postgres_healthy, component="postgres")
+        if state_manager is not None and hasattr(state_manager, 'redis_client'):
+            redis_healthy = any(d["name"] == "redis" and d["status"] == "healthy" for d in dependencies)
+            metrics.set_health_status(redis_healthy, component="redis")
+
     return {
-        "status": "healthy",
+        "status": overall_status,
         "service": "layer4-agents",
         "version": "0.2.0",
+        "timestamp": datetime.utcnow().isoformat(),
         "executor_ready": workflow_executor is not None,
         "uptime_seconds": uptime,
+        "dependencies": dependencies,
         "metrics": {
             "memory_usage_mb": memory_info.used / (1024 * 1024),
             "cpu_percent": psutil.cpu_percent(),

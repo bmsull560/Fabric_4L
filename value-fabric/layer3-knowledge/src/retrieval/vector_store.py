@@ -18,7 +18,7 @@ Design notes:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from neo4j import AsyncDriver
 from neo4j.exceptions import ClientError, ServiceUnavailable
@@ -67,7 +67,11 @@ class Neo4jVectorStore:
     # Embedding model (lazy-loaded)
     # ------------------------------------------------------------------
 
-    def _get_embedding_model(self):
+    def _get_embedding_model(self) -> object:
+        """Get or initialize the embedding model.
+
+        Production: Requires sentence_transformers installed. Fails hard if unavailable.
+        """
         if self._embedding_model is None:
             from sentence_transformers import SentenceTransformer
             model_name = getattr(self.settings, "embedding_model", "all-MiniLM-L6-v2")

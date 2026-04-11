@@ -1,4 +1,5 @@
 ---
+name: escalate-to-human
 description: Request human review or approval
 ---
 

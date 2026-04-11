@@ -52,6 +52,11 @@ venv/
 env/
 ENV/
 
+# Python artifacts in all subdirectories (ensures no __pycache__ anywhere)
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+
 # Docker data volumes
 postgres_data/
 redis_data/

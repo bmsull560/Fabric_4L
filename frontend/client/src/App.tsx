@@ -79,32 +79,48 @@ function Router() {
 
         {/* ── Tier 1: Standard User Routes ── */}
         <Route path="/command-center">
-          <RouteGuard><CommandCenter /></RouteGuard>
+          <RouteGuard>
+            <ErrorBoundary><CommandCenter /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         
         {/* ── Tier 2: Advanced Routes (protected) ── */}
         <Route path="/extraction-engine">
-          <RouteGuard requiredTier="advanced"><ExtractionEngine /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><ExtractionEngine /></ErrorBoundary>
+          </RouteGuard>
         </Route>
 
         {/* ── Standard user: Value Packs ── */}
-        <Route path="/value-packs"             component={ValuePacks}/>
+        <Route path="/value-packs">
+          <RouteGuard>
+            <ErrorBoundary><ValuePacks /></ErrorBoundary>
+          </RouteGuard>
+        </Route>
 
         {/* ── Tier 2: Ontology sub-routes ── */}
         <Route path="/ontology">
           <Redirect to="/ontology/entities"/>
         </Route>
         <Route path="/ontology/entities">
-          <RouteGuard requiredTier="advanced"><OntologyBrowser /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><OntologyBrowser /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/ontology/entity-detail">
-          <RouteGuard requiredTier="advanced"><EntityDetail /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><EntityDetail /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/ontology/extractions">
-          <RouteGuard requiredTier="advanced"><OntologyBrowser /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><OntologyBrowser /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/ontology/validation">
-          <RouteGuard requiredTier="advanced"><OntologyBrowser /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><OntologyBrowser /></ErrorBoundary>
+          </RouteGuard>
         </Route>
 
         {/* ── Tier 2: Value Models / Formula Studio sub-routes ── */}
@@ -112,13 +128,19 @@ function Router() {
           <Redirect to="/value-trees/explorer"/>
         </Route>
         <Route path="/value-trees/explorer">
-          <RouteGuard requiredTier="advanced"><ValueTreeExplorer /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><ValueTreeExplorer /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/value-trees/normalization">
-          <RouteGuard requiredTier="advanced"><ValueTreeExplorer /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><ValueTreeExplorer /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/value-trees/formulas">
-          <RouteGuard requiredTier="advanced"><FormulaBuilder /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><FormulaBuilder /></ErrorBoundary>
+          </RouteGuard>
         </Route>
 
         {/* ── Tier 2: Knowledge Graph sub-routes ── */}
@@ -126,70 +148,118 @@ function Router() {
           <Redirect to="/graph/explorer"/>
         </Route>
         <Route path="/graph/explorer">
-          <RouteGuard requiredTier="advanced"><GraphExplorer /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><GraphExplorer /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/graph/query">
-          <RouteGuard requiredTier="advanced"><GraphExplorer /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><GraphExplorer /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/graph/communities">
-          <RouteGuard requiredTier="advanced"><GraphExplorer /></RouteGuard>
+          <RouteGuard requiredTier="advanced">
+            <ErrorBoundary><GraphExplorer /></ErrorBoundary>
+          </RouteGuard>
         </Route>
 
         {/* ── Agent Workflows sub-routes ── */}
         <Route path="/agents">
           <Redirect to="/agents/dashboard"/>
         </Route>
-        <Route path="/agents/dashboard"        component={AgentWorkflows}/>
-        <Route path="/agents/whitespace"       component={AgentWorkflows}/>
-        <Route path="/agents/business-cases"   component={BusinessCase}/>
+        <Route path="/agents/dashboard">
+          <ErrorBoundary><AgentWorkflows /></ErrorBoundary>
+        </Route>
+        <Route path="/agents/whitespace">
+          <ErrorBoundary><AgentWorkflows /></ErrorBoundary>
+        </Route>
+        <Route path="/agents/business-cases">
+          <ErrorBoundary><BusinessCase /></ErrorBoundary>
+        </Route>
 
         {/* ── Audit sub-routes ── */}
         <Route path="/audit">
           <Redirect to="/audit/traces"/>
         </Route>
-        <Route path="/audit/traces"            component={DecisionTrace}/>
-        <Route path="/audit/lineage"           component={DecisionTrace}/>
-        <Route path="/audit/reports"           component={DecisionTrace}/>
+        <Route path="/audit/traces">
+          <ErrorBoundary><DecisionTrace /></ErrorBoundary>
+        </Route>
+        <Route path="/audit/lineage">
+          <ErrorBoundary><DecisionTrace /></ErrorBoundary>
+        </Route>
+        <Route path="/audit/reports">
+          <ErrorBoundary><DecisionTrace /></ErrorBoundary>
+        </Route>
 
         {/* ── Research / Data Sources ── */}
-        <Route path="/research"                component={CommandCenter}/>
-        <Route path="/data-sources"            component={CommandCenter}/>
-        <Route path="/data-sources/targets"    component={CommandCenter}/>
-        <Route path="/data-sources/jobs"       component={ExtractionEngine}/>
+        <Route path="/research">
+          <ErrorBoundary><CommandCenter /></ErrorBoundary>
+        </Route>
+        <Route path="/data-sources">
+          <ErrorBoundary><CommandCenter /></ErrorBoundary>
+        </Route>
+        <Route path="/data-sources/targets">
+          <ErrorBoundary><CommandCenter /></ErrorBoundary>
+        </Route>
+        <Route path="/data-sources/jobs">
+          <ErrorBoundary><ExtractionEngine /></ErrorBoundary>
+        </Route>
 
         {/* ── Tier 3: Admin Control Plane ── */}
         <Route path="/admin/formulas">
-          <RouteGuard requiredTier="admin"><FormulaGovernance /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><FormulaGovernance /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/formulas/versions">
-          <RouteGuard requiredTier="admin"><FormulaGovernance /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><FormulaGovernance /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/formulas/approvals">
-          <RouteGuard requiredTier="admin"><FormulaGovernance /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><FormulaGovernance /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/benchmarks">
-          <RouteGuard requiredTier="admin"><BenchmarkPolicies /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><BenchmarkPolicies /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/benchmarks/policies">
-          <RouteGuard requiredTier="admin"><BenchmarkPolicies /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><BenchmarkPolicies /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/variables">
-          <RouteGuard requiredTier="admin"><VariableRegistry /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><VariableRegistry /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/variables/bindings">
-          <RouteGuard requiredTier="admin"><VariableRegistry /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><VariableRegistry /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/permissions">
-          <RouteGuard requiredTier="admin"><CommandCenter /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><CommandCenter /></ErrorBoundary>
+          </RouteGuard>
         </Route>
         <Route path="/admin/permissions/teams">
-          <RouteGuard requiredTier="admin"><CommandCenter /></RouteGuard>
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><CommandCenter /></ErrorBoundary>
+          </RouteGuard>
         </Route>
 
         {/* ── Settings placeholder ── */}
-        <Route path="/settings"               component={CommandCenter}/>
+        <Route path="/settings">
+          <ErrorBoundary><CommandCenter /></ErrorBoundary>
+        </Route>
 
-        <Route component={NotFound}/>
+        <Route>
+          <ErrorBoundary><NotFound /></ErrorBoundary>
+        </Route>
       </Switch>
     </AppShell>
   );
