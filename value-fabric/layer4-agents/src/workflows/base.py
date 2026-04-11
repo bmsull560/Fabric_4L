@@ -354,10 +354,10 @@ class BaseWorkflow(ABC):
                 config=config,
                 **kwargs
             )
-            logger.info("Workflow execution completed", workflow_id=workflow_id)
+            logger.info(f"Workflow execution completed: {workflow_id}")
             return self._state_from_dict(result)
         except Exception as e:
-            logger.error("Workflow execution failed", workflow_id=workflow_id, exc_info=e)
+            logger.error(f"Workflow execution failed: {workflow_id}: {e}", exc_info=True)
             raise
     
     def _state_from_dict(self, data: Dict[str, Any]) -> AgentState:

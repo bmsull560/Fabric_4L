@@ -359,8 +359,8 @@ interface GraphVisualizationProps {
 }
 
 function GraphVisualization({ nodes, edges, selected, onNodeClick }: GraphVisualizationProps) {
-  const positionedNodes = calculateLayout(nodes, edges);
-  const nodeMap = new Map(positionedNodes.map(n => [n.id, n]));
+  const positionedNodes = useMemo(() => calculateLayout(nodes, edges), [nodes, edges]);
+  const nodeMap = useMemo(() => new Map(positionedNodes.map(n => [n.id, n])), [positionedNodes]);
 
   return (
     <svg viewBox="0 0 640 460" className="w-full" style={{ minHeight: 380 }}>

@@ -51,6 +51,134 @@
 
 ---
 
+## Update: 2026-04-11 Test Quality Remediation
+
+### Current Test Status (Post-Execution-Status-Sync)
+
+| Metric | Count |
+|--------|-------|
+| **Frontend Test Files** | 13 |
+| **Frontend Tests** | 122 (88 passing, 34 failing) |
+| **L4 Checkpoint Tests** | 11 (8 passing, 3 failing) |
+| **L4 Test Collection** | ✅ Fixed - no more ModuleNotFoundError |
+
+### Critical Issues Identified
+
+#### Frontend Issues (P0)
+
+1. **GraphExplorer.test.tsx - Brittle Selectors**
+   - **Issue**: `screen.getByText('Graph Explorer')` finds multiple elements (heading + tabs)
+   - **Error**: "Found multiple elements with the text: Graph Explorer"
+   - **Fix Applied**: Changed to `screen.getAllByText('Graph Explorer')` and `screen.getAllByRole()` for tabs
+   - **Status**: ✅ Fixed in GraphExplorer.test.tsx:117-122
+
+2. **MSW Handler URL Mismatches**
+   - **Issue**: API client calls different URLs than MSW handlers mock
+   - **Example**: Client calls `/api/v1/extract/jobs/{id}` but handlers mock different pattern
+   - **Impact**: Tests fail with "Invalid URL" errors
+   - **Files Affected**: useGraphQuery.test.ts, useJobStream.test.ts, ExtractionEngine.test.tsx
+
+3. **ExtractionEngine.test.tsx - Mock Data Issues**
+   - **Issue**: Tests expect specific log entries that don't match mocked data
+   - **Error**: `expect(screen.getByText('extraction_stream.log')).toBeInTheDocument()` fails
+   - **Status**: Needs MSW handler alignment
+
+#### L4 Issues (P1)
+
+1. **test_checkpoint_resume.py - GraphRecursionError**
+   - **Issue**: `test_resume_workflow_loads_state` hits LangGraph recursion limit (100)
+   - **Root Cause**: Workflow doesn't properly terminate during mocked execution
+   - **Fix Needed**: Add recursion limit config or better mock the workflow execution
+
+2. **test_checkpoint_resume.py - Coroutine Not Awaited**
+   - **Issue**: `test_resume_merges_user_data` - 'coroutine' object is not subscriptable
+   - **Root Cause**: Async mock not properly awaited in workflow execution
+   - **Fix Needed**: Proper async mocking in workflow tool execution
+
+### Frontend Test File Assessment
+
+#### useValuePacks.test.tsx
+**Score**: 28/35 (Good)
+
+| Principle | Score | Notes |
+|-----------|-------|-------|
+| Behavior-Focused | 5 | Tests hook behavior, not implementation |
+| Clear/Readable | 4 | Good naming, clear structure |
+| Focused | 5 | Each test tests one behavior |
+| Deterministic | 4 | Uses mock client, should be deterministic |
+| Isolated | 5 | Fresh QueryClient per test |
+| Meaningful | 4 | Covers success, error, filter cases |
+| Maintainable | 5 | Well-structured, easy to update |
+
+**Strengths**:
+- Uses `createMockResponse<T>()` factory for type-safe mocks
+- Proper React Query wrapper with `createWrapper()`
+- Good error state testing with retry configuration
+
+**Issues**:
+- **P1**: Error test has long timeout (15s) due to default retry behavior
+- **P2**: Could use `createWrapperWithRetry(false)` for faster error tests
+
+**Status**: ✅ Good quality, no rewrites needed
+
+---
+
+#### useGraphQuery.test.ts
+**Score**: 26/35 (Good)
+
+| Principle | Score | Notes |
+|-----------|-------|-------|
+| Behavior-Focused | 5 | Tests hook contracts |
+| Clear/Readable | 4 | Good test names |
+| Focused | 5 | Single behavior per test |
+| Deterministic | 3 | Depends on MSW handlers |
+| Isolated | 4 | Uses shared MSW server |
+| Meaningful | 4 | Good coverage of query mutations |
+| Maintainable | 4 | Well-organized by hook function |
+
+**Issues**:
+- **P0**: MSW handler URL patterns don't match actual API client calls
+- **P1**: Tests use `waitFor()` without proper error handling
+
+**Fix Needed**: Align MSW handlers with actual API client URL patterns
+
+---
+
+#### GraphExplorer.test.tsx (After Fix)
+**Score**: 25/35 (Fair → Good)
+
+| Principle | Score | Notes |
+|-----------|-------|-------|
+| Behavior-Focused | 4 | Tests component rendering |
+| Clear/Readable | 4 | Good structure |
+| Focused | 4 | Multiple related assertions |
+| Deterministic | 3 | Depends on MSW |
+| Isolated | 4 | Uses shared wrapper |
+| Meaningful | 3 | Mostly smoke tests |
+| Maintainable | 3 | Brittle selectors were issue |
+
+**Fix Applied**: Changed `getByText` to `getAllByText`/`getAllByRole` for duplicate text issues
+
+---
+
+### Rewrite Priority Queue (2026-04-11)
+
+#### P0 - Critical (Fix Immediately)
+1. [x] **GraphExplorer.test.tsx:117** - Brittle text selectors (✅ Fixed)
+2. [ ] **MSW handlers.ts** - URL pattern alignment with api/client.ts
+3. [ ] **test_checkpoint_resume.py** - GraphRecursionError in workflow tests
+
+#### P1 - Material (Fix This Sprint)
+1. [ ] **useGraphQuery.test.ts** - MSW handler URL mismatches
+2. [ ] **ExtractionEngine.test.tsx** - Mock data alignment
+3. [ ] **test_checkpoint_resume.py** - Async mock coroutine issues
+
+#### P2 - Improvement (Nice to Have)
+1. [ ] **useValuePacks.test.tsx** - Use `createWrapperWithRetry(false)` for faster tests
+2. [ ] **All component tests** - Add more behavioral assertions beyond rendering
+
+---
+
 ## Per-File Audit Results
 
 ### Layer 5: Ground Truth (Best Quality, but Failing)

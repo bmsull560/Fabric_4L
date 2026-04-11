@@ -79,11 +79,29 @@ interface SearchResult {
   data?: Record<string, unknown>;
 }
 
+/**
+ * Create stable cache key from query parameters
+ * Uses truncated values to prevent key explosion while maintaining uniqueness
+ */
+function createQueryKey(params: GraphQueryRequest): string {
+  const keyParts = [
+    params.query?.slice(0, 50) || 'empty',
+    params.entity_type || 'all',
+    params.max_hops ?? 2,
+    params.max_results ?? 20,
+  ];
+  return keyParts.join('|');
+}
+
+function createTraversalKey(params: EntityTraversalRequest): string {
+  return `${params.entity_id}|${params.direction ?? 'both'}`;
+}
+
 const GRAPH_KEYS = {
   all: ['graph'] as const,
-  query: (params: GraphQueryRequest) => [...GRAPH_KEYS.all, 'query', JSON.stringify(params)] as const,
+  query: (params: GraphQueryRequest) => [...GRAPH_KEYS.all, 'query', createQueryKey(params)] as const,
   context: (entityId: string, hops?: number) => [...GRAPH_KEYS.all, 'context', entityId, hops] as const,
-  traversal: (params: EntityTraversalRequest) => [...GRAPH_KEYS.all, 'traversal', JSON.stringify(params)] as const,
+  traversal: (params: EntityTraversalRequest) => [...GRAPH_KEYS.all, 'traversal', createTraversalKey(params)] as const,
 };
 
 /**
@@ -106,6 +124,7 @@ export function useGraphQuery() {
     onSuccess: (data) => {
       // Cache the entities from the response for other queries
       data.entities?.forEach((entity) => {
+        if (!entity.id) return; // Skip entities without IDs
         queryClient.setQueryData(GRAPH_KEYS.context(entity.id, 0), {
           entity_id: entity.id,
           center: entity,
@@ -121,7 +140,15 @@ export function useGraphQuery() {
 
 /**
  * Get neighborhood context around an entity.
- * GET /v1/entity/{entity_id}/context
+ * Fetches connected entities and relationships within specified hop count.
+ *
+ * @param entityId - The entity ID to get context for (null disables the query)
+ * @param hops - Number of relationship hops to traverse (default: 2)
+ * @param relationshipTypes - Optional filter for specific relationship types
+ * @returns Query result with neighbors, relationships, and center entity
+ *
+ * @example
+ * const { data, isLoading } = useEntityContext('entity-123', 2, ['depends_on']);
  */
 export function useEntityContext(
   entityId: string | null,
@@ -152,8 +179,14 @@ export function useEntityContext(
 }
 
 /**
- * Traverse the value tree from an entity.
- * POST /v1/entity/traverse
+ * Traverse the value tree from an entity in specified direction.
+ * Discovers paths through upstream (value drivers) or downstream (capabilities/use cases) relationships.
+ *
+ * @returns Mutation for traversing from an entity with direction control
+ *
+ * @example
+ * const mutation = useEntityTraversal();
+ * mutation.mutate({ entity_id: 'cap-123', direction: 'up' });
  */
 export function useEntityTraversal() {
   return useMutation({
@@ -170,6 +203,12 @@ export function useEntityTraversal() {
 /**
  * Convenience hook for fetching the full graph (all entities/relationships via empty query).
  * Uses hybrid search with empty query as a workaround until a dedicated /graph endpoint exists.
+ *
+ * @returns Query result with all nodes (relationships not yet populated - requires entity context queries)
+ *
+ * @example
+ * const { data, isLoading } = useFullGraph();
+ * // data.nodes contains all entities from the knowledge graph
  */
 export function useFullGraph() {
   return useQuery({
@@ -183,14 +222,16 @@ export function useFullGraph() {
       });
 
       const results: SearchResult[] = response.data?.results || [];
-      const nodes: GraphNode[] = results.map((r) => ({
-        id: r.id || r.entity_id || 'unknown',
-        name: r.name || r.title || 'Unknown',
-        entity_type: r.entity_type || r.type || 'Unknown',
-        confidence_score: r.confidence_score ?? r.confidence ?? 0.8,
-        description: r.description,
-        properties: r.properties || r.data,
-      }));
+      const nodes: GraphNode[] = results
+        .filter((r) => r.id || r.entity_id) // Skip entities without IDs
+        .map((r, index) => ({
+          id: r.id || r.entity_id || `entity-${index}`,
+          name: r.name || r.title || 'Unknown',
+          entity_type: r.entity_type || r.type || 'Unknown',
+          confidence_score: r.confidence_score ?? r.confidence ?? 0.8,
+          description: r.description,
+          properties: r.properties || r.data,
+        }));
 
       // For now, return nodes without relationships (would need entity context for each)
       return {

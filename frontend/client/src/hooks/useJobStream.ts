@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { apiClient } from '@/api/client';
+import { SSEBuilders, SSE_TIMEOUT_MS as SHARED_SSE_TIMEOUT_MS } from './useSSEUtils';
 
 export interface JobStreamEvent {
   type: 'progress' | 'status' | 'log' | 'entity' | 'complete' | 'error';
@@ -27,7 +28,6 @@ export interface JobStreamState {
   }>;
 }
 
-const SSE_TIMEOUT_MS = 30 * 1000;
 const POLL_INTERVAL_MS = 2000;
 
 /**
@@ -53,10 +53,12 @@ export function useJobStream(jobId: string | null) {
 
   // Polling fallback when SSE is not available
   const pollJobStatus = useCallback(async () => {
-    if (!jobId) return;
-    
+    // Guard against stale callback executing after cleanup
+    const currentJobId = jobId;
+    if (!currentJobId) return;
+
     try {
-      const response = await apiClient.get('l2', `/extract/status/${jobId}`);
+      const response = await apiClient.get('l2', `/jobs/${currentJobId}`);
       const job = response.data;
       
       setState(prev => ({
@@ -97,9 +99,7 @@ export function useJobStream(jobId: string | null) {
 
     // Try SSE first, fall back to polling
     const trySseConnection = () => {
-      const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1';
-      const l2Prefix = import.meta.env.VITE_L2_PREFIX || '/extract';
-      const url = `${baseUrl}${l2Prefix}/jobs/${jobId}/events`;
+      const url = SSEBuilders.l2(`/jobs/${jobId}/events`);
 
       // Close any existing connection
       if (eventSourceRef.current) {
@@ -121,7 +121,7 @@ export function useJobStream(jobId: string | null) {
           // Fall back to polling
           startPolling();
         }
-      }, SSE_TIMEOUT_MS);
+      }, SHARED_SSE_TIMEOUT_MS);
 
       es.onmessage = (event) => {
         try {
@@ -153,8 +153,9 @@ export function useJobStream(jobId: string | null) {
                 return prev;
             }
           });
-        } catch {
-          // Ignore invalid JSON
+        } catch (err) {
+          // Log parse errors for debugging but don't break the connection
+          console.warn('[useJobStream] Failed to parse SSE message:', err);
         }
       };
 
@@ -171,6 +172,8 @@ export function useJobStream(jobId: string | null) {
     };
 
     const startPolling = () => {
+      // Guard against duplicate polling intervals
+      if (pollIntervalRef.current) return;
       // Immediate first poll
       pollJobStatus();
       // Set up interval polling
@@ -193,6 +196,8 @@ export function useJobStream(jobId: string | null) {
         eventSourceRef.current.close();
         eventSourceRef.current = null;
       }
+      // Reset SSE support flag for next job
+      sseSupportedRef.current = null;
     };
   }, [jobId, pollJobStatus]);
 

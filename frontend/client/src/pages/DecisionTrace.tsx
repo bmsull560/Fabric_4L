@@ -193,9 +193,8 @@ export default function DecisionTrace() {
           <SectionCard title={`Audit Log (${auditLogs?.total || 0} entries)`} noPad>
             <DataTable
               columns={["Trace ID", "Entity", "Action", "Agent", "Timestamp", "Status", "Actions"]}
-              rows={auditRows.length > 0 ? auditRows : [
-                [<td key="empty" colSpan={7} className="text-center py-8 text-neutral-500">No audit entries found</td>]
-              ]}
+              rows={auditRows}
+              emptyMessage="No audit entries found"
             />
           </SectionCard>
         </div>

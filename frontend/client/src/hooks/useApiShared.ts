@@ -14,8 +14,11 @@ export const STALE_TIME = {
 } as const;
 
 // Retry configuration for transient failures
+// Detects Vitest environment and disables retries to prevent test timeouts
+const isTestEnv = typeof process !== 'undefined' && process.env?.VITEST === 'true';
+
 export const RETRY_CONFIG = {
-  maxRetries: 3,
+  maxRetries: isTestEnv ? false : 3,
   retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
 } as const;
 

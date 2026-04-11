@@ -55,6 +55,16 @@ const TYPE_LABELS: Record<string, string> = {
   sys: '[SYS]', info: '[INFO]', warn: '[WARN]', extract: '[EXTRACT]', map: '[MAP]', plain: '',
 };
 
+// Color mapping for entity type chips
+const ENTITY_CHIP_COLORS: Record<string, string> = {
+  outcome: 'text-emerald-400',
+  capability: 'text-blue-400',
+  usecase: 'text-purple-400',
+  persona: 'text-amber-400',
+  valuedriver: 'text-rose-400',
+  default: 'text-neutral-400',
+};
+
 /**
  * Get extraction job status from L2 API
  */
@@ -85,11 +95,44 @@ export function useExtractionJob(jobId: string | null) {
       };
 
       // Build steps from job phases
+      const isDone = (statuses: string[]) => statuses.includes(job.status);
+      const isTerminal = isDone(['COMPLETED', 'FAILED', 'CANCELLED']);
+
       const steps: ExtractionStep[] = [
-        { id: 1, label: 'Crawling', sub: `Acquired ${job.progress_pages_found || 0} nodes from domain.`, done: ['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status) || ['EXTRACTING', 'TRANSFORMING', 'STORING'].includes(job.status), active: job.status === 'NAVIGATING' || job.status === 'BROWSER_ACQUIRING', pct: job.status === 'NAVIGATING' ? Math.min(100, (job.progress_processed_pages / job.progress_pages_found) * 100) : undefined },
-        { id: 2, label: 'NER Extraction', sub: 'Identifying entities, capabilities, and outcomes.', done: ['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status) || ['TRANSFORMING', 'STORING'].includes(job.status), active: job.status === 'EXTRACTING', pct: job.status === 'EXTRACTING' ? Math.min(100, job.progress_percent_complete || 0) : undefined },
-        { id: 3, label: 'Semantic Mapping', sub: '', done: ['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status) || ['STORING'].includes(job.status), active: job.status === 'TRANSFORMING' },
-        { id: 4, label: 'Fabric Assembly', sub: '', done: job.status === 'COMPLETED', active: job.status === 'STORING' },
+        {
+          id: 1,
+          label: 'Crawling',
+          sub: `Acquired ${job.progress_pages_found || 0} nodes from domain.`,
+          done: isTerminal || isDone(['EXTRACTING', 'TRANSFORMING', 'STORING']),
+          active: isDone(['NAVIGATING', 'BROWSER_ACQUIRING']),
+          pct: job.status === 'NAVIGATING'
+            ? Math.min(100, (job.progress_processed_pages / job.progress_pages_found) * 100)
+            : undefined,
+        },
+        {
+          id: 2,
+          label: 'NER Extraction',
+          sub: 'Identifying entities, capabilities, and outcomes.',
+          done: isTerminal || isDone(['TRANSFORMING', 'STORING']),
+          active: job.status === 'EXTRACTING',
+          pct: job.status === 'EXTRACTING'
+            ? Math.min(100, job.progress_percent_complete || 0)
+            : undefined,
+        },
+        {
+          id: 3,
+          label: 'Semantic Mapping',
+          sub: '',
+          done: isTerminal || isDone(['STORING']),
+          active: job.status === 'TRANSFORMING',
+        },
+        {
+          id: 4,
+          label: 'Fabric Assembly',
+          sub: '',
+          done: job.status === 'COMPLETED',
+          active: job.status === 'STORING',
+        },
       ];
 
       // Parse logs from job progress
@@ -104,9 +147,7 @@ export function useExtractionJob(jobId: string | null) {
       // Build entity chips from extracted entities
       const entitiesFound: EntityChip[] = job.extracted_entities?.map((e: any) => ({
         label: `${e.type}: ${e.name}`,
-        color: e.type === 'Outcome' ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700' :
-               e.type === 'Capability' ? 'bg-violet-900/40 text-violet-300 border-violet-700' :
-               'bg-neutral-900/40 text-neutral-300 border-neutral-700',
+        color: ENTITY_CHIP_COLORS[e.type] || ENTITY_CHIP_COLORS.default,
       })) || [];
 
       return {

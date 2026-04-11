@@ -13,6 +13,8 @@ interface UIState {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
   setTheme: (theme: 'light' | 'dark') => void;
+  /** Reset store to initial state - primarily for testing */
+  _reset: () => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -42,4 +44,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   },
 
   setTheme: (theme) => set({ theme }),
+
+  _reset: () => set({
+    sidebarOpen: true,
+    activeModal: null,
+    modalData: null,
+    toastQueue: [],
+    theme: 'light',
+  }),
 }));

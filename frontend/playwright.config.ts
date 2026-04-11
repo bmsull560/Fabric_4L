@@ -10,7 +10,7 @@ import { defineConfig, devices } from '@playwright/test';
  * - Accessibility-conscious selectors preferred
  */
 
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001';
 const CI = process.env.CI === 'true';
 
 export default defineConfig({

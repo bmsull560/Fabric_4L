@@ -247,15 +247,19 @@ class Neo4jLoader:
     def _get_embedding_model(self):
         """Lazily load sentence-transformers model for ingestion embeddings."""
         if self._embedding_model is None:
-            from sentence_transformers import SentenceTransformer
+            try:
+                from sentence_transformers import SentenceTransformer
 
-            model_name = getattr(
-                self.settings,
-                "embedding_model",
-                "sentence-transformers/all-MiniLM-L6-v2",
-            )
-            self._embedding_model = SentenceTransformer(model_name)
-            logger.info("Loaded ingestion embedding model: %s", model_name)
+                model_name = getattr(
+                    self.settings,
+                    "embedding_model",
+                    "sentence-transformers/all-MiniLM-L6-v2",
+                )
+                self._embedding_model = SentenceTransformer(model_name)
+                logger.info("Loaded ingestion embedding model: %s", model_name)
+            except Exception:
+                logger.warning("sentence-transformers not available, embeddings disabled")
+                self._embedding_model = None
         return self._embedding_model
 
     def _build_embedding_text(self, entity: dict) -> str:
@@ -273,13 +277,16 @@ class Neo4jLoader:
         """Generate embedding vector using local sentence-transformers model."""
         if not text.strip():
             return None
+        model = self._get_embedding_model()
+        if model is None:
+            # Model unavailable (sentence-transformers not installed), return zero embedding
+            return [0.0] * 384  # Standard all-MiniLM-L6-v2 dimension
         try:
-            model = self._get_embedding_model()
             return model.encode(text, normalize_embeddings=True).tolist()
         except Exception as exc:
             logger.warning("Embedding generation failed during ingestion: %s", exc)
-            # Fallback: return zero embedding for tests when sentence_transformers unavailable
-            return [0.0] * 384  # Standard all-MiniLM-L6-v2 dimension
+            # Fallback: return zero embedding for tests when encoding fails
+            return [0.0] * 384
 
     def _attach_embeddings(self, entity_type: str, entities: List[dict]) -> List[dict]:
         """Attach embeddings to retrieval entity records before persistence."""

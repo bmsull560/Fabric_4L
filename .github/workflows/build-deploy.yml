@@ -41,7 +41,7 @@ jobs:
           - layer: layer1-ingestion
             port: 8000
           - layer: layer2-extraction
-            port: 8000
+            port: 8004
           - layer: layer3-knowledge
             port: 8001
           - layer: layer4-agents
@@ -96,7 +96,7 @@ jobs:
             port: 8000
             health_path: /api/v1/ingestion/health
           - layer: layer2-extraction
-            port: 8000
+            port: 8001
             health_path: /health
           - layer: layer3-knowledge
             port: 8001

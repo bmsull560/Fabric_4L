@@ -30,7 +30,7 @@ export function EntityBadge({ type, label }: { type: EntityType; label?: string 
 }
 
 /* ── Status badge ── */
-type StatusType = "completed" | "processing" | "failed" | "running" | "paused" | "pending" | "cancelled";
+export type StatusType = "completed" | "processing" | "failed" | "running" | "paused" | "pending" | "cancelled";
 const STATUS_STYLES: Record<StatusType, string> = {
   completed:  "bg-emerald-100 text-emerald-800 border-emerald-200",
   running:    "bg-amber-100   text-amber-800   border-amber-200",
@@ -122,11 +122,15 @@ export function SectionCard({
 
 /* ── Data table ── */
 export function DataTable({
-  columns, rows,
+  columns, rows, emptyMessage = "No data found",
 }: {
   columns: string[];
   rows: React.ReactNode[][];
+  emptyMessage?: string;
 }) {
+  // Check if rows is empty or contains only empty row placeholder
+  const isEmpty = rows.length === 0 || (rows.length === 1 && rows[0].length === 0);
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-[12px]">
@@ -140,13 +144,21 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, ri) => (
-            <tr key={ri} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors last:border-0">
-              {row.map((cell, ci) => (
-                <td key={ci} className="px-4 py-3 text-neutral-700 align-middle">{cell}</td>
-              ))}
+          {isEmpty ? (
+            <tr className="border-b border-neutral-100">
+              <td colSpan={columns.length} className="px-4 py-8 text-center text-neutral-500">
+                {emptyMessage}
+              </td>
             </tr>
-          ))}
+          ) : (
+            rows.map((row, ri) => (
+              <tr key={ri} className="border-b border-neutral-100 hover:bg-neutral-50 transition-colors last:border-0">
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-4 py-3 text-neutral-700 align-middle">{cell}</td>
+                ))}
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
     </div>
