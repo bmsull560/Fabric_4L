@@ -10,6 +10,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Router } from 'wouter';
@@ -49,7 +50,7 @@ describe('DecisionTrace', () => {
     expect(document.querySelector('[class*="skeleton"]')).toBeDefined();
   });
 
-  it('renders with audit log and provenance data', async () => {
+  it('renders audit log and allows entity selection to view provenance', async () => {
     server.use(
       http.get('/api/v1/graph/audit/logs', () => {
         return HttpResponse.json({
@@ -96,8 +97,18 @@ describe('DecisionTrace', () => {
     const wrapper = createWrapper();
     render(<DecisionTrace />, { wrapper });
 
+    // Wait for audit log entries to render (not just the header)
     await waitFor(() => {
-      expect(screen.getByText('Decision Trace Viewer')).toBeInTheDocument();
+      expect(screen.getByText('business_case')).toBeInTheDocument();
+    });
+
+    // Click on View button to select entity (use findByRole for specificity)
+    const viewButton = await screen.findByRole('button', { name: /view/i });
+    await userEvent.click(viewButton);
+
+    // Now provenance timeline should appear
+    await waitFor(() => {
+      expect(screen.getByText('Provenance Timeline')).toBeInTheDocument();
     });
   });
 
@@ -156,10 +167,22 @@ describe('DecisionTrace', () => {
   });
 
   it('renders provenance timeline when entity selected', async () => {
-    // Use wrapper with entityId in path
-    const wrapper = createWrapperWithPath('/?entityId=test-entity');
-
+    // Setup mocks BEFORE creating wrapper and rendering
     server.use(
+      http.get('/api/v1/graph/provenance/:entityId', () => {
+        return HttpResponse.json({
+          entity_id: 'test-entity',
+          entity_type: 'business_case',
+          entity_name: 'Test Entity',
+          source: 'extraction',
+          confidence_score: 0.95,
+          created_at: '2024-01-15T10:00:00Z',
+          steps: [
+            { step: 1, label: 'Extraction', detail: 'Extracted data', timestamp: '2024-01-15T10:00:00Z', agent: 'agent-1' },
+            { step: 2, label: 'Validation', detail: 'Validated results', timestamp: '2024-01-15T10:05:00Z', agent: 'agent-2' },
+          ],
+        });
+      }),
       http.get('/api/v1/graph/audit/logs', () => {
         return HttpResponse.json({
           entries: [
@@ -176,38 +199,25 @@ describe('DecisionTrace', () => {
             },
           ],
           total: 1,
-        });
-      }),
-      http.get('/api/v1/graph/provenance/:entityId', () => {
-        return HttpResponse.json({
-          entity_id: 'test-entity',
-          entity_type: 'business_case',
-          entity_name: 'Test Entity',
-          source: 'extraction',
-          confidence_score: 0.95,
-          created_at: '2024-01-15T10:00:00Z',
-          steps: [
-            {
-              step: 1,
-              label: 'Extraction',
-              detail: 'Extracted data',
-              timestamp: '2024-01-15T10:00:00Z',
-              agent: 'agent-1',
-            },
-            {
-              step: 2,
-              label: 'Validation',
-              detail: 'Validated results',
-              timestamp: '2024-01-15T10:05:00Z',
-              agent: 'agent-2',
-            },
-          ],
+          page: 1,
+          per_page: 20,
         });
       })
     );
 
+    const wrapper = createWrapper();
     render(<DecisionTrace />, { wrapper });
 
+    // Wait for audit log entries to render
+    await waitFor(() => {
+      expect(screen.getByText('business_case')).toBeInTheDocument();
+    });
+
+    // Click on View button to select entity (use findByRole for specificity)
+    const viewButton = await screen.findByRole('button', { name: /view/i });
+    await userEvent.click(viewButton);
+
+    // Now provenance timeline should appear
     await waitFor(() => {
       expect(screen.getByText('Provenance Timeline')).toBeInTheDocument();
     });

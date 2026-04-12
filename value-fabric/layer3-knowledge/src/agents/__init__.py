@@ -13,6 +13,7 @@ from .whitespace_analysis import WhitespaceAnalysisAgent
 from .roi_calculation import ROICalculationAgent
 from .narrative_synthesis import NarrativeSynthesisAgent
 from .provenance_tracking import ProvenanceTrackingAgent
+from .scenario_engine import scenario_engine, VariableAdjustment, ScenarioResult, SavedScenario, ScenarioEngine
 
 __all__ = [
     "ValueTreeProjectionAgent",
@@ -20,4 +21,9 @@ __all__ = [
     "ROICalculationAgent",
     "NarrativeSynthesisAgent",
     "ProvenanceTrackingAgent",
+    "scenario_engine",
+    "VariableAdjustment",
+    "ScenarioResult",
+    "SavedScenario",
+    "ScenarioEngine",
 ]

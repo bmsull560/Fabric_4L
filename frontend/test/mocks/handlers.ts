@@ -85,6 +85,81 @@ export const jobStreamMocks = [
   http.get(`${API_BASE}${L2_PREFIX}/jobs/:jobId`, async ({ params }) => {
     await delay(100);
     const jobId = params.jobId as string;
+
+    // Return specific responses for test job IDs
+    if (jobId === 'job-with-logs') {
+      return HttpResponse.json({
+        id: jobId,
+        status: 'EXTRACTING',
+        progress_percent_complete: 60,
+        progress_pages_found: 15,
+        progress_processed_pages: 9,
+        progress_logs: [
+          { timestamp: '2024-01-15T10:00:00Z', level: 'INFO', message: 'Job started', status: 'OK' },
+          { timestamp: '2024-01-15T10:05:00Z', level: 'INFO', message: 'Processing page 5', status: 'OK' },
+          { timestamp: '2024-01-15T10:10:00Z', level: 'INFO', message: 'Extracted 10 entities', status: 'OK' },
+        ],
+        extracted_entities: [],
+        configuration: { url: 'https://example.com' },
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:15:00Z',
+      });
+    }
+
+    if (jobId === 'job-with-entities') {
+      return HttpResponse.json({
+        id: jobId,
+        status: 'EXTRACTING',
+        progress_percent_complete: 75,
+        progress_pages_found: 20,
+        progress_processed_pages: 15,
+        progress_logs: [],
+        extracted_entities: [
+          { type: 'Capability', name: 'AI Analytics' },
+          { type: 'Outcome', name: 'Revenue Growth' },
+          { type: 'Persona', name: 'Data Scientist' },
+        ],
+        configuration: { url: 'https://example.com' },
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:15:00Z',
+      });
+    }
+
+    if (jobId === 'completed-job') {
+      return HttpResponse.json({
+        id: jobId,
+        status: 'COMPLETED',
+        progress_percent_complete: 100,
+        progress_pages_found: 20,
+        progress_processed_pages: 20,
+        progress_logs: [{ timestamp: '2024-01-15T10:00:00Z', level: 'INFO', message: 'Job completed', status: 'OK' }],
+        extracted_entities: [{ type: 'Outcome', name: 'Completed Result' }],
+        configuration: { url: 'https://example.com' },
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:30:00Z',
+      });
+    }
+
+    if (jobId === 'failed-job') {
+      return HttpResponse.json({
+        id: jobId,
+        status: 'FAILED',
+        progress_percent_complete: 45,
+        progress_pages_found: 10,
+        progress_processed_pages: 5,
+        progress_logs: [{ timestamp: '2024-01-15T10:00:00Z', level: 'ERROR', message: 'Extraction failed', status: 'ERROR' }],
+        extracted_entities: [],
+        configuration: { url: 'https://example.com' },
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:15:00Z',
+      });
+    }
+
+    if (jobId === 'non-existent-job') {
+      return new HttpResponse(JSON.stringify({ error: 'Job not found' }), { status: 404 });
+    }
+
+    // Default response for any job ID
     return HttpResponse.json({
       id: jobId,
       status: 'EXTRACTING',
@@ -110,6 +185,27 @@ export const jobStreamMocks = [
   http.get(`${API_BASE}${L2_PREFIX}/jobs/:jobId/poll`, async ({ params }) => {
     await delay(100);
     const jobId = params.jobId as string;
+
+    // Return consistent status for completed/failed jobs
+    if (jobId === 'completed-job') {
+      return HttpResponse.json({
+        id: jobId,
+        status: 'COMPLETED',
+        progress_percent_complete: 100,
+        progress_logs: [],
+        extracted_entities: [],
+      });
+    }
+    if (jobId === 'failed-job') {
+      return HttpResponse.json({
+        id: jobId,
+        status: 'FAILED',
+        progress_percent_complete: 45,
+        progress_logs: [{ timestamp: '2024-01-15T10:00:00Z', level: 'ERROR', message: 'Extraction failed' }],
+        extracted_entities: [],
+      });
+    }
+
     return HttpResponse.json({
       id: jobId,
       status: 'EXTRACTING',
@@ -444,8 +540,10 @@ export const variableMocks = [
     await delay(100);
     const url = new URL(request.url);
     const type = url.searchParams.get('type');
+    const status = url.searchParams.get('status');
+    const source = url.searchParams.get('source');
 
-    const variables = [
+    let variables = [
       {
         id: 'var-1',
         variable_id: 'var-1',
@@ -481,6 +579,17 @@ export const variableMocks = [
         version: '1.0.0',
       },
     ];
+
+    // Apply filters if provided
+    if (status) {
+      variables = variables.filter(v => v.validation_status === status);
+    }
+    if (source) {
+      variables = variables.filter(v => v.source === source);
+    }
+    if (type) {
+      variables = variables.filter(v => v.type === type);
+    }
 
     return HttpResponse.json(variables);
   }),

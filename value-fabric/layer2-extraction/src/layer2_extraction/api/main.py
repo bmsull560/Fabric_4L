@@ -18,6 +18,12 @@ from datetime import datetime
 from typing import List, Optional, Dict
 from uuid import uuid4
 
+# Third-party imports for health check
+try:
+    import psutil
+except ImportError:
+    psutil = None  # Health check will work without system metrics
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -741,10 +747,9 @@ async def run_extract_and_ingest(
 # API Endpoints
 @app.get("/health")
 async def health_check():
-    """Health check endpoint with real metrics."""
-    import psutil
+    """Health check endpoint with real metrics and dependency status."""
+    start_time = time.time()
     uptime = time.time() - _app_start_time
-    memory_info = psutil.virtual_memory()
 
     metrics = get_metrics()
     total_requests = 0
@@ -771,17 +776,63 @@ async def health_check():
         except (AttributeError, TypeError):
             active_connections = 0
 
+    # Check Layer 3 dependency
+    dependencies = []
+    overall_status = "healthy"
+
+    try:
+        from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
+        l3_start = time.time()
+        l3_client = Layer3KnowledgeClient()
+        l3_healthy = await l3_client.health_check()
+        l3_response_ms = round((time.time() - l3_start) * 1000, 2)
+        await l3_client.close()
+
+        dependencies.append({
+            "name": "layer3_knowledge",
+            "status": "healthy" if l3_healthy else "unhealthy",
+            "response_time_ms": l3_response_ms,
+            "error": None if l3_healthy else "Layer 3 returned unhealthy status"
+        })
+
+        if not l3_healthy:
+            overall_status = "degraded"
+    except Exception as e:
+        dependencies.append({
+            "name": "layer3_knowledge",
+            "status": "unhealthy",
+            "response_time_ms": None,
+            "error": str(e)
+        })
+        overall_status = "degraded"
+
+    total_response_ms = round((time.time() - start_time) * 1000, 2)
+
+    # Update health metrics if available
+    if metrics:
+        metrics.set_health_status(overall_status == "healthy", component="api")
+        l3_dep_healthy = any(d["name"] == "layer3_knowledge" and d["status"] == "healthy" for d in dependencies)
+        metrics.set_health_status(l3_dep_healthy, component="layer3")
+
+    # Build system metrics if psutil is available
+    system_metrics = {
+        "active_connections": active_connections,
+        "total_requests": total_requests
+    }
+    if psutil:
+        memory_info = psutil.virtual_memory()
+        system_metrics["memory_usage_mb"] = memory_info.used / (1024 * 1024)
+        system_metrics["cpu_percent"] = psutil.cpu_percent()
+
     return {
-        "status": "healthy",
+        "status": overall_status,
         "service": "layer2-extraction",
         "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
         "uptime_seconds": uptime,
-        "metrics": {
-            "memory_usage_mb": memory_info.used / (1024 * 1024),
-            "cpu_percent": psutil.cpu_percent(),
-            "active_connections": active_connections,
-            "total_requests": total_requests
-        }
+        "response_time_ms": total_response_ms,
+        "dependencies": dependencies,
+        "metrics": system_metrics
     }
 
 

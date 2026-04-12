@@ -45,3 +45,17 @@ scrape_configs:
     metrics_path: '/metrics'
     scrape_interval: 15s
     scrape_timeout: 10s
+
+  - job_name: 'layer5-ground-truth'
+    static_configs:
+      - targets: ['layer5:8005']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  - job_name: 'layer6-benchmarks'
+    static_configs:
+      - targets: ['layer6:8006']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s

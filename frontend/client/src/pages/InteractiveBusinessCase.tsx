@@ -1,0 +1,529 @@
+/**
+ * Interactive Business Case Explorer
+ * C1-powered conversational what-if analysis with sliders and scenario saving
+ */
+
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { Send, RotateCcw, Save, GitCompare, AlertCircle, Loader2 } from "lucide-react";
+import { useSearchParams, useLocation } from "wouter";
+import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { useBusinessCase } from "@/hooks/useDocuments";
+import { useC1Stream } from "@/hooks/useC1Stream";
+import { isC1Enabled, C1Component } from "@/api/thesysClient";
+
+// Types for C1-generated components
+interface MetricCardProps {
+  label: string;
+  value: number;
+  delta?: number;
+  unit?: string;
+  trend?: 'up' | 'down' | 'neutral';
+}
+
+interface SliderControlProps {
+  label: string;
+  name: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  originalValue: number;
+}
+
+interface ScenarioButtonProps {
+  name: string;
+  onClick: () => void;
+}
+
+/**
+ * Renders a metric card component from C1 stream
+ */
+function MetricCard({ label, value, delta, unit = '', trend = 'neutral' }: MetricCardProps) {
+  const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-neutral-600';
+  const deltaText = delta ? (delta > 0 ? `+${delta}%` : `${delta}%`) : '';
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+      <div className="text-[11px] font-medium uppercase tracking-wider text-neutral-500 mb-1">{label}</div>
+      <div className="text-2xl font-bold text-neutral-900">
+        {unit === '$' ? '$' : ''}{value.toLocaleString()}{unit === '%' ? '%' : ''}
+      </div>
+      {delta !== undefined && (
+        <div className={`text-sm font-medium mt-1 ${trendColor}`}>
+          {deltaText} vs original
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Renders a slider control component with live recalculation
+ */
+function SliderControl({
+  label,
+  name,
+  value: initialValue,
+  min,
+  max,
+  step = 1,
+  unit = '',
+  originalValue,
+  onChange,
+}: SliderControlProps & { onChange: (val: number) => void }) {
+  const [value, setValue] = useState(initialValue);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleChange = useCallback((newValue: number[]) => {
+    const val = newValue[0];
+    setValue(val);
+    setIsCalculating(true);
+    onChange(val);
+    // Reset calculating state after a brief delay for UX
+    timeoutRef.current = setTimeout(() => setIsCalculating(false), 300);
+  }, [onChange]);
+
+  const percentChange = ((value - originalValue) / originalValue) * 100;
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-lg p-4 mb-4">
+      <div className="flex items-center justify-between mb-3">
+        <label className="text-sm font-medium text-neutral-700">{label}</label>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-neutral-900">
+            {unit === '$' ? '$' : ''}{value.toLocaleString()}{unit === '%' ? '%' : unit}
+          </span>
+          {isCalculating && <Loader2 className="w-4 h-4 animate-spin text-blue-600" />}
+        </div>
+      </div>
+
+      <Slider
+        value={[value]}
+        min={min}
+        max={max}
+        step={step}
+        onValueChange={handleChange}
+        className="w-full"
+      />
+
+      <div className="flex items-center justify-between mt-2 text-xs text-neutral-500">
+        <span>Original: {unit === '$' ? '$' : ''}{originalValue.toLocaleString()}</span>
+        <span className={percentChange >= 0 ? 'text-green-600' : 'text-red-600'}>
+          {percentChange >= 0 ? '+' : ''}{percentChange.toFixed(1)}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Component renderer for C1-streamed components
+ */
+function C1ComponentRenderer({
+  components,
+  onSliderChange,
+  onSaveScenario,
+  savedScenarios,
+}: {
+  components: C1Component[];
+  onSliderChange: (name: string, value: number, original: number) => void;
+  onSaveScenario: (name: string) => void;
+  savedScenarios: Array<{ id: string; name: string }>;
+}) {
+  const [newScenarioName, setNewScenarioName] = useState('');
+
+  return (
+    <div className="space-y-4">
+      {components.map((comp, idx) => {
+        switch (comp.type) {
+          case 'MetricCard':
+            return (
+              <MetricCard
+                key={idx}
+                label={comp.props.label as string}
+                value={comp.props.value as number}
+                delta={comp.props.delta as number | undefined}
+                unit={comp.props.unit as string | undefined}
+                trend={comp.props.trend as 'up' | 'down' | 'neutral' | undefined}
+              />
+            );
+
+          case 'Slider':
+            return (
+              <SliderControl
+                key={idx}
+                label={comp.props.label as string}
+                name={comp.props.name as string}
+                value={comp.props.value as number}
+                min={comp.props.min as number}
+                max={comp.props.max as number}
+                step={comp.props.step as number | undefined}
+                unit={comp.props.unit as string | undefined}
+                originalValue={comp.props.originalValue as number}
+                onChange={(val) => onSliderChange(comp.props.name as string, val, comp.props.originalValue as number)}
+              />
+            );
+
+          case 'SaveScenarioButton':
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <Input
+                  placeholder="Scenario name..."
+                  value={newScenarioName}
+                  onChange={(e) => setNewScenarioName(e.target.value)}
+                  className="flex-1"
+                />
+                <Btn
+                  onClick={() => {
+                    if (newScenarioName.trim()) {
+                      onSaveScenario(newScenarioName.trim());
+                      setNewScenarioName('');
+                    }
+                  }}
+                  disabled={!newScenarioName.trim()}
+                >
+                  <Save size={14} className="mr-1" />
+                  Save Scenario
+                </Btn>
+              </div>
+            );
+
+          case 'ScenarioSelector':
+            return savedScenarios.length > 0 ? (
+              <div key={idx} className="bg-neutral-50 rounded-lg p-3">
+                <div className="text-sm font-medium text-neutral-700 mb-2">Saved Scenarios</div>
+                <div className="flex flex-wrap gap-2">
+                  {savedScenarios.map((scenario) => (
+                    <Btn
+                      key={scenario.id}
+                      variant="ghost"
+                      className="text-xs"
+                      onClick={() => { /* Load scenario logic */ }}
+                    >
+                      {scenario.name}
+                    </Btn>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+
+          default:
+            return (
+              <div key={idx} className="text-sm text-neutral-500 italic">
+                Unknown component: {comp.type}
+              </div>
+            );
+        }
+      })}
+    </div>
+  );
+}
+
+export default function InteractiveBusinessCase() {
+  const [searchParams] = useSearchParams();
+  const [, navigate] = useLocation();
+  const businessCaseId = searchParams.get("id");
+
+  const [query, setQuery] = useState('');
+  const [savedScenarios, setSavedScenarios] = useState<Array<{ id: string; name: string }>>([]);
+
+  const { data: businessCase, isLoading, error } = useBusinessCase(businessCaseId);
+
+  const businessCaseData = useMemo(() => {
+    if (!businessCase) return undefined;
+    return {
+      total_value: businessCase.total_value,
+      implementation_cost: businessCase.implementation_cost,
+      roi_ratio: businessCase.roi_ratio,
+      payback_months: businessCase.payback_months,
+      confidence_score: businessCase.confidence_score,
+      title: businessCase.title,
+    };
+  }, [businessCase]);
+
+  const {
+    state: c1State,
+    sendQuery,
+    reset,
+    handleSliderChange,
+    saveCurrentScenario,
+    getSavedScenarios,
+    isEnabled,
+  } = useC1Stream({
+    businessCaseId: businessCaseId || '',
+    businessCaseData,
+  });
+
+  // Load saved scenarios on mount
+  useEffect(() => {
+    if (businessCaseId) {
+      const scenarios = getSavedScenarios();
+      setSavedScenarios(scenarios.map(s => ({ id: s.id, name: s.name })));
+    }
+  }, [businessCaseId, getSavedScenarios]);
+
+  const handleSendQuery = useCallback(() => {
+    if (query.trim()) {
+      sendQuery(query.trim());
+      setQuery('');
+    }
+  }, [query, sendQuery]);
+
+  const handleSliderUpdate = useCallback((name: string, value: number, original: number) => {
+    handleSliderChange({ name, value, original_value: original });
+  }, [handleSliderChange]);
+
+  const handleSaveScenario = useCallback((name: string) => {
+    // Get current slider values from C1 components
+    const adjustments = c1State.components
+      .filter(c => c.type === 'Slider')
+      .map(c => ({
+        name: c.props.name as string,
+        value: c.props.value as number,
+      }));
+
+    const id = saveCurrentScenario(name, adjustments);
+    setSavedScenarios(prev => [...prev, { id, name }]);
+  }, [c1State.components, saveCurrentScenario]);
+
+  // Handle missing ID
+  if (!businessCaseId) {
+    return (
+      <div className="p-6 max-w-5xl">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-700">
+          No business case ID provided. Please select a business case to explore.
+        </div>
+      </div>
+    );
+  }
+
+  // C1 not enabled fallback
+  if (!isEnabled && !isLoading) {
+    return (
+      <div className="p-6 max-w-5xl">
+        <PageHeader
+          breadcrumbs={["Agent Workflows", "Business Cases", "Interactive Explorer"]}
+          title="Interactive Explorer"
+          subtitle="AI-powered what-if analysis"
+        />
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-amber-800">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 mt-0.5" />
+            <div>
+              <div className="font-semibold mb-1">C1 Integration Not Enabled</div>
+              <p className="text-sm mb-3">
+                Interactive business case exploration requires Thesys C1. To enable:
+              </p>
+              <ol className="text-sm list-decimal list-inside space-y-1">
+                <li>Get an API key from <a href="https://thesys.dev" className="underline">thesys.dev</a></li>
+                <li>Add <code className="bg-amber-100 px-1 rounded">VITE_THESYS_API_KEY</code> to your environment</li>
+                <li>Set <code className="bg-amber-100 px-1 rounded">VITE_ENABLE_C1_REPORTS=true</code></li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-5xl">
+        <PageHeader
+          breadcrumbs={["Agent Workflows", "Business Cases", "Interactive Explorer"]}
+          title="Loading..."
+          subtitle=""
+        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <Skeleton className="h-32" />
+            <Skeleton className="h-32" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+            <Skeleton className="h-20" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !businessCase) {
+    return (
+      <div className="p-6 max-w-5xl">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>{error instanceof Error ? error.message : 'Failed to load business case.'}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-5xl">
+      <PageHeader
+        breadcrumbs={["Agent Workflows", "Business Cases", "Interactive Explorer"]}
+        title={businessCase.title || "Interactive Business Case"}
+        subtitle={`Explore "what-if" scenarios with AI-generated controls · ${new Date(businessCase.created_at || '').toLocaleDateString()}`}
+        actions={
+          <>
+            <Btn variant="ghost" onClick={() => navigate(`/agents/business-cases?id=${businessCaseId}`)}>
+              View Static Report
+            </Btn>
+            <Btn variant="ghost" onClick={reset}>
+              <RotateCcw size={14} className="mr-1" />
+              Reset
+            </Btn>
+          </>
+        }
+      />
+
+      {/* Error display */}
+      {c1State.error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-700 text-sm">
+          <AlertCircle className="w-4 h-4" />
+          <span>{c1State.error}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left column: Chat input and streamed components */}
+        <div className="space-y-4">
+          <SectionCard title='Ask "What If..."' className="mb-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="e.g., What if implementation cost doubles?"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendQuery()}
+                  disabled={c1State.isStreaming}
+                  className="flex-1"
+                />
+                <Btn
+                  onClick={handleSendQuery}
+                  disabled={!query.trim() || c1State.isStreaming}
+                >
+                  {c1State.isStreaming ? (
+                    <Loader2 size={14} className="animate-spin mr-1" />
+                  ) : (
+                    <Send size={14} className="mr-1" />
+                  )}
+                  Send
+                </Btn>
+              </div>
+              <div className="text-xs text-neutral-500">
+                Try: "Reduce timeline by 3 months", "Double the confidence score", "What if costs increase 20%?"
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Streamed C1 components */}
+          {c1State.components.length > 0 && (
+            <SectionCard title="Interactive Controls">
+              <C1ComponentRenderer
+                components={c1State.components}
+                onSliderChange={handleSliderUpdate}
+                onSaveScenario={handleSaveScenario}
+                savedScenarios={savedScenarios}
+              />
+            </SectionCard>
+          )}
+
+          {c1State.isStreaming && c1State.components.length === 0 && (
+            <div className="flex items-center justify-center py-12 text-neutral-500">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              Generating interactive controls...
+            </div>
+          )}
+        </div>
+
+        {/* Right column: Base case summary */}
+        <div>
+          <SectionCard title="Base Case Summary">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-blue-600 mb-1">
+                  Total Value
+                </div>
+                <div className="text-2xl font-bold text-blue-900">
+                  ${businessCase.total_value.toLocaleString()}
+                </div>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-green-600 mb-1">
+                  ROI Ratio
+                </div>
+                <div className="text-2xl font-bold text-green-900">
+                  {businessCase.roi_ratio.toFixed(2)}x
+                </div>
+              </div>
+
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-purple-600 mb-1">
+                  Payback Period
+                </div>
+                <div className="text-2xl font-bold text-purple-900">
+                  {businessCase.payback_months} months
+                </div>
+              </div>
+
+              <div className="bg-amber-50 rounded-lg p-4">
+                <div className="text-[11px] font-medium uppercase tracking-wider text-amber-600 mb-1">
+                  Confidence
+                </div>
+                <div className="text-2xl font-bold text-amber-900">
+                  {Math.round(businessCase.confidence_score * 100)}%
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-neutral-200">
+              <div className="text-sm font-medium text-neutral-700 mb-2">Implementation Cost</div>
+              <div className="text-lg font-semibold text-neutral-900">
+                ${businessCase.implementation_cost.toLocaleString()}
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Saved scenarios */}
+          {savedScenarios.length > 0 && (
+            <SectionCard title={`Saved Scenarios (${savedScenarios.length})`} className="mt-4">
+              <div className="space-y-2">
+                {savedScenarios.map((scenario) => (
+                  <div
+                    key={scenario.id}
+                    className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg"
+                  >
+                    <span className="text-sm font-medium text-neutral-700">{scenario.name}</span>
+                    <Btn variant="ghost" className="h-8 px-2">
+                      <GitCompare size={14} />
+                    </Btn>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

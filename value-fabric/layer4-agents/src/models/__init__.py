@@ -1,5 +1,13 @@
 """Models package for Layer 4 Agentic Workflow Engine."""
 
+from .account import (
+    Account,
+    AccountSyncStatus,
+    CRMProvider,
+    EmbeddedContact,
+    EmbeddedOpportunity,
+    SyncStatus,
+)
 from .agent_state import (
     AgentState,
     BaseAgentState,
@@ -64,6 +72,13 @@ from .tool_schemas import (
 )
 
 __all__ = [
+    # Account Models
+    "Account",
+    "AccountSyncStatus",
+    "CRMProvider",
+    "EmbeddedContact",
+    "EmbeddedOpportunity",
+    "SyncStatus",
     # Agent State
     "AgentState",
     "BaseAgentState",

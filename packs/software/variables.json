@@ -1,0 +1,867 @@
+{
+  "pack_id": "software-v1",
+  "variables": [
+    {
+      "variable_id": "sw-var-001",
+      "variable_name": "ARR",
+      "display_name": "Annual Recurring Revenue",
+      "description": "Total annual recurring revenue from all subscription customers",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000000
+      },
+      "default_value": 10000000,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "ERP",
+        "entity": "FinancialSummary",
+        "attribute": "annual_recurring_revenue",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000000
+        }
+      ],
+      "tags": ["arr", "revenue", "recurring", "saas"],
+      "used_in_formulas": ["sw-f-002", "sw-f-004"]
+    },
+    {
+      "variable_id": "sw-var-002",
+      "variable_name": "Current_CAC",
+      "display_name": "Current Customer Acquisition Cost",
+      "description": "Fully-loaded cost to acquire one new customer including marketing, sales, and onboarding",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
+      "default_value": 25000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Total_Sales_Marketing_Spend / New_Customers_Acquired",
+        "components": ["Total_Sales_Marketing_Spend", "New_Customers_Acquired"]
+      },
+      "source_binding": {
+        "system": "CRM",
+        "entity": "AcquisitionMetrics",
+        "attribute": "customer_acquisition_cost",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000
+        }
+      ],
+      "industry_benchmarks": {
+        "best_in_class": 15000,
+        "average": 25000,
+        "poor": 50000
+      },
+      "tags": ["cac", "acquisition", "cost", "sales"],
+      "used_in_formulas": ["sw-f-001"]
+    },
+    {
+      "variable_id": "sw-var-003",
+      "variable_name": "Target_CAC",
+      "display_name": "Target Customer Acquisition Cost",
+      "description": "Target CAC after implementing efficiency improvements",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
+      "default_value": 20000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000
+        }
+      ],
+      "tags": ["cac", "target", "acquisition"],
+      "used_in_formulas": ["sw-f-001"]
+    },
+    {
+      "variable_id": "sw-var-004",
+      "variable_name": "New_Customers_Per_Year",
+      "display_name": "Annual New Customer Acquisition",
+      "description": "Number of new customers acquired in the measurement period",
+      "data_type": "INTEGER",
+      "unit_of_measure": "customers",
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
+      "default_value": 500,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "CRM",
+        "entity": "AcquisitionMetrics",
+        "attribute": "new_customers_annual",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000
+        }
+      ],
+      "tags": ["customers", "acquisition", "new-logos"],
+      "used_in_formulas": ["sw-f-001"]
+    },
+    {
+      "variable_id": "sw-var-005",
+      "variable_name": "Program_Investment",
+      "display_name": "Program Investment",
+      "description": "Annual investment in programs to achieve target metrics",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 500000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["investment", "program", "cost"],
+      "used_in_formulas": ["sw-f-001"]
+    },
+    {
+      "variable_id": "sw-var-006",
+      "variable_name": "Beginning_ARR",
+      "display_name": "Beginning Annual Recurring Revenue",
+      "description": "ARR at the start of the measurement period for NRR calculation",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000000
+      },
+      "default_value": 10000000,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "ERP",
+        "entity": "FinancialSummary",
+        "attribute": "beginning_arr",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000000
+        }
+      ],
+      "tags": ["arr", "beginning", "revenue"],
+      "used_in_formulas": ["sw-f-002"]
+    },
+    {
+      "variable_id": "sw-var-007",
+      "variable_name": "Current_NRR",
+      "display_name": "Current Net Revenue Retention",
+      "description": "Current NRR percentage including expansion, contraction, and churn",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 50,
+        "max": 150
+      },
+      "default_value": 105,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "(Beginning_ARR + Expansion - Contraction - Churn) / Beginning_ARR * 100"
+      },
+      "source_binding": {
+        "system": "CRM",
+        "entity": "RetentionMetrics",
+        "attribute": "net_revenue_retention",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 50,
+          "max": 150
+        }
+      ],
+      "industry_benchmarks": {
+        "world_class": 125,
+        "good": 110,
+        "average": 100,
+        "poor": 90
+      },
+      "tags": ["nrr", "retention", "expansion", "net-revenue"],
+      "used_in_formulas": ["sw-f-002"]
+    },
+    {
+      "variable_id": "sw-var-008",
+      "variable_name": "Target_NRR",
+      "display_name": "Target Net Revenue Retention",
+      "description": "Target NRR after implementing improvement programs",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 50,
+        "max": 150
+      },
+      "default_value": 115,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 50,
+          "max": 150
+        }
+      ],
+      "tags": ["nrr", "target", "retention"],
+      "used_in_formulas": ["sw-f-002"]
+    },
+    {
+      "variable_id": "sw-var-009",
+      "variable_name": "Implementation_Cost",
+      "display_name": "Implementation Cost",
+      "description": "Annual cost of implementing NRR improvement programs",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 750000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["cost", "implementation", "nrr"],
+      "used_in_formulas": ["sw-f-002"]
+    },
+    {
+      "variable_id": "sw-var-010",
+      "variable_name": "Total_Customers",
+      "display_name": "Total Customer Count",
+      "description": "Total number of active customers",
+      "data_type": "INTEGER",
+      "unit_of_measure": "customers",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000
+      },
+      "default_value": 200,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "CRM",
+        "entity": "CustomerSummary",
+        "attribute": "active_customer_count",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 1000000
+        }
+      ],
+      "tags": ["customers", "count", "active"],
+      "used_in_formulas": ["sw-f-003", "sw-f-007"]
+    },
+    {
+      "variable_id": "sw-var-011",
+      "variable_name": "Current_Churn_Rate",
+      "display_name": "Current Annual Churn Rate",
+      "description": "Current annual logo churn rate percentage",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 50
+      },
+      "default_value": 10,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Churned_Customers / Total_Customers_Beginning * 100"
+      },
+      "source_binding": {
+        "system": "CRM",
+        "entity": "RetentionMetrics",
+        "attribute": "annual_churn_rate",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50
+        }
+      ],
+      "industry_benchmarks": {
+        "best_in_class": 5,
+        "good": 8,
+        "average": 12,
+        "poor": 20
+      },
+      "tags": ["churn", "retention", "rate"],
+      "used_in_formulas": ["sw-f-003"]
+    },
+    {
+      "variable_id": "sw-var-012",
+      "variable_name": "Target_Churn_Rate",
+      "display_name": "Target Annual Churn Rate",
+      "description": "Target annual logo churn rate after improvement programs",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 50
+      },
+      "default_value": 7,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50
+        }
+      ],
+      "tags": ["churn", "target", "retention"],
+      "used_in_formulas": ["sw-f-003"]
+    },
+    {
+      "variable_id": "sw-var-013",
+      "variable_name": "ACV",
+      "display_name": "Average Contract Value",
+      "description": "Average annual contract value per customer",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000
+      },
+      "default_value": 50000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "ARR / Total_Customers"
+      },
+      "source_binding": {
+        "system": "CRM",
+        "entity": "CustomerSummary",
+        "attribute": "average_contract_value",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 1000000
+        }
+      ],
+      "tags": ["acv", "contract", "value"],
+      "used_in_formulas": ["sw-f-003"]
+    },
+    {
+      "variable_id": "sw-var-014",
+      "variable_name": "Avg_Customer_Lifespan_Years",
+      "display_name": "Average Customer Lifespan",
+      "description": "Average customer tenure in years",
+      "data_type": "FLOAT",
+      "unit_of_measure": "years",
+      "valid_range": {
+        "min": 0.5,
+        "max": 20
+      },
+      "default_value": 5,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "1 / Churn_Rate"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0.5,
+          "max": 20
+        }
+      ],
+      "tags": ["lifespan", "tenure", "ltv"],
+      "used_in_formulas": ["sw-f-003"]
+    },
+    {
+      "variable_id": "sw-var-015",
+      "variable_name": "Retention_Program_Cost",
+      "display_name": "Retention Program Cost",
+      "description": "Annual cost of customer retention and success programs",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 400000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["retention", "cost", "programs"],
+      "used_in_formulas": ["sw-f-003"]
+    },
+    {
+      "variable_id": "sw-var-016",
+      "variable_name": "Current_Gross_Margin",
+      "display_name": "Current Gross Margin",
+      "description": "Current gross margin percentage",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 95
+      },
+      "default_value": 75,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "(ARR - COGS) / ARR * 100"
+      },
+      "source_binding": {
+        "system": "ERP",
+        "entity": "FinancialSummary",
+        "attribute": "gross_margin_percent",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 95
+        }
+      ],
+      "industry_benchmarks": {
+        "world_class": 85,
+        "good": 78,
+        "average": 70,
+        "poor": 55
+      },
+      "tags": ["gross-margin", "margin", "profitability"],
+      "used_in_formulas": ["sw-f-004"]
+    },
+    {
+      "variable_id": "sw-var-017",
+      "variable_name": "Target_Gross_Margin",
+      "display_name": "Target Gross Margin",
+      "description": "Target gross margin after optimization efforts",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 95
+      },
+      "default_value": 80,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 95
+        }
+      ],
+      "tags": ["gross-margin", "target", "margin"],
+      "used_in_formulas": ["sw-f-004"]
+    },
+    {
+      "variable_id": "sw-var-018",
+      "variable_name": "Infrastructure_Investment",
+      "display_name": "Infrastructure Investment",
+      "description": "Annual investment in infrastructure optimization",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 1000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["infrastructure", "investment", "optimization"],
+      "used_in_formulas": ["sw-f-004"]
+    },
+    {
+      "variable_id": "sw-var-019",
+      "variable_name": "Developer_Hours_Saved_Per_Year",
+      "display_name": "Annual Developer Hours Saved",
+      "description": "Total developer hours saved through platform self-service and automation",
+      "data_type": "INTEGER",
+      "unit_of_measure": "hours",
+      "valid_range": {
+        "min": 0,
+        "max": 500000
+      },
+      "default_value": 10000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Developer_Count * Hours_Saved_Per_Dev_Per_Week * 48",
+        "assumptions": ["48 working weeks per year"]
+      },
+      "source_binding": {
+        "system": "Analytics",
+        "entity": "PlatformMetrics",
+        "attribute": "developer_hours_saved",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500000
+        }
+      ],
+      "tags": ["developer-hours", "productivity", "platform"],
+      "used_in_formulas": ["sw-f-005"]
+    },
+    {
+      "variable_id": "sw-var-020",
+      "variable_name": "Fully_Loaded_Hourly_Rate",
+      "display_name": "Fully Loaded Developer Hourly Rate",
+      "description": "Fully loaded cost per developer hour including salary, benefits, and overhead",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 500
+      },
+      "default_value": 100,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "HRIS",
+        "entity": "CostCenter",
+        "attribute": "fully_loaded_hourly_rate",
+        "refresh_frequency": "quarterly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500
+        }
+      ],
+      "tags": ["developer-cost", "hourly-rate", "loaded-cost"],
+      "used_in_formulas": ["sw-f-005"]
+    },
+    {
+      "variable_id": "sw-var-021",
+      "variable_name": "Infrastructure_Savings",
+      "display_name": "Infrastructure Savings",
+      "description": "Annual savings from cloud infrastructure optimization",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 500000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Baseline_Cloud_Spend - Current_Cloud_Spend",
+        "assumptions": ["Assumes workload growth is factored in baseline"]
+      },
+      "source_binding": {
+        "system": "Cloud_Billing",
+        "entity": "CostSummary",
+        "attribute": "infrastructure_savings",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["infrastructure", "savings", "cloud"],
+      "used_in_formulas": ["sw-f-005"]
+    },
+    {
+      "variable_id": "sw-var-022",
+      "variable_name": "Platform_Investment",
+      "display_name": "Platform Investment",
+      "description": "Annual investment in platform engineering team and tools",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 2000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["platform", "investment", "engineering"],
+      "used_in_formulas": ["sw-f-005"]
+    },
+    {
+      "variable_id": "sw-var-023",
+      "variable_name": "Customer_Base",
+      "display_name": "Eligible Customer Base",
+      "description": "Number of customers eligible for AI feature upsell",
+      "data_type": "INTEGER",
+      "unit_of_measure": "customers",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000
+      },
+      "default_value": 200,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "CRM",
+        "entity": "CustomerSegment",
+        "attribute": "ai_eligible_count",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 1000000
+        }
+      ],
+      "tags": ["customers", "ai", "eligible"],
+      "used_in_formulas": ["sw-f-006"]
+    },
+    {
+      "variable_id": "sw-var-024",
+      "variable_name": "AI_Upsell_Rate",
+      "display_name": "AI Feature Adoption Rate",
+      "description": "Percentage of customers adopting AI premium features",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 20,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "CRM",
+        "entity": "ProductAdoption",
+        "attribute": "ai_feature_adoption_rate",
+        "refresh_frequency": "weekly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "tags": ["ai", "adoption", "upsell-rate"],
+      "used_in_formulas": ["sw-f-006"]
+    },
+    {
+      "variable_id": "sw-var-025",
+      "variable_name": "AI_Premium_Price_Per_Seat",
+      "display_name": "AI Premium Price Per Seat",
+      "description": "Additional annual price for AI features per seat",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000
+      },
+      "default_value": 100,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Billing",
+        "entity": "PriceBook",
+        "attribute": "ai_premium_price",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000
+        }
+      ],
+      "tags": ["ai", "pricing", "premium"],
+      "used_in_formulas": ["sw-f-006"]
+    },
+    {
+      "variable_id": "sw-var-026",
+      "variable_name": "AI_Infrastructure_Annual_Cost",
+      "display_name": "AI Infrastructure Annual Cost",
+      "description": "Annual cost of AI/ML infrastructure including compute, storage, and model APIs",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 1000000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Compute_Cost + Storage_Cost + Model_API_Cost"
+      },
+      "source_binding": {
+        "system": "Cloud_Billing",
+        "entity": "AIServices",
+        "attribute": "total_ai_cost",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["ai", "infrastructure", "cost"],
+      "used_in_formulas": ["sw-f-006"]
+    },
+    {
+      "variable_id": "sw-var-027",
+      "variable_name": "Current_Tickets_Per_Customer",
+      "display_name": "Current Support Tickets Per Customer",
+      "description": "Average support tickets per customer per year",
+      "data_type": "FLOAT",
+      "unit_of_measure": "tickets",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 5,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Total_Tickets / Total_Customers"
+      },
+      "source_binding": {
+        "system": "Support_System",
+        "entity": "TicketMetrics",
+        "attribute": "tickets_per_customer",
+        "refresh_frequency": "weekly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "industry_benchmarks": {
+        "best_in_class": 2,
+        "average": 6,
+        "poor": 12
+      },
+      "tags": ["support", "tickets", "volume"],
+      "used_in_formulas": ["sw-f-007"]
+    },
+    {
+      "variable_id": "sw-var-028",
+      "variable_name": "Target_Tickets_Per_Customer",
+      "display_name": "Target Support Tickets Per Customer",
+      "description": "Target tickets per customer after efficiency improvements",
+      "data_type": "FLOAT",
+      "unit_of_measure": "tickets",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 3,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "tags": ["support", "target", "tickets"],
+      "used_in_formulas": ["sw-f-007"]
+    },
+    {
+      "variable_id": "sw-var-029",
+      "variable_name": "Cost_Per_Support_Ticket",
+      "display_name": "Cost Per Support Ticket",
+      "description": "Fully loaded cost to resolve one support ticket",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 500
+      },
+      "default_value": 25,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Total_Support_Cost / Total_Tickets"
+      },
+      "source_binding": {
+        "system": "Support_System",
+        "entity": "CostMetrics",
+        "attribute": "cost_per_ticket",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500
+        }
+      ],
+      "tags": ["support", "cost", "ticket"],
+      "used_in_formulas": ["sw-f-007"]
+    },
+    {
+      "variable_id": "sw-var-030",
+      "variable_name": "Self_Service_Investment",
+      "display_name": "Self-Service Investment",
+      "description": "Annual investment in self-service portal, documentation, and automation",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 5000000
+      },
+      "default_value": 300000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 5000000
+        }
+      ],
+      "tags": ["self-service", "investment", "support"],
+      "used_in_formulas": ["sw-f-007"]
+    }
+  ]
+}

@@ -546,26 +546,57 @@ async def get_maturity_ladder() -> MaturityLadderResponse:
     summary="Health check",
     tags=["system"],
 )
-async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
+async def health_check(
+    db: AsyncSession = Depends(get_db),
+    request: Request = None,
+) -> HealthResponse:
+    import time
     settings = get_settings()
+    start_time = time.time()
 
     # Check DB connectivity
     db_status = "ok"
+    db_response_ms = None
     try:
         from sqlalchemy import text
+        db_start = time.time()
         await db.execute(text("SELECT 1"))
-    except Exception:
+        db_response_ms = round((time.time() - db_start) * 1000, 2)
+    except Exception as e:
         db_status = "error"
+        db_response_ms = None
+        logger.error(f"Health check DB error: {e}")
 
     # Check Layer 3 connectivity
+    l3_start = time.time()
     client = get_layer3_client()
     l3_connected = await client.ping()
+    l3_response_ms = round((time.time() - l3_start) * 1000, 2)
+
+    # Determine overall status
+    overall_status = "ok"
+    if db_status == "error":
+        overall_status = "degraded"
+    if not l3_connected:
+        overall_status = "degraded"
+
+    total_response_ms = round((time.time() - start_time) * 1000, 2)
+
+    # Update Prometheus health metrics if available
+    if request and hasattr(request.app.state, 'metrics') and request.app.state.metrics:
+        metrics = request.app.state.metrics
+        metrics.set_health_status(overall_status == "ok", component="api")
+        metrics.set_health_status(db_status == "ok", component="database")
+        metrics.set_health_status(l3_connected, component="layer3")
 
     return HealthResponse(
-        status="ok" if db_status == "ok" else "degraded",
+        status=overall_status,
         version="0.1.0",
         timestamp=datetime.now(timezone.utc),
         database=db_status,
         layer3_connected=l3_connected,
         layer3_url=settings.layer3_base_url,
+        response_time_ms=total_response_ms,
+        db_response_ms=db_response_ms,
+        layer3_response_ms=l3_response_ms,
     )

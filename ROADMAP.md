@@ -891,6 +891,51 @@ run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
 
 ---
 
+### **Task 39: Accounts CRM Integration (L4/Frontend)** ⭐ P1
+**Priority:** P1 | **Effort:** 3 days | **Status:** Backend: 50% Complete, Frontend: 0% Complete | **Queue:** After Task 36 (Frontend Reality Pass)
+
+**Gap:** "Research → Accounts" menu routes to placeholder. Accounts need to be a real product surface for CRM account management.
+
+**Definition:** Accounts = canonical organizations known to the system, synced from Salesforce/HubSpot, used across research, targeting, and value workflows.
+
+**Architecture:**
+- **Layer 4 Postgres** = system of record for operational account data (sync state, provider IDs, timestamps)
+- **Layer 3 KG** = optional downstream graph projection for relationship intelligence (deferred to Phase 2+)
+
+**Phase 1 (Accounts-First):**
+- 6 API endpoints: list, search, detail, activity, sync, sync-status
+- Accounts table with canonical identity model (id + provider + provider_record_id + normalized_name)
+- Opportunities/contacts embedded as JSONB in account record (not separate CRUD domains)
+- List page with provider badges, sync status, filtering
+- Detail page with firmographics, embedded opportunities/contacts, activity timeline
+
+**Execution Sequence:**
+1. **Backend API/schema** - Start now (doesn't depend on Task 36)
+2. **Frontend pages** - Queue after Task 36 completion
+
+**Acceptance Criteria:**
+- [ ] `GET /api/v1/accounts` returns paginated list with provider/sync filters
+- [ ] `GET /api/v1/accounts/:id` returns full account with embedded opportunities/contacts
+- [ ] `POST /api/v1/accounts/search` returns search results across name/domain/owner
+- [ ] `GET /api/v1/accounts/:id/activity` returns recent interactions via `fetch_interaction_history`
+- [ ] `POST /api/v1/accounts/sync` triggers manual sync
+- [ ] Database schema with canonical identity fields (id, provider, provider_record_id, normalized_name)
+- [ ] Accounts list page with provider badges, sync status, last updated (after Task 36)
+- [ ] Account detail page with embedded opportunities/contacts sections (after Task 36)
+- [ ] Route `/accounts` renders real Accounts page (after Task 36)
+
+**Implementation:**
+- ✅ `value-fabric/layer4-agents/src/database.py` - SQLAlchemy setup
+- ✅ `value-fabric/layer4-agents/src/models/account.py` - Account and AccountSyncStatus models
+- ✅ `value-fabric/layer4-agents/src/services/account_service.py` - Business logic
+- ✅ `value-fabric/layer4-agents/src/api/routes/accounts.py` - 6 API endpoints
+- ✅ `value-fabric/layer4-agents/src/api/schemas/accounts.py` - Pydantic schemas
+- ✅ `value-fabric/layer4-agents/src/api/main.py` - Router wired
+- ⏳ Database migration (pending)
+- ⏳ Frontend pages (after Task 36)
+
+---
+
 ### **Task 38: API Documentation Completion (DEVOPS/Docs)** ⭐ P2
 **Priority:** P2 | **Effort:** 1 day | **Unblocks:** Developer onboarding, external integrations
 
@@ -1401,8 +1446,303 @@ Task 36 (1d) = 1 day to production-ready E2E
 - **Tasks 20-24:** ✅ Completed/Added Stabilization Sprint + New Frontend Tasks
 - **Tasks 25-31:** ✅ Phase 1B - Production Evidence (7 tasks, 5 P0, 2 P1) ✅ COMPLETE
 - **Tasks 32-35:** � Phase 1C - Final Production Push (Task 32 ~90% complete, 3 P1/P2 remaining)
-- **Tasks 36-39:** 📋 Phase 1D - Final Additions (4 tasks, 1 P0, 1 P1, 2 P2) ⭐ NEW
-- **Tasks 15-19:** 📋 Phase 2 - Architecture Extensions (5 tasks, 4 P1, 1 P2 + New Layer 6)
 - **Total Tasks:** 39 tasks + 1 new layer
 - **Estimated Effort:** 8-11 weeks (full implementation)
 - **New Additions (2026-04-11):** 4 tasks added (Tasks 36-39), 1 P0, 1 P1, 2 P2
+
+```
+
+---
+
+## 6-Week Build Environment Migration Plan
+
+**Audit Date:** 2026-04-12  
+**Status:** Critical Infrastructure Hardening  
+**Scope:** Dependency locking, Dockerfile standardization, Compose consolidation, CI hardening, secrets management, monitoring completion  
+
+### Executive Summary
+
+This build environment is in the "dangerous middle" zone: components look mature but contain quiet ways to diverge across developer machines and CI runners. The target state is attainable in **6 weeks of focused platform work** without blocking product delivery.
+
+**Primary Risk:** No dependency lock files means every build resolves live from PyPI. Any transitive dependency release can break builds or silently introduce incompatible behavior.
+
+---
+
+### Fragility Ranking (By Blast Radius)
+
+| Rank | Issue | Blast Radius | Current Status |
+|------|-------|--------------|----------------|
+| 1 | No dependency lock files | **CRITICAL** - Any PyPI release can break build | Zero uv.lock/poetry.lock/pip-compile.txt |
+| 2 | Diverged docker-compose files | **HIGH** - Port collisions, wrong compose usage | 3 compose files, 3 different port mappings |
+| 3 | L3/L6 Dockerfile issues | **HIGH** - Dev deps in prod, unpinned packages | L3: .[dev], L6: ignores pyproject.toml |
+| 4 | L2 --reload in production | **MEDIUM** - Disables process isolation | CMD has --reload flag |
+| 5 | CI failure suppression | **MEDIUM** - Jobs "pass" while tests fail | \|\| echo "...completed with issues" |
+| 6 | Frontend CI path wrong | **MEDIUM** - Job always fails | frontend/client/ doesn't exist |
+| 7 | Prometheus wrong hostnames | **LOW** - Monitoring dark | Targets don't match compose names |
+| 8 | Orphaned artifacts | **LOW** - Confusion | app.py, duplicate layer4-agents/, root package.json |
+
+---
+
+### Week 1 — Stop the Bleeding (No Product Impact)
+
+**Theme:** One-line fixes eliminating active production bugs
+
+| Day | Task | File(s) | Change |
+|-----|------|---------|--------|
+| 1 | Remove --reload from L2 | `value-fabric/layer2-extraction/Dockerfile` | Remove `--reload` from CMD |
+| 1 | Fix L3 Dockerfile | `value-fabric/layer3-knowledge/Dockerfile` | `pip install -e "."` not `.[dev]` |
+| 2 | Fix L6 Dockerfile | `value-fabric/layer6-benchmarks/Dockerfile` | `pip install -e "."` from pyproject.toml |
+| 2 | Align Neo4j passwords | `value-fabric/*/docker-compose.yml` | Consistent `NEO4J_PASSWORD=${NEO4J_PASSWORD:-valuefabric}` |
+| 3 | Fix frontend CI path | `.github/workflows/pr-checks.yml` | `frontend/` not `frontend/client/` |
+| 3 | Fix integration compose path | `.github/workflows/integration-tests.yml` | `value-fabric/docker-compose.full.yml` |
+| 4 | Remove failure suppression | `.github/workflows/integration-tests.yml` | Remove `\|\| echo "...completed with issues"` |
+| 4 | Fix Prometheus hostnames | `monitoring/prometheus/prometheus.yml` | `layer1-ingestion` not `layer1` |
+| 5 | Add HEALTHCHECK L3 | `value-fabric/layer3-knowledge/Dockerfile` | Add HEALTHCHECK |
+| 5 | Add HEALTHCHECK L6 | `value-fabric/layer6-benchmarks/Dockerfile` | Add HEALTHCHECK |
+| 5 | Cleanup orphaned files | Root directory | Remove or relocate `app.py`, `layer4-agents/` duplicate, root `package.json` stub |
+
+**Week 1 Exit Criteria:**
+- [ ] L2 production CMD has no --reload
+- [ ] L3/L6 Dockerfiles use pyproject.toml (no dev deps in prod)
+- [ ] All Neo4j password defaults aligned
+- [ ] Frontend CI job references correct path
+- [ ] Integration tests use correct compose file path
+- [ ] No `|| echo` failure suppression in CI
+- [ ] Prometheus scrape targets match compose service names
+- [ ] All 6 layers have HEALTHCHECK
+- [ ] Orphaned artifacts removed or relocated
+
+---
+
+### Week 2 — Lock Dependencies
+
+**Theme:** Deterministic builds with uv
+
+| Day | Task | File(s) | Change |
+|-----|------|---------|--------|
+| 1-2 | Add uv to L1 | `value-fabric/layer1-ingestion/` | `uv init`, consolidate requirements.txt → pyproject.toml |
+| 2-3 | Add uv to L2 | `value-fabric/layer2-extraction/` | `uv init`, generate `uv.lock` |
+| 3-4 | Add uv to L3 | `value-fabric/layer3-knowledge/` | `uv init`, generate `uv.lock` |
+| 4-5 | Add uv to L4 | `value-fabric/layer4-agents/` | `uv init`, generate `uv.lock` |
+| 5 | Add uv to L5 | `value-fabric/layer5-ground-truth/` | `uv init`, generate `uv.lock` |
+| 5 | Add uv to L6 | `value-fabric/layer6-benchmarks/` | `uv init`, generate `uv.lock` |
+
+**Dockerfile Updates (all layers):**
+```dockerfile
+# New pattern
+COPY pyproject.toml uv.lock ./
+RUN uv pip sync uv.lock
+COPY src/ ./src/
+```
+
+**CI Updates:**
+```yaml
+# Replace pip install with:
+- run: uv sync --frozen
+```
+
+**Week 2 Exit Criteria:**
+- [ ] All 6 layers have `uv.lock` files
+- [ ] All Dockerfiles use `uv pip sync` from lock file
+- [ ] All CI steps use `uv sync --frozen`
+- [ ] L1 requirements.txt consolidated into pyproject.toml
+- [ ] Python base image pinned to digest (e.g., `python:3.11.12-slim-bookworm@sha256:abc123`)
+
+---
+
+### Week 3 — Compose Consolidation
+
+**Theme:** One source of truth for local development
+
+| Day | Task | File(s) | Change |
+|-----|------|---------|--------|
+| 1 | Merge compose files | `value-fabric/docker-compose.yml` | Add L5, L6 services from other files |
+| 2 | Delete stale compose | Root | Delete `docker-compose.full.yml` |
+| 2 | Delete L1 standalone | `value-fabric/layer1-ingestion/` | Delete `docker-compose.yml` (MinIO variant) |
+| 3 | Fix port mappings | `value-fabric/docker-compose.yml` | Consistent: L1:8001, L2:8002, L3:8003, L4:8004, L5:8005, L6:8006 |
+| 4 | Add profiles | `value-fabric/docker-compose.yml` | `profiles: ["monitoring"]` for Prometheus/Grafana |
+| 4 | Create override example | `value-fabric/docker-compose.override.yml.example` | Source mounts for dev (gitignored) |
+| 5 | Commit .env.example | `value-fabric/.env.example` | All required variables documented |
+| 5 | Remove dangerous defaults | `value-fabric/docker-compose.yml` | JWT_SECRET must be set (no default) |
+
+**Port Mapping Final State:**
+| Service | Host Port | Container Port |
+|---------|-----------|----------------|
+| layer1-ingestion | 8001 | 8000 |
+| layer2-extraction | 8002 | 8000 |
+| layer3-knowledge | 8003 | 8001 |
+| layer4-agents | 8004 | 8000 |
+| layer5-ground-truth | 8005 | 8005 |
+| layer6-benchmarks | 8006 | 8006 |
+| postgres | 5432 | 5432 |
+| redis | 6379 | 6379 |
+| neo4j-http | 7474 | 7474 |
+| neo4j-bolt | 7687 | 7687 |
+
+**Week 3 Exit Criteria:**
+- [ ] Single `docker-compose.yml` with all 6 layers + infrastructure
+- [ ] Port mappings consistent and documented
+- [ ] `docker-compose.full.yml` deleted
+- [ ] `layer1-ingestion/docker-compose.yml` deleted
+- [ ] `.env.example` committed with all variables
+- [ ] JWT_SECRET requires explicit value (no default)
+- [ ] Profiles for optional services (monitoring)
+
+---
+
+### Week 4 — CI Hardening
+
+**Theme:** Reliable, fast, secure CI pipeline
+
+| Day | Task | File(s) | Change |
+|-----|------|---------|--------|
+| 1 | Add L5 to pr-checks | `.github/workflows/pr-checks.yml` | Matrix includes layer5-ground-truth |
+| 1 | Add L6 to pr-checks | `.github/workflows/pr-checks.yml` | Matrix includes layer6-benchmarks |
+| 2 | Add hadolint | `.github/workflows/pr-checks.yml` | Dockerfile linting step |
+| 3 | Add SBOM generation | `.github/workflows/build-deploy.yml` | `--sbom --provenance` flags |
+| 3 | Remove latest tag | `.github/workflows/build-deploy.yml` | Only `sha` and `branch` tags |
+| 4 | Add .env.ci | `value-fabric/.env.ci` | Template for CI secrets |
+| 4 | Document GH secrets | `docs/github-secrets.md` | Required secrets inventory |
+| 5 | Add caching | `.github/workflows/*.yml` | uv cache, Docker layer cache |
+| 5 | Concurrency groups | `.github/workflows/smoke-gate.yml` | Prevent PR storms from queuing |
+
+**Week 4 Exit Criteria:**
+- [ ] L5 and L6 in pr-checks matrix
+- [ ] Hadolint runs on all Dockerfiles
+- [ ] SBOMs generated for all images
+- [ ] No `latest` tag in image push
+- [ ] `.env.ci` template committed
+- [ ] GitHub secrets documented
+- [ ] uv and Docker caching configured
+- [ ] Smoke gate has concurrency protection
+
+---
+
+### Week 5 — Image Hardening + Multi-stage
+
+**Theme:** Production-grade container images
+
+| Day | Task | File(s) | Change |
+|-----|------|---------|--------|
+| 1 | Multi-stage L1 | `value-fabric/layer1-ingestion/Dockerfile` | builder + runtime stages |
+| 2 | Multi-stage L4 | `value-fabric/layer4-agents/Dockerfile` | builder + runtime (compiler deps) |
+| 3 | Non-root all layers | All Dockerfiles | `USER appuser` in runtime stage |
+| 4 | L1 Playwright optimization | `value-fabric/layer1-ingestion/Dockerfile` | Single apt-get layer or Playwright image |
+| 5 | Renovate/Dependabot | `.github/renovate.json` | Auto-PR for base image and dependency updates |
+
+**Multi-stage Pattern:**
+```dockerfile
+# Stage 1: Builder
+FROM python:3.11.12-slim-bookworm@sha256:xxx AS builder
+RUN apt-get update && apt-get install -y gcc libpq-dev
+COPY pyproject.toml uv.lock ./
+RUN uv pip sync uv.lock --target /app/venv
+
+# Stage 2: Runtime
+FROM python:3.11.12-slim-bookworm@sha256:xxx AS runtime
+COPY --from=builder /app/venv /app/venv
+ENV PATH=/app/venv/bin:$PATH
+COPY src/ ./src/
+USER appuser
+CMD ["uvicorn", "src.api.main:app"]
+```
+
+**Week 5 Exit Criteria:**
+- [ ] L1 and L4 have multi-stage builds
+- [ ] All 6 layers run as non-root
+- [ ] L1 Playwright deps optimized (single layer)
+- [ ] Renovate/Dependabot configured for base image updates
+- [ ] Image sizes reduced by 40-60% where applicable
+
+---
+
+### Week 6 — Monitoring + Cleanup
+
+**Theme:** Working observability or remove it
+
+| Day | Task | File(s) | Change |
+|-----|------|---------|--------|
+| 1 | Fix Prometheus config | `monitoring/prometheus/prometheus.yml` | Correct hostnames, add alertmanager |
+| 1 | Add Alertmanager | `value-fabric/docker-compose.yml` | Alertmanager service |
+| 2 | Grafana provisioning | `monitoring/grafana/provisioning/` | Datasource and dashboard auto-provision |
+| 3 | Dashboard JSON | `monitoring/grafana/dashboards/` | At least one working dashboard |
+| 4 | Remove or fix dark config | `monitoring/` | Either make it work or delete half-baked configs |
+| 5 | Root Makefile | `Makefile` | `make up`, `make dev`, `make test`, `make lint`, `make build` |
+| 5 | Final cleanup | Root directory | Remove orphaned artifacts, document everything |
+
+**Week 6 Exit Criteria:**
+- [ ] Prometheus config uses correct service names
+- [ ] Alertmanager configured (even if basic)
+- [ ] Grafana auto-provisions datasource and dashboards
+- [ ] At least one dashboard JSON committed
+- [ ] Root Makefile with common commands
+- [ ] Monitoring either fully working or removed (no dark config)
+- [ ] All orphaned artifacts removed or relocated
+
+---
+
+### Migration Roadmap Summary
+
+| Week | Theme | Key Deliverables |
+|------|-------|------------------|
+| 1 | Stop the Bleeding | 10 one-line fixes eliminating production bugs |
+| 2 | Lock Dependencies | uv + uv.lock for all 6 layers |
+| 3 | Compose Consolidation | Single docker-compose.yml, consistent ports |
+| 4 | CI Hardening | L5/L6 in CI, hadolint, SBOMs, caching |
+| 5 | Image Hardening | Multi-stage builds, non-root, Renovate |
+| 6 | Monitoring + Cleanup | Working observability or removed, Makefile |
+
+---
+
+### Success Metrics
+
+| Metric | Before | After (6 weeks) |
+|--------|--------|-----------------|
+| Lock files | 0 | 6 uv.lock files |
+| Docker Compose files | 3 (diverged) | 1 (consolidated) |
+| Dockerfile issues | 6 (L2 reload, L3 dev deps, L6 bypass, L1 apt, L3/L6 no healthcheck) | 0 |
+| CI failure suppression | Yes (`|| echo`) | No (proper fail) |
+| Frontend CI | Broken (wrong path) | Fixed |
+| Prometheus | Wrong hostnames | Correct, working or removed |
+| Image security | Mixed (some root, some non-root) | All non-root |
+| Image size | Large (single stage) | Reduced 40-60% |
+| Developer onboarding | 2-3 days (wrong compose, port collisions) | 30 minutes (one compose, .env.example) |
+
+---
+
+### Immediate Action Required
+
+**Ship Week 1 fixes immediately** — they are one-line changes that eliminate silent production bugs:
+
+1. Remove `--reload` from L2 Dockerfile CMD (active liability today)
+2. Fix L3 Dockerfile to use `pip install -e "."` not `.[dev]` (ships pytest to production today)
+3. Remove `|| echo "...completed with issues"` from integration-tests.yml (CI "passes" while failing today)
+
+**These 3 changes can be deployed in 30 minutes and eliminate active production risks.**
+
+---
+
+### Risk Mitigation
+
+| Risk | Mitigation |
+|------|------------|
+| uv adoption friction | uv is pip-compatible; fallback to pip-compile if needed |
+| Multi-stage build complexity | Start with single-service proof (L1), then replicate |
+| CI job duration increase | Caching (uv, Docker) offsets lock file verification |
+| Developer resistance to .env | Document clearly; provide `.env.example` template |
+| Monitoring removal controversy | Document decision: "working monitoring or none" |
+
+---
+
+### Post-Migration State
+
+After 6 weeks, the build environment will be:
+
+- **Deterministic:** `uv.lock` files ensure identical dependencies across all builds
+- **Consistent:** One compose file, consistent ports, aligned passwords
+- **Secure:** Non-root containers, no dev deps in prod, no default secrets
+- **Fast:** Cached layers, cached uv dependencies, concurrent CI jobs
+- **Observable:** Working Prometheus/Grafana or intentionally absent (no dark configs)
+- **Maintainable:** Renovate updates base images, Makefile for common tasks
+
+**The platform transitions from "dangerous middle" to "genuinely solid."**

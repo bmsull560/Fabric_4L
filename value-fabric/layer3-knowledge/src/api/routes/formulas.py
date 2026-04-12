@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, validator
 
 from ..dependencies import get_roi_calculation_agent
+from ...agents.scenario_engine import scenario_engine, VariableAdjustment
 
 router = APIRouter()
 
@@ -492,6 +493,125 @@ async def get_formula(formula_id: str) -> FormulaMetadata:
     if not formula:
         raise HTTPException(status_code=404, detail=f"Formula {formula_id} not found")
     return formula
+
+
+# ============================================================================
+# Scenario / What-If Analysis Endpoints
+# ============================================================================
+
+class VariableAdjustmentInput(BaseModel):
+    """Variable adjustment for scenario analysis."""
+    name: str = Field(..., description="Variable name to adjust")
+    value: float = Field(..., description="New value for the variable")
+    original_value: float = Field(..., description="Original/base value for delta calculation")
+
+
+class ScenarioRequest(BaseModel):
+    """Request to calculate a what-if scenario."""
+    base_case_id: str = Field(..., description="Reference business case ID")
+    adjustments: List[VariableAdjustmentInput] = Field(..., description="Variable adjustments to apply")
+
+
+class ScenarioResponse(BaseModel):
+    """Response from scenario calculation."""
+    scenario_id: str = Field(..., description="Generated scenario identifier")
+    original_value: float = Field(..., description="Original total value from base case")
+    adjusted_value: float = Field(..., description="New total value after adjustments")
+    delta_percentage: float = Field(..., description="Percentage change from original")
+    new_roi: float = Field(..., description="Recalculated ROI ratio")
+    new_payback_months: float = Field(..., description="Recalculated payback period in months")
+    formula_used: str = Field(..., description="Formula expression used for calculations")
+    calculation_steps: List[Dict[str, Any]] = Field(default_factory=list, description="Step-by-step breakdown")
+
+
+@router.post(
+    "/formulas/scenario",
+    response_model=ScenarioResponse,
+    tags=["Formulas"],
+    summary="Calculate What-If Scenario",
+    description="Calculate new business case metrics based on variable adjustments.",
+    responses={
+        200: {
+            "description": "Scenario calculated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "scenario_id": "scenario_abc123",
+                        "original_value": 500000,
+                        "adjusted_value": 600000,
+                        "delta_percentage": 20.0,
+                        "new_roi": 2.5,
+                        "new_payback_months": 8.5,
+                        "formula_used": "(total_value - implementation_cost) / implementation_cost",
+                        "calculation_steps": [
+                            {"step": 1, "operation": "Base case values", "details": {"total_value": 500000}},
+                            {"step": 2, "operation": "Adjust implementation_cost", "details": {"from": 200000, "to": 180000}},
+                        ]
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid adjustments or missing base case data"},
+    }
+)
+async def calculate_scenario(
+    request: ScenarioRequest,
+) -> ScenarioResponse:
+    """Calculate a what-if scenario by applying variable adjustments.
+
+    This endpoint enables interactive "what-if" analysis by recalculating
+    ROI and payback metrics based on adjusted input variables.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        # For MVP: Use mock base case data if not found in database
+        # TODO: Fetch from business case repository in production
+        base_case_data = {
+            "_note": "Using mock data - business case repository not implemented",
+            "requested_case_id": request.base_case_id,
+            "total_value": 500000,
+            "implementation_cost": 200000,
+            "roi_ratio": 1.5,
+            "payback_months": 12.0,
+            "confidence_score": 0.85,
+        }
+        logger.warning(
+            f"Scenario calculation using mock data for base_case_id={request.base_case_id}. "
+            "Business case repository not yet implemented."
+        )
+
+        # Convert input adjustments to engine format
+        adjustments = [
+            VariableAdjustment(
+                name=adj.name,
+                value=adj.value,
+                original_value=adj.original_value,
+            )
+            for adj in request.adjustments
+        ]
+
+        # Calculate scenario with deterministic ID
+        result = scenario_engine.calculate_scenario(
+            base_case_data=base_case_data,
+            adjustments=adjustments,
+            scenario_id=None,  # Let engine generate deterministic ID
+        )
+
+        return ScenarioResponse(
+            scenario_id=result.scenario_id,
+            original_value=result.original_value,
+            adjusted_value=result.adjusted_value,
+            delta_percentage=result.delta_percentage,
+            new_roi=result.new_roi,
+            new_payback_months=result.new_payback_months,
+            formula_used=result.formula_used,
+            calculation_steps=result.calculation_steps,
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Scenario calculation failed: {str(e)}")
 
 
 # ============================================================================

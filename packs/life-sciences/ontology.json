@@ -1,0 +1,331 @@
+{
+  "pack_id": "life-sciences-v1",
+  "pack_name": "Life Sciences Value Pack",
+  "version": "1.0.0",
+  "description": "Complete value model for pharmaceutical and biotech industries - clinical development, regulatory efficiency, and R&D optimization",
+  "industry": "Life Sciences",
+  "created_at": "2026-04-11",
+  "ontology": {
+    "node_types": {
+      "Capability": {
+        "description": "Life Sciences capabilities and technology platforms",
+        "examples": [
+          "Clinical Data Analytics",
+          "Patient Engagement Platform",
+          "Regulatory Intelligence",
+          "Quality Management System",
+          "Real-World Evidence Platform"
+        ]
+      },
+      "UseCase": {
+        "description": "Life Sciences use cases and operational scenarios",
+        "examples": [
+          "Decentralized Clinical Trials",
+          "Adaptive Trial Design",
+          "Continuous Process Verification",
+          "Label Expansion",
+          "Regulatory Submission Automation"
+        ]
+      },
+      "Persona": {
+        "description": "Life Sciences stakeholders and decision makers",
+        "examples": [
+          "Chief Medical Officer",
+          "Head of Clinical Operations",
+          "VP Regulatory Affairs",
+          "Manufacturing Director",
+          "HEOR Lead"
+        ]
+      },
+      "ValueDriver": {
+        "description": "Life Sciences value drivers and KPIs",
+        "examples": [
+          "Time-to-Market",
+          "Clinical Trial Success Rate",
+          "Manufacturing Yield",
+          "Regulatory Approval Rate",
+          "R&D Efficiency"
+        ]
+      }
+    },
+    "relationships": {
+      "ENABLES": {
+        "from": "Capability",
+        "to": "UseCase",
+        "properties": {
+          "enablement_type": ["REQUIRED", "ENHANCES", "OPTIONAL"],
+          "contribution_weight": "Float (0.0-1.0)"
+        }
+      },
+      "BENEFITS": {
+        "from": "UseCase",
+        "to": "Persona",
+        "properties": {
+          "benefit_type": ["TIME_SAVINGS", "ERROR_REDUCTION", "VISIBILITY", "EFFICIENCY"],
+          "impact_level": ["TRANSFORMATIONAL", "SIGNIFICANT", "MODERATE", "MINOR"]
+        }
+      },
+      "DRIVES": {
+        "from": "Persona",
+        "to": "ValueDriver",
+        "properties": {
+          "driver_type": ["PRIMARY", "SECONDARY", "TERTIARY"],
+          "influence_weight": "Float (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "entities": [
+    {
+      "type": "Capability",
+      "id": "ls-cap-001",
+      "name": "Clinical Data Analytics",
+      "description": "AI-powered clinical data analytics for trial monitoring, safety signal detection, and endpoint analysis",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "data_sources": ["EDC", "eCOA", "ePRO", "Safety databases"],
+        "ml_models": ["Patient enrollment forecasting", "Safety signal detection", "Risk-based monitoring"],
+        "integration": ["CTMS", "EDC", "Safety systems"]
+      },
+      "confidence_score": 0.90
+    },
+    {
+      "type": "Capability",
+      "id": "ls-cap-002",
+      "name": "Patient Engagement Platform",
+      "description": "Digital platform for patient recruitment, retention, and decentralized trial participation",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "technologies": ["Mobile apps", "Telemedicine", "Wearable integration", "eConsent"],
+        "deployment": ["Patient portals", "Site coordination", "Remote monitoring"]
+      },
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Capability",
+      "id": "ls-cap-003",
+      "name": "Regulatory Intelligence",
+      "description": "AI-driven regulatory intelligence for submission strategy, precedent analysis, and agency interaction optimization",
+      "category": "AUTOMATION",
+      "technical_specs": {
+        "capabilities": ["Precedent search", "Gap analysis", "Submission timeline prediction"],
+        "integration": ["Regulatory databases", "RIM systems", "Agency APIs"]
+      },
+      "confidence_score": 0.85
+    },
+    {
+      "type": "Capability",
+      "id": "ls-cap-004",
+      "name": "Quality Management System",
+      "description": "Integrated QMS for deviation management, CAPA tracking, and compliance monitoring",
+      "category": "INFRASTRUCTURE",
+      "technical_specs": {
+        "monitoring": ["Deviation tracking", "CAPA management", "Audit management"],
+        "automation": ["Deviation classification", "CAPA routing", "Escalation workflows"]
+      },
+      "confidence_score": 0.92
+    },
+    {
+      "type": "UseCase",
+      "id": "ls-uc-001",
+      "name": "Decentralized Clinical Trials",
+      "description": "Enable remote patient participation reducing site burden and accelerating enrollment",
+      "operational_context": "Clinical trial execution",
+      "business_process": "Patient recruitment and retention",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.87
+    },
+    {
+      "type": "UseCase",
+      "id": "ls-uc-002",
+      "name": "Adaptive Trial Design",
+      "description": "Leverage interim data analysis to optimize trial design and accelerate decision-making",
+      "operational_context": "Clinical development strategy",
+      "business_process": "Trial design and protocol optimization",
+      "automation_level": "ASSISTED",
+      "confidence_score": 0.85
+    },
+    {
+      "type": "UseCase",
+      "id": "ls-uc-003",
+      "name": "Continuous Process Verification",
+      "description": "Real-time manufacturing process monitoring with automated deviation detection",
+      "operational_context": "Biomanufacturing operations",
+      "business_process": "Quality control and assurance",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.90
+    },
+    {
+      "type": "Persona",
+      "id": "ls-per-001",
+      "name": "Chief Medical Officer",
+      "description": "Executive responsible for clinical development strategy, trial design, and medical affairs",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Clinical Development",
+      "seniority_level": "C_SUITE",
+      "pain_points": [
+        "Accelerating time-to-market",
+        "Trial success rates",
+        "Regulatory approval delays"
+      ],
+      "success_metrics": ["Trial success rate", "Time to NDA", "Regulatory approvals"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "ls-per-002",
+      "name": "Head of Clinical Operations",
+      "description": "Clinical operations leader responsible for trial execution, site management, and patient enrollment",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Clinical Operations",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Patient recruitment delays",
+        "Site activation timelines",
+        "Protocol deviations"
+      ],
+      "success_metrics": ["Enrollment rate", "Site activation time", "Protocol compliance"],
+      "decision_making_authority": "RECOMMENDS"
+    },
+    {
+      "type": "Persona",
+      "id": "ls-per-003",
+      "name": "VP Regulatory Affairs",
+      "description": "Regulatory leader responsible for submission strategy, agency interactions, and approval timelines",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Regulatory Affairs",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Submission delays",
+        "Agency queries",
+        "Regulatory uncertainty"
+      ],
+      "success_metrics": ["Submission timeline", "Approval time", "Query response time"],
+      "decision_making_authority": "INFLUENCER"
+    },
+    {
+      "type": "ValueDriver",
+      "id": "ls-vd-001",
+      "name": "Time-to-Market",
+      "description": "Total time from IND to market approval including clinical development and regulatory review",
+      "category": "CAPITAL_EFFICIENCY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Months",
+      "typical_range_min": 36.0,
+      "typical_range_max": 120.0,
+      "industry_benchmarks": {
+        "fast": 48,
+        "average": 72,
+        "slow": 108
+      },
+      "kpis": ["Enrollment rate", "Regulatory review time", "Site activation"]
+    },
+    {
+      "type": "ValueDriver",
+      "id": "ls-vd-002",
+      "name": "Clinical Trial Success Rate",
+      "description": "Probability of successful trial completion and regulatory approval",
+      "category": "RISK_MITIGATION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 10.0,
+      "typical_range_max": 60.0,
+      "industry_benchmarks": {
+        "best_in_class": 50,
+        "average": 25,
+        "poor": 10
+      }
+    },
+    {
+      "type": "ValueDriver",
+      "id": "ls-vd-003",
+      "name": "Manufacturing Yield",
+      "description": "Percentage of successful batch production in biomanufacturing processes",
+      "category": "COST_REDUCTION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 70.0,
+      "typical_range_max": 95.0,
+      "industry_benchmarks": {
+        "world_class": 95,
+        "good": 85,
+        "average": 75,
+        "poor": 65
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "ENABLES",
+      "from": "ls-cap-001",
+      "to": "ls-uc-002",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.9,
+      "evidence_quote": "Clinical data analytics essential for adaptive design"
+    },
+    {
+      "type": "ENABLES",
+      "from": "ls-cap-002",
+      "to": "ls-uc-001",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.95,
+      "evidence_quote": "Patient engagement platform enables decentralized trials"
+    },
+    {
+      "type": "ENABLES",
+      "from": "ls-cap-004",
+      "to": "ls-uc-003",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.85,
+      "evidence_quote": "QMS enables continuous process verification"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "ls-uc-001",
+      "to": "ls-per-002",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "DCT dramatically improves enrollment timelines"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "ls-uc-002",
+      "to": "ls-per-001",
+      "benefit_type": "VISIBILITY",
+      "impact_level": "TRANSFORMATIONAL",
+      "evidence_quote": "Adaptive design accelerates development decisions"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "ls-uc-003",
+      "to": "ls-per-003",
+      "benefit_type": "ERROR_REDUCTION",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "CPV reduces quality events and regulatory risk"
+    },
+    {
+      "type": "DRIVES",
+      "from": "ls-per-001",
+      "to": "ls-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.95,
+      "evidence_quote": "CMO accountable for time-to-market performance"
+    },
+    {
+      "type": "DRIVES",
+      "from": "ls-per-002",
+      "to": "ls-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.85,
+      "evidence_quote": "Clinical Ops drives enrollment velocity"
+    },
+    {
+      "type": "DRIVES",
+      "from": "ls-per-003",
+      "to": "ls-vd-002",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.8,
+      "evidence_quote": "Regulatory strategy directly impacts approval rates"
+    }
+  ]
+}

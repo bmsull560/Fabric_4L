@@ -16,6 +16,7 @@ import FormulaBuilder    from "./pages/FormulaBuilder";
 import GraphExplorer     from "./pages/GraphExplorer";
 import AgentWorkflows    from "./pages/AgentWorkflows";
 import BusinessCase      from "./pages/BusinessCase";
+import InteractiveBusinessCase from "./pages/InteractiveBusinessCase";
 import DecisionTrace     from "./pages/DecisionTrace";
 import ValuePacks        from "./pages/ValuePacks";
 import { FormulaGovernance, BenchmarkPolicies, VariableRegistry } from "./pages/admin";
@@ -175,6 +176,9 @@ function Router() {
         </Route>
         <Route path="/agents/business-cases">
           <ErrorBoundary><BusinessCase /></ErrorBoundary>
+        </Route>
+        <Route path="/agents/business-cases/explore">
+          <ErrorBoundary><InteractiveBusinessCase /></ErrorBoundary>
         </Route>
 
         {/* ── Audit sub-routes ── */}

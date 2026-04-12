@@ -1,0 +1,616 @@
+{
+  "pack_id": "life-sciences-v1",
+  "formulas": [
+    {
+      "formula_id": "ls-f-001",
+      "name": "Clinical Trial Acceleration Value",
+      "description": "Net present value of accelerating clinical trial timelines. Each month of acceleration brings forward revenue streams and extends effective patent life. Value accounts for time-value of money and competitive positioning.",
+      "formula_type": "NPV",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Life Sciences Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11",
+        "validated_by": "Clinical Development CoE"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Current_Timeline_Months - Target_Timeline_Months) / 12 * Peak_Annual_Revenue * NPV_Discount_Factor - Acceleration_Program_Cost",
+        "variables": [
+          "Current_Timeline_Months",
+          "Target_Timeline_Months",
+          "Peak_Annual_Revenue",
+          "NPV_Discount_Factor",
+          "Acceleration_Program_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -50000000,
+        "max": 1000000000
+      },
+      "required_variables": [
+        {
+          "name": "Current_Timeline_Months",
+          "display_name": "Current Development Timeline",
+          "type": "integer",
+          "unit": "months",
+          "valid_range": { "min": 24, "max": 180 },
+          "default_value": 72,
+          "source": "Clinical_Planning",
+          "description": "Current estimated months from IND to market"
+        },
+        {
+          "name": "Target_Timeline_Months",
+          "display_name": "Target Development Timeline",
+          "type": "integer",
+          "unit": "months",
+          "valid_range": { "min": 24, "max": 180 },
+          "default_value": 60,
+          "source": "Clinical_Planning",
+          "description": "Target months with acceleration initiatives"
+        },
+        {
+          "name": "Peak_Annual_Revenue",
+          "display_name": "Peak Annual Revenue Forecast",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000000 },
+          "source": "Commercial_Forecasting",
+          "description": "Forecasted peak annual revenue at maturity"
+        },
+        {
+          "name": "NPV_Discount_Factor",
+          "display_name": "NPV Discount Factor",
+          "type": "rate",
+          "unit": "ratio",
+          "valid_range": { "min": 0.1, "max": 1.0 },
+          "default_value": 0.85,
+          "source": "Financial",
+          "description": "Net present value factor for time acceleration"
+        },
+        {
+          "name": "Acceleration_Program_Cost",
+          "display_name": "Timeline Acceleration Program Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 10000000,
+          "source": "Financial",
+          "description": "Annual investment in DCT, adaptive design, site optimization"
+        }
+      ],
+      "benchmarks": {
+        "typical_months_saved": 12,
+        "fast_development": 48,
+        "average_development": 72
+      },
+      "tags": ["time-to-market", "clinical-trials", "npv", "acceleration"]
+    },
+    {
+      "formula_id": "ls-f-002",
+      "name": "Patient Recruitment Efficiency",
+      "description": "Value created by reducing patient recruitment costs through digital recruitment, site optimization, and retention programs. Includes direct cost savings and indirect benefits from faster enrollment.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Clinical Operations Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Current_Cost_Per_Patient - Target_Cost_Per_Patient) * Required_Patients - Digital_Recruitment_Investment",
+        "variables": [
+          "Current_Cost_Per_Patient",
+          "Target_Cost_Per_Patient",
+          "Required_Patients",
+          "Digital_Recruitment_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -10000000,
+        "max": 50000000
+      },
+      "required_variables": [
+        {
+          "name": "Current_Cost_Per_Patient",
+          "display_name": "Current Recruitment Cost Per Patient",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000 },
+          "default_value": 35000,
+          "source": "Clinical_Operations",
+          "description": "Fully-loaded cost per enrolled patient"
+        },
+        {
+          "name": "Target_Cost_Per_Patient",
+          "display_name": "Target Recruitment Cost Per Patient",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000 },
+          "default_value": 25000,
+          "source": "Clinical_Operations",
+          "description": "Target cost with digital recruitment optimization"
+        },
+        {
+          "name": "Required_Patients",
+          "display_name": "Total Required Patient Enrollment",
+          "type": "integer",
+          "unit": "patients",
+          "valid_range": { "min": 10, "max": 100000 },
+          "source": "Clinical_Protocol",
+          "description": "Total patients needed across all trials"
+        },
+        {
+          "name": "Digital_Recruitment_Investment",
+          "display_name": "Digital Recruitment Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 2000000,
+          "source": "Financial",
+          "description": "Investment in DCT, patient platforms, digital advertising"
+        }
+      ],
+      "benchmarks": {
+        "typical_recruitment_cost": 30000,
+        "optimized_recruitment_cost": 20000
+      },
+      "tags": ["patient-recruitment", "dct", "cost-reduction", "enrollment"]
+    },
+    {
+      "formula_id": "ls-f-003",
+      "name": "R&D Portfolio ROI",
+      "description": "Return on investment from R&D efficiency improvements that increase probability of technical and regulatory success. Value includes higher NPV from improved success rates and optimized resource allocation.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "R&D Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Improved_Success_Rate - Baseline_Success_Rate) / 100 * Pipeline_Risk_Adjusted_NPV / Additional_R&D_Investment * 100",
+        "variables": [
+          "Improved_Success_Rate",
+          "Baseline_Success_Rate",
+          "Pipeline_Risk_Adjusted_NPV",
+          "Additional_R&D_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -50,
+        "max": 500
+      },
+      "required_variables": [
+        {
+          "name": "Baseline_Success_Rate",
+          "display_name": "Baseline Probability of Success",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 5, "max": 50 },
+          "default_value": 15,
+          "source": "Portfolio_Analytics",
+          "description": "Current probability of technical and regulatory success"
+        },
+        {
+          "name": "Improved_Success_Rate",
+          "display_name": "Improved Probability of Success",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 5, "max": 60 },
+          "default_value": 22,
+          "source": "Portfolio_Analytics",
+          "description": "Target probability with enhanced decision-making"
+        },
+        {
+          "name": "Pipeline_Risk_Adjusted_NPV",
+          "display_name": "Pipeline Risk-Adjusted NPV",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000000 },
+          "source": "Portfolio_Analytics",
+          "description": "Total risk-adjusted NPV of R&D pipeline"
+        },
+        {
+          "name": "Additional_R&D_Investment",
+          "display_name": "Additional R&D Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 500000000 },
+          "default_value": 50000000,
+          "source": "Financial",
+          "description": "Incremental investment in R&D capabilities and analytics"
+        }
+      ],
+      "benchmarks": {
+        "industry_avg_pos": 15,
+        "best_in_class_pos": 30
+      },
+      "tags": ["rd-portfolio", "probability-of-success", "npv", "roi"]
+    },
+    {
+      "formula_id": "ls-f-004",
+      "name": "Regulatory Submission Efficiency",
+      "description": "Value from reducing regulatory submission delays and query cycles through improved submission quality, eCTD optimization, and agency engagement strategies.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Regulatory Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Baseline_Review_Months - Target_Review_Months) / 12 * Peak_Annual_Revenue * NPV_Factor + FTE_Efficiency_Savings - eCTD_Investment",
+        "variables": [
+          "Baseline_Review_Months",
+          "Target_Review_Months",
+          "Peak_Annual_Revenue",
+          "NPV_Factor",
+          "FTE_Efficiency_Savings",
+          "eCTD_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -20000000,
+        "max": 500000000
+      },
+      "required_variables": [
+        {
+          "name": "Baseline_Review_Months",
+          "display_name": "Baseline Regulatory Review Time",
+          "type": "integer",
+          "unit": "months",
+          "valid_range": { "min": 6, "max": 36 },
+          "default_value": 16,
+          "source": "Regulatory_Intelligence",
+          "description": "Typical regulatory review timeline"
+        },
+        {
+          "name": "Target_Review_Months",
+          "display_name": "Target Regulatory Review Time",
+          "type": "integer",
+          "unit": "months",
+          "valid_range": { "min": 6, "max": 36 },
+          "default_value": 12,
+          "source": "Regulatory_Intelligence",
+          "description": "Target timeline with optimized submission"
+        },
+        {
+          "name": "Peak_Annual_Revenue",
+          "display_name": "Peak Annual Revenue",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000000 },
+          "source": "Commercial_Forecasting"
+        },
+        {
+          "name": "NPV_Factor",
+          "display_name": "NPV Discount Factor",
+          "type": "rate",
+          "unit": "ratio",
+          "valid_range": { "min": 0.5, "max": 1.0 },
+          "default_value": 0.9,
+          "source": "Financial"
+        },
+        {
+          "name": "FTE_Efficiency_Savings",
+          "display_name": "FTE Efficiency Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 1000000,
+          "source": "HR",
+          "description": "Annual savings from improved submission efficiency"
+        },
+        {
+          "name": "eCTD_Investment",
+          "display_name": "eCTD and Regulatory Systems Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 3000000,
+          "source": "Financial",
+          "description": "Investment in eCTD systems and regulatory intelligence"
+        }
+      ],
+      "benchmarks": {
+        "priority_review_months": 6,
+        "standard_review_months": 10,
+        "typical_query_cycles": 2
+      },
+      "tags": ["regulatory", "submission", "ectd", "approval-timeline"]
+    },
+    {
+      "formula_id": "ls-f-005",
+      "name": "Biomanufacturing Yield Improvement",
+      "description": "Annual value from improving biomanufacturing yield through process optimization, real-time monitoring, and continuous process verification. Includes direct COGS reduction and capacity enablement.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Manufacturing Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Annual_Batch_Count * (Target_Yield_Percent - Current_Yield_Percent) / 100 * Batch_Product_Value - Process_Optimization_Investment",
+        "variables": [
+          "Annual_Batch_Count",
+          "Target_Yield_Percent",
+          "Current_Yield_Percent",
+          "Batch_Product_Value",
+          "Process_Optimization_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -10000000,
+        "max": 100000000
+      },
+      "required_variables": [
+        {
+          "name": "Current_Yield_Percent",
+          "display_name": "Current Manufacturing Yield",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 50, "max": 99 },
+          "default_value": 75,
+          "source": "Manufacturing",
+          "description": "Current batch success rate percentage"
+        },
+        {
+          "name": "Target_Yield_Percent",
+          "display_name": "Target Manufacturing Yield",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 50, "max": 99 },
+          "default_value": 85,
+          "source": "Manufacturing",
+          "description": "Target yield with process optimization"
+        },
+        {
+          "name": "Annual_Batch_Count",
+          "display_name": "Annual Batch Count",
+          "type": "integer",
+          "unit": "batches",
+          "valid_range": { "min": 1, "max": 10000 },
+          "default_value": 100,
+          "source": "Manufacturing",
+          "description": "Total batches produced annually"
+        },
+        {
+          "name": "Batch_Product_Value",
+          "display_name": "Value Per Successful Batch",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 5000000,
+          "source": "Finance",
+          "description": "Revenue value per successful batch"
+        },
+        {
+          "name": "Process_Optimization_Investment",
+          "display_name": "Process Optimization Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 5000000,
+          "source": "Financial",
+          "description": "Investment in CPV, PAT, and process analytics"
+        }
+      ],
+      "benchmarks": {
+        "world_class_yield": 95,
+        "average_yield": 80,
+        "poor_yield": 65
+      },
+      "tags": ["manufacturing", "yield", "biomanufacturing", "cogs"]
+    },
+    {
+      "formula_id": "ls-f-006",
+      "name": "Quality Event Risk Reduction",
+      "description": "Risk-adjusted value from reducing quality events, deviations, and compliance incidents through QMS automation, deviation prevention, and improved CAPA effectiveness.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Quality Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Current_Deviation_Rate - Target_Deviation_Rate) / 100 * Annual_Batch_Count * Avg_Investigation_Cost + Avoided_Recall_Probability / 100 * Potential_Recall_Cost - QMS_Investment",
+        "variables": [
+          "Current_Deviation_Rate",
+          "Target_Deviation_Rate",
+          "Annual_Batch_Count",
+          "Avg_Investigation_Cost",
+          "Avoided_Recall_Probability",
+          "Potential_Recall_Cost",
+          "QMS_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -5000000,
+        "max": 500000000
+      },
+      "required_variables": [
+        {
+          "name": "Current_Deviation_Rate",
+          "display_name": "Current Deviation Rate",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 50 },
+          "default_value": 10,
+          "source": "Quality",
+          "description": "Percentage of batches with deviations"
+        },
+        {
+          "name": "Target_Deviation_Rate",
+          "display_name": "Target Deviation Rate",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 50 },
+          "default_value": 5,
+          "source": "Quality",
+          "description": "Target deviation rate with QMS improvements"
+        },
+        {
+          "name": "Annual_Batch_Count",
+          "display_name": "Annual Batch Count",
+          "type": "integer",
+          "unit": "batches",
+          "valid_range": { "min": 1, "max": 10000 },
+          "source": "Manufacturing"
+        },
+        {
+          "name": "Avg_Investigation_Cost",
+          "display_name": "Average Investigation Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 500000 },
+          "default_value": 50000,
+          "source": "Quality",
+          "description": "Fully loaded cost per deviation investigation"
+        },
+        {
+          "name": "Avoided_Recall_Probability",
+          "display_name": "Avoided Recall Probability",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 10 },
+          "default_value": 2,
+          "source": "Risk",
+          "description": "Reduced probability of recall from quality improvements"
+        },
+        {
+          "name": "Potential_Recall_Cost",
+          "display_name": "Potential Recall Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 1000000000 },
+          "default_value": 100000000,
+          "source": "Risk",
+          "description": "Estimated cost of product recall"
+        },
+        {
+          "name": "QMS_Investment",
+          "display_name": "QMS Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 3000000,
+          "source": "Financial",
+          "description": "Investment in QMS automation and quality systems"
+        }
+      ],
+      "benchmarks": {
+        "typical_deviation_rate": 8,
+        "best_in_class": 3
+      },
+      "tags": ["quality", "deviation", "risk", "capa", "compliance"]
+    },
+    {
+      "formula_id": "ls-f-007",
+      "name": "Real-World Evidence Value",
+      "description": "Value from real-world evidence programs supporting label expansion, HTA submissions, and competitive differentiation. Includes incremental revenue from label claims and avoided clinical trial costs.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "draft",
+      "governance": {
+        "owner": "HEOR Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "pending_review"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Label_Expansion_NPV * RWE_Success_Probability + HTA_Advancement_Value - RWE_Program_Annual_Cost",
+        "variables": [
+          "Label_Expansion_NPV",
+          "RWE_Success_Probability",
+          "HTA_Advancement_Value",
+          "RWE_Program_Annual_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -20000000,
+        "max": 500000000
+      },
+      "required_variables": [
+        {
+          "name": "Label_Expansion_NPV",
+          "display_name": "Label Expansion NPV",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 1000000000 },
+          "default_value": 100000000,
+          "source": "HEOR",
+          "description": "NPV of potential label expansion indications"
+        },
+        {
+          "name": "RWE_Success_Probability",
+          "display_name": "RWE Success Probability",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 30,
+          "source": "HEOR",
+          "description": "Probability of successful label expansion via RWE"
+        },
+        {
+          "name": "HTA_Advancement_Value",
+          "display_name": "HTA Advancement Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 500000000 },
+          "default_value": 50000000,
+          "source": "HEOR",
+          "description": "Value from improved HTA/ reimbursement outcomes"
+        },
+        {
+          "name": "RWE_Program_Annual_Cost",
+          "display_name": "RWE Program Annual Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 8000000,
+          "source": "Financial",
+          "description": "Annual cost of RWE data partnerships and analytics"
+        }
+      ],
+      "benchmarks": {
+        "typical_rwe_success": 25,
+        "label_expansion_value": 100000000
+      },
+      "tags": ["rwe", "heor", "label-expansion", "hta"]
+    }
+  ]
+}

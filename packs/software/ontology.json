@@ -1,0 +1,333 @@
+{
+  "pack_id": "software-v1",
+  "pack_name": "Software Value Pack",
+  "version": "1.0.0",
+  "description": "Complete value model for B2B SaaS and enterprise software - customer economics, platform efficiency, and revenue optimization",
+  "industry": "Software",
+  "created_at": "2026-04-11",
+  "ontology": {
+    "node_types": {
+      "Capability": {
+        "description": "Software capabilities and technology platforms",
+        "examples": [
+          "AI/ML Platform",
+          "Self-Service Analytics",
+          "Developer Platform",
+          "Customer Success Automation",
+          "Usage-Based Billing"
+        ]
+      },
+      "UseCase": {
+        "description": "Software use cases and operational scenarios",
+        "examples": [
+          "Automated Customer Onboarding",
+          "Predictive Churn Prevention",
+          "Usage-Based Pricing",
+          "Developer Self-Service",
+          "Expansion Revenue Capture"
+        ]
+      },
+      "Persona": {
+        "description": "Software stakeholders and decision makers",
+        "examples": [
+          "VP of Engineering",
+          "Chief Revenue Officer",
+          "VP of Customer Success",
+          "CFO",
+          "Product Manager"
+        ]
+      },
+      "ValueDriver": {
+        "description": "Software value drivers and KPIs",
+        "examples": [
+          "Net Revenue Retention",
+          "Customer Acquisition Cost",
+          "Gross Margin",
+          "Time to Value",
+          "Engineering Velocity"
+        ]
+      }
+    },
+    "relationships": {
+      "ENABLES": {
+        "from": "Capability",
+        "to": "UseCase",
+        "properties": {
+          "enablement_type": ["REQUIRED", "ENHANCES", "OPTIONAL"],
+          "contribution_weight": "Float (0.0-1.0)"
+        }
+      },
+      "BENEFITS": {
+        "from": "UseCase",
+        "to": "Persona",
+        "properties": {
+          "benefit_type": ["TIME_SAVINGS", "ERROR_REDUCTION", "VISIBILITY", "EFFICIENCY"],
+          "impact_level": ["TRANSFORMATIONAL", "SIGNIFICANT", "MODERATE", "MINOR"]
+        }
+      },
+      "DRIVES": {
+        "from": "Persona",
+        "to": "ValueDriver",
+        "properties": {
+          "driver_type": ["PRIMARY", "SECONDARY", "TERTIARY"],
+          "influence_weight": "Float (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "entities": [
+    {
+      "type": "Capability",
+      "id": "sw-cap-001",
+      "name": "AI/ML Platform",
+      "description": "Integrated machine learning infrastructure for predictive features, automation, and intelligent recommendations",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "data_sources": ["Product telemetry", "Customer behavior", "Support tickets"],
+        "ml_models": ["Churn prediction", "Upsell scoring", "Usage forecasting"],
+        "integration": ["CRM", "Data warehouse", "Feature flags"]
+      },
+      "confidence_score": 0.92
+    },
+    {
+      "type": "Capability",
+      "id": "sw-cap-002",
+      "name": "Developer Platform",
+      "description": "Internal developer platform with self-service infrastructure, CI/CD, and observability",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "technologies": ["Infrastructure as Code", "GitOps", "Observability stack"],
+        "deployment": ["Self-service provisioning", "Golden paths", "Environment management"]
+      },
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Capability",
+      "id": "sw-cap-003",
+      "name": "Customer Success Automation",
+      "description": "Automated customer health monitoring, proactive interventions, and expansion signals",
+      "category": "AUTOMATION",
+      "technical_specs": {
+        "monitoring": ["Health scores", "Usage analytics", "Sentiment tracking"],
+        "automation": ["Proactive outreach", "Risk alerts", "Expansion triggers"]
+      },
+      "confidence_score": 0.90
+    },
+    {
+      "type": "Capability",
+      "id": "sw-cap-004",
+      "name": "Usage-Based Billing",
+      "description": "Metered billing infrastructure enabling consumption-based pricing models",
+      "category": "INFRASTRUCTURE",
+      "technical_specs": {
+        "capabilities": ["Real-time metering", "Usage aggregation", "Billing orchestration"],
+        "integration": ["Payment gateway", "ERP", "CRM"]
+      },
+      "confidence_score": 0.85
+    },
+    {
+      "type": "UseCase",
+      "id": "sw-uc-001",
+      "name": "Predictive Churn Prevention",
+      "description": "Identify at-risk customers and trigger proactive retention campaigns before cancellation",
+      "operational_context": "Customer lifecycle management",
+      "business_process": "Retention and expansion",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.88
+    },
+    {
+      "type": "UseCase",
+      "id": "sw-uc-002",
+      "name": "Developer Self-Service",
+      "description": "Enable developers to provision infrastructure and deploy without platform team bottlenecks",
+      "operational_context": "Software delivery pipeline",
+      "business_process": "Engineering operations",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.92
+    },
+    {
+      "type": "UseCase",
+      "id": "sw-uc-003",
+      "name": "Expansion Revenue Capture",
+      "description": "Automatically identify and capture upsell opportunities based on usage patterns",
+      "operational_context": "Revenue operations",
+      "business_process": "Account expansion",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.85
+    },
+    {
+      "type": "Persona",
+      "id": "sw-per-001",
+      "name": "Chief Revenue Officer",
+      "description": "Executive responsible for revenue growth, customer acquisition, and retention strategy",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Revenue",
+      "seniority_level": "C_SUITE",
+      "pain_points": [
+        "Hitting growth targets",
+        "CAC efficiency",
+        "Net revenue retention"
+      ],
+      "success_metrics": ["ARR", "NRR", "CAC Payback"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "sw-per-002",
+      "name": "VP of Engineering",
+      "description": "Engineering leader responsible for delivery velocity, platform reliability, and team productivity",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Engineering",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Developer productivity",
+        "Infrastructure scaling",
+        "Technical debt"
+      ],
+      "success_metrics": ["Deployment frequency", "Lead time", "MTTR"],
+      "decision_making_authority": "RECOMMENDS"
+    },
+    {
+      "type": "Persona",
+      "id": "sw-per-003",
+      "name": "VP of Customer Success",
+      "description": "Customer success leader responsible for retention, expansion, and customer outcomes",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Customer Success",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Churn reduction",
+        "Expansion rate",
+        "Time-to-value"
+      ],
+      "success_metrics": ["Gross retention", "Net retention", "CSAT"],
+      "decision_making_authority": "INFLUENCER"
+    },
+    {
+      "type": "ValueDriver",
+      "id": "sw-vd-001",
+      "name": "Net Revenue Retention",
+      "description": "Annual revenue from existing customers including expansions and contractions",
+      "category": "REVENUE_ENHANCEMENT",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 80.0,
+      "typical_range_max": 130.0,
+      "industry_benchmarks": {
+        "world_class": 120,
+        "good": 105,
+        "average": 95,
+        "poor": 85
+      },
+      "kpis": ["Expansion revenue", "Contraction", "Churn"]
+    },
+    {
+      "type": "ValueDriver",
+      "id": "sw-vd-002",
+      "name": "Customer Acquisition Efficiency",
+      "description": "Cost efficiency of acquiring new customers and related payback period",
+      "category": "CAPITAL_EFFICIENCY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Months payback",
+      "typical_range_min": 6.0,
+      "typical_range_max": 36.0,
+      "industry_benchmarks": {
+        "best_in_class": 12,
+        "good": 18,
+        "average": 24,
+        "poor": 36
+      }
+    },
+    {
+      "type": "ValueDriver",
+      "id": "sw-vd-003",
+      "name": "Gross Margin",
+      "description": "Revenue less cost of goods sold (infrastructure, support, payment processing)",
+      "category": "COST_REDUCTION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 60.0,
+      "typical_range_max": 90.0,
+      "industry_benchmarks": {
+        "world_class": 85,
+        "good": 75,
+        "average": 65,
+        "poor": 55
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "ENABLES",
+      "from": "sw-cap-001",
+      "to": "sw-uc-001",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.9,
+      "evidence_quote": "ML models are essential for accurate churn prediction"
+    },
+    {
+      "type": "ENABLES",
+      "from": "sw-cap-002",
+      "to": "sw-uc-002",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.95,
+      "evidence_quote": "Developer platform enables true self-service"
+    },
+    {
+      "type": "ENABLES",
+      "from": "sw-cap-003",
+      "to": "sw-uc-003",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.85,
+      "evidence_quote": "Automation identifies expansion signals at scale"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "sw-uc-001",
+      "to": "sw-per-003",
+      "benefit_type": "ERROR_REDUCTION",
+      "impact_level": "TRANSFORMATIONAL",
+      "evidence_quote": "Proactive churn prevention dramatically improves retention"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "sw-uc-002",
+      "to": "sw-per-002",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Self-service reduces platform team bottleneck"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "sw-uc-003",
+      "to": "sw-per-001",
+      "benefit_type": "VISIBILITY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Expansion capture directly impacts NRR targets"
+    },
+    {
+      "type": "DRIVES",
+      "from": "sw-per-001",
+      "to": "sw-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.95,
+      "evidence_quote": "CRO directly accountable for NRR performance"
+    },
+    {
+      "type": "DRIVES",
+      "from": "sw-per-002",
+      "to": "sw-vd-003",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.8,
+      "evidence_quote": "Engineering controls infrastructure COGS"
+    },
+    {
+      "type": "DRIVES",
+      "from": "sw-per-003",
+      "to": "sw-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.85,
+      "evidence_quote": "CS owns expansion and retention execution"
+    }
+  ]
+}

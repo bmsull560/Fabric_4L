@@ -7,7 +7,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
-from .routes import workflows, tools, analysis
+from .routes import workflows, tools, analysis, accounts
+from ..database import init_db, close_db
 from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
 from ..tools import create_default_registry
@@ -41,6 +42,18 @@ async def lifespan(app: FastAPI):
         app.middleware("http")(metrics_middleware)
 
     # Startup
+    # Initialize database tables (dev/test convenience)
+    import logging
+    import os
+
+    try:
+        await init_db()
+    except Exception as e:
+        # In production, database failures are fatal. In dev/test, log warning.
+        if os.getenv("ENVIRONMENT", "development").lower() == "production":
+            raise RuntimeError(f"Database initialization failed in production: {e}") from e
+        logging.getLogger(__name__).warning(f"Database initialization skipped: {e}")
+
     tool_registry = create_default_registry()
     state_manager = StateManager()  # Add Redis client if configured
 
@@ -74,6 +87,9 @@ async def lifespan(app: FastAPI):
     if checkpoint_saver:
         await CheckpointConfig.close_saver(checkpoint_saver)
 
+    # Close database connection pool
+    await close_db()
+
     workflow_executor = None
     state_manager = None
     checkpoint_saver = None
@@ -102,6 +118,7 @@ app.add_middleware(
 app.include_router(workflows.router, prefix="/v1", tags=["workflows"])
 app.include_router(tools.router, prefix="/v1", tags=["tools"])
 app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
+app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
 
 
 @app.get("/health")

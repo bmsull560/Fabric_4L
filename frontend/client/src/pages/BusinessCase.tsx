@@ -3,7 +3,7 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState } from "react";
-import { Download, Share2, AlertCircle, Loader2 } from "lucide-react";
+import { Download, Share2, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import { useSearchParams, useLocation } from "wouter";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,6 +56,13 @@ export default function BusinessCase() {
     // Navigate to DecisionTrace
     if (businessCaseId) {
       navigate(`/decision-trace?caseId=${encodeURIComponent(businessCaseId)}`);
+    }
+  };
+
+  const handleExploreInteractive = () => {
+    // Navigate to Interactive Business Case explorer
+    if (businessCaseId) {
+      navigate(`/agents/business-cases/explore?id=${encodeURIComponent(businessCaseId)}`);
     }
   };
 
@@ -147,6 +154,14 @@ export default function BusinessCase() {
           <>
             <Btn
               variant="ghost"
+              onClick={handleExploreInteractive}
+              className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+            >
+              <Sparkles size={12} className="mr-1" />
+              Explore
+            </Btn>
+            <Btn
+              variant="ghost"
               onClick={handleExportPDF}
               disabled={isExporting || !businessCase.document_url}
             >
@@ -192,7 +207,7 @@ export default function BusinessCase() {
       </div>
 
       {/* Recommendations */}
-      {businessCase.recommendations.length > 0 && (
+      {businessCase.recommendations?.length > 0 && (
         <SectionCard title="Recommendations" className="mb-5">
           <ul className="space-y-2">
             {businessCase.recommendations.map((rec, idx) => (

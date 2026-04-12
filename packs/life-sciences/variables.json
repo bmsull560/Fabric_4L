@@ -1,0 +1,893 @@
+{
+  "pack_id": "life-sciences-v1",
+  "variables": [
+    {
+      "variable_id": "ls-var-001",
+      "variable_name": "Current_Timeline_Months",
+      "display_name": "Current Development Timeline",
+      "description": "Current estimated months from IND submission to potential market approval",
+      "data_type": "INTEGER",
+      "unit_of_measure": "months",
+      "valid_range": {
+        "min": 24,
+        "max": 180
+      },
+      "default_value": 72,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "CTMS",
+        "entity": "ProjectTimeline",
+        "attribute": "estimated_months",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 24,
+          "max": 180
+        }
+      ],
+      "industry_benchmarks": {
+        "fast": 48,
+        "average": 72,
+        "slow": 108
+      },
+      "tags": ["timeline", "development", "time-to-market"],
+      "used_in_formulas": ["ls-f-001"]
+    },
+    {
+      "variable_id": "ls-var-002",
+      "variable_name": "Target_Timeline_Months",
+      "display_name": "Target Development Timeline",
+      "description": "Target months with acceleration initiatives like DCT, adaptive design, and site optimization",
+      "data_type": "INTEGER",
+      "unit_of_measure": "months",
+      "valid_range": {
+        "min": 24,
+        "max": 180
+      },
+      "default_value": 60,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 24,
+          "max": 180
+        }
+      ],
+      "tags": ["timeline", "target", "acceleration"],
+      "used_in_formulas": ["ls-f-001"]
+    },
+    {
+      "variable_id": "ls-var-003",
+      "variable_name": "Peak_Annual_Revenue",
+      "display_name": "Peak Annual Revenue Forecast",
+      "description": "Forecasted peak annual revenue at market maturity for the product",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000000
+      },
+      "default_value": 500000000,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Forecasting",
+        "entity": "RevenueModel",
+        "attribute": "peak_annual_revenue",
+        "refresh_frequency": "quarterly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000000
+        }
+      ],
+      "tags": ["revenue", "forecast", "peak"],
+      "used_in_formulas": ["ls-f-001", "ls-f-004"]
+    },
+    {
+      "variable_id": "ls-var-004",
+      "variable_name": "NPV_Discount_Factor",
+      "display_name": "NPV Discount Factor",
+      "description": "Net present value discount factor for calculating time-value of acceleration",
+      "data_type": "RATE",
+      "unit_of_measure": "ratio",
+      "valid_range": {
+        "min": 0.1,
+        "max": 1.0
+      },
+      "default_value": 0.85,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0.1,
+          "max": 1.0
+        }
+      ],
+      "tags": ["npv", "discount", "finance"],
+      "used_in_formulas": ["ls-f-001"]
+    },
+    {
+      "variable_id": "ls-var-005",
+      "variable_name": "Acceleration_Program_Cost",
+      "display_name": "Timeline Acceleration Program Cost",
+      "description": "Annual investment in DCT, adaptive design, and site optimization programs",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
+      "default_value": 10000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": ["acceleration", "cost", "investment"],
+      "used_in_formulas": ["ls-f-001"]
+    },
+    {
+      "variable_id": "ls-var-006",
+      "variable_name": "Current_Cost_Per_Patient",
+      "display_name": "Current Recruitment Cost Per Patient",
+      "description": "Fully-loaded cost to recruit and enroll one patient including site fees, advertising, and screening",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
+      "default_value": 35000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Total_Recruitment_Spend / Patients_Enrolled"
+      },
+      "source_binding": {
+        "system": "CTMS",
+        "entity": "RecruitmentMetrics",
+        "attribute": "cost_per_patient",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000
+        }
+      ],
+      "industry_benchmarks": {
+        "optimized": 20000,
+        "average": 30000,
+        "expensive": 50000
+      },
+      "tags": ["recruitment", "cost", "patient"],
+      "used_in_formulas": ["ls-f-002"]
+    },
+    {
+      "variable_id": "ls-var-007",
+      "variable_name": "Target_Cost_Per_Patient",
+      "display_name": "Target Recruitment Cost Per Patient",
+      "description": "Target cost per patient with digital recruitment and DCT optimization",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
+      "default_value": 25000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000
+        }
+      ],
+      "tags": ["recruitment", "target", "cost"],
+      "used_in_formulas": ["ls-f-002"]
+    },
+    {
+      "variable_id": "ls-var-008",
+      "variable_name": "Required_Patients",
+      "display_name": "Total Required Patient Enrollment",
+      "description": "Total patients required across all clinical trials for the program",
+      "data_type": "INTEGER",
+      "unit_of_measure": "patients",
+      "valid_range": {
+        "min": 10,
+        "max": 100000
+      },
+      "default_value": 1000,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Protocol",
+        "entity": "StudyDesign",
+        "attribute": "total_enrollment",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 10,
+          "max": 100000
+        }
+      ],
+      "tags": ["patients", "enrollment", "required"],
+      "used_in_formulas": ["ls-f-002"]
+    },
+    {
+      "variable_id": "ls-var-009",
+      "variable_name": "Digital_Recruitment_Investment",
+      "display_name": "Digital Recruitment Investment",
+      "description": "Investment in DCT platforms, patient engagement tools, and digital advertising",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
+      "default_value": 2000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": ["recruitment", "digital", "investment"],
+      "used_in_formulas": ["ls-f-002"]
+    },
+    {
+      "variable_id": "ls-var-010",
+      "variable_name": "Baseline_Success_Rate",
+      "display_name": "Baseline Probability of Success",
+      "description": "Current probability of technical and regulatory success from Phase 1 to approval",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 5,
+        "max": 50
+      },
+      "default_value": 15,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Portfolio",
+        "entity": "Analytics",
+        "attribute": "probability_of_success",
+        "refresh_frequency": "quarterly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 5,
+          "max": 50
+        }
+      ],
+      "industry_benchmarks": {
+        "best_in_class": 30,
+        "average": 15,
+        "poor": 8
+      },
+      "tags": ["success-rate", "probability", "pos"],
+      "used_in_formulas": ["ls-f-003"]
+    },
+    {
+      "variable_id": "ls-var-011",
+      "variable_name": "Improved_Success_Rate",
+      "display_name": "Improved Probability of Success",
+      "description": "Target probability of success with enhanced analytics and decision-making",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 5,
+        "max": 60
+      },
+      "default_value": 22,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 5,
+          "max": 60
+        }
+      ],
+      "tags": ["success-rate", "improved", "target"],
+      "used_in_formulas": ["ls-f-003"]
+    },
+    {
+      "variable_id": "ls-var-012",
+      "variable_name": "Pipeline_Risk_Adjusted_NPV",
+      "display_name": "Pipeline Risk-Adjusted NPV",
+      "description": "Total risk-adjusted NPV of the R&D pipeline",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000000000
+      },
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Portfolio",
+        "entity": "Valuation",
+        "attribute": "risk_adjusted_npv",
+        "refresh_frequency": "quarterly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000000
+        }
+      ],
+      "tags": ["pipeline", "npv", "risk-adjusted"],
+      "used_in_formulas": ["ls-f-003"]
+    },
+    {
+      "variable_id": "ls-var-013",
+      "variable_name": "Additional_R&D_Investment",
+      "display_name": "Additional R&D Investment",
+      "description": "Incremental investment in R&D capabilities and analytics",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 500000000
+      },
+      "default_value": 50000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500000000
+        }
+      ],
+      "tags": ["rd", "investment", "analytics"],
+      "used_in_formulas": ["ls-f-003"]
+    },
+    {
+      "variable_id": "ls-var-014",
+      "variable_name": "Baseline_Review_Months",
+      "display_name": "Baseline Regulatory Review Time",
+      "description": "Typical regulatory review timeline from submission to decision",
+      "data_type": "INTEGER",
+      "unit_of_measure": "months",
+      "valid_range": {
+        "min": 6,
+        "max": 36
+      },
+      "default_value": 16,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Regulatory",
+        "entity": "Intelligence",
+        "attribute": "avg_review_months",
+        "refresh_frequency": "quarterly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 6,
+          "max": 36
+        }
+      ],
+      "tags": ["regulatory", "review", "baseline"],
+      "used_in_formulas": ["ls-f-004"]
+    },
+    {
+      "variable_id": "ls-var-015",
+      "variable_name": "Target_Review_Months",
+      "display_name": "Target Regulatory Review Time",
+      "description": "Target regulatory review timeline with optimized submission strategy",
+      "data_type": "INTEGER",
+      "unit_of_measure": "months",
+      "valid_range": {
+        "min": 6,
+        "max": 36
+      },
+      "default_value": 12,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 6,
+          "max": 36
+        }
+      ],
+      "tags": ["regulatory", "review", "target"],
+      "used_in_formulas": ["ls-f-004"]
+    },
+    {
+      "variable_id": "ls-var-016",
+      "variable_name": "NPV_Factor",
+      "display_name": "NPV Discount Factor",
+      "description": "NPV factor for time-value calculations",
+      "data_type": "RATE",
+      "unit_of_measure": "ratio",
+      "valid_range": {
+        "min": 0.5,
+        "max": 1.0
+      },
+      "default_value": 0.9,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0.5,
+          "max": 1.0
+        }
+      ],
+      "tags": ["npv", "factor", "discount"],
+      "used_in_formulas": ["ls-f-004"]
+    },
+    {
+      "variable_id": "ls-var-017",
+      "variable_name": "FTE_Efficiency_Savings",
+      "display_name": "FTE Efficiency Savings",
+      "description": "Annual savings from regulatory submission efficiency improvements",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 1000000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "FTE_Hours_Saved * Loaded_Hourly_Rate"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["fte", "savings", "efficiency"],
+      "used_in_formulas": ["ls-f-004"]
+    },
+    {
+      "variable_id": "ls-var-018",
+      "variable_name": "eCTD_Investment",
+      "display_name": "eCTD and Regulatory Systems Investment",
+      "description": "Investment in eCTD systems and regulatory intelligence platforms",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
+      "default_value": 3000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": ["ectd", "regulatory", "investment"],
+      "used_in_formulas": ["ls-f-004"]
+    },
+    {
+      "variable_id": "ls-var-019",
+      "variable_name": "Current_Yield_Percent",
+      "display_name": "Current Manufacturing Yield",
+      "description": "Current biomanufacturing batch success rate percentage",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 50,
+        "max": 99
+      },
+      "default_value": 75,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Successful_Batches / Total_Batches * 100"
+      },
+      "source_binding": {
+        "system": "MES",
+        "entity": "BatchRecord",
+        "attribute": "yield_percent",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 50,
+          "max": 99
+        }
+      ],
+      "industry_benchmarks": {
+        "world_class": 95,
+        "good": 85,
+        "average": 75
+      },
+      "tags": ["yield", "manufacturing", "batch"],
+      "used_in_formulas": ["ls-f-005"]
+    },
+    {
+      "variable_id": "ls-var-020",
+      "variable_name": "Target_Yield_Percent",
+      "display_name": "Target Manufacturing Yield",
+      "description": "Target batch yield percentage with process optimization",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 50,
+        "max": 99
+      },
+      "default_value": 85,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 50,
+          "max": 99
+        }
+      ],
+      "tags": ["yield", "target", "manufacturing"],
+      "used_in_formulas": ["ls-f-005"]
+    },
+    {
+      "variable_id": "ls-var-021",
+      "variable_name": "Annual_Batch_Count",
+      "display_name": "Annual Batch Count",
+      "description": "Total number of batches produced annually",
+      "data_type": "INTEGER",
+      "unit_of_measure": "batches",
+      "valid_range": {
+        "min": 1,
+        "max": 10000
+      },
+      "default_value": 100,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "MES",
+        "entity": "ProductionSchedule",
+        "attribute": "annual_batches",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 1,
+          "max": 10000
+        }
+      ],
+      "tags": ["batches", "annual", "production"],
+      "used_in_formulas": ["ls-f-005", "ls-f-006"]
+    },
+    {
+      "variable_id": "ls-var-022",
+      "variable_name": "Batch_Product_Value",
+      "display_name": "Value Per Successful Batch",
+      "description": "Revenue value per successful batch at current pricing",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
+      "default_value": 5000000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Annual_Product_Revenue / Successful_Batches"
+      },
+      "source_binding": {
+        "system": "ERP",
+        "entity": "ProductCost",
+        "attribute": "batch_value",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": ["batch", "value", "revenue"],
+      "used_in_formulas": ["ls-f-005"]
+    },
+    {
+      "variable_id": "ls-var-023",
+      "variable_name": "Process_Optimization_Investment",
+      "display_name": "Process Optimization Investment",
+      "description": "Investment in CPV, PAT, and process analytics",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
+      "default_value": 5000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": ["process", "optimization", "investment"],
+      "used_in_formulas": ["ls-f-005"]
+    },
+    {
+      "variable_id": "ls-var-024",
+      "variable_name": "Current_Deviation_Rate",
+      "display_name": "Current Deviation Rate",
+      "description": "Percentage of batches with quality deviations",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 50
+      },
+      "default_value": 10,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Deviations / Total_Batches * 100"
+      },
+      "source_binding": {
+        "system": "QMS",
+        "entity": "DeviationRecord",
+        "attribute": "deviation_rate",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50
+        }
+      ],
+      "industry_benchmarks": {
+        "best_in_class": 3,
+        "average": 8,
+        "poor": 15
+      },
+      "tags": ["deviation", "rate", "quality"],
+      "used_in_formulas": ["ls-f-006"]
+    },
+    {
+      "variable_id": "ls-var-025",
+      "variable_name": "Target_Deviation_Rate",
+      "display_name": "Target Deviation Rate",
+      "description": "Target deviation rate with QMS improvements",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 50
+      },
+      "default_value": 5,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50
+        }
+      ],
+      "tags": ["deviation", "target", "quality"],
+      "used_in_formulas": ["ls-f-006"]
+    },
+    {
+      "variable_id": "ls-var-026",
+      "variable_name": "Avg_Investigation_Cost",
+      "display_name": "Average Investigation Cost",
+      "description": "Fully loaded cost per deviation investigation",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 500000
+      },
+      "default_value": 50000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Total_Investigation_Cost / Investigations_Completed"
+      },
+      "source_binding": {
+        "system": "QMS",
+        "entity": "InvestigationCost",
+        "attribute": "avg_cost",
+        "refresh_frequency": "quarterly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500000
+        }
+      ],
+      "tags": ["investigation", "cost", "quality"],
+      "used_in_formulas": ["ls-f-006"]
+    },
+    {
+      "variable_id": "ls-var-027",
+      "variable_name": "Avoided_Recall_Probability",
+      "display_name": "Avoided Recall Probability",
+      "description": "Reduced probability of recall from quality improvements",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 10
+      },
+      "default_value": 2,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10
+        }
+      ],
+      "tags": ["recall", "probability", "risk"],
+      "used_in_formulas": ["ls-f-006"]
+    },
+    {
+      "variable_id": "ls-var-028",
+      "variable_name": "Potential_Recall_Cost",
+      "display_name": "Potential Recall Cost",
+      "description": "Estimated total cost of product recall",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
+      "default_value": 100000000,
+      "source_type": "DERIVED",
+      "derivation": {
+        "formula": "Direct_Cost + Logistics_Cost + Lost_Revenue + Reputation_Impact"
+      },
+      "source_binding": {
+        "system": "Risk",
+        "entity": "RecallScenario",
+        "attribute": "estimated_cost",
+        "refresh_frequency": "annually"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 1000000000
+        }
+      ],
+      "tags": ["recall", "cost", "risk"],
+      "used_in_formulas": ["ls-f-006"]
+    },
+    {
+      "variable_id": "ls-var-029",
+      "variable_name": "QMS_Investment",
+      "display_name": "QMS Investment",
+      "description": "Investment in QMS automation and quality systems",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
+      "default_value": 3000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": ["qms", "investment", "quality"],
+      "used_in_formulas": ["ls-f-006"]
+    },
+    {
+      "variable_id": "ls-var-030",
+      "variable_name": "Label_Expansion_NPV",
+      "display_name": "Label Expansion NPV",
+      "description": "NPV of potential label expansion indications",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
+      "default_value": 100000000,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Forecasting",
+        "entity": "ExpansionModel",
+        "attribute": "npv",
+        "refresh_frequency": "quarterly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 1000000000
+        }
+      ],
+      "tags": ["label", "expansion", "npv"],
+      "used_in_formulas": ["ls-f-007"]
+    },
+    {
+      "variable_id": "ls-var-031",
+      "variable_name": "RWE_Success_Probability",
+      "display_name": "RWE Success Probability",
+      "description": "Probability of successful label expansion via RWE",
+      "data_type": "PERCENTAGE",
+      "unit_of_measure": "%",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 30,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "tags": ["rwe", "success", "probability"],
+      "used_in_formulas": ["ls-f-007"]
+    },
+    {
+      "variable_id": "ls-var-032",
+      "variable_name": "HTA_Advancement_Value",
+      "display_name": "HTA Advancement Value",
+      "description": "Value from improved HTA and reimbursement outcomes",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 500000000
+      },
+      "default_value": 50000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500000000
+        }
+      ],
+      "tags": ["hta", "value", "reimbursement"],
+      "used_in_formulas": ["ls-f-007"]
+    },
+    {
+      "variable_id": "ls-var-033",
+      "variable_name": "RWE_Program_Annual_Cost",
+      "display_name": "RWE Program Annual Cost",
+      "description": "Annual cost of RWE data partnerships and analytics",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
+      "default_value": 8000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": ["rwe", "cost", "program"],
+      "used_in_formulas": ["ls-f-007"]
+    }
+  ]
+}

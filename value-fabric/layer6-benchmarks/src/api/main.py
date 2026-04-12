@@ -8,9 +8,13 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
+
+from ..metrics import initialize_metrics, get_metrics
 
 from ..models.benchmark_dataset import (
     BenchmarkDataset,
@@ -61,9 +65,18 @@ def _init_seed_data():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    # Initialize Prometheus metrics
+    metrics = initialize_metrics()
+    if metrics:
+        logger.info("Prometheus metrics initialized")
+    app.state.metrics = metrics
+
     # Startup
     _init_seed_data()
-    print(f"Layer 6 Benchmark Service started with {len(_benchmark_store)} datasets")
+    dataset_count = len(_benchmark_store)
+    if metrics:
+        metrics.set_datasets_loaded(dataset_count)
+    logger.info(f"Layer 6 Benchmark Service started with {dataset_count} datasets")
     yield
     # Shutdown
     _benchmark_store.clear()
@@ -84,6 +97,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount Prometheus metrics endpoint at /metrics
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
 
 
 # Pydantic models for API
@@ -149,10 +166,49 @@ class ValidationResponse(BaseModel):
 
 # API Routes
 
+import logging
+import time
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
 @app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "layer6-benchmarks", "version": "1.0.0"}
+async def health_check(request: Request = None):
+    """Health check endpoint with system metrics."""
+    import psutil
+    start_time = time.time()
+
+    metrics = get_metrics()
+    dataset_count = len(_benchmark_store)
+
+    # System metrics
+    memory_info = psutil.virtual_memory()
+    cpu_percent = psutil.cpu_percent(interval=None)
+
+    # Service is healthy if data is loaded
+    overall_status = "healthy" if dataset_count > 0 else "degraded"
+
+    response_time_ms = round((time.time() - start_time) * 1000, 2)
+
+    # Update Prometheus health metrics if available
+    if request and hasattr(request.app.state, 'metrics') and request.app.state.metrics:
+        request.app.state.metrics.set_health_status(overall_status == "healthy", component="api")
+        request.app.state.metrics.set_datasets_loaded(dataset_count)
+
+    return {
+        "status": overall_status,
+        "service": "layer6-benchmarks",
+        "version": "1.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "response_time_ms": response_time_ms,
+        "datasets_loaded": dataset_count,
+        "system": {
+            "memory_usage_mb": round(memory_info.used / (1024 * 1024), 2),
+            "memory_percent": memory_info.percent,
+            "cpu_percent": cpu_percent
+        }
+    }
 
 
 @app.get("/v1/benchmarks/datasets", response_model=List[DatasetSummary])

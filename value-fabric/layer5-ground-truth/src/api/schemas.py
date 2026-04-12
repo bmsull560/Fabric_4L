@@ -368,7 +368,7 @@ class AddSourceRequest(TruthSourceCreate):
 # ---------------------------------------------------------------------------
 
 class HealthResponse(BaseModel):
-    """Health check response."""
+    """Health check response with dependency timing."""
 
     status: str
     version: str
@@ -376,6 +376,9 @@ class HealthResponse(BaseModel):
     database: str
     layer3_connected: bool
     layer3_url: str
+    response_time_ms: Optional[float] = None
+    db_response_ms: Optional[float] = None
+    layer3_response_ms: Optional[float] = None
 
 
 # ---------------------------------------------------------------------------

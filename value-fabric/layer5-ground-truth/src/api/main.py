@@ -15,9 +15,11 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_client import make_asgi_app
 
 from ..config import get_settings
 from ..database import close_db, init_db
+from ..metrics import initialize_metrics, get_metrics
 from .router import router
 
 # ---------------------------------------------------------------------------
@@ -40,6 +42,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifecycle — database init and teardown."""
     settings = get_settings()
     logger.info("Starting Layer 5 Ground Truth service on port %d", settings.api_port)
+
+    # Initialize Prometheus metrics
+    metrics = initialize_metrics()
+    if metrics:
+        logger.info("Prometheus metrics initialized")
+    app.state.metrics = metrics
 
     # Initialize DB tables (no-op if already exist; Alembic handles migrations)
     if settings.debug:
@@ -105,6 +113,10 @@ def create_app() -> FastAPI:
     # Mount the API router
     app.include_router(router)
 
+    # Mount Prometheus metrics endpoint at /metrics
+    metrics_app = make_asgi_app()
+    app.mount("/metrics", metrics_app)
+
     # Root redirect to docs
     @app.get("/", include_in_schema=False)
     async def root() -> JSONResponse:
@@ -114,6 +126,7 @@ def create_app() -> FastAPI:
                 "version": "0.1.0",
                 "docs": "/docs",
                 "health": "/api/v1/health",
+                "metrics": "/metrics",
             }
         )
 

@@ -1,0 +1,376 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Value Fabric Operational Dashboard - Service Health, Metrics, and Performance",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 1,
+      "panels": [],
+      "title": "Service Health Status",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Down"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+      "id": 2,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "up{job=\"layer1-ingestion\"} or vector(0)", "legendFormat": "L1 Ingestion", "refId": "A"}
+      ],
+      "title": "L1 Ingestion",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Down"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+      "id": 3,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "up{job=\"layer2-extraction\"} or vector(0)", "legendFormat": "L2 Extraction", "refId": "A"}
+      ],
+      "title": "L2 Extraction",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Down"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
+      "id": 4,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "up{job=\"layer3-knowledge\"} or vector(0)", "legendFormat": "L3 Knowledge", "refId": "A"}
+      ],
+      "title": "L3 Knowledge",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Down"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 1},
+      "id": 5,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "up{job=\"layer4-agents\"} or vector(0)", "legendFormat": "L4 Agents", "refId": "A"}
+      ],
+      "title": "L4 Agents",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Down"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 1},
+      "id": 6,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "up{job=\"layer5-ground-truth\"} or vector(0)", "legendFormat": "L5 Ground Truth", "refId": "A"}
+      ],
+      "title": "L5 Ground Truth",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Down"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Up"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
+      "id": 7,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "up{job=\"layer6-benchmarks\"} or vector(0)", "legendFormat": "L6 Benchmarks", "refId": "A"}
+      ],
+      "title": "L6 Benchmarks",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 5},
+      "id": 8,
+      "panels": [],
+      "title": "Request Volume & Latency",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10},
+          "unit": "reqps"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "id": 9,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(rate(http_requests_total[5m])) by (job)", "legendFormat": "{{job}}", "refId": "A"}
+      ],
+      "title": "Request Rate by Service (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10},
+          "unit": "ms"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "id": 10,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)) * 1000", "legendFormat": "p95 {{job}}", "refId": "A"},
+        {"expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le)) * 1000", "legendFormat": "p50 {{job}}", "refId": "B"}
+      ],
+      "title": "Response Latency (p50/p95)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 14},
+      "id": 11,
+      "panels": [],
+      "title": "Errors & Failures",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10},
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 15},
+      "id": 12,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (job) / sum(rate(http_requests_total[5m])) by (job)", "legendFormat": "{{job}}", "refId": "A"}
+      ],
+      "title": "Error Rate (5xx) by Service",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 15},
+      "id": 13,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (job)", "legendFormat": "{{job}}", "refId": "A"}
+      ],
+      "title": "Error Count (5xx/min)",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 23},
+      "id": 14,
+      "panels": [],
+      "title": "Queue Depth & Processing",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}, "unit": "short"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 24},
+      "id": 15,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "celery_queue_length{queue=\"celery\"} or vector(0)", "legendFormat": "Queue Length", "refId": "A"}
+      ],
+      "title": "Celery Queue Length",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 24},
+      "id": 16,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "celery_active_workers or vector(0)", "legendFormat": "Active Workers", "refId": "A"}
+      ],
+      "title": "Active Celery Workers",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "fillOpacity": 10},
+          "unit": "short"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "id": 17,
+      "options": {"legend": {"displayMode": "table", "placement": "right", "showLegend": true}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "rate(celery_task_received_total[5m])", "legendFormat": "Received", "refId": "A"},
+        {"expr": "rate(celery_task_succeeded_total[5m])", "legendFormat": "Succeeded", "refId": "B"},
+        {"expr": "rate(celery_task_failed_total[5m])", "legendFormat": "Failed", "refId": "C"}
+      ],
+      "title": "Celery Task Throughput",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 32},
+      "id": 18,
+      "panels": [],
+      "title": "Agent Workflow Status",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 33},
+      "id": 19,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(agent_workflows_active) or vector(0)", "legendFormat": "Active", "refId": "A"}
+      ],
+      "title": "Active Agent Workflows",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 10}, {"color": "red", "value": 100}]}, "unit": "short"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 33},
+      "id": 20,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(agent_workflows_pending) or vector(0)", "legendFormat": "Pending", "refId": "A"}
+      ],
+      "title": "Pending Workflows",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 1}, {"color": "green", "value": 0}]}, "unit": "short"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 33},
+      "id": 21,
+      "options": {"colorMode": "value", "graphMode": "area", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "sum(agent_workflows_failed_1h) or vector(0)", "legendFormat": "Failed (1h)", "refId": "A"}
+      ],
+      "title": "Failed Workflows (1h)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "mappings": [{"options": {"0": {"color": "red", "text": "Unhealthy"}}, "type": "value"}, {"options": {"1": {"color": "green", "text": "Healthy"}}, "type": "value"}], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}, "unit": "none"}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 33},
+      "id": 22,
+      "options": {"colorMode": "background", "graphMode": "none", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "health_status{component=\"layer4-agents\"} or vector(0)", "legendFormat": "L4 Health", "refId": "A"}
+      ],
+      "title": "L4 Agent Health",
+      "type": "stat"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["value-fabric", "operational", "health", "monitoring"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {"refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]},
+  "timezone": "browser",
+  "title": "Value Fabric - Operational Dashboard",
+  "uid": "value-fabric-operational",
+  "version": 1
+}

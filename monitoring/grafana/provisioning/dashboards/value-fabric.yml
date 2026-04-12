@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: 'Value Fabric Dashboards'
+    orgId: 1
+    folder: 'Value Fabric'
+    folderUid: 'value-fabric'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

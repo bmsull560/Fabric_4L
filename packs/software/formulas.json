@@ -1,0 +1,575 @@
+{
+  "pack_id": "software-v1",
+  "formulas": [
+    {
+      "formula_id": "sw-f-001",
+      "name": "Customer Acquisition Efficiency ROI",
+      "description": "Return on investment from improving customer acquisition cost (CAC) through better targeting, automation, and conversion optimization. Value is created by acquiring the same number of customers with less spend, or more customers with the same spend.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Software Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11",
+        "validated_by": "SaaS Finance CoE"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "((Current_CAC - Target_CAC) * New_Customers_Per_Year - Program_Investment) / Program_Investment * 100",
+        "variables": [
+          "Current_CAC",
+          "Target_CAC",
+          "New_Customers_Per_Year",
+          "Program_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -50,
+        "max": 500
+      },
+      "required_variables": [
+        {
+          "name": "Current_CAC",
+          "display_name": "Current Customer Acquisition Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000 },
+          "default_value": 25000,
+          "source": "CRM",
+          "description": "Current fully-loaded cost to acquire one new customer"
+        },
+        {
+          "name": "Target_CAC",
+          "display_name": "Target Customer Acquisition Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000 },
+          "default_value": 20000,
+          "source": "Financial",
+          "description": "Target CAC after efficiency improvements"
+        },
+        {
+          "name": "New_Customers_Per_Year",
+          "display_name": "Annual New Customer Acquisition",
+          "type": "integer",
+          "unit": "customers",
+          "valid_range": { "min": 0, "max": 100000 },
+          "default_value": 500,
+          "source": "CRM",
+          "description": "Number of new customers acquired annually"
+        },
+        {
+          "name": "Program_Investment",
+          "display_name": "CAC Improvement Program Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 500000,
+          "source": "Financial",
+          "description": "Annual investment in tools, talent, and programs to reduce CAC"
+        }
+      ],
+      "benchmarks": {
+        "typical_cac_improvement": 15,
+        "best_in_class_cac_roi": 200
+      },
+      "tags": ["cac", "acquisition", "roi", "marketing", "efficiency"]
+    },
+    {
+      "formula_id": "sw-f-002",
+      "name": "Net Revenue Retention Improvement Value",
+      "description": "Annual value created by improving Net Revenue Retention (NRR) through better expansion, reduced contraction, and lower churn. In SaaS, NRR above 100% means existing customers generate more revenue year-over-year.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Software Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Beginning_ARR * (Target_NRR - Current_NRR) / 100 - Implementation_Cost",
+        "variables": [
+          "Beginning_ARR",
+          "Target_NRR",
+          "Current_NRR",
+          "Implementation_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -10000000,
+        "max": 500000000
+      },
+      "required_variables": [
+        {
+          "name": "Beginning_ARR",
+          "display_name": "Beginning Annual Recurring Revenue",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000000 },
+          "source": "ERP",
+          "description": "ARR at start of measurement period"
+        },
+        {
+          "name": "Current_NRR",
+          "display_name": "Current Net Revenue Retention",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 50, "max": 150 },
+          "default_value": 105,
+          "source": "CRM",
+          "description": "Current NRR percentage"
+        },
+        {
+          "name": "Target_NRR",
+          "display_name": "Target Net Revenue Retention",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 50, "max": 150 },
+          "default_value": 115,
+          "source": "Financial",
+          "description": "Target NRR after improvement initiatives"
+        },
+        {
+          "name": "Implementation_Cost",
+          "display_name": "NRR Program Implementation Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 750000,
+          "source": "Financial",
+          "description": "Annual cost of CS tools, headcount, and programs"
+        }
+      ],
+      "benchmarks": {
+        "best_in_class_nrr": 125,
+        "good_nrr": 110,
+        "average_nrr": 100
+      },
+      "tags": ["nrr", "retention", "expansion", "revenue", "saas-metrics"]
+    },
+    {
+      "formula_id": "sw-f-003",
+      "name": "Churn Reduction Value",
+      "description": "Annual value of reducing customer churn rate. Each percentage point of churn reduction retains more customers and their associated revenue. This compounds over time as the customer base grows.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Customer Success Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Total_Customers * (Current_Churn_Rate - Target_Churn_Rate) / 100 * ACV * Avg_Customer_Lifespan_Years - Retention_Program_Cost",
+        "variables": [
+          "Total_Customers",
+          "Current_Churn_Rate",
+          "Target_Churn_Rate",
+          "ACV",
+          "Avg_Customer_Lifespan_Years",
+          "Retention_Program_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
+      "required_variables": [
+        {
+          "name": "Total_Customers",
+          "display_name": "Total Customer Count",
+          "type": "integer",
+          "unit": "customers",
+          "valid_range": { "min": 0, "max": 1000000 },
+          "source": "CRM",
+          "description": "Total number of active customers"
+        },
+        {
+          "name": "Current_Churn_Rate",
+          "display_name": "Current Annual Churn Rate",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 50 },
+          "default_value": 10,
+          "source": "CRM",
+          "description": "Current annual logo churn percentage"
+        },
+        {
+          "name": "Target_Churn_Rate",
+          "display_name": "Target Annual Churn Rate",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 50 },
+          "default_value": 7,
+          "source": "Financial",
+          "description": "Target churn rate after improvement programs"
+        },
+        {
+          "name": "ACV",
+          "display_name": "Average Contract Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 1000000 },
+          "default_value": 50000,
+          "source": "CRM",
+          "description": "Average annual contract value per customer"
+        },
+        {
+          "name": "Avg_Customer_Lifespan_Years",
+          "display_name": "Average Customer Lifespan",
+          "type": "float",
+          "unit": "years",
+          "valid_range": { "min": 0.5, "max": 20 },
+          "default_value": 5,
+          "source": "Calculated",
+          "description": "Average customer tenure in years"
+        },
+        {
+          "name": "Retention_Program_Cost",
+          "display_name": "Customer Retention Program Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 400000,
+          "source": "Financial",
+          "description": "Annual cost of retention programs"
+        }
+      ],
+      "benchmarks": {
+        "best_in_class_churn": 5,
+        "good_churn": 8,
+        "average_churn": 12
+      },
+      "tags": ["churn", "retention", "customer-lifetime-value", "revenue-protection"]
+    },
+    {
+      "formula_id": "sw-f-004",
+      "name": "Gross Margin Expansion Value",
+      "description": "Annual value created by improving gross margin through infrastructure optimization, economies of scale, and operational efficiency. Each point of margin improvement flows directly to operating income.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Software Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "ARR * (Target_Gross_Margin - Current_Gross_Margin) / 100 - Infrastructure_Investment",
+        "variables": [
+          "ARR",
+          "Current_Gross_Margin",
+          "Target_Gross_Margin",
+          "Infrastructure_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -5000000,
+        "max": 50000000
+      },
+      "required_variables": [
+        {
+          "name": "ARR",
+          "display_name": "Annual Recurring Revenue",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000000 },
+          "source": "ERP",
+          "description": "Total annual recurring revenue"
+        },
+        {
+          "name": "Current_Gross_Margin",
+          "display_name": "Current Gross Margin",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 95 },
+          "default_value": 75,
+          "source": "ERP",
+          "description": "Current gross margin percentage"
+        },
+        {
+          "name": "Target_Gross_Margin",
+          "display_name": "Target Gross Margin",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 95 },
+          "default_value": 80,
+          "source": "Financial",
+          "description": "Target gross margin after optimization"
+        },
+        {
+          "name": "Infrastructure_Investment",
+          "display_name": "Infrastructure Optimization Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 1000000,
+          "source": "Financial",
+          "description": "Annual investment in infrastructure improvements"
+        }
+      ],
+      "benchmarks": {
+        "best_in_class_gm": 85,
+        "good_gm": 78,
+        "average_gm": 70
+      },
+      "tags": ["gross-margin", "cogs", "infrastructure", "efficiency", "profitability"]
+    },
+    {
+      "formula_id": "sw-f-005",
+      "name": "Platform Engineering ROI",
+      "description": "Return on investment from internal developer platform including time savings from self-service, reduced incident response time, and infrastructure cost optimization.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Platform Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Developer_Hours_Saved_Per_Year * Fully_Loaded_Hourly_Rate + Infrastructure_Savings) / Platform_Investment * 100",
+        "variables": [
+          "Developer_Hours_Saved_Per_Year",
+          "Fully_Loaded_Hourly_Rate",
+          "Infrastructure_Savings",
+          "Platform_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -20,
+        "max": 500
+      },
+      "required_variables": [
+        {
+          "name": "Developer_Hours_Saved_Per_Year",
+          "display_name": "Annual Developer Hours Saved",
+          "type": "integer",
+          "unit": "hours",
+          "valid_range": { "min": 0, "max": 500000 },
+          "default_value": 10000,
+          "source": "Calculated",
+          "description": "Total developer hours saved through platform self-service"
+        },
+        {
+          "name": "Fully_Loaded_Hourly_Rate",
+          "display_name": "Fully Loaded Developer Hourly Rate",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 500 },
+          "default_value": 100,
+          "source": "HR",
+          "description": "Fully loaded cost per developer hour (salary + benefits + overhead)"
+        },
+        {
+          "name": "Infrastructure_Savings",
+          "display_name": "Annual Infrastructure Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 500000,
+          "source": "Cloud_Billing",
+          "description": "Annual savings from infrastructure optimization"
+        },
+        {
+          "name": "Platform_Investment",
+          "display_name": "Platform Engineering Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 2000000,
+          "source": "Financial",
+          "description": "Annual investment in platform team, tools, and infrastructure"
+        }
+      ],
+      "benchmarks": {
+        "typical_platform_roi": 300,
+        "best_in_class": 500
+      },
+      "tags": ["platform-engineering", "developer-productivity", "infrastructure", "roi"]
+    },
+    {
+      "formula_id": "sw-f-006",
+      "name": "AI Feature Monetization Value",
+      "description": "Annual value created by monetizing AI/ML features through premium pricing tiers. Includes upsell revenue from existing customers adopting AI features and new customer acquisition enabled by AI capabilities.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "draft",
+      "governance": {
+        "owner": "Product Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "pending_review"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Customer_Base * AI_Upsell_Rate / 100 * AI_Premium_Price_Per_Seat - AI_Infrastructure_Annual_Cost",
+        "variables": [
+          "Customer_Base",
+          "AI_Upsell_Rate",
+          "AI_Premium_Price_Per_Seat",
+          "AI_Infrastructure_Annual_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -5000000,
+        "max": 100000000
+      },
+      "required_variables": [
+        {
+          "name": "Customer_Base",
+          "display_name": "Eligible Customer Base",
+          "type": "integer",
+          "unit": "customers",
+          "valid_range": { "min": 0, "max": 1000000 },
+          "source": "CRM",
+          "description": "Number of customers eligible for AI feature upsell"
+        },
+        {
+          "name": "AI_Upsell_Rate",
+          "display_name": "AI Feature Adoption Rate",
+          "type": "rate",
+          "unit": "%",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 20,
+          "source": "Product",
+          "description": "Percentage of customers adopting AI features"
+        },
+        {
+          "name": "AI_Premium_Price_Per_Seat",
+          "display_name": "AI Premium Price Per Seat",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000 },
+          "default_value": 100,
+          "source": "Pricing",
+          "description": "Additional annual price for AI features per seat"
+        },
+        {
+          "name": "AI_Infrastructure_Annual_Cost",
+          "display_name": "AI Infrastructure Annual Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 1000000,
+          "source": "Cloud_Billing",
+          "description": "Annual cost of AI/ML infrastructure (compute, storage, models)"
+        }
+      ],
+      "benchmarks": {
+        "typical_upsell_rate": 15,
+        "best_in_class": 30
+      },
+      "tags": ["ai", "ml", "monetization", "upsell", "premium-features"]
+    },
+    {
+      "formula_id": "sw-f-007",
+      "name": "Support Efficiency Improvement",
+      "description": "Annual value from reducing support ticket volume through better self-service, documentation, and automation. Includes cost savings and improved customer satisfaction.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Support Operations",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-11"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Current_Tickets_Per_Customer - Target_Tickets_Per_Customer) * Total_Customers * Cost_Per_Support_Ticket - Self_Service_Investment",
+        "variables": [
+          "Current_Tickets_Per_Customer",
+          "Target_Tickets_Per_Customer",
+          "Total_Customers",
+          "Cost_Per_Support_Ticket",
+          "Self_Service_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -1000000,
+        "max": 10000000
+      },
+      "required_variables": [
+        {
+          "name": "Current_Tickets_Per_Customer",
+          "display_name": "Current Support Tickets Per Customer",
+          "type": "float",
+          "unit": "tickets",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 5,
+          "source": "Support_System",
+          "description": "Average support tickets per customer per year"
+        },
+        {
+          "name": "Target_Tickets_Per_Customer",
+          "display_name": "Target Support Tickets Per Customer",
+          "type": "float",
+          "unit": "tickets",
+          "valid_range": { "min": 0, "max": 100 },
+          "default_value": 3,
+          "source": "Support_Operations",
+          "description": "Target tickets per customer after efficiency improvements"
+        },
+        {
+          "name": "Total_Customers",
+          "display_name": "Total Customer Count",
+          "type": "integer",
+          "unit": "customers",
+          "valid_range": { "min": 0, "max": 1000000 },
+          "source": "CRM",
+          "description": "Total number of active customers"
+        },
+        {
+          "name": "Cost_Per_Support_Ticket",
+          "display_name": "Average Cost Per Support Ticket",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 500 },
+          "default_value": 25,
+          "source": "Support_Operations",
+          "description": "Fully loaded cost to resolve one support ticket"
+        },
+        {
+          "name": "Self_Service_Investment",
+          "display_name": "Self-Service Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 5000000 },
+          "default_value": 300000,
+          "source": "Financial",
+          "description": "Annual investment in self-service portal, documentation, and automation"
+        }
+      ],
+      "benchmarks": {
+        "best_in_class_tickets": 2,
+        "average_tickets": 6
+      },
+      "tags": ["support", "efficiency", "self-service", "automation", "cost-reduction"]
+    }
+  ]
+}

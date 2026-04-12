@@ -62,14 +62,14 @@ export function useJobStream(jobId: string | null) {
       const job = response.data;
       
       setState(prev => ({
-        progress: job.progress_percent_complete ?? prev.progress,
-        status: mapJobStatus(job.status),
-        logs: job.progress_logs?.map((log: any) => ({
+        progress: job?.progress_percent_complete ?? prev.progress,
+        status: mapJobStatus(job?.status),
+        logs: job?.progress_logs?.map((log: any) => ({
           timestamp: log.timestamp,
           level: log.level,
           message: log.message,
         })) ?? prev.logs,
-        entities: job.extracted_entities?.map((e: any) => ({
+        entities: job?.extracted_entities?.map((e: any) => ({
           type: e.type,
           name: e.name,
         })) ?? prev.entities,
@@ -78,7 +78,7 @@ export function useJobStream(jobId: string | null) {
       setError(null);
       
       // Stop polling if job is complete
-      if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status)) {
+      if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job?.status)) {
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
