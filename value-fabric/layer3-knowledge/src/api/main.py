@@ -380,13 +380,14 @@ app = FastAPI(
 
 
 # Include routers from routes modules
-from .routes import value_trees, formulas, value_packs, formula_governance, variables
+from .routes import value_trees, formulas, value_packs, formula_governance, variables, benchmarks
 
 app.include_router(value_trees.router, prefix="/v1")
 app.include_router(formulas.router, prefix="/v1")
 app.include_router(value_packs.router, prefix="/v1")
 app.include_router(formula_governance.router, prefix="/v1")
 app.include_router(variables.router, prefix="/v1")
+app.include_router(benchmarks.router, prefix="/v1")
 
 
 @app.middleware("http")
