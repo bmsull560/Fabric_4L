@@ -35,7 +35,7 @@ dev = [
     "sentence-transformers>=2.3",
     "black>=24.0",
     "ruff>=0.2",
-    "mypy>=1.8",
+    "mypy>=1.20.1",
     "types-neo4j>=5.15",
 ]
 
