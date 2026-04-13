@@ -419,15 +419,83 @@ def ai_extraction_stage(self, prev_result: dict):
             if not raw_content:
                 raise ValueError("Raw content not found for AI extraction")
 
-            # TODO: Implement LLM extraction based on method
-            # For now, mark as completed
+            # P0-35: Call Layer 2 Extraction Service for LLM extraction
+            import httpx
+
+            l2_url = settings.layer2_api_url
+            extraction_payload = {
+                "content": raw_content.meta_title or "",
+                "content_type": "text",
+                "extraction_method": method.lower(),
+                "source_id": str(raw_content_id),
+                "job_id": str(job_id),
+                "tenant_id": str(job.organization_id),  # Pass tenant for isolation
+                "options": {
+                    "model": extraction_config.get("model", settings.openai_model),
+                    "temperature": extraction_config.get("temperature", 0.0),
+                    "max_tokens": extraction_config.get("max_tokens", 4000),
+                },
+            }
+
+            # Call L2 extraction API with retry logic
+            max_retries = 3
+            last_error = None
+            extraction_result = None
+            tokens_consumed = 0
+
+            for attempt in range(max_retries):
+                try:
+                    response = httpx.post(
+                        f"{l2_url}/v1/extract",
+                        json=extraction_payload,
+                        timeout=120.0,
+                        headers={
+                            "Content-Type": "application/json",
+                            "X-Tenant-ID": str(job.organization_id),
+                        },
+                    )
+                    response.raise_for_status()
+                    extraction_result = response.json()
+                    tokens_consumed = extraction_result.get("tokens_consumed", 0)
+                    break
+                except httpx.HTTPStatusError as e:
+                    last_error = f"HTTP {e.response.status_code}: {e.response.text}"
+                    if e.response.status_code in (429, 503, 504):
+                        logger.warning(f"L2 extraction attempt {attempt + 1} failed, retrying...")
+                        import time
+
+                        time.sleep(2**attempt)
+                        continue
+                    break
+                except Exception as e:
+                    last_error = str(e)
+                    logger.warning(f"L2 extraction attempt {attempt + 1} failed: {e}")
+                    import time
+
+                    time.sleep(2**attempt)
+
+            if extraction_result is None:
+                raise ValueError(f"L2 extraction failed after {max_retries} attempts: {last_error}")
+
+            # Store extraction result
+            job.configuration["extraction_result"] = extraction_result
 
             _update_stage(session, job_id, PipelineStage.AI_EXTRACTION, "COMPLETED")
-            job.resources_llm_tokens_consumed += 0  # TODO: Track tokens
+            job.resources_llm_tokens_consumed += tokens_consumed
             session.commit()
 
-            logger.info("AI extraction completed", job_id=str(job_id))
-            return {"success": True, "job_id": str(job_id)}
+            logger.info(
+                "AI extraction completed",
+                job_id=str(job_id),
+                tokens_consumed=tokens_consumed,
+                entities_extracted=len(extraction_result.get("entities", [])),
+            )
+            return {
+                "success": True,
+                "job_id": str(job_id),
+                "tokens_consumed": tokens_consumed,
+                "entities_extracted": len(extraction_result.get("entities", [])),
+            }
 
     except Exception as exc:
         logger.error("AI extraction failed", job_id=str(job_id), error=str(exc))
