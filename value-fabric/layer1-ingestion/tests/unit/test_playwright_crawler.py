@@ -92,7 +92,7 @@ class TestPlaywrightCrawlerStartStop:
         """Test that start() initializes Playwright resources."""
         crawler = PlaywrightCrawler(config=crawler_config, enable_telemetry=False)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             
             await crawler.start()
@@ -125,7 +125,7 @@ class TestPlaywrightCrawlerStartStop:
     @pytest.mark.asyncio
     async def test_context_manager_usage(self, mock_playwright, crawler_config):
         """Test async context manager usage."""
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             
             async with PlaywrightCrawler(config=crawler_config, enable_telemetry=False) as crawler:
@@ -144,7 +144,7 @@ class TestCrawlUrl:
         crawler = PlaywrightCrawler(config=crawler_config, enable_telemetry=False)
         
         # Setup mocks
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -166,7 +166,7 @@ class TestCrawlUrl:
         """Test that resource blocking patterns are applied."""
         crawler = PlaywrightCrawler(config=crawler_config, enable_telemetry=False)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -185,7 +185,7 @@ class TestCrawlUrl:
         # Make goto raise an exception
         mock_playwright["page"].goto = AsyncMock(side_effect=Exception("Navigation timeout"))
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -208,7 +208,7 @@ class TestCrawlUrl:
         """Test that successful crawls record metrics."""
         crawler = PlaywrightCrawler(config=crawler_config, enable_telemetry=False)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -229,7 +229,7 @@ class TestCrawlUrls:
         """Test crawling multiple URLs returns correct results."""
         crawler = PlaywrightCrawler(config=crawler_config, enable_telemetry=False)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -254,7 +254,7 @@ class TestCrawlUrls:
             enable_telemetry=False,
         )
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -278,7 +278,7 @@ class TestCrawlUrls:
         """Test that different domains don't trigger rate limiting."""
         crawler = PlaywrightCrawler(config=crawler_config, enable_telemetry=False)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -304,7 +304,7 @@ class TestScrollPage:
         config = CrawlerConfig(**{**crawler_config.__dict__, "scroll_enabled": True})
         crawler = PlaywrightCrawler(config=config, enable_telemetry=False)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -321,7 +321,7 @@ class TestScrollPage:
         """Test that scroll is skipped when disabled in config."""
         crawler = PlaywrightCrawler(config=crawler_config, enable_telemetry=False)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -340,7 +340,7 @@ class TestScrollPage:
         # Make scroll fail
         mock_playwright["page"].evaluate = AsyncMock(side_effect=Exception("Scroll error"))
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -368,7 +368,7 @@ class TestExtractLinks:
         ]
         mock_playwright["page"].evaluate = AsyncMock(return_value=mock_links)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -395,7 +395,7 @@ class TestExtractLinks:
         ]
         mock_playwright["page"].evaluate = AsyncMock(return_value=mock_links)
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
@@ -441,7 +441,7 @@ class TestConcurrency:
         ))
         mock_pw.stop = AsyncMock()
         
-        with patch('crawler.playwright_crawler.async_playwright') as mock_async_pw:
+        with patch('src.crawler.playwright_crawler.async_playwright') as mock_async_pw:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_pw)
             await crawler.start()
             

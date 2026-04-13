@@ -1,20 +1,11 @@
 """Crawler package for web scraping.
 
-Exports:
-- PlaywrightCrawler: Main crawler with OpenTelemetry tracing
-- CrawlerConfig: Configuration dataclass with YAML support
-- CrawlResult: Result dataclass with metrics
+Note: Imports moved to direct submodule access to avoid relative import issues
+when running tests. Use:
+- from src.crawler.playwright_crawler import PlaywrightCrawler, CrawlResult
+- from src.crawler.crawler_config import CrawlerConfig, load_config
+- from src.crawler.telemetry import init_telemetry, CrawlMetrics
 """
 
-from .playwright_crawler import PlaywrightCrawler, CrawlResult
-from .crawler_config import CrawlerConfig, load_config
-from .telemetry import init_telemetry, CrawlMetrics
-
-__all__ = [
-    "PlaywrightCrawler",
-    "CrawlResult",
-    "CrawlerConfig",
-    "load_config",
-    "init_telemetry",
-    "CrawlMetrics",
-]
+# Exports removed to prevent relative import errors when imported directly.
+# Import from submodules directly as shown above.
