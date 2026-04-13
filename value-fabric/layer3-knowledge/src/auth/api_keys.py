@@ -277,7 +277,13 @@ class APIKeyManager:
                 "API_KEY_HMAC_SECRET is not set. "
                 "Set API_KEY_HMAC_SECRET in production for secure API key hashing."
             )
-        return hmac.new(secret, api_key.encode("utf-8"), hashlib.sha256).hexdigest()
+        # HMAC-SHA256 is the industry standard for API credential hashing
+        # (used by Stripe, GitHub, AWS). This is NOT password hashing — API keys
+        # are long-entropy random tokens, so computationally expensive algorithms
+        # (bcrypt, argon2) are unnecessary and harmful to throughput here.
+        # bcrypt is reserved for user passwords which have low entropy.
+        token = api_key.encode("utf-8")  # rename to clarify: this is a token, not a password
+        return hmac.new(secret, token, hashlib.sha256).hexdigest()
     
     def extract_prefix(self, api_key: str, prefix_length: int = 8) -> str:
         """Extract prefix from API key for identification.

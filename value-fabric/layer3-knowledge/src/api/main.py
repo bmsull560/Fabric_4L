@@ -2,6 +2,7 @@
 
 import logging
 import platform
+import os
 import time
 import uuid
 import psutil
@@ -363,8 +364,7 @@ async def request_id_middleware(request: Request, call_next):
 # CORS middleware
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
 # In production, specify exact origins or use environment variable
-import os as _os
-allow_origins = _os.getenv("CORS_ORIGINS", "").split(",") if _os.getenv("CORS_ORIGINS") else ["*"]
+allow_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
 allow_credentials = False  # Must be False when using wildcard origins
 
 app.add_middleware(

@@ -116,9 +116,8 @@ app.add_middleware(
 )
 
 # CORS middleware — restrict origins in production via the CORS_ORIGINS env var
-import os as _os
 
-_cors_origins = _os.getenv("CORS_ORIGINS", "").split(",") if _os.getenv("CORS_ORIGINS") else ["*"]
+_cors_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,

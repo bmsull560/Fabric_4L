@@ -57,9 +57,16 @@ def hash_api_key(raw_key: str) -> str:
     """Return the HMAC-SHA256 hex digest for ``raw_key``.
 
     This value is stored in the database; the raw key is never stored.
+
+    Note: HMAC-SHA256 is the industry standard for API credential hashing
+    (used by Stripe, GitHub, AWS). This is NOT the same as password hashing.
+    API keys are long-entropy random tokens; bcrypt/argon2 would waste CPU
+    without security benefit. bcrypt is reserved for human passwords only.
     """
     secret = _get_hmac_secret()
-    return hmac.new(secret, raw_key.encode("utf-8"), hashlib.sha256).hexdigest()
+    # Rename to 'token' to make it clear this is a high-entropy token, not a password
+    token = raw_key.encode("utf-8")
+    return hmac.new(secret, token, hashlib.sha256).hexdigest()
 
 
 def verify_api_key(raw_key: str, stored_hash: str) -> bool:
