@@ -492,16 +492,15 @@ async def list_available_workflows() -> Dict[str, Any]:
 @router.get("/workflows/active")
 async def list_active_workflows(
     request: Request,
+    _ctx: RequestContext = Depends(require_authenticated),
     executor: OrchestrationController = Depends(get_executor)
 ) -> List[Dict[str, Any]]:
-    """List currently active workflows.
-    
-    Filters by tenant_id if provided in context.
-    """
+    """List currently active workflows for the authenticated tenant."""
     tenant = get_current_tenant()
-    tenant_id = tenant.tenant_id if tenant else None
+    if not tenant or not tenant.tenant_id:
+        raise HTTPException(status_code=403, detail="Tenant context required")
     
-    active = await executor.list_active_workflows(tenant_id=tenant_id)
+    active = await executor.list_active_workflows(tenant_id=tenant.tenant_id)
     return active
 
 

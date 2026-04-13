@@ -49,7 +49,12 @@ class ApiClient {
         (response) => response,
         (error) => {
           if (error.response?.status === 401) {
-            window.location.href = '/login';
+            // Clear stale auth state
+            localStorage.removeItem('authToken');
+            // Avoid infinite redirect loop: only redirect if not already on /login
+            if (window.location.pathname !== '/login') {
+              window.location.replace('/login');
+            }
           }
           return Promise.reject(error);
         }
