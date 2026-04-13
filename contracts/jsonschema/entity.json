@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/jsonschema/entity.json",
+  "title": "Entity",
+  "description": "A node in the Value Fabric Knowledge Graph.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique entity identifier."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["Capability", "UseCase", "Persona", "ValueDriver"],
+      "description": "Ontology type."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name."
+    },
+    "description": {
+      "type": "string",
+      "description": "Full description."
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Extraction confidence (0.0–1.0)."
+    },
+    "source_ids": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Source document IDs that produced this entity."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["id", "type", "name"],
+  "additionalProperties": false
+}
