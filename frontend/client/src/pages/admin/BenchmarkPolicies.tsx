@@ -12,6 +12,7 @@
  */
 
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import {
   BarChart3, Plus, Search, Filter, Edit3, Trash2, Eye,
   Clock, Globe, Database, CheckCircle2, AlertTriangle, TrendingUp,
@@ -153,7 +154,9 @@ function BenchmarkPoliciesSkeleton() {
 type TabType = "library" | "policies";
 
 function BenchmarkPoliciesContent() {
-  const [activeTab, setActiveTab] = useState<TabType>("library");
+  const [location] = useLocation();
+  const initialTab: TabType = location.includes("/policies") ? "policies" : "library";
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [search, setSearch] = useState("");
   const [confidenceFilter, setConfidenceFilter] = useState<"all" | ConfidenceLevel>("all");
   const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
