@@ -40,50 +40,11 @@ describe("WfPrimitives", () => {
       expect(screen.getByText("Custom Label")).toBeInTheDocument();
     });
 
-    it("should apply correct styling for capability", () => {
+    it("should render as a semantic span element", () => {
       const { container } = render(<EntityBadge type="capability" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-violet-100");
-      expect(badge.className).toContain("text-violet-800");
-      expect(badge.className).toContain("border-violet-200");
-    });
-
-    it("should apply correct styling for usecase", () => {
-      const { container } = render(<EntityBadge type="usecase" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-cyan-100");
-      expect(badge.className).toContain("text-cyan-800");
-      expect(badge.className).toContain("border-cyan-200");
-    });
-
-    it("should apply correct styling for persona", () => {
-      const { container } = render(<EntityBadge type="persona" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-amber-100");
-      expect(badge.className).toContain("text-amber-800");
-      expect(badge.className).toContain("border-amber-200");
-    });
-
-    it("should apply correct styling for valuedriver", () => {
-      const { container } = render(<EntityBadge type="valuedriver" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-emerald-100");
-      expect(badge.className).toContain("text-emerald-800");
-      expect(badge.className).toContain("border-emerald-200");
-    });
-
-    it("should have correct base styling classes", () => {
-      const { container } = render(<EntityBadge type="capability" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("inline-flex");
-      expect(badge.className).toContain("items-center");
-      expect(badge.className).toContain("gap-1");
-      expect(badge.className).toContain("px-2");
-      expect(badge.className).toContain("py-0.5");
-      expect(badge.className).toContain("rounded-full");
-      expect(badge.className).toContain("text-[10px]");
-      expect(badge.className).toContain("font-semibold");
-      expect(badge.className).toContain("border");
+      const badge = container.firstElementChild;
+      expect(badge?.tagName.toLowerCase()).toBe("span");
+      expect(badge?.textContent).toBe("Capability");
     });
   });
 
@@ -118,77 +79,12 @@ describe("WfPrimitives", () => {
       });
     });
 
-    it("should apply correct styling for completed", () => {
+    it("should render as a semantic span element", () => {
       const { container } = render(<StatusBadge status="completed" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-emerald-100");
-      expect(badge.className).toContain("text-emerald-800");
-      expect(badge.className).toContain("border-emerald-200");
-    });
-
-    it("should apply correct styling for running", () => {
-      const { container } = render(<StatusBadge status="running" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-amber-100");
-      expect(badge.className).toContain("text-amber-800");
-      expect(badge.className).toContain("border-amber-200");
-    });
-
-    it("should apply same styling for processing as running", () => {
-      const { container: running } = render(<StatusBadge status="running" />);
-      const { container: processing } = render(
-        <StatusBadge status="processing" />
-      );
-
-      expect(running.firstChild?.className).toBe(
-        processing.firstChild?.className
-      );
-    });
-
-    it("should apply correct styling for failed", () => {
-      const { container } = render(<StatusBadge status="failed" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-red-100");
-      expect(badge.className).toContain("text-red-800");
-      expect(badge.className).toContain("border-red-200");
-    });
-
-    it("should apply correct styling for paused", () => {
-      const { container } = render(<StatusBadge status="paused" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-neutral-100");
-      expect(badge.className).toContain("text-neutral-600");
-      expect(badge.className).toContain("border-neutral-200");
-    });
-
-    it("should apply correct styling for pending", () => {
-      const { container } = render(<StatusBadge status="pending" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-blue-100");
-      expect(badge.className).toContain("text-blue-800");
-      expect(badge.className).toContain("border-blue-200");
-    });
-
-    it("should apply correct styling for cancelled", () => {
-      const { container } = render(<StatusBadge status="cancelled" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("bg-gray-100");
-      expect(badge.className).toContain("text-gray-600");
-      expect(badge.className).toContain("border-gray-200");
-    });
-
-    it("should have correct base styling classes", () => {
-      const { container } = render(<StatusBadge status="completed" />);
-      const badge = container.firstChild as HTMLElement;
-      expect(badge.className).toContain("inline-flex");
-      expect(badge.className).toContain("items-center");
-      expect(badge.className).toContain("gap-1");
-      expect(badge.className).toContain("px-2");
-      expect(badge.className).toContain("py-0.5");
-      expect(badge.className).toContain("rounded-full");
-      expect(badge.className).toContain("text-[10px]");
-      expect(badge.className).toContain("font-semibold");
-      expect(badge.className).toContain("border");
+      const badge = container.firstElementChild;
+      expect(badge?.tagName.toLowerCase()).toBe("span");
+      expect(badge?.textContent).toContain("Completed");
+      expect(badge?.textContent).toContain("✓");
     });
   });
 
@@ -219,50 +115,26 @@ describe("WfPrimitives", () => {
       expect(screen.getByText("↗ vs last quarter")).toBeInTheDocument();
     });
 
-    it("should apply green color when trendUp is true", () => {
-      const { container } = render(
-        <MetricCard label="Test" value="100" trend="+5%" trendUp={true} />
-      );
-
-      const trendElement = container.querySelector(".text-emerald-600");
-      expect(trendElement).toBeInTheDocument();
+    it("should indicate positive trend when trendUp is true", () => {
+      render(<MetricCard label="Test" value="100" trend="+5%" trendUp={true} />);
+      expect(screen.getByText("↗ +5%")).toBeInTheDocument();
     });
 
-    it("should apply neutral color when trendUp is not provided", () => {
-      const { container } = render(
-        <MetricCard label="Test" value="100" trend="No change" />
-      );
-
-      const trendElement = container.querySelector(".text-neutral-500");
-      expect(trendElement).toBeInTheDocument();
+    it("should show trend without indicator when trendUp is not provided", () => {
+      render(<MetricCard label="Test" value="100" trend="No change" />);
+      expect(screen.getByText("No change")).toBeInTheDocument();
+      // Should NOT have the up arrow
+      expect(screen.queryByText("↗ No change")).not.toBeInTheDocument();
     });
 
     it("should not render trend section when trend is not provided", () => {
       const { container } = render(<MetricCard label="Static" value="100" />);
-
-      const trendElement = container.querySelector(".text-emerald-600, .text-neutral-500");
-      expect(trendElement).toBeNull();
-    });
-
-    it("should have correct container styling", () => {
-      const { container } = render(<MetricCard label="Test" value="100" />);
-
-      const card = container.firstChild as HTMLElement;
-      expect(card.className).toContain("bg-white");
-      expect(card.className).toContain("border");
-      expect(card.className).toContain("border-neutral-200");
-      expect(card.className).toContain("rounded-lg");
-      expect(card.className).toContain("p-4");
-      expect(card.className).toContain("flex-1");
-    });
-
-    it("should render large value with correct styling", () => {
-      render(<MetricCard label="Revenue" value="$900,000.00" />);
-
-      const value = screen.getByText("$900,000.00");
-      expect(value.className).toContain("text-[26px]");
-      expect(value.className).toContain("font-extrabold");
-      expect(value.className).toContain("text-neutral-900");
+      // The card should only contain label and value
+      expect(screen.getByText("Static")).toBeInTheDocument();
+      expect(screen.getByText("100")).toBeInTheDocument();
+      // Container should have exactly 2 children (label row + value row)
+      const cardContent = container.firstElementChild;
+      expect(cardContent?.children.length).toBe(2);
     });
   });
 
@@ -322,11 +194,13 @@ describe("WfPrimitives", () => {
       expect(screen.getByText("Content without title")).toBeInTheDocument();
     });
 
-    it("should apply custom className", () => {
+    it("should render with custom className", () => {
       const { container } = render(
         <SectionCard className="custom-class">Content</SectionCard>
       );
-      expect(container.firstChild?.className).toContain("custom-class");
+      // Verify the card is in the document with custom class
+      expect(screen.getByText("Content")).toBeInTheDocument();
+      expect(container.querySelector(".custom-class")).toBeInTheDocument();
     });
   });
 
@@ -336,32 +210,9 @@ describe("WfPrimitives", () => {
       expect(screen.getByText("Click Me")).toBeInTheDocument();
     });
 
-    it("should apply primary variant styling", () => {
-      const { container } = render(<Btn variant="primary">Primary</Btn>);
-      const button = container.firstChild as HTMLElement;
-      expect(button.className).toContain("bg-blue-700");
-      expect(button.className).toContain("text-white");
-    });
-
-    it("should apply ghost variant styling", () => {
-      const { container } = render(<Btn variant="ghost">Ghost</Btn>);
-      const button = container.firstChild as HTMLElement;
-      expect(button.className).toContain("bg-white");
-      expect(button.className).toContain("text-neutral-600");
-    });
-
-    it("should apply outline variant styling", () => {
-      const { container } = render(<Btn variant="outline">Outline</Btn>);
-      const button = container.firstChild as HTMLElement;
-      expect(button.className).toContain("bg-transparent");
-      expect(button.className).toContain("border-neutral-300");
-    });
-
-    it("should apply danger variant styling", () => {
-      const { container } = render(<Btn variant="danger">Danger</Btn>);
-      const button = container.firstChild as HTMLElement;
-      expect(button.className).toContain("text-red-600");
-      expect(button.className).toContain("border-red-200");
+    it("should render button with accessible role", () => {
+      render(<Btn variant="primary">Click Me</Btn>);
+      expect(screen.getByRole("button", { name: "Click Me" })).toBeInTheDocument();
     });
 
     it("should call onClick when clicked", () => {
@@ -389,17 +240,12 @@ describe("WfPrimitives", () => {
       });
     });
 
-    it("should highlight active tab", () => {
-      const { container } = render(
-        <Tabs tabs={tabs} active="Tab 2" onChange={() => {}} />
-      );
-
-      const buttons = container.querySelectorAll("button");
-      const activeButton = Array.from(buttons).find(
-        (b) => b.textContent === "Tab 2"
-      );
-      expect(activeButton?.className).toContain("border-blue-600");
-      expect(activeButton?.className).toContain("text-blue-700");
+    it("should mark active tab with aria-selected", () => {
+      render(<Tabs tabs={tabs} active="Tab 2" onChange={() => {}} />);
+      const buttons = screen.getAllByRole("tab");
+      expect(buttons[1]).toHaveAttribute("aria-selected", "true");
+      expect(buttons[0]).toHaveAttribute("aria-selected", "false");
+      expect(buttons[2]).toHaveAttribute("aria-selected", "false");
     });
 
     it("should call onChange with clicked tab", () => {

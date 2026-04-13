@@ -82,6 +82,7 @@ class Neo4jLoader:
         rdf_graph: Graph,
         source_id: str | None = None,
         extraction_job_id: str | None = None,
+        tenant_id: str | None = None,
     ) -> dict:
         """Load an RDF graph into Neo4j.
 
@@ -89,6 +90,7 @@ class Neo4jLoader:
             rdf_graph: RDFLib Graph containing triples
             source_id: ID of the source document
             extraction_job_id: ID of the extraction job that generated this data
+            tenant_id: Tenant ID for isolation (defaults to "system")
 
         Returns:
             Dictionary with load statistics
@@ -107,7 +109,7 @@ class Neo4jLoader:
             entities = self._extract_entities_from_rdf(rdf_graph)
             for entity_type, entity_data in entities.items():
                 loaded = await self._load_entities_batch(
-                    session, entity_type, entity_data, source_id, extraction_job_id
+                    session, entity_type, entity_data, source_id, extraction_job_id, tenant_id
                 )
                 stats["entities_loaded"] += loaded
 
@@ -116,7 +118,7 @@ class Neo4jLoader:
                 rdf_graph, source_id, extraction_job_id
             )
             loaded = await self._load_relationships_batch(
-                session, relationships, source_id, extraction_job_id
+                session, relationships, source_id, extraction_job_id, tenant_id
             )
             stats["relationships_loaded"] += loaded
 
@@ -135,6 +137,7 @@ class Neo4jLoader:
         turtle_data: str,
         source_id: str | None = None,
         extraction_job_id: str | None = None,
+        tenant_id: str | None = None,
     ) -> dict:
         """Load Turtle-formatted RDF string into Neo4j.
 
@@ -142,6 +145,7 @@ class Neo4jLoader:
             turtle_data: RDF data in Turtle format
             source_id: ID of the source document
             extraction_job_id: ID of the extraction job
+            tenant_id: Tenant ID for isolation (defaults to "system")
 
         Returns:
             Dictionary with load statistics
@@ -149,7 +153,7 @@ class Neo4jLoader:
         try:
             g = Graph()
             g.parse(data=turtle_data, format="turtle")
-            return await self.load_rdf_graph(g, source_id, extraction_job_id)
+            return await self.load_rdf_graph(g, source_id, extraction_job_id, tenant_id)
         except Exception as e:
             logger.error(f"Failed to parse Turtle data: {e}")
             raise RDFLoadError(f"Turtle parsing failed: {e}") from e
@@ -318,6 +322,7 @@ class Neo4jLoader:
         entities: list[dict],
         source_id: str | None,
         extraction_job_id: str | None,
+        tenant_id: str | None = None,
     ) -> int:
         """Load a batch of entities into Neo4j.
 
@@ -344,6 +349,10 @@ class Neo4jLoader:
 
         entities = self._attach_embeddings(entity_type, entities)
 
+        # Inject tenant_id into each entity
+        for entity in entities:
+            entity["tenant_id"] = tenant_id or "system"
+
         entity_data = {
             "entities": entities,
             "source_id": source_id,
@@ -354,19 +363,19 @@ class Neo4jLoader:
         if self.use_apoc:
             query = f"""
             UNWIND $entities as entity
-            MERGE (n:{entity_type} {{id: entity.id}})
-            SET n += apoc.map.removeKeys(entity, ['id'])
+            MERGE (n:{entity_type} {{id: entity.id, tenant_id: entity.tenant_id}})
+            SET n += apoc.map.removeKeys(entity, ['id', 'tenant_id'])
             SET n.source_id = $source_id
             SET n.extraction_job_id = $extraction_job_id
             SET n.loaded_at = datetime($loaded_at)
             RETURN count(n) as loaded
             """
         else:
-            # Native Cypher: MERGE on id, then spread the full map.
-            # The 'id' key is harmlessly re-set to the same value.
+            # Native Cypher: MERGE on id+tenant_id, then spread the full map.
+            # The 'id' and 'tenant_id' keys are harmlessly re-set to the same value.
             query = f"""
             UNWIND $entities as entity
-            MERGE (n:{entity_type} {{id: entity.id}})
+            MERGE (n:{entity_type} {{id: entity.id, tenant_id: entity.tenant_id}})
             ON CREATE SET n = entity
             ON MATCH SET n += entity
             SET n.source_id = $source_id
@@ -389,6 +398,7 @@ class Neo4jLoader:
         relationships: dict[str, list[dict]],
         source_id: str | None,
         extraction_job_id: str | None,
+        tenant_id: str | None = None,
     ) -> int:
         """Load relationships into Neo4j.
 
@@ -398,6 +408,7 @@ class Neo4jLoader:
 
         Args:
             relationships: Dict mapping relationship type to list of relationship dicts
+            tenant_id: Tenant ID for isolation (defaults to "system")
         """
         # Flatten all relationships into a single list
         all_relationships = []
@@ -407,9 +418,14 @@ class Neo4jLoader:
         if not all_relationships:
             return 0
 
+        # Inject tenant_id into each relationship
+        effective_tenant_id = tenant_id or "system"
+        for rel in all_relationships:
+            rel["tenant_id"] = effective_tenant_id
+
         if not self.use_apoc:
             return await self._load_relationships_native(
-                session, all_relationships, source_id, extraction_job_id
+                session, all_relationships, source_id, extraction_job_id, effective_tenant_id
             )
 
         # APOC path (opt-in) - use flattened list
@@ -422,8 +438,8 @@ class Neo4jLoader:
 
         query = """
         UNWIND $relationships as rel
-        MATCH (source {id: rel.source_id})
-        MATCH (target {id: rel.target_id})
+        MATCH (source {id: rel.source_id, tenant_id: rel.tenant_id})
+        MATCH (target {id: rel.target_id, tenant_id: rel.tenant_id})
         WITH source, target, rel
         CALL apoc.merge.relationship(
             source,
@@ -453,6 +469,7 @@ class Neo4jLoader:
         relationships: list[dict],
         source_id: str | None,
         extraction_job_id: str | None,
+        tenant_id: str | None = None,
     ) -> int:
         """Load relationships using native Cypher (no APOC required).
 
@@ -482,6 +499,7 @@ class Neo4jLoader:
                 )
 
         total_loaded = 0
+        effective_tenant_id = tenant_id or "system"
         for rel_type, rels in by_type.items():
             params = {
                 "relationships": rels,
@@ -493,8 +511,8 @@ class Neo4jLoader:
             # interpolate into the query string.
             query = f"""
             UNWIND $relationships AS rel
-            MATCH (source {{id: rel.source_id}})
-            MATCH (target {{id: rel.target_id}})
+            MATCH (source {{id: rel.source_id, tenant_id: '{effective_tenant_id}'}})
+            MATCH (target {{id: rel.target_id, tenant_id: '{effective_tenant_id}'}})
             MERGE (source)-[r:{rel_type} {{source_id: rel.source_id, target_id: rel.target_id}}]->(target)
             ON CREATE SET
                 r.source_id = $source_id,
@@ -519,28 +537,30 @@ class Neo4jLoader:
 
         return total_loaded
 
-    async def delete_by_source(self, source_id: str) -> dict:
+    async def delete_by_source(self, source_id: str, tenant_id: str | None = None) -> dict:
         """Delete all entities and relationships from a specific source.
 
         Args:
             source_id: Source document ID to delete
+            tenant_id: Tenant ID for isolation (defaults to "system")
 
         Returns:
             Dictionary with deletion statistics
         """
         driver = await self._get_driver()
         stats = {"entities_deleted": 0, "relationships_deleted": 0}
+        effective_tenant_id = tenant_id or "system"
 
         async with driver.session(database=self.settings.neo4j_database) as session:
-            # Delete relationships first
+            # Delete relationships first (match through nodes to ensure tenant isolation)
             rel_result = await session.run(
                 """
-                MATCH ()-[r]->()
-                WHERE r.source_id = $source_id
+                MATCH (n)-[r]->(m)
+                WHERE n.source_id = $source_id AND n.tenant_id = $tenant_id
                 DELETE r
                 RETURN count(r) as deleted
                 """,
-                {"source_id": source_id},
+                {"source_id": source_id, "tenant_id": effective_tenant_id},
             )
             record = await rel_result.single()
             stats["relationships_deleted"] = record["deleted"] if record else 0
@@ -549,18 +569,19 @@ class Neo4jLoader:
             entity_result = await session.run(
                 """
                 MATCH (n)
-                WHERE n.source_id = $source_id
+                WHERE n.source_id = $source_id AND n.tenant_id = $tenant_id
                 DELETE n
                 RETURN count(n) as deleted
                 """,
-                {"source_id": source_id},
+                {"source_id": source_id, "tenant_id": effective_tenant_id},
             )
             record = await entity_result.single()
             stats["entities_deleted"] = record["deleted"] if record else 0
 
         logger.info(
             f"Deleted {stats['entities_deleted']} entities and "
-            f"{stats['relationships_deleted']} relationships for source {source_id}"
+            f"{stats['relationships_deleted']} relationships for source {source_id} "
+            f"in tenant {effective_tenant_id}"
         )
 
         return stats

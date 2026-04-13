@@ -236,11 +236,13 @@ export function Tabs({
   tabs, active, onChange,
 }: { tabs: string[]; active: string; onChange: (t: string) => void }) {
   return (
-    <div className="flex border-b border-neutral-200 mb-4">
+    <div className="flex border-b border-neutral-200 mb-4" role="tablist">
       {tabs.map(tab => (
         <button
           key={tab}
           onClick={() => onChange(tab)}
+          role="tab"
+          aria-selected={active === tab}
           className={cn(
             "px-4 py-2 text-[12px] font-semibold border-b-2 -mb-px transition-colors",
             active === tab

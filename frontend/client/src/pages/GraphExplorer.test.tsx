@@ -117,9 +117,9 @@ describe('GraphExplorer', () => {
     // Use getAllByText for Graph Explorer since it appears in multiple places (heading + tabs)
     expect(screen.getAllByText('Graph Explorer').length).toBeGreaterThanOrEqual(1);
     // Tabs should be present - use getAllByRole since there may be multiple tab sets
-    expect(screen.getAllByRole('button', { name: /Query Builder/i }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByRole('button', { name: /Communities/i }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByRole('button', { name: /Metrics/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('tab', { name: /Query Builder/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('tab', { name: /Communities/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('tab', { name: /Metrics/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders toolbar buttons', () => {

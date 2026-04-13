@@ -169,6 +169,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
         prospect_company: str,
         pain_points: list[str],
         existing_capabilities: list[str],
+        tenant_id: str = "system",
     ) -> dict[str, Any]:
         """Identify gaps between required and existing capabilities.
 
@@ -176,11 +177,13 @@ class WhitespaceAnalysisAgent(BaseAgent):
         MATCH (pain:PainPoint)-[:REQUIRES]->(c:Capability)
         WHERE pain.id IN $pain_points
         AND c.id NOT IN $existing_capabilities
+        AND pain.tenant_id = $tenant_id
 
         Args:
             prospect_company: Company being analyzed
             pain_points: List of pain point IDs
             existing_capabilities: List of existing capability IDs
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with identified gaps
@@ -188,10 +191,10 @@ class WhitespaceAnalysisAgent(BaseAgent):
         if not self._driver:
             return {"gaps": [], "error": "No database driver"}
 
-        # Query for missing capabilities
+        # Query for missing capabilities (with tenant isolation)
         missing_query = """
-        MATCH (pain:ExtractedPainPoint {id: $pain_id})-[:requires]->(c:Capability)
-        WHERE NOT c.id IN $existing_capabilities
+        MATCH (pain:ExtractedPainPoint {id: $pain_id, tenant_id: $tenant_id})-[:requires]->(c:Capability)
+        WHERE c.tenant_id = $tenant_id AND NOT c.id IN $existing_capabilities
         RETURN c.id as capability_id, c.name as capability_name,
                pain.id as pain_id, pain.description as pain_description
         """
@@ -205,6 +208,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
                     {
                         "pain_id": pain_id,
                         "existing_capabilities": existing_capabilities,
+                        "tenant_id": tenant_id,
                     },
                 )
                 async for record in result:
@@ -235,12 +239,14 @@ class WhitespaceAnalysisAgent(BaseAgent):
         self,
         prospect_company: str,
         capabilities: list[str],
+        tenant_id: str = "system",
     ) -> dict[str, Any]:
         """Assess maturity level of existing capabilities.
 
         Args:
             prospect_company: Company being analyzed
             capabilities: List of capability IDs to assess
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with maturity assessments
@@ -248,9 +254,10 @@ class WhitespaceAnalysisAgent(BaseAgent):
         if not self._driver:
             return {"assessments": [], "error": "No database driver"}
 
-        # Query capability maturity indicators
+        # Query capability maturity indicators (with tenant isolation)
         maturity_query = """
         MATCH (c:Capability {id: $cap_id})
+        WHERE c.tenant_id = $tenant_id
         RETURN c.id as id, c.name as name, c.maturity_level as maturity_level,
                c.maturity_indicators as indicators
         """
@@ -259,7 +266,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
 
         async with self._driver.session() as session:
             for cap_id in capabilities:
-                result = await session.run(maturity_query, {"cap_id": cap_id})
+                result = await session.run(maturity_query, {"cap_id": cap_id, "tenant_id": tenant_id})
                 record = await result.single()
 
                 if record:
@@ -290,6 +297,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
         self,
         prospect_company: str,
         target_capability_id: str | None,
+        tenant_id: str = "system",
     ) -> dict[str, Any]:
         """Generate expansion pathways from a capability.
 
@@ -300,6 +308,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
         Args:
             prospect_company: Company being analyzed
             target_capability_id: Starting capability ID
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with expansion pathways
@@ -310,11 +319,14 @@ class WhitespaceAnalysisAgent(BaseAgent):
         if not target_capability_id:
             return {"pathways": [], "error": "target_capability_id required"}
 
-        # Query for expansion pathways
+        # Query for expansion pathways (with tenant isolation)
         expansion_query = """
         MATCH (c:Capability {id: $cap_id})<-[:enables|requires]-(uc:UseCase)
+        WHERE c.tenant_id = $tenant_id AND uc.tenant_id = $tenant_id
         OPTIONAL MATCH (uc)-[:delivers|involves]->(vd:ValueDriver)
+        WHERE vd.tenant_id = $tenant_id
         OPTIONAL MATCH (uc)-[:involves]->(p:Persona)
+        WHERE p.tenant_id = $tenant_id
         RETURN uc.id as use_case_id, uc.name as use_case_name,
                uc.implementation_complexity as complexity,
                collect(DISTINCT vd.name) as value_drivers,
@@ -326,7 +338,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
 
         async with self._driver.session() as session:
             result = await session.run(
-                expansion_query, {"cap_id": target_capability_id}
+                expansion_query, {"cap_id": target_capability_id, "tenant_id": tenant_id}
             )
             async for record in result:
                 pathways.append(
@@ -354,6 +366,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
         prospect_company: str,
         prospect_ticker: str | None,
         pain_points: list[str],
+        tenant_id: str = "system",
     ) -> dict[str, Any]:
         """Synthesize comprehensive account plan.
 
@@ -361,13 +374,15 @@ class WhitespaceAnalysisAgent(BaseAgent):
             prospect_company: Company name
             prospect_ticker: Optional stock ticker
             pain_points: List of pain point IDs
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with account plan
         """
         # Run gap analysis
-        gap_analysis = await self._identify_gaps(prospect_company, pain_points, [])
-
+        gap_analysis = await self._identify_gaps(
+            prospect_company, pain_points, [], tenant_id
+        )
         # Calculate total value
         total_value = sum(
             gap.get("estimated_value", 0) for gap in gap_analysis.get("gaps", [])

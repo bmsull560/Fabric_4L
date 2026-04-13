@@ -2,6 +2,7 @@
 
 import json
 import logging
+from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -21,6 +22,7 @@ class StateManager:
     - Workflow status tracking
     - History recording
     - Real-time WebSocket broadcasting
+    - LRU eviction for in-memory fallback (max 10K entries)
 
     Example:
         manager = StateManager(redis_client)
@@ -28,15 +30,25 @@ class StateManager:
         state = await manager.load_state(workflow_id)
     """
 
-    def __init__(self, redis_client=None, ws_manager: Optional["WorkflowWebSocketManager"] = None):
+    DEFAULT_MAX_MEMORY_ENTRIES = 10000  # P0-26: Bounded memory store
+
+    def __init__(
+        self,
+        redis_client=None,
+        ws_manager: Optional["WorkflowWebSocketManager"] = None,
+        max_memory_entries: int = DEFAULT_MAX_MEMORY_ENTRIES,
+    ):
         """Initialize state manager.
 
         Args:
             redis_client: Redis client instance (optional)
             ws_manager: WebSocket manager for real-time streaming (optional)
+            max_memory_entries: Maximum entries for in-memory LRU cache (default 10K)
         """
         self.redis = redis_client
-        self._memory_store: dict[str, dict] = {}  # Fallback if no Redis
+        # P0-26: LRU cache with maxlen to prevent unbounded growth
+        self._memory_store: OrderedDict[str, dict] = OrderedDict()
+        self._max_memory_entries = max_memory_entries
         self._ws_manager: WorkflowWebSocketManager | None = ws_manager
 
     def _get_key(self, workflow_id: str) -> str:
@@ -73,6 +85,11 @@ class StateManager:
         if self.redis:
             await self.redis.setex(key, ttl_seconds, state_json)
         else:
+            # P0-26: LRU eviction - remove oldest if at capacity
+            if len(self._memory_store) >= self._max_memory_entries and key not in self._memory_store:
+                oldest_key = next(iter(self._memory_store))
+                del self._memory_store[oldest_key]
+                logger.info(f"LRU eviction: removed workflow state for {oldest_key}")
             self._memory_store[key] = {
                 "data": state_dict,
                 "expires": datetime.now(UTC).timestamp() + ttl_seconds,
@@ -134,6 +151,8 @@ class StateManager:
         else:
             stored = self._memory_store.get(key)
             if stored and stored["expires"] > datetime.now(UTC).timestamp():
+                # P0-26: Refresh LRU order on access
+                self._memory_store.move_to_end(key)
                 return self._deserialize_state(stored["data"])
 
         return None
