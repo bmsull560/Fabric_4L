@@ -29,6 +29,35 @@ from shared.identity.context import RequestContext
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# Constants
+# ============================================================================
+
+PRIORITY_MAP: Dict[str, TaskPriority] = {
+    "CRITICAL": TaskPriority.CRITICAL,
+    "HIGH": TaskPriority.HIGH,
+    "NORMAL": TaskPriority.NORMAL,
+    "LOW": TaskPriority.LOW,
+    "BACKGROUND": TaskPriority.BACKGROUND,
+}
+
+ESTIMATED_DURATION_SECONDS: Dict[str, int] = {
+    "roi_calculator": 120,
+    "whitespace_analysis": 300,
+    "business_case": 400,
+    "orchestrator": 180,
+}
+
+TERMINAL_STATUSES = {"completed", "failed", "cancelled"}
+PAUSABLE_STATUSES = {"pending", "running", "scheduled"}
+
+
+def extract_status_value(status_obj) -> str:
+    """Extract string value from WorkflowStatus enum or string."""
+    if hasattr(status_obj, 'value'):
+        return str(status_obj.value)
+    return str(status_obj)
+
 
 # ============================================================================
 # Request/Response Models (OpenAPI Spec Compliant)
@@ -210,14 +239,7 @@ async def create_workflow(
     """
     try:
         # Map priority string to enum
-        priority_map = {
-            "CRITICAL": TaskPriority.CRITICAL,
-            "HIGH": TaskPriority.HIGH,
-            "NORMAL": TaskPriority.NORMAL,
-            "LOW": TaskPriority.LOW,
-            "BACKGROUND": TaskPriority.BACKGROUND,
-        }
-        priority = priority_map.get(request.priority.upper(), TaskPriority.NORMAL)
+        priority = PRIORITY_MAP.get(request.priority.upper(), TaskPriority.NORMAL)
         
         # Convert inputs to dict for execution
         input_data = request.inputs.dict(exclude_none=True) if request.inputs else {}
@@ -233,16 +255,11 @@ async def create_workflow(
         )
         
         # Estimate duration based on workflow type
-        estimated_duration = {
-            "roi_calculator": 120,
-            "whitespace_analysis": 300,
-            "business_case": 400,
-            "orchestrator": 180,
-        }.get(request.workflow_type, 300)
+        estimated_duration = ESTIMATED_DURATION_SECONDS.get(request.workflow_type, 300)
         
         return WorkflowCreateResponse(
             workflow_instance_id=result.workflow_id,
-            status=result.status.value if hasattr(result.status, 'value') else str(result.status),
+            status=extract_status_value(result.status),
             estimated_duration_seconds=estimated_duration,
         )
     
@@ -299,7 +316,7 @@ async def get_workflow_result(
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
     
-    if status.get("status") not in ["completed", "failed", "cancelled"]:
+    if status.get("status") not in TERMINAL_STATUSES:
         raise HTTPException(
             status_code=400, 
             detail=f"Workflow {workflow_id} not complete (status: {status.get('status')})"
@@ -368,7 +385,7 @@ async def resume_workflow(
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
     
-    if status.get("status") in ["completed", "failed", "cancelled"]:
+    if status.get("status") in TERMINAL_STATUSES:
         raise HTTPException(
             status_code=400, 
             detail=f"Workflow {workflow_id} is {status.get('status')} and cannot be resumed"
@@ -383,8 +400,8 @@ async def resume_workflow(
         )
         
         # Determine response status based on result
-        result_status = str(result.status.value if hasattr(result.status, 'value') else result.status)
-        is_complete = result_status in ["completed", "failed"]
+        result_status = extract_status_value(result.status)
+        is_complete = result_status in TERMINAL_STATUSES
         
         return WorkflowResumeResponse(
             workflow_instance_id=workflow_id,
@@ -435,7 +452,7 @@ async def pause_workflow(
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
 
     current_status = status.get("status")
-    if current_status in ["completed", "failed", "cancelled"]:
+    if current_status in TERMINAL_STATUSES:
         raise HTTPException(
             status_code=400,
             detail=f"Workflow {workflow_id} is {current_status} and cannot be paused"
@@ -553,7 +570,7 @@ async def get_workflow_events(
                 last_status = status
             
             # Check if workflow is complete
-            if status.get("status") in ["completed", "failed", "cancelled"]:
+            if status.get("status") in TERMINAL_STATUSES:
                 # Send completion event
                 event = WorkflowEvent(
                     event_id=f"evt-{datetime.utcnow().timestamp()}",

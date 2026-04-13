@@ -89,6 +89,8 @@ const getDefaultPermissions = (tier: UserTier): UserPermissions => {
 // Routes and their required tiers — Canonical Navigation Taxonomy
 // Single spine with progressive disclosure: Home, Library, Discover, Model, Deliver, Evidence, Govern
 const ROUTE_TIER_MAP: Record<string, UserTier> = {
+  // Root
+  '/': 'standard',
   // ───────────────────────────────────────────────────────────────
   // Home — All tiers
   // ───────────────────────────────────────────────────────────────
@@ -167,6 +169,9 @@ const ROUTE_TIER_MAP: Record<string, UserTier> = {
   '/admin/system/audit': 'admin',
   '/admin/system/health': 'admin',
 };
+
+// Pre-sorted routes for efficient lookup (longest first for proper prefix matching)
+const SORTED_ROUTES = Object.entries(ROUTE_TIER_MAP).sort((a, b) => b[0].length - a[0].length);
 
 export const useUserTierStore = create<UserTierState>()(
   persist(
@@ -273,15 +278,15 @@ export function getRouteTier(path: string): UserTier {
   if (ROUTE_TIER_MAP[path]) {
     return ROUTE_TIER_MAP[path];
   }
-  
-  // Check parent routes
-  for (const [route, tier] of Object.entries(ROUTE_TIER_MAP).sort((a, b) => b[0].length - a[0].length)) {
+
+  // Check parent routes using pre-sorted array (longest match wins)
+  for (const [route, tier] of SORTED_ROUTES) {
     if (path.startsWith(route + '/')) {
       return tier;
     }
   }
-  
-  // Default to standard
+
+  // Default to standard for unknown routes
   return 'standard';
 }
 

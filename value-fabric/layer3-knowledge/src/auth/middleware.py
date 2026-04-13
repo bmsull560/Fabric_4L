@@ -8,6 +8,7 @@ from starlette.responses import Response
 
 from .api_keys import (
     Permission,
+    Role,
     APIKeyManager,
     AuthorizationChecker,
     AuthenticationResult,

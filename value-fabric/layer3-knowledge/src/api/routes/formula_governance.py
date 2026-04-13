@@ -14,7 +14,7 @@ from ...db.driver import get_driver
 from neo4j import AsyncDriver
 from ...logging_config import get_logger
 from ._utils import semver_key, is_valid_semver
-from ...auth.middleware import require_admin_role
+from ...auth.middleware import require_admin_role, get_current_api_key
 from ...auth.api_keys import APIKey
 
 logger = get_logger(__name__)

@@ -22,10 +22,8 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Search, ChevronDown, ChevronRight,
-  Briefcase, Shield, BookOpen, GitBranch,
-  Network, History, Settings, Database, Layers,
-  FlaskConical, BarChart3, ListChecks, KeyRound, SlidersHorizontal,
-  FolderKanban, Package, Eye, Lock, Crown, Wrench
+  Briefcase, Shield, GitBranch,
+  Settings, Package, Eye, Lock, Crown, Wrench
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -289,7 +287,12 @@ function SidebarItem({ item, currentTier, depth = 0 }: SidebarItemProps) {
   const hasVisibleChildren = visibleChildren && visibleChildren.length > 0;
 
   // Indentation based on depth
-  const indentClass = depth === 0 ? "" : depth === 1 ? "ml-4 mt-1 border-l-2 border-neutral-200 pl-3 space-y-0.5" : "ml-3 pl-2 space-y-0.5";
+  const getIndentClass = (d: number): string => {
+    if (d === 0) return "";
+    if (d === 1) return "ml-4 mt-1 border-l-2 border-neutral-200 pl-3 space-y-0.5";
+    return "ml-3 pl-2 space-y-0.5";
+  };
+  const indentClass = getIndentClass(depth);
 
   return (
     <div className="group">
@@ -403,7 +406,7 @@ function TierSwitcher({
             >
               <span className={cn(
                 "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform",
-                isAdvancedModeEnabled ? "translate-x-4.5" : "translate-x-0.5"
+                isAdvancedModeEnabled ? "translate-x-5" : "translate-x-0.5"
               )} />
             </button>
           </div>
@@ -471,7 +474,7 @@ export function TieredNav({
       <div className="flex-1 py-4 px-2 space-y-1">
         {visibleNavItems.map(item => (
           <SidebarItem
-            key={`${item.path}-${item.label}`}
+            key={item.id}
             item={item}
             currentTier={currentTier}
           />
