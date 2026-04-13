@@ -8,7 +8,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, mock_open
 
-from crawler.crawler_config import CrawlerConfig, load_config
+from src.crawler.crawler_config import CrawlerConfig, load_config
 
 
 class TestCrawlerConfig:

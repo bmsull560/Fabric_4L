@@ -9,8 +9,8 @@ import asyncio
 from unittest.mock import Mock, AsyncMock, MagicMock, patch
 from typing import List
 
-from crawler.playwright_crawler import PlaywrightCrawler, CrawlResult
-from crawler.crawler_config import CrawlerConfig
+from src.crawler.playwright_crawler import PlaywrightCrawler, CrawlResult
+from src.crawler.crawler_config import CrawlerConfig
 
 
 # Fixtures

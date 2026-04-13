@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from contextlib import nullcontext
 
-from crawler.telemetry import (
+from src.crawler.telemetry import (
     init_telemetry,
     get_tracer,
     start_crawl_span,

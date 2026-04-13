@@ -50,6 +50,7 @@ from .dependencies import (
     get_graph_rag,
     get_hybrid_search,
     get_narrative_synthesis_agent,
+    get_neo4j_driver,
     get_provenance_tracking_agent,
     get_roi_calculation_agent,
     get_schema_initializer,
