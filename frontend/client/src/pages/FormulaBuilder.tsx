@@ -11,8 +11,10 @@ import type { ReactNode } from "react";
 import {
   Play, Save, X, Plus, GitBranch, CheckCircle2, Clock, AlertCircle,
   Lock, Unlock, History, ChevronRight, Users, Tag, Link2,
+  Loader2,
 } from "lucide-react";
 import { PageHeader, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
+import { useVariables, type Variable, type VariableType, type SourceType } from "@/hooks/useVariables";
 
 // ============================================================================
 // Type Definitions
@@ -102,21 +104,35 @@ const VERSION_STATUS_COLORS: Record<FormulaStatus, string> = {
   archived: "bg-neutral-50 text-neutral-400",
 };
 
-/** Mock formula variables for demonstration */
-const MOCK_VARIABLES: FormulaVariable[] = [
-  { name: "Current_Churn_Rate", type: "rate", source: "CRM" },
-  { name: "Average_Contract_Value", type: "currency", source: "Billing" },
-  { name: "Projected_Retention_Lift", type: "rate", source: "Model" },
-  { name: "Implementation_Cost", type: "currency", source: "Manual" },
-  { name: "Customer_Count", type: "integer", source: "CRM" },
-];
+/** Map API Variable to FormulaVariable format */
+function mapVariableToFormulaVariable(variable: Variable): FormulaVariable {
+  // Map VariableType to FormulaVariable type (only 'rate' | 'currency' | 'integer')
+  const typeMap: Record<string, 'rate' | 'currency' | 'integer'> = {
+    rate: 'rate',
+    currency: 'currency',
+    integer: 'integer',
+    float: 'rate', // Map float to rate for formula purposes
+    boolean: 'rate', // Map boolean to rate (0/1)
+    string: 'integer', // Default fallback
+  };
 
-/** Mock formula expression for demonstration */
-const MOCK_FORMULA_EXPRESSION = `({Customer_Count} *
- {Current_Churn_Rate} *
- {Projected_Retention_Lift} *
- {Average_Contract_Value})
-— {Implementation_Cost}`;
+  // Map source to VariableSource
+  const sourceMap: Record<SourceType, VariableSource> = {
+    'CRM': 'CRM',
+    'Billing': 'Billing',
+    'ERP': 'CRM', // Map ERP to CRM category
+    'Manual': 'Manual',
+    'Model': 'Model',
+    'API': 'CRM', // Map API to CRM category
+    'Database': 'Billing', // Map Database to Billing category
+  };
+
+  return {
+    name: variable.name,
+    type: typeMap[variable.type] || 'integer',
+    source: sourceMap[variable.source] || 'Manual',
+  };
+}
 
 /** Mock test inputs for demonstration */
 const MOCK_TEST_INPUTS: TestInput[] = [
@@ -217,6 +233,15 @@ export default function FormulaBuilder() {
   const [activeTab, setActiveTab] = useState("Expression");
   const [tested, setTested] = useState(false);
   const [activationState, setActivationState] = useState<ActivationState>("draft");
+
+  // P1-21: Fetch real variables from API
+  const { data: apiVariables, isLoading: variablesLoading, isError: variablesError } = useVariables({ status: 'validated' });
+
+  // Map API variables to FormulaVariable format
+  const availableVariables = useMemo(() => {
+    if (!apiVariables) return [];
+    return apiVariables.map(mapVariableToFormulaVariable);
+  }, [apiVariables]);
 
   const statusConfig = ACTIVATION_STATUS_CONFIG[activationState];
 
@@ -331,8 +356,19 @@ export default function FormulaBuilder() {
           {/* Variables tab */}
           {activeTab === "Variables" && (
             <SectionCard title="Variable Registry — Bound Variables">
+              {variablesLoading && (
+                <div className="flex items-center gap-2 p-4 text-neutral-500">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span className="text-[13px]">Loading variables...</span>
+                </div>
+              )}
+              {variablesError && (
+                <div className="p-4 bg-red-50 text-red-700 rounded-lg text-[13px]">
+                  Failed to load variables. Please try again.
+                </div>
+              )}
               <div className="space-y-2">
-                {MOCK_VARIABLES.map((variable) => (
+                {availableVariables.map((variable) => (
                   <div key={variable.name} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
                     <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0"/>
                     <span className="flex-1 font-mono text-[12px] text-neutral-800">{variable.name}</span>
@@ -426,8 +462,14 @@ export default function FormulaBuilder() {
         {/* ── Right panel ─────────────────────────────────────────────────── */}
         <div className="w-[220px] shrink-0 space-y-4">
           <SectionCard title="Available Variables">
+            {variablesLoading && (
+              <div className="flex items-center gap-2 p-2 text-neutral-500 text-[11px]">
+                <Loader2 size={12} className="animate-spin" />
+                <span>Loading...</span>
+              </div>
+            )}
             <div className="space-y-1.5">
-              {MOCK_VARIABLES.map((variable) => (
+              {availableVariables.map((variable) => (
                 <div key={variable.name} className="flex items-center gap-2 p-2 bg-neutral-50 rounded border border-neutral-100 text-[11px] font-mono text-neutral-700 hover:bg-neutral-100 cursor-pointer transition-colors">
                   <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0"/>
                   <span className="truncate">{variable.name}</span>
