@@ -79,6 +79,7 @@ export function createWrapperWithRetry(enableRetry: boolean) {
           queries: {
             retry: enableRetry,
             staleTime: 0,
+            gcTime: 0,
           },
         },
       })

@@ -522,6 +522,7 @@ class ScenarioResponse(BaseModel):
     new_payback_months: float = Field(..., description="Recalculated payback period in months")
     formula_used: str = Field(..., description="Formula expression used for calculations")
     calculation_steps: List[Dict[str, Any]] = Field(default_factory=list, description="Step-by-step breakdown")
+    warnings: List[str] = Field(default_factory=list, description="Warning messages (e.g., mock data usage)")
 
 
 @router.post(
@@ -566,19 +567,22 @@ async def calculate_scenario(
     logger = logging.getLogger(__name__)
 
     try:
-        # For MVP: Use mock base case data if not found in database
-        # TODO: Fetch from business case repository in production
+        # NOTE: Business case repository not yet implemented.
+        # Using representative demo data with explicit warning to API consumers.
+        # When repository is available, replace this block with actual fetch.
         base_case_data = {
-            "_note": "Using mock data - business case repository not implemented",
-            "requested_case_id": request.base_case_id,
             "total_value": 500000,
             "implementation_cost": 200000,
             "roi_ratio": 1.5,
             "payback_months": 12.0,
             "confidence_score": 0.85,
         }
+        warnings = [
+            f"Using demo base case data (base_case_id={request.base_case_id} not found in repository). "
+            "Results are illustrative only."
+        ]
         logger.warning(
-            f"Scenario calculation using mock data for base_case_id={request.base_case_id}. "
+            f"Scenario calculation using demo data for base_case_id={request.base_case_id}. "
             "Business case repository not yet implemented."
         )
 
@@ -608,6 +612,7 @@ async def calculate_scenario(
             new_payback_months=result.new_payback_months,
             formula_used=result.formula_used,
             calculation_steps=result.calculation_steps,
+            warnings=warnings,
         )
 
     except Exception as e:

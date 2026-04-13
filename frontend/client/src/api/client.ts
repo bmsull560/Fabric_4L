@@ -8,6 +8,7 @@ const LAYER_PREFIXES = {
   l3: import.meta.env.VITE_L3_PREFIX || '/graph',
   l4: import.meta.env.VITE_L4_PREFIX || '/agents',
   l5: import.meta.env.VITE_L5_PREFIX || '/truths',
+  l6: import.meta.env.VITE_L6_PREFIX || '/benchmarks',
 } as const;
 
 type LayerKey = keyof typeof LAYER_PREFIXES;

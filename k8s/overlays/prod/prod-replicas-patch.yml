@@ -53,3 +53,19 @@ metadata:
   namespace: value-fabric
 spec:
   replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: value-fabric
+spec:
+  replicas: 1  # Keep at 1 due to PVC limitation; use Thanos/Cortex for HA
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: value-fabric
+spec:
+  replicas: 2  # Alertmanager supports HA clustering

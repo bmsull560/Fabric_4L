@@ -41,8 +41,12 @@ describe('useJobStream', () => {
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 1000 });
 
     // Simulate SSE events to drive state changes
-    const es = getLastEventSource();
-    expect(es).toBeDefined();
+    // Use waitFor to handle race condition where EventSource may not be created yet
+    let es: ReturnType<typeof getLastEventSource>;
+    await waitFor(() => {
+      es = getLastEventSource();
+      expect(es).toBeDefined();
+    }, { timeout: 1000 });
     
     // Simulate status update to running
     act(() => {
@@ -66,9 +70,12 @@ describe('useJobStream', () => {
     // Wait for initial connection
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 1000 });
 
-    // Simulate SSE error
-    const es = getLastEventSource();
-    expect(es).toBeDefined();
+    // Simulate SSE error - use waitFor to handle race condition
+    let es: ReturnType<typeof getLastEventSource>;
+    await waitFor(() => {
+      es = getLastEventSource();
+      expect(es).toBeDefined();
+    }, { timeout: 1000 });
     
     act(() => {
       es!._emitError();
@@ -85,8 +92,8 @@ describe('useJobStream', () => {
 
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 2000 });
 
-    // Logs array should be initialized (axios-mock-adapter provides default logs)
-    expect(Array.isArray(result.current.logs)).toBe(true);
+    // Logs array should be initialized
+    await waitFor(() => expect(Array.isArray(result.current.logs)).toBe(true));
   });
 
   it('processes extracted entities', async () => {
@@ -95,8 +102,8 @@ describe('useJobStream', () => {
 
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 2000 });
 
-    // Entities array should be initialized (axios-mock-adapter provides default entities)
-    expect(Array.isArray(result.current.entities)).toBe(true);
+    // Entities array should be initialized
+    await waitFor(() => expect(Array.isArray(result.current.entities)).toBe(true));
   });
 
   it('processes SSE progress events', async () => {
@@ -106,9 +113,12 @@ describe('useJobStream', () => {
     // Wait for connection
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 1000 });
 
-    // Simulate progress via SSE
-    const es = getLastEventSource();
-    expect(es).toBeDefined();
+    // Simulate progress via SSE - use waitFor to handle race condition
+    let es: ReturnType<typeof getLastEventSource>;
+    await waitFor(() => {
+      es = getLastEventSource();
+      expect(es).toBeDefined();
+    }, { timeout: 1000 });
     
     act(() => {
       es!._simulateProgress(75);
@@ -125,9 +135,12 @@ describe('useJobStream', () => {
     // Wait for connection
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 1000 });
 
-    // Trigger SSE error to fall back to polling
-    const es = getLastEventSource();
-    expect(es).toBeDefined();
+    // Trigger SSE error to fall back to polling - use waitFor to handle race condition
+    let es: ReturnType<typeof getLastEventSource>;
+    await waitFor(() => {
+      es = getLastEventSource();
+      expect(es).toBeDefined();
+    }, { timeout: 1000 });
     
     act(() => {
       es!._emitError();

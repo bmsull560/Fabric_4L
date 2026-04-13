@@ -452,10 +452,11 @@ class DocumentExportRequest(BaseModel):
 class DocumentExportResponse(BaseModel):
     """Response from document export request."""
     export_id: str = Field(..., description="Export job ID")
-    status: str = Field(..., description="Export status: pending, completed, failed")
+    status: str = Field(..., description="Export status: pending, completed, failed, not_implemented")
     download_url: Optional[str] = Field(None, description="Download URL when ready")
     format: str = Field(..., description="Export format")
     expires_at: Optional[datetime] = Field(None, description="URL expiration time")
+    message: Optional[str] = Field(None, description="Human-readable status message")
 
 
 # Graph Models

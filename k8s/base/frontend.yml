@@ -26,6 +26,18 @@ spec:
           env:
             - name: PORT
               value: "3000"
+            - name: VITE_LAYER1_API_URL
+              value: "http://layer1-ingestion:8000"
+            - name: VITE_LAYER2_API_URL
+              value: "http://layer2-extraction:8000"
+            - name: VITE_LAYER3_API_URL
+              value: "http://layer3-knowledge:8001"
+            - name: VITE_LAYER4_API_URL
+              value: "http://layer4-agents:8000"
+            - name: VITE_LAYER5_API_URL
+              value: "http://layer5-ground-truth:8005"
+            - name: VITE_LAYER6_API_URL
+              value: "http://layer6-benchmarks:8006"
           resources:
             requests:
               memory: "128Mi"

@@ -1235,7 +1235,8 @@ async def get_sync_status(
 
 
 # Alias for L2 client compatibility (canonical route is /v1/ingest/status/{source_id})
-# TODO: Consider unifying ID schemes in future; treat ingestion_id as source_id for now
+# DESIGN NOTE: L2 uses ingestion_id, L3 uses source_id. They are treated as equivalent
+# for sync status lookups. If ID schemes diverge in future, add mapping layer here.
 @app.get("/v1/ingest/{source_id}/status", response_model=SyncStatusResponse)
 async def get_sync_status_alias(
     source_id: str,
@@ -1874,10 +1875,9 @@ async def list_audit_logs(
                     logger.warning(f"Neo4j audit query failed (schema may not exist yet): {neo4j_error}")
                     # Continue with empty entries - don't fail the whole request
 
-        # TODO: Query API access logs from separate table when implemented
-        # if source in ("access", "all"):
-        #     access_entries = await query_access_logs(...)
-        #     entries.extend(access_entries)
+        # NOTE: API access log querying not yet implemented.
+        # When access logging table is available, extend this endpoint to query
+        # from both provenance (Neo4j) and access logs for unified audit view.
 
         # Sort by timestamp descending (already sorted from Neo4j but ensure consistency)
         entries.sort(key=lambda x: x.timestamp, reverse=True)
@@ -1912,14 +1912,19 @@ async def export_document(
         # Trigger L4 workflow for document generation
         export_id = f"exp-{uuid.uuid4().hex[:8]}"
 
-        # TODO: Call L4 workflow endpoint when available
-        # For now, return pending status
+        # NOTE: L4 workflow integration pending. Endpoint returns explicit placeholder.
+        # When L4 is available, replace this block with actual workflow call.
+        logger.warning(
+            f"Document export requested but L4 workflow not integrated. "
+            f"Returning placeholder for export_id={export_id}"
+        )
         return DocumentExportResponse(
             export_id=export_id,
-            status="pending",
+            status="not_implemented",
             download_url=None,
             format=request.format,
-            expires_at=datetime.utcnow(),  # Will be set when completed
+            expires_at=None,
+            message="Document export via L4 workflow is not yet implemented",
         )
 
     except HTTPException:

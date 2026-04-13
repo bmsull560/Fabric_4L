@@ -35,14 +35,15 @@ export class MockEventSource {
     this.url = url;
     this.withCredentials = eventSourceInitDict?.withCredentials ?? false;
 
-    // Simulate connection opening after a brief delay
-    setTimeout(() => {
-      this.readyState = 1; // OPEN
+    // Simulate connection opening synchronously for predictable test behavior
+    this.readyState = 1; // OPEN
+    // Defer event dispatch to next tick to allow handlers to be attached
+    Promise.resolve().then(() => {
       this.dispatchEvent(new Event('open'));
       if (this.onopen) {
         this.onopen(new Event('open'));
       }
-    }, 10);
+    });
   }
 
   addEventListener(type: string, listener: (event: Event) => void): void {

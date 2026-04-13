@@ -77,6 +77,17 @@ jobs:
         with:
           cluster_name: task47-validation
           wait: 120s
+        continue-on-error: true
+        id: kind-install
+
+      - name: Retry kind cluster creation
+        if: steps.kind-install.outcome == 'failure'
+        run: |
+          echo "Kind cluster creation failed, retrying with cleanup..."
+          kind delete cluster --name task47-validation || true
+          sleep 10
+          kind create cluster --name task47-validation --wait 120s
+          kubectl cluster-info
 
       - name: Verify cluster bootstrap
         run: |
@@ -90,3 +101,11 @@ jobs:
       - name: Server-side dry-run (prod overlay)
         run: |
           kubectl apply --dry-run=server -k k8s/overlays/prod
+
+      - name: Upload rendered manifests on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-rendered-manifests
+          path: /tmp/*.yaml
+          retention-days: 7

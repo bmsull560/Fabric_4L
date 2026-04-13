@@ -287,7 +287,7 @@ jobs:
           name: frontend-build-failure
           path: frontend/client/dist/
 
-  # Kubernetes manifest validation (server-side dry-run)
+  # Kubernetes manifest validation (server-side dry-run via kustomize)
   k8s-dry-run:
     name: Kubernetes Dry-Run Validation
     runs-on: ubuntu-latest
@@ -302,24 +302,18 @@ jobs:
       - name: Set up kubectl
         uses: azure/setup-kubectl@v4
 
-      - name: Apply namespace
-        run: kubectl apply -f k8s/namespace.yml
-
-      - name: Server-side dry-run core manifests
+      - name: Install kustomize
         run: |
-          kubectl apply --dry-run=server -f k8s/configmap-global.yml
-          kubectl apply --dry-run=server -f k8s/secrets.yml
-          kubectl apply --dry-run=server -f k8s/redis.yml
-          kubectl apply --dry-run=server -f k8s/postgres.yml
-          kubectl apply --dry-run=server -f k8s/neo4j.yml
-          kubectl apply --dry-run=server -f k8s/layer1-ingestion.yml
-          kubectl apply --dry-run=server -f k8s/layer2-extraction.yml
-          kubectl apply --dry-run=server -f k8s/layer3-knowledge.yml
-          kubectl apply --dry-run=server -f k8s/layer4-agents.yml
-          kubectl apply --dry-run=server -f k8s/layer5-ground-truth.yml
-          kubectl apply --dry-run=server -f k8s/layer6-benchmarks.yml
+          curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz -o kustomize.tar.gz
+          echo "366c0e6b8f2571be6d034a5627e18b43f32a074eb89d4f740fdda80fa7d8bf3e  kustomize.tar.gz" | sha256sum -c
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
 
-      - name: Server-side dry-run monitoring manifests
+      - name: Server-side dry-run (dev overlay)
         run: |
-          kubectl apply --dry-run=server -f k8s/monitoring-alertmanager.yml
-          kubectl apply --dry-run=server -f k8s/monitoring-prometheus.yml
+          kustomize build k8s/overlays/dev | kubectl apply --dry-run=server -f -
+
+      - name: Server-side dry-run (prod overlay)
+        run: |
+          kustomize build k8s/overlays/prod | kubectl apply --dry-run=server -f -

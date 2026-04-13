@@ -28,6 +28,21 @@ import {
   installMockEventSource,
 } from "./mocks/event-source-mock";
 
+// Mock localStorage for API client tenant ID
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => { store[key] = value; },
+    removeItem: (key: string) => { delete store[key]; },
+    clear: () => { store = {}; },
+  };
+})();
+Object.defineProperty(window, 'localStorage', {
+  writable: true,
+  value: localStorageMock,
+});
+
 // Set base URL for jsdom to support relative API calls
 Object.defineProperty(window, 'location', {
   configurable: true,

@@ -28,7 +28,6 @@ MAX_CONTENT_ANALYSIS_LENGTH = 5000  # Characters to scan for document type detec
 TABLE_PIPE_DIVISOR = 3  # Pipes per row heuristic for table detection
 MIN_DPI = 72  # Minimum valid DPI for OCR
 MAX_DPI = 1200  # Maximum reasonable DPI for OCR
-DEFAULT_OCR_CONFIDENCE_THRESHOLD = 0.0  # Minimum confidence for OCR results
 
 # Document type detection markers
 DOCUMENT_TYPE_MARKERS = {
@@ -158,11 +157,15 @@ class PDFAdapter(DataSourceAdapter):
         parsed = urlparse(url)
         suffix = Path(parsed.path).suffix or ".pdf"
 
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        temp_path = Path(temp_file.name)
+        temp_path: Optional[Path] = None
 
         for attempt in range(self.config.max_retries):
+            temp_file = None
             try:
+                # Create fresh temp file for each attempt
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                temp_path = Path(temp_file.name)
+
                 client = await self._get_client()
                 response = await client.get(url)
                 response.raise_for_status()
@@ -173,11 +176,14 @@ class PDFAdapter(DataSourceAdapter):
                 self.logger.info("Downloaded PDF", url=url, size=len(response.content))
                 return temp_path
             except httpx.HTTPStatusError as e:
+                # Clean up temp file before handling error
+                if temp_file:
+                    temp_file.close()
+                if temp_path and temp_path.exists():
+                    temp_path.unlink()
+
                 # Don't retry 4xx client errors
                 if e.response.status_code < 500:
-                    temp_file.close()
-                    if temp_path.exists():
-                        temp_path.unlink()
                     raise
 
                 self.logger.warning(
@@ -187,6 +193,12 @@ class PDFAdapter(DataSourceAdapter):
                     status_code=e.response.status_code
                 )
             except Exception as e:
+                # Clean up temp file on any other error
+                if temp_file:
+                    temp_file.close()
+                if temp_path and temp_path.exists():
+                    temp_path.unlink()
+
                 self.logger.warning(
                     "Download failed, retrying",
                     url=url,
@@ -200,10 +212,7 @@ class PDFAdapter(DataSourceAdapter):
                 self.logger.debug(f"Waiting {wait_time}s before retry")
                 await asyncio.sleep(wait_time)
 
-        # Max retries exceeded
-        temp_file.close()
-        if temp_path.exists():
-            temp_path.unlink()
+        # Max retries exceeded - temp file already cleaned up in exception handlers
         raise httpx.HTTPError(f"Failed to download PDF after {self.config.max_retries} attempts")
 
     async def _process_pdf(
@@ -330,27 +339,11 @@ class PDFAdapter(DataSourceAdapter):
 
     def _detect_filing_type(self, content: str) -> str:
         """Detect document type from content heuristics."""
-        content_upper = content[:5000].upper()
+        content_upper = content[:MAX_CONTENT_ANALYSIS_LENGTH].upper()
 
-        # Analyst report indicators
-        analyst_markers = ["GARTNER", "FORRESTER", "IDC", "MAGIC QUADRANT", "WAVE"]
-        if any(marker in content_upper for marker in analyst_markers):
-            return "ANALYST_REPORT"
-
-        # Patent indicators
-        patent_markers = ["PATENT", "USPTO", "CLAIMS", "INVENTION", "ASSIGNEE"]
-        if any(marker in content_upper for marker in patent_markers):
-            return "PATENT_FILING"
-
-        # SEC filing indicators
-        sec_markers = ["10-K", "10-Q", "8-K", "SECURITIES AND EXCHANGE COMMISSION"]
-        if any(marker in content_upper for marker in sec_markers):
-            return "SEC_FILING"
-
-        # White paper indicators
-        wp_markers = ["WHITE PAPER", "WHITEPAPER", "EXECUTIVE SUMMARY", "ABSTRACT"]
-        if any(marker in content_upper for marker in wp_markers):
-            return "WHITE_PAPER"
+        for doc_type, markers in DOCUMENT_TYPE_MARKERS.items():
+            if any(marker in content_upper for marker in markers):
+                return doc_type
 
         return "PDF_DOCUMENT"
 

@@ -15,3 +15,5 @@ resources:
   - layer5-ground-truth.yml
   - layer6-benchmarks.yml
   - frontend.yml
+  - monitoring-prometheus.yml
+  - monitoring-alertmanager.yml

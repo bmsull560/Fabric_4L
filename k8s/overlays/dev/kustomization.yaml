@@ -9,6 +9,3 @@ resources:
 labels:
   - pairs:
       environment: dev
-
-patches:
-  - path: dev-replicas-patch.yml

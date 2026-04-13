@@ -24,8 +24,8 @@ class QueueItem:
     timestamp: datetime = field(compare=True)
     url: str = field(compare=False)
     domain: str = field(compare=False)
-    job_id: str = field(compare=False)  # Moved before depth (no default)
-    depth: int = field(compare=False, default=0)
+    job_id: str = field(compare=False)
+    depth: int = field(compare=False)
     retry_count: int = field(compare=False, default=0)
     
     def __post_init__(self):

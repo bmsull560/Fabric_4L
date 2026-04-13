@@ -125,6 +125,7 @@ class PackExecuteResponse(BaseModel):
     status: str
     outputs: Dict[str, Any]
     errors: List[str]
+    warnings: List[str] = Field(default_factory=list, description="Warning messages about partial implementation")
 
 
 class PackForkRequest(BaseModel):
@@ -480,13 +481,17 @@ async def execute_pack(
             started_at=now,
         )
     
-    # TODO: Integrate with formula evaluation
-    # For now, return success with placeholder output
+    # NOTE: Formula evaluation integration pending.
+    # Pack execution currently records the request but does not evaluate formulas.
+    # When formula evaluation is integrated, replace this block with actual evaluation.
     outputs = {
         "pack_id": pack_id,
         "variables_count": len(request.variables),
         "execution_context": request.workspace_id,
     }
+    warnings = [
+        "Pack execution is partially implemented: variables recorded but formula evaluation not yet active."
+    ]
     
     # Update execution status
     complete_query = """
@@ -511,6 +516,7 @@ async def execute_pack(
         status="success",
         outputs=outputs,
         errors=[],
+        warnings=warnings,
     )
 
 
