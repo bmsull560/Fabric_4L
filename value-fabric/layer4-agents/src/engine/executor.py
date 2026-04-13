@@ -259,19 +259,34 @@ class OrchestrationController:
 
         Returns:
             Final workflow state
+
+        Raises:
+            ConcurrencyLimitExceeded: If max concurrent workflows reached (P1-42)
+            WorkflowTimeoutError: If workflow exceeds global timeout (P1-25)
         """
+        # P1-42: Check concurrent workflow limit
+        active_count = len(self._active_workflows)
+        if active_count >= self.max_concurrent:
+            from ..exceptions import ConcurrencyLimitExceeded
+            raise ConcurrencyLimitExceeded(
+                f"Maximum concurrent workflows ({self.max_concurrent}) exceeded. "
+                f"Current active: {active_count}. Retry after existing workflows complete."
+            )
+
         # Create workflow with checkpointing if available
         workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
         initial_state = workflow.create_initial_state(input_data)
         workflow_id = workflow_id or initial_state.workflow_id
 
-        # Store metadata
+        # Store metadata with timeout tracking
+        from ..config.settings import settings
         self._workflow_metadata[workflow_id] = {
             "workflow_type": workflow_type,
             "tenant_id": tenant_id,
             "user_id": user_id,
             "priority": priority.value,
             "started_at": datetime.now(UTC).isoformat(),
+            "timeout_seconds": settings.workflow_timeout_seconds,  # P1-25
         }
 
         # Schedule workflow execution
@@ -297,8 +312,10 @@ class OrchestrationController:
 
         await self.scheduler.schedule_task(task)
 
-        # Wait for completion (blocking call)
-        return await self._wait_for_workflow(workflow_id)
+        # P1-25: Wait for completion with global timeout
+        return await self._wait_for_workflow_with_timeout(
+            workflow_id, timeout_seconds=settings.workflow_timeout_seconds
+        )
 
     async def schedule_workflow(
         self,
@@ -652,8 +669,48 @@ class OrchestrationController:
 
         return handler
 
+    async def _wait_for_workflow_with_timeout(
+        self, workflow_id: str, timeout_seconds: int
+    ) -> AgentState:
+        """Wait for workflow completion with global timeout (P1-25).
+
+        Args:
+            workflow_id: Workflow to wait for
+            timeout_seconds: Maximum time to wait before failing
+
+        Returns:
+            Final workflow state
+
+        Raises:
+            WorkflowTimeoutError: If workflow exceeds timeout
+        """
+        from ..exceptions import WorkflowTimeoutError
+
+        start_time = datetime.now(UTC)
+
+        while True:
+            # Check for timeout
+            elapsed = (datetime.now(UTC) - start_time).total_seconds()
+            if elapsed > timeout_seconds:
+                # Cancel the workflow
+                await self.cancel_workflow(workflow_id, reason=f"Global timeout exceeded ({timeout_seconds}s)")
+                raise WorkflowTimeoutError(
+                    f"Workflow {workflow_id} timed out after {timeout_seconds} seconds"
+                )
+
+            state = await self.state_manager.load_state(workflow_id)
+
+            if state and state.status in [
+                WorkflowStatus.COMPLETED,
+                WorkflowStatus.FAILED,
+                WorkflowStatus.CANCELLED,
+            ]:
+                return state
+
+            await asyncio.sleep(0.5)
+
     async def _wait_for_workflow(self, workflow_id: str) -> AgentState:
-        """Wait for workflow completion.
+        """Wait for workflow completion (legacy, no timeout).
 
         Args:
             workflow_id: Workflow to wait for

@@ -1,4 +1,7 @@
-"""FastAPI main application for Layer 4 Agentic Workflow Engine."""
+"""FastAPI main application for Layer 4 Agentic Workflow Engine.
+
+P1-29: OpenTelemetry tracing integration for observability.
+"""
 
 import os
 import time
@@ -15,7 +18,16 @@ from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.rate_limiter import RedisRateLimiter
 from shared.identity.vault_check import check_vault_health
 
+# P1-29: OpenTelemetry imports
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
 from ..config.checkpoint import CheckpointConfig
+from ..config.settings import settings
 from ..database import close_db, db_session, init_db
 from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
@@ -48,10 +60,38 @@ ws_manager = get_ws_manager()
 health_tracker = get_health_tracker()
 
 
+# P1-29: OpenTelemetry tracer provider (initialized on startup)
+_tracer_provider: TracerProvider | None = None
+
+
+def init_telemetry() -> TracerProvider | None:
+    """Initialize OpenTelemetry tracing if endpoint configured.
+
+    P1-29: OpenTelemetry integration for distributed tracing.
+    """
+    if not settings.otel_exporter_endpoint:
+        return None
+
+    resource = Resource.create({SERVICE_NAME: "layer4-agents"})
+    provider = TracerProvider(resource=resource)
+
+    exporter = OTLPSpanExporter(
+        endpoint=f"{settings.otel_exporter_endpoint}/v1/traces"
+    )
+    processor = BatchSpanProcessor(exporter)
+    provider.add_span_processor(processor)
+
+    trace.set_tracer_provider(provider)
+    return provider
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global workflow_executor, state_manager, checkpoint_saver
+    global workflow_executor, state_manager, checkpoint_saver, _tracer_provider
+
+    # P1-29: Initialize OpenTelemetry
+    _tracer_provider = init_telemetry()
 
     # Initialize Prometheus metrics
     metrics = initialize_metrics()
@@ -149,6 +189,12 @@ async def lifespan(app: FastAPI):
     # Close database connection pool
     await close_db()
 
+    # P1-29: Shutdown OpenTelemetry tracer
+    global _tracer_provider
+    if _tracer_provider:
+        _tracer_provider.shutdown()
+        _tracer_provider = None
+
     workflow_executor = None
     state_manager = None
     checkpoint_saver = None
@@ -160,6 +206,10 @@ app = FastAPI(
     version="0.2.0",
     lifespan=lifespan,
 )
+
+# P1-29: Instrument FastAPI with OpenTelemetry (after app creation)
+if settings.otel_exporter_endpoint:
+    FastAPIInstrumentor.instrument_app(app)
 
 
 # GovernanceMiddleware — replaces TenantMiddleware; verifies JWTs, resolves
