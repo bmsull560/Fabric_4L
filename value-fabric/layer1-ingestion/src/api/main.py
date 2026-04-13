@@ -82,10 +82,23 @@ if metrics:
     metrics_middleware = MetricsMiddleware(metrics)
     app.middleware("http")(metrics_middleware)
 
+# GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
+# api_key_resolver is None here (L1 uses JWT auth primarily); pass a resolver
+# callable to support X-API-Key if the shared key store is accessible.
+try:
+    from shared.identity.middleware import GovernanceMiddleware
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+except ImportError:
+    import logging as _log
+    _log.getLogger(__name__).warning(
+        "shared.identity not importable — GovernanceMiddleware skipped in L1. "
+        "Ensure the shared package is installed."
+    )
+
 # CORS middleware
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
 # In production, specify exact origins or use environment variable
-allow_origins = ["*"]
+allow_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
 allow_credentials = False  # Must be False when using wildcard origins
 
 app.add_middleware(
@@ -104,24 +117,36 @@ router = APIRouter(prefix="/api/v1/ingestion")
 # DEPENDENCY: ORGANIZATION ID (Multi-tenancy)
 # =============================================================================
 
-# In production, this would extract from JWT token or API key
-def get_organization_id() -> UUID:
-    """Extract organization ID from request context.
-    
-    TODO: Replace with actual auth token parsing
-    For now, uses header X-Organization-ID for testing
+def get_organization_id(request: Request) -> UUID:
+    """Extract organization (tenant) ID from the GovernanceMiddleware context.
+
+    Falls back to the X-Organization-ID header for backward compatibility
+    with existing integration tests.
     """
-    # Placeholder - in production extract from JWT
-    # Return a default org for testing
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx is not None:
+        return ctx.tenant_id
+
+    # Legacy header fallback (integration tests / dev only)
+    header_value = request.headers.get("X-Organization-ID")
+    if header_value:
+        try:
+            return UUID(header_value)
+        except ValueError:
+            pass
+
+    # Default for local dev without auth
     return UUID("00000000-0000-0000-0000-000000000001")
 
 
-def get_current_user_id() -> UUID:
-    """Extract user ID from request context.
-    
-    TODO: Replace with actual auth token parsing
-    """
-    # Placeholder
+def get_current_user_id(request: Request) -> UUID:
+    """Extract user ID from the GovernanceMiddleware context."""
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx is not None and ctx.user_id:
+        try:
+            return UUID(ctx.user_id)
+        except ValueError:
+            pass
     return UUID("00000000-0000-0000-0000-000000000001")
 
 

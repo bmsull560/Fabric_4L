@@ -73,10 +73,21 @@ if metrics:
     metrics_middleware = MetricsMiddleware(metrics)
     app.middleware("http")(metrics_middleware)
 
+# GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
+try:
+    from shared.identity.middleware import GovernanceMiddleware
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+except ImportError:
+    import logging as _log
+    _log.getLogger(__name__).warning(
+        "shared.identity not importable — GovernanceMiddleware skipped in L2. "
+        "Ensure the shared package is installed."
+    )
+
 # CORS middleware
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
 # In production, specify exact origins or use environment variable
-allow_origins = ["*"]
+allow_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
 allow_credentials = False  # Must be False when using wildcard origins
 
 app.add_middleware(

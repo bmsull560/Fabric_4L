@@ -12,10 +12,14 @@ from ..database import init_db, close_db
 from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
 from ..tools import create_default_registry
-from ..tenant.middleware import TenantMiddleware
 from ..config.checkpoint import CheckpointConfig
 from ..metrics import initialize_metrics, MetricsMiddleware, get_metrics
+from ..tenants import lookup_api_key_by_hash
+from ..tenants.api import tenants_router, users_router, api_keys_router
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+# Governance middleware replaces the old TenantMiddleware
+from shared.identity.middleware import GovernanceMiddleware
 
 # App start time for uptime calculation
 _app_start_time = time.time()
@@ -102,13 +106,21 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Tenant middleware (must be before CORS to extract from JWT)
-app.add_middleware(TenantMiddleware)
+# GovernanceMiddleware — replaces TenantMiddleware; verifies JWTs, resolves
+# tenant/user/role context from Bearer JWT or X-API-Key.
+# api_key_resolver is wired to the DB-backed lookup so keys are verified
+# against the persistent api_keys table.
+app.add_middleware(
+    GovernanceMiddleware,
+    api_key_resolver=lookup_api_key_by_hash,
+)
 
-# CORS middleware
+# CORS middleware — restrict origins in production via the CORS_ORIGINS env var
+
+_cors_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -119,6 +131,11 @@ app.include_router(workflows.router, prefix="/v1", tags=["workflows"])
 app.include_router(tools.router, prefix="/v1", tags=["tools"])
 app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
 app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
+
+# Governance routes
+app.include_router(tenants_router, prefix="/v1")
+app.include_router(users_router, prefix="/v1")
+app.include_router(api_keys_router, prefix="/v1")
 
 
 @app.get("/health")

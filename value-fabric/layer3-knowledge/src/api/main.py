@@ -2,6 +2,7 @@
 
 import logging
 import platform
+import os
 import time
 import uuid
 import psutil
@@ -363,7 +364,7 @@ async def request_id_middleware(request: Request, call_next):
 # CORS middleware
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
 # In production, specify exact origins or use environment variable
-allow_origins = ["*"]
+allow_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
 allow_credentials = False  # Must be False when using wildcard origins
 
 app.add_middleware(
@@ -373,6 +374,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# GovernanceMiddleware — provides verified JWT + API-key auth for L3.
+# Replaces the existing AuthenticationMiddleware in auth/middleware.py.
+# api_key_resolver is None here; plug in the DB-backed resolver from L4's
+# tenant service if L3 is given access to the same Postgres instance.
+try:
+    from shared.identity.middleware import GovernanceMiddleware
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+except ImportError:
+    logger.warning(
+        "shared.identity not importable — GovernanceMiddleware skipped in L3. "
+        "Ensure the shared package is installed."
+    )
 
 # Security middleware
 add_security_middleware(app, strict_mode=True)
