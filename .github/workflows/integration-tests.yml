@@ -20,18 +20,18 @@ jobs:
 
       - name: Start full stack
         run: |
-          docker compose -f docker-compose.full.yml up -d
+          cd value-fabric && docker compose -f docker-compose.yml up -d
 
       - name: Wait for services
         run: |
           chmod +x scripts/wait-for-services.sh
-          ./scripts/wait-for-services.sh
+          bash scripts/wait-for-services.sh
         timeout-minutes: 5
 
       - name: Run smoke tests
         run: |
           chmod +x scripts/smoke-test.sh
-          ./scripts/smoke-test.sh
+          bash scripts/smoke-test.sh
 
       - name: Run L2 extraction pipeline tests
         run: |
@@ -62,7 +62,7 @@ jobs:
         if: failure()
         run: |
           mkdir -p artifacts
-          docker compose -f docker-compose.full.yml logs > artifacts/docker-compose-logs.txt
+          cd value-fabric && docker compose -f docker-compose.yml logs > ../artifacts/docker-compose-logs.txt
 
       - name: Upload artifacts
         if: failure()
@@ -95,4 +95,4 @@ jobs:
       - name: Tear down
         if: always()
         run: |
-          docker compose -f docker-compose.full.yml down -v
+          cd value-fabric && docker compose -f docker-compose.yml down -v

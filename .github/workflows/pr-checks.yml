@@ -285,7 +285,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: frontend-build-failure
-          path: frontend/client/dist/
+          path: frontend/dist/public/
 
   # Kubernetes manifest validation (server-side dry-run via kustomize)
   k8s-dry-run:
