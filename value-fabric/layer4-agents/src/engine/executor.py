@@ -12,6 +12,7 @@ This implements the OrchestrationController agent type from the specification.
 
 from typing import Any, Callable, Dict, List, Optional, Set
 from datetime import datetime
+from uuid import UUID
 import asyncio
 import logging
 
@@ -33,11 +34,41 @@ from ..agents.taxonomy import OrchestrationController as OrchestrationAgent
 from ..messaging.bus import MessageBus, InMemoryMessageBus
 from ..messaging.router import MessageRouter
 from ..messaging.types import MessageType, MessagePriority
+from ..registry.service import resolve_llm_model
 from .state_manager import StateManager
 from .scheduler import TaskScheduler, ScheduledTask, TaskPriority
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# LLM Cost Metrics Integration Snippet
+# ---------------------------------------------------------------------------
+# When making LLM calls in tools (e.g., generation_tools.py), record cost
+# and token usage via the Prometheus metrics helper:
+#
+#     from ..metrics import get_metrics
+#     from ..metrics.llm_cost_calculator import LLMCostCalculator
+#
+#     calculator = LLMCostCalculator()
+#     cost = calculator.calculate_cost(
+#         provider="openai",
+#         model="gpt-4o",
+#         prompt_tokens=response.usage.prompt_tokens,
+#         completion_tokens=response.usage.completion_tokens,
+#     )
+#     metrics = get_metrics()
+#     if metrics:
+#         metrics.record_llm_cost(
+#             provider="openai",
+#             model="gpt-4o",
+#             tenant_id=str(tenant_id),
+#             cost=cost,
+#             prompt_tokens=response.usage.prompt_tokens,
+#             completion_tokens=response.usage.completion_tokens,
+#             status="success",
+#         )
+# ---------------------------------------------------------------------------
 
 
 class OrchestrationController:
@@ -149,6 +180,20 @@ class OrchestrationController:
         self._started = False
         logger.info("OrchestrationController stopped")
     
+    async def resolve_model(self, tenant_id: UUID, provider: str = "openai") -> str:
+        """Resolve the active production LLM model for a tenant.
+
+        Falls back to ``os.getenv('LLM_MODEL', 'gpt-4o')`` if no production
+        model is registered or the lookup fails.
+        """
+        import os
+        try:
+            from ..database import db_session
+            async with db_session() as db:
+                return await resolve_llm_model(db, tenant_id, provider)
+        except Exception:
+            return os.getenv("LLM_MODEL", "gpt-4o")
+
     async def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent with the controller.
         

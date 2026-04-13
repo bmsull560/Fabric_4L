@@ -41,6 +41,20 @@ class AuditAction(str, Enum):
     KG_NODE_UPDATED = "kg.node_updated"
     KG_NODE_DELETED = "kg.node_deleted"
 
+    # ── OIDC ────────────────────────────────────────────────────────────────
+    OIDC_LOGIN = "oidc.login"
+    OIDC_LOGIN_FAILED = "oidc.login_failed"
+
+    # ── Model registry ──────────────────────────────────────────────────────
+    MODEL_REGISTERED = "model.registered"
+    MODEL_PROMOTED = "model.promoted"
+    MODEL_DEPRECATED = "model.deprecated"
+
+    # ── Feature flags ───────────────────────────────────────────────────────
+    FEATURE_FLAG_CREATED = "feature_flag.created"
+    FEATURE_FLAG_UPDATED = "feature_flag.updated"
+    FEATURE_FLAG_DELETED = "feature_flag.deleted"
+
     # ── Agent / workflow ────────────────────────────────────────────────────
     WORKFLOW_STARTED = "workflow.started"
     WORKFLOW_COMPLETED = "workflow.completed"

@@ -97,6 +97,21 @@ open http://localhost:5173
 | [`CHANGELOG.md`](CHANGELOG.md) | Release history |
 | [`ROADMAP.md`](ROADMAP.md) | Feature and completion roadmap |
 
+## SDK Installation
+
+```bash
+pip install valuefabric-sdk
+```
+
+Or install from source:
+
+```bash
+cd sdk/python
+pip install -e ".[dev]"
+```
+
+See [`sdk/python/README.md`](sdk/python/README.md) for SDK usage and CLI examples.
+
 ## Security
 
 Never commit real secrets. Use `.env` files (gitignored) locally, and short-lived OIDC credentials in CI.

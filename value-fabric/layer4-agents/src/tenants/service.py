@@ -308,6 +308,7 @@ async def lookup_api_key_by_hash(
         "role": key.role,
         "permissions": key.permissions,
         "enabled": key.enabled,
+        "rate_limit_per_minute": key.rate_limit_per_minute,
     }
 
 

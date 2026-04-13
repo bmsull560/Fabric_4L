@@ -1,0 +1,14 @@
+{{ define "slack.title" -}}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+{{- end }}
+
+{{ define "slack.text" -}}
+{{ range .Alerts }}
+*Severity:* {{ .Labels.severity | title }}
+*Alert:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+{{ if .Annotations.runbook_url }}*Runbook:* <{{ .Annotations.runbook_url }}|View Runbook>{{ end }}
+*Silence:* <{{ .GeneratorURL }}|Silence>
+---
+{{ end }}
+{{- end }}

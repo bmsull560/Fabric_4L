@@ -1,0 +1,69 @@
+"""LLM cost calculator with configurable pricing table."""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+from typing import Dict, Tuple
+
+logger = logging.getLogger(__name__)
+
+COST_PER_1K_TOKENS: Dict[Tuple[str, str], Dict[str, float]] = {
+    ("openai", "gpt-4o"): {"prompt": 0.005, "completion": 0.015},
+    ("openai", "gpt-4o-mini"): {"prompt": 0.00015, "completion": 0.0006},
+    ("anthropic", "claude-3-opus"): {"prompt": 0.015, "completion": 0.075},
+    ("anthropic", "claude-3-sonnet"): {"prompt": 0.003, "completion": 0.015},
+    ("anthropic", "claude-3-haiku"): {"prompt": 0.00025, "completion": 0.00125},
+}
+
+
+class LLMCostCalculator:
+    """Calculate LLM inference cost in USD based on token usage."""
+
+    def __init__(self) -> None:
+        self._pricing: Dict[Tuple[str, str], Dict[str, float]] = dict(COST_PER_1K_TOKENS)
+        self._load_override()
+
+    def _load_override(self) -> None:
+        """Load optional pricing override from LLM_COST_TABLE_PATH env var."""
+        path = os.getenv("LLM_COST_TABLE_PATH")
+        if not path:
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            for key, rates in data.items():
+                parts = key.split("/", 1)
+                if len(parts) != 2:
+                    continue
+                provider, model = parts
+                if isinstance(rates, dict) and "prompt" in rates and "completion" in rates:
+                    self._pricing[(provider, model)] = {
+                        "prompt": float(rates["prompt"]),
+                        "completion": float(rates["completion"]),
+                    }
+            logger.info("Loaded LLM cost table override from %s", path)
+        except Exception as exc:
+            logger.warning("Failed to load LLM cost table override from %s: %s", path, exc)
+
+    def calculate_cost(
+        self,
+        provider: str,
+        model: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+    ) -> float:
+        """Calculate total cost in USD for a given LLM call.
+
+        Returns 0.0 and logs a warning if the model is not in the pricing table.
+        """
+        key = (provider, model)
+        rates = self._pricing.get(key)
+        if rates is None:
+            logger.warning("Unknown model for cost calculation: %s/%s", provider, model)
+            return 0.0
+
+        prompt_cost = (prompt_tokens / 1000.0) * rates["prompt"]
+        completion_cost = (completion_tokens / 1000.0) * rates["completion"]
+        return round(prompt_cost + completion_cost, 6)

@@ -23,8 +23,8 @@ from shared.identity.models import (
     UserUpdateRequest,
 )
 
-from ...database import get_db
-from ..service import (
+from ....database import get_db
+from ...service import (
     deactivate_user,
     get_user,
     invite_user,

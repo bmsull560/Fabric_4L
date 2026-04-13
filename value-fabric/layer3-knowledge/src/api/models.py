@@ -256,7 +256,7 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     """Response from entity search."""
-    
+
     query: constr(max_length=500) = Field(..., description="Original search query")
     results: List[SearchResult] = Field(..., description="Search results")
     total_results: conint(ge=0) = Field(..., description="Total results found")
@@ -264,10 +264,55 @@ class SearchResponse(BaseModel):
     processing_time_ms: Optional[confloat(ge=0)] = Field(None, description="Processing time in milliseconds")
 
 
+# Streaming Models
+class StreamEventType(str, Enum):
+    """Event types for streaming responses."""
+    START = "start"
+    SEED_ENTITY = "seed_entity"
+    CONTEXT_NODE = "context_node"
+    CONTEXT_EDGE = "context_edge"
+    PROGRESS = "progress"
+    RESULT = "result"
+    ERROR = "error"
+    COMPLETE = "complete"
+
+
+class GraphRAGStreamEvent(BaseModel):
+    """Individual streaming event from GraphRAG query."""
+
+    event_type: StreamEventType = Field(..., description="Type of streaming event")
+    data: Dict[str, Any] = Field(default_factory=dict, description="Event payload")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Event timestamp")
+    progress_percent: Optional[confloat(ge=0, le=100)] = Field(None, description="Query progress percentage")
+
+
+class SearchStreamEvent(BaseModel):
+    """Individual streaming event from search query."""
+
+    event_type: StreamEventType = Field(..., description="Type of streaming event")
+    data: Dict[str, Any] = Field(default_factory=dict, description="Event payload")
+    timestamp: datetime = Field(default_factory=datetime.utcnow, description="Event timestamp")
+    progress_percent: Optional[confloat(ge=0, le=100)] = Field(None, description="Search progress percentage")
+
+
 # Entity Models
 class EntityContextRequest(BaseModel):
     hops: int = Field(default=2, ge=1, le=4)
     relationship_types: Optional[List[str]] = None
+    fields: Optional[List[str]] = Field(
+        None,
+        description="Specific fields to include in response (field selection for reduced payload)"
+    )
+    cursor: Optional[str] = Field(
+        None,
+        description="Pagination cursor for neighbor entities"
+    )
+    limit: int = Field(
+        default=100,
+        ge=1,
+        le=500,
+        description="Maximum number of neighbor entities to return"
+    )
 
 
 class EntityContextResponse(BaseModel):
@@ -277,6 +322,10 @@ class EntityContextResponse(BaseModel):
     relationships: List[Dict[str, Any]]
     entity_count: int
     relationship_count: int
+    pagination: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Pagination info: {has_more, next_cursor, returned_count}"
+    )
 
 
 class ValueTreeTraversal(BaseModel):
@@ -457,6 +506,76 @@ class DocumentExportResponse(BaseModel):
     format: str = Field(..., description="Export format")
     expires_at: Optional[datetime] = Field(None, description="URL expiration time")
     message: Optional[str] = Field(None, description="Human-readable status message")
+
+
+# Batch Operations Models
+class BatchEntityOperation(BaseModel):
+    """Single entity operation in a batch."""
+    operation: Literal["create", "update", "delete"] = Field(..., description="Operation type")
+    entity_id: Optional[str] = Field(None, description="Entity ID (required for update/delete)")
+    entity_type: Optional[EntityType] = Field(None, description="Entity type (required for create)")
+    properties: Optional[Dict[str, Any]] = Field(None, description="Entity properties")
+
+
+class BatchEntityRequest(BaseModel):
+    """Request for batch entity operations."""
+    operations: List[BatchEntityOperation] = Field(
+        ...,
+        min_items=1,
+        max_items=100,
+        description="Entity operations to perform"
+    )
+    atomic: bool = Field(
+        default=True,
+        description="If true, all operations succeed or all fail"
+    )
+
+
+class BatchEntityResult(BaseModel):
+    """Result of a single entity operation."""
+    index: int = Field(..., description="Operation index in batch")
+    operation: str = Field(..., description="Operation type")
+    entity_id: Optional[str] = Field(None, description="Entity ID")
+    success: bool = Field(..., description="Whether operation succeeded")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class BatchEntityResponse(BaseModel):
+    """Response from batch entity operations."""
+    total_operations: int = Field(..., description="Total operations submitted")
+    successful: int = Field(..., description="Number of successful operations")
+    failed: int = Field(..., description="Number of failed operations")
+    results: List[BatchEntityResult] = Field(..., description="Individual operation results")
+    atomic_rollback: Optional[bool] = Field(None, description="Whether atomic rollback was performed")
+
+
+class BatchAnalyticsRequest(BaseModel):
+    """Request for batch analytics operations."""
+    entity_ids: List[str] = Field(
+        ...,
+        min_items=1,
+        max_items=50,
+        description="Entity IDs to analyze"
+    )
+    algorithm: str = Field(default="centrality", description="Algorithm to run on each entity context")
+    max_hops: int = Field(default=2, ge=1, le=3, description="Context size for each analysis")
+
+
+class BatchAnalyticsResult(BaseModel):
+    """Result of analytics for a single entity."""
+    entity_id: str = Field(..., description="Entity ID")
+    success: bool = Field(..., description="Whether analysis succeeded")
+    metrics: Optional[Dict[str, Any]] = Field(None, description="Analytics metrics")
+    error: Optional[str] = Field(None, description="Error message if failed")
+
+
+class BatchAnalyticsResponse(BaseModel):
+    """Response from batch analytics operations."""
+    total_analyzed: int = Field(..., description="Total entities analyzed")
+    successful: int = Field(..., description="Number of successful analyses")
+    failed: int = Field(..., description="Number of failed analyses")
+    results: List[BatchAnalyticsResult] = Field(..., description="Individual analysis results")
+    aggregate_metrics: Optional[Dict[str, Any]] = Field(None, description="Aggregated metrics across all analyses")
 
 
 # Graph Models

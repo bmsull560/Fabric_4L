@@ -1,6 +1,7 @@
 """FastAPI main application for Layer 4 Agentic Workflow Engine."""
 
 from contextlib import asynccontextmanager
+import os
 import time
 
 from fastapi import FastAPI, HTTPException, Request
@@ -8,6 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from .routes import workflows, tools, analysis, accounts
+from .routes.checkpoints import checkpoint_router
+from .routes.state_inspector import state_inspector_router
+from .routes.health_badges import health_badges_router
+from .websocket import websocket_router, get_ws_manager
+from ..services.health_tracker import get_health_tracker
 from ..database import init_db, close_db
 from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
@@ -16,10 +22,18 @@ from ..config.checkpoint import CheckpointConfig
 from ..metrics import initialize_metrics, MetricsMiddleware, get_metrics
 from ..tenants import lookup_api_key_by_hash
 from ..tenants.api import tenants_router, users_router, api_keys_router
+from ..tenants.api.routes.oidc import router as oidc_router
+from ..registry.api.routes import router as models_router
+from ..feature_flags.api import feature_flags_router
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 # Governance middleware replaces the old TenantMiddleware
 from shared.identity.middleware import GovernanceMiddleware
+from shared.identity.rate_limiter import RedisRateLimiter
+from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
+from shared.identity.vault_check import check_vault_health
+from ..feature_flags.service import FeatureFlagService
+from ..database import db_session
 
 # App start time for uptime calculation
 _app_start_time = time.time()
@@ -29,6 +43,8 @@ _app_start_time = time.time()
 workflow_executor: OrchestrationController | None = None
 state_manager: StateManager | None = None
 checkpoint_saver: AsyncPostgresSaver | None = None
+ws_manager = get_ws_manager()
+health_tracker = get_health_tracker()
 
 
 @asynccontextmanager
@@ -58,8 +74,33 @@ async def lifespan(app: FastAPI):
             raise RuntimeError(f"Database initialization failed in production: {e}") from e
         logging.getLogger(__name__).warning(f"Database initialization skipped: {e}")
 
+    # Production Vault smoke gate
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr:
+            ok = await check_vault_health(vault_addr)
+            if not ok:
+                raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
+
     tool_registry = create_default_registry()
     state_manager = StateManager()  # Add Redis client if configured
+
+    # Initialize rate limiter and feature flags
+    redis_rate_limiter = None
+    if state_manager is not None and getattr(state_manager, 'redis_client', None) is not None:
+        redis_rate_limiter = RedisRateLimiter(state_manager.redis_client)
+        app.state.rate_limiter = redis_rate_limiter
+        init_feature_flags(state_manager.redis_client)
+
+    # Register DB-backed feature flag lookup
+    async def _feature_flag_lookup(flag_key: str, tenant_id):
+        async with db_session() as db:
+            svc = FeatureFlagService(db)
+            return await svc.lookup_flag(flag_key, tenant_id)
+    register_feature_flag_lookup(_feature_flag_lookup)
+
+    # Wire WebSocket manager for real-time state broadcasting
+    state_manager.set_ws_manager(ws_manager)
 
     # Initialize checkpoint saver if database is configured
     checkpoint_saver = None
@@ -80,12 +121,24 @@ async def lifespan(app: FastAPI):
 
     # Start the orchestration controller
     await workflow_executor.start()
+    
+    # Start WebSocket manager for real-time streaming
+    await ws_manager.start()
+    
+    # Start health tracker for graceful degradation badges
+    await health_tracker.start()
 
     yield
 
     # Shutdown
     if workflow_executor:
         await workflow_executor.stop()
+    
+    # Stop WebSocket manager
+    await ws_manager.stop()
+    
+    # Stop health tracker
+    await health_tracker.stop()
 
     # Close checkpoint saver connection
     if checkpoint_saver:
@@ -110,9 +163,16 @@ app = FastAPI(
 # tenant/user/role context from Bearer JWT or X-API-Key.
 # api_key_resolver is wired to the DB-backed lookup so keys are verified
 # against the persistent api_keys table.
+def on_rate_limit_hit(tenant_id: str, scope: str):
+    metrics = get_metrics()
+    if metrics:
+        metrics.increment_rate_limit_hit(tenant_id, scope)
+
 app.add_middleware(
     GovernanceMiddleware,
     api_key_resolver=lookup_api_key_by_hash,
+    rate_limiter=getattr(app.state, 'rate_limiter', None),
+    on_rate_limit_hit=on_rate_limit_hit,
 )
 
 # CORS middleware — restrict origins in production via the CORS_ORIGINS env var
@@ -131,11 +191,18 @@ app.include_router(workflows.router, prefix="/v1", tags=["workflows"])
 app.include_router(tools.router, prefix="/v1", tags=["tools"])
 app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
 app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
+app.include_router(checkpoint_router, prefix="/v1", tags=["checkpoints"])
+app.include_router(state_inspector_router, prefix="/v1", tags=["state-inspector"])
+app.include_router(health_badges_router, prefix="/v1", tags=["health"])
+app.include_router(websocket_router, prefix="/v1")
 
 # Governance routes
 app.include_router(tenants_router, prefix="/v1")
 app.include_router(users_router, prefix="/v1")
 app.include_router(api_keys_router, prefix="/v1")
+app.include_router(oidc_router)
+app.include_router(models_router, prefix="/v1")
+app.include_router(feature_flags_router, prefix="/v1")
 
 
 @app.get("/health")

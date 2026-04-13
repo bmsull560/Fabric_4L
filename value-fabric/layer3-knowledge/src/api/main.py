@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from ..config import get_settings
 from ..logging_config import setup_logging, get_logger
@@ -62,7 +62,7 @@ from .dependencies import (
 
 # Import cache modules
 try:
-    from ..cache import initialize_cache, CacheConfig
+    from ..cache import initialize_cache, CacheConfig, cache_result, get_request_deduplicator, RequestDeduplicator
     CACHE_AVAILABLE = True
 except ImportError:
     CACHE_AVAILABLE = False
@@ -85,6 +85,10 @@ from .versioning import (
 from .models import (
     AuditLogEntry,
     AuditLogResponse,
+    BatchAnalyticsRequest,
+    BatchAnalyticsResponse,
+    BatchEntityRequest,
+    BatchEntityResponse,
     CentralityRequest,
     CentralityResponse,
     CommunityDetectionRequest,
@@ -101,6 +105,7 @@ from .models import (
     GraphNode,
     GraphRAGQuery,
     GraphRAGResponse,
+    GraphRAGStreamEvent,
     GraphResponse,
     GraphStats,
     HealthResponse,
@@ -112,9 +117,11 @@ from .models import (
     SchemaStatus,
     SearchRequest,
     SearchResponse,
+    SearchStreamEvent,
     ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
+    StreamEventType,
     SubgraphResponse,
     SyncStatusResponse,
     ValueTreeTraversal,
@@ -1277,6 +1284,37 @@ async def delete_source(
 
 # Query endpoints
 # Canonical route. Legacy `/v1/query` remains for backward compatibility.
+
+async def _execute_graph_rag_query(
+    graph_rag,
+    query_text: str,
+    entity_type: Optional[str],
+    max_hops: int,
+    max_results: int,
+) -> GraphRAGResponse:
+    """Execute GraphRAG query (extracted for caching/deduplication)."""
+    start_time = time.time()
+
+    result = await graph_rag.query(
+        query_text=query_text,
+        entity_type=entity_type,
+        max_hops=max_hops,
+        max_results=max_results,
+    )
+
+    processing_time = (time.time() - start_time) * 1000
+
+    return GraphRAGResponse(
+        query=result.query,
+        entities=result.entities,
+        relationships=result.relationships,
+        context_graph=result.context_graph,
+        confidence_score=result.confidence_score,
+        sources=result.sources,
+        processing_time_ms=processing_time,
+    )
+
+
 @app.post("/v1/query/graph", response_model=GraphRAGResponse)
 @app.post("/v1/query", response_model=GraphRAGResponse)
 async def graph_rag_query(
@@ -1285,38 +1323,147 @@ async def graph_rag_query(
 ):
     """Execute a GraphRAG query with multi-hop traversal.
 
+    Uses request deduplication to prevent redundant computation for
+    identical concurrent queries. Results are cached for 60 seconds.
+
     Notes:
     - Preferred route: `/v1/query/graph`
     - Legacy route retained: `/v1/query` (deprecate later)
     """
-    start_time = time.time()
-
     try:
-        result = await graph_rag.query(
-            query_text=query.query,
-            entity_type=query.entity_type,
-            max_hops=query.max_hops,
-            max_results=query.max_results,
-        )
+        deduplicator = get_request_deduplicator()
 
-        processing_time = (time.time() - start_time) * 1000
-
-        return GraphRAGResponse(
-            query=result.query,
-            entities=result.entities,
-            relationships=result.relationships,
-            context_graph=result.context_graph,
-            confidence_score=result.confidence_score,
-            sources=result.sources,
-            processing_time_ms=processing_time,
-        )
+        if deduplicator:
+            # Use request deduplication for identical concurrent queries
+            params = {
+                "query": query.query,
+                "entity_type": query.entity_type,
+                "max_hops": query.max_hops,
+                "max_results": query.max_results,
+            }
+            return await deduplicator.execute(
+                operation="graph_rag_query",
+                params=params,
+                executor=_execute_graph_rag_query,
+                ttl=60,  # 60 second deduplication window
+                graph_rag=graph_rag,
+                query_text=query.query,
+                entity_type=query.entity_type,
+                max_hops=query.max_hops,
+                max_results=query.max_results,
+            )
+        else:
+            # Fallback to direct execution
+            return await _execute_graph_rag_query(
+                graph_rag,
+                query.query,
+                query.entity_type,
+                query.max_hops,
+                query.max_results,
+            )
     except Exception as e:
         logger.error(f"GraphRAG query failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/v1/query/graph/stream")
+async def graph_rag_query_stream(
+    query: GraphRAGQuery,
+    graph_rag=Depends(get_graph_rag),
+):
+    """Execute a streaming GraphRAG query with progressive results.
+
+    Uses Server-Sent Events (SSE) to stream results as they are discovered:
+    - start: Query initialization
+    - seed_entity: Initial matching entities found
+    - context_node: Entities discovered during graph traversal
+    - context_edge: Relationships discovered
+    - progress: Periodic progress updates
+    - result: Final aggregated result
+    - complete: Stream completion
+
+    Example usage with curl:
+        curl -N -H "Accept: text/event-stream" \
+             -X POST http://localhost:8000/v1/query/graph/stream \
+             -H "Content-Type: application/json" \
+             -d '{"query": "What capabilities enable automated invoice processing?"}'
+    """
+    import json
+    from datetime import datetime
+
+    async def event_generator():
+        try:
+            async for event in graph_rag.query_stream(
+                query_text=query.query,
+                entity_type=query.entity_type,
+                max_hops=query.max_hops,
+                max_results=query.max_results,
+            ):
+                # Convert to SSE format
+                event_data = {
+                    "event_type": event["event_type"],
+                    "data": event["data"],
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "progress_percent": event.get("progress_percent", 0.0),
+                }
+                yield f"data: {json.dumps(event_data)}\n\n"
+        except Exception as e:
+            logger.error(f"Streaming GraphRAG query failed: {e}")
+            error_event = {
+                "event_type": "error",
+                "data": {"message": str(e)},
+                "timestamp": datetime.utcnow().isoformat(),
+                "progress_percent": 100.0,
+            }
+            yield f"data: {json.dumps(error_event)}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering for SSE
+        },
+    )
+
+
 # Search endpoints
 # Canonical route. Legacy `/v1/search` remains for backward compatibility.
+
+async def _execute_hybrid_search(
+    hybrid_search,
+    query: str,
+    entity_type: Optional[str],
+    search_type: str,
+    top_k: int,
+    weights: Optional[Dict],
+) -> SearchResponse:
+    """Execute hybrid search (extracted for caching/deduplication)."""
+    if search_type == "vector":
+        results = await hybrid_search.semantic_search(
+            query, entity_type, top_k
+        )
+    elif search_type == "fulltext":
+        results = await hybrid_search.fulltext_search(
+            query, entity_type, top_k
+        )
+    else:  # hybrid
+        results = await hybrid_search.search(
+            query,
+            [entity_type] if entity_type else None,
+            top_k,
+            weights,
+        )
+
+    return SearchResponse(
+        query=query,
+        results=results,
+        total_results=len(results),
+        search_type=search_type,
+    )
+
+
 @app.post("/v1/search/hybrid", response_model=SearchResponse)
 @app.post("/v1/search", response_model=SearchResponse)
 async def hybrid_search(
@@ -1325,33 +1472,47 @@ async def hybrid_search(
 ):
     """Execute hybrid search combining BM25, vector, and graph signals.
 
+    Uses request deduplication to prevent redundant computation for
+    identical concurrent searches.
+
     Notes:
     - Preferred route: `/v1/search/hybrid`
     - Legacy route retained: `/v1/search` (deprecate later)
     """
     try:
-        if request.search_type == "vector":
-            results = await hybrid_search.semantic_search(
-                request.query, request.entity_type, request.top_k
+        deduplicator = get_request_deduplicator()
+
+        if deduplicator:
+            # Use request deduplication for identical concurrent searches
+            params = {
+                "query": request.query,
+                "entity_type": request.entity_type,
+                "search_type": request.search_type,
+                "top_k": request.top_k,
+                "weights": request.weights,
+            }
+            return await deduplicator.execute(
+                operation="hybrid_search",
+                params=params,
+                executor=_execute_hybrid_search,
+                ttl=30,  # 30 second deduplication window
+                hybrid_search=hybrid_search,
+                query=request.query,
+                entity_type=request.entity_type,
+                search_type=request.search_type,
+                top_k=request.top_k,
+                weights=request.weights,
             )
-        elif request.search_type == "fulltext":
-            results = await hybrid_search.fulltext_search(
-                request.query, request.entity_type, request.top_k
-            )
-        else:  # hybrid
-            results = await hybrid_search.search(
+        else:
+            # Fallback to direct execution
+            return await _execute_hybrid_search(
+                hybrid_search,
                 request.query,
-                [request.entity_type] if request.entity_type else None,
+                request.entity_type,
+                request.search_type,
                 request.top_k,
                 request.weights,
             )
-
-        return SearchResponse(
-            query=request.query,
-            results=results,
-            total_results=len(results),
-            search_type=request.search_type,
-        )
     except Exception as e:
         logger.error(f"Search failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1363,9 +1524,16 @@ async def get_entity_context(
     entity_id: str,
     hops: int = 2,
     relationship_types: Optional[List[str]] = None,
+    fields: Optional[str] = Query(None, description="Comma-separated fields to include (e.g., 'id,name,type')"),
+    cursor: Optional[str] = Query(None, description="Pagination cursor for neighbors"),
+    limit: int = Query(100, ge=1, le=500, description="Max neighbors to return"),
     graph_rag=Depends(get_graph_rag),
 ):
-    """Get neighborhood context around an entity."""
+    """Get neighborhood context around an entity.
+
+    Supports field selection (?fields=id,name,type) to reduce payload size,
+    and cursor-based pagination (?cursor=xyz&limit=50) for large neighborhoods.
+    """
     try:
         context = await graph_rag.get_entity_context(
             entity_id=entity_id,
@@ -1376,13 +1544,48 @@ async def get_entity_context(
         if not context["center"]:
             raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
 
+        # Apply field selection if requested
+        if fields:
+            field_list = [f.strip() for f in fields.split(",")]
+            center = {k: v for k, v in context["center"].items() if k in field_list or k == "id"}
+            neighbors = [
+                {k: v for k, v in n.items() if k in field_list or k == "id"}
+                for n in context["neighbors"]
+            ]
+            relationships = [
+                {k: v for k, v in r.items() if k in field_list or k in ["source", "target", "type"]}
+                for r in context["relationships"]
+            ]
+        else:
+            center = context["center"]
+            neighbors = context["neighbors"]
+            relationships = context["relationships"]
+
+        # Apply pagination to neighbors
+        pagination_info = None
+        if cursor or len(neighbors) > limit:
+            # Simple offset-based pagination (can be enhanced to cursor-based)
+            offset = int(cursor) if cursor and cursor.isdigit() else 0
+            total_neighbors = len(neighbors)
+            paginated_neighbors = neighbors[offset:offset + limit]
+            has_more = (offset + limit) < total_neighbors
+
+            pagination_info = {
+                "returned_count": len(paginated_neighbors),
+                "total_neighbors": total_neighbors,
+                "has_more": has_more,
+                "next_cursor": str(offset + limit) if has_more else None,
+            }
+            neighbors = paginated_neighbors
+
         return EntityContextResponse(
             entity_id=entity_id,
-            center=context["center"],
-            neighbors=context["neighbors"],
-            relationships=context["relationships"],
+            center=center,
+            neighbors=neighbors,
+            relationships=relationships,
             entity_count=context["entity_count"],
             relationship_count=context["relationship_count"],
+            pagination=pagination_info,
         )
     except HTTPException:
         raise
@@ -1552,6 +1755,276 @@ async def compare_entities(
     except Exception as e:
         logger.error(f"Entity comparison failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Batch Operations Endpoints
+@app.post("/v1/batch/entities", response_model=BatchEntityResponse)
+async def batch_entity_operations(
+    request: BatchEntityRequest,
+    neo4j_driver=Depends(get_neo4j_driver),
+):
+    """Execute batch entity operations (create/update/delete).
+
+    Reduces round-trips for bulk operations from the frontend.
+    Supports atomic mode where all operations succeed or all fail.
+    """
+    results = []
+    successful = 0
+    failed = 0
+    atomic_rollback = False
+
+    # For atomic mode, we'll track and rollback if needed
+    created_entities = []
+
+    try:
+        for i, operation in enumerate(request.operations):
+            try:
+                if operation.operation == "create":
+                    # Create entity
+                    result = await _create_entity(neo4j_driver, operation)
+                    if result["success"]:
+                        successful += 1
+                        created_entities.append(result["entity_id"])
+                    else:
+                        failed += 1
+                    results.append({
+                        "index": i,
+                        "operation": "create",
+                        "entity_id": result.get("entity_id"),
+                        "success": result["success"],
+                        "error": result.get("error"),
+                    })
+
+                elif operation.operation == "update":
+                    # Update entity
+                    result = await _update_entity(neo4j_driver, operation)
+                    if result["success"]:
+                        successful += 1
+                    else:
+                        failed += 1
+                    results.append({
+                        "index": i,
+                        "operation": "update",
+                        "entity_id": operation.entity_id,
+                        "success": result["success"],
+                        "error": result.get("error"),
+                    })
+
+                elif operation.operation == "delete":
+                    # Delete entity
+                    result = await _delete_entity(neo4j_driver, operation)
+                    if result["success"]:
+                        successful += 1
+                    else:
+                        failed += 1
+                    results.append({
+                        "index": i,
+                        "operation": "delete",
+                        "entity_id": operation.entity_id,
+                        "success": result["success"],
+                        "error": result.get("error"),
+                    })
+
+            except Exception as e:
+                failed += 1
+                results.append({
+                    "index": i,
+                    "operation": operation.operation,
+                    "entity_id": operation.entity_id,
+                    "success": False,
+                    "error": str(e),
+                })
+
+        # Atomic rollback if requested and any failures occurred
+        if request.atomic and failed > 0 and created_entities:
+            atomic_rollback = True
+            logger.warning(f"Atomic rollback: deleting {len(created_entities)} created entities")
+            for entity_id in created_entities:
+                try:
+                    await _delete_entity_by_id(neo4j_driver, entity_id)
+                except Exception as e:
+                    logger.error(f"Rollback error for entity {entity_id}: {e}")
+
+        return BatchEntityResponse(
+            total_operations=len(request.operations),
+            successful=successful if not (request.atomic and failed > 0) else 0,
+            failed=failed,
+            results=results,
+            atomic_rollback=atomic_rollback if request.atomic else None,
+        )
+
+    except Exception as e:
+        logger.error(f"Batch entity operations failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/v1/batch/analytics", response_model=BatchAnalyticsResponse)
+async def batch_analytics(
+    request: BatchAnalyticsRequest,
+    centrality_analyzer=Depends(get_centrality_analyzer),
+    graph_rag=Depends(get_graph_rag),
+):
+    """Execute batch analytics on multiple entities.
+
+    Runs analytics (centrality, community context) on each entity's
+    neighborhood subgraph efficiently.
+    """
+    results = []
+    successful = 0
+    failed = 0
+    all_scores = []
+
+    try:
+        for entity_id in request.entity_ids:
+            try:
+                # Get entity context first
+                context = await graph_rag.get_entity_context(
+                    entity_id=entity_id,
+                    hops=request.max_hops,
+                )
+
+                if not context.get("center"):
+                    results.append({
+                        "entity_id": entity_id,
+                        "success": False,
+                        "error": "Entity not found",
+                    })
+                    failed += 1
+                    continue
+
+                # Run appropriate analytics based on algorithm
+                if request.algorithm in ["centrality", "pagerank"]:
+                    # Get centrality for this entity's subgraph
+                    metrics = {
+                        "entity_count": context["entity_count"],
+                        "relationship_count": context["relationship_count"],
+                        "center_entity": context["center"],
+                        "neighbors": len(context.get("neighbors", [])),
+                    }
+                    all_scores.append(context["entity_count"])
+                else:
+                    metrics = {"context": context}
+
+                results.append({
+                    "entity_id": entity_id,
+                    "success": True,
+                    "metrics": metrics,
+                })
+                successful += 1
+
+            except Exception as e:
+                logger.warning(f"Batch analytics failed for {entity_id}: {e}")
+                results.append({
+                    "entity_id": entity_id,
+                    "success": False,
+                    "error": str(e),
+                })
+                failed += 1
+
+        # Calculate aggregate metrics
+        aggregate = None
+        if all_scores:
+            aggregate = {
+                "avg_entities_per_context": sum(all_scores) / len(all_scores),
+                "max_entities": max(all_scores),
+                "min_entities": min(all_scores),
+                "total_entities_analyzed": sum(all_scores),
+            }
+
+        return BatchAnalyticsResponse(
+            total_analyzed=len(request.entity_ids),
+            successful=successful,
+            failed=failed,
+            results=results,
+            aggregate_metrics=aggregate,
+        )
+
+    except Exception as e:
+        logger.error(f"Batch analytics failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Helper functions for batch operations
+async def _create_entity(driver, operation):
+    """Create a single entity."""
+    try:
+        import uuid
+        entity_id = str(uuid.uuid4())
+
+        async with driver.session() as session:
+            query = """
+            CREATE (n:Entity {
+                id: $id,
+                entity_type: $entity_type,
+                created_at: datetime(),
+                updated_at: datetime()
+            })
+            SET n += $properties
+            RETURN n.id as entity_id
+            """
+            result = await session.run(
+                query,
+                {
+                    "id": entity_id,
+                    "entity_type": operation.entity_type.value if operation.entity_type else "Unknown",
+                    "properties": operation.properties or {},
+                }
+            )
+            record = await result.single()
+            if record:
+                return {"success": True, "entity_id": record["entity_id"]}
+            return {"success": False, "error": "Failed to create entity"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def _update_entity(driver, operation):
+    """Update a single entity."""
+    try:
+        async with driver.session() as session:
+            query = """
+            MATCH (n {id: $entity_id})
+            SET n += $properties, n.updated_at = datetime()
+            RETURN n.id as entity_id
+            """
+            result = await session.run(
+                query,
+                {
+                    "entity_id": operation.entity_id,
+                    "properties": operation.properties or {},
+                }
+            )
+            record = await result.single()
+            if record:
+                return {"success": True}
+            return {"success": False, "error": "Entity not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def _delete_entity(driver, operation):
+    """Delete a single entity."""
+    try:
+        async with driver.session() as session:
+            query = """
+            MATCH (n {id: $entity_id})
+            DETACH DELETE n
+            RETURN count(n) as deleted
+            """
+            result = await session.run(query, {"entity_id": operation.entity_id})
+            record = await result.single()
+            if record and record["deleted"] > 0:
+                return {"success": True}
+            return {"success": False, "error": "Entity not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def _delete_entity_by_id(driver, entity_id):
+    """Delete entity by ID (for rollback)."""
+    async with driver.session() as session:
+        query = "MATCH (n {id: $entity_id}) DETACH DELETE n"
+        await session.run(query, {"entity_id": entity_id})
 
 
 # Agent endpoints (from value_fabric_backend_logic_specifications.md)

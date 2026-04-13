@@ -87,7 +87,17 @@ if metrics:
 # callable to support X-API-Key if the shared key store is accessible.
 try:
     from shared.identity.middleware import GovernanceMiddleware
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+    from shared.identity.rate_limiter import RedisRateLimiter
+
+    redis_rate_limiter = None
+    try:
+        from ..shared.database import redis_client
+        if redis_client is not None:
+            redis_rate_limiter = RedisRateLimiter(redis_client)
+    except Exception:
+        pass
+
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=redis_rate_limiter)
 except ImportError:
     import logging as _log
     _log.getLogger(__name__).warning(

@@ -126,6 +126,44 @@ class PrometheusMetrics:
             "service": "layer4-agents"
         })
 
+        # Rate limiting metrics
+        self._metrics["rate_limit_hits_total"] = Counter(
+            f"{prefix}rate_limit_hits_total",
+            "Total rate limit hits",
+            ["tenant_id", "scope"],
+            registry=self.config.registry
+        )
+
+        # LLM cost metrics (cross-layer, vf_ prefix)
+        self._metrics["llm_cost_usd_total"] = Counter(
+            "vf_llm_cost_usd_total",
+            "Total LLM cost in USD",
+            ["provider", "model", "tenant_id"],
+            registry=self.config.registry
+        )
+
+        self._metrics["llm_tokens_total"] = Counter(
+            "vf_llm_tokens_total",
+            "Total LLM tokens consumed",
+            ["provider", "model", "tenant_id", "token_type"],
+            registry=self.config.registry
+        )
+
+        self._metrics["llm_requests_total"] = Counter(
+            "vf_llm_requests_total",
+            "Total LLM requests",
+            ["provider", "model", "tenant_id", "status"],
+            registry=self.config.registry
+        )
+
+        # Formula approval pending gauge
+        self._metrics["formula_approval_pending"] = Gauge(
+            f"{prefix}formula_approval_pending",
+            "Number of formulas pending approval",
+            ["tenant_id"],
+            registry=self.config.registry
+        )
+
     def increment_requests_total(self, method: str, endpoint: str, status_code: int) -> None:
         if self.config.enabled:
             self._metrics["requests_total"].labels(
@@ -179,6 +217,49 @@ class PrometheusMetrics:
             self._metrics["errors_total"].labels(
                 error_type=error_type, component=component
             ).inc()
+
+    def increment_rate_limit_hit(self, tenant_id: str, scope: str) -> None:
+        if self.config.enabled:
+            self._metrics["rate_limit_hits_total"].labels(
+                tenant_id=tenant_id, scope=scope
+            ).inc()
+
+    def record_llm_cost(
+        self,
+        provider: str,
+        model: str,
+        tenant_id: str,
+        cost: float,
+        prompt_tokens: int,
+        completion_tokens: int,
+        status: str = "success",
+    ) -> None:
+        if not self.config.enabled:
+            return
+        self._metrics["llm_cost_usd_total"].labels(
+            provider=provider, model=model, tenant_id=tenant_id
+        ).inc(cost)
+        self._metrics["llm_tokens_total"].labels(
+            provider=provider, model=model, tenant_id=tenant_id, token_type="prompt"
+        ).inc(prompt_tokens)
+        self._metrics["llm_tokens_total"].labels(
+            provider=provider, model=model, tenant_id=tenant_id, token_type="completion"
+        ).inc(completion_tokens)
+        self._metrics["llm_requests_total"].labels(
+            provider=provider, model=model, tenant_id=tenant_id, status=status
+        ).inc()
+
+    def set_formula_approval_pending(self, tenant_id: str, value: int) -> None:
+        if self.config.enabled:
+            self._metrics["formula_approval_pending"].labels(tenant_id=tenant_id).set(value)
+
+    def inc_formula_approval_pending(self, tenant_id: str) -> None:
+        if self.config.enabled:
+            self._metrics["formula_approval_pending"].labels(tenant_id=tenant_id).inc()
+
+    def dec_formula_approval_pending(self, tenant_id: str) -> None:
+        if self.config.enabled:
+            self._metrics["formula_approval_pending"].labels(tenant_id=tenant_id).dec()
 
     def get_metrics(self) -> str:
         """Get Prometheus metrics output."""

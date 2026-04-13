@@ -4,11 +4,14 @@ Defines typed state schemas for all workflow types in Layer 4.
 """
 
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Any, Dict, List, Optional, TYPE_CHECKING
 from datetime import datetime
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
+
+if TYPE_CHECKING:
+    from .pause_point import PausePoint
 
 
 def _last_value(left: Any, right: Any) -> Any:
@@ -98,6 +101,11 @@ class BaseAgentState(BaseModel):
         output_data: Accumulated results
         errors: List of errors encountered
         metadata: Additional execution metadata
+        pause_point: Structured pause information when status is PAUSED
+        paused_by: User who paused the workflow (if applicable)
+        paused_at: When the workflow was paused
+        resumed_by: User who resumed the workflow
+        resumed_at: When the workflow was resumed
     """
     workflow_id: str = Field(default_factory=lambda: str(uuid4()))
     workflow_type: WorkflowType
@@ -110,9 +118,44 @@ class BaseAgentState(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     
+    # Human-in-the-loop fields
+    pause_point: Optional[Dict[str, Any]] = Field(
+        default=None, 
+        description="Structured pause point when workflow requires human input"
+    )
+    paused_by: Optional[str] = Field(None, description="User who paused the workflow")
+    paused_at: Optional[datetime] = Field(None, description="When workflow was paused")
+    resumed_by: Optional[str] = Field(None, description="User who resumed the workflow")
+    resumed_at: Optional[datetime] = Field(None, description="When workflow was resumed")
+    pause_count: int = Field(default=0, description="Number of times workflow has been paused")
+    
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat()
+        }
+    
+    def is_paused(self) -> bool:
+        """Check if workflow is currently paused."""
+        return self.status == WorkflowStatus.PAUSED
+    
+    def can_resume(self) -> bool:
+        """Check if workflow can be resumed."""
+        return self.status in [WorkflowStatus.PAUSED, WorkflowStatus.RUNNING, WorkflowStatus.PENDING]
+    
+    def get_pause_summary(self) -> Optional[Dict[str, Any]]:
+        """Get summary of current pause point if paused."""
+        if not self.is_paused() or not self.pause_point:
+            return None
+        return {
+            "title": self.pause_point.get("title"),
+            "reason": self.pause_point.get("reason"),
+            "severity": self.pause_point.get("severity"),
+            "required_inputs": [
+                field.get("name") 
+                for field in self.pause_point.get("required_inputs", [])
+            ],
+            "paused_at": self.paused_at.isoformat() if self.paused_at else None,
+            "paused_by": self.paused_by,
         }
 
 

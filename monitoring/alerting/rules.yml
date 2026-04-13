@@ -19,6 +19,7 @@ groups:
         annotations:
           summary: "High error rate detected in Value Fabric"
           description: "Error rate is above 5% for more than 5 minutes"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-error-rate.md"
 
       # Disk space alerts (using node-exporter host-level metrics)
       - alert: DiskSpaceLow
@@ -29,6 +30,7 @@ groups:
         annotations:
           summary: "Low disk space on {{ $labels.instance }}"
           description: "Disk usage on {{ $labels.mountpoint }} is above 90% ({{ $value | humanizePercentage }} remaining)"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/disk-space-low.md"
 
       - alert: DiskSpaceCritical
         expr: (node_filesystem_avail_bytes{fstype!="tmpfs",fstype!="proc",fstype!="sysfs",fstype!="cgroup"} / node_filesystem_size_bytes) < 0.05
@@ -38,6 +40,7 @@ groups:
         annotations:
           summary: "Critical disk space on {{ $labels.instance }}"
           description: "Disk usage on {{ $labels.mountpoint }} is above 95% ({{ $value | humanizePercentage }} remaining). Immediate action required!"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/disk-space-critical.md"
 
       - alert: DiskInodeExhaustion
         expr: (node_filesystem_files_free{fstype!="tmpfs",fstype!="proc",fstype!="sysfs",fstype!="cgroup"} / node_filesystem_files) < 0.10
@@ -47,6 +50,7 @@ groups:
         annotations:
           summary: "Low inodes on {{ $labels.instance }}"
           description: "Inode usage on {{ $labels.mountpoint }} is above 90% ({{ $value | humanizePercentage }} remaining). New file creation may fail."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/disk-inode-exhaustion.md"
 
       # Slow queries alert (p95 latency > 2s)
       - alert: SlowQueries
@@ -66,6 +70,7 @@ groups:
         annotations:
           summary: "Slow queries detected"
           description: "p95 latency is above 2 seconds for more than 10 minutes"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/slow-queries.md"
 
       # Dependency down alerts
       - alert: Neo4jDown
@@ -76,6 +81,7 @@ groups:
         annotations:
           summary: "Neo4j is down"
           description: "Neo4j database is unreachable"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/neo4j-down.md"
 
       - alert: PostgresDown
         expr: layer4_health_status{component="postgres"} == 0
@@ -85,6 +91,7 @@ groups:
         annotations:
           summary: "PostgreSQL is down"
           description: "PostgreSQL database is unreachable"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/postgres-down.md"
 
       - alert: RedisDown
         expr: |
@@ -99,6 +106,7 @@ groups:
         annotations:
           summary: "Redis is down"
           description: "Redis cache is unreachable"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/redis-down.md"
 
       # Workflow stalled alert
       - alert: WorkflowStalled
@@ -112,6 +120,7 @@ groups:
         annotations:
           summary: "Workflow may be stalled"
           description: "Running workflows show no progress for 30+ minutes"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/workflow-stalled.md"
 
       # Memory usage alert
       - alert: HighMemoryUsage
@@ -131,6 +140,7 @@ groups:
         annotations:
           summary: "High memory usage"
           description: "Memory usage exceeds 4GB"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-memory-usage.md"
 
       # CPU usage alert
       - alert: HighCPUUsage
@@ -150,3 +160,25 @@ groups:
         annotations:
           summary: "High CPU usage"
           description: "CPU usage exceeds 80% for more than 10 minutes"
+
+      # High LLM cost rate alert
+      - alert: HighLLMCostRate
+        expr: sum(rate(vf_llm_cost_usd_total[1h])) > 50
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High LLM cost rate detected"
+          description: "Aggregated LLM spend is above $50/hr for more than 15 minutes"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
+
+      # Formula approval alert
+      - alert: FormulaApprovalRequired
+        expr: layer4_formula_approval_pending > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Formula approval required"
+          description: "One or more formulas are pending approval"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/formula-approval.md"

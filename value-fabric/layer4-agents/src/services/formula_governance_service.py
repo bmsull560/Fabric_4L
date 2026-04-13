@@ -10,6 +10,7 @@ import re
 
 from neo4j import AsyncDriver
 
+from ..metrics import get_metrics
 from ..interfaces.formula_governance import (
     IFormulaGovernanceService,
     IFormulaApprovalWorkflow,
@@ -28,6 +29,13 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
     
     def __init__(self, driver: AsyncDriver):
         self._driver = driver
+
+    async def _tenant_id_for_formula(self, formula_id: str) -> str:
+        query = "MATCH (f:Formula {id: $formula_id}) RETURN f.tenant_id as tenant_id"
+        async with self._driver.session() as session:
+            result = await session.run(query, formula_id=formula_id)
+            record = await result.single()
+            return record["tenant_id"] if record and record.get("tenant_id") else "unknown"
     
     async def get_governance(self, formula_id: str) -> Optional[FormulaGovernance]:
         """Retrieve governance metadata for formula from Neo4j."""
@@ -465,6 +473,10 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         submitted_by: str,
     ) -> GovernanceTransitionResult:
         """Submit formula for review."""
+        tenant_id = await self._tenant_id_for_formula(formula_id)
+        metrics = get_metrics()
+        if metrics:
+            metrics.inc_formula_approval_pending(tenant_id)
         return await self._transition_status(
             formula_id, version, FormulaStatus.DRAFT, FormulaStatus.UNDER_REVIEW, submitted_by
         )
@@ -487,7 +499,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
             f.approvedBy = $approved_by,
             f.approvalComments = $comments,
             fv.status = 'approved'
-        RETURN f
+        RETURN f.tenant_id as tenant_id
         """
         
         async with self._driver.session() as session:
@@ -500,7 +512,8 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
                 comments=comments,
             )
             record = await result.single()
-            
+            tenant_id = (record.get("tenant_id") or "unknown") if record else "unknown"
+
             if not record:
                 return GovernanceTransitionResult(
                     success=False,
@@ -509,7 +522,11 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
                     new_status=FormulaStatus.UNDER_REVIEW,
                     error_message="Failed to approve formula",
                 )
-            
+
+            metrics = get_metrics()
+            if metrics:
+                metrics.dec_formula_approval_pending(tenant_id)
+
             return GovernanceTransitionResult(
                 success=True,
                 formula_id=formula_id,
@@ -535,7 +552,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
             f.rejectedBy = $rejected_by,
             f.rejectionReason = $reason,
             fv.status = 'draft'
-        RETURN f
+        RETURN f.tenant_id as tenant_id
         """
         
         async with self._driver.session() as session:
@@ -548,7 +565,8 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
                 reason=reason,
             )
             record = await result.single()
-            
+            tenant_id = (record.get("tenant_id") or "unknown") if record else "unknown"
+
             if not record:
                 return GovernanceTransitionResult(
                     success=False,
@@ -557,7 +575,11 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
                     new_status=FormulaStatus.UNDER_REVIEW,
                     error_message="Failed to reject formula",
                 )
-            
+
+            metrics = get_metrics()
+            if metrics:
+                metrics.dec_formula_approval_pending(tenant_id)
+
             return GovernanceTransitionResult(
                 success=True,
                 formula_id=formula_id,

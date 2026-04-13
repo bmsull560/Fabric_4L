@@ -21,5 +21,8 @@ data:
   # Redis configuration
   REDIS_URL: "redis://redis:6379/0"
   
+  # Vault
+  VAULT_ADDR: "https://vault.value-fabric.svc:8200"
+
   # Log level
   LOG_LEVEL: "info"

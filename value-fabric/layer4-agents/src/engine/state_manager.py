@@ -1,10 +1,16 @@
 """State manager for workflow state persistence using Redis."""
 
 import json
-from typing import Any, Dict, Optional
+import logging
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from datetime import datetime
 
 from ..models.agent_state import AgentState, WorkflowStatus
+
+if TYPE_CHECKING:
+    from ..api.websocket.manager import WorkflowWebSocketManager
+
+logger = logging.getLogger(__name__)
 
 
 class StateManager:
@@ -14,6 +20,7 @@ class StateManager:
     - State storage and retrieval
     - Workflow status tracking
     - History recording
+    - Real-time WebSocket broadcasting
     
     Example:
         manager = StateManager(redis_client)
@@ -21,14 +28,16 @@ class StateManager:
         state = await manager.load_state(workflow_id)
     """
     
-    def __init__(self, redis_client=None):
+    def __init__(self, redis_client=None, ws_manager: Optional['WorkflowWebSocketManager'] = None):
         """Initialize state manager.
         
         Args:
             redis_client: Redis client instance (optional)
+            ws_manager: WebSocket manager for real-time streaming (optional)
         """
         self.redis = redis_client
         self._memory_store: Dict[str, Dict] = {}  # Fallback if no Redis
+        self._ws_manager: Optional['WorkflowWebSocketManager'] = ws_manager
     
     def _get_key(self, workflow_id: str) -> str:
         """Generate Redis key for workflow state."""
@@ -38,13 +47,17 @@ class StateManager:
         """Generate Redis key for workflow history."""
         return f"layer4:workflow:{workflow_id}:history"
     
+    def set_ws_manager(self, ws_manager: 'WorkflowWebSocketManager') -> None:
+        """Set WebSocket manager for real-time broadcasting."""
+        self._ws_manager = ws_manager
+    
     async def save_state(
         self,
         workflow_id: str,
         state: AgentState,
         ttl_seconds: int = 86400  # 24 hours default
     ) -> None:
-        """Save workflow state.
+        """Save workflow state and broadcast update.
         
         Args:
             workflow_id: Workflow identifier
@@ -64,6 +77,37 @@ class StateManager:
                 "data": state_dict,
                 "expires": datetime.utcnow().timestamp() + ttl_seconds
             }
+        
+        # Broadcast state update via WebSocket
+        if self._ws_manager:
+            try:
+                await self._ws_manager.broadcast_state_update(
+                    workflow_id=workflow_id,
+                    status=state.status.value if hasattr(state.status, 'value') else str(state.status),
+                    current_node=state.current_node,
+                    progress_percentage=self._calculate_progress(state),
+                    output_data=state_dict.get("output_data"),
+                    pause_point=state_dict.get("pause_point")
+                )
+            except Exception as e:
+                logger.warning(f"Failed to broadcast state update: {e}")
+    
+    def _calculate_progress(self, state: AgentState) -> float:
+        """Calculate workflow progress percentage."""
+        # Simple heuristic: if completed, 100%; if failed, 0%;
+        # otherwise estimate based on status
+        status = state.status
+        if status == WorkflowStatus.COMPLETED:
+            return 100.0
+        elif status == WorkflowStatus.FAILED:
+            return 0.0
+        elif status == WorkflowStatus.PAUSED:
+            # Estimate based on whether we have output
+            return 50.0 if state.output_data else 25.0
+        elif status == WorkflowStatus.RUNNING:
+            return 10.0
+        else:
+            return 0.0
     
     async def load_state(self, workflow_id: str) -> Optional[AgentState]:
         """Load workflow state.

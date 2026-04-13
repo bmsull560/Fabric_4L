@@ -1,5 +1,5 @@
 .PHONY: help verify lint typecheck test test-layer1 test-layer2 test-layer3 test-layer4 \
-        test-frontend build migrate evals clean
+        test-frontend build migrate evals clean sdk
 
 PYTHON := python3
 PIP    := pip install -e
@@ -94,6 +94,9 @@ migrate: ## Run Alembic migrations for all layers
 
 contracts: ## Export OpenAPI specs from all layers
 	$(PYTHON) scripts/export_openapi.py
+
+sdk: ## Generate the Python SDK (manual typed client)
+	$(PYTHON) scripts/generate_sdk.py
 
 # ─── Dev Infrastructure ───────────────────────────────────────────────────────
 

@@ -277,6 +277,36 @@ kubectl exec -it vault-0 -n vault -- vault status
 - [HashiCorp Vault](https://www.vaultproject.io/)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 
+## OIDC Client Secrets via Vault
+
+For Task 40 (SSO / OIDC), store `client_secret` as a Vault reference instead of plaintext in the database. Configure the tenant's OIDC settings with:
+
+```json
+{
+  "oidc": {
+    "client_secret_ref": "vault:secret/value-fabric/oidc/{tenant-slug}"
+  }
+}
+```
+
+The application resolves the reference at runtime using the Vault KV v2 API. Rotate the secret in Vault without touching the database.
+
+## Dynamic PostgreSQL Secrets
+
+In production, use the Vault Database Secrets Engine to generate short-lived PostgreSQL credentials. See `k8s/external-secrets/vault-database-dynamic.yml` for the ExternalSecret manifest (1h TTL). Dynamic credentials are automatically rotated and revoked, reducing the blast radius of credential leaks.
+
+## Smoke Gate
+
+Before deploying to production, run the Vault smoke test to verify connectivity and secret access:
+
+```bash
+export VAULT_ADDR=https://vault.value-fabric.svc:8200
+export VAULT_TOKEN=<your-vault-token>
+python scripts/smoke/vault_smoke.py
+```
+
+A non-zero exit code blocks the deployment pipeline.
+
 ---
 
-*Last updated: 2026-04-12*
+*Last updated: 2026-04-13*

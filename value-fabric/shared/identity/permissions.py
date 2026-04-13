@@ -31,6 +31,11 @@ class Permission(str, Enum):
     READ_INGESTION = "read:ingestion"
     READ_AGENTS = "read:agents"
 
+    # ── Model registry permissions ─────────────────────────────────────────
+    READ_MODELS = "read:models"
+    WRITE_MODELS = "write:models"
+    ADMIN_MODELS = "admin:models"
+
     # ── Write permissions ──────────────────────────────────────────────────
     WRITE_INGESTION = "write:ingestion"
     WRITE_EXTRACTION = "write:extraction"
@@ -98,6 +103,7 @@ ROLE_PERMISSIONS: dict[Role, RolePermissions] = {
                 Permission.READ_ANALYTICS,
                 Permission.READ_INGESTION,
                 Permission.READ_AGENTS,
+                Permission.READ_MODELS,
                 Permission.WRITE_ANALYTICS,
                 Permission.WRITE_AGENTS,
             }
@@ -115,6 +121,8 @@ ROLE_PERMISSIONS: dict[Role, RolePermissions] = {
                 Permission.READ_ANALYTICS,
                 Permission.READ_INGESTION,
                 Permission.READ_AGENTS,
+                Permission.READ_MODELS,
+                Permission.WRITE_MODELS,
                 Permission.WRITE_INGESTION,
                 Permission.WRITE_EXTRACTION,
                 Permission.WRITE_SCHEMA,
@@ -135,6 +143,9 @@ ROLE_PERMISSIONS: dict[Role, RolePermissions] = {
                 Permission.READ_ANALYTICS,
                 Permission.READ_INGESTION,
                 Permission.READ_AGENTS,
+                Permission.READ_MODELS,
+                Permission.WRITE_MODELS,
+                Permission.ADMIN_MODELS,
                 Permission.WRITE_INGESTION,
                 Permission.WRITE_EXTRACTION,
                 Permission.WRITE_SCHEMA,

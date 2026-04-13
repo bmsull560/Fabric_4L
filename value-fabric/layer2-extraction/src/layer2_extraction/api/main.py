@@ -52,11 +52,15 @@ from layer2_extraction.integration.pending_ingestion_store import (
     build_pending_ingestion_store,
     SqlitePendingIngestionStore,
 )
+from layer2_extraction.api.websocket import websocket_router, get_pipeline_ws_manager, PipelineStage
 
 logger = logging.getLogger(__name__)
 
 # App start time for uptime calculation
 _app_start_time = time.time()
+
+# WebSocket manager for real-time pipeline streaming
+_ws_manager = get_pipeline_ws_manager()
 
 # Initialize Prometheus metrics
 metrics = initialize_metrics()
@@ -97,6 +101,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include WebSocket router for real-time pipeline streaming
+app.include_router(websocket_router, prefix="/v1")
 
 # Lazy initialization of extractors to avoid import-time side effects
 _entity_extractor = None
@@ -349,6 +356,15 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
     client = Layer3KnowledgeClient()
     try:
         _set_pipeline_job(job_id, ingestion_status="running", next_retry_at=None)
+        
+        # Broadcast ingestion start
+        await _ws_manager.broadcast_ingestion_status(
+            job_id=job_id,
+            status="running",
+            retry_count=PIPELINE_JOBS[job_id].retry_count,
+            max_retries=MAX_INGESTION_RETRIES
+        )
+        
         response = await client.ingest_extraction_result(
             extraction_result=artifacts.result,
             source_url=source_url,
@@ -363,10 +379,42 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
                 next_retry_at=None,
                 completed_at=datetime.utcnow(),
             )
+            
+            # Broadcast ingestion success
+            await _ws_manager.broadcast_ingestion_status(
+                job_id=job_id,
+                status="completed",
+                retry_count=PIPELINE_JOBS[job_id].retry_count,
+                max_retries=MAX_INGESTION_RETRIES,
+                entities_loaded=response.entities_loaded,
+                relationships_loaded=response.relationships_loaded
+            )
+            
+            # Broadcast overall pipeline completion
+            job = PIPELINE_JOBS[job_id]
+            await _ws_manager.broadcast_pipeline_complete(
+                job_id=job_id,
+                status="completed",
+                entities_extracted=job.entities_extracted,
+                relationships_extracted=job.relationships_extracted,
+                entities_loaded=response.entities_loaded,
+                relationships_loaded=response.relationships_loaded
+            )
+            
             await pending_ingestion_store.complete(job_id)
             return True
 
         retry_count = PIPELINE_JOBS[job_id].retry_count + 1
+        
+        # Broadcast ingestion failure with retry
+        await _ws_manager.broadcast_ingestion_status(
+            job_id=job_id,
+            status="retrying" if retry_count <= MAX_INGESTION_RETRIES else "failed",
+            retry_count=retry_count,
+            max_retries=MAX_INGESTION_RETRIES,
+            error=response.error or response.message
+        )
+        
         await _queue_for_retry(
             job_id=job_id,
             source_url=source_url,
@@ -465,6 +513,9 @@ async def startup_event() -> None:
     global _retry_task
     if _retry_task is None:
         _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
+    
+    # Start WebSocket manager for real-time streaming
+    await _ws_manager.start()
 
 
 @app.on_event("shutdown")
@@ -477,6 +528,9 @@ async def shutdown_event() -> None:
         except asyncio.CancelledError:
             pass
         _retry_task = None
+    
+    # Stop WebSocket manager
+    await _ws_manager.stop()
 
 
 # Background task for extraction
@@ -526,6 +580,14 @@ async def run_extraction(
 
     _set_pipeline_job(job_id, extraction_status="running")
     
+    # Broadcast pipeline start
+    await _ws_manager.broadcast_stage_start(
+        job_id=job_id,
+        stage=PipelineStage.CHUNKING,
+        stage_number=1,
+        total_stages=6
+    )
+    
     try:
         # Stage 1: Chunking
         step1 = ExtractionStep(
@@ -546,7 +608,24 @@ async def run_extraction(
         step1.completed_at = datetime.utcnow()
         activity.add_step(step1)
         
+        # Broadcast chunking complete
+        await _ws_manager.broadcast_stage_complete(
+            job_id=job_id,
+            stage=PipelineStage.CHUNKING,
+            stage_number=1,
+            total_stages=6,
+            result_summary={"chunks_created": len(chunks)}
+        )
+        
         # Stage 2 & 3: Entity and Relationship Extraction
+        await _ws_manager.broadcast_stage_start(
+            job_id=job_id,
+            stage=PipelineStage.ENTITY_EXTRACTION,
+            stage_number=2,
+            total_stages=6,
+            metadata={"total_chunks": len(chunks)}
+        )
+        
         step2 = ExtractionStep(
             step_name="entity_extraction",
             started_at=datetime.utcnow()
@@ -564,6 +643,18 @@ async def run_extraction(
         confidence_threshold = config.get("confidence_threshold", 0.75)
         
         for i, chunk in enumerate(chunks):
+            # Broadcast progress every chunk
+            if i % max(1, len(chunks) // 10) == 0 or i == len(chunks) - 1:
+                await _ws_manager.broadcast_stage_progress(
+                    job_id=job_id,
+                    stage=PipelineStage.ENTITY_EXTRACTION,
+                    stage_number=2,
+                    total_stages=6,
+                    items_processed=i + 1,
+                    items_total=len(chunks),
+                    stage_percent=int((i + 1) / len(chunks) * 100)
+                )
+            
             # Extract entities from chunk
             entities = await get_entity_extractor().extract_entities(
                 text=chunk.content,
@@ -587,10 +678,31 @@ async def run_extraction(
             all_relationships.extend(relationships)
         
         step2.completed_at = datetime.utcnow()
-        step2.entities_extracted = sum(len(v) for v in all_entities.values())
+        total_entities = sum(len(v) for v in all_entities.values())
+        step2.entities_extracted = total_entities
         activity.add_step(step2)
         
+        # Broadcast entity extraction complete
+        await _ws_manager.broadcast_stage_complete(
+            job_id=job_id,
+            stage=PipelineStage.ENTITY_EXTRACTION,
+            stage_number=2,
+            total_stages=6,
+            result_summary={
+                "entities_extracted": total_entities,
+                "relationships_found": len(all_relationships),
+                "chunks_processed": len(chunks)
+            }
+        )
+        
         # Stage 3: Semantic Alignment
+        await _ws_manager.broadcast_stage_start(
+            job_id=job_id,
+            stage=PipelineStage.SEMANTIC_ALIGNMENT,
+            stage_number=3,
+            total_stages=6,
+            metadata={"entity_types": list(all_entities.keys())}
+        )
         step_align = ExtractionStep(
             step_name="semantic_alignment",
             started_at=datetime.utcnow()
@@ -615,7 +727,22 @@ async def run_extraction(
         step_align.completed_at = datetime.utcnow()
         activity.add_step(step_align)
         
+        # Broadcast alignment complete
+        await _ws_manager.broadcast_stage_complete(
+            job_id=job_id,
+            stage=PipelineStage.SEMANTIC_ALIGNMENT,
+            stage_number=3,
+            total_stages=6
+        )
+        
         # Stage 4: Deduplication
+        await _ws_manager.broadcast_stage_start(
+            job_id=job_id,
+            stage=PipelineStage.DEDUPLICATION,
+            stage_number=4,
+            total_stages=6,
+            metadata={"entities_before": total_entities}
+        )
         step3 = ExtractionStep(
             step_name="deduplication",
             started_at=datetime.utcnow()
@@ -632,7 +759,28 @@ async def run_extraction(
         step3.completed_at = datetime.utcnow()
         activity.add_step(step3)
         
+        entities_after = sum(len(v) for v in deduplicated.values())
+        
+        # Broadcast deduplication complete
+        await _ws_manager.broadcast_stage_complete(
+            job_id=job_id,
+            stage=PipelineStage.DEDUPLICATION,
+            stage_number=4,
+            total_stages=6,
+            result_summary={
+                "entities_before": total_entities,
+                "entities_after": entities_after,
+                "duplicates_removed": total_entities - entities_after
+            }
+        )
+        
         # Stage 5: Validation (EntailmentValidator with 6 validation rules)
+        await _ws_manager.broadcast_stage_start(
+            job_id=job_id,
+            stage=PipelineStage.VALIDATION,
+            stage_number=5,
+            total_stages=6
+        )
         step4 = ExtractionStep(
             step_name="validation",
             started_at=datetime.utcnow()
@@ -669,13 +817,46 @@ async def run_extraction(
         step4.entities_extracted = len(validation_results)  # Track validation results count
         activity.add_step(step4)
         
+        # Broadcast validation complete
+        await _ws_manager.broadcast_stage_complete(
+            job_id=job_id,
+            stage=PipelineStage.VALIDATION,
+            stage_number=5,
+            total_stages=6,
+            result_summary={
+                "passed": len([r for r in validation_results if r.passed]),
+                "failed": len([r for r in validation_results if not r.passed]),
+                "errors": len(errors),
+                "warnings": len(warnings)
+            }
+        )
+        
         # Stage 6: RDF Generation
+        await _ws_manager.broadcast_stage_start(
+            job_id=job_id,
+            stage=PipelineStage.RDF_GENERATION,
+            stage_number=6,
+            total_stages=6
+        )
         step5 = ExtractionStep(
             step_name="rdf_generation",
             started_at=datetime.utcnow()
         )
         
         rdf_content = generate_rdf(result, all_relationships)
+        
+        # Broadcast RDF generation complete
+        await _ws_manager.broadcast_stage_complete(
+            job_id=job_id,
+            stage=PipelineStage.RDF_GENERATION,
+            stage_number=6,
+            total_stages=6,
+            result_summary={
+                "rdf_size_bytes": len(rdf_content.encode('utf-8')),
+                "entities_in_rdf": entities_after,
+                "relationships_in_rdf": len(all_relationships)
+            }
+        )
         
         # Save RDF to file (in production, this would go to S3/MinIO)
         output_dir = os.getenv("RDF_OUTPUT_DIR", "/tmp/rdf")
@@ -700,17 +881,46 @@ async def run_extraction(
             relationships_extracted=len(activity.output_relationships),
             completed_at=datetime.utcnow() if mark_pipeline_complete else None,
         )
+        
+        # Broadcast extraction-only completion (if not going to ingestion)
+        if mark_pipeline_complete:
+            await _ws_manager.broadcast_pipeline_complete(
+                job_id=job_id,
+                status="completed",
+                entities_extracted=len(activity.output_entities),
+                relationships_extracted=len(activity.output_relationships),
+                rdf_path=rdf_path
+            )
 
         return ExtractionArtifacts(result=result, relationships=all_relationships)
         
     except Exception as e:
-        activity.fail(str(e))
+        error_msg = str(e)
+        activity.fail(error_msg)
         _set_pipeline_job(
             job_id,
             extraction_status="failed",
-            last_error=str(e),
+            last_error=error_msg,
             completed_at=datetime.utcnow(),
         )
+        
+        # Broadcast extraction failure
+        await _ws_manager.broadcast_error(
+            job_id=job_id,
+            stage=PipelineStage.RDF_GENERATION,  # Default to last stage
+            error=error_msg,
+            recoverable=False
+        )
+        
+        # Broadcast pipeline completion as failed
+        await _ws_manager.broadcast_pipeline_complete(
+            job_id=job_id,
+            status="failed",
+            entities_extracted=0,
+            relationships_extracted=0,
+            errors=[error_msg]
+        )
+        
         raise
 
 
@@ -743,6 +953,16 @@ async def run_extract_and_ingest(
 
     if not healthy:
         retry_count = PIPELINE_JOBS[job_id].retry_count + 1
+        
+        # Broadcast ingestion queued for retry
+        await _ws_manager.broadcast_ingestion_status(
+            job_id=job_id,
+            status="queued",
+            retry_count=retry_count,
+            max_retries=MAX_INGESTION_RETRIES,
+            error="Layer 3 unavailable - queued for retry"
+        )
+        
         await _queue_for_retry(
             job_id=job_id,
             source_url=source_url,

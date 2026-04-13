@@ -288,7 +288,8 @@ services:
     ports:
       - "9093:9093"
     volumes:
-      - ../monitoring/alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ../monitoring/alertmanager/templates:/etc/alertmanager/templates:ro
     networks:
       - value-fabric-network
     restart: unless-stopped
@@ -341,6 +342,24 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+
+  # Vault (dev mode) — optional local secrets backend
+  vault:
+    image: hashicorp/vault:latest
+    container_name: value-fabric-vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=root
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    volumes:
+      - ../scripts/vault-dev-init.sh:/vault-dev-init.sh:ro
+    networks:
+      - value-fabric-network
+    restart: "no"
+    command: server -dev -dev-root-token-id=root -dev-listen-address=0.0.0.0:8200
 
   # PostgreSQL (for Layer 1 crawl state + Layer 5 Ground Truth)
   postgres:

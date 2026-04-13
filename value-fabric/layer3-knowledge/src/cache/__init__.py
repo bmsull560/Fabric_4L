@@ -5,17 +5,21 @@ from .redis_cache import (
     CacheKey,
     RedisCache,
     CacheManager,
+    RequestDeduplicator,
     get_cache_manager,
+    get_request_deduplicator,
     initialize_cache,
     cache_result,
 )
 
 __all__ = [
     "CacheConfig",
-    "CacheKey", 
+    "CacheKey",
     "RedisCache",
     "CacheManager",
+    "RequestDeduplicator",
     "get_cache_manager",
+    "get_request_deduplicator",
     "initialize_cache",
     "cache_result",
 ]

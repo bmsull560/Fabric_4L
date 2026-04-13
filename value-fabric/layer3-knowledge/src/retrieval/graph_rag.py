@@ -466,3 +466,188 @@ class GraphRAGEngine:
             confidence_score=avg_confidence,
             sources=sources,
         )
+
+    async def query_stream(
+        self,
+        query_text: str,
+        entity_type: Optional[str] = None,
+        max_hops: Optional[int] = None,
+        min_confidence: Optional[float] = None,
+        max_results: int = 10,
+    ):
+        """Execute a streaming GraphRAG query.
+
+        Yields progressive results as they are discovered:
+        1. Start event
+        2. Seed entities as found
+        3. Context nodes and edges during traversal
+        4. Progress updates
+        5. Final result
+        6. Complete event
+
+        Args:
+            query_text: Natural language query
+            entity_type: Filter by entity type
+            max_hops: Maximum graph traversal hops
+            min_confidence: Minimum confidence threshold
+            max_results: Maximum number of results to return
+
+        Yields:
+            Dict representing streaming event with event_type and data
+        """
+        max_hops = max_hops or self.settings.graphrag_max_hops
+        min_confidence = min_confidence or self.settings.graphrag_min_confidence
+
+        # Start event
+        yield {
+            "event_type": "start",
+            "data": {"query": query_text, "max_hops": max_hops, "entity_type": entity_type},
+            "progress_percent": 0.0,
+        }
+
+        # Step 1: Find seed entities via vector search (25% of progress)
+        seed_entities = await self._find_seed_entities(
+            query_text, entity_type, max_results
+        )
+
+        if not seed_entities:
+            yield {
+                "event_type": "error",
+                "data": {"message": f"No seed entities found for query: {query_text}"},
+                "progress_percent": 100.0,
+            }
+            yield {
+                "event_type": "complete",
+                "data": {"entities_found": 0, "relationships_found": 0},
+                "progress_percent": 100.0,
+            }
+            return
+
+        # Yield seed entities
+        for i, entity in enumerate(seed_entities):
+            yield {
+                "event_type": "seed_entity",
+                "data": {"entity": entity, "index": i, "total": len(seed_entities)},
+                "progress_percent": 5.0 + (i / len(seed_entities)) * 20.0,
+            }
+
+        # Step 2: Stream context expansion hop by hop (50% of progress)
+        seed_ids = [e["id"] for e in seed_entities]
+        all_entities: Dict[str, Dict] = {e["id"]: e for e in seed_entities}
+        all_relationships: List[Dict] = []
+        traversal_path: List[str] = []
+
+        driver = await self._get_driver()
+
+        async with driver.session(database=self.settings.neo4j_database) as session:
+            # Process one hop at a time for progressive streaming
+            for current_hop in range(1, max_hops + 1):
+                hop_query = f"""
+                MATCH path = (seed)-[r*1..{current_hop}]-(connected)
+                WHERE seed.id IN $seed_ids
+                  AND length(path) = {current_hop}
+                  AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
+                  AND connected.id NOT IN $existing_ids
+                RETURN nodes(path) as path_nodes,
+                       relationships(path) as path_rels,
+                       length(path) as hops
+                LIMIT $max_nodes
+                """
+
+                result = await session.run(
+                    hop_query,
+                    {
+                        "seed_ids": seed_ids,
+                        "existing_ids": list(all_entities.keys()),
+                        "min_confidence": min_confidence,
+                        "max_nodes": self.settings.graphrag_max_nodes // max_hops,
+                    },
+                )
+
+                hop_entities = []
+                hop_relationships = []
+
+                async for record in result:
+                    # Add entities
+                    for node in record["path_nodes"]:
+                        node_id = node["id"]
+                        if node_id not in all_entities:
+                            entity_data = dict(node)
+                            entity_data["hops_from_seed"] = record["hops"]
+                            all_entities[node_id] = entity_data
+                            hop_entities.append(entity_data)
+
+                    # Add relationships
+                    for rel in record["path_rels"]:
+                        rel_data = {
+                            "type": rel.type,
+                            "source": rel.start_node["id"],
+                            "target": rel.end_node["id"],
+                            "properties": dict(rel),
+                            "hops": record["hops"],
+                        }
+                        if rel_data not in all_relationships:
+                            all_relationships.append(rel_data)
+                            hop_relationships.append(rel_data)
+
+                # Stream hop results
+                progress_base = 25.0 + (current_hop / max_hops) * 50.0
+
+                for entity in hop_entities:
+                    yield {
+                        "event_type": "context_node",
+                        "data": {"entity": entity, "hop": current_hop},
+                        "progress_percent": progress_base,
+                    }
+
+                for rel in hop_relationships:
+                    yield {
+                        "event_type": "context_edge",
+                        "data": {"relationship": rel, "hop": current_hop},
+                        "progress_percent": progress_base,
+                    }
+
+                # Progress update
+                yield {
+                    "event_type": "progress",
+                    "data": {
+                        "hop": current_hop,
+                        "total_hops": max_hops,
+                        "entities_found": len(all_entities),
+                        "relationships_found": len(all_relationships),
+                    },
+                    "progress_percent": progress_base + (5.0 / max_hops),
+                }
+
+        # Build final result
+        final_result = self._build_result(query_text, seed_entities, {
+            "entities": list(all_entities.values()),
+            "relationships": all_relationships,
+            "traversal_path": traversal_path,
+            "seed_count": len(seed_entities),
+            "expanded_count": len(all_entities) - len(seed_entities),
+        })
+
+        # Result event
+        yield {
+            "event_type": "result",
+            "data": {
+                "query": final_result.query,
+                "confidence_score": final_result.confidence_score,
+                "entity_count": len(final_result.entities),
+                "relationship_count": len(final_result.relationships),
+                "sources": final_result.sources,
+            },
+            "progress_percent": 95.0,
+        }
+
+        # Complete event
+        yield {
+            "event_type": "complete",
+            "data": {
+                "entities_found": len(all_entities),
+                "relationships_found": len(all_relationships),
+                "hops_traversed": max_hops,
+            },
+            "progress_percent": 100.0,
+        }

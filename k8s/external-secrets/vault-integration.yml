@@ -94,6 +94,48 @@ spec:
         property: postgres-password
 
 ---
+# External Secret: API Key HMAC Secret
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: api-key-hmac-secret
+  namespace: value-fabric
+spec:
+  refreshInterval: 24h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: api-key-hmac-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: secret
+      remoteRef:
+        key: value-fabric/auth
+        property: api-key-hmac-secret
+
+---
+# External Secret: Anthropic API Key
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: anthropic-api-key
+  namespace: value-fabric
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: anthropic-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: api-key
+      remoteRef:
+        key: value-fabric/llm
+        property: anthropic-api-key
+
+---
 # ClusterSecretStore: Vault Backend Configuration
 # This must be adapted to your specific Vault setup
 apiVersion: external-secrets.io/v1beta1
@@ -103,7 +145,7 @@ metadata:
 spec:
   provider:
     vault:
-      server: "https://vault.example.com:8200"  # Change to your Vault URL
+      server: "$(VAULT_ADDR)"
       path: "secret"
       version: "v2"
       auth:

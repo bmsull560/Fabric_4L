@@ -20,8 +20,8 @@ from shared.identity.models import (
     APIKeyModel,
 )
 
-from ...database import get_db
-from ..service import create_api_key, list_api_keys, revoke_api_key
+from ....database import get_db
+from ...service import create_api_key, list_api_keys, revoke_api_key
 
 router = APIRouter(prefix="/api-keys", tags=["API Keys"])
 

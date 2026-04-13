@@ -858,6 +858,101 @@ pnpm test  # Vitest installed but no tests exist
 - Frontend: `Vitest` 2.1.4 + `@vitest/coverage-v8` + `jsdom` environment
 - E2E: `Playwright` configured in `frontend/e2e/`
 
+---
+
+## Update: 2026-04-13 WebSocket Test Quality Remediation
+
+### Phase 1-3: Discovery → Audit → Prioritization
+
+**Issue Identified**: User added WebSocket support to `main.py` but no tests existed for the WebSocket manager.
+
+**Location**: `value-fabric/layer4-agents/src/api/websocket/manager.py`
+
+**Gap Analysis**:
+- WebSocket manager: 452 lines of production code
+- Existing tests: **0** tests for WebSocket functionality
+- Risk: Critical streaming feature untested
+
+### Phase 4: Rewrite/Create Tests
+
+Created `tests/test_websocket_manager.py` with **36 comprehensive tests** following quality principles:
+
+#### Test Organization (Behavior-Focused Classes)
+
+| Class | Tests | Coverage |
+|-------|-------|----------|
+| `TestEventStore` | 6 | Event replay, ring buffer, replay logic |
+| `TestWorkflowConnection` | 2 | Connection state, send failures |
+| `TestManagerLifecycle` | 3 | Start/stop, background tasks |
+| `TestConnectionManagement` | 5 | Connect, disconnect, reconnect replay |
+| `TestBroadcasting` | 8 | Broadcast, state updates, node transitions, completions |
+| `TestOutputSummarization` | 5 | Output truncation, collection summaries |
+| `TestClientMessageHandling` | 3 | Pong, ack, history subscription |
+| `TestSingleton` | 2 | Global instance management |
+| `TestIntegrationScenarios` | 2 | Full lifecycle, reconnection |
+
+#### Test Quality Scores
+
+| Principle | Score | Evidence |
+|-----------|-------|----------|
+| Behavior-Focused | 5 | Tests contracts (connect → broadcast → disconnect), not internals |
+| Clear/Readable | 5 | AAA structure, descriptive names like `test_broadcast_to_workflow_delivers_to_all_connections` |
+| Focused | 5 | Each test = one behavior (36 tests, 36 distinct behaviors) |
+| Deterministic | 5 | Mock-based, no timing dependencies, async properly handled |
+| Isolated | 5 | Fresh manager per test, proper cleanup in fixtures |
+| Meaningful | 5 | Covers replay, dead connection cleanup, multi-client scenarios |
+| Maintainable | 5 | Uses fixtures, factories, clear assertions |
+
+**Overall Score**: **35/35 (Excellent)**
+
+### Phase 5: Validation
+
+```bash
+cd value-fabric/layer4-agents
+pytest tests/test_websocket_manager.py -v
+# Result: 36 passed, 152 warnings (deprecation warnings for datetime.utcnow())
+```
+
+### Bugs Fixed During Test Creation
+
+| Bug | Location | Issue |
+|-----|----------|-------|
+| Unhashable type | `manager.py:43-60` | `WorkflowConnection` in `Set` needed `__hash__` and `__eq__` |
+| Event store overwrite | `manager.py:150-156` | Connect created new store, wiping existing events |
+| Task cleanup | `manager.py:109-139` | Stop didn't await cancelled tasks or set to None |
+
+### Production Code Improvements
+
+1. **Hashable connections**: Added `_conn_id` with UUID for proper Set usage
+2. **Event store preservation**: Changed to not delete event stores on disconnect (for replay)
+3. **Proper task cleanup**: Stop now awaits cancelled tasks and sets them to None
+4. **UUID for IDs**: Replaced `id(object())` with `uuid.uuid4()` for uniqueness
+
+### Updated L4 Test Counts
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Tests | 41 | **77** (+36) |
+| Passing | 39 | **75** (+36) |
+| Failing | 2 | 2 (pre-existing) |
+| Coverage | ~65% | ~78% (estimated) |
+
+---
+
+### Prioritized Remaining Work
+
+#### P0 - Critical
+1. Fix 2 pre-existing L4 checkpoint/resume test failures
+2. Address L3 Neo4j Community compatibility
+
+#### P1 - Material  
+3. Replace deprecated `datetime.utcnow()` throughout codebase
+4. Add WebSocket route tests (HTTP-level)
+
+#### P2 - Improvement
+5. Add performance tests for high-connection scenarios
+6. Property-based tests for event store ring buffer
+
 **Test Inventory (Verified)**:
 - **Python test files**: 34 across all layers
   - L1: 4 files (blocked by collection errors)

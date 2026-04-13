@@ -35,6 +35,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from .context import RequestContext, set_request_context, _current_context
 from .jwt import decode_jwt
 from .permissions import ROLE_PERMISSIONS, Permission, Role
+from .rate_limiter import RedisRateLimiter, RateLimitResult
+from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LIMITS
 
 logger = logging.getLogger(__name__)
 
@@ -105,9 +107,15 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self,
         app: Any,
         api_key_resolver: Optional[Callable] = None,
+        rate_limiter: Optional[RedisRateLimiter] = None,
+        tenant_settings_resolver: Optional[Callable] = None,
+        on_rate_limit_hit: Optional[Callable[[str, str], None]] = None,
     ) -> None:
         super().__init__(app)
         self._api_key_resolver = api_key_resolver
+        self._rate_limiter = rate_limiter
+        self._tenant_settings_resolver = tenant_settings_resolver
+        self._on_rate_limit_hit = on_rate_limit_hit
         self._allow_query_param = (
             os.getenv("ALLOW_TENANT_QUERY_PARAM", "false").lower() == "true"
         )
@@ -127,6 +135,30 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             else:
                 request.state.governance_context = None
 
+            # Rate limiting check (after identity, before request handling)
+            if ctx is not None and self._rate_limiter is not None:
+                rate_limit_result = await self._check_rate_limit(request, ctx)
+                if rate_limit_result is not None and not rate_limit_result.allowed:
+                    from fastapi.responses import JSONResponse
+                    config = self._resolve_rate_limit_config(request, ctx)
+                    rate_limit_rpm = config.requests_per_minute if config else ""
+                    headers = {
+                        "X-RateLimit-Limit": str(rate_limit_rpm),
+                        "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Reset": str(int(rate_limit_result.reset_at)),
+                        "Retry-After": str(rate_limit_result.retry_after) if rate_limit_result.retry_after is not None else "60",
+                    }
+                    if self._on_rate_limit_hit is not None and config is not None:
+                        try:
+                            self._on_rate_limit_hit(str(ctx.tenant_id), config.scope.value)
+                        except Exception:
+                            pass
+                    return JSONResponse(
+                        status_code=429,
+                        headers=headers,
+                        content={"detail": "Rate limit exceeded"},
+                    )
+
             response = await call_next(request)
 
         finally:
@@ -134,6 +166,18 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         if ctx is not None:
             response.headers["X-Tenant-ID-Resolved"] = str(ctx.tenant_id)
+
+        # Add rate limit headers if we performed a rate limit check
+        if ctx is not None and self._rate_limiter is not None:
+            config = self._resolve_rate_limit_config(request, ctx)
+            if config is not None:
+                # We need the actual result to set remaining accurately.
+                # Re-run check (Redis script is idempotent for allowed requests)
+                rate_key = self._build_rate_limit_key(request, ctx, config)
+                result = await self._rate_limiter.check(rate_key, config)
+                response.headers["X-RateLimit-Limit"] = str(config.requests_per_minute)
+                response.headers["X-RateLimit-Remaining"] = str(max(0, result.remaining))
+                response.headers["X-RateLimit-Reset"] = str(int(result.reset_at))
 
         return response
 
@@ -195,6 +239,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     except (ValueError, KeyError):
                         permissions = frozenset()
 
+                request.state.api_key_record = record
                 return RequestContext(
                     tenant_id=tenant_id,
                     user_id=record.get("user_id"),
@@ -202,7 +247,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     api_key_id=record.get("key_id"),
                     permissions=permissions,
                     source="api_key",
-                    raw={},
+                    raw={"rate_limit_per_minute": record.get("rate_limit_per_minute")},
                 )
 
         # 3. X-Tenant-ID (service-to-service)
@@ -238,3 +283,87 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     pass
 
         return None
+
+    # ------------------------------------------------------------------
+    # Rate limiting helpers
+    # ------------------------------------------------------------------
+
+    def _resolve_rate_limit_config(
+        self, request: Request, ctx: RequestContext
+    ) -> Optional[RateLimitConfig]:
+        """Determine the effective rate limit config for the request."""
+        # super_admin and system are unlimited
+        if ctx.has_any_role(Role.SUPER_ADMIN, Role.SYSTEM):
+            return None
+
+        # 1. API key override
+        if ctx.source == "api_key" and hasattr(request.state, "api_key_record"):
+            record = request.state.api_key_record
+            api_key_rpm = record.get("rate_limit_per_minute")
+            if api_key_rpm is not None:
+                return RateLimitConfig(
+                    requests_per_minute=api_key_rpm,
+                    burst_size=min(50, api_key_rpm),
+                    scope=RateLimitScope.API_KEY,
+                )
+
+        # 2. Tenant settings override
+        if self._tenant_settings_resolver is not None:
+            # Fire-and-forget async call — we need to handle this in dispatch
+            # Since this is sync, we'll skip the async tenant resolver here
+            # and handle it in _check_rate_limit instead.
+            pass
+
+        # 3. Role defaults
+        for role_str in ctx.roles:
+            try:
+                role = Role(role_str)
+                config = ROLE_DEFAULT_RATE_LIMITS.get(role)
+                if config is not None:
+                    return config
+            except ValueError:
+                continue
+
+        return ROLE_DEFAULT_RATE_LIMITS.get(Role.READ_ONLY)
+
+    async def _check_rate_limit(
+        self, request: Request, ctx: RequestContext
+    ) -> Optional[RateLimitResult]:
+        """Run rate limit check and return result."""
+        if self._rate_limiter is None:
+            return None
+
+        # Check tenant settings async if resolver is available
+        if self._tenant_settings_resolver is not None:
+            try:
+                settings = await self._tenant_settings_resolver(ctx.tenant_id)
+                if settings and isinstance(settings, dict) and "rate_limits" in settings:
+                    rate_limits = settings["rate_limits"]
+                    if isinstance(rate_limits, dict):
+                        tenant_config = RateLimitConfig(
+                            requests_per_minute=rate_limits.get("requests_per_minute", 60),
+                            requests_per_hour=rate_limits.get("requests_per_hour"),
+                            burst_size=rate_limits.get("burst_size", 10),
+                            scope=RateLimitScope(rate_limits.get("scope", "tenant")),
+                        )
+                        rate_key = self._build_rate_limit_key(request, ctx, tenant_config)
+                        return await self._rate_limiter.check(rate_key, tenant_config)
+            except Exception as exc:
+                logger.warning("Tenant settings resolver failed: %s", exc)
+
+        config = self._resolve_rate_limit_config(request, ctx)
+        if config is None:
+            return None
+
+        rate_key = self._build_rate_limit_key(request, ctx, config)
+        return await self._rate_limiter.check(rate_key, config)
+
+    def _build_rate_limit_key(
+        self, request: Request, ctx: RequestContext, config: RateLimitConfig
+    ) -> str:
+        """Build a Redis key for the rate limit window."""
+        if config.scope == RateLimitScope.API_KEY and ctx.api_key_id:
+            return f"ratelimit:api_key:{ctx.api_key_id}"
+        if config.scope == RateLimitScope.USER and ctx.user_id:
+            return f"ratelimit:user:{ctx.tenant_id}:{ctx.user_id}"
+        return f"ratelimit:tenant:{ctx.tenant_id}"

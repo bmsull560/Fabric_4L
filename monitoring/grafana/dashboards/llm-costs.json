@@ -1,0 +1,104 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "llm-costs",
+    "title": "LLM Costs",
+    "tags": ["llm", "cost", "value-fabric"],
+    "timezone": "utc",
+    "schemaVersion": 38,
+    "panels": [
+      {
+        "id": 1,
+        "title": "Total Cost Over Time",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(vf_llm_cost_usd_total[5m]))",
+            "legendFormat": "Total Cost ($/s)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "custom": {"lineWidth": 2, "fillOpacity": 20}
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Cost by Provider",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (provider) (vf_llm_cost_usd_total)",
+            "legendFormat": "{{ provider }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Cost by Model",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (model) (rate(vf_llm_cost_usd_total[5m]))",
+            "legendFormat": "{{ model }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "fieldConfig": {
+          "defaults": {"unit": "currencyUSD"}
+        }
+      },
+      {
+        "id": 4,
+        "title": "Cost by Tenant",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (tenant_id) (rate(vf_llm_cost_usd_total[5m]))",
+            "legendFormat": "Tenant {{ tenant_id }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "fieldConfig": {
+          "defaults": {"unit": "currencyUSD"}
+        }
+      },
+      {
+        "id": 5,
+        "title": "Token Usage",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum by (token_type) (rate(vf_llm_tokens_total[5m]))",
+            "legendFormat": "{{ token_type }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "fieldConfig": {
+          "defaults": {"unit": "short"}
+        }
+      },
+      {
+        "id": 6,
+        "title": "Cost Rate ($/hr)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(vf_llm_cost_usd_total[1h])) * 3600",
+            "legendFormat": "Cost / hr"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "fieldConfig": {
+          "defaults": {"unit": "currencyUSD"}
+        }
+      }
+    ],
+    "time": {"from": "now-1h", "to": "now"},
+    "refresh": "30s"
+  }
+}

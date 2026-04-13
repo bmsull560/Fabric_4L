@@ -6,70 +6,219 @@
  * Progressive disclosure: basic expression authoring visible by default;
  * governance controls revealed under "Governance" tab.
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import type { ReactNode } from "react";
 import {
   Play, Save, X, Plus, GitBranch, CheckCircle2, Clock, AlertCircle,
   Lock, Unlock, History, ChevronRight, Users, Tag, Link2,
 } from "lucide-react";
 import { PageHeader, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
 
-const VARIABLES = [
-  { name: "Current_Churn_Rate",       type: "rate",     source: "CRM" },
-  { name: "Average_Contract_Value",   type: "currency",  source: "Billing" },
-  { name: "Projected_Retention_Lift", type: "rate",     source: "Model" },
-  { name: "Implementation_Cost",      type: "currency",  source: "Manual" },
-  { name: "Customer_Count",           type: "integer",  source: "CRM" },
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+type VariableType = "rate" | "currency" | "integer";
+type VariableSource = "CRM" | "Billing" | "Model" | "Manual";
+type FormulaStatus = "draft" | "pending" | "approved" | "archived";
+type ActivationState = "draft" | "pending" | "approved";
+type DependentType = "Business Case" | "Value Tree" | "Workflow";
+
+/** A variable bound to a formula with type and source information */
+interface FormulaVariable {
+  name: string;
+  type: VariableType;
+  source: VariableSource;
+}
+
+/** A test input for formula evaluation */
+interface TestInput {
+  label: string;
+  value: string;
+}
+
+/** A version entry in the formula's history */
+interface VersionEntry {
+  version: string;
+  author: string;
+  date: string;
+  status: FormulaStatus;
+  note: string;
+}
+
+/** A dependent asset that references this formula */
+interface Dependent {
+  type: DependentType;
+  name: string;
+  pack: string;
+}
+
+/** Configuration for rendering a status badge */
+interface StatusConfig {
+  label: string;
+  color: string;
+  icon: ReactNode;
+}
+
+// ============================================================================
+// Constants & Mock Data
+// ============================================================================
+
+const SOURCE_TYPE_COLOR: Record<VariableSource, string> = {
+  CRM: "bg-blue-50 text-blue-700",
+  Billing: "bg-emerald-50 text-emerald-700",
+  Model: "bg-violet-50 text-violet-700",
+  Manual: "bg-amber-50 text-amber-700",
+};
+
+const VAR_TYPE_COLOR: Record<VariableType, string> = {
+  rate: "bg-cyan-100 text-cyan-700",
+  currency: "bg-emerald-100 text-emerald-700",
+  integer: "bg-neutral-100 text-neutral-600",
+};
+
+const ACTIVATION_STATUS_CONFIG: Record<ActivationState, StatusConfig> = {
+  draft: {
+    label: "Draft",
+    color: "bg-neutral-100 text-neutral-600",
+    icon: <Clock size={11} />,
+  },
+  pending: {
+    label: "Pending Approval",
+    color: "bg-amber-50 text-amber-700",
+    icon: <AlertCircle size={11} />,
+  },
+  approved: {
+    label: "Active",
+    color: "bg-emerald-50 text-emerald-700",
+    icon: <CheckCircle2 size={11} />,
+  },
+};
+
+const VERSION_STATUS_COLORS: Record<FormulaStatus, string> = {
+  approved: "bg-emerald-50 text-emerald-700",
+  pending: "bg-amber-50 text-amber-700",
+  draft: "bg-neutral-100 text-neutral-600",
+  archived: "bg-neutral-50 text-neutral-400",
+};
+
+/** Mock formula variables for demonstration */
+const MOCK_VARIABLES: FormulaVariable[] = [
+  { name: "Current_Churn_Rate", type: "rate", source: "CRM" },
+  { name: "Average_Contract_Value", type: "currency", source: "Billing" },
+  { name: "Projected_Retention_Lift", type: "rate", source: "Model" },
+  { name: "Implementation_Cost", type: "currency", source: "Manual" },
+  { name: "Customer_Count", type: "integer", source: "CRM" },
 ];
 
-const FORMULA = `({Customer_Count} *
+/** Mock formula expression for demonstration */
+const MOCK_FORMULA_EXPRESSION = `({Customer_Count} *
  {Current_Churn_Rate} *
  {Projected_Retention_Lift} *
  {Average_Contract_Value})
 — {Implementation_Cost}`;
 
-const TEST_INPUTS = [
-  { label: "Customer_Count",       value: "1,000" },
-  { label: "Current_Churn_Rate",   value: "5%" },
-  { label: "Retention_Lift",       value: "20%" },
-  { label: "Avg_Contract_Value",   value: "$50,000" },
-  { label: "Implementation_Cost",  value: "$100,000" },
+/** Mock test inputs for demonstration */
+const MOCK_TEST_INPUTS: TestInput[] = [
+  { label: "Customer_Count", value: "1,000" },
+  { label: "Current_Churn_Rate", value: "5%" },
+  { label: "Retention_Lift", value: "20%" },
+  { label: "Avg_Contract_Value", value: "$50,000" },
+  { label: "Implementation_Cost", value: "$100,000" },
 ];
 
-const VERSION_HISTORY = [
-  { version: "v3 (current draft)", author: "J. Rivera", date: "Today 09:41", status: "draft",    note: "Added Implementation_Cost variable" },
-  { version: "v2 (active)",        author: "M. Chen",   date: "Apr 7",       status: "approved", note: "Approved by Finance team" },
-  { version: "v1",                 author: "J. Rivera", date: "Apr 2",       status: "archived", note: "Initial version" },
+/** Mock version history for demonstration */
+const MOCK_VERSION_HISTORY: VersionEntry[] = [
+  {
+    version: "v3 (current draft)",
+    author: "J. Rivera",
+    date: "Today 09:41",
+    status: "draft",
+    note: "Added Implementation_Cost variable",
+  },
+  {
+    version: "v2 (active)",
+    author: "M. Chen",
+    date: "Apr 7",
+    status: "approved",
+    note: "Approved by Finance team",
+  },
+  {
+    version: "v1",
+    author: "J. Rivera",
+    date: "Apr 2",
+    status: "archived",
+    note: "Initial version",
+  },
 ];
 
-const DEPENDENTS = [
-  { type: "Business Case", name: "Globex.io — Q2 Expansion",     pack: "Enterprise Security ROI" },
-  { type: "Value Tree",    name: "Revenue Retention Driver",      pack: "SaaS / B2B" },
-  { type: "Workflow",      name: "Churn Reduction Agent",         pack: "Customer Success" },
+/** Mock dependent assets for demonstration */
+const MOCK_DEPENDENTS: Dependent[] = [
+  {
+    type: "Business Case",
+    name: "Globex.io — Q2 Expansion",
+    pack: "Enterprise Security ROI",
+  },
+  {
+    type: "Value Tree",
+    name: "Revenue Retention Driver",
+    pack: "SaaS / B2B",
+  },
+  {
+    type: "Workflow",
+    name: "Churn Reduction Agent",
+    pack: "Customer Success",
+  },
 ];
 
-const SOURCE_TYPE_COLOR: Record<string, string> = {
-  CRM:     "bg-blue-50 text-blue-700",
-  Billing: "bg-emerald-50 text-emerald-700",
-  Model:   "bg-violet-50 text-violet-700",
-  Manual:  "bg-amber-50 text-amber-700",
-};
+// ============================================================================
+// Sub-components
+// ============================================================================
 
-const VAR_TYPE_COLOR: Record<string, string> = {
-  rate:     "bg-cyan-100 text-cyan-700",
-  currency: "bg-emerald-100 text-emerald-700",
-  integer:  "bg-neutral-100 text-neutral-600",
-};
+interface ActivationButtonProps {
+  state: ActivationState;
+  onStateChange: (state: ActivationState) => void;
+}
+
+/**
+ * Renders the appropriate action button based on formula activation state.
+ * - Draft: Submit for Approval
+ * - Pending: Approve
+ * - Approved: Revise
+ */
+function ActivationButton({ state, onStateChange }: ActivationButtonProps) {
+  switch (state) {
+    case "draft":
+      return (
+        <Btn variant="primary" onClick={() => onStateChange("pending")}>
+          Submit for Approval
+        </Btn>
+      );
+    case "pending":
+      return (
+        <Btn variant="primary" onClick={() => onStateChange("approved")}>
+          <CheckCircle2 size={11} /> Approve
+        </Btn>
+      );
+    case "approved":
+      return (
+        <Btn variant="ghost" onClick={() => onStateChange("draft")}>
+          <Unlock size={11} /> Revise
+        </Btn>
+      );
+  }
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
 
 export default function FormulaBuilder() {
   const [activeTab, setActiveTab] = useState("Expression");
   const [tested, setTested] = useState(false);
-  const [activationState, setActivationState] = useState<"draft" | "pending" | "approved">("draft");
+  const [activationState, setActivationState] = useState<ActivationState>("draft");
 
-  const statusLabel = {
-    draft:    { label: "Draft",           color: "bg-neutral-100 text-neutral-600", icon: <Clock size={11}/> },
-    pending:  { label: "Pending Approval",color: "bg-amber-50 text-amber-700",      icon: <AlertCircle size={11}/> },
-    approved: { label: "Active",          color: "bg-emerald-50 text-emerald-700",  icon: <CheckCircle2 size={11}/> },
-  }[activationState];
+  const statusConfig = ACTIVATION_STATUS_CONFIG[activationState];
 
   return (
     <div className="p-6">
@@ -81,24 +230,10 @@ export default function FormulaBuilder() {
           subtitle="Governed formula asset — version 3 (draft)"
         />
         <div className="flex items-center gap-2 shrink-0">
-          <span className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusLabel.color}`}>
-            {statusLabel.icon} {statusLabel.label}
+          <span className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusConfig.color}`}>
+            {statusConfig.icon} {statusConfig.label}
           </span>
-          {activationState === "draft" && (
-            <Btn variant="primary" onClick={() => setActivationState("pending")}>
-              Submit for Approval
-            </Btn>
-          )}
-          {activationState === "pending" && (
-            <Btn variant="primary" onClick={() => setActivationState("approved")}>
-              <CheckCircle2 size={11}/> Approve
-            </Btn>
-          )}
-          {activationState === "approved" && (
-            <Btn variant="ghost" onClick={() => setActivationState("draft")}>
-              <Unlock size={11}/> Revise
-            </Btn>
-          )}
+          <ActivationButton state={activationState} onStateChange={setActivationState} />
         </div>
       </div>
 
@@ -154,7 +289,7 @@ export default function FormulaBuilder() {
 
               <SectionCard title="Formula Expression">
                 <div className="bg-[#0d1117] rounded-lg p-4 font-mono text-[12px] text-[#c9d1d9] leading-relaxed whitespace-pre">
-                  {FORMULA}
+                  {MOCK_FORMULA_EXPRESSION}
                 </div>
                 <div className="flex gap-2 mt-3">
                   <Btn variant="primary" onClick={() => setTested(true)}>
@@ -167,10 +302,10 @@ export default function FormulaBuilder() {
               {tested && (
                 <SectionCard title="Test Results">
                   <div className="space-y-1.5 mb-3">
-                    {TEST_INPUTS.map(t => (
-                      <div key={t.label} className="flex justify-between text-[12px]">
-                        <span className="text-neutral-500 font-mono">{t.label}:</span>
-                        <span className="font-semibold text-neutral-800">{t.value}</span>
+                    {MOCK_TEST_INPUTS.map((input) => (
+                      <div key={input.label} className="flex justify-between text-[12px]">
+                        <span className="text-neutral-500 font-mono">{input.label}:</span>
+                        <span className="font-semibold text-neutral-800">{input.value}</span>
                       </div>
                     ))}
                   </div>
@@ -197,12 +332,12 @@ export default function FormulaBuilder() {
           {activeTab === "Variables" && (
             <SectionCard title="Variable Registry — Bound Variables">
               <div className="space-y-2">
-                {VARIABLES.map(v => (
-                  <div key={v.name} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
+                {MOCK_VARIABLES.map((variable) => (
+                  <div key={variable.name} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
                     <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0"/>
-                    <span className="flex-1 font-mono text-[12px] text-neutral-800">{v.name}</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${VAR_TYPE_COLOR[v.type]}`}>{v.type}</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_TYPE_COLOR[v.source]}`}>{v.source}</span>
+                    <span className="flex-1 font-mono text-[12px] text-neutral-800">{variable.name}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${VAR_TYPE_COLOR[variable.type]}`}>{variable.type}</span>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_TYPE_COLOR[variable.source]}`}>{variable.source}</span>
                     <button className="text-[11px] text-neutral-400 hover:text-neutral-700">Edit binding</button>
                   </div>
                 ))}
@@ -218,26 +353,24 @@ export default function FormulaBuilder() {
             <div className="space-y-4">
               <SectionCard title="Version History">
                 <div className="space-y-2">
-                  {VERSION_HISTORY.map((v, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-neutral-100 bg-neutral-50">
+                  {MOCK_VERSION_HISTORY.map((version, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 rounded-lg border border-neutral-100 bg-neutral-50">
                       <div className="mt-0.5">
-                        {v.status === "approved" && <CheckCircle2 size={14} className="text-emerald-500"/>}
-                        {v.status === "draft"    && <Clock size={14} className="text-neutral-400"/>}
-                        {v.status === "archived" && <History size={14} className="text-neutral-300"/>}
+                        {version.status === "approved" && <CheckCircle2 size={14} className="text-emerald-500"/>}
+                        {version.status === "draft"    && <Clock size={14} className="text-neutral-400"/>}
+                        {version.status === "archived" && <History size={14} className="text-neutral-300"/>}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[12px] font-bold text-neutral-800">{v.version}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                            v.status === "approved" ? "bg-emerald-50 text-emerald-700" :
-                            v.status === "draft"    ? "bg-neutral-100 text-neutral-600" :
-                            "bg-neutral-50 text-neutral-400"
-                          }`}>{v.status}</span>
+                          <span className="text-[12px] font-bold text-neutral-800">{version.version}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${VERSION_STATUS_COLORS[version.status]}`}>
+                            {version.status}
+                          </span>
                         </div>
-                        <p className="text-[11px] text-neutral-500 mt-0.5">{v.note}</p>
-                        <p className="text-[10px] text-neutral-400 mt-0.5">{v.author} · {v.date}</p>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">{version.note}</p>
+                        <p className="text-[10px] text-neutral-400 mt-0.5">{version.author} · {version.date}</p>
                       </div>
-                      {v.status !== "draft" && (
+                      {version.status !== "draft" && (
                         <button className="text-[11px] text-blue-600 hover:underline shrink-0">Restore</button>
                       )}
                     </div>
@@ -272,19 +405,19 @@ export default function FormulaBuilder() {
           {activeTab === "Dependencies" && (
             <SectionCard title="Used By">
               <div className="space-y-2">
-                {DEPENDENTS.map((d, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
+                {MOCK_DEPENDENTS.map((dependent, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
                     <Link2 size={13} className="text-neutral-400 shrink-0"/>
                     <div className="flex-1">
-                      <p className="text-[12px] font-semibold text-neutral-800">{d.name}</p>
-                      <p className="text-[10px] text-neutral-400">{d.type} · {d.pack}</p>
+                      <p className="text-[12px] font-semibold text-neutral-800">{dependent.name}</p>
+                      <p className="text-[10px] text-neutral-400">{dependent.type} · {dependent.pack}</p>
                     </div>
                     <ChevronRight size={13} className="text-neutral-300"/>
                   </div>
                 ))}
               </div>
               <p className="text-[11px] text-neutral-400 mt-3">
-                Activating or deprecating this formula will affect {DEPENDENTS.length} downstream assets.
+                Activating or deprecating this formula will affect {MOCK_DEPENDENTS.length} downstream assets.
               </p>
             </SectionCard>
           )}
@@ -294,10 +427,10 @@ export default function FormulaBuilder() {
         <div className="w-[220px] shrink-0 space-y-4">
           <SectionCard title="Available Variables">
             <div className="space-y-1.5">
-              {VARIABLES.map(v => (
-                <div key={v.name} className="flex items-center gap-2 p-2 bg-neutral-50 rounded border border-neutral-100 text-[11px] font-mono text-neutral-700 hover:bg-neutral-100 cursor-pointer transition-colors">
+              {MOCK_VARIABLES.map((variable) => (
+                <div key={variable.name} className="flex items-center gap-2 p-2 bg-neutral-50 rounded border border-neutral-100 text-[11px] font-mono text-neutral-700 hover:bg-neutral-100 cursor-pointer transition-colors">
                   <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0"/>
-                  <span className="truncate">{v.name}</span>
+                  <span className="truncate">{variable.name}</span>
                 </div>
               ))}
             </div>

@@ -7,11 +7,12 @@ Provides:
 """
 
 from .emitter import AuditEmitter, emit_audit_event
-from .models import AuditAction, AuditEvent
+from .models import AuditAction, AuditEvent, AuditOutcome
 
 __all__ = [
     "AuditAction",
     "AuditEvent",
+    "AuditOutcome",
     "AuditEmitter",
     "emit_audit_event",
 ]

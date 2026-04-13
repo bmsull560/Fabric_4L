@@ -526,15 +526,25 @@ class CacheManager:
 
 # Global cache instance
 _cache_manager: Optional[CacheManager] = None
+_request_deduplicator: Optional[RequestDeduplicator] = None
 
 
 def get_cache_manager() -> Optional[CacheManager]:
     """Get global cache manager instance.
-    
+
     Returns:
         Cache manager instance or None if not configured
     """
     return _cache_manager
+
+
+def get_request_deduplicator() -> Optional[RequestDeduplicator]:
+    """Get global request deduplicator instance.
+
+    Returns:
+        Request deduplicator instance or None if not configured
+    """
+    return _request_deduplicator
 
 
 def initialize_cache(
@@ -543,21 +553,22 @@ def initialize_cache(
     **redis_kwargs
 ) -> CacheManager:
     """Initialize global cache manager.
-    
+
     Args:
         redis_url: Redis connection URL
         config: Cache configuration
         **redis_kwargs: Additional Redis connection parameters
-        
+
     Returns:
         Cache manager instance
     """
-    global _cache_manager
-    
+    global _cache_manager, _request_deduplicator
+
     cache = RedisCache(redis_url, config, **redis_kwargs)
     _cache_manager = CacheManager(cache)
-    
-    logger.info("Cache manager initialized")
+    _request_deduplicator = RequestDeduplicator(cache)
+
+    logger.info("Cache manager and request deduplicator initialized")
     return _cache_manager
 
 
@@ -567,12 +578,12 @@ def cache_result(
     key_generator: Optional[Callable] = None,
 ):
     """Decorator to cache function results using global cache manager.
-    
+
     Args:
         ttl: Time-to-live in seconds
         key_prefix: Prefix for cache keys
         key_generator: Custom key generator function
-        
+
     Returns:
         Decorated function
     """
@@ -586,7 +597,7 @@ def cache_result(
                     return await func(*args, **kwargs)
                 else:
                     return func(*args, **kwargs)
-            
+
             # Generate cache key
             if key_generator:
                 cache_key = key_generator(*args, **kwargs)
@@ -596,7 +607,7 @@ def cache_result(
                     *args,
                     **kwargs
                 )
-            
+
             # Use get_or_set pattern
             return await cache_manager.get_or_set(
                 cache_key,
@@ -605,6 +616,147 @@ def cache_result(
                 *args,
                 **kwargs
             )
-        
+
         return wrapper
     return decorator
+
+
+class RequestDeduplicator:
+    """Deduplicates concurrent identical requests to prevent redundant computation.
+
+    Implements the "coalescing" pattern where multiple identical concurrent requests
+    are merged into a single backend request. First request executes, subsequent requests
+    wait for and share the result.
+
+    This is particularly effective for expensive operations like:
+    - GraphRAG multi-hop queries
+    - Hybrid search with vector + graph components
+    - Analytics computations (community detection, centrality)
+    """
+
+    def __init__(self, cache: RedisCache):
+        """Initialize request deduplicator.
+
+        Args:
+            cache: Redis cache instance for distributed deduplication
+        """
+        self.cache = cache
+        # In-memory pending request tracking for same-process deduplication
+        self._pending: Dict[str, asyncio.Future] = {}
+        self._lock = asyncio.Lock()
+
+    def _generate_request_key(self, operation: str, params: Dict[str, Any]) -> str:
+        """Generate unique key for request deduplication.
+
+        Args:
+            operation: Operation type (e.g., 'graphrag_query', 'hybrid_search')
+            params: Request parameters dict
+
+        Returns:
+            Deduplication key
+        """
+        # Sort params for consistent hashing
+        params_str = json.dumps(params, sort_keys=True, default=str)
+        key_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
+        return f"dedup:{operation}:{key_hash}"
+
+    async def execute(
+        self,
+        operation: str,
+        params: Dict[str, Any],
+        executor: Callable,
+        ttl: int = 30,  # Short TTL for pending locks
+        *args,
+        **kwargs
+    ) -> Any:
+        """Execute operation with request deduplication.
+
+        If an identical request is already in flight, wait for its result
+        instead of executing a new one.
+
+        Args:
+            operation: Operation type identifier
+            params: Request parameters for deduplication key
+            executor: Async function to execute
+            ttl: TTL for the deduplication lock
+            *args: Arguments for executor
+            **kwargs: Keyword arguments for executor
+
+        Returns:
+            Execution result (shared if deduplicated)
+        """
+        dedup_key = self._generate_request_key(operation, params)
+
+        # Check for in-flight request in memory (fast path)
+        async with self._lock:
+            if dedup_key in self._pending:
+                future = self._pending[dedup_key]
+                logger.debug(f"Request deduplicated: {operation}, waiting for result")
+                return await future
+
+        # Check distributed cache for cross-process deduplication
+        try:
+            pending_result = await self.cache.get(dedup_key)
+            if pending_result:
+                # Another process is handling this request
+                # Wait and poll for result
+                wait_start = asyncio.get_event_loop().time()
+                max_wait = ttl
+
+                while asyncio.get_event_loop().time() - wait_start < max_wait:
+                    result = await self.cache.get(f"{dedup_key}:result")
+                    if result:
+                        logger.debug(f"Retrieved deduplicated result from cache: {operation}")
+                        return result
+                    await asyncio.sleep(0.1)
+
+                # Timeout waiting for other process, proceed with execution
+                logger.warning(f"Deduplication timeout for {operation}, executing anyway")
+        except Exception as e:
+            logger.warning(f"Deduplication check error: {e}")
+
+        # Create future and mark as in-flight
+        future = asyncio.get_event_loop().create_future()
+
+        async with self._lock:
+            # Double-check after acquiring lock
+            if dedup_key in self._pending:
+                return await self._pending[dedup_key]
+            self._pending[dedup_key] = future
+
+        # Set distributed lock
+        try:
+            await self.cache.set(dedup_key, {"started": time.time()}, ttl=ttl)
+        except Exception as e:
+            logger.warning(f"Failed to set deduplication lock: {e}")
+
+        try:
+            # Execute the operation
+            if asyncio.iscoroutinefunction(executor):
+                result = await executor(*args, **kwargs)
+            else:
+                result = executor(*args, **kwargs)
+
+            # Cache result briefly for late-arriving deduplicated requests
+            try:
+                await self.cache.set(f"{dedup_key}:result", result, ttl=10)
+            except Exception:
+                pass
+
+            # Complete the future
+            future.set_result(result)
+            return result
+
+        except Exception as e:
+            future.set_exception(e)
+            raise
+
+        finally:
+            # Cleanup
+            async with self._lock:
+                self._pending.pop(dedup_key, None)
+
+            try:
+                await self.cache.delete(dedup_key)
+            except Exception:
+                pass

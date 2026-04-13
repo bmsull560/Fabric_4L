@@ -22,8 +22,8 @@ from shared.identity.models import (
     TenantUpdateRequest,
 )
 
-from ...database import get_db
-from ..service import (
+from ....database import get_db
+from ...service import (
     create_tenant,
     delete_tenant,
     get_tenant,
