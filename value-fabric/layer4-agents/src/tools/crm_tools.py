@@ -156,7 +156,84 @@ class GetProspectDataTool(BaseTool):
                     "website": props.get("website"),
                     "headquarters": props.get("address"),
                     "employees": props.get("numberofemployees"),
+                    "domain": props.get("domain"),
                 }
+        
+        # Fetch opportunities (deals) associated with company
+        if "opportunities" in input_data.data_types:
+            # HubSpot CRM API v3 - get deals associated with company
+            associations_url = f"https://api.hubapi.com/crm/v3/objects/companies/{prospect_id}/associations/deals"
+            assoc_response = await client.get(associations_url)
+            
+            if assoc_response.status_code == 200:
+                assoc_data = assoc_response.json()
+                deal_ids = [r.get("toObjectId") for r in assoc_data.get("results", [])]
+                
+                # Fetch each deal's details
+                opportunities = []
+                for deal_id in deal_ids[:50]:  # Limit to 50 deals
+                    deal_url = f"https://api.hubapi.com/crm/v3/objects/deals/{deal_id}"
+                    deal_response = await client.get(deal_url)
+                    if deal_response.status_code == 200:
+                        deal_data = deal_response.json()
+                        props = deal_data.get("properties", {})
+                        opportunities.append({
+                            "id": str(deal_id),
+                            "name": props.get("dealname", "Untitled Deal"),
+                            "stage": props.get("dealstage", "unknown"),
+                            "value": float(props.get("amount", 0)) if props.get("amount") else 0,
+                            "probability": float(props.get("probability", 0)) / 100 if props.get("probability") else 0,
+                            "close_date": props.get("closedate"),
+                            "pipeline": props.get("pipeline"),
+                        })
+                
+                result.opportunities = opportunities
+        
+        # Fetch interactions (engagements) via v1 API
+        if "interactions" in input_data.data_types:
+            engagements_url = f"https://api.hubapi.com/engagements/v1/engagements/associated/COMPANY/{prospect_id}/paged"
+            engagements_response = await client.get(engagements_url)
+            
+            if engagements_response.status_code == 200:
+                engagements_data = engagements_response.json()
+                interactions = []
+                
+                for eng in engagements_data.get("results", [])[:100]:  # Limit to 100
+                    metadata = eng.get("engagement", {})
+                    assoc = eng.get("associations", {})
+                    
+                    # Determine interaction type and extract relevant data
+                    eng_type = metadata.get("type", "unknown").lower()
+                    
+                    interaction = {
+                        "id": str(metadata.get("id", "")),
+                        "type": eng_type,
+                        "date": metadata.get("createdAt"),
+                        "subject": metadata.get("subject", ""),
+                        "outcome": "completed" if metadata.get("active") else "pending",
+                    }
+                    
+                    # Add type-specific details
+                    if eng_type == "email":
+                        email_meta = eng.get("metadata", {})
+                        interaction["subject"] = email_meta.get("subject", "Email")
+                        interaction["sender"] = email_meta.get("from", {}).get("rawEmail") if isinstance(email_meta.get("from"), dict) else None
+                    elif eng_type == "call":
+                        call_meta = eng.get("metadata", {})
+                        interaction["duration_minutes"] = call_meta.get("durationMilliseconds", 0) // 60000 if call_meta.get("durationMilliseconds") else None
+                        interaction["notes"] = call_meta.get("body", "")
+                    elif eng_type == "meeting":
+                        meeting_meta = eng.get("metadata", {})
+                        interaction["subject"] = meeting_meta.get("title", "Meeting")
+                        interaction["duration_minutes"] = meeting_meta.get("durationMillis", 0) // 60000 if meeting_meta.get("durationMillis") else None
+                    elif eng_type == "task":
+                        task_meta = eng.get("metadata", {})
+                        interaction["subject"] = task_meta.get("subject", "Task")
+                        interaction["notes"] = task_meta.get("body", "")
+                    
+                    interactions.append(interaction)
+                
+                result.interactions = interactions
         
         return result
 

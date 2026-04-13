@@ -27,6 +27,7 @@ from ..models.tool_schemas import (
     FetchInteractionHistoryInput,
     GetProspectDataInput,
 )
+from .crm_sync_service import CRMSyncService
 
 logger = logging.getLogger(__name__)
 
@@ -270,97 +271,76 @@ class AccountService:
     ) -> dict:
         """Trigger manual sync for accounts.
         
-        This is the entry point for sync operations. In Phase 1, this
-        initiates the sync process. The actual sync implementation would
-        typically be handled by a background job.
+        Uses CRMSyncService to execute the actual synchronization.
         """
         sync_id = f"sync-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
         
+        # Initialize sync service
+        sync_service = CRMSyncService(self.db)
+        
         if provider:
             # Sync specific provider
+            stats = await sync_service.sync_provider(
+                provider,
+                incremental=not force_refresh,
+                account_ids=account_ids,
+            )
             return {
                 "sync_id": sync_id,
-                "status": "queued",
+                "status": "completed" if not stats["errors"] else "partial",
                 "provider": provider.value,
-                "message": f"Sync queued for {provider.value}",
+                "message": f"Synced {stats['updated']} accounts, {stats['failed']} failed",
+                "stats": stats,
             }
         elif account_ids:
-            # Sync specific accounts
+            # Sync specific accounts (try both providers)
+            all_stats = []
+            for prov in [CRMProvider.SALESFORCE, CRMProvider.HUBSPOT]:
+                stats = await sync_service.sync_provider(
+                    prov,
+                    incremental=not force_refresh,
+                    account_ids=account_ids,
+                )
+                all_stats.append(stats)
+            
+            total_updated = sum(s["updated"] for s in all_stats)
+            total_failed = sum(s["failed"] for s in all_stats)
+            
             return {
                 "sync_id": sync_id,
-                "status": "queued",
+                "status": "completed" if total_failed == 0 else "partial",
                 "provider": None,
-                "message": f"Sync queued for {len(account_ids)} accounts",
+                "message": f"Synced {total_updated} accounts, {total_failed} failed",
+                "stats": all_stats,
             }
         else:
             # Sync all providers
+            all_stats = []
+            for prov in [CRMProvider.SALESFORCE, CRMProvider.HUBSPOT]:
+                stats = await sync_service.sync_provider(
+                    prov,
+                    incremental=not force_refresh,
+                )
+                all_stats.append(stats)
+            
+            total_updated = sum(s["updated"] for s in all_stats)
+            total_failed = sum(s["failed"] for s in all_stats)
+            
             return {
                 "sync_id": sync_id,
-                "status": "queued",
+                "status": "completed" if total_failed == 0 else "partial",
                 "provider": None,
-                "message": "Sync queued for all providers",
+                "message": f"Synced {total_updated} accounts across all providers, {total_failed} failed",
+                "stats": all_stats,
             }
     
     async def refresh_account(self, account_id: UUID) -> Optional[Account]:
         """Refresh single account from CRM provider.
         
-        Fetches latest data and updates the account record.
+        Uses CRMSyncService for consistent sync behavior.
         """
-        account = await self.get_account(account_id)
-        if not account:
-            return None
-        
-        try:
-            # Use get_prospect_data tool to fetch fresh data
-            tool = GetProspectDataTool()
-            result = await tool.execute(
-                GetProspectDataInput(
-                    prospect_id=account.provider_record_id,
-                    data_types=["profile", "opportunities", "interactions"],
-                )
-            )
-            
-            # Update account with fresh data
-            profile = result.profile
-            if profile:
-                account.name = profile.get("name", account.name)
-                account.industry = profile.get("industry", account.industry)
-                account.company_size = profile.get("company_size", account.company_size)
-                account.annual_revenue = profile.get("annual_revenue", account.annual_revenue)
-                account.headquarters = profile.get("headquarters", account.headquarters)
-                account.website = profile.get("website", account.website)
-                account.domain = profile.get("domain", account.domain)
-            
-            # Update opportunities from result
-            if result.opportunities:
-                account.opportunities = [
-                    {
-                        "provider_opportunity_id": opp.get("id", ""),
-                        "name": opp.get("name", ""),
-                        "stage": opp.get("stage", ""),
-                        "value": opp.get("value"),
-                        "probability": opp.get("probability"),
-                        "close_date": opp.get("close_date"),
-                        "last_synced_at": datetime.now(timezone.utc).isoformat(),
-                    }
-                    for opp in result.opportunities
-                ]
-            
-            # Update sync metadata
-            account.last_synced_at = datetime.now(timezone.utc)
-            account.sync_status = SyncStatus.SYNCED.value
-            account.updated_at = datetime.now(timezone.utc)
-            
-            await self.db.commit()
-            await self.db.refresh(account)
-            
-            return account
-            
-        except Exception as e:
-            logger.error(f"Failed to refresh account {account_id}: {e}")
-            account.sync_status = SyncStatus.FAILED.value
-            await self.db.commit()
-            return account
+        sync_service = CRMSyncService(self.db)
+        return await sync_service.refresh_single_account(account_id)
     
     # ========================================================================
     # Filter Options
