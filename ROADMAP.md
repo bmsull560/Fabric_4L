@@ -1746,3 +1746,294 @@ After 6 weeks, the build environment will be:
 - **Maintainable:** Renovate updates base images, Makefile for common tasks
 
 **The platform transitions from "dangerous middle" to "genuinely solid."**
+
+---
+
+## Component Spec Audit — Prioritized Checklist Gap Analysis
+
+**Audit Date:** 2026-04-13  
+**Spec:** Prioritized Component Checklist (P0 / P1 / P2)  
+**Auditor:** Copilot Task Agent (automated code scan)
+
+This section records the gap analysis performed against the enterprise platform component spec.  
+Findings drive the tasks in **Phase 3** below.
+
+---
+
+### Scorecard
+
+| Priority | Total Items | ✅ Implemented | ⚠️ Partial | ❌ Missing |
+|----------|-------------|---------------|-----------|-----------|
+| **P0 — Essential** | 9 | 5 | 3 | 1 |
+| **P1 — Important** | 8 | 3 | 3 | 2 |
+| **P2 — Advanced** | 7 | 0 | 3 | 4 |
+
+---
+
+### P0 — Essential (must have for production)
+
+| Component | Status | Findings |
+|-----------|--------|---------|
+| **Authentication & Tenanting** (multi-tenant user/org management, SSO/OIDC, service accounts) | ⚠️ Partial | Multi-tenant DB schema (tenants / users / api_keys, migration 002), JWT auth, `GovernanceMiddleware`, and `SYSTEM` service-account role are implemented. **SSO/OIDC is absent** — no OIDC client library, no `/oauth2/callback` endpoint, no identity-provider integration. |
+| **Authorization & RBAC** (fine-grained agent & resource permissions, approval flows) | ✅ Implemented | 18-permission `Permission` enum, 6-tier `Role` hierarchy, `ROLE_PERMISSIONS` single source of truth, per-endpoint `require_permission` FastAPI dependencies. Formula approval/review state machine in L4/L5. Human-in-the-loop pause/resume hook in L4 workflow routes. |
+| **Secrets Management** (secure vault, ephemeral credentials) | ⚠️ Partial | HashiCorp Vault ExternalSecret manifests (`k8s/external-secrets/vault-integration.yml`) and `docs/secrets-management.md` guide exist. HMAC-SHA256 for API keys, bcrypt for passwords, env-var-only config. **No ephemeral credential issuance** — the ClusterSecretStore URL is still `vault.example.com` (not wired to a real Vault instance). |
+| **Audit / Logging** (immutable audit trails of agent actions and admin changes) | ✅ Implemented | `shared/audit/` provides `AuditEvent` model + `emit_audit_event()` + `AuditEmitter.write_to_db()`. Migration 003 creates `audit_events` with a DB trigger blocking UPDATE/DELETE. Sensitive-key scrubbing. Dual-path: structured log (always) + optional DB write via `BackgroundTask`. |
+| **Multi-Tenant Data Isolation** (per-tenant databases or strict filtering) | ✅ Implemented | `TenantScopedMixin` (SQLAlchemy), `TenantScopedCypher` (Neo4j), `tenant_cache_key` (Redis) in `shared/identity/isolation.py`. All three data stores covered with mandatory `tenant_id` predicates. |
+| **Infrastructure Resilience** (backups, multi-region, incident runbooks) | ⚠️ Partial | `layer3-knowledge/src/backup/backup_manager.py` implements backup to S3/GCS/Azure. K8s PVCs declared; Postgres/Neo4j have persistent storage. **Multi-region deployment is not configured** (single-cluster K8s manifests only). **Incident runbooks do not exist** — referenced in docs but no runbook files are present. |
+| **Monitoring / Observability** (metrics/traces for agents, cost telemetry) | ✅ Implemented | Prometheus scrape configs for all 6 layers, 3 Grafana dashboards, alerting rules (HighErrorRate, SlowQueries, component-down, HighMemory/CPU, WorkflowStalled). OpenTelemetry tracing middleware in L3. `ExtractionCost` model tracks per-call USD cost. **Agent-level LLM cost is not exposed to Prometheus** (tracked in DB only, no cost metric gauge). |
+| **Model Management** (central model registry with versioning and governance) | ❌ Missing | No model registry. LLM model names appear only as config strings (e.g. `extraction_llm_model` column in L1 schema). No versioning, no governance controls, no promotion/deprecation workflow. |
+| **CI/CD for Agents & Models** (automated pipelines, automated testing/evals) | ✅ Implemented | `pr-checks.yml` runs lint + type-check + ≥80% test coverage on all 5 Python layers + frontend per PR. `build-deploy.yml` builds and smoke-tests all 6 Docker images on `main`. `make evals` runs golden-trace eval suite. **CI pipelines for model/agent-definition releases** do not exist (tied to the missing model registry). |
+
+---
+
+### P1 — Important
+
+| Component | Status | Findings |
+|-----------|--------|---------|
+| **Integrations & Data Connectors** (APIs, databases, webhooks for async events) | ✅ Implemented | Inter-layer HTTP clients (L4→L1/L2/L5), SEC EDGAR + XBRL adapters, CRM tool, integration tools, adapter registry. **No generic inbound webhook receiver** for external events; internal messaging bus handles only internal routing. |
+| **Notifications** (in-app/email alerting for incidents or approvals) | ❌ Missing | No email/Slack/webhook notification system. Alertmanager is referenced as a scrape target (`alertmanager:9093`) but no Alertmanager manifest or config exists — alerts fire into a void. |
+| **Evaluation Frameworks** (automated agent test suites) | ✅ Implemented | `tests/evals/` with golden-trace fixtures, `conftest.py`, and skill tests (`semantic_search`, `evaluate_formula`). `make evals` / `make evals-full` commands. |
+| **Feature Flags** (rollout control for new agent features) | ❌ Missing | No feature flag library or implementation anywhere in the codebase. |
+| **Rate Limiting & Quotas** (per-tenant request throttling) | ⚠️ Partial | `layer3/src/rate_limiting/manager.py` has a multi-algorithm rate limiter (token bucket, sliding window, adaptive) scoped by USER / API_KEY / IP / ENDPOINT. `rate_limit_per_minute` column on `api_keys`. **No TENANT scope**; rate limits are not enforced in L1/L2/L4. No OpenMeter or event-based quota system. |
+| **SDKs / Dev Tooling** (client libraries, CLIs) | ❌ Missing | No SDK, client library, or CLI. OpenAPI export script (`scripts/export_openapi.py`) exists but no published SDK artifact. |
+| **CI/CD Tools** (GitHub Actions tied to model/agent releases) | ⚠️ Partial | GitHub Actions pipelines exist for app code. No pipeline triggered by model or agent definition changes (edits to skill/agent Markdown files do not trigger automated evals or deployment). |
+| **Data Residency & Compliance** (region-based tenant isolation) | ⚠️ Partial | PII scanner and robots.txt checker in L1. L1 migration 002 adds `data_region` and `gdpr_consent` columns. No infrastructure-level data residency enforcement (no per-region K8s cluster, no tenant→region routing). |
+
+---
+
+### P2 — Advanced
+
+| Component | Status | Findings |
+|-----------|--------|---------|
+| **Billing & Cost Controls** (usage-based metering, automated billing integration) | ❌ Missing | `ExtractionCost` model tracks LLM costs in DB but there is no metering pipeline, billing API, or Stripe/OpenMeter integration. No invoice generation or usage export. |
+| **Cost & Budget Alerts** | ⚠️ Minimal | Cost is tracked per extraction job (`cost_usd`). No Prometheus gauge for cumulative cost; no alert rule for budget thresholds. |
+| **SLA / SLI Definitions** (uptime and latency commitments) | ⚠️ Minimal | Alert rules fire at >5% error rate and p95 latency >2s, approximating SLI thresholds. No formal SLA document, no error-budget tracking, no SLO dashboard panel. |
+| **Consent / Privacy Mechanisms** (data use consent flows) | ⚠️ Minimal | `gdpr_consent` column in L1 migration; PII scanner tags sensitive content. No user-facing consent flow or consent-withdrawal mechanism. |
+| **Legal / Compliance Support** (SOC2, ISO controls) | ❌ Missing | No compliance control mapping, no SOC2 evidence collection automation. `SECURITY.md` covers vulnerability reporting only. |
+| **Incident Runbooks & On-call Ops** (predefined runbooks for agent failures) | ❌ Missing | Referenced in `AGENTS.md` and docs; no actual runbook files exist. |
+| **Marketplace / Governance Dashboards** (catalog of certified agents/policies) | ❌ Missing | Agent/skill definitions exist as Markdown files but there is no catalog UI, certification workflow, or governance dashboard. |
+
+---
+
+### Top 10 Gaps to Close (by risk)
+
+| # | Gap | Priority | Risk |
+|---|-----|----------|------|
+| 1 | **SSO/OIDC** — no federated identity; all users use local passwords or API keys | P0 | Blocks enterprise adoption |
+| 2 | **Model Management** — no registry, versioning, or governance for LLMs | P0 | Model updates are risky and unauditable |
+| 3 | **Vault not wired / no ephemeral creds** — K8s manifest is a template; `vault.example.com` placeholder | P0 | Secrets management is documentation only in production |
+| 4 | **Incident Runbooks** — no runbook files exist | P0 | Operations blind spot for agent failure scenarios |
+| 5 | **Notifications (Alertmanager unconfigured)** — alert rules fire nowhere; on-call won't be paged | P1 | Silent failures in production |
+| 6 | **Feature Flags** — no progressive rollout mechanism for agent capabilities | P1 | All changes require full deployment |
+| 7 | **Per-tenant Rate Limiting** — L3 rate limiter has no TENANT scope; L1/L4 have none | P1 | Noisy-tenant risk; runaway billing |
+| 8 | **SDKs / CLI** — no client tooling; developers must craft raw HTTP | P1 | High integration friction |
+| 9 | **Billing / Metering Pipeline** — cost data stranded in DB; no billing integration | P2 | No path to monetization |
+| 10 | **SOC2 / ISO Compliance Controls** — nothing mapped | P2 | Blocks enterprise/regulated customers |
+
+---
+
+## Phase 3: Enterprise Hardening (Post-Phase-2)
+
+The following tasks are derived directly from the gap analysis above and should be scheduled after Phase 2 stabilization.
+
+### **Task 40: SSO / OIDC Integration** 🔴 NOT STARTED
+
+**Priority:** P0  
+**Effort:** ~3 weeks
+
+**Objective:** Enable federated identity so enterprise users can log in via their corporate IdP (Okta, Azure AD, Google Workspace).
+
+**Scope:**
+- Add `python-jose` / `authlib` OIDC client to `shared/identity/`
+- Implement `/oauth2/authorize`, `/oauth2/callback`, and token-exchange endpoints in L4
+- Map OIDC claims (`email`, `groups`) to `Role` enum
+- Store OIDC provider config (issuer, client_id, client_secret) per tenant in `tenants.settings` JSONB
+- Add Alembic migration for OIDC provider table
+- Update `GovernanceMiddleware` to accept OIDC-issued JWTs alongside internal JWTs
+
+**Acceptance Criteria:**
+- [ ] Users can log in via OIDC redirect flow
+- [ ] OIDC group membership maps to `Role`
+- [ ] Audit event `USER_LOGIN` fires on successful OIDC auth
+- [ ] Unit tests cover token exchange and claim mapping
+- [ ] Existing API-key and password auth paths unaffected
+
+---
+
+### **Task 41: Model Registry & Governance** 🔴 NOT STARTED
+
+**Priority:** P0  
+**Effort:** ~2 weeks
+
+**Objective:** Central registry for all LLM model versions used by L2 and L4, with promotion gates and audit trail.
+
+**Scope:**
+- New `model_registry` table (migration): `model_id`, `name`, `provider`, `version`, `status` (draft/active/deprecated), `promoted_by`, `promoted_at`, `config_json`
+- Admin API endpoints: `POST /v1/models`, `GET /v1/models`, `POST /v1/models/{id}/promote`, `POST /v1/models/{id}/deprecate`
+- L2 `LLMExtractor` and L4 tools read active model from registry at runtime instead of hardcoded config string
+- Emit `AuditAction` events for promotions and deprecations
+- CI job: on changes to `layer4-agents/src/tools/` or `layer2-extraction/src/extraction/`, auto-run `make evals` to validate against active model
+
+**Acceptance Criteria:**
+- [ ] All model references resolve through registry
+- [ ] Model promotion requires `ADMIN_SYSTEM` permission
+- [ ] Promotion and deprecation are audited
+- [ ] Eval suite runs automatically when model config changes in CI
+
+---
+
+### **Task 42: Wire HashiCorp Vault (Ephemeral Credentials)** 🔴 NOT STARTED
+
+**Priority:** P0  
+**Effort:** ~1 week
+
+**Scope:**
+- Replace `vault.example.com` placeholder in `k8s/external-secrets/vault-integration.yml` with parameterized values via K8s ConfigMap or CI secret injection
+- Add `ClusterSecretStore` health-check to the smoke gate (`scripts/smoke/production_smoke.py`)
+- Implement Vault dynamic secrets for PostgreSQL (`database/` secrets engine) so short-lived DB credentials are rotated automatically
+- Document rotation period and fallback behavior in `docs/secrets-management.md`
+
+**Acceptance Criteria:**
+- [ ] `vault-integration.yml` deploys successfully against a real Vault instance
+- [ ] PostgreSQL connections use dynamic credentials with ≤1h TTL
+- [ ] Smoke gate fails if Vault is unreachable
+
+---
+
+### **Task 43: Incident Runbooks** 🔴 NOT STARTED
+
+**Priority:** P0  
+**Effort:** ~3 days
+
+**Scope:**
+- Create `docs/runbooks/` directory
+- Write runbooks for: agent workflow stall, Neo4j unreachable, Postgres unreachable, Redis unreachable, high error rate (>5%), LLM provider outage, audit event DB write failure
+- Each runbook: symptoms → diagnosis commands → remediation steps → escalation path
+- Link runbooks from Grafana alert annotations (`runbook_url` field in `rules.yml`)
+
+**Acceptance Criteria:**
+- [ ] Runbook exists for every alert rule in `monitoring/alerting/rules.yml`
+- [ ] `runbook_url` annotation added to each Prometheus alert
+- [ ] Runbooks reviewed by at least one team member
+
+---
+
+### **Task 44: Alertmanager Configuration & Notifications** 🔴 NOT STARTED
+
+**Priority:** P1  
+**Effort:** ~1 week
+
+**Scope:**
+- Add `k8s/alertmanager.yml` deployment manifest (currently referenced as a scrape target but not deployed)
+- Configure Alertmanager routing: critical → PagerDuty/Opsgenie, warning → Slack `#alerts` channel
+- Add approval-flow notification: when a formula enters `UNDER_REVIEW` state, send a Slack message to the reviewer
+- Add environment variables: `ALERTMANAGER_SLACK_WEBHOOK`, `ALERTMANAGER_PAGERDUTY_KEY`
+
+**Acceptance Criteria:**
+- [ ] Alertmanager deployed and scraping successfully
+- [ ] Test alert fires through to Slack
+- [ ] Formula approval triggers a Slack notification
+- [ ] No secrets committed to repo
+
+---
+
+### **Task 45: Feature Flags** 🔴 NOT STARTED
+
+**Priority:** P1  
+**Effort:** ~1 week
+
+**Scope:**
+- Add lightweight feature flag store: `feature_flags` table (`flag_key`, `tenant_id`, `enabled`, `rollout_pct`, `metadata`)
+- `GET /v1/flags/{key}` endpoint returning enabled status for the calling tenant
+- Python helper `is_enabled(flag_key, ctx)` in `shared/` for use in L4 agent code
+- Seed flags for: `new_model_v2`, `experimental_whitespace_agent`, `beta_export_formats`
+- No external SaaS dependency (keep it simple; can migrate to LaunchDarkly later)
+
+**Acceptance Criteria:**
+- [ ] Flags are per-tenant and respect rollout percentage
+- [ ] `is_enabled()` helper used in at least one L4 agent path
+- [ ] Flag changes are audited via `AuditAction`
+- [ ] Unit tests for flag evaluation logic
+
+---
+
+### **Task 46: Per-Tenant Rate Limiting** 🔴 NOT STARTED
+
+**Priority:** P1  
+**Effort:** ~1 week
+
+**Scope:**
+- Add `TENANT` scope to `RateLimitScope` enum in `layer3/src/rate_limiting/manager.py`
+- Wire the rate limiter into L4's `GovernanceMiddleware` so every authenticated request is counted against the tenant's quota
+- Read per-tenant limits from `tenants.settings` JSONB (`rate_limit_rpm`, `rate_limit_burst`)
+- Apply rate limiting to L1 ingestion API and L4 agent API (currently only L3)
+- Return `Retry-After` header on 429 responses
+
+**Acceptance Criteria:**
+- [ ] Tenant A's traffic cannot consume Tenant B's quota
+- [ ] `429` responses include `Retry-After`
+- [ ] Rate limit events are logged (not audited — too high volume)
+- [ ] Unit tests cover tenant isolation of counters
+
+---
+
+### **Task 47: LLM Cost Prometheus Metrics** 🔴 NOT STARTED
+
+**Priority:** P1 (supports P2 cost/budget alerts)  
+**Effort:** ~2 days
+
+**Scope:**
+- Add Prometheus counters/gauges to `layer2-extraction/src/metrics/prometheus_metrics.py`: `vf_llm_cost_usd_total{provider, model, tenant_id}`, `vf_llm_tokens_total{provider, model, type}` (input/output)
+- Increment these metrics in `LLMExtractor` after each API call
+- Add a Grafana panel "LLM Cost by Tenant" to `monitoring/grafana/dashboards/value-fabric-overview.json`
+- Add alert rule: `vf_llm_cost_usd_total > budget_threshold` (configurable via Prometheus label)
+
+**Acceptance Criteria:**
+- [ ] `vf_llm_cost_usd_total` appears in `/metrics` after an extraction run
+- [ ] Grafana panel renders with live data
+- [ ] Alert fires when cost exceeds threshold
+
+---
+
+### **Task 48: SDK & CLI** 🔴 NOT STARTED
+
+**Priority:** P1  
+**Effort:** ~2 weeks
+
+**Scope:**
+- Generate a Python client SDK from the L4 OpenAPI spec using `openapi-python-client`
+- Publish SDK as a Python package (`vf-client`) to GitHub Packages
+- Add a minimal CLI (`vf`) using `typer`: `vf workflow run`, `vf workflow status`, `vf search`, `vf health`
+- Add CI step: regenerate SDK on every OpenAPI spec change and commit to `sdk/` directory
+
+**Acceptance Criteria:**
+- [ ] `pip install vf-client` installs a working client
+- [ ] `vf health` returns platform status from the CLI
+- [ ] SDK is regenerated automatically in CI
+
+---
+
+### Phase 3 Dependency Graph
+
+```
+Task 40 (SSO/OIDC)        ──────────────────────────► Task 46 (per-tenant rate limits)
+Task 41 (Model Registry)  ──► Task 41 CI gate         Task 44 (Alertmanager) ──► Task 43 (Runbooks)
+Task 42 (Vault wiring)    ──► (unblocks prod deploy)  Task 47 (Cost metrics) ──► P2 billing
+Task 45 (Feature Flags)   ──► (unblocks safe rollout) Task 48 (SDK/CLI)
+```
+
+### Phase 3 Summary
+
+| Task | Component | Priority | Effort |
+|------|-----------|----------|--------|
+| 40 | SSO / OIDC | P0 | 3 weeks |
+| 41 | Model Registry | P0 | 2 weeks |
+| 42 | Vault Wiring | P0 | 1 week |
+| 43 | Incident Runbooks | P0 | 3 days |
+| 44 | Alertmanager + Notifications | P1 | 1 week |
+| 45 | Feature Flags | P1 | 1 week |
+| 46 | Per-Tenant Rate Limiting | P1 | 1 week |
+| 47 | LLM Cost Metrics | P1 | 2 days |
+| 48 | SDK / CLI | P1 | 2 weeks |
+
+**Total estimated Phase 3 effort: ~11 weeks (parallelizable across 2-3 engineers)**
