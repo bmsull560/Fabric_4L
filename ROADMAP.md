@@ -1209,14 +1209,130 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 
 **Gap:** Integration tests run nightly only, not on PRs. Breaking changes merge all day before they're caught.
 
+---
+
+### **Task 51: L2 Extraction Ontology Alignment Audit (L2)** ⭐ P1
+**Priority:** P1 | **Effort:** 2-3 days | **Status:** 🔴 Not Started | **Unblocks:** Semantic contract validation, pack alignment
+
+**Gap:** Semantic contract between pack ontologies and L2 extraction is only partially aligned. Relationship vocabulary mismatch, enum misalignment, and unmapped fields to Ground Truth create product-truth problems.
+
+**Audit Findings Summary:**
+| Area | Status | Key Gap |
+|------|--------|---------|
+| Entity Types | ~80% Aligned | Persona role_type enum mismatch, ValueCategory granularity loss |
+| Relationships | ~50% Aligned | 12 extraction predicates vs 3 ontology-backed predicates |
+| L2→L3→L5 Flow | ~40% Aligned | No explicit ValueDriver→TruthObject mapping |
+| Prompt Alignment | ~60% Aligned | Role type vocabularies differ, missing relationship properties |
+
+**Critical Findings:**
+1. **Persona Role Type Mismatch**: Pack expects `EXECUTIVE_SPONSOR/OPERATIONAL_USER/TECHNICAL_EVALUATOR`, L2 extracts `economic_buyer/operational_user/stakeholder`
+2. **ValueDriver Category Mismatch**: Pack uses `CAPITAL_EFFICIENCY/RISK_MITIGATION`, L2 extracts `capital/risk/cost/revenue`
+3. **Relationship Over-Extraction**: L2 extracts `requires`, `depends_on`, `alternative_to`, `capabilitySubtypeOf` with no ontology definition
+4. **Missing Relationship Properties**: `enablement_type`, `contribution_weight`, `benefit_type`, `impact_level`, `driver_type`, `influence_weight` not extracted
+5. **No ValueDriver→TruthObject Bridge**: `formula_string`, `metrics` lost between L2 extraction and L5 Ground Truth
+
 **Acceptance Criteria:**
-- [ ] Integration tests run on PR (not just nightly)
-- [ ] Lightweight service smoke without Docker Compose
-- [ ] Fails CI on contract/status code regressions
+- [ ] Align `role_type` enums: map extraction values to ontology values or update ontology
+- [ ] Align `ValueCategory` enums: add pack categories to extraction schema
+- [ ] Document or remove orphaned predicates: decide fate of `requires`/`depends_on`/`alternative_to`
+- [ ] Add relationship property extraction: `enablement_type`, `benefit_type`, `driver_type`, weights
+- [ ] Define explicit L3→L5 ValueDriver bridge mapping to TruthObject
+- [ ] Update prompts with ontology examples from pack `examples[]`
+- [ ] Semantic contract tests verifying pack → extraction → storage → retrieval alignment
 
 **Implementation:**
-- Modify: `.github/workflows/integration-tests.yml`
-- Add: `workflow_run` trigger or required status check
+- Modify: `value-fabric/layer2-extraction/src/models/ontology.py` (enum alignment)
+- Modify: `value-fabric/layer2-extraction/src/extraction/llm_extractor.py` (schema updates, relationship properties)
+- Modify: `value-fabric/layer2-extraction/src/extraction/prompts/*.txt` (vocabulary alignment)
+- Create: `value-fabric/layer2-extraction/tests/test_ontology_alignment.py` (semantic contract validation)
+- Create: `docs/semantic_contract.md` (ontology ↔ extraction ↔ storage mapping)
+
+---
+
+### **Task 52: Salesforce & HubSpot CRM Integration (L4 + Frontend)** ⭐ P1
+**Priority:** P1 | **Effort:** 3-4 days | **Status:** Backend ~65%, Frontend 0% | **Unblocks:** Accounts product surface, Task 39 completion
+
+**Gap:** The CRM integrations exist as agent tools but there is no admin UI for connecting credentials, no background sync pipeline, and no live accounts surface in the frontend. Everything visible in the UI is hardcoded mock data.
+
+---
+
+**Backend Status (Layer 4) — Substantially Built:**
+
+| Tool | Salesforce | HubSpot |
+|------|------------|---------|
+| GetProspectDataTool | ✅ profile, opportunities, interactions | ⚠️ profile only (opportunities/interactions not implemented) |
+| UpdateOpportunityTool | ✅ PATCH to /sobjects/Opportunity | ✅ PATCH to /crm/v3/objects/deals |
+| FetchInteractionHistoryTool | ✅ SOQL Task query | ✅ engagements v1 API |
+| ScoreLeadTool | ✅ (pure logic, calls GetProspectData) | ✅ same |
+
+**integration_tools.py adds ExportToCRMTool:**
+- ✅ Salesforce: can POST Note or Task objects
+- ✅ HubSpot: can POST to engagements API or files API
+
+**models/account.py** has a canonical Account model supporting both CRMProvider.SALESFORCE and CRMProvider.HUBSPOT, with SyncStatus (synced/pending/failed/stale) and provider_record_id for deduplication when both CRMs are active.
+
+**accounts.py API routes** have 8 endpoints: list, search, filters, sync-status, sync, get, activity, refresh.
+
+---
+
+**Gaps Identified:**
+
+| Component | Status | Gap |
+|-----------|--------|-----|
+| **Env var documentation** | ❌ Missing | `.env.example` lacks crm_type, crm_api_key, crm_api_secret, crm_instance_url |
+| **HubSpot GetProspectDataTool** | ⚠️ Partial | Only fetches profile (lines 137-161), missing opportunities and interactions |
+| **CRM sync service** | ❌ Not Built | No background job or webhook handler to keep Account records in sync |
+| **Frontend accounts page** | ❌ 0% | No Accounts.tsx exists (Research → Accounts routes to placeholder) |
+| **CRM configuration UI** | ❌ 0% | No Integrations.tsx, no CRM connection flow |
+| **Live frontend data** | ❌ Mock Only | AdminScreens.tsx has hardcoded static VARIABLES referencing `salesforce.churn_rate` |
+
+---
+
+**Execution Slice (2-3 days):**
+
+**Phase 1: Backend Sync Service (2 days)**
+1. Add CRM env vars to `.env.example` with documentation
+2. Implement `CRMSyncService` — background sync orchestration
+3. Complete HubSpot GetProspectDataTool (opportunities + interactions)
+4. Wire `/accounts/sync` endpoint to trigger actual sync
+5. Add sync status polling and webhook handler stubs
+
+**Phase 2: Frontend Wiring (1-2 days)** — After Task 36
+1. Create Accounts list page with real `GET /api/v1/accounts` data
+2. Create Account detail page with opportunities/contacts
+3. Create Integrations configuration page
+4. Replace AdminScreens.tsx static VARIABLES with live data
+
+---
+
+**Acceptance Criteria:**
+
+**Backend:**
+- [ ] `.env.example` contains documented CRM environment variables
+- [ ] `GET /api/v1/accounts/sync-status` returns actual sync status (not stubbed)
+- [ ] `POST /api/v1/accounts/sync` triggers background sync job
+- [ ] After sync, Account records show `last_synced_at` timestamp and updated data
+- [ ] HubSpot GetProspectDataTool fetches opportunities and interactions
+- [ ] Failed syncs set `sync_status=failed` with error message
+- [ ] Tests exist for sync service with mocked CRM APIs
+
+**Frontend:**
+- [ ] Accounts list page (`/accounts`) renders real account data
+- [ ] Account detail page shows opportunities and contacts
+- [ ] Integrations page allows CRM credential configuration
+- [ ] Admin screens use live variable registry data (not hardcoded `salesforce.*`)
+
+---
+
+**Implementation:**
+- Modify: `value-fabric/.env.example` — Add CRM env vars
+- Create: `value-fabric/layer4-agents/src/services/crm_sync_service.py` — NEW sync orchestration
+- Modify: `value-fabric/layer4-agents/src/tools/crm_tools.py` — Complete HubSpot GetProspectDataTool
+- Modify: `value-fabric/layer4-agents/src/services/account_service.py` — Wire sync triggers
+- Create: `frontend/client/src/pages/Accounts.tsx` — NEW accounts list page
+- Create: `frontend/client/src/pages/Integrations.tsx` — NEW CRM config page
+- Modify: `frontend/client/src/pages/AdminScreens.tsx` — Replace static VARIABLES
+- Modify: `frontend/client/src/components/navigation/TieredNav.tsx` — Wire accounts route
 
 ---
 
