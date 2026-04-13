@@ -105,6 +105,7 @@ async def list_benchmarks(
         result = await session.run(query, **params)
         records = await result.data()
 
+        current_year = datetime.now(timezone.utc).year
         return [
             BenchmarkSummary(
                 id=r["b"]["id"],
@@ -116,7 +117,7 @@ async def list_benchmarks(
                 confidence=r["b"].get("confidence", "Medium"),
                 source=r["b"].get("source", ""),
                 source_url=r["b"].get("sourceUrl"),
-                year=r["b"].get("year", datetime.now(timezone.utc).year),
+                year=r["b"].get("year", current_year),
                 status=r["b"].get("status", "active"),
                 tags=r["b"].get("tags", []) if isinstance(r["b"].get("tags"), list) else [],
                 last_verified=r["b"].get("lastVerified"),
@@ -176,6 +177,7 @@ async def get_benchmark(
             raise HTTPException(status_code=404, detail="Benchmark not found")
 
         b = record["b"]
+        current_year = datetime.now(timezone.utc).year
         return BenchmarkSummary(
             id=b["id"],
             benchmark_id=b.get("benchmarkId", b["id"]),
@@ -186,7 +188,7 @@ async def get_benchmark(
             confidence=b.get("confidence", "Medium"),
             source=b.get("source", ""),
             source_url=b.get("sourceUrl"),
-            year=b.get("year", datetime.now(timezone.utc).year),
+            year=b.get("year", current_year),
             status=b.get("status", "active"),
             tags=b.get("tags", []) if isinstance(b.get("tags"), list) else [],
             last_verified=b.get("lastVerified"),

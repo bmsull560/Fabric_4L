@@ -98,7 +98,7 @@ type TabType = "users" | "api-keys";
 
 function PermissionsContent() {
   const [location] = useLocation();
-  const initialTab: TabType = location.includes("/teams") || location.includes("/api-keys") ? "api-keys" : "users";
+  const initialTab: TabType = location.includes("/api-keys") ? "api-keys" : "users";
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [search, setSearch] = useState("");
 
