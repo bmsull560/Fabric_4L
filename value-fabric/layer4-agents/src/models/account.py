@@ -204,6 +204,12 @@ class Account(Base):
         comment="Account stage: prospect, qualified, opportunity, customer"
     )
     
+    employees: Mapped[Optional[int]] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Employee count (alias for company_size from CRM sync)",
+    )
+    
     # -----------------------------------------------------------------------
     # Sync Metadata
     # -----------------------------------------------------------------------

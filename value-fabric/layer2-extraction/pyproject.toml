@@ -75,7 +75,7 @@ minversion = "8.0"
 addopts = "-ra -q --strict-markers --tb=short"
 testpaths = ["tests"]
 asyncio_mode = "auto"
-pythonpath = ["src"]
+pythonpath = ["src", ".."]
 
 [tool.coverage.run]
 source = ["src"]

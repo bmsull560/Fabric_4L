@@ -1,28 +1,31 @@
 /**
- * TieredNav — Three-Tier Navigation Component
- * 
- * Progressive disclosure UI model:
- * - Tier 1 (Standard): Command Center, Accounts, Value Models, Business Cases, Workflows, Evidence
- * - Tier 2 (Advanced): Value Tree Explorer, Formula Studio, Graph Explorer, Ontology Browser
- * - Tier 3 (Admin): Formula Governance, Benchmark Policies, Variable Registry, Data Sources, Pack Management
- * 
+ * TieredNav — Single-Spine Navigation with Progressive Disclosure
+ *
+ * Navigation Taxonomy:
+ * - Home: Dashboard (all tiers)
+ * - Library: Content catalog (all tiers)
+ * - Discover: Research & data (Tier 1+ with progressive disclosure)
+ * - Model: Build value models (Tier 2+)
+ * - Deliver: Output & workflows (all tiers)
+ * - Evidence: Audit & provenance (all tiers)
+ * - Govern: Admin controls (Tier 3)
+ *
  * Features:
- * - "Advanced Mode" toggle for Tier 2 surfaces
- * - Admin Control Plane for Tier 3
- * - Progressive disclosure patterns (hide complexity from Tier 1)
- * - Route-aware navigation highlighting
+ * - Single stable navigation spine that grows with tier
+ * - Progressive disclosure hides advanced items from lower tiers
+ * - Route-aware highlighting
+ * - Tier switcher in footer
  */
 
 import { useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
-  LayoutDashboard, Search, Bell, User, ChevronDown, ChevronRight,
-  Briefcase, FileText, Workflow, Shield, BookOpen, GitBranch,
-  Share2, Network, History, Settings, Database, Bot, Layers,
+  LayoutDashboard, Search, ChevronDown, ChevronRight,
+  Briefcase, Shield, BookOpen, GitBranch,
+  Network, History, Settings, Database, Layers,
   FlaskConical, BarChart3, ListChecks, KeyRound, SlidersHorizontal,
-  Users, FolderKanban, Sparkles, ChevronLeft, Eye, EyeOff,
-  Lock, Crown, Wrench
+  FolderKanban, Package, Eye, Lock, Crown, Wrench
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -30,11 +33,12 @@ import {
 export type UserTier = "standard" | "advanced" | "admin";
 
 export interface NavItem {
+  id: string;
   label: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   path: string;
   tier: UserTier;
-  children?: { label: string; path: string; tier?: UserTier }[];
+  children?: NavItem[];
   badge?: string | number;
   description?: string;
 }
@@ -47,256 +51,167 @@ export interface TieredNavProps {
   onAdvancedModeToggle?: (enabled: boolean) => void;
 }
 
-// ── Navigation Definitions ─────────────────────────────────────────────────────
+// ── Single Navigation Spine ───────────────────────────────────────────────────
 
 /**
- * Tier 1 (Standard): Simplified flows for business users
- * - Command Center, Accounts, Value Models, Business Cases, Workflows, Evidence
+ * NAV_SPINE — Single source of truth for all navigation
+ * Progressive disclosure: items filtered by user tier at render time
  */
-const TIER_1_NAV: NavItem[] = [
-  { 
-    label: "Command Center",  
-    icon: <LayoutDashboard size={16}/>, 
-    path: "/command-center",
+const NAV_SPINE: NavItem[] = [
+  {
+    id: "home",
+    label: "Home",
+    icon: <LayoutDashboard size={16}/>,
+    path: "/home",
     tier: "standard",
-    description: "Overview dashboard and quick actions"
-  },
-  { 
-    label: "Value Packs",     
-    icon: <Sparkles size={16}/>,        
-    path: "/value-packs",
-    tier: "standard",
-    description: "Pre-built value models and templates"
+    description: "Dashboard and quick actions"
   },
   {
-    label: "Business Cases", 
-    icon: <Briefcase size={16}/>, 
-    path: "/agents",
+    id: "library",
+    label: "Library",
+    icon: <Package size={16}/>,
+    path: "/library",
     tier: "standard",
-    description: "ROI analysis and business case workflows",
+    description: "Content catalog and value packs",
     children: [
-      { label: "All Cases",         path: "/agents/business-cases", tier: "standard" },
-      { label: "Workflow Dashboard", path: "/agents/dashboard", tier: "standard" },
-    ],
+      { id: "packs", label: "Value Packs", path: "/library/packs", tier: "standard" },
+      { id: "models", label: "My Models", path: "/library/models", tier: "standard" },
+      { id: "authoring", label: "Pack Authoring", path: "/library/authoring", tier: "admin", badge: "Admin" }
+    ]
   },
   {
-    label: "Research",       
-    icon: <BookOpen size={16}/>, 
-    path: "/research",
+    id: "discover",
+    label: "Discover",
+    icon: <Search size={16}/>,
+    path: "/discover",
     tier: "standard",
-    description: "Accounts and data source management",
+    description: "Research accounts and manage data",
     children: [
-      { label: "Accounts",          path: "/accounts", tier: "standard" },
-      { label: "Integrations",      path: "/integrations", tier: "admin" },
-      { label: "Ingestion Jobs",    path: "/data-sources/jobs", tier: "standard" },
-    ],
+      { id: "accounts", label: "Accounts", path: "/discover/accounts", tier: "standard" },
+      { id: "jobs", label: "Ingestion Jobs", path: "/discover/jobs", tier: "standard" },
+      { id: "extraction", label: "Extraction Engine", path: "/discover/extraction", tier: "advanced" },
+      {
+        id: "knowledge",
+        label: "Knowledge Model",
+        path: "/discover/knowledge",
+        tier: "advanced",
+        children: [
+          { id: "entities", label: "Entity Browser", path: "/discover/knowledge/entities", tier: "advanced" },
+          { id: "graph", label: "Graph Explorer", path: "/discover/knowledge/graph", tier: "advanced" },
+          { id: "ontology", label: "Ontology Editor", path: "/discover/knowledge/ontology", tier: "advanced" }
+        ]
+      },
+      { id: "integrations", label: "Integrations", path: "/discover/integrations", tier: "admin", badge: "Admin" },
+      { id: "sources", label: "Source Configuration", path: "/discover/sources", tier: "admin", badge: "Admin" }
+    ]
   },
   {
-    label: "Evidence",       
-    icon: <Shield size={16}/>, 
-    path: "/audit",
-    tier: "standard",
-    description: "Decision traces and audit trails",
-    children: [
-      { label: "Decision Traces",   path: "/audit/traces", tier: "standard" },
-      { label: "Lineage Explorer",  path: "/audit/lineage", tier: "standard" },
-    ],
-  },
-  { 
-    label: "Settings",       
-    icon: <Settings size={16}/>,         
-    path: "/settings",
-    tier: "standard",
-    description: "User preferences and configuration"
-  },
-];
-
-/**
- * Tier 2 (Advanced): Power-user modeling & inspection tools
- * - Value Tree Explorer, Formula Studio, Graph Explorer, Ontology Browser
- */
-const TIER_2_NAV: NavItem[] = [
-  { 
-    label: "Command Center",    
-    icon: <LayoutDashboard size={16}/>, 
-    path: "/command-center",
-    tier: "standard",
-    description: "Overview dashboard"
-  },
-  { 
-    label: "Extraction Engine", 
-    icon: <FolderKanban size={16}/>,    
-    path: "/extraction-engine",
+    id: "model",
+    label: "Model",
+    icon: <GitBranch size={16}/>,
+    path: "/model",
     tier: "advanced",
-    description: "Data extraction and processing pipelines"
-  },
-  {
-    label: "Value Tree Explorer",   
-    icon: <GitBranch size={16}/>, 
-    path: "/value-trees",
-    tier: "advanced",
-    description: "Interactive value tree visualization",
+    description: "Build value trees and formulas",
     children: [
-      { label: "Tree Explorer",    path: "/value-trees/explorer", tier: "advanced" },
-      { label: "Normalization",    path: "/value-trees/normalization", tier: "advanced" },
-    ],
+      {
+        id: "value-studio",
+        label: "Value Studio",
+        path: "/model/value-studio",
+        tier: "advanced",
+        children: [
+          { id: "explorer", label: "Explorer", path: "/model/value-studio/explorer", tier: "advanced" },
+          { id: "normalization", label: "Normalization", path: "/model/value-studio/normalization", tier: "advanced" },
+          { id: "formulas", label: "Formula Builder", path: "/model/value-studio/formulas", tier: "advanced" }
+        ]
+      }
+    ]
   },
   {
-    label: "Formula Studio",  
-    icon: <FlaskConical size={16}/>, 
-    path: "/value-trees/formulas",
-    tier: "advanced",
-    description: "Formula authoring and testing environment"
-  },
-  {
-    label: "Graph Explorer",  
-    icon: <Share2 size={16}/>, 
-    path: "/graph",
-    tier: "advanced",
-    description: "Knowledge graph visualization and queries",
-    children: [
-      { label: "Graph Explorer",   path: "/graph/explorer", tier: "advanced" },
-      { label: "Query Builder",    path: "/graph/query", tier: "advanced" },
-      { label: "Communities",      path: "/graph/communities", tier: "advanced" },
-    ],
-  },
-  {
-    label: "Ontology Browser",        
-    icon: <Network size={16}/>, 
-    path: "/ontology",
-    tier: "advanced",
-    description: "Entity types and relationship definitions",
-    children: [
-      { label: "Entity Browser",   path: "/ontology/entities", tier: "advanced" },
-      { label: "Extraction Jobs",  path: "/ontology/extractions", tier: "advanced" },
-      { label: "Validation",       path: "/ontology/validation", tier: "advanced" },
-    ],
-  },
-  {
-    label: "Agent Workflows", 
-    icon: <Bot size={16}/>, 
-    path: "/agents",
-    tier: "advanced",
-    description: "AI agent orchestration and monitoring",
-    children: [
-      { label: "Workflow Dashboard",  path: "/agents/dashboard", tier: "standard" },
-      { label: "Business Cases",      path: "/agents/business-cases", tier: "standard" },
-    ],
-  },
-  {
-    label: "Audit & Provenance", 
-    icon: <History size={16}/>, 
-    path: "/audit",
-    tier: "advanced",
-    description: "Full audit trails and compliance reports",
-    children: [
-      { label: "Decision Traces",    path: "/audit/traces", tier: "standard" },
-      { label: "Lineage Explorer",   path: "/audit/lineage", tier: "advanced" },
-      { label: "Compliance Reports", path: "/audit/reports", tier: "advanced" },
-    ],
-  },
-];
-
-/**
- * Tier 3 (Admin): Governance controls and tenant configuration
- * - Formula Governance, Benchmark Policies, Variable Registry, Data Sources, Pack Management
- */
-const TIER_3_NAV: NavItem[] = [
-  { 
-    label: "Command Center",      
-    icon: <LayoutDashboard size={16}/>, 
-    path: "/command-center",
+    id: "deliver",
+    label: "Deliver",
+    icon: <Briefcase size={16}/>,
+    path: "/deliver",
     tier: "standard",
-    description: "Overview dashboard"
+    description: "Output business cases and workflows",
+    children: [
+      { id: "cases", label: "Business Cases", path: "/deliver/cases", tier: "standard" },
+      { id: "opportunities", label: "Opportunity Finder", path: "/deliver/opportunities", tier: "standard" },
+      { id: "whitespace", label: "Whitespace Analysis", path: "/deliver/whitespace", tier: "advanced" },
+      { id: "agents", label: "Agent Dashboard", path: "/deliver/agents", tier: "advanced" },
+      { id: "explore", label: "Interactive Explorer", path: "/deliver/cases/explore", tier: "advanced" }
+    ]
   },
   {
-    label: "Formula Governance", 
-    icon: <FlaskConical size={16}/>, 
-    path: "/admin/formulas",
+    id: "evidence",
+    label: "Evidence",
+    icon: <Shield size={16}/>,
+    path: "/evidence",
+    tier: "standard",
+    description: "Audit trails and compliance proof",
+    children: [
+      { id: "traces", label: "Decision Traces", path: "/evidence/traces", tier: "standard" },
+      { id: "export", label: "Export Reports", path: "/evidence/export", tier: "standard" },
+      { id: "lineage", label: "Lineage Explorer", path: "/evidence/lineage", tier: "advanced" },
+      { id: "compliance", label: "Compliance Reports", path: "/evidence/compliance", tier: "advanced" },
+      { id: "changelog", label: "Full Change Log", path: "/evidence/changelog", tier: "admin", badge: "Admin" }
+    ]
+  },
+  {
+    id: "govern",
+    label: "Govern",
+    icon: <Settings size={16}/>,
+    path: "/admin",
     tier: "admin",
-    description: "Formula lifecycle management and approvals",
+    description: "Platform governance and configuration",
     badge: "Admin",
     children: [
-      { label: "Formula Registry",  path: "/admin/formulas", tier: "admin" },
-      { label: "Version History",   path: "/admin/formulas/versions", tier: "admin" },
-      { label: "Approval Queue",    path: "/admin/formulas/approvals", tier: "admin" },
-    ],
-  },
-  {
-    label: "Benchmark Policies",  
-    icon: <BarChart3 size={16}/>, 
-    path: "/admin/benchmarks",
-    tier: "admin",
-    description: "Industry benchmarks and policy configuration",
-    badge: "Admin",
-    children: [
-      { label: "Benchmark Library", path: "/admin/benchmarks", tier: "admin" },
-      { label: "Policy Config",     path: "/admin/benchmarks/policies", tier: "admin" },
-    ],
-  },
-  {
-    label: "Variable Registry",   
-    icon: <ListChecks size={16}/>, 
-    path: "/admin/variables",
-    tier: "admin",
-    description: "Variable definitions and source bindings",
-    badge: "Admin",
-    children: [
-      { label: "Variable Catalog",  path: "/admin/variables", tier: "admin" },
-      { label: "Source Bindings",   path: "/admin/variables/bindings", tier: "admin" },
-    ],
-  },
-  {
-    label: "Data Sources",        
-    icon: <Database size={16}/>, 
-    path: "/data-sources",
-    tier: "admin",
-    description: "Data source configuration and management",
-    badge: "Admin",
-    children: [
-      { label: "Scraping Targets",  path: "/data-sources/targets", tier: "admin" },
-      { label: "Ingestion Jobs",    path: "/data-sources/jobs", tier: "admin" },
-    ],
-  },
-  {
-    label: "Pack Management",     
-    icon: <Layers size={16}/>, 
-    path: "/admin/packs",
-    tier: "admin",
-    description: "Value pack authoring and distribution",
-    badge: "Admin",
-  },
-  {
-    label: "Permissions",         
-    icon: <KeyRound size={16}/>, 
-    path: "/admin/permissions",
-    tier: "admin",
-    description: "Role-based access control and teams",
-    badge: "Admin",
-    children: [
-      { label: "Roles & Access",    path: "/admin/permissions", tier: "admin" },
-      { label: "Teams",             path: "/admin/permissions/teams", tier: "admin" },
-    ],
-  },
-  {
-    label: "Audit / Change Log",  
-    icon: <History size={16}/>, 
-    path: "/audit",
-    tier: "admin",
-    description: "System-wide audit and change tracking",
-    children: [
-      { label: "Decision Traces",   path: "/audit/traces", tier: "standard" },
-      { label: "Compliance Reports",path: "/audit/reports", tier: "admin" },
-    ],
-  },
-  { 
-    label: "System Settings",     
-    icon: <SlidersHorizontal size={16}/>, 
-    path: "/settings",
-    tier: "admin",
-    description: "Tenant-wide system configuration",
-    badge: "Admin"
-  },
+      {
+        id: "content",
+        label: "Content Governance",
+        path: "/admin/content",
+        tier: "admin",
+        children: [
+          { id: "formulas", label: "Formula Registry", path: "/admin/content/formulas", tier: "admin" },
+          { id: "versions", label: "Version History", path: "/admin/content/versions", tier: "admin" },
+          { id: "approvals", label: "Approval Queue", path: "/admin/content/approvals", tier: "admin" },
+          { id: "benchmarks", label: "Benchmark Policies", path: "/admin/content/benchmarks", tier: "admin" }
+        ]
+      },
+      {
+        id: "data",
+        label: "Data Governance",
+        path: "/admin/data",
+        tier: "admin",
+        children: [
+          { id: "variables", label: "Variable Registry", path: "/admin/data/variables", tier: "admin" },
+          { id: "bindings", label: "Source Bindings", path: "/admin/data/bindings", tier: "admin" },
+          { id: "quality", label: "Quality Rules", path: "/admin/data/quality", tier: "admin" }
+        ]
+      },
+      {
+        id: "access",
+        label: "Access Control",
+        path: "/admin/access",
+        tier: "admin",
+        children: [
+          { id: "roles", label: "Roles & Permissions", path: "/admin/access/roles", tier: "admin" },
+          { id: "teams", label: "Teams", path: "/admin/access/teams", tier: "admin" },
+          { id: "keys", label: "API Keys", path: "/admin/access/keys", tier: "admin" }
+        ]
+      },
+      {
+        id: "system",
+        label: "System",
+        path: "/admin/system",
+        tier: "admin",
+        children: [
+          { id: "settings", label: "Platform Settings", path: "/admin/system/settings", tier: "admin" },
+          { id: "audit", label: "Audit Log", path: "/admin/system/audit", tier: "admin" },
+          { id: "health", label: "Health Monitor", path: "/admin/system/health", tier: "admin" }
+        ]
+      }
+    ]
+  }
 ];
 
 // ── Styling Constants ──────────────────────────────────────────────────────────
@@ -323,94 +238,107 @@ const TIER_STYLES = {
 } as const;
 
 const TIER_LABELS: Record<UserTier, { label: string; description: string; icon: React.ReactNode }> = {
-  standard: { 
-    label: "Standard", 
+  standard: {
+    label: "Standard",
     description: "Simplified flows for business users",
     icon: <Eye size={14}/>
   },
-  advanced: { 
-    label: "Advanced", 
+  advanced: {
+    label: "Advanced",
     description: "Power-user modeling & inspection tools",
     icon: <Wrench size={14}/>
   },
-  admin: { 
-    label: "Admin", 
+  admin: {
+    label: "Admin",
     description: "Governance controls & tenant configuration",
     icon: <Crown size={14}/>
   },
 };
+
+// ── Visibility Filter ─────────────────────────────────────────────────────────
+
+/**
+ * Check if a nav item should be visible for the given tier
+ * - Standard users see: standard items
+ * - Advanced users see: standard + advanced items
+ * - Admin users see: all items
+ */
+function isItemVisible(item: NavItem, userTier: UserTier): boolean {
+  if (userTier === "admin") return true;
+  if (userTier === "advanced") return item.tier !== "admin";
+  return item.tier === "standard";
+}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 interface SidebarItemProps {
   item: NavItem;
   currentTier: UserTier;
+  depth?: number;
 }
 
-function SidebarItem({ item, currentTier }: SidebarItemProps) {
+function SidebarItem({ item, currentTier, depth = 0 }: SidebarItemProps) {
   const [location] = useLocation();
   const isActive = location.startsWith(item.path);
   const [open, setOpen] = useState(isActive);
-  
+
   const tierStyle = TIER_STYLES[item.tier];
 
-  // Progressive disclosure: hide advanced items in standard mode
-  if (currentTier === "standard" && item.tier !== "standard") {
-    return null;
-  }
+  // Filter visible children based on tier
+  const visibleChildren = item.children?.filter(child => isItemVisible(child, currentTier));
+  const hasVisibleChildren = visibleChildren && visibleChildren.length > 0;
+
+  // Indentation based on depth
+  const indentClass = depth === 0 ? "" : depth === 1 ? "ml-4 mt-1 border-l-2 border-neutral-200 pl-3 space-y-0.5" : "ml-3 pl-2 space-y-0.5";
 
   return (
     <div className="group">
       <Link href={item.path}>
         <div
           className={cn(
-            "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-[12px] font-medium transition-all select-none cursor-pointer",
+            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all select-none cursor-pointer",
             isActive
               ? tierStyle.active
               : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
-            item.tier === "admin" && !isActive && "hover:bg-amber-50/30"
+            item.tier === "admin" && !isActive && "hover:bg-amber-50/30",
+            depth > 0 && "py-1.5 text-[11px]"
           )}
-          onClick={() => item.children && setOpen(o => !o)}
+          onClick={(e) => {
+            if (hasVisibleChildren) {
+              e.preventDefault();
+              setOpen(o => !o);
+            }
+          }}
         >
-          <span className={cn("shrink-0", isActive ? tierStyle.icon : "text-neutral-400 group-hover:text-neutral-600")}>
-            {item.icon}
-          </span>
+          {item.icon && (
+            <span className={cn("shrink-0", isActive ? tierStyle.icon : "text-neutral-400 group-hover:text-neutral-600")}>
+              {item.icon}
+            </span>
+          )}
           <span className="flex-1 truncate">{item.label}</span>
           {item.badge && (
             <span className={cn("text-[9px] px-1.5 py-0.5 rounded border font-semibold", tierStyle.badge)}>
               {item.badge}
             </span>
           )}
-          {item.children && (
+          {hasVisibleChildren && (
             <span className="text-neutral-400 transition-transform">
               {open ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
             </span>
           )}
         </div>
       </Link>
-      
-      {item.children && open && (
-        <div className="ml-4 mt-1 border-l-2 border-neutral-200 pl-3 space-y-0.5">
-          {item.children.map(child => {
-            // Progressive disclosure for children
-            if (currentTier === "standard" && child.tier === "advanced") {
-              return null;
-            }
-            
-            const childActive = location === child.path;
-            return (
-              <Link key={child.path} href={child.path}>
-                <div className={cn(
-                  "px-2.5 py-1.5 rounded-md text-[11px] transition-colors cursor-pointer",
-                  childActive
-                    ? tierStyle.active
-                    : "text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100"
-                )}>
-                  {child.label}
-                </div>
-              </Link>
-            );
-          })}
+
+      {hasVisibleChildren && open && (
+        <div className={indentClass}>
+          {visibleChildren.map(child => (
+            <SidebarItem
+              key={child.path}
+              item={child}
+              currentTier={currentTier}
+              depth={depth + 1}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -529,27 +457,22 @@ export function TieredNav({
   isAdvancedModeEnabled = false,
   onAdvancedModeToggle = () => {},
 }: TieredNavProps) {
-  // Determine which navigation to show based on tier and advanced mode
-  const getNavItems = useCallback((): NavItem[] => {
-    if (currentTier === "admin") {
-      return TIER_3_NAV;
-    }
-    if (currentTier === "advanced" || isAdvancedModeEnabled) {
-      return TIER_2_NAV;
-    }
-    return TIER_1_NAV;
-  }, [currentTier, isAdvancedModeEnabled]);
+  // Filter navigation spine based on effective tier
+  // Advanced mode allows standard users to see advanced items
+  const effectiveTier: UserTier = currentTier === "standard" && isAdvancedModeEnabled
+    ? "advanced"
+    : currentTier;
 
-  const navItems = getNavItems();
+  const visibleNavItems = NAV_SPINE.filter(item => isItemVisible(item, effectiveTier));
 
   return (
     <aside className="w-[240px] shrink-0 bg-white border-r border-neutral-200 overflow-y-auto z-20 flex flex-col h-full">
       {/* Navigation Items */}
       <div className="flex-1 py-4 px-2 space-y-1">
-        {navItems.map(item => (
-          <SidebarItem 
-            key={`${item.path}-${item.label}`} 
-            item={item} 
+        {visibleNavItems.map(item => (
+          <SidebarItem
+            key={`${item.path}-${item.label}`}
+            item={item}
             currentTier={currentTier}
           />
         ))}

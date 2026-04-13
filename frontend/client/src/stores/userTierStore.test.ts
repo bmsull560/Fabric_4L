@@ -315,15 +315,15 @@ describe("useUserTierStore", () => {
 
 describe("getRouteTier helper", () => {
   it("should return tier for exact route matches", () => {
-    expect(getRouteTier("/command-center")).toBe("standard");
-    expect(getRouteTier("/extraction-engine")).toBe("advanced");
+    expect(getRouteTier("/home")).toBe("standard");
+    expect(getRouteTier("/discover/extraction")).toBe("advanced");
     expect(getRouteTier("/admin")).toBe("admin");
   });
 
   it("should return tier for nested routes", () => {
-    expect(getRouteTier("/command-center/dashboard")).toBe("standard");
-    expect(getRouteTier("/graph/explorer/nodes")).toBe("advanced");
-    expect(getRouteTier("/admin/formulas/versions")).toBe("admin");
+    expect(getRouteTier("/home/dashboard")).toBe("standard");
+    expect(getRouteTier("/discover/knowledge/graph/nodes")).toBe("advanced");
+    expect(getRouteTier("/admin/content/formulas/versions")).toBe("admin");
   });
 
   it("should default to standard for unknown routes", () => {

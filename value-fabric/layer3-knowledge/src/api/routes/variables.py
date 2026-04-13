@@ -265,8 +265,9 @@ async def get_variable(
 async def create_variable(
     request: VariableCreateRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Register a new variable definition."""
+    """Register a new variable definition. Requires authentication."""
     import uuid
     
     variable_id = str(uuid.uuid4())
@@ -351,8 +352,9 @@ async def update_variable(
     variable_id: str,
     request: VariableUpdateRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Update variable definition."""
+    """Update variable definition. Requires authentication."""
     # Check variable exists
     check_query = "MATCH (v:Variable {id: $variable_id}) RETURN v"
     async with driver.session() as session:
