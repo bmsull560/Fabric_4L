@@ -12,6 +12,7 @@ from .routes import workflows, tools, analysis, accounts
 from .routes.checkpoints import checkpoint_router
 from .routes.state_inspector import state_inspector_router
 from .routes.health_badges import health_badges_router
+from .routes.c1 import router as c1_router
 from .websocket import websocket_router, get_ws_manager
 from ..services.health_tracker import get_health_tracker
 from ..database import init_db, close_db
@@ -203,6 +204,9 @@ app.include_router(api_keys_router, prefix="/v1")
 app.include_router(oidc_router)
 app.include_router(models_router, prefix="/v1")
 app.include_router(feature_flags_router, prefix="/v1")
+
+# Thesys C1 streaming proxy
+app.include_router(c1_router, prefix="/v1", tags=["c1"])
 
 
 @app.get("/health")

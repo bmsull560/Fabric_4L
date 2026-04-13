@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { useBusinessCase } from "@/hooks/useDocuments";
 import { useC1Stream } from "@/hooks/useC1Stream";
-import { isC1Enabled, C1Component } from "@/api/thesysClient";
+import { isC1Enabled, C1Component, getScenarios } from "@/api/thesysClient";
 
 // Types for C1-generated components
 interface MetricCardProps {
@@ -137,11 +137,13 @@ function C1ComponentRenderer({
   components,
   onSliderChange,
   onSaveScenario,
+  onLoadScenario,
   savedScenarios,
 }: {
   components: C1Component[];
   onSliderChange: (name: string, value: number, original: number) => void;
   onSaveScenario: (name: string) => void;
+  onLoadScenario: (scenarioId: string) => void;
   savedScenarios: Array<{ id: string; name: string }>;
 }) {
   const [newScenarioName, setNewScenarioName] = useState('');
@@ -212,7 +214,7 @@ function C1ComponentRenderer({
                       key={scenario.id}
                       variant="ghost"
                       className="text-xs"
-                      onClick={() => { /* Load scenario logic */ }}
+                      onClick={() => onLoadScenario(scenario.id)}
                     >
                       {scenario.name}
                     </Btn>
@@ -299,6 +301,27 @@ export default function InteractiveBusinessCase() {
     const id = saveCurrentScenario(name, adjustments);
     setSavedScenarios(prev => [...prev, { id, name }]);
   }, [c1State.components, saveCurrentScenario]);
+
+  const handleLoadScenario = useCallback((scenarioId: string) => {
+    if (!businessCaseId) return;
+    const allScenarios = getScenarios(businessCaseId);
+    const scenario = allScenarios.find(s => s.id === scenarioId);
+    if (!scenario) return;
+
+    // Apply each adjustment from the saved scenario to the matching slider
+    for (const adj of scenario.adjustments) {
+      const slider = c1State.components.find(
+        c => c.type === 'Slider' && c.props.name === adj.name
+      );
+      if (slider) {
+        handleSliderChange({
+          name: adj.name,
+          value: adj.value,
+          original_value: slider.props.originalValue as number,
+        });
+      }
+    }
+  }, [businessCaseId, c1State.components, handleSliderChange]);
 
   // Handle missing ID
   if (!businessCaseId) {
@@ -442,6 +465,7 @@ export default function InteractiveBusinessCase() {
                 components={c1State.components}
                 onSliderChange={handleSliderUpdate}
                 onSaveScenario={handleSaveScenario}
+                onLoadScenario={handleLoadScenario}
                 savedScenarios={savedScenarios}
               />
             </SectionCard>
