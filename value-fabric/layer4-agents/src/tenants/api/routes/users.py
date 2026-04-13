@@ -9,12 +9,9 @@ DELETE /v1/users/{user_id}       — deactivate a user
 
 from __future__ import annotations
 
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
 from shared.identity.models import (
@@ -22,6 +19,7 @@ from shared.identity.models import (
     UserModel,
     UserUpdateRequest,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....database import get_db
 from ...service import (
@@ -46,13 +44,13 @@ async def api_invite_user(
     return await invite_user(db, ctx.tenant_id, request, invited_by=invited_by)
 
 
-@router.get("", response_model=List[UserModel])
+@router.get("", response_model=list[UserModel])
 async def api_list_users(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: RequestContext = Depends(require_tenant_admin),
     db: AsyncSession = Depends(get_db),
-) -> List[UserModel]:
+) -> list[UserModel]:
     """List all users in the caller's tenant. Requires ``tenant_admin`` role."""
     return await list_users(db, ctx.tenant_id, limit=limit, offset=offset)
 

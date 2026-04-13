@@ -1,41 +1,40 @@
 """FastAPI main application for Layer 4 Agentic Workflow Engine."""
 
-from contextlib import asynccontextmanager
 import os
 import time
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-
-from .routes import workflows, tools, analysis, accounts
-from .routes.crm_webhooks import router as crm_webhooks_router
-from .routes.checkpoints import checkpoint_router
-from .routes.state_inspector import state_inspector_router
-from .routes.health_badges import health_badges_router
-from .routes.c1 import router as c1_router
-from .websocket import websocket_router, get_ws_manager
-from ..services.health_tracker import get_health_tracker
-from ..database import init_db, close_db
-from ..engine.executor import OrchestrationController
-from ..engine.state_manager import StateManager
-from ..tools import create_default_registry
-from ..config.checkpoint import CheckpointConfig
-from ..metrics import initialize_metrics, MetricsMiddleware, get_metrics
-from ..tenants import lookup_api_key_by_hash
-from ..tenants.api import tenants_router, users_router, api_keys_router
-from ..tenants.api.routes.oidc import router as oidc_router
-from ..registry.api.routes import router as models_router
-from ..feature_flags.api import feature_flags_router
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
 
 # Governance middleware replaces the old TenantMiddleware
 from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.rate_limiter import RedisRateLimiter
-from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
 from shared.identity.vault_check import check_vault_health
+
+from ..config.checkpoint import CheckpointConfig
+from ..database import close_db, db_session, init_db
+from ..engine.executor import OrchestrationController
+from ..engine.state_manager import StateManager
+from ..feature_flags.api import feature_flags_router
 from ..feature_flags.service import FeatureFlagService
-from ..database import db_session
+from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
+from ..registry.api.routes import router as models_router
+from ..services.health_tracker import get_health_tracker
+from ..tenants import lookup_api_key_by_hash
+from ..tenants.api import api_keys_router, tenants_router, users_router
+from ..tenants.api.routes.oidc import router as oidc_router
+from ..tools import create_default_registry
+from .routes import accounts, analysis, tools, workflows
+from .routes.c1 import router as c1_router
+from .routes.checkpoints import checkpoint_router
+from .routes.crm_webhooks import router as crm_webhooks_router
+from .routes.health_badges import health_badges_router
+from .routes.state_inspector import state_inspector_router
+from .websocket import get_ws_manager, websocket_router
 
 # App start time for uptime calculation
 _app_start_time = time.time()
@@ -82,23 +81,25 @@ async def lifespan(app: FastAPI):
         if vault_addr:
             ok = await check_vault_health(vault_addr)
             if not ok:
-                raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
+                raise RuntimeError(
+                    "Vault unreachable — cannot start in production without secrets backend"
+                )
 
     tool_registry = create_default_registry()
     state_manager = StateManager()  # Add Redis client if configured
 
     # Initialize rate limiter and feature flags
     redis_rate_limiter = None
-    if state_manager is not None and getattr(state_manager, 'redis_client', None) is not None:
+    if state_manager is not None and getattr(state_manager, "redis_client", None) is not None:
         redis_rate_limiter = RedisRateLimiter(state_manager.redis_client)
         app.state.rate_limiter = redis_rate_limiter
         init_feature_flags(state_manager.redis_client)
 
     # Register DB-backed feature flag lookup
     async def _feature_flag_lookup(flag_key: str, tenant_id):
-        from ..database import db_session
         async with db_session() as db:
             return await FeatureFlagService.lookup_flag(db, flag_key, tenant_id)
+
     register_feature_flag_lookup(_feature_flag_lookup)
 
     # Wire WebSocket manager for real-time state broadcasting
@@ -111,22 +112,21 @@ async def lifespan(app: FastAPI):
     except Exception:
         # Checkpointing is optional - log warning but continue
         import logging
+
         logging.getLogger(__name__).warning(
             "Checkpointing not available - workflows will not be resumable"
         )
 
     workflow_executor = OrchestrationController(
-        tool_registry,
-        state_manager,
-        checkpoint_saver=checkpoint_saver
+        tool_registry, state_manager, checkpoint_saver=checkpoint_saver
     )
 
     # Start the orchestration controller
     await workflow_executor.start()
-    
+
     # Start WebSocket manager for real-time streaming
     await ws_manager.start()
-    
+
     # Start health tracker for graceful degradation badges
     await health_tracker.start()
 
@@ -135,10 +135,10 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if workflow_executor:
         await workflow_executor.stop()
-    
+
     # Stop WebSocket manager
     await ws_manager.stop()
-    
+
     # Stop health tracker
     await health_tracker.stop()
 
@@ -158,8 +158,9 @@ app = FastAPI(
     title="Layer 4: Agentic Workflow Engine",
     description="LangGraph-powered workflow orchestration for Value Fabric with multi-agent support",
     version="0.2.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
+
 
 # GovernanceMiddleware — replaces TenantMiddleware; verifies JWTs, resolves
 # tenant/user/role context from Bearer JWT or X-API-Key.
@@ -170,10 +171,11 @@ def on_rate_limit_hit(tenant_id: str, scope: str):
     if metrics:
         metrics.increment_rate_limit_hit(tenant_id, scope)
 
+
 app.add_middleware(
     GovernanceMiddleware,
     api_key_resolver=lookup_api_key_by_hash,
-    rate_limiter=getattr(app.state, 'rate_limiter', None),
+    rate_limiter=getattr(app.state, "rate_limiter", None),
     on_rate_limit_hit=on_rate_limit_hit,
 )
 
@@ -214,8 +216,10 @@ app.include_router(c1_router, prefix="/v1", tags=["c1"])
 @app.get("/health")
 async def health_check():
     """Health check endpoint with real metrics and dependency status."""
-    import psutil
     from datetime import datetime
+
+    import psutil
+
     uptime = time.time() - _app_start_time
     memory_info = psutil.virtual_memory()
 
@@ -226,20 +230,22 @@ async def health_check():
     if metrics and metrics.config.enabled:
         try:
             requests_counter = metrics._metrics.get("requests_total", {})
-            total_requests = sum(
-                v._value.get() if hasattr(v._value, 'get') else v._value
-                for method_dict in requests_counter._metrics.values()
-                for endpoint_dict in method_dict.values()
-                for v in endpoint_dict.values()
-            ) if hasattr(requests_counter, '_metrics') else 0
+            total_requests = (
+                sum(
+                    v._value.get() if hasattr(v._value, "get") else v._value
+                    for method_dict in requests_counter._metrics.values()
+                    for endpoint_dict in method_dict.values()
+                    for v in endpoint_dict.values()
+                )
+                if hasattr(requests_counter, "_metrics")
+                else 0
+            )
         except (AttributeError, TypeError):
             total_requests = 0
 
         try:
             active_connections = int(
-                metrics._metrics.get("active_connections", {})
-                .get("total", {})
-                .get("_value", 0)
+                metrics._metrics.get("active_connections", {}).get("total", {}).get("_value", 0)
             )
         except (AttributeError, TypeError):
             active_connections = 0
@@ -253,75 +259,87 @@ async def health_check():
         start_time = time.time()
         if checkpoint_saver is not None:
             # Try to access the connection to verify it's alive
-            if hasattr(checkpoint_saver, 'conn') and checkpoint_saver.conn:
+            if hasattr(checkpoint_saver, "conn") and checkpoint_saver.conn:
                 await checkpoint_saver.conn.execute("SELECT 1")
                 response_time = (time.time() - start_time) * 1000
-                dependencies.append({
-                    "name": "postgres",
-                    "status": "healthy",
-                    "response_time_ms": round(response_time, 2),
-                    "error": None
-                })
+                dependencies.append(
+                    {
+                        "name": "postgres",
+                        "status": "healthy",
+                        "response_time_ms": round(response_time, 2),
+                        "error": None,
+                    }
+                )
             else:
-                dependencies.append({
+                dependencies.append(
+                    {
+                        "name": "postgres",
+                        "status": "degraded",
+                        "response_time_ms": None,
+                        "error": "Checkpoint saver not fully initialized",
+                    }
+                )
+                overall_status = "degraded"
+        else:
+            dependencies.append(
+                {
                     "name": "postgres",
                     "status": "degraded",
                     "response_time_ms": None,
-                    "error": "Checkpoint saver not fully initialized"
-                })
-                overall_status = "degraded"
-        else:
-            dependencies.append({
-                "name": "postgres",
-                "status": "degraded",
-                "response_time_ms": None,
-                "error": "Checkpointing not configured"
-            })
+                    "error": "Checkpointing not configured",
+                }
+            )
             overall_status = "degraded"
     except Exception as e:
-        dependencies.append({
-            "name": "postgres",
-            "status": "unhealthy",
-            "response_time_ms": None,
-            "error": str(e)
-        })
+        dependencies.append(
+            {"name": "postgres", "status": "unhealthy", "response_time_ms": None, "error": str(e)}
+        )
         overall_status = "degraded"
 
     # Check Redis (via state_manager)
     try:
         start_time = time.time()
-        if state_manager is not None and hasattr(state_manager, 'redis_client') and state_manager.redis_client:
+        if (
+            state_manager is not None
+            and hasattr(state_manager, "redis_client")
+            and state_manager.redis_client
+        ):
             await state_manager.redis_client.ping()
             response_time = (time.time() - start_time) * 1000
-            dependencies.append({
-                "name": "redis",
-                "status": "healthy",
-                "response_time_ms": round(response_time, 2),
-                "error": None
-            })
+            dependencies.append(
+                {
+                    "name": "redis",
+                    "status": "healthy",
+                    "response_time_ms": round(response_time, 2),
+                    "error": None,
+                }
+            )
         else:
-            dependencies.append({
-                "name": "redis",
-                "status": "degraded",
-                "response_time_ms": None,
-                "error": "Redis not configured"
-            })
+            dependencies.append(
+                {
+                    "name": "redis",
+                    "status": "degraded",
+                    "response_time_ms": None,
+                    "error": "Redis not configured",
+                }
+            )
     except Exception as e:
-        dependencies.append({
-            "name": "redis",
-            "status": "unhealthy",
-            "response_time_ms": None,
-            "error": str(e)
-        })
+        dependencies.append(
+            {"name": "redis", "status": "unhealthy", "response_time_ms": None, "error": str(e)}
+        )
 
     # Update health status metric for alerting
     if metrics:
         metrics.set_health_status(overall_status == "healthy", component="api")
         if checkpoint_saver is not None:
-            postgres_healthy = any(d["name"] == "postgres" and d["status"] == "healthy" for d in dependencies)
+            postgres_healthy = any(
+                d["name"] == "postgres" and d["status"] == "healthy" for d in dependencies
+            )
             metrics.set_health_status(postgres_healthy, component="postgres")
-        if state_manager is not None and hasattr(state_manager, 'redis_client'):
-            redis_healthy = any(d["name"] == "redis" and d["status"] == "healthy" for d in dependencies)
+        if state_manager is not None and hasattr(state_manager, "redis_client"):
+            redis_healthy = any(
+                d["name"] == "redis" and d["status"] == "healthy" for d in dependencies
+            )
             metrics.set_health_status(redis_healthy, component="redis")
 
     return {
@@ -336,34 +354,27 @@ async def health_check():
             "memory_usage_mb": memory_info.used / (1024 * 1024),
             "cpu_percent": psutil.cpu_percent(),
             "active_connections": active_connections,
-            "total_requests": total_requests
-        }
+            "total_requests": total_requests,
+        },
     }
 
 
 @app.get("/metrics")
 async def metrics_endpoint(request: Request):
     """Prometheus metrics endpoint."""
-    metrics = getattr(request.app.state, 'metrics', None)
+    metrics = getattr(request.app.state, "metrics", None)
 
     if not metrics:
         return Response(
-            content="Metrics collection is disabled",
-            status_code=503,
-            media_type="text/plain"
+            content="Metrics collection is disabled", status_code=503, media_type="text/plain"
         )
 
     try:
         metrics_data = metrics.get_metrics()
-        return Response(
-            content=metrics_data,
-            media_type="text/plain; version=0.0.4; charset=utf-8"
-        )
+        return Response(content=metrics_data, media_type="text/plain; version=0.0.4; charset=utf-8")
     except Exception as e:
         return Response(
-            content=f"Error generating metrics: {e}",
-            status_code=500,
-            media_type="text/plain"
+            content=f"Error generating metrics: {e}", status_code=500, media_type="text/plain"
         )
 
 
@@ -375,5 +386,5 @@ async def root():
         "version": "0.2.0",
         "documentation": "/docs",
         "health": "/health",
-        "metrics": "/metrics"
+        "metrics": "/metrics",
     }

@@ -7,15 +7,14 @@ Provides REST API endpoints for:
 - Extraction status and results
 """
 
-import os
-import json
 import asyncio
 import hashlib
+import json
 import logging
+import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional, Dict
 from uuid import uuid4
 
 # Third-party imports for health check
@@ -24,7 +23,7 @@ try:
 except ImportError:
     psutil = None  # Health check will work without system metrics
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Request, Depends
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -32,38 +31,37 @@ from pydantic import BaseModel, Field
 # Shared identity imports for authentication
 # Layer2 requires shared.identity for all audit endpoints - fail fast if unavailable
 try:
-    from shared.identity.dependencies import require_authenticated
     from shared.identity.context import RequestContext
+    from shared.identity.dependencies import require_authenticated
 except ImportError as e:
     raise RuntimeError(
         "shared.identity package is required for Layer2 authentication. "
         "Install the shared package or set up the Python path correctly."
     ) from e
 
-from layer2_extraction.metrics import initialize_metrics, MetricsMiddleware, get_metrics
-
-from layer2_extraction.models import (
-    Capability, UseCase, Persona, ValueDriver, Feature,
-    Relationship, ExtractionResult
-)
-from layer2_extraction.extraction.chunker import chunk_markdown
-from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
-from layer2_extraction.extraction.deduplicator import deduplicate_entities
-from layer2_extraction.output.rdf_generator import generate_rdf
-from layer2_extraction.output.provenance import (
-    get_provenance_tracker,
-    ExtractionStep,
-)
-from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 from layer2_extraction.alignment import SemanticAligner
+from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
+from layer2_extraction.extraction.chunker import chunk_markdown
+from layer2_extraction.extraction.deduplicator import deduplicate_entities
+from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
 from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
 from layer2_extraction.integration.pending_ingestion_store import (
-    PendingIngestionStore,
     PendingIngestionRecord,
-    build_pending_ingestion_store,
+    PendingIngestionStore,
     SqlitePendingIngestionStore,
+    build_pending_ingestion_store,
 )
-from layer2_extraction.api.websocket import websocket_router, get_pipeline_ws_manager, PipelineStage
+from layer2_extraction.metrics import MetricsMiddleware, get_metrics, initialize_metrics
+from layer2_extraction.models import (
+    ExtractionResult,
+    Relationship,
+)
+from layer2_extraction.output.provenance import (
+    ExtractionStep,
+    get_provenance_tracker,
+)
+from layer2_extraction.output.rdf_generator import generate_rdf
+from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +78,7 @@ metrics = initialize_metrics()
 app = FastAPI(
     title="Value Fabric - Extraction Pipeline",
     description="Ontology-guided extraction of entities from unstructured text to RDF/OWL",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # Add metrics middleware if available
@@ -91,9 +89,11 @@ if metrics:
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
 try:
     from shared.identity.middleware import GovernanceMiddleware
+
     app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
 except ImportError:
     import logging as _log
+
     _log.getLogger(__name__).warning(
         "shared.identity not importable — GovernanceMiddleware skipped in L2. "
         "Ensure the shared package is installed."
@@ -126,8 +126,7 @@ def get_entity_extractor():
     global _entity_extractor
     if _entity_extractor is None:
         _entity_extractor = EntityExtractor(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            model=os.getenv("LLM_MODEL", "gpt-4o")
+            api_key=os.getenv("OPENAI_API_KEY"), model=os.getenv("LLM_MODEL", "gpt-4o")
         )
     return _entity_extractor
 
@@ -137,8 +136,7 @@ def get_relationship_extractor():
     global _relationship_extractor
     if _relationship_extractor is None:
         _relationship_extractor = RelationshipExtractor(
-            api_key=os.getenv("OPENAI_API_KEY"),
-            model=os.getenv("LLM_MODEL", "gpt-4o")
+            api_key=os.getenv("OPENAI_API_KEY"), model=os.getenv("LLM_MODEL", "gpt-4o")
         )
     return _relationship_extractor
 
@@ -146,6 +144,7 @@ def get_relationship_extractor():
 # Request/Response Models
 class ExtractRequest(BaseModel):
     """Request body for extraction endpoint."""
+
     content_id: str = Field(..., description="ID of content to extract from (from Layer 1)")
     source_url: str = Field(..., description="URL of source document")
     markdown_content: str = Field(..., description="Markdown content to extract from")
@@ -154,13 +153,14 @@ class ExtractRequest(BaseModel):
             "entity_types": ["Capability", "UseCase", "Persona", "ValueDriver"],
             "confidence_threshold": 0.75,
             "chunk_size": 2000,
-            "chunk_overlap": 200
+            "chunk_overlap": 200,
         }
     )
 
 
 class ExtractResponse(BaseModel):
     """Response from extraction endpoint."""
+
     extraction_job_id: str
     status: str
     message: str
@@ -168,6 +168,7 @@ class ExtractResponse(BaseModel):
 
 class ExtractionStatusResponse(BaseModel):
     """Status of a combined extraction + ingestion pipeline job."""
+
     job_id: str
     overall_status: str
     extraction_status: str
@@ -175,32 +176,35 @@ class ExtractionStatusResponse(BaseModel):
     entities_extracted: int
     relationships_extracted: int
     retry_count: int = 0
-    last_error: Optional[str] = None
-    next_retry_at: Optional[datetime] = None
+    last_error: str | None = None
+    next_retry_at: datetime | None = None
     started_at: datetime
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
 
 
 class EntityListResponse(BaseModel):
     """List of entities in the ontology."""
+
     entity_type: str
-    entities: List[dict]
+    entities: list[dict]
     total: int
 
 
 class RelationshipsResponse(BaseModel):
     """Relationships for an entity."""
+
     entity_id: str
-    incoming: List[dict]
-    outgoing: List[dict]
+    incoming: list[dict]
+    outgoing: list[dict]
 
 
 class ProvenanceResponse(BaseModel):
     """Provenance chain for an entity or output."""
+
     activity_id: str
     source: dict
     extraction: dict
-    steps: List[dict]
+    steps: list[dict]
     output: dict
 
 
@@ -225,10 +229,10 @@ class PipelineJob:
     entities_extracted: int
     relationships_extracted: int
     retry_count: int
-    last_error: Optional[str]
-    next_retry_at: Optional[datetime]
+    last_error: str | None
+    next_retry_at: datetime | None
     started_at: datetime
-    completed_at: Optional[datetime]
+    completed_at: datetime | None
 
 
 @dataclass
@@ -236,14 +240,14 @@ class ExtractionArtifacts:
     """Outputs from extraction pipeline used by ingestion step."""
 
     result: ExtractionResult
-    relationships: List[Relationship]
+    relationships: list[Relationship]
 
 
-PIPELINE_JOBS: Dict[str, PipelineJob] = {}
+PIPELINE_JOBS: dict[str, PipelineJob] = {}
 RETRY_POLL_SECONDS = int(os.getenv("INGESTION_RETRY_POLL_SECONDS", "30"))
 RETRY_BASE_SECONDS = int(os.getenv("INGESTION_RETRY_BASE_SECONDS", "60"))
 MAX_INGESTION_RETRIES = int(os.getenv("INGESTION_MAX_RETRIES", "5"))
-_retry_task: Optional[asyncio.Task] = None
+_retry_task: asyncio.Task | None = None
 _UNSET = object()
 
 try:
@@ -274,14 +278,14 @@ def _compute_overall_status(extraction_status: str, ingestion_status: str) -> st
 
 def _set_pipeline_job(
     job_id: str,
-    extraction_status: Optional[str] = None,
-    ingestion_status: Optional[str] = None,
-    entities_extracted: Optional[int] = None,
-    relationships_extracted: Optional[int] = None,
-    retry_count: Optional[int] = None,
+    extraction_status: str | None = None,
+    ingestion_status: str | None = None,
+    entities_extracted: int | None = None,
+    relationships_extracted: int | None = None,
+    retry_count: int | None = None,
     last_error: object = _UNSET,
     next_retry_at: object = _UNSET,
-    completed_at: Optional[datetime] = None,
+    completed_at: datetime | None = None,
 ) -> None:
     job = PIPELINE_JOBS[job_id]
     if extraction_status is not None:
@@ -367,15 +371,15 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
     client = Layer3KnowledgeClient()
     try:
         _set_pipeline_job(job_id, ingestion_status="running", next_retry_at=None)
-        
+
         # Broadcast ingestion start
         await _ws_manager.broadcast_ingestion_status(
             job_id=job_id,
             status="running",
             retry_count=PIPELINE_JOBS[job_id].retry_count,
-            max_retries=MAX_INGESTION_RETRIES
+            max_retries=MAX_INGESTION_RETRIES,
         )
-        
+
         response = await client.ingest_extraction_result(
             extraction_result=artifacts.result,
             source_url=source_url,
@@ -390,7 +394,7 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
                 next_retry_at=None,
                 completed_at=datetime.utcnow(),
             )
-            
+
             # Broadcast ingestion success
             await _ws_manager.broadcast_ingestion_status(
                 job_id=job_id,
@@ -398,9 +402,9 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
                 retry_count=PIPELINE_JOBS[job_id].retry_count,
                 max_retries=MAX_INGESTION_RETRIES,
                 entities_loaded=response.entities_loaded,
-                relationships_loaded=response.relationships_loaded
+                relationships_loaded=response.relationships_loaded,
             )
-            
+
             # Broadcast overall pipeline completion
             job = PIPELINE_JOBS[job_id]
             await _ws_manager.broadcast_pipeline_complete(
@@ -409,23 +413,23 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
                 entities_extracted=job.entities_extracted,
                 relationships_extracted=job.relationships_extracted,
                 entities_loaded=response.entities_loaded,
-                relationships_loaded=response.relationships_loaded
+                relationships_loaded=response.relationships_loaded,
             )
-            
+
             await pending_ingestion_store.complete(job_id)
             return True
 
         retry_count = PIPELINE_JOBS[job_id].retry_count + 1
-        
+
         # Broadcast ingestion failure with retry
         await _ws_manager.broadcast_ingestion_status(
             job_id=job_id,
             status="retrying" if retry_count <= MAX_INGESTION_RETRIES else "failed",
             retry_count=retry_count,
             max_retries=MAX_INGESTION_RETRIES,
-            error=response.error or response.message
+            error=response.error or response.message,
         )
-        
+
         await _queue_for_retry(
             job_id=job_id,
             source_url=source_url,
@@ -440,7 +444,7 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
 
 async def _process_pending_ingestions() -> None:
     now = datetime.utcnow()
-    records: List[PendingIngestionRecord] = await pending_ingestion_store.get_due(now)
+    records: list[PendingIngestionRecord] = await pending_ingestion_store.get_due(now)
     for record in records:
         if record.job_id not in PIPELINE_JOBS:
             PIPELINE_JOBS[record.job_id] = PipelineJob(
@@ -478,7 +482,9 @@ async def _process_pending_ingestions() -> None:
                 )
             else:
                 delay_seconds = RETRY_BASE_SECONDS * (2 ** max(record.retry_count, 0))
-                next_retry_at = datetime.utcfromtimestamp(datetime.utcnow().timestamp() + delay_seconds)
+                next_retry_at = datetime.utcfromtimestamp(
+                    datetime.utcnow().timestamp() + delay_seconds
+                )
                 await pending_ingestion_store.reschedule(
                     job_id=record.job_id,
                     retry_count=retry_count,
@@ -500,7 +506,9 @@ async def _process_pending_ingestions() -> None:
             if metadata:
                 _set_pipeline_job(
                     record.job_id,
-                    retry_count=metadata.get("retry_count", PIPELINE_JOBS[record.job_id].retry_count),
+                    retry_count=metadata.get(
+                        "retry_count", PIPELINE_JOBS[record.job_id].retry_count
+                    ),
                     last_error=metadata.get("last_error"),
                     next_retry_at=(
                         datetime.fromisoformat(metadata["next_retry_at"])
@@ -524,7 +532,7 @@ async def startup_event() -> None:
     global _retry_task
     if _retry_task is None:
         _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
-    
+
     # Start WebSocket manager for real-time streaming
     await _ws_manager.start()
 
@@ -539,7 +547,7 @@ async def shutdown_event() -> None:
         except asyncio.CancelledError:
             pass
         _retry_task = None
-    
+
     # Stop WebSocket manager
     await _ws_manager.stop()
 
@@ -553,7 +561,7 @@ async def run_extraction(
     mark_pipeline_complete: bool = True,
 ):
     """Background extraction task.
-    
+
     Executes the full 6-stage extraction pipeline:
     1. Chunk input
     2. Extract entities
@@ -563,15 +571,13 @@ async def run_extraction(
     6. Generate RDF
     """
     tracker = get_provenance_tracker()
-    
+
     # Calculate content hash for provenance
     content_hash = hashlib.sha256(content.encode()).hexdigest()
-    
+
     # Start provenance tracking
     activity = tracker.start_activity(
-        activity_id=job_id,
-        source_url=source_url,
-        content_hash=content_hash
+        activity_id=job_id, source_url=source_url, content_hash=content_hash
     )
 
     if job_id not in PIPELINE_JOBS:
@@ -590,69 +596,57 @@ async def run_extraction(
         )
 
     _set_pipeline_job(job_id, extraction_status="running")
-    
+
     # Broadcast pipeline start
     await _ws_manager.broadcast_stage_start(
-        job_id=job_id,
-        stage=PipelineStage.CHUNKING,
-        stage_number=1,
-        total_stages=6
+        job_id=job_id, stage=PipelineStage.CHUNKING, stage_number=1, total_stages=6
     )
-    
+
     try:
         # Stage 1: Chunking
-        step1 = ExtractionStep(
-            step_name="chunking",
-            started_at=datetime.utcnow()
-        )
-        
+        step1 = ExtractionStep(step_name="chunking", started_at=datetime.utcnow())
+
         chunk_size = config.get("chunk_size", 2000)
         chunk_overlap = config.get("chunk_overlap", 200)
-        
+
         chunks = chunk_markdown(
-            content,
-            source_url=source_url,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
+            content, source_url=source_url, chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
-        
+
         step1.completed_at = datetime.utcnow()
         activity.add_step(step1)
-        
+
         # Broadcast chunking complete
         await _ws_manager.broadcast_stage_complete(
             job_id=job_id,
             stage=PipelineStage.CHUNKING,
             stage_number=1,
             total_stages=6,
-            result_summary={"chunks_created": len(chunks)}
+            result_summary={"chunks_created": len(chunks)},
         )
-        
+
         # Stage 2 & 3: Entity and Relationship Extraction
         await _ws_manager.broadcast_stage_start(
             job_id=job_id,
             stage=PipelineStage.ENTITY_EXTRACTION,
             stage_number=2,
             total_stages=6,
-            metadata={"total_chunks": len(chunks)}
+            metadata={"total_chunks": len(chunks)},
         )
-        
-        step2 = ExtractionStep(
-            step_name="entity_extraction",
-            started_at=datetime.utcnow()
-        )
-        
+
+        step2 = ExtractionStep(step_name="entity_extraction", started_at=datetime.utcnow())
+
         all_entities = {
             "capabilities": [],
             "use_cases": [],
             "personas": [],
             "value_drivers": [],
-            "features": []
+            "features": [],
         }
         all_relationships = []
-        
+
         confidence_threshold = config.get("confidence_threshold", 0.75)
-        
+
         for i, chunk in enumerate(chunks):
             # Broadcast progress every chunk
             if i % max(1, len(chunks) // 10) == 0 or i == len(chunks) - 1:
@@ -663,36 +657,37 @@ async def run_extraction(
                     total_stages=6,
                     items_processed=i + 1,
                     items_total=len(chunks),
-                    stage_percent=int((i + 1) / len(chunks) * 100)
+                    stage_percent=int((i + 1) / len(chunks) * 100),
                 )
-            
+
             # Extract entities from chunk
             entities = await get_entity_extractor().extract_entities(
                 text=chunk.content,
                 source_url=source_url,
                 extraction_job_id=job_id,
-                confidence_threshold=confidence_threshold
+                confidence_threshold=confidence_threshold,
             )
-            
+
             # Collect entities
             for entity_type, entity_list in entities.items():
                 all_entities[entity_type].extend(entity_list)
-            
+
             # Extract relationships
             relationships = await get_relationship_extractor().extract_relationships(
                 text=chunk.content,
                 entities=entities,
                 source_url=source_url,
                 extraction_job_id=job_id,
-                confidence_threshold=confidence_threshold - 0.05  # Slightly lower for relationships
+                confidence_threshold=confidence_threshold
+                - 0.05,  # Slightly lower for relationships
             )
             all_relationships.extend(relationships)
-        
+
         step2.completed_at = datetime.utcnow()
         total_entities = sum(len(v) for v in all_entities.values())
         step2.entities_extracted = total_entities
         activity.add_step(step2)
-        
+
         # Broadcast entity extraction complete
         await _ws_manager.broadcast_stage_complete(
             job_id=job_id,
@@ -702,28 +697,22 @@ async def run_extraction(
             result_summary={
                 "entities_extracted": total_entities,
                 "relationships_found": len(all_relationships),
-                "chunks_processed": len(chunks)
-            }
+                "chunks_processed": len(chunks),
+            },
         )
-        
+
         # Stage 3: Semantic Alignment
         await _ws_manager.broadcast_stage_start(
             job_id=job_id,
             stage=PipelineStage.SEMANTIC_ALIGNMENT,
             stage_number=3,
             total_stages=6,
-            metadata={"entity_types": list(all_entities.keys())}
+            metadata={"entity_types": list(all_entities.keys())},
         )
-        step_align = ExtractionStep(
-            step_name="semantic_alignment",
-            started_at=datetime.utcnow()
-        )
-        
-        aligner = SemanticAligner(
-            similarity_threshold=0.85,
-            api_key=os.getenv("OPENAI_API_KEY")
-        )
-        
+        step_align = ExtractionStep(step_name="semantic_alignment", started_at=datetime.utcnow())
+
+        aligner = SemanticAligner(similarity_threshold=0.85, api_key=os.getenv("OPENAI_API_KEY"))
+
         # Align each entity type
         aligned_entities = {}
         for entity_type, entity_list in all_entities.items():
@@ -732,46 +721,40 @@ async def run_extraction(
                 aligned_entities[entity_type] = aligned_list
             else:
                 aligned_entities[entity_type] = []
-        
+
         all_entities = aligned_entities
-        
+
         step_align.completed_at = datetime.utcnow()
         activity.add_step(step_align)
-        
+
         # Broadcast alignment complete
         await _ws_manager.broadcast_stage_complete(
-            job_id=job_id,
-            stage=PipelineStage.SEMANTIC_ALIGNMENT,
-            stage_number=3,
-            total_stages=6
+            job_id=job_id, stage=PipelineStage.SEMANTIC_ALIGNMENT, stage_number=3, total_stages=6
         )
-        
+
         # Stage 4: Deduplication
         await _ws_manager.broadcast_stage_start(
             job_id=job_id,
             stage=PipelineStage.DEDUPLICATION,
             stage_number=4,
             total_stages=6,
-            metadata={"entities_before": total_entities}
+            metadata={"entities_before": total_entities},
         )
-        step3 = ExtractionStep(
-            step_name="deduplication",
-            started_at=datetime.utcnow()
-        )
-        
+        step3 = ExtractionStep(step_name="deduplication", started_at=datetime.utcnow())
+
         deduplicated = await deduplicate_entities(
             all_entities,
             api_key=os.getenv("OPENAI_API_KEY"),
             similarity_threshold=0.85,
             relationships=all_relationships,
-            enable_coreference=True
+            enable_coreference=True,
         )
-        
+
         step3.completed_at = datetime.utcnow()
         activity.add_step(step3)
-        
+
         entities_after = sum(len(v) for v in deduplicated.values())
-        
+
         # Broadcast deduplication complete
         await _ws_manager.broadcast_stage_complete(
             job_id=job_id,
@@ -781,22 +764,16 @@ async def run_extraction(
             result_summary={
                 "entities_before": total_entities,
                 "entities_after": entities_after,
-                "duplicates_removed": total_entities - entities_after
-            }
+                "duplicates_removed": total_entities - entities_after,
+            },
         )
-        
+
         # Stage 5: Validation (EntailmentValidator with 6 validation rules)
         await _ws_manager.broadcast_stage_start(
-            job_id=job_id,
-            stage=PipelineStage.VALIDATION,
-            stage_number=5,
-            total_stages=6
+            job_id=job_id, stage=PipelineStage.VALIDATION, stage_number=5, total_stages=6
         )
-        step4 = ExtractionStep(
-            step_name="validation",
-            started_at=datetime.utcnow()
-        )
-        
+        step4 = ExtractionStep(step_name="validation", started_at=datetime.utcnow())
+
         # Create extraction result
         result = ExtractionResult(
             job_id=job_id,
@@ -806,28 +783,34 @@ async def run_extraction(
             personas=deduplicated.get("personas", []),
             value_drivers=deduplicated.get("value_drivers", []),
             features=deduplicated.get("features", []),
-            chunks_processed=len(chunks)
+            chunks_processed=len(chunks),
         )
-        
+
         # Run entailment validation
         validator = EntailmentValidator()
         validation_results = validator.validate(result, all_relationships)
-        
+
         # Check for validation errors
-        errors = [r for r in validation_results if r.severity == ValidationSeverity.ERROR and not r.passed]
-        warnings = [r for r in validation_results if r.severity == ValidationSeverity.WARNING and not r.passed]
-        
+        errors = [
+            r for r in validation_results if r.severity == ValidationSeverity.ERROR and not r.passed
+        ]
+        warnings = [
+            r
+            for r in validation_results
+            if r.severity == ValidationSeverity.WARNING and not r.passed
+        ]
+
         if errors:
             # Add errors to result
             result.errors.extend([f"[ERROR] {e.rule_id}: {e.message}" for e in errors])
         if warnings:
             # Log warnings but continue
             result.errors.extend([f"[WARNING] {w.rule_id}: {w.message}" for w in warnings])
-        
+
         step4.completed_at = datetime.utcnow()
         step4.entities_extracted = len(validation_results)  # Track validation results count
         activity.add_step(step4)
-        
+
         # Broadcast validation complete
         await _ws_manager.broadcast_stage_complete(
             job_id=job_id,
@@ -838,24 +821,18 @@ async def run_extraction(
                 "passed": len([r for r in validation_results if r.passed]),
                 "failed": len([r for r in validation_results if not r.passed]),
                 "errors": len(errors),
-                "warnings": len(warnings)
-            }
+                "warnings": len(warnings),
+            },
         )
-        
+
         # Stage 6: RDF Generation
         await _ws_manager.broadcast_stage_start(
-            job_id=job_id,
-            stage=PipelineStage.RDF_GENERATION,
-            stage_number=6,
-            total_stages=6
+            job_id=job_id, stage=PipelineStage.RDF_GENERATION, stage_number=6, total_stages=6
         )
-        step5 = ExtractionStep(
-            step_name="rdf_generation",
-            started_at=datetime.utcnow()
-        )
-        
+        step5 = ExtractionStep(step_name="rdf_generation", started_at=datetime.utcnow())
+
         rdf_content = generate_rdf(result, all_relationships)
-        
+
         # Broadcast RDF generation complete
         await _ws_manager.broadcast_stage_complete(
             job_id=job_id,
@@ -863,23 +840,23 @@ async def run_extraction(
             stage_number=6,
             total_stages=6,
             result_summary={
-                "rdf_size_bytes": len(rdf_content.encode('utf-8')),
+                "rdf_size_bytes": len(rdf_content.encode("utf-8")),
                 "entities_in_rdf": entities_after,
-                "relationships_in_rdf": len(all_relationships)
-            }
+                "relationships_in_rdf": len(all_relationships),
+            },
         )
-        
+
         # Save RDF to file (in production, this would go to S3/MinIO)
         output_dir = os.getenv("RDF_OUTPUT_DIR", "/tmp/rdf")
         os.makedirs(output_dir, exist_ok=True)
         rdf_path = f"{output_dir}/{job_id}.ttl"
-        
+
         with open(rdf_path, "w") as f:
             f.write(rdf_content)
-        
+
         step5.completed_at = datetime.utcnow()
         activity.add_step(step5)
-        
+
         # Complete activity
         activity.output_entities = [e.id for e in result.get_all_entities()]
         activity.output_relationships = [r.id for r in all_relationships]
@@ -892,7 +869,7 @@ async def run_extraction(
             relationships_extracted=len(activity.output_relationships),
             completed_at=datetime.utcnow() if mark_pipeline_complete else None,
         )
-        
+
         # Broadcast extraction-only completion (if not going to ingestion)
         if mark_pipeline_complete:
             await _ws_manager.broadcast_pipeline_complete(
@@ -900,11 +877,11 @@ async def run_extraction(
                 status="completed",
                 entities_extracted=len(activity.output_entities),
                 relationships_extracted=len(activity.output_relationships),
-                rdf_path=rdf_path
+                rdf_path=rdf_path,
             )
 
         return ExtractionArtifacts(result=result, relationships=all_relationships)
-        
+
     except Exception as e:
         error_msg = str(e)
         activity.fail(error_msg)
@@ -914,24 +891,24 @@ async def run_extraction(
             last_error=error_msg,
             completed_at=datetime.utcnow(),
         )
-        
+
         # Broadcast extraction failure
         await _ws_manager.broadcast_error(
             job_id=job_id,
             stage=PipelineStage.RDF_GENERATION,  # Default to last stage
             error=error_msg,
-            recoverable=False
+            recoverable=False,
         )
-        
+
         # Broadcast pipeline completion as failed
         await _ws_manager.broadcast_pipeline_complete(
             job_id=job_id,
             status="failed",
             entities_extracted=0,
             relationships_extracted=0,
-            errors=[error_msg]
+            errors=[error_msg],
         )
-        
+
         raise
 
 
@@ -964,16 +941,16 @@ async def run_extract_and_ingest(
 
     if not healthy:
         retry_count = PIPELINE_JOBS[job_id].retry_count + 1
-        
+
         # Broadcast ingestion queued for retry
         await _ws_manager.broadcast_ingestion_status(
             job_id=job_id,
             status="queued",
             retry_count=retry_count,
             max_retries=MAX_INGESTION_RETRIES,
-            error="Layer 3 unavailable - queued for retry"
+            error="Layer 3 unavailable - queued for retry",
         )
-        
+
         await _queue_for_retry(
             job_id=job_id,
             source_url=source_url,
@@ -1000,20 +977,22 @@ async def health_check():
     if metrics and metrics.config.enabled:
         try:
             requests_counter = metrics._metrics.get("requests_total", {})
-            total_requests = sum(
-                v._value.get() if hasattr(v._value, 'get') else v._value
-                for method_dict in requests_counter._metrics.values()
-                for endpoint_dict in method_dict.values()
-                for v in endpoint_dict.values()
-            ) if hasattr(requests_counter, '_metrics') else 0
+            total_requests = (
+                sum(
+                    v._value.get() if hasattr(v._value, "get") else v._value
+                    for method_dict in requests_counter._metrics.values()
+                    for endpoint_dict in method_dict.values()
+                    for v in endpoint_dict.values()
+                )
+                if hasattr(requests_counter, "_metrics")
+                else 0
+            )
         except (AttributeError, TypeError):
             total_requests = 0
 
         try:
             active_connections = int(
-                metrics._metrics.get("active_connections", {})
-                .get("total", {})
-                .get("_value", 0)
+                metrics._metrics.get("active_connections", {}).get("total", {}).get("_value", 0)
             )
         except (AttributeError, TypeError):
             active_connections = 0
@@ -1024,28 +1003,33 @@ async def health_check():
 
     try:
         from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
+
         l3_start = time.time()
         l3_client = Layer3KnowledgeClient()
         l3_healthy = await l3_client.health_check()
         l3_response_ms = round((time.time() - l3_start) * 1000, 2)
         await l3_client.close()
 
-        dependencies.append({
-            "name": "layer3_knowledge",
-            "status": "healthy" if l3_healthy else "unhealthy",
-            "response_time_ms": l3_response_ms,
-            "error": None if l3_healthy else "Layer 3 returned unhealthy status"
-        })
+        dependencies.append(
+            {
+                "name": "layer3_knowledge",
+                "status": "healthy" if l3_healthy else "unhealthy",
+                "response_time_ms": l3_response_ms,
+                "error": None if l3_healthy else "Layer 3 returned unhealthy status",
+            }
+        )
 
         if not l3_healthy:
             overall_status = "degraded"
     except Exception as e:
-        dependencies.append({
-            "name": "layer3_knowledge",
-            "status": "unhealthy",
-            "response_time_ms": None,
-            "error": str(e)
-        })
+        dependencies.append(
+            {
+                "name": "layer3_knowledge",
+                "status": "unhealthy",
+                "response_time_ms": None,
+                "error": str(e),
+            }
+        )
         overall_status = "degraded"
 
     total_response_ms = round((time.time() - start_time) * 1000, 2)
@@ -1053,14 +1037,13 @@ async def health_check():
     # Update health metrics if available
     if metrics:
         metrics.set_health_status(overall_status == "healthy", component="api")
-        l3_dep_healthy = any(d["name"] == "layer3_knowledge" and d["status"] == "healthy" for d in dependencies)
+        l3_dep_healthy = any(
+            d["name"] == "layer3_knowledge" and d["status"] == "healthy" for d in dependencies
+        )
         metrics.set_health_status(l3_dep_healthy, component="layer3")
 
     # Build system metrics if psutil is available
-    system_metrics = {
-        "active_connections": active_connections,
-        "total_requests": total_requests
-    }
+    system_metrics = {"active_connections": active_connections, "total_requests": total_requests}
     if psutil:
         memory_info = psutil.virtual_memory()
         system_metrics["memory_usage_mb"] = memory_info.used / (1024 * 1024)
@@ -1074,7 +1057,7 @@ async def health_check():
         "uptime_seconds": uptime,
         "response_time_ms": total_response_ms,
         "dependencies": dependencies,
-        "metrics": system_metrics
+        "metrics": system_metrics,
     }
 
 
@@ -1085,32 +1068,22 @@ async def metrics_endpoint(request: Request):
 
     if not metrics:
         return Response(
-            content="Metrics collection is disabled",
-            status_code=503,
-            media_type="text/plain"
+            content="Metrics collection is disabled", status_code=503, media_type="text/plain"
         )
 
     try:
         metrics_data = metrics.get_metrics()
-        return Response(
-            content=metrics_data,
-            media_type="text/plain; version=0.0.4; charset=utf-8"
-        )
+        return Response(content=metrics_data, media_type="text/plain; version=0.0.4; charset=utf-8")
     except Exception as e:
         return Response(
-            content=f"Error generating metrics: {e}",
-            status_code=500,
-            media_type="text/plain"
+            content=f"Error generating metrics: {e}", status_code=500, media_type="text/plain"
         )
 
 
 @app.post("/v1/extract", response_model=ExtractResponse)
-async def extract(
-    request: ExtractRequest,
-    background_tasks: BackgroundTasks
-):
+async def extract(request: ExtractRequest, background_tasks: BackgroundTasks):
     """Start an extraction job.
-    
+
     Extracts entities and relationships from provided Markdown content
     and generates RDF/OWL output.
     """
@@ -1129,20 +1102,18 @@ async def extract(
         started_at=datetime.utcnow(),
         completed_at=None,
     )
-    
+
     # Queue extraction as background task
     background_tasks.add_task(
         run_extraction,
         job_id=job_id,
         source_url=request.source_url,
         content=request.markdown_content,
-        config=request.extraction_config
+        config=request.extraction_config,
     )
-    
+
     return ExtractResponse(
-        extraction_job_id=job_id,
-        status="queued",
-        message="Extraction job started"
+        extraction_job_id=job_id, status="queued", message="Extraction job started"
     )
 
 
@@ -1196,14 +1167,11 @@ async def get_extraction_status(job_id: str):
 
 
 @app.post("/v1/extract/batch")
-async def extract_batch(
-    requests: List[ExtractRequest],
-    background_tasks: BackgroundTasks
-):
+async def extract_batch(requests: list[ExtractRequest], background_tasks: BackgroundTasks):
     """Start a batch extraction job."""
     batch_id = str(uuid4())
     job_ids = []
-    
+
     for req in requests:
         job_id = str(uuid4())
         job_ids.append(job_id)
@@ -1212,46 +1180,40 @@ async def extract_batch(
             job_id=job_id,
             source_url=req.source_url,
             content=req.markdown_content,
-            config=req.extraction_config
+            config=req.extraction_config,
         )
-    
+
     return {
         "batch_job_id": batch_id,
         "job_ids": job_ids,
         "status": "queued",
-        "total_jobs": len(requests)
+        "total_jobs": len(requests),
     }
 
 
 @app.get("/v1/ontology/entities")
 async def list_entities(
-    entity_type: Optional[str] = Query(None, enum=["Capability", "UseCase", "Persona", "ValueDriver", "Feature"]),
-    limit: int = Query(100, ge=1, le=1000)
+    entity_type: str | None = Query(
+        None, enum=["Capability", "UseCase", "Persona", "ValueDriver", "Feature"]
+    ),
+    limit: int = Query(100, ge=1, le=1000),
 ):
     """List entities in the ontology.
-    
+
     Note: In a full implementation, this would query a persistent store.
     For now, returns empty list (entities are in RDF files).
     """
     # This would query Neo4j or similar in production
-    return EntityListResponse(
-        entity_type=entity_type or "all",
-        entities=[],
-        total=0
-    )
+    return EntityListResponse(entity_type=entity_type or "all", entities=[], total=0)
 
 
 @app.get("/v1/ontology/relationships/{entity_id}")
 async def get_relationships(entity_id: str):
     """Get relationships for an entity.
-    
+
     Note: In a full implementation, this would query the graph database.
     """
-    return RelationshipsResponse(
-        entity_id=entity_id,
-        incoming=[],
-        outgoing=[]
-    )
+    return RelationshipsResponse(entity_id=entity_id, incoming=[], outgoing=[])
 
 
 @app.get("/v1/audit/trace/{job_id}", response_model=ProvenanceResponse)
@@ -1262,18 +1224,18 @@ async def get_provenance(
     """Get full provenance trace for an extraction job. Requires authentication."""
     tracker = get_provenance_tracker()
     activity = tracker.get_activity(job_id)
-    
+
     if not activity:
         raise HTTPException(status_code=404, detail="Job not found")
-    
+
     chain = activity.get_provenance_chain()
-    
+
     return ProvenanceResponse(
         activity_id=chain["activity_id"],
         source=chain["source"],
         extraction=chain["extraction"],
         steps=chain["steps"],
-        output=chain["output"]
+        output=chain["output"],
     )
 
 
@@ -1285,13 +1247,14 @@ async def get_entity_provenance(
     """Get provenance for a specific entity. Requires authentication."""
     tracker = get_provenance_tracker()
     chain = tracker.get_provenance_for_entity(entity_id)
-    
+
     if not chain:
         raise HTTPException(status_code=404, detail="Entity provenance not found")
-    
+
     return chain
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

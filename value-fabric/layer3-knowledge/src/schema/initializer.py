@@ -1,20 +1,19 @@
 """Schema initializer for Neo4j Knowledge Graph."""
 
 import logging
-from typing import List, Optional
 
 from neo4j import AsyncDriver
-from ..db.driver import get_driver
 from neo4j.exceptions import (
     ClientError,
     ConfigurationError,
     DatabaseError,
-    TransientError,
     ServiceUnavailable,
+    TransientError,
 )
 
 from ..config import Settings, get_settings
-from .constraints import CONSTRAINTS, INDEXES, Constraint, Index
+from ..db.driver import get_driver
+from .constraints import CONSTRAINTS, INDEXES
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,9 @@ logger = logging.getLogger(__name__)
 class SchemaInitializer:
     """Initialize and manage Neo4j schema for Value Fabric."""
 
-    def __init__(self, driver: Optional[AsyncDriver] = None, settings: Optional[Settings] = None):
+    def __init__(
+        self, driver: AsyncDriver | None = None, settings: Settings | None = None
+    ):
         """Initialize schema manager.
 
         Args:
@@ -75,16 +76,24 @@ class SchemaInitializer:
                 if "already exists" in str(e):
                     logger.info(f"Constraint {constraint.name} already exists")
                 else:
-                    logger.error(f"Client error creating constraint {constraint.name}: {e}")
+                    logger.error(
+                        f"Client error creating constraint {constraint.name}: {e}"
+                    )
                     raise
             except (ConfigurationError, DatabaseError) as e:
-                logger.error(f"Database error creating constraint {constraint.name}: {e}")
+                logger.error(
+                    f"Database error creating constraint {constraint.name}: {e}"
+                )
                 raise
             except (TransientError, ServiceUnavailable) as e:
-                logger.warning(f"Transient error creating constraint {constraint.name}, retry may be needed: {e}")
+                logger.warning(
+                    f"Transient error creating constraint {constraint.name}, retry may be needed: {e}"
+                )
                 raise
             except Exception as e:
-                logger.error(f"Unexpected error creating constraint {constraint.name}: {e}")
+                logger.error(
+                    f"Unexpected error creating constraint {constraint.name}: {e}"
+                )
                 raise
 
     async def _create_indexes(self, session) -> None:
@@ -110,7 +119,9 @@ class SchemaInitializer:
                 logger.error(f"Database error creating index {index.name}: {e}")
                 raise
             except (TransientError, ServiceUnavailable) as e:
-                logger.warning(f"Transient error creating index {index.name}, retry may be needed: {e}")
+                logger.warning(
+                    f"Transient error creating index {index.name}, retry may be needed: {e}"
+                )
                 raise
             except Exception as e:
                 logger.error(f"Unexpected error creating index {index.name}: {e}")
@@ -144,15 +155,25 @@ class SchemaInitializer:
                 logger.info(f"Dropped constraint: {constraint.name}")
             except ClientError as e:
                 if "does not exist" in str(e):
-                    logger.debug(f"Constraint {constraint.name} does not exist, skipping")
+                    logger.debug(
+                        f"Constraint {constraint.name} does not exist, skipping"
+                    )
                 else:
-                    logger.warning(f"Client error dropping constraint {constraint.name}: {e}")
+                    logger.warning(
+                        f"Client error dropping constraint {constraint.name}: {e}"
+                    )
             except (ConfigurationError, DatabaseError) as e:
-                logger.warning(f"Database error dropping constraint {constraint.name}: {e}")
+                logger.warning(
+                    f"Database error dropping constraint {constraint.name}: {e}"
+                )
             except (TransientError, ServiceUnavailable) as e:
-                logger.warning(f"Transient error dropping constraint {constraint.name}, retry may be needed: {e}")
+                logger.warning(
+                    f"Transient error dropping constraint {constraint.name}, retry may be needed: {e}"
+                )
             except Exception as e:
-                logger.warning(f"Unexpected error dropping constraint {constraint.name}: {e}")
+                logger.warning(
+                    f"Unexpected error dropping constraint {constraint.name}: {e}"
+                )
 
         # Drop indexes
         for index in INDEXES:
@@ -167,7 +188,9 @@ class SchemaInitializer:
             except (ConfigurationError, DatabaseError) as e:
                 logger.warning(f"Database error dropping index {index.name}: {e}")
             except (TransientError, ServiceUnavailable) as e:
-                logger.warning(f"Transient error dropping index {index.name}, retry may be needed: {e}")
+                logger.warning(
+                    f"Transient error dropping index {index.name}, retry may be needed: {e}"
+                )
             except Exception as e:
                 logger.warning(f"Unexpected error dropping index {index.name}: {e}")
 
@@ -186,7 +209,9 @@ class SchemaInitializer:
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Check constraints
             constraint_records = await session.run("SHOW CONSTRAINTS YIELD name")
-            existing_constraints = [record["name"] async for record in constraint_records]
+            existing_constraints = [
+                record["name"] async for record in constraint_records
+            ]
 
             for constraint in CONSTRAINTS:
                 if constraint.name in existing_constraints:
@@ -218,7 +243,12 @@ class SchemaInitializer:
             Dictionary with node and relationship counts by type.
         """
         driver = await self._get_driver()
-        stats = {"nodes": {}, "relationships": {}, "total_nodes": 0, "total_relationships": 0}
+        stats = {
+            "nodes": {},
+            "relationships": {},
+            "total_nodes": 0,
+            "total_relationships": 0,
+        }
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Count nodes by label
@@ -261,7 +291,10 @@ class SchemaInitializer:
                         "database": self.settings.neo4j_database,
                         "uri": self.settings.neo4j_uri,
                     }
-                return {"status": "unhealthy", "error": "Query returned unexpected result"}
+                return {
+                    "status": "unhealthy",
+                    "error": "Query returned unexpected result",
+                }
         except (ServiceUnavailable, TransientError) as e:
             return {"status": "unhealthy", "error": f"Neo4j service unavailable: {e}"}
         except ConfigurationError as e:

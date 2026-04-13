@@ -11,18 +11,15 @@ Implements the core agent taxonomy from the Value Fabric specification:
 8. OrchestrationController - Workflow scheduling and resource management
 """
 
-from abc import abstractmethod
-from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
-from uuid import UUID
+from typing import Any
 
-from .base import BaseAgent, AgentCapability, AgentState
+from .base import AgentCapability, BaseAgent
 
 
 class AgentType(str, Enum):
     """Enumeration of all agent types."""
+
     DOCUMENT_INGESTION = "DocumentIngestionAgent"
     FINANCIAL_EXTRACTION = "FinancialExtractionAgent"
     VALUE_TREE_PROJECTION = "ValueTreeProjectionAgent"
@@ -37,44 +34,46 @@ class AgentType(str, Enum):
 # 1. DOCUMENT INGESTION AGENT
 # ============================================================================
 
+
 class DocumentIngestionAgent(BaseAgent):
     """Agent for document parsing and metadata extraction.
-    
+
     Capabilities:
     - document_parsing: Extract content from PDF, HTML, DOCX
     - ocr_processing: OCR for scanned documents
     - metadata_extraction: Extract document metadata
     - source_validation: Validate document sources
-    
+
     Hybrid approach: Orchestrates Layer 1 ingestion jobs via API,
     then performs agent-specific post-processing.
     """
-    
+
     agent_type = AgentType.DOCUMENT_INGESTION
-    
+
     # Supported MIME types per spec
-    SUPPORTED_FORMATS: Set[str] = {
+    SUPPORTED_FORMATS: set[str] = {
         "application/pdf",
         "text/html",
         "text/plain",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.max_document_size_mb = self.config.get("max_document_size_mb", 100)
         self.concurrent_jobs = self.config.get("concurrent_jobs", 5)
         self.layer1_client = None  # Initialized in _initialize_resources
-    
+
     async def _initialize_resources(self) -> None:
         """Initialize Layer 1 API client."""
         from ..integration.layer1_client import Layer1IngestionClient
+
         self.layer1_client = Layer1IngestionClient(
             base_url=self.config.get("layer1_url", "http://layer1-ingestion:8000"),
             api_key=self.config.get("layer1_api_key"),
         )
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="document_parsing",
@@ -105,17 +104,17 @@ class DocumentIngestionAgent(BaseAgent):
                 timeout_seconds=120,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute document ingestion task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
         tenant_id = context.get("tenant_id")
-        
+
         if capability == "document_parsing":
             # Call Layer 1 to create ingestion job
             job_result = await self.layer1_client.create_job(
@@ -123,13 +122,13 @@ class DocumentIngestionAgent(BaseAgent):
                 document_type=params.get("document_type", "auto"),
                 tenant_id=tenant_id,
             )
-            
+
             # Poll for completion
             extraction = await self.layer1_client.wait_for_completion(
                 job_id=job_result["job_id"],
                 timeout=300,
             )
-            
+
             # Agent-specific post-processing
             return {
                 "content": extraction.get("text_content", ""),
@@ -137,19 +136,19 @@ class DocumentIngestionAgent(BaseAgent):
                 "metadata": extraction.get("metadata", {}),
                 "source_job_id": job_result["job_id"],
             }
-        
+
         elif capability == "ocr_processing":
             # Similar pattern with OCR-specific processing
             pass
-        
+
         elif capability == "metadata_extraction":
             # Query Layer 1 for document metadata
             pass
-        
+
         elif capability == "source_validation":
             # Validate document source
             pass
-        
+
         raise ValueError(f"Unknown capability: {capability}")
 
 
@@ -157,20 +156,21 @@ class DocumentIngestionAgent(BaseAgent):
 # 2. FINANCIAL EXTRACTION AGENT
 # ============================================================================
 
+
 class FinancialExtractionAgent(BaseAgent):
     """Agent for SEC filings and financial metric extraction.
-    
+
     Capabilities:
     - sec_filing_parsing: Parse 10-K, 10-Q, 8-K filings
     - earnings_call_transcription: Transcribe earnings calls
     - financial_metric_extraction: Extract revenue, EBITDA, etc.
     - risk_factor_identification: Identify risk factors from filings
-    
+
     LLM Config: gpt-4-turbo, temperature=0.1, max_tokens=8000
     """
-    
+
     agent_type = AgentType.FINANCIAL_EXTRACTION
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.llm_config = {
@@ -184,18 +184,19 @@ class FinancialExtractionAgent(BaseAgent):
             "risk_assessment": "risk_assessment_v1",
         }
         self.layer2_client = None
-    
+
     async def _initialize_resources(self) -> None:
         """Initialize Layer 2 extraction client and LLM."""
-        from ..integration.layer2_client import Layer2ExtractionClient
         from openai import AsyncOpenAI
-        
+
+        from ..integration.layer2_client import Layer2ExtractionClient
+
         self.layer2_client = Layer2ExtractionClient(
             base_url=self.config.get("layer2_url", "http://layer2-extraction:8000"),
         )
         self.llm_client = AsyncOpenAI(api_key=self.config.get("openai_api_key"))
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="sec_filing_parsing",
@@ -226,16 +227,16 @@ class FinancialExtractionAgent(BaseAgent):
                 timeout_seconds=300,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute financial extraction task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
-        
+
         if capability == "sec_filing_parsing":
             # Use Layer 2 for base extraction
             extraction = await self.layer2_client.extract_filing(
@@ -243,29 +244,29 @@ class FinancialExtractionAgent(BaseAgent):
                 filing_type=params["filing_type"],
                 ticker=params.get("ticker"),
             )
-            
+
             # LLM-enhanced analysis
             enhanced = await self._llm_enhance_filing(extraction)
             return enhanced
-        
+
         elif capability == "financial_metric_extraction":
             return await self._extract_metrics_with_llm(params)
-        
+
         elif capability == "risk_factor_identification":
             return await self._identify_risks(params)
-        
+
         raise ValueError(f"Unknown capability: {capability}")
-    
-    async def _llm_enhance_filing(self, extraction: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _llm_enhance_filing(self, extraction: dict[str, Any]) -> dict[str, Any]:
         """Enhance extraction results with LLM analysis."""
         # Implementation with gpt-4-turbo
         pass
-    
-    async def _extract_metrics_with_llm(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _extract_metrics_with_llm(self, params: dict[str, Any]) -> dict[str, Any]:
         """Extract financial metrics using LLM."""
         pass
-    
-    async def _identify_risks(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _identify_risks(self, params: dict[str, Any]) -> dict[str, Any]:
         """Identify risk factors using risk_assessment_v1 template."""
         pass
 
@@ -274,30 +275,32 @@ class FinancialExtractionAgent(BaseAgent):
 # 3. VALUE TREE PROJECTION AGENT
 # ============================================================================
 
+
 class ValueTreeProjectionAgent(BaseAgent):
     """Agent for graph traversal and value tree operations.
-    
+
     Capabilities:
     - semantic_matching: Match needs to capabilities semantically
     - graph_traversal: Traverse value trees and capability graphs
     - node_classification: Classify nodes in value trees
     - relationship_inference: Infer relationships between entities
-    
+
     Graph Operations:
     - value_tree_projection: Project value trees for accounts
     - capability_mapping: Map capabilities to use cases
     - use_case_alignment: Align use cases with prospect needs
     """
-    
+
     agent_type = AgentType.VALUE_TREE_PROJECTION
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.graph_client = None
-    
+
     async def _initialize_resources(self) -> None:
         """Initialize Neo4j graph client."""
         from neo4j import AsyncGraphDatabase
+
         uri = self.config.get("neo4j_uri", "bolt://neo4j:7687")
         self.graph_client = AsyncGraphDatabase.driver(
             uri,
@@ -306,8 +309,8 @@ class ValueTreeProjectionAgent(BaseAgent):
                 self.config.get("neo4j_password", "password"),
             ),
         )
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="semantic_matching",
@@ -319,7 +322,11 @@ class ValueTreeProjectionAgent(BaseAgent):
             AgentCapability(
                 name="graph_traversal",
                 description="Traverse value tree and capability graphs",
-                input_schema={"start_node_id": "string", "path_pattern": "string", "max_depth": "number"},
+                input_schema={
+                    "start_node_id": "string",
+                    "path_pattern": "string",
+                    "max_depth": "number",
+                },
                 output_schema={"paths": "array", "nodes_discovered": "number"},
                 timeout_seconds=180,
             ),
@@ -338,38 +345,38 @@ class ValueTreeProjectionAgent(BaseAgent):
                 timeout_seconds=180,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute value tree projection task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
         tenant_id = context.get("tenant_id")
-        
+
         if capability == "semantic_matching":
             # Query graph for capabilities, use embeddings for matching
             return await self._semantic_match(params, tenant_id)
-        
+
         elif capability == "graph_traversal":
             return await self._traverse_graph(params)
-        
+
         elif capability == "node_classification":
             return await self._classify_node(params)
-        
+
         raise ValueError(f"Unknown capability: {capability}")
-    
-    async def _semantic_match(self, params: Dict[str, Any], tenant_id: str) -> Dict[str, Any]:
+
+    async def _semantic_match(self, params: dict[str, Any], tenant_id: str) -> dict[str, Any]:
         """Perform semantic matching using graph + embeddings."""
         pass
-    
-    async def _traverse_graph(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _traverse_graph(self, params: dict[str, Any]) -> dict[str, Any]:
         """Traverse graph with Cypher query."""
         pass
-    
-    async def _classify_node(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _classify_node(self, params: dict[str, Any]) -> dict[str, Any]:
         """Classify a node in the value tree."""
         pass
 
@@ -378,21 +385,22 @@ class ValueTreeProjectionAgent(BaseAgent):
 # 4. WHITESPACE ANALYSIS AGENT
 # ============================================================================
 
+
 class WhitespaceAnalysisAgent(BaseAgent):
     """Agent for gap identification and opportunity analysis.
-    
+
     Capabilities:
     - gap_identification: Identify gaps between needs and capabilities
     - maturity_assessment: Assess solution maturity for gaps
     - expansion_pathway_generation: Generate expansion pathways
     - account_plan_synthesis: Synthesize account plans
-    
+
     Output Formats: json_structured, markdown_report, presentation_deck
     """
-    
+
     agent_type = AgentType.WHITESPACE_ANALYSIS
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="gap_identification",
@@ -423,43 +431,45 @@ class WhitespaceAnalysisAgent(BaseAgent):
                 timeout_seconds=300,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute whitespace analysis task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
-        
+
         if capability == "gap_identification":
             return await self._identify_gaps(params, context)
-        
+
         elif capability == "maturity_assessment":
             return await self._assess_maturity(params)
-        
+
         elif capability == "expansion_pathway_generation":
             return await self._generate_pathways(params)
-        
+
         elif capability == "account_plan_synthesis":
             return await self._synthesize_account_plan(params)
-        
+
         raise ValueError(f"Unknown capability: {capability}")
-    
-    async def _identify_gaps(self, params: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _identify_gaps(
+        self, params: dict[str, Any], context: dict[str, Any]
+    ) -> dict[str, Any]:
         """Identify gaps using semantic matching."""
         pass
-    
-    async def _assess_maturity(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _assess_maturity(self, params: dict[str, Any]) -> dict[str, Any]:
         """Assess maturity of solution for gaps."""
         pass
-    
-    async def _generate_pathways(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _generate_pathways(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate expansion pathways."""
         pass
-    
-    async def _synthesize_account_plan(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _synthesize_account_plan(self, params: dict[str, Any]) -> dict[str, Any]:
         """Synthesize account plan document."""
         pass
 
@@ -468,25 +478,26 @@ class WhitespaceAnalysisAgent(BaseAgent):
 # 5. ROI CALCULATION AGENT
 # ============================================================================
 
+
 class ROICalculationAgent(BaseAgent):
     """Agent for formula execution and financial calculations.
-    
+
     Capabilities:
     - formula_execution: Execute value driver formulas
     - metric_substitution: Substitute metrics into formulas
     - sensitivity_analysis: Perform sensitivity analysis
     - scenario_modeling: Model different scenarios
-    
+
     Execution Engine: Deterministic with formula validation
     """
-    
+
     agent_type = AgentType.ROI_CALCULATION
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.formula_validation = self.config.get("formula_validation", True)
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="formula_execution",
@@ -498,7 +509,11 @@ class ROICalculationAgent(BaseAgent):
             AgentCapability(
                 name="metric_substitution",
                 description="Substitute prospect metrics into formulas",
-                input_schema={"formula_id": "string", "prospect_metrics": "object", "benchmarks": "object"},
+                input_schema={
+                    "formula_id": "string",
+                    "prospect_metrics": "object",
+                    "benchmarks": "object",
+                },
                 output_schema={"substituted": "object", "missing_variables": "array"},
                 timeout_seconds=60,
             ),
@@ -517,43 +532,43 @@ class ROICalculationAgent(BaseAgent):
                 timeout_seconds=180,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute ROI calculation task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
-        
+
         if capability == "formula_execution":
             return await self._execute_formula(params)
-        
+
         elif capability == "metric_substitution":
             return await self._substitute_metrics(params)
-        
+
         elif capability == "sensitivity_analysis":
             return await self._analyze_sensitivity(params)
-        
+
         elif capability == "scenario_modeling":
             return await self._model_scenarios(params)
-        
+
         raise ValueError(f"Unknown capability: {capability}")
-    
-    async def _execute_formula(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _execute_formula(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute formula with validation."""
         pass
-    
-    async def _substitute_metrics(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _substitute_metrics(self, params: dict[str, Any]) -> dict[str, Any]:
         """Substitute metrics into formula."""
         pass
-    
-    async def _analyze_sensitivity(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _analyze_sensitivity(self, params: dict[str, Any]) -> dict[str, Any]:
         """Perform sensitivity analysis."""
         pass
-    
-    async def _model_scenarios(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _model_scenarios(self, params: dict[str, Any]) -> dict[str, Any]:
         """Model multiple scenarios."""
         pass
 
@@ -562,27 +577,28 @@ class ROICalculationAgent(BaseAgent):
 # 6. NARRATIVE SYNTHESIS AGENT
 # ============================================================================
 
+
 class NarrativeSynthesisAgent(BaseAgent):
     """Agent for generating executive summaries and proposals.
-    
+
     Capabilities:
     - executive_summary_generation: Generate C-suite summaries
     - slide_deck_creation: Create presentation decks
     - risk_proposal_drafting: Draft risk proposals
     - stakeholder_alignment: Generate stakeholder alignment docs
-    
+
     Template Library: c_suite_executive_summary, board_presentation, etc.
     """
-    
+
     agent_type = AgentType.NARRATIVE_SYNTHESIS
-    
+
     TEMPLATES = {
         "c_suite_executive_summary": "C-Suite Executive Summary",
         "board_presentation": "Board Presentation",
         "procurement_proposal": "Procurement Proposal",
         "technical_architecture_review": "Technical Architecture Review",
     }
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.llm_config = {
@@ -590,8 +606,8 @@ class NarrativeSynthesisAgent(BaseAgent):
             "temperature": self.config.get("temperature", 0.7),
             "max_tokens": self.config.get("max_tokens", 4000),
         }
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="executive_summary_generation",
@@ -622,43 +638,43 @@ class NarrativeSynthesisAgent(BaseAgent):
                 timeout_seconds=240,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute narrative synthesis task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
-        
+
         if capability == "executive_summary_generation":
             return await self._generate_executive_summary(params)
-        
+
         elif capability == "slide_deck_creation":
             return await self._create_slide_deck(params)
-        
+
         elif capability == "risk_proposal_drafting":
             return await self._draft_proposal(params)
-        
+
         elif capability == "stakeholder_alignment":
             return await self._generate_alignment_doc(params)
-        
+
         raise ValueError(f"Unknown capability: {capability}")
-    
-    async def _generate_executive_summary(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _generate_executive_summary(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate executive summary using template."""
         pass
-    
-    async def _create_slide_deck(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _create_slide_deck(self, params: dict[str, Any]) -> dict[str, Any]:
         """Create slide deck with charts."""
         pass
-    
-    async def _draft_proposal(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _draft_proposal(self, params: dict[str, Any]) -> dict[str, Any]:
         """Draft risk-adjusted proposal."""
         pass
-    
-    async def _generate_alignment_doc(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _generate_alignment_doc(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate stakeholder alignment document."""
         pass
 
@@ -667,32 +683,34 @@ class NarrativeSynthesisAgent(BaseAgent):
 # 7. PROVENANCE TRACKING AGENT
 # ============================================================================
 
+
 class ProvenanceTrackingAgent(BaseAgent):
     """Agent for PROV-O generation and lineage tracking.
-    
+
     Capabilities:
     - prov_o_generation: Generate PROV-O documents
     - rdf_star_annotation: Create RDF* annotations
     - lineage_tracking: Track data lineage
     - decision_trace_construction: Construct decision traces
-    
+
     Storage Backend: Triple store (Neo4j with RDF extension or Apache Jena)
     """
-    
+
     agent_type = AgentType.PROVENANCE_TRACKING
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.triple_store = None
-    
+
     async def _initialize_resources(self) -> None:
         """Initialize triple store connection."""
         from ..provenance.store import TripleStore
+
         self.triple_store = TripleStore(
             uri=self.config.get("triplestore_uri", "http://triplestore:3030"),
         )
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="prov_o_generation",
@@ -723,43 +741,43 @@ class ProvenanceTrackingAgent(BaseAgent):
                 timeout_seconds=240,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute provenance tracking task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
-        
+
         if capability == "prov_o_generation":
             return await self._generate_prov_o(params)
-        
+
         elif capability == "rdf_star_annotation":
             return await self._create_rdf_star(params)
-        
+
         elif capability == "lineage_tracking":
             return await self._track_lineage(params)
-        
+
         elif capability == "decision_trace_construction":
             return await self._construct_decision_trace(params)
-        
+
         raise ValueError(f"Unknown capability: {capability}")
-    
-    async def _generate_prov_o(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _generate_prov_o(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate PROV-O document."""
         pass
-    
-    async def _create_rdf_star(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _create_rdf_star(self, params: dict[str, Any]) -> dict[str, Any]:
         """Create RDF* annotation."""
         pass
-    
-    async def _track_lineage(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _track_lineage(self, params: dict[str, Any]) -> dict[str, Any]:
         """Track data lineage."""
         pass
-    
-    async def _construct_decision_trace(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _construct_decision_trace(self, params: dict[str, Any]) -> dict[str, Any]:
         """Construct decision trace."""
         pass
 
@@ -768,40 +786,42 @@ class ProvenanceTrackingAgent(BaseAgent):
 # 8. ORCHESTRATION CONTROLLER
 # ============================================================================
 
+
 class OrchestrationController(BaseAgent):
     """Agent for workflow scheduling and resource management.
-    
+
     Capabilities:
     - workflow_scheduling: Schedule workflow execution
     - task_distribution: Distribute tasks to agents
     - failure_recovery: Handle agent failures
     - resource_management: Manage agent pool resources
-    
+
     Scaling Policy: min_instances=2, max_instances=50, scale_trigger="queue_depth > 100"
     """
-    
+
     agent_type = AgentType.ORCHESTRATION
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.agent_pool: Dict[str, BaseAgent] = {}
-        self.task_queue: List[Dict[str, Any]] = []
-        self.running_tasks: Dict[str, Any] = {}
+        self.agent_pool: dict[str, BaseAgent] = {}
+        self.task_queue: list[dict[str, Any]] = []
+        self.running_tasks: dict[str, Any] = {}
         self.scaling_config = {
             "min_instances": self.config.get("min_instances", 2),
             "max_instances": self.config.get("max_instances", 50),
             "scale_trigger": self.config.get("scale_trigger", "queue_depth > 100"),
         }
         self.scheduler = None
-    
+
     async def _initialize_resources(self) -> None:
         """Initialize task scheduler."""
         from ..engine.scheduler import TaskScheduler
+
         self.scheduler = TaskScheduler(
             max_concurrent=self.config.get("max_concurrent_tasks", 100),
         )
-    
-    def get_capabilities(self) -> List[AgentCapability]:
+
+    def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
                 name="workflow_scheduling",
@@ -832,50 +852,50 @@ class OrchestrationController(BaseAgent):
                 timeout_seconds=60,
             ),
         ]
-    
+
     async def execute(
         self,
-        task: Dict[str, Any],
-        context: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute orchestration task."""
         capability = task.get("capability")
         params = task.get("parameters", {})
-        
+
         if capability == "workflow_scheduling":
             return await self._schedule_workflow(params)
-        
+
         elif capability == "task_distribution":
             return await self._distribute_tasks(params)
-        
+
         elif capability == "failure_recovery":
             return await self._recover_failure(params)
-        
+
         elif capability == "resource_management":
             return await self._manage_resources(params)
-        
+
         raise ValueError(f"Unknown capability: {capability}")
-    
-    async def _schedule_workflow(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _schedule_workflow(self, params: dict[str, Any]) -> dict[str, Any]:
         """Schedule workflow with priority."""
         pass
-    
-    async def _distribute_tasks(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _distribute_tasks(self, params: dict[str, Any]) -> dict[str, Any]:
         """Distribute tasks to agents."""
         pass
-    
-    async def _recover_failure(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _recover_failure(self, params: dict[str, Any]) -> dict[str, Any]:
         """Recover from failure."""
         pass
-    
-    async def _manage_resources(self, params: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _manage_resources(self, params: dict[str, Any]) -> dict[str, Any]:
         """Manage agent pool scaling."""
         pass
-    
+
     async def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent with the controller."""
         self.agent_pool[agent.agent_id] = agent
-    
+
     async def unregister_agent(self, agent_id: str) -> None:
         """Unregister an agent."""
         if agent_id in self.agent_pool:

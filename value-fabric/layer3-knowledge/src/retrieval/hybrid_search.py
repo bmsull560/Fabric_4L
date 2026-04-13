@@ -11,7 +11,7 @@ Changes from original:
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from neo4j import AsyncDriver
 
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HybridSearchResult:
     """Result from hybrid search."""
+
     entity_id: str
     entity_type: str
     name: str
@@ -34,7 +35,7 @@ class HybridSearchResult:
     graph_score: float
     combined_score: float
     confidence: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class HybridSearch:
@@ -49,10 +50,10 @@ class HybridSearch:
 
     def __init__(
         self,
-        driver: Optional[AsyncDriver] = None,
-        vector_store: Optional[VectorStore] = None,
-        graph_engine: Optional[GraphRAGEngine] = None,
-        settings: Optional[Settings] = None,
+        driver: AsyncDriver | None = None,
+        vector_store: VectorStore | None = None,
+        graph_engine: GraphRAGEngine | None = None,
+        settings: Settings | None = None,
     ):
         self.settings = settings or get_settings()
         self._driver = driver
@@ -74,11 +75,11 @@ class HybridSearch:
     async def search(
         self,
         query: str,
-        entity_types: Optional[List[str]] = None,
+        entity_types: list[str] | None = None,
         top_k: int = 10,
-        weights: Optional[Dict[str, float]] = None,
-        limit: Optional[int] = None,
-    ) -> List[HybridSearchResult]:
+        weights: dict[str, float] | None = None,
+        limit: int | None = None,
+    ) -> list[HybridSearchResult]:
         """Execute hybrid search across all signals.
 
         Args:
@@ -104,18 +105,22 @@ class HybridSearch:
         weights = {k: v / total for k, v in weights.items()}
 
         bm25_results = await self._bm25_search(query, entity_types, result_limit * 2)
-        vector_results = await self._vector_search(query, entity_types, result_limit * 2)
+        vector_results = await self._vector_search(
+            query, entity_types, result_limit * 2
+        )
         graph_results = await self._graph_search(query, entity_types, result_limit * 2)
 
-        merged = self._merge_results(bm25_results, vector_results, graph_results, weights)
+        merged = self._merge_results(
+            bm25_results, vector_results, graph_results, weights
+        )
         return merged[:result_limit]
 
     async def semantic_search(
         self,
         query: str,
-        entity_type: Optional[str] = None,
+        entity_type: str | None = None,
         top_k: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Pure semantic (vector) search."""
         return await self._vector_search(
             query, [entity_type] if entity_type else None, top_k
@@ -124,9 +129,9 @@ class HybridSearch:
     async def keyword_search(
         self,
         query: str,
-        entity_type: Optional[str] = None,
+        entity_type: str | None = None,
         top_k: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Pure BM25 keyword search."""
         return await self._bm25_search(
             query, [entity_type] if entity_type else None, top_k
@@ -135,18 +140,18 @@ class HybridSearch:
     async def fulltext_search(
         self,
         query: str,
-        entity_type: Optional[str] = None,
+        entity_type: str | None = None,
         top_k: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Backward-compatible alias for keyword/BM25 search."""
         return await self.keyword_search(query, entity_type, top_k)
 
     async def _bm25_search(
         self,
         query: str,
-        entity_types: Optional[List[str]],
+        entity_types: list[str] | None,
         top_k: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute BM25 full-text search via Neo4j fulltext index."""
         driver = await self._get_driver()
         results = []
@@ -204,9 +209,9 @@ class HybridSearch:
     async def _vector_search(
         self,
         query: str,
-        entity_types: Optional[List[str]],
+        entity_types: list[str] | None,
         top_k: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute vector similarity search.
 
         Adapts the Neo4jVectorStore return format — list of
@@ -229,20 +234,22 @@ class HybridSearch:
             logger.warning("Vector search failed: %s", exc)
             return []
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for item in raw:
             # Handle both tuple format (new) and dict format (legacy)
             if isinstance(item, tuple):
                 entity_id, score, meta = item
-                results.append({
-                    "id": entity_id,
-                    "entity_id": entity_id,
-                    "score": score,
-                    "entity_type": meta.get("entity_type", "Unknown"),
-                    "name": meta.get("name", ""),
-                    "description": meta.get("description", ""),
-                    "metadata": meta,
-                })
+                results.append(
+                    {
+                        "id": entity_id,
+                        "entity_id": entity_id,
+                        "score": score,
+                        "entity_type": meta.get("entity_type", "Unknown"),
+                        "name": meta.get("name", ""),
+                        "description": meta.get("description", ""),
+                        "metadata": meta,
+                    }
+                )
             else:
                 # Legacy dict format — ensure 'id' key exists
                 item.setdefault("id", item.get("entity_id", ""))
@@ -253,9 +260,9 @@ class HybridSearch:
     async def _graph_search(
         self,
         query: str,
-        entity_types: Optional[List[str]],
+        entity_types: list[str] | None,
         top_k: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Execute graph-based search (centrality-aware)."""
         driver = await self._get_driver()
         results = []
@@ -312,16 +319,16 @@ class HybridSearch:
 
     def _merge_results(
         self,
-        bm25_results: List[Dict],
-        vector_results: List[Dict],
-        graph_results: List[Dict],
-        weights: Dict[str, float],
-    ) -> List[HybridSearchResult]:
+        bm25_results: list[dict],
+        vector_results: list[dict],
+        graph_results: list[dict],
+        weights: dict[str, float],
+    ) -> list[HybridSearchResult]:
         """Merge and rank results from multiple sources."""
         all_ids: set = set()
-        bm25_lookup: Dict[str, Dict] = {}
-        vector_lookup: Dict[str, Dict] = {}
-        graph_lookup: Dict[str, Dict] = {}
+        bm25_lookup: dict[str, dict] = {}
+        vector_lookup: dict[str, dict] = {}
+        graph_lookup: dict[str, dict] = {}
 
         for r in bm25_results:
             eid = r.get("id") or r.get("entity_id")
@@ -342,13 +349,19 @@ class HybridSearch:
                 graph_lookup[eid] = r
 
         bm25_max = max((r.get("score", 0.0) for r in bm25_results), default=1.0) or 1.0
-        vector_max = max((r.get("score", 0.0) for r in vector_results), default=1.0) or 1.0
-        graph_max = max((r.get("score", 0.0) for r in graph_results), default=1.0) or 1.0
+        vector_max = (
+            max((r.get("score", 0.0) for r in vector_results), default=1.0) or 1.0
+        )
+        graph_max = (
+            max((r.get("score", 0.0) for r in graph_results), default=1.0) or 1.0
+        )
 
         merged = []
         for entity_id in all_ids:
             bm25_score = bm25_lookup.get(entity_id, {}).get("score", 0.0) / bm25_max
-            vector_score = vector_lookup.get(entity_id, {}).get("score", 0.0) / vector_max
+            vector_score = (
+                vector_lookup.get(entity_id, {}).get("score", 0.0) / vector_max
+            )
             graph_score = graph_lookup.get(entity_id, {}).get("score", 0.0) / graph_max
 
             combined = (

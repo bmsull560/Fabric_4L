@@ -8,13 +8,13 @@ Provides provenance tracking and audit trails as specified:
 """
 
 from .models import (
-    PROVEntity,
     PROVActivity,
     PROVAgent,
+    PROVEntity,
     PROVNamespace,
     create_prov_graph,
 )
-from .store import TripleStore, InMemoryTripleStore
+from .store import InMemoryTripleStore, TripleStore
 
 __all__ = [
     "PROVEntity",

@@ -25,9 +25,7 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 THESYS_API_KEY: str = os.getenv("THESYS_API_KEY", "")
-THESYS_BASE_URL: str = os.getenv(
-    "THESYS_BASE_URL", "https://api.thesys.dev/v1/embed"
-)
+THESYS_BASE_URL: str = os.getenv("THESYS_BASE_URL", "https://api.thesys.dev/v1/embed")
 
 # ---------------------------------------------------------------------------
 # Request / response models

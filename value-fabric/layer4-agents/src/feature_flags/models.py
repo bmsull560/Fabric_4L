@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -24,7 +24,7 @@ class FeatureFlag(Base):
         default=uuid.uuid4,
     )
 
-    tenant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("tenants.id", ondelete="CASCADE"),
         nullable=True,
@@ -49,12 +49,12 @@ class FeatureFlag(Base):
         comment="Percentage of users that should see the feature (0-100)",
     )
 
-    description: Mapped[Optional[str]] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
 
-    metadata_: Mapped[Dict[str, Any]] = mapped_column(
+    metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata",
         JSONB,
         nullable=False,
@@ -64,17 +64,17 @@ class FeatureFlag(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
-    updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,

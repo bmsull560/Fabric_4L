@@ -7,11 +7,7 @@ DELETE /v1/api-keys/{key_id}     — revoke (soft-delete) an API key
 
 from __future__ import annotations
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
 from shared.identity.models import (
@@ -19,6 +15,7 @@ from shared.identity.models import (
     APIKeyCreateResponse,
     APIKeyModel,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....database import get_db
 from ...service import create_api_key, list_api_keys, revoke_api_key
@@ -43,12 +40,12 @@ async def api_create_key(
     return await create_api_key(db, ctx.tenant_id, request, user_id=user_id)
 
 
-@router.get("", response_model=List[APIKeyModel])
+@router.get("", response_model=list[APIKeyModel])
 async def api_list_keys(
     enabled_only: bool = Query(True),
     ctx: RequestContext = Depends(require_tenant_admin),
     db: AsyncSession = Depends(get_db),
-) -> List[APIKeyModel]:
+) -> list[APIKeyModel]:
     """List API keys for the caller's tenant. Requires ``tenant_admin`` role."""
     return await list_api_keys(db, ctx.tenant_id, enabled_only=enabled_only)
 

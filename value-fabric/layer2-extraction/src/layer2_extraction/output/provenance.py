@@ -4,14 +4,15 @@ Implements PROV-O ontology for tracking data lineage from source
 documents through extraction to final RDF output.
 """
 
-from datetime import datetime
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
 
 class ExtractionActivityStatus(str, Enum):
     """Status of an extraction activity."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -21,7 +22,7 @@ class ExtractionActivityStatus(str, Enum):
 @dataclass
 class SourceDocument:
     """Represents a source document in provenance chain.
-    
+
     Attributes:
         url: Source URL
         content_hash: Hash of original content (for integrity)
@@ -30,9 +31,10 @@ class SourceDocument:
         size_bytes: Document size
         http_status: HTTP response code
     """
+
     url: str
     content_hash: str
-    content_type: Optional[str] = None
+    content_type: str | None = None
     fetched_at: datetime = field(default_factory=datetime.utcnow)
     size_bytes: int = 0
     http_status: int = 200
@@ -41,7 +43,7 @@ class SourceDocument:
 @dataclass
 class LLMCall:
     """Represents a single LLM API call.
-    
+
     Attributes:
         call_id: Unique ID for this call
         model: Model name (gpt-4o, claude-3.5-sonnet, etc.)
@@ -54,6 +56,7 @@ class LLMCall:
         duration_ms: Call duration
         timestamp: When call was made
     """
+
     call_id: str
     model: str
     prompt_hash: str
@@ -69,7 +72,7 @@ class LLMCall:
 @dataclass
 class ExtractionStep:
     """Represents a step in the extraction pipeline.
-    
+
     Attributes:
         step_name: Name of the step (chunking, entity_extraction, etc.)
         started_at: Start timestamp
@@ -78,15 +81,16 @@ class ExtractionStep:
         llm_calls: List of LLM calls made in this step
         errors: Any errors encountered
     """
+
     step_name: str
     started_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     entities_extracted: int = 0
-    llm_calls: List[LLMCall] = field(default_factory=list)
-    errors: List[str] = field(default_factory=list)
-    
+    llm_calls: list[LLMCall] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
     @property
-    def duration_ms(self) -> Optional[int]:
+    def duration_ms(self) -> int | None:
         """Calculate step duration in milliseconds."""
         if self.completed_at:
             delta = self.completed_at - self.started_at
@@ -97,10 +101,10 @@ class ExtractionStep:
 @dataclass
 class ExtractionActivity:
     """Complete provenance record for an extraction job.
-    
+
     This is the main provenance entity that tracks everything from
     source document to final output.
-    
+
     Attributes:
         activity_id: Unique job ID
         status: Current status
@@ -113,60 +117,57 @@ class ExtractionActivity:
         completed_at: Job end time
         metadata: Additional metadata
     """
+
     activity_id: str
     status: ExtractionActivityStatus
     source_document: SourceDocument
-    steps: List[ExtractionStep] = field(default_factory=list)
-    output_entities: List[str] = field(default_factory=list)
-    output_relationships: List[str] = field(default_factory=list)
-    rdf_output_path: Optional[str] = None
+    steps: list[ExtractionStep] = field(default_factory=list)
+    output_entities: list[str] = field(default_factory=list)
+    output_relationships: list[str] = field(default_factory=list)
+    rdf_output_path: str | None = None
     started_at: datetime = field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
+    completed_at: datetime | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
     def add_step(self, step: ExtractionStep) -> None:
         """Add a completed step to the activity."""
         self.steps.append(step)
-    
-    def complete(self, rdf_path: Optional[str] = None) -> None:
+
+    def complete(self, rdf_path: str | None = None) -> None:
         """Mark activity as completed."""
         self.status = ExtractionActivityStatus.COMPLETED
         self.completed_at = datetime.utcnow()
         if rdf_path:
             self.rdf_output_path = rdf_path
-    
+
     def fail(self, error_message: str) -> None:
         """Mark activity as failed."""
         self.status = ExtractionActivityStatus.FAILED
         self.completed_at = datetime.utcnow()
         if self.steps:
             self.steps[-1].errors.append(error_message)
-    
+
     @property
-    def total_duration_ms(self) -> Optional[int]:
+    def total_duration_ms(self) -> int | None:
         """Calculate total job duration."""
         if self.completed_at:
             delta = self.completed_at - self.started_at
             return int(delta.total_seconds() * 1000)
         return None
-    
+
     @property
     def total_llm_calls(self) -> int:
         """Count total LLM calls."""
         return sum(len(step.llm_calls) for step in self.steps)
-    
+
     @property
     def total_cost_usd(self) -> float:
         """Calculate total LLM cost."""
-        return sum(
-            call.cost_usd
-            for step in self.steps
-            for call in step.llm_calls
-        )
-    
-    def get_provenance_chain(self) -> Dict[str, Any]:
+        return sum(call.cost_usd for step in self.steps for call in step.llm_calls)
+
+    def get_provenance_chain(self) -> dict[str, Any]:
         """Get complete provenance chain for audit.
-        
+
         Returns structured data suitable for API responses
         showing full lineage from source to output.
         """
@@ -219,54 +220,48 @@ class ExtractionActivity:
 
 class ProvenanceTracker:
     """Track provenance for all extraction activities.
-    
+
     Maintains a registry of extraction activities for audit queries.
     """
-    
+
     def __init__(self):
         """Initialize provenance tracker."""
-        self.activities: Dict[str, ExtractionActivity] = {}
-    
+        self.activities: dict[str, ExtractionActivity] = {}
+
     def start_activity(
-        self,
-        activity_id: str,
-        source_url: str,
-        content_hash: str,
-        content_type: Optional[str] = None
+        self, activity_id: str, source_url: str, content_hash: str, content_type: str | None = None
     ) -> ExtractionActivity:
         """Start tracking a new extraction activity.
-        
+
         Args:
             activity_id: Unique ID for this activity
             source_url: Source document URL
             content_hash: Hash of source content
             content_type: Document type
-            
+
         Returns:
             New ExtractionActivity instance
         """
         source_doc = SourceDocument(
-            url=source_url,
-            content_hash=content_hash,
-            content_type=content_type
+            url=source_url, content_hash=content_hash, content_type=content_type
         )
-        
+
         activity = ExtractionActivity(
             activity_id=activity_id,
             status=ExtractionActivityStatus.RUNNING,
-            source_document=source_doc
+            source_document=source_doc,
         )
-        
+
         self.activities[activity_id] = activity
         return activity
-    
-    def get_activity(self, activity_id: str) -> Optional[ExtractionActivity]:
+
+    def get_activity(self, activity_id: str) -> ExtractionActivity | None:
         """Get activity by ID."""
         return self.activities.get(activity_id)
-    
-    def get_provenance_for_entity(self, entity_id: str) -> Optional[Dict[str, Any]]:
+
+    def get_provenance_for_entity(self, entity_id: str) -> dict[str, Any] | None:
         """Get provenance chain for a specific entity.
-        
+
         Finds the activity that generated this entity.
         """
         for activity in self.activities.values():
@@ -275,8 +270,8 @@ class ProvenanceTracker:
                 chain["entity_id"] = entity_id
                 return chain
         return None
-    
-    def get_provenance_for_output(self, output_path: str) -> Optional[Dict[str, Any]]:
+
+    def get_provenance_for_output(self, output_path: str) -> dict[str, Any] | None:
         """Get provenance for RDF output file."""
         for activity in self.activities.values():
             if activity.rdf_output_path == output_path:
@@ -285,7 +280,7 @@ class ProvenanceTracker:
 
 
 # Global provenance tracker instance
-_provenance_tracker: Optional[ProvenanceTracker] = None
+_provenance_tracker: ProvenanceTracker | None = None
 
 
 def get_provenance_tracker() -> ProvenanceTracker:
@@ -304,10 +299,10 @@ def create_llm_call_record(
     temperature: float,
     tokens_in: int,
     tokens_out: int,
-    duration_ms: int
+    duration_ms: int,
 ) -> LLMCall:
     """Create an LLM call record with cost estimation.
-    
+
     Args:
         call_id: Unique call ID
         model: Model name
@@ -317,7 +312,7 @@ def create_llm_call_record(
         tokens_in: Input tokens
         tokens_out: Output tokens
         duration_ms: Call duration
-        
+
     Returns:
         LLMCall record with cost estimate
     """
@@ -327,13 +322,13 @@ def create_llm_call_record(
         "gpt-4o-mini": {"input": 0.15, "output": 0.60},
         "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
     }
-    
+
     model_costs = costs_per_1m.get(model, {"input": 5.00, "output": 15.00})
-    
+
     input_cost = (tokens_in / 1_000_000) * model_costs["input"]
     output_cost = (tokens_out / 1_000_000) * model_costs["output"]
     total_cost = input_cost + output_cost
-    
+
     return LLMCall(
         call_id=call_id,
         model=model,
@@ -343,5 +338,5 @@ def create_llm_call_record(
         tokens_in=tokens_in,
         tokens_out=tokens_out,
         cost_usd=total_cost,
-        duration_ms=duration_ms
+        duration_ms=duration_ms,
     )

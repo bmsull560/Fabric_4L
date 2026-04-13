@@ -15,7 +15,6 @@ endpoints can use for RBAC checks.
 
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional
 from uuid import UUID
 
 import jwt
@@ -30,13 +29,14 @@ logger = logging.getLogger(__name__)
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenClaims:
     """Parsed and validated JWT claims."""
 
     organization_id: UUID
-    user_id: Optional[str] = None
-    roles: List[str] = field(default_factory=list)
+    user_id: str | None = None
+    roles: list[str] = field(default_factory=list)
     raw: dict = field(default_factory=dict)
 
     def has_role(self, role: str) -> bool:
@@ -54,7 +54,8 @@ class TokenClaims:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _decode_jwt(token: str, settings: Settings) -> Optional[dict]:
+
+def _decode_jwt(token: str, settings: Settings) -> dict | None:
     """
     Decode and verify a JWT using the configured secret.
 
@@ -80,7 +81,7 @@ def _decode_jwt(token: str, settings: Settings) -> Optional[dict]:
         return None
 
 
-def _extract_org_id_from_payload(payload: dict, settings: Settings) -> Optional[UUID]:
+def _extract_org_id_from_payload(payload: dict, settings: Settings) -> UUID | None:
     """Pull the organization UUID from a decoded JWT payload."""
     raw = payload.get(settings.jwt_tenant_claim)
     if not raw:
@@ -95,11 +96,12 @@ def _extract_org_id_from_payload(payload: dict, settings: Settings) -> Optional[
 # FastAPI dependency
 # ---------------------------------------------------------------------------
 
+
 def get_current_user(
     request: Request,
-    authorization: Optional[str] = Header(default=None),
-    x_tenant_id: Optional[str] = Header(default=None, alias="X-Tenant-ID"),
-    organization_id: Optional[str] = Query(
+    authorization: str | None = Header(default=None),
+    x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID"),
+    organization_id: str | None = Query(
         default=None,
         description="Tenant UUID — dev/test fallback when JWT is absent",
     ),

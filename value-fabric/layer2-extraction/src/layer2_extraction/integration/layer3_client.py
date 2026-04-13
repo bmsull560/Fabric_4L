@@ -5,12 +5,10 @@ enabling extraction results to be ingested into Neo4j via the Layer 3 API.
 """
 
 import asyncio
-import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
+from typing import Any
 
 import httpx
 
@@ -29,7 +27,7 @@ class IngestionResponse:
     entities_loaded: int
     relationships_loaded: int
     message: str
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -41,7 +39,7 @@ class IngestionStatus:
     progress_percent: float
     entities_processed: int
     entities_total: int
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class Layer3KnowledgeClient:
@@ -72,8 +70,8 @@ class Layer3KnowledgeClient:
 
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        api_key: Optional[str] = None,
+        base_url: str | None = None,
+        api_key: str | None = None,
         timeout: float = 60.0,
         max_retries: int = 3,
         batch_size: int = 100,
@@ -128,7 +126,7 @@ class Layer3KnowledgeClient:
             logger.warning(f"Layer 3 health check failed: {e}")
             return False
 
-    async def detailed_health_check(self) -> Dict[str, Any]:
+    async def detailed_health_check(self) -> dict[str, Any]:
         """Get detailed health information from Layer 3.
 
         Returns:
@@ -147,8 +145,8 @@ class Layer3KnowledgeClient:
         extraction_result: ExtractionResult,
         source_url: str,
         extraction_job_id: str,
-        relationships: Optional[List[Any]] = None,
-        batch_size: Optional[int] = None,
+        relationships: list[Any] | None = None,
+        batch_size: int | None = None,
     ) -> IngestionResponse:
         """Ingest extraction results into Layer 3 Knowledge Graph.
 
@@ -299,10 +297,10 @@ class Layer3KnowledgeClient:
 
     async def query_entities(
         self,
-        entity_type: Optional[str] = None,
-        query: Optional[str] = None,
+        entity_type: str | None = None,
+        query: str | None = None,
         limit: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Query entities from Layer 3 Knowledge Graph.
 
         Args:
@@ -332,8 +330,8 @@ class Layer3KnowledgeClient:
         self,
         question: str,
         max_hops: int = 3,
-        entity_type: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        entity_type: str | None = None,
+    ) -> dict[str, Any]:
         """Execute GraphRAG query on Layer 3.
 
         Args:
@@ -391,7 +389,7 @@ async def ingest_to_knowledge_graph(
     extraction_result: ExtractionResult,
     source_url: str,
     extraction_job_id: str,
-    base_url: Optional[str] = None,
+    base_url: str | None = None,
 ) -> IngestionResponse:
     """One-shot function to ingest extraction results.
 

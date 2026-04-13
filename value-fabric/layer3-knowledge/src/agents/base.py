@@ -3,64 +3,64 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 
 @dataclass
 class AgentResult:
     """Result from agent execution."""
-    
+
     agent_id: str
     agent_type: str
     status: str  # success, partial, failed
-    output: Dict[str, Any]
+    output: dict[str, Any]
     execution_time_ms: int
     timestamp: datetime
-    provenance: Dict[str, Any]
-    errors: List[str]
+    provenance: dict[str, Any]
+    errors: list[str]
 
 
 class BaseAgent(ABC):
     """Base class for all Value Fabric agents."""
-    
+
     def __init__(self, agent_type: str):
         """Initialize base agent.
-        
+
         Args:
             agent_type: Type identifier for the agent
         """
         self.agent_id = f"{agent_type}-{uuid4().hex[:8]}"
         self.agent_type = agent_type
         self.created_at = datetime.utcnow()
-    
+
     @abstractmethod
-    async def execute(self, context: Dict[str, Any]) -> AgentResult:
+    async def execute(self, context: dict[str, Any]) -> AgentResult:
         """Execute agent logic.
-        
+
         Args:
             context: Execution context with inputs
-            
+
         Returns:
             AgentResult with output and metadata
         """
         pass
-    
+
     def _create_result(
         self,
         status: str,
-        output: Dict[str, Any],
+        output: dict[str, Any],
         execution_time_ms: int,
-        errors: Optional[List[str]] = None,
+        errors: list[str] | None = None,
     ) -> AgentResult:
         """Create standardized result object.
-        
+
         Args:
             status: Execution status
             output: Result output data
             execution_time_ms: Execution duration
             errors: Optional error messages
-            
+
         Returns:
             AgentResult instance
         """

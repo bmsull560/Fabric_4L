@@ -9,12 +9,30 @@ This package contains 24+ tools organized into 6 categories:
 - Utility (2): Validation and formatting
 """
 
-from .registry import BaseTool, ToolError, ToolNotFoundError, ToolRegistry, get_global_registry, tool
 from .calculation_tools import (
     CalculateROITool,
     CompareBenchmarksTool,
     EvaluateFormulaTool,
     SensitivityAnalysisTool,
+)
+from .crm_tools import (
+    FetchInteractionHistoryTool,
+    GetProspectDataTool,
+    ScoreLeadTool,
+    UpdateOpportunityTool,
+)
+from .document_export import DocumentExportTool, PDFGenerator
+from .generation_tools import (
+    AssembleDocumentTool,
+    CreateChartTool,
+    FormatTableTool,
+    GenerateSectionTool,
+)
+from .integration_tools import (
+    CreateTaskTool,
+    ExportToCRMTool,
+    ScheduleMeetingTool,
+    SendNotificationTool,
 )
 from .knowledge_tools import (
     FindPathsTool,
@@ -24,40 +42,29 @@ from .knowledge_tools import (
     SemanticSearchTool,
     TraverseTreeTool,
 )
-from .crm_tools import (
-    FetchInteractionHistoryTool,
-    GetProspectDataTool,
-    ScoreLeadTool,
-    UpdateOpportunityTool,
-)
-from .generation_tools import (
-    AssembleDocumentTool,
-    CreateChartTool,
-    FormatTableTool,
-    GenerateSectionTool,
-)
-from .document_export import DocumentExportTool, PDFGenerator
-from .integration_tools import (
-    CreateTaskTool,
-    ExportToCRMTool,
-    ScheduleMeetingTool,
-    SendNotificationTool,
+from .registry import (
+    BaseTool,
+    ToolError,
+    ToolNotFoundError,
+    ToolRegistry,
+    get_global_registry,
+    tool,
 )
 from .utility_tools import FormatCurrencyTool, ValidateInputTool
 
 
 def create_default_registry(config: dict | None = None) -> ToolRegistry:
     """Create a tool registry with all 24 tools pre-registered.
-    
+
     Args:
         config: Optional configuration dictionary for tools
-        
+
     Returns:
         ToolRegistry with all tools registered
     """
     registry = ToolRegistry()
     cfg = config or {}
-    
+
     # Knowledge Tools (6)
     registry.register(QueryGraphTool(cfg))
     registry.register(SemanticSearchTool(cfg))
@@ -65,36 +72,36 @@ def create_default_registry(config: dict | None = None) -> ToolRegistry:
     registry.register(GetRelationshipsTool(cfg))
     registry.register(TraverseTreeTool(cfg))
     registry.register(FindPathsTool(cfg))
-    
+
     # Calculation Tools (4)
     registry.register(EvaluateFormulaTool(cfg))
     registry.register(CalculateROITool(cfg))
     registry.register(CompareBenchmarksTool(cfg))
     registry.register(SensitivityAnalysisTool(cfg))
-    
+
     # CRM Tools (4)
     registry.register(GetProspectDataTool(cfg))
     registry.register(UpdateOpportunityTool(cfg))
     registry.register(FetchInteractionHistoryTool(cfg))
     registry.register(ScoreLeadTool(cfg))
-    
+
     # Generation Tools (5)
     registry.register(GenerateSectionTool(cfg))
     registry.register(CreateChartTool(cfg))
     registry.register(FormatTableTool(cfg))
     registry.register(AssembleDocumentTool(cfg))
     registry.register(DocumentExportTool(cfg))
-    
+
     # Integration Tools (4)
     registry.register(SendNotificationTool(cfg))
     registry.register(CreateTaskTool(cfg))
     registry.register(ScheduleMeetingTool(cfg))
     registry.register(ExportToCRMTool(cfg))
-    
+
     # Utility Tools (2)
     registry.register(ValidateInputTool(cfg))
     registry.register(FormatCurrencyTool(cfg))
-    
+
     return registry
 
 

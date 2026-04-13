@@ -5,32 +5,32 @@ Provides thread-safe tenant context storage and retrieval.
 
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
-from uuid import UUID
+from typing import Any
 
 
 @dataclass
 class TenantContext:
     """Context for a tenant request.
-    
+
     Attributes:
         tenant_id: Unique tenant identifier
         user_id: Current user identifier
         roles: User roles
         metadata: Additional context
     """
+
     tenant_id: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
     roles: list = None
-    metadata: Dict[str, Any] = None
-    
+    metadata: dict[str, Any] = None
+
     def __post_init__(self):
         if self.roles is None:
             self.roles = []
         if self.metadata is None:
             self.metadata = {}
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "tenant_id": self.tenant_id,
@@ -38,9 +38,9 @@ class TenantContext:
             "roles": self.roles,
             "metadata": self.metadata,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TenantContext":
+    def from_dict(cls, data: dict[str, Any]) -> "TenantContext":
         """Create from dictionary."""
         return cls(
             tenant_id=data["tenant_id"],
@@ -51,24 +51,24 @@ class TenantContext:
 
 
 # Context variable for current tenant
-_current_tenant: ContextVar[Optional[TenantContext]] = ContextVar(
+_current_tenant: ContextVar[TenantContext | None] = ContextVar(
     "current_tenant",
     default=None,
 )
 
 
-def get_current_tenant() -> Optional[TenantContext]:
+def get_current_tenant() -> TenantContext | None:
     """Get the current tenant context.
-    
+
     Returns:
         Current tenant context or None
     """
     return _current_tenant.get()
 
 
-def set_current_tenant(tenant: Optional[TenantContext]) -> None:
+def set_current_tenant(tenant: TenantContext | None) -> None:
     """Set the current tenant context.
-    
+
     Args:
         tenant: Tenant context to set
     """
@@ -77,10 +77,10 @@ def set_current_tenant(tenant: Optional[TenantContext]) -> None:
 
 def require_tenant() -> TenantContext:
     """Get current tenant or raise error.
-    
+
     Returns:
         Current tenant context
-        
+
     Raises:
         RuntimeError: If no tenant context is set
     """
@@ -92,28 +92,28 @@ def require_tenant() -> TenantContext:
 
 class TenantContextManager:
     """Context manager for tenant scoping.
-    
+
     Example:
         with TenantContextManager(tenant_context):
             # All operations within this block
             # have access to the tenant context
             result = await some_operation()
     """
-    
+
     def __init__(self, tenant: TenantContext):
         """Initialize context manager.
-        
+
         Args:
             tenant: Tenant context to set
         """
         self.tenant = tenant
         self.token = None
-    
+
     def __enter__(self):
         """Enter context."""
         self.token = _current_tenant.set(self.tenant)
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit context."""
         _current_tenant.reset(self.token)

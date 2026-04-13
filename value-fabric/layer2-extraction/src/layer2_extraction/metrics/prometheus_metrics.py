@@ -1,20 +1,38 @@
 """Prometheus metrics collection for Layer 2 Extraction Pipeline."""
 
 import time
-from typing import Dict, List, Optional, Any
-from functools import wraps
+from typing import Any
 
 try:
-    from prometheus_client import Counter, Histogram, Gauge, Info, CollectorRegistry, generate_latest
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        Info,
+        generate_latest,
+    )
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
+
     # Dummy classes for type hints
-    class CollectorRegistry: pass
-    class Counter: pass
-    class Histogram: pass
-    class Gauge: pass
-    class Info: pass
+    class CollectorRegistry:
+        pass
+
+    class Counter:
+        pass
+
+    class Histogram:
+        pass
+
+    class Gauge:
+        pass
+
+    class Info:
+        pass
+
 
 import logging
 
@@ -27,10 +45,10 @@ class MetricsConfig:
     def __init__(
         self,
         enabled: bool = True,
-        registry: Optional[CollectorRegistry] = None,
+        registry: CollectorRegistry | None = None,
         prefix: str = "layer2_",
         label_namespace: str = "extraction",
-        default_buckets: Optional[List[float]] = None,
+        default_buckets: list[float] | None = None,
     ):
         self.enabled = enabled and PROMETHEUS_AVAILABLE
         self.registry = registry or CollectorRegistry() if PROMETHEUS_AVAILABLE else None
@@ -42,11 +60,11 @@ class MetricsConfig:
 class PrometheusMetrics:
     """Prometheus metrics collector for Layer 2."""
 
-    def __init__(self, config: Optional[MetricsConfig] = None):
+    def __init__(self, config: MetricsConfig | None = None):
         if not PROMETHEUS_AVAILABLE:
             raise ImportError("prometheus_client library is required")
         self.config = config or MetricsConfig()
-        self._metrics: Dict[str, Any] = {}
+        self._metrics: dict[str, Any] = {}
         self._setup_metrics()
 
     def _setup_metrics(self) -> None:
@@ -58,7 +76,7 @@ class PrometheusMetrics:
             f"{prefix}http_requests_total",
             "Total HTTP requests",
             ["method", "endpoint", "status_code"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["request_duration"] = Histogram(
@@ -66,7 +84,7 @@ class PrometheusMetrics:
             "HTTP request duration",
             ["method", "endpoint"],
             buckets=self.config.default_buckets,
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Extraction-specific metrics
@@ -74,33 +92,33 @@ class PrometheusMetrics:
             f"{prefix}extraction_jobs_total",
             "Total extraction jobs",
             ["status"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["extraction_duration"] = Histogram(
             f"{prefix}extraction_duration_seconds",
             "Extraction job duration",
             buckets=self.config.default_buckets,
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["entities_extracted_total"] = Counter(
             f"{prefix}entities_extracted_total",
             "Total entities extracted",
             ["entity_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["relationships_extracted_total"] = Counter(
             f"{prefix}relationships_extracted_total",
             "Total relationships extracted",
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["chunks_processed_total"] = Counter(
             f"{prefix}chunks_processed_total",
             "Total chunks processed",
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Active connections
@@ -108,7 +126,7 @@ class PrometheusMetrics:
             f"{prefix}active_connections",
             "Number of active connections",
             ["connection_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Health status gauge (for alerting)
@@ -116,7 +134,7 @@ class PrometheusMetrics:
             f"{prefix}health_status",
             "Health status (1=healthy, 0=unhealthy)",
             ["component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
         # Initialize with healthy status
         self._metrics["health_status"].labels(component="api").set(1)
@@ -126,19 +144,14 @@ class PrometheusMetrics:
             f"{prefix}errors_total",
             "Total errors",
             ["error_type", "component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Build info
         self._metrics["build_info"] = Info(
-            f"{prefix}build_info",
-            "Build information",
-            registry=self.config.registry
+            f"{prefix}build_info", "Build information", registry=self.config.registry
         )
-        self._metrics["build_info"].info({
-            "version": "1.0.0",
-            "service": "layer2-extraction"
-        })
+        self._metrics["build_info"].info({"version": "1.0.0", "service": "layer2-extraction"})
 
     def increment_requests_total(self, method: str, endpoint: str, status_code: int) -> None:
         if self.config.enabled:
@@ -148,9 +161,9 @@ class PrometheusMetrics:
 
     def observe_request_duration(self, duration: float, method: str, endpoint: str) -> None:
         if self.config.enabled:
-            self._metrics["request_duration"].labels(
-                method=method, endpoint=endpoint
-            ).observe(duration)
+            self._metrics["request_duration"].labels(method=method, endpoint=endpoint).observe(
+                duration
+            )
 
     def increment_extraction_jobs(self, status: str) -> None:
         if self.config.enabled:
@@ -224,14 +237,14 @@ class MetricsMiddleware:
         return response
 
 
-_metrics: Optional[PrometheusMetrics] = None
+_metrics: PrometheusMetrics | None = None
 
 
-def get_metrics() -> Optional[PrometheusMetrics]:
+def get_metrics() -> PrometheusMetrics | None:
     return _metrics
 
 
-def initialize_metrics(config: Optional[MetricsConfig] = None) -> Optional[PrometheusMetrics]:
+def initialize_metrics(config: MetricsConfig | None = None) -> PrometheusMetrics | None:
     global _metrics
     if not PROMETHEUS_AVAILABLE:
         logger.warning("prometheus_client not available, metrics disabled")

@@ -4,12 +4,14 @@ Defines node configurations, edges, and conditional routing for workflows.
 """
 
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 
 class NodeType(str, Enum):
     """Types of workflow nodes."""
+
     START = "start"
     END = "end"
     TOOL = "tool"
@@ -22,6 +24,7 @@ class NodeType(str, Enum):
 
 class EdgeType(str, Enum):
     """Types of edges between nodes."""
+
     DEFAULT = "default"
     CONDITIONAL = "conditional"
     PARALLEL = "parallel"
@@ -30,7 +33,7 @@ class EdgeType(str, Enum):
 
 class NodeConfig(BaseModel):
     """Configuration for a single workflow node.
-    
+
     Attributes:
         id: Unique node identifier
         name: Human-readable node name
@@ -42,22 +45,22 @@ class NodeConfig(BaseModel):
         retry_policy: Retry configuration
         timeout_seconds: Maximum execution time
     """
+
     id: str
     name: str
     node_type: NodeType
-    tool_name: Optional[str] = None
-    llm_prompt: Optional[str] = None
-    condition: Optional[str] = None
-    config: Dict[str, Any] = Field(default_factory=dict)
-    retry_policy: Dict[str, Any] = Field(default_factory=lambda: {
-        "max_retries": 3,
-        "backoff_factor": 1.5
-    })
+    tool_name: str | None = None
+    llm_prompt: str | None = None
+    condition: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
+    retry_policy: dict[str, Any] = Field(
+        default_factory=lambda: {"max_retries": 3, "backoff_factor": 1.5}
+    )
     timeout_seconds: int = 30
-    
+
     @field_validator("tool_name")
     @classmethod
-    def validate_tool_name(cls, v: Optional[str], info: Any) -> Optional[str]:
+    def validate_tool_name(cls, v: str | None, info: Any) -> str | None:
         values = info.data
         if values.get("node_type") == NodeType.TOOL and not v:
             raise ValueError("tool_name is required for TOOL nodes")
@@ -66,7 +69,7 @@ class NodeConfig(BaseModel):
 
 class EdgeConfig(BaseModel):
     """Configuration for an edge between nodes.
-    
+
     Attributes:
         source: Source node ID
         target: Target node ID
@@ -74,16 +77,17 @@ class EdgeConfig(BaseModel):
         condition: Condition for conditional edges
         priority: Priority for multiple edges from same source
     """
+
     source: str
     target: str
     edge_type: EdgeType = EdgeType.DEFAULT
-    condition: Optional[str] = None
+    condition: str | None = None
     priority: int = 0
 
 
 class WorkflowConfig(BaseModel):
     """Complete workflow configuration.
-    
+
     Attributes:
         workflow_type: Type of workflow
         name: Human-readable workflow name
@@ -93,35 +97,38 @@ class WorkflowConfig(BaseModel):
         entry_point: Starting node ID
         global_config: Global workflow settings
     """
+
     workflow_type: str
     name: str
     description: str
-    nodes: List[NodeConfig]
-    edges: List[EdgeConfig]
+    nodes: list[NodeConfig]
+    edges: list[EdgeConfig]
     entry_point: str
-    global_config: Dict[str, Any] = Field(default_factory=lambda: {
-        "max_iterations": 50,
-        "checkpoint_interval": 5,
-        "enable_tracing": True
-    })
-    
+    global_config: dict[str, Any] = Field(
+        default_factory=lambda: {
+            "max_iterations": 50,
+            "checkpoint_interval": 5,
+            "enable_tracing": True,
+        }
+    )
+
     @field_validator("edges")
     @classmethod
-    def validate_connected(cls, v: List[EdgeConfig], info: Any) -> List[EdgeConfig]:
+    def validate_connected(cls, v: list[EdgeConfig], info: Any) -> list[EdgeConfig]:
         values = info.data
         nodes = values.get("nodes", [])
         node_ids = {n.id for n in nodes}
         entry = values.get("entry_point")
-        
+
         if entry and entry not in node_ids:
             raise ValueError(f"Entry point '{entry}' not found in nodes")
-        
+
         for edge in v:
             if edge.source not in node_ids:
                 raise ValueError(f"Edge source '{edge.source}' not found in nodes")
             if edge.target not in node_ids:
                 raise ValueError(f"Edge target '{edge.target}' not found in nodes")
-        
+
         return v
 
 
@@ -132,12 +139,34 @@ ROI_WORKFLOW_CONFIG = WorkflowConfig(
     description="Calculates ROI from value driver formulas with prospect data",
     entry_point="load_prospect",
     nodes=[
-        NodeConfig(id="load_prospect", name="Load Prospect Data", node_type=NodeType.TOOL, tool_name="get_prospect_data"),
-        NodeConfig(id="fetch_benchmarks", name="Fetch Benchmarks", node_type=NodeType.TOOL, tool_name="fetch_benchmarks"),
-        NodeConfig(id="substitute_vars", name="Substitute Variables", node_type=NodeType.TOOL, tool_name="substitute_variables"),
-        NodeConfig(id="evaluate", name="Evaluate Formula", node_type=NodeType.TOOL, tool_name="evaluate_formula"),
+        NodeConfig(
+            id="load_prospect",
+            name="Load Prospect Data",
+            node_type=NodeType.TOOL,
+            tool_name="get_prospect_data",
+        ),
+        NodeConfig(
+            id="fetch_benchmarks",
+            name="Fetch Benchmarks",
+            node_type=NodeType.TOOL,
+            tool_name="fetch_benchmarks",
+        ),
+        NodeConfig(
+            id="substitute_vars",
+            name="Substitute Variables",
+            node_type=NodeType.TOOL,
+            tool_name="substitute_variables",
+        ),
+        NodeConfig(
+            id="evaluate",
+            name="Evaluate Formula",
+            node_type=NodeType.TOOL,
+            tool_name="evaluate_formula",
+        ),
         NodeConfig(id="validate", name="Validate Results", node_type=NodeType.CONDITION),
-        NodeConfig(id="aggregate", name="Aggregate ROI", node_type=NodeType.TOOL, tool_name="aggregate_roi"),
+        NodeConfig(
+            id="aggregate", name="Aggregate ROI", node_type=NodeType.TOOL, tool_name="aggregate_roi"
+        ),
         NodeConfig(id="end", name="End", node_type=NodeType.END),
     ],
     edges=[
@@ -146,9 +175,11 @@ ROI_WORKFLOW_CONFIG = WorkflowConfig(
         EdgeConfig(source="substitute_vars", target="evaluate"),
         EdgeConfig(source="evaluate", target="validate"),
         EdgeConfig(source="validate", target="aggregate", condition="results_valid"),
-        EdgeConfig(source="validate", target="substitute_vars", condition="retry_needed", priority=1),
+        EdgeConfig(
+            source="validate", target="substitute_vars", condition="retry_needed", priority=1
+        ),
         EdgeConfig(source="aggregate", target="end"),
-    ]
+    ],
 )
 
 WHITESPACE_WORKFLOW_CONFIG = WorkflowConfig(
@@ -157,10 +188,30 @@ WHITESPACE_WORKFLOW_CONFIG = WorkflowConfig(
     description="Identifies gaps between prospect needs and solution capabilities",
     entry_point="analyze_prospect",
     nodes=[
-        NodeConfig(id="analyze_prospect", name="Analyze Prospect", node_type=NodeType.TOOL, tool_name="analyze_prospect_needs"),
-        NodeConfig(id="query_capabilities", name="Query Capabilities", node_type=NodeType.TOOL, tool_name="query_graph"),
-        NodeConfig(id="identify_gaps", name="Identify Gaps", node_type=NodeType.TOOL, tool_name="identify_gaps"),
-        NodeConfig(id="score_opportunity", name="Score Opportunity", node_type=NodeType.TOOL, tool_name="score_opportunity"),
+        NodeConfig(
+            id="analyze_prospect",
+            name="Analyze Prospect",
+            node_type=NodeType.TOOL,
+            tool_name="analyze_prospect_needs",
+        ),
+        NodeConfig(
+            id="query_capabilities",
+            name="Query Capabilities",
+            node_type=NodeType.TOOL,
+            tool_name="query_graph",
+        ),
+        NodeConfig(
+            id="identify_gaps",
+            name="Identify Gaps",
+            node_type=NodeType.TOOL,
+            tool_name="identify_gaps",
+        ),
+        NodeConfig(
+            id="score_opportunity",
+            name="Score Opportunity",
+            node_type=NodeType.TOOL,
+            tool_name="score_opportunity",
+        ),
         NodeConfig(id="end", name="End", node_type=NodeType.END),
     ],
     edges=[
@@ -168,7 +219,7 @@ WHITESPACE_WORKFLOW_CONFIG = WorkflowConfig(
         EdgeConfig(source="query_capabilities", target="identify_gaps"),
         EdgeConfig(source="identify_gaps", target="score_opportunity"),
         EdgeConfig(source="score_opportunity", target="end"),
-    ]
+    ],
 )
 
 BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
@@ -177,10 +228,25 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
     description="Generates comprehensive business case documents",
     entry_point="gather_inputs",
     nodes=[
-        NodeConfig(id="gather_inputs", name="Gather Inputs", node_type=NodeType.TOOL, tool_name="gather_case_inputs"),
+        NodeConfig(
+            id="gather_inputs",
+            name="Gather Inputs",
+            node_type=NodeType.TOOL,
+            tool_name="gather_case_inputs",
+        ),
         NodeConfig(id="run_roi", name="Run ROI Calculation", node_type=NodeType.AGENT),
-        NodeConfig(id="generate_narrative", name="Generate Narrative", node_type=NodeType.LLM, llm_prompt="generate_business_case_section"),
-        NodeConfig(id="assemble", name="Assemble Document", node_type=NodeType.TOOL, tool_name="assemble_document"),
+        NodeConfig(
+            id="generate_narrative",
+            name="Generate Narrative",
+            node_type=NodeType.LLM,
+            llm_prompt="generate_business_case_section",
+        ),
+        NodeConfig(
+            id="assemble",
+            name="Assemble Document",
+            node_type=NodeType.TOOL,
+            tool_name="assemble_document",
+        ),
         NodeConfig(id="end", name="End", node_type=NodeType.END),
     ],
     edges=[
@@ -188,5 +254,5 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
         EdgeConfig(source="run_roi", target="generate_narrative"),
         EdgeConfig(source="generate_narrative", target="assemble"),
         EdgeConfig(source="assemble", target="end"),
-    ]
+    ],
 )

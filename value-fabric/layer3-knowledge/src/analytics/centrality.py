@@ -1,7 +1,6 @@
 """Centrality analysis for identifying key entities in the Knowledge Graph."""
 
 import logging
-from typing import Any, Dict, List, Optional
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
@@ -22,8 +21,8 @@ class CentralityAnalyzer:
 
     def __init__(
         self,
-        driver: Optional[AsyncDriver] = None,
-        settings: Optional[Settings] = None,
+        driver: AsyncDriver | None = None,
+        settings: Settings | None = None,
     ):
         """Initialize centrality analyzer.
 
@@ -53,8 +52,8 @@ class CentralityAnalyzer:
 
     async def calculate_pagerank(
         self,
-        node_labels: Optional[List[str]] = None,
-        relationship_types: Optional[List[str]] = None,
+        node_labels: list[str] | None = None,
+        relationship_types: list[str] | None = None,
         top_k: int = 20,
     ) -> dict:
         """Calculate PageRank for all nodes.
@@ -106,12 +105,16 @@ class CentralityAnalyzer:
                 rankings = []
                 async for record in result:
                     node = record["node"]
-                    rankings.append({
-                        "id": node["id"],
-                        "name": node.get("name", node.get("title", "Unknown")),
-                        "type": list(node.labels)[0] if hasattr(node, "labels") else "Unknown",
-                        "score": record["score"],
-                    })
+                    rankings.append(
+                        {
+                            "id": node["id"],
+                            "name": node.get("name", node.get("title", "Unknown")),
+                            "type": list(node.labels)[0]
+                            if hasattr(node, "labels")
+                            else "Unknown",
+                            "score": record["score"],
+                        }
+                    )
 
                 return {
                     "algorithm": "pagerank",
@@ -124,8 +127,8 @@ class CentralityAnalyzer:
 
     async def calculate_betweenness(
         self,
-        node_labels: Optional[List[str]] = None,
-        relationship_types: Optional[List[str]] = None,
+        node_labels: list[str] | None = None,
+        relationship_types: list[str] | None = None,
         top_k: int = 20,
     ) -> dict:
         """Calculate betweenness centrality.
@@ -166,12 +169,16 @@ class CentralityAnalyzer:
                 rankings = []
                 async for record in result:
                     node = record["node"]
-                    rankings.append({
-                        "id": node["id"],
-                        "name": node.get("name", node.get("title", "Unknown")),
-                        "type": list(node.labels)[0] if hasattr(node, "labels") else "Unknown",
-                        "score": record["score"],
-                    })
+                    rankings.append(
+                        {
+                            "id": node["id"],
+                            "name": node.get("name", node.get("title", "Unknown")),
+                            "type": list(node.labels)[0]
+                            if hasattr(node, "labels")
+                            else "Unknown",
+                            "score": record["score"],
+                        }
+                    )
 
                 return {
                     "algorithm": "betweenness",
@@ -184,7 +191,7 @@ class CentralityAnalyzer:
 
     async def calculate_degree_centrality(
         self,
-        node_labels: Optional[List[str]] = None,
+        node_labels: list[str] | None = None,
         top_k: int = 20,
     ) -> dict:
         """Calculate degree centrality (simple connectivity count).
@@ -217,12 +224,14 @@ class CentralityAnalyzer:
 
             rankings = []
             async for record in result:
-                rankings.append({
-                    "id": record["id"],
-                    "name": record["name"],
-                    "type": record["type"],
-                    "score": record["degree"],
-                })
+                rankings.append(
+                    {
+                        "id": record["id"],
+                        "name": record["name"],
+                        "type": record["type"],
+                        "score": record["degree"],
+                    }
+                )
 
             return {
                 "algorithm": "degree",
@@ -338,8 +347,8 @@ class CentralityAnalyzer:
         self,
         session,
         graph_name: str,
-        node_labels: Optional[List[str]],
-        relationship_types: Optional[List[str]],
+        node_labels: list[str] | None,
+        relationship_types: list[str] | None,
     ) -> None:
         """Project graph for GDS algorithms."""
         node_filter = node_labels or ["Capability", "UseCase", "Persona", "ValueDriver"]
@@ -377,7 +386,7 @@ class CentralityAnalyzer:
     async def _fallback_centrality(
         self,
         session,
-        node_labels: Optional[List[str]],
+        node_labels: list[str] | None,
         metric: str,
         top_k: int,
     ) -> dict:
@@ -405,12 +414,14 @@ class CentralityAnalyzer:
 
         rankings = []
         async for record in result:
-            rankings.append({
-                "id": record["id"],
-                "name": record["name"],
-                "type": record["type"],
-                "score": record["score"],
-            })
+            rankings.append(
+                {
+                    "id": record["id"],
+                    "name": record["name"],
+                    "type": record["type"],
+                    "score": record["score"],
+                }
+            )
 
         return {
             "algorithm": f"{metric}_fallback",
@@ -423,4 +434,5 @@ class CentralityAnalyzer:
         """Generate random ID."""
         import random
         import string
+
         return "".join(random.choices(string.ascii_lowercase + string.digits, k=8))

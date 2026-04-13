@@ -2,8 +2,8 @@
 
 from .entailment_validator import (
     EntailmentValidator,
-    ValidationRule,
     ValidationResult,
+    ValidationRule,
     ValidationSeverity,
 )
 

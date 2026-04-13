@@ -3,14 +3,14 @@
 Provides endpoints for Value Pack CRUD and execution.
 """
 
-from typing import List, Optional, Dict, Any, Literal
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
 from ...db.driver import get_driver
-from neo4j import AsyncDriver
 from ...logging_config import get_logger
 from ._utils import increment_patch_version
 
@@ -27,8 +27,10 @@ router = APIRouter()
 
 # Pydantic Models
 
+
 class ValueDriverSummary(BaseModel):
     """Summary of value driver in pack."""
+
     driver_id: str
     name: str
     category: str
@@ -37,14 +39,16 @@ class ValueDriverSummary(BaseModel):
 
 class FormulaSummary(BaseModel):
     """Summary of formula in pack."""
+
     formula_id: str
     name: str
     version: str
-    variables: List[str]
+    variables: list[str]
 
 
 class BenchmarkSummary(BaseModel):
     """Summary of benchmark in pack."""
+
     dataset_id: str
     metric: str
     industry: str
@@ -52,92 +56,108 @@ class BenchmarkSummary(BaseModel):
 
 class PackSummary(BaseModel):
     """Summary of Value Pack."""
+
     pack_id: str
     name: str
     industry: str
-    segment: Optional[str]
+    segment: str | None
     status: str
     version: str
     driver_count: int
     formula_count: int
     benchmark_count: int
-    updated_at: Optional[str] = None
+    updated_at: str | None = None
 
 
 class PackDetail(BaseModel):
     """Full Value Pack detail."""
+
     pack_id: str
     name: str
     description: str
     industry: str
-    segment: Optional[str]
+    segment: str | None
     status: str
     version: str
-    drivers: List[ValueDriverSummary]
-    formulas: List[FormulaSummary]
-    benchmarks: List[BenchmarkSummary]
+    drivers: list[ValueDriverSummary]
+    formulas: list[FormulaSummary]
+    benchmarks: list[BenchmarkSummary]
     created_at: str
-    updated_at: Optional[str] = None
-    created_by: Optional[str] = None
-    workspace_id: Optional[str] = None
+    updated_at: str | None = None
+    created_by: str | None = None
+    workspace_id: str | None = None
     is_loaded: bool = False
 
 
-VALID_PACK_STATUSES = [STATUS_DRAFT, STATUS_PUBLISHED, STATUS_DEPRECATED, STATUS_ARCHIVED]
+VALID_PACK_STATUSES = [
+    STATUS_DRAFT,
+    STATUS_PUBLISHED,
+    STATUS_DEPRECATED,
+    STATUS_ARCHIVED,
+]
 
 
 class PackCreateRequest(BaseModel):
     """Request to create a Value Pack."""
+
     name: str
     description: str
     industry: str
-    segment: Optional[str] = None
+    segment: str | None = None
     status: Literal["draft", "published", "deprecated", "archived"] = STATUS_DRAFT
-    driver_ids: List[str] = Field(default_factory=list)
-    formula_ids: List[str] = Field(default_factory=list)
-    benchmark_ids: List[str] = Field(default_factory=list)
-    created_by: Optional[str] = None
+    driver_ids: list[str] = Field(default_factory=list)
+    formula_ids: list[str] = Field(default_factory=list)
+    benchmark_ids: list[str] = Field(default_factory=list)
+    created_by: str | None = None
 
 
 class PackUpdateRequest(BaseModel):
     """Request to update a Value Pack."""
-    name: Optional[str] = None
-    description: Optional[str] = None
-    industry: Optional[str] = None
-    segment: Optional[str] = None
-    status: Optional[Literal["draft", "published", "deprecated", "archived"]] = None
-    driver_ids: Optional[List[str]] = None
-    formula_ids: Optional[List[str]] = None
-    benchmark_ids: Optional[List[str]] = None
+
+    name: str | None = None
+    description: str | None = None
+    industry: str | None = None
+    segment: str | None = None
+    status: Literal["draft", "published", "deprecated", "archived"] | None = None
+    driver_ids: list[str] | None = None
+    formula_ids: list[str] | None = None
+    benchmark_ids: list[str] | None = None
 
 
 class PackExecuteRequest(BaseModel):
     """Request to execute a pack."""
+
     workspace_id: str
-    variables: Dict[str, Any] = Field(default_factory=dict)
-    user_id: Optional[str] = None
+    variables: dict[str, Any] = Field(default_factory=dict)
+    user_id: str | None = None
 
 
 class PackExecuteResponse(BaseModel):
     """Response from pack execution."""
+
     execution_id: str
     pack_id: str
     status: str
-    outputs: Dict[str, Any]
-    errors: List[str]
-    warnings: List[str] = Field(default_factory=list, description="Warning messages about partial implementation")
+    outputs: dict[str, Any]
+    errors: list[str]
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="Warning messages about partial implementation",
+    )
 
 
 class PackForkRequest(BaseModel):
     """Request to fork a pack."""
+
     workspace_id: str
-    name: Optional[str] = None
-    modifications: Dict[str, Any] = Field(default_factory=dict)
-    user_id: Optional[str] = None
+    name: str | None = None
+    modifications: dict[str, Any] = Field(default_factory=dict)
+    user_id: str | None = None
 
 
 class PackForkResponse(BaseModel):
     """Response from pack fork."""
+
     pack_id: str
     name: str
     version: str
@@ -146,7 +166,8 @@ class PackForkResponse(BaseModel):
 
 # Helper functions
 
-async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDetail]:
+
+async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> PackDetail | None:
     """Get full pack detail from Neo4j."""
     query = """
     MATCH (vp:ValuePack {id: $pack_id})
@@ -158,16 +179,16 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDe
            collect(DISTINCT f) as formulas,
            collect(DISTINCT b) as benchmarks
     """
-    
+
     async with driver.session() as session:
         result = await session.run(query, pack_id=pack_id)
         record = await result.single()
-        
+
         if not record:
             return None
-        
+
         vp = record["vp"]
-        
+
         drivers = [
             ValueDriverSummary(
                 driver_id=d["id"],
@@ -178,7 +199,7 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDe
             for d in record["drivers"]
             if d
         ]
-        
+
         formulas = [
             FormulaSummary(
                 formula_id=f["id"],
@@ -189,7 +210,7 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDe
             for f in record["formulas"]
             if f
         ]
-        
+
         benchmarks = [
             BenchmarkSummary(
                 dataset_id=b["id"],
@@ -199,7 +220,7 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDe
             for b in record["benchmarks"]
             if b
         ]
-        
+
         return PackDetail(
             pack_id=vp["id"],
             name=vp.get("name", ""),
@@ -211,7 +232,7 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDe
             drivers=drivers,
             formulas=formulas,
             benchmarks=benchmarks,
-            created_at=vp.get("createdAt", datetime.now(timezone.utc).isoformat()),
+            created_at=vp.get("createdAt", datetime.now(UTC).isoformat()),
             updated_at=vp.get("updatedAt"),
             created_by=vp.get("createdBy"),
             workspace_id=vp.get("workspaceId"),
@@ -221,10 +242,11 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> Optional[PackDe
 
 # API Endpoints
 
-@router.get("/packs", response_model=List[PackSummary])
+
+@router.get("/packs", response_model=list[PackSummary])
 async def list_packs(
-    industry: Optional[str] = Query(None, description="Filter by industry"),
-    status: Optional[str] = Query(None, description="Filter by status"),
+    industry: str | None = Query(None, description="Filter by industry"),
+    status: str | None = Query(None, description="Filter by status"),
     driver: AsyncDriver = Depends(get_driver),
 ):
     """List available Value Packs."""
@@ -241,7 +263,7 @@ async def list_packs(
            count(DISTINCT b) as benchmark_count
     ORDER BY vp.name
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -249,7 +271,7 @@ async def list_packs(
             status=status,
         )
         records = await result.data()
-        
+
         return [
             PackSummary(
                 pack_id=r["vp"]["id"],
@@ -286,10 +308,10 @@ async def create_pack(
 ):
     """Create a new Value Pack."""
     import uuid
-    
+
     pack_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
+    now = datetime.now(UTC).isoformat()
+
     query = """
     CREATE (vp:ValuePack {
         id: $pack_id,
@@ -319,7 +341,7 @@ async def create_pack(
     )
     RETURN vp
     """
-    
+
     async with driver.session() as session:
         await session.run(
             query,
@@ -335,7 +357,7 @@ async def create_pack(
             formula_ids=request.formula_ids,
             benchmark_ids=request.benchmark_ids,
         )
-    
+
     # Return created pack
     pack = await _get_pack_detail(driver, pack_id)
     if not pack:
@@ -356,14 +378,14 @@ async def update_pack(
         result = await session.run(check_query, pack_id=pack_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Pack not found")
-    
+
     # Build update query
     set_clauses = ["vp.updatedAt = $updated_at"]
     params = {
         "pack_id": pack_id,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
-    
+
     if request.name is not None:
         set_clauses.append("vp.name = $name")
         params["name"] = request.name
@@ -379,16 +401,16 @@ async def update_pack(
     if request.status is not None:
         set_clauses.append("vp.status = $status")
         params["status"] = request.status
-    
+
     update_query = f"""
     MATCH (vp:ValuePack {{id: $pack_id}})
-    SET {', '.join(set_clauses)}
+    SET {", ".join(set_clauses)}
     RETURN vp
     """
-    
+
     async with driver.session() as session:
         await session.run(update_query, **params)
-        
+
         # Update relationships if provided
         if request.driver_ids is not None:
             rel_query = """
@@ -402,7 +424,7 @@ async def update_pack(
             )
             """
             await session.run(rel_query, pack_id=pack_id, driver_ids=request.driver_ids)
-        
+
         if request.formula_ids is not None:
             rel_query = """
             MATCH (vp:ValuePack {id: $pack_id})
@@ -414,8 +436,10 @@ async def update_pack(
                 CREATE (vp)-[:hasFormula]->(formula)
             )
             """
-            await session.run(rel_query, pack_id=pack_id, formula_ids=request.formula_ids)
-        
+            await session.run(
+                rel_query, pack_id=pack_id, formula_ids=request.formula_ids
+            )
+
         if request.benchmark_ids is not None:
             rel_query = """
             MATCH (vp:ValuePack {id: $pack_id})
@@ -427,8 +451,10 @@ async def update_pack(
                 CREATE (vp)-[:hasBenchmark]->(benchmark)
             )
             """
-            await session.run(rel_query, pack_id=pack_id, benchmark_ids=request.benchmark_ids)
-    
+            await session.run(
+                rel_query, pack_id=pack_id, benchmark_ids=request.benchmark_ids
+            )
+
     pack = await _get_pack_detail(driver, pack_id)
     if not pack:
         raise HTTPException(status_code=500, detail="Failed to update pack")
@@ -443,17 +469,17 @@ async def execute_pack(
 ):
     """Execute a Value Pack workflow."""
     import uuid
-    
+
     # Check pack exists
     check_query = "MATCH (vp:ValuePack {id: $pack_id}) RETURN vp"
     async with driver.session() as session:
         result = await session.run(check_query, pack_id=pack_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Pack not found")
-    
+
     execution_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
+    now = datetime.now(UTC).isoformat()
+
     # Create execution record
     query = """
     MATCH (vp:ValuePack {id: $pack_id})
@@ -469,7 +495,7 @@ async def execute_pack(
     CREATE (vp)-[:HAS_EXECUTION]->(pe)
     RETURN pe
     """
-    
+
     async with driver.session() as session:
         await session.run(
             query,
@@ -480,7 +506,7 @@ async def execute_pack(
             user_id=request.user_id,
             started_at=now,
         )
-    
+
     # NOTE: Formula evaluation integration pending.
     # Pack execution currently records the request but does not evaluate formulas.
     # When formula evaluation is integrated, replace this block with actual evaluation.
@@ -492,7 +518,7 @@ async def execute_pack(
     warnings = [
         "Pack execution is partially implemented: variables recorded but formula evaluation not yet active."
     ]
-    
+
     # Update execution status
     complete_query = """
     MATCH (pe:PackExecution {id: $execution_id})
@@ -500,16 +526,16 @@ async def execute_pack(
         pe.outputs = $outputs,
         pe.completedAt = $completed_at
     """
-    
+
     async with driver.session() as session:
         await session.run(
             complete_query,
             execution_id=execution_id,
             status="success",
             outputs=outputs,
-            completed_at=datetime.now(timezone.utc).isoformat(),
+            completed_at=datetime.now(UTC).isoformat(),
         )
-    
+
     return PackExecuteResponse(
         execution_id=execution_id,
         pack_id=pack_id,
@@ -528,32 +554,32 @@ async def fork_pack(
 ):
     """Fork a Value Pack for customization."""
     import uuid
-    
+
     # Get original pack
     orig_query = """
     MATCH (vp:ValuePack {id: $pack_id})
     RETURN vp
     """
-    
+
     async with driver.session() as session:
         result = await session.run(orig_query, pack_id=pack_id)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Pack not found")
-        
+
         orig = record["vp"]
-    
+
     # Create forked pack
     new_pack_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
+    now = datetime.now(UTC).isoformat()
+
     # Increment version using shared utility
     original_version = orig.get("version", "1.0.0")
     new_version = increment_patch_version(original_version)
-    
+
     name = request.name or f"{orig.get('name', 'Unnamed')} (Fork)"
-    
+
     fork_query = """
     MATCH (old:ValuePack {id: $old_pack_id})
     CREATE (new:ValuePack {
@@ -588,7 +614,7 @@ async def fork_pack(
     )
     RETURN new
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             fork_query,
@@ -605,12 +631,12 @@ async def fork_pack(
             created_by=request.user_id,
         )
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=500, detail="Failed to fork pack")
-        
+
         new_pack = record["new"]
-        
+
         return PackForkResponse(
             pack_id=new_pack["id"],
             name=new_pack["name"],

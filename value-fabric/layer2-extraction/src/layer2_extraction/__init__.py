@@ -8,19 +8,19 @@ __version__ = "1.0.0"
 # Models - these have no side effects
 from layer2_extraction.models import (
     Capability,
-    UseCase,
-    Persona,
-    ValueDriver,
-    Feature,
-    RoleType,
-    ValueCategory,
+    ExtractionCost,
     ExtractionResult,
+    Feature,
+    ImpactLevel,
+    JobCostSummary,
+    Persona,
+    PredicateType,
     Relationship,
     RelationshipGraph,
-    PredicateType,
-    ImpactLevel,
-    ExtractionCost,
-    JobCostSummary,
+    RoleType,
+    UseCase,
+    ValueCategory,
+    ValueDriver,
 )
 
 __all__ = [

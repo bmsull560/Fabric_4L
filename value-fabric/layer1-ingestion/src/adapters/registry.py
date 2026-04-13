@@ -1,106 +1,92 @@
-"""Adapter registry for discovering and managing data source adapters.
-"""
+"""Adapter registry for discovering and managing data source adapters."""
 
-from typing import Dict, Type, Optional
 import structlog
 
-from .base import DataSourceAdapter, AdapterType
-from .sec_edgar import SECEdgarAdapter
+from .base import AdapterType, DataSourceAdapter
 from .pdf_adapter import PDFAdapter
+from .sec_edgar import SECEdgarAdapter
 
 logger = structlog.get_logger()
 
 
 class AdapterRegistry:
     """Registry for data source adapters.
-    
+
     Provides centralized access to all available adapters and
     allows runtime registration of new adapters.
     """
-    
+
     def __init__(self):
-        self._adapters: Dict[AdapterType, Type[DataSourceAdapter]] = {}
-        self._instances: Dict[AdapterType, DataSourceAdapter] = {}
+        self._adapters: dict[AdapterType, type[DataSourceAdapter]] = {}
+        self._instances: dict[AdapterType, DataSourceAdapter] = {}
         self.logger = logger
-        
+
         # Register built-in adapters
         self._register_builtin_adapters()
-    
+
     def _register_builtin_adapters(self):
         """Register all built-in adapters."""
         self.register(AdapterType.SEC_EDGAR, SECEdgarAdapter)
         self.register(AdapterType.PDF, PDFAdapter)
         self.logger.info("Built-in adapters registered")
-    
-    def register(
-        self,
-        adapter_type: AdapterType,
-        adapter_class: Type[DataSourceAdapter]
-    ):
+
+    def register(self, adapter_type: AdapterType, adapter_class: type[DataSourceAdapter]):
         """Register an adapter class.
-        
+
         Args:
             adapter_type: The adapter type identifier
             adapter_class: The adapter class (not instance)
         """
         self._adapters[adapter_type] = adapter_class
         self.logger.debug("Adapter registered", adapter_type=adapter_type.value)
-    
-    def get_adapter(
-        self,
-        adapter_type: AdapterType
-    ) -> Optional[DataSourceAdapter]:
+
+    def get_adapter(self, adapter_type: AdapterType) -> DataSourceAdapter | None:
         """Get or create an adapter instance.
-        
+
         Args:
             adapter_type: Type of adapter to retrieve
-            
+
         Returns:
             Adapter instance or None if not found
         """
         # Return cached instance
         if adapter_type in self._instances:
             return self._instances[adapter_type]
-        
+
         # Create new instance
         adapter_class = self._adapters.get(adapter_type)
         if not adapter_class:
             self.logger.error("Adapter not found", adapter_type=adapter_type.value)
             return None
-        
+
         try:
             adapter = adapter_class()
             self._instances[adapter_type] = adapter
             return adapter
         except Exception as e:
             self.logger.error(
-                "Failed to create adapter instance",
-                adapter_type=adapter_type.value,
-                error=str(e)
+                "Failed to create adapter instance", adapter_type=adapter_type.value, error=str(e)
             )
             return None
-    
-    def get_adapter_class(
-        self,
-        adapter_type: AdapterType
-    ) -> Optional[Type[DataSourceAdapter]]:
+
+    def get_adapter_class(self, adapter_type: AdapterType) -> type[DataSourceAdapter] | None:
         """Get adapter class without instantiation.
-        
+
         Args:
             adapter_type: Type of adapter
-            
+
         Returns:
             Adapter class or None
         """
         return self._adapters.get(adapter_type)
-    
+
     def list_adapters(self) -> list:
         """List all registered adapter types."""
         return list(self._adapters.keys())
-    
+
     def clear_instances(self):
         """Clear all cached adapter instances.
-        
+
         Useful for testing or reconfiguration.
         """
         self._instances.clear()

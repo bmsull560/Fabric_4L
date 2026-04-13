@@ -1,10 +1,10 @@
 """Alignment package for semantic entity alignment."""
 
 from .semantic_aligner import (
-    SemanticAligner,
     AlignmentCandidate,
-    AlignmentResult,
     AlignmentMethod,
+    AlignmentResult,
+    SemanticAligner,
 )
 
 __all__ = [

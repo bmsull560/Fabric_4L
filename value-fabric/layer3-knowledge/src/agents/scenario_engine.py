@@ -3,9 +3,9 @@ Scenario Engine for What-If Analysis
 Handles sensitivity analysis and scenario comparison for business cases.
 """
 
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class VariableAdjustment:
     """Single variable adjustment for scenario analysis."""
+
     name: str
     value: float
     original_value: float
@@ -21,6 +22,7 @@ class VariableAdjustment:
 @dataclass
 class ScenarioResult:
     """Result of scenario calculation."""
+
     scenario_id: str
     original_value: float
     adjusted_value: float
@@ -28,18 +30,19 @@ class ScenarioResult:
     new_roi: float
     new_payback_months: float
     formula_used: str
-    calculation_steps: List[Dict[str, Any]]
+    calculation_steps: list[dict[str, Any]]
 
 
 @dataclass
 class SavedScenario:
     """Stored scenario for comparison."""
+
     id: str
     name: str
     base_case_id: str
-    adjustments: List[VariableAdjustment]
+    adjustments: list[VariableAdjustment]
     created_at: str
-    calculated_metrics: Optional[Dict[str, float]] = None
+    calculated_metrics: dict[str, float] | None = None
 
 
 class ScenarioEngine:
@@ -59,9 +62,9 @@ class ScenarioEngine:
 
     def calculate_scenario(
         self,
-        base_case_data: Dict[str, Any],
-        adjustments: List[VariableAdjustment],
-        scenario_id: Optional[str] = None,
+        base_case_data: dict[str, Any],
+        adjustments: list[VariableAdjustment],
+        scenario_id: str | None = None,
     ) -> ScenarioResult:
         """Calculate new metrics based on variable adjustments.
 
@@ -87,7 +90,9 @@ class ScenarioEngine:
 
         # Calculate deltas
         value_delta = adjusted_value - original_value
-        delta_percentage = (value_delta / original_value * 100) if original_value else 0.0
+        delta_percentage = (
+            (value_delta / original_value * 100) if original_value else 0.0
+        )
 
         # Build calculation steps for transparency
         steps = self._build_calculation_steps(
@@ -116,9 +121,9 @@ class ScenarioEngine:
 
     def compare_scenarios(
         self,
-        base_case_data: Dict[str, Any],
-        scenarios: List[SavedScenario],
-    ) -> Dict[str, Any]:
+        base_case_data: dict[str, Any],
+        scenarios: list[SavedScenario],
+    ) -> dict[str, Any]:
         """Compare multiple scenarios side-by-side.
 
         Args:
@@ -136,14 +141,16 @@ class ScenarioEngine:
                 scenario.adjustments,
                 scenario.id,
             )
-            results.append({
-                "scenario_id": result.scenario_id,
-                "name": scenario.name,
-                "adjusted_value": result.adjusted_value,
-                "delta_percentage": result.delta_percentage,
-                "new_roi": result.new_roi,
-                "new_payback_months": result.new_payback_months,
-            })
+            results.append(
+                {
+                    "scenario_id": result.scenario_id,
+                    "name": scenario.name,
+                    "adjusted_value": result.adjusted_value,
+                    "delta_percentage": result.delta_percentage,
+                    "new_roi": result.new_roi,
+                    "new_payback_months": result.new_payback_months,
+                }
+            )
 
         # Sort by adjusted value (descending)
         results.sort(key=lambda x: x["adjusted_value"], reverse=True)
@@ -159,10 +166,10 @@ class ScenarioEngine:
 
     def sensitivity_analysis(
         self,
-        base_case_data: Dict[str, Any],
+        base_case_data: dict[str, Any],
         variable_name: str,
-        range_percentages: List[float],
-    ) -> List[ScenarioResult]:
+        range_percentages: list[float],
+    ) -> list[ScenarioResult]:
         """Run sensitivity analysis on a single variable.
 
         Args:
@@ -199,7 +206,7 @@ class ScenarioEngine:
         self,
         original_value: float,
         impl_cost: float,
-        adjustments: List[VariableAdjustment],
+        adjustments: list[VariableAdjustment],
     ) -> float:
         """Apply variable adjustments to calculate new total value."""
         adjusted_value = original_value
@@ -213,7 +220,9 @@ class ScenarioEngine:
                 adjusted_value -= cost_delta  # Higher cost = lower net value
             elif adj.name == "annual_savings":
                 # Annual savings flows into total value over defined horizon
-                savings_delta = (adj.value - adj.original_value) * self.ANNUAL_SAVINGS_HORIZON_YEARS
+                savings_delta = (
+                    adj.value - adj.original_value
+                ) * self.ANNUAL_SAVINGS_HORIZON_YEARS
                 adjusted_value += savings_delta
             elif adj.name == "timeline_months":
                 # Timeline affects cost based on per-month overhead assumption
@@ -224,7 +233,7 @@ class ScenarioEngine:
                 # Generic percentage adjustment
                 if adj.original_value != 0:
                     pct_change = (adj.value - adj.original_value) / adj.original_value
-                    adjusted_value *= (1 + pct_change)
+                    adjusted_value *= 1 + pct_change
 
         return max(0.0, adjusted_value)  # Value can't be negative
 
@@ -248,43 +257,51 @@ class ScenarioEngine:
         original_value: float,
         adjusted_value: float,
         impl_cost: float,
-        adjustments: List[VariableAdjustment],
-    ) -> List[Dict[str, Any]]:
+        adjustments: list[VariableAdjustment],
+    ) -> list[dict[str, Any]]:
         """Build human-readable calculation steps."""
         steps = []
 
         # Step 1: Show base values
-        steps.append({
-            "step": 1,
-            "operation": "Base case values",
-            "details": {
-                "total_value": original_value,
-                "implementation_cost": impl_cost,
-            },
-        })
+        steps.append(
+            {
+                "step": 1,
+                "operation": "Base case values",
+                "details": {
+                    "total_value": original_value,
+                    "implementation_cost": impl_cost,
+                },
+            }
+        )
 
         # Step 2: Show adjustments
         for i, adj in enumerate(adjustments, start=2):
-            steps.append({
-                "step": i,
-                "operation": f"Adjust {adj.name}",
-                "details": {
-                    "from": adj.original_value,
-                    "to": adj.value,
-                    "change": adj.value - adj.original_value,
-                },
-            })
+            steps.append(
+                {
+                    "step": i,
+                    "operation": f"Adjust {adj.name}",
+                    "details": {
+                        "from": adj.original_value,
+                        "to": adj.value,
+                        "change": adj.value - adj.original_value,
+                    },
+                }
+            )
 
         # Final step: Show result
-        steps.append({
-            "step": len(adjustments) + 2,
-            "operation": "Calculate new metrics",
-            "details": {
-                "adjusted_total_value": adjusted_value,
-                "new_roi": self._calculate_roi(adjusted_value, impl_cost),
-                "new_payback_months": self._calculate_payback(adjusted_value, impl_cost),
-            },
-        })
+        steps.append(
+            {
+                "step": len(adjustments) + 2,
+                "operation": "Calculate new metrics",
+                "details": {
+                    "adjusted_total_value": adjusted_value,
+                    "new_roi": self._calculate_roi(adjusted_value, impl_cost),
+                    "new_payback_months": self._calculate_payback(
+                        adjusted_value, impl_cost
+                    ),
+                },
+            }
+        )
 
         return steps
 

@@ -6,14 +6,14 @@ using Pydantic v2 with strict validation.
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class RoleType(str, Enum):
     """Valid persona role types in the enterprise buying process."""
+
     ECONOMIC_BUYER = "economic_buyer"
     OPERATIONAL_USER = "operational_user"
     STAKEHOLDER = "stakeholder"
@@ -21,6 +21,7 @@ class RoleType(str, Enum):
 
 class ValueCategory(str, Enum):
     """Categories of value drivers in enterprise software."""
+
     REVENUE = "revenue"
     COST = "cost"
     RISK = "risk"
@@ -29,10 +30,10 @@ class ValueCategory(str, Enum):
 
 class Capability(BaseModel):
     """A technical capability or feature of a product/service.
-    
+
     Capabilities are the building blocks that enable use cases and
     contribute to value drivers.
-    
+
     Attributes:
         id: Unique identifier (UUID)
         name: Human-readable capability name
@@ -46,18 +47,19 @@ class Capability(BaseModel):
         extracted_at: Timestamp of extraction
         extraction_job_id: Reference to extraction job
     """
+
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str = Field(..., min_length=1, max_length=255)
     description: str = Field(..., min_length=10)
-    technical_features: List[str] = Field(default_factory=list)
-    api_endpoints: List[str] = Field(default_factory=list)
-    integrations: List[str] = Field(default_factory=list)
-    apqc_mapping: Optional[str] = None
-    source_refs: List[str] = Field(default_factory=list)
+    technical_features: list[str] = Field(default_factory=list)
+    api_endpoints: list[str] = Field(default_factory=list)
+    integrations: list[str] = Field(default_factory=list)
+    apqc_mapping: str | None = None
+    source_refs: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     extracted_at: datetime = Field(default_factory=datetime.utcnow)
-    extraction_job_id: Optional[str] = None
-    
+    extraction_job_id: str | None = None
+
     @field_validator("name")
     @classmethod
     def normalize_name(cls, v: str) -> str:
@@ -69,22 +71,18 @@ class Capability(BaseModel):
             "example": {
                 "name": "Real-Time Data Ingestion",
                 "description": "Stream data from multiple sources with sub-second latency",
-                "technical_features": [
-                    "Kafka streaming",
-                    "Change data capture",
-                    "Schema registry"
-                ],
-                "confidence": 0.92
+                "technical_features": ["Kafka streaming", "Change data capture", "Schema registry"],
+                "confidence": 0.92,
             }
         }
 
 
 class UseCase(BaseModel):
     """A business use case that solves a specific problem.
-    
+
     Use cases represent how capabilities are applied to solve business
     problems for specific personas.
-    
+
     Attributes:
         id: Unique identifier (UUID)
         name: Human-readable use case name
@@ -96,20 +94,21 @@ class UseCase(BaseModel):
         confidence: LLM confidence score
         extracted_at: Timestamp of extraction
     """
+
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str = Field(..., min_length=1, max_length=255)
     description: str = Field(..., min_length=10)
-    industry_context: List[str] = Field(default_factory=list)
-    required_capabilities: List[str] = Field(default_factory=list)
-    workflow_steps: List[str] = Field(default_factory=list)
-    kpis: List[str] = Field(default_factory=list)
+    industry_context: list[str] = Field(default_factory=list)
+    required_capabilities: list[str] = Field(default_factory=list)
+    workflow_steps: list[str] = Field(default_factory=list)
+    kpis: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     extracted_at: datetime = Field(default_factory=datetime.utcnow)
-    extraction_job_id: Optional[str] = None
+    extraction_job_id: str | None = None
 
     @field_validator("required_capabilities")
     @classmethod
-    def validate_capability_refs(cls, v: List[str]) -> List[str]:
+    def validate_capability_refs(cls, v: list[str]) -> list[str]:
         """Ensure all capability references are valid UUID strings."""
         for ref in v:
             try:
@@ -121,10 +120,10 @@ class UseCase(BaseModel):
 
 class Persona(BaseModel):
     """A stakeholder or user persona in the enterprise buying process.
-    
+
     Personas represent the people involved in decisions, their pain points,
     and what drives value for them.
-    
+
     Attributes:
         id: Unique identifier (UUID)
         role_type: Type of role in buying process
@@ -136,20 +135,21 @@ class Persona(BaseModel):
         confidence: LLM confidence score
         extracted_at: Timestamp of extraction
     """
+
     id: str = Field(default_factory=lambda: str(uuid4()))
     role_type: RoleType
     title: str = Field(..., min_length=1, max_length=255)
     department: str = Field(..., min_length=1, max_length=255)
-    pain_points: List[str] = Field(default_factory=list)
-    success_metrics: List[str] = Field(default_factory=list)
-    influenced_by: List[str] = Field(default_factory=list)
+    pain_points: list[str] = Field(default_factory=list)
+    success_metrics: list[str] = Field(default_factory=list)
+    influenced_by: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     extracted_at: datetime = Field(default_factory=datetime.utcnow)
-    extraction_job_id: Optional[str] = None
+    extraction_job_id: str | None = None
 
     @field_validator("influenced_by")
     @classmethod
-    def validate_persona_refs(cls, v: List[str]) -> List[str]:
+    def validate_persona_refs(cls, v: list[str]) -> list[str]:
         """Ensure all persona references are valid UUID strings."""
         for ref in v:
             try:
@@ -161,10 +161,10 @@ class Persona(BaseModel):
 
 class ValueDriver(BaseModel):
     """A quantifiable business value that drives ROI.
-    
+
     Value drivers connect capabilities to business outcomes with
     mathematical formulas for calculating ROI.
-    
+
     Attributes:
         id: Unique identifier (UUID)
         category: Type of value (revenue, cost, risk, capital)
@@ -177,21 +177,22 @@ class ValueDriver(BaseModel):
         confidence: LLM confidence score
         extracted_at: Timestamp of extraction
     """
+
     id: str = Field(default_factory=lambda: str(uuid4()))
     category: ValueCategory
     name: str = Field(..., min_length=1, max_length=255)
     description: str = Field(..., min_length=10)
-    metrics: List[str] = Field(default_factory=list)
-    formula_string: Optional[str] = None
+    metrics: list[str] = Field(default_factory=list)
+    formula_string: str | None = None
     unit: str = Field(..., min_length=1, max_length=50)
-    time_to_value: Optional[str] = None
+    time_to_value: str | None = None
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     extracted_at: datetime = Field(default_factory=datetime.utcnow)
-    extraction_job_id: Optional[str] = None
-    
+    extraction_job_id: str | None = None
+
     @field_validator("formula_string")
     @classmethod
-    def validate_formula(cls, v: Optional[str]) -> Optional[str]:
+    def validate_formula(cls, v: str | None) -> str | None:
         """Basic validation that formula uses only allowed characters.
 
         Allows:
@@ -217,11 +218,11 @@ class ValueDriver(BaseModel):
 
 class Feature(BaseModel):
     """A product feature that implements a capability.
-    
+
     Features represent concrete product functionality that delivers
     one or more capabilities. They sit between raw capabilities
     and user-facing use cases in the ontology hierarchy.
-    
+
     Attributes:
         id: Unique identifier (UUID)
         name: Human-readable feature name
@@ -234,20 +235,21 @@ class Feature(BaseModel):
         extracted_at: Timestamp of extraction
         extraction_job_id: Reference to extraction job
     """
+
     id: str = Field(default_factory=lambda: str(uuid4()))
     name: str = Field(..., min_length=1, max_length=255)
     description: str = Field(..., min_length=10)
-    parent_capability_id: Optional[str] = None
-    technical_spec: Optional[str] = None
+    parent_capability_id: str | None = None
+    technical_spec: str | None = None
     implementation_status: str = Field(default="ga", pattern="^(planned|beta|ga|deprecated)$")
-    source_refs: List[str] = Field(default_factory=list)
+    source_refs: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     extracted_at: datetime = Field(default_factory=datetime.utcnow)
-    extraction_job_id: Optional[str] = None
-    
+    extraction_job_id: str | None = None
+
     @field_validator("parent_capability_id")
     @classmethod
-    def validate_capability_ref(cls, v: Optional[str]) -> Optional[str]:
+    def validate_capability_ref(cls, v: str | None) -> str | None:
         """Ensure capability reference is valid UUID if provided."""
         if v is None:
             return v
@@ -256,7 +258,7 @@ class Feature(BaseModel):
         except ValueError:
             raise ValueError(f"Invalid capability reference: {v}")
         return v
-    
+
     @field_validator("name")
     @classmethod
     def normalize_name(cls, v: str) -> str:
@@ -266,33 +268,30 @@ class Feature(BaseModel):
 
 class ExtractionResult(BaseModel):
     """Complete result from an extraction job.
-    
+
     Contains all entities and relationships extracted from a document
     with provenance metadata.
     """
+
     job_id: str = Field(default_factory=lambda: str(uuid4()))
     source_url: str
-    source_content_id: Optional[str] = None
-    capabilities: List[Capability] = Field(default_factory=list)
-    use_cases: List[UseCase] = Field(default_factory=list)
-    personas: List[Persona] = Field(default_factory=list)
-    value_drivers: List[ValueDriver] = Field(default_factory=list)
-    features: List[Feature] = Field(default_factory=list)
+    source_content_id: str | None = None
+    capabilities: list[Capability] = Field(default_factory=list)
+    use_cases: list[UseCase] = Field(default_factory=list)
+    personas: list[Persona] = Field(default_factory=list)
+    value_drivers: list[ValueDriver] = Field(default_factory=list)
+    features: list[Feature] = Field(default_factory=list)
     processed_at: datetime = Field(default_factory=datetime.utcnow)
     chunks_processed: int = 0
-    errors: List[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
 
-    def get_all_entities(self) -> List[BaseModel]:
+    def get_all_entities(self) -> list[BaseModel]:
         """Return all extracted entities as a flat list."""
         return (
-            self.capabilities +
-            self.use_cases +
-            self.personas +
-            self.value_drivers +
-            self.features
+            self.capabilities + self.use_cases + self.personas + self.value_drivers + self.features
         )
-    
-    def get_entity_by_id(self, entity_id: str) -> Optional[BaseModel]:
+
+    def get_entity_by_id(self, entity_id: str) -> BaseModel | None:
         """Find an entity by its ID across all types."""
         for entity in self.get_all_entities():
             if entity.id == entity_id:

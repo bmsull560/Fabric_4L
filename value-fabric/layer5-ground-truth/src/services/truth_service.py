@@ -6,8 +6,7 @@ All methods accept an open AsyncSession and do not commit — callers commit.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -32,19 +31,20 @@ _state_machine = ValidationStateMachine()
 # Create
 # ---------------------------------------------------------------------------
 
+
 async def create_truth_object(
     db: AsyncSession,
     organization_id: UUID,
     claim: str,
     claim_type: ClaimType,
     confidence: float,
-    extraction_job_id: Optional[str] = None,
-    extraction_model: Optional[str] = None,
-    value: Optional[dict] = None,
-    applies_to: Optional[dict] = None,
-    raw_extraction_data: Optional[dict] = None,
-    sources: Optional[list[dict]] = None,
-    created_by: Optional[str] = None,
+    extraction_job_id: str | None = None,
+    extraction_model: str | None = None,
+    value: dict | None = None,
+    applies_to: dict | None = None,
+    raw_extraction_data: dict | None = None,
+    sources: list[dict] | None = None,
+    created_by: str | None = None,
 ) -> TruthObject:
     """
     Create a new TruthObject in EXTRACTED state and optionally attach sources.
@@ -54,9 +54,7 @@ async def create_truth_object(
     """
     settings = get_settings()
 
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        days=settings.default_freshness_days
-    )
+    expires_at = datetime.now(UTC) + timedelta(days=settings.default_freshness_days)
 
     truth = TruthObject(
         organization_id=organization_id,
@@ -70,7 +68,7 @@ async def create_truth_object(
         raw_extraction_data=raw_extraction_data,
         status=TruthStatus.EXTRACTED.value,
         maturity_level=MaturityLevel.EXTRACTED.value,
-        freshness=datetime.now(timezone.utc),
+        freshness=datetime.now(UTC),
         expires_at=expires_at,
     )
     db.add(truth)
@@ -121,11 +119,12 @@ async def create_truth_object(
 # Read
 # ---------------------------------------------------------------------------
 
+
 async def get_truth_object(
     db: AsyncSession,
     truth_id: UUID,
     organization_id: UUID,
-) -> Optional[TruthObject]:
+) -> TruthObject | None:
     """Fetch a single TruthObject by ID, scoped to the organization."""
     result = await db.execute(
         select(TruthObject).where(
@@ -142,12 +141,12 @@ async def get_truth_object(
 async def list_truth_objects(
     db: AsyncSession,
     organization_id: UUID,
-    status: Optional[TruthStatus] = None,
-    claim_type: Optional[ClaimType] = None,
-    min_maturity: Optional[int] = None,
-    min_confidence: Optional[float] = None,
-    is_stale: Optional[bool] = None,
-    applies_to_opportunity: Optional[str] = None,
+    status: TruthStatus | None = None,
+    claim_type: ClaimType | None = None,
+    min_maturity: int | None = None,
+    min_confidence: float | None = None,
+    is_stale: bool | None = None,
+    applies_to_opportunity: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> tuple[list[TruthObject], int]:
@@ -202,6 +201,7 @@ async def list_truth_objects(
 # Add source
 # ---------------------------------------------------------------------------
 
+
 async def add_source(
     db: AsyncSession,
     truth_object: TruthObject,
@@ -230,14 +230,15 @@ async def add_source(
 # Validate (state transitions via API)
 # ---------------------------------------------------------------------------
 
+
 async def validate_truth_object(
     db: AsyncSession,
     truth_object: TruthObject,
     action: str,
     actor: str,
     actor_type: str = "human",
-    notes: Optional[str] = None,
-    dispute_reason: Optional[str] = None,
+    notes: str | None = None,
+    dispute_reason: str | None = None,
 ) -> TruthObject:
     """
     Apply a named validation action to a TruthObject.
@@ -260,7 +261,9 @@ async def validate_truth_object(
             db, truth_object, approved_by=actor, notes=notes
         )
     elif action == "dispute":
-        reason = DisputeReason(dispute_reason) if dispute_reason else DisputeReason.OTHER
+        reason = (
+            DisputeReason(dispute_reason) if dispute_reason else DisputeReason.OTHER
+        )
         return await _state_machine.dispute(
             db, truth_object, reason=reason, disputed_by=actor, notes=notes
         )
@@ -270,7 +273,11 @@ async def validate_truth_object(
         )
     elif action == "operationalize":
         return await _state_machine.mark_operationalized(
-            db, truth_object, trigger="api_call", triggered_by=actor, context={"notes": notes}
+            db,
+            truth_object,
+            trigger="api_call",
+            triggered_by=actor,
+            context={"notes": notes},
         )
     else:
         raise ValueError(f"Unknown validation action: {action!r}")
@@ -280,13 +287,14 @@ async def validate_truth_object(
 # Freshness monitor
 # ---------------------------------------------------------------------------
 
+
 async def mark_stale_objects(db: AsyncSession, organization_id: UUID) -> int:
     """
     Mark all TruthObjects past their expires_at date as stale.
 
     Returns the number of objects marked stale.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(TruthObject).where(
             and_(
@@ -314,13 +322,14 @@ async def mark_stale_objects(db: AsyncSession, organization_id: UUID) -> int:
 # Soft delete
 # ---------------------------------------------------------------------------
 
+
 async def soft_delete_truth_object(
     db: AsyncSession,
     truth_object: TruthObject,
-    deleted_by: Optional[str] = None,
+    deleted_by: str | None = None,
 ) -> TruthObject:
     """Soft-delete a TruthObject by setting deleted_at."""
-    truth_object.deleted_at = datetime.now(timezone.utc)
-    truth_object.updated_at = datetime.now(timezone.utc)
+    truth_object.deleted_at = datetime.now(UTC)
+    truth_object.updated_at = datetime.now(UTC)
     logger.info("Soft-deleted TruthObject %s by %s", truth_object.id, deleted_by)
     return truth_object

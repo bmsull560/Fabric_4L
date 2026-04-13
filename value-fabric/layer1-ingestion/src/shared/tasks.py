@@ -5,44 +5,48 @@ Manages ScrapingJob lifecycle through 11 PipelineStages.
 """
 
 import asyncio
-import json
 import hashlib
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
 from uuid import UUID
 
-from celery import Celery, chain
-from celery.exceptions import MaxRetriesExceededError
 import structlog
+from celery import Celery, chain
 
+from ..compliance.pii_scanner import PIIScanner
+from ..compliance.robots_checker import RobotsChecker
+from ..crawler.playwright_crawler import PlaywrightCrawler
 from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import (
-    ScrapingJob, ScrapingTarget, RawContent, ExtractedData, ComplianceLog,
-    JobStageDetail, JobError, CrawlQueueItem,
-    JobStatus, PipelineStage, ComplianceEventType, ExtractionMethod
+    ComplianceEventType,
+    ComplianceLog,
+    ExtractedData,
+    ExtractionMethod,
+    JobError,
+    JobStageDetail,
+    JobStatus,
+    PipelineStage,
+    RawContent,
+    ScrapingJob,
+    ScrapingTarget,
 )
-from ..crawler.playwright_crawler import PlaywrightCrawler
-from ..post_processor.content_extractor import ContentExtractor
-from ..compliance.robots_checker import RobotsChecker
-from ..compliance.pii_scanner import PIIScanner
 
 logger = structlog.get_logger()
 
 # Initialize Celery app
 celery_app = Celery(
-    'layer1_ingestion',
+    "layer1_ingestion",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=['src.shared.tasks']
+    include=["src.shared.tasks"],
 )
 
 # Celery configuration
 celery_app.conf.update(
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='UTC',
+    task_serializer="json",
+    accept_content=["json"],
+    result_serializer="json",
+    timezone="UTC",
     enable_utc=True,
     task_track_started=True,
     task_time_limit=3600,  # 1 hour max per task
@@ -55,27 +59,28 @@ celery_app.conf.update(
 # PIPELINE ORCHESTRATION
 # =============================================================================
 
+
 @celery_app.task(bind=True, max_retries=3)
 def process_scraping_job(self, job_id: str):
     """Main pipeline orchestrator for a ScrapingJob.
-    
+
     Chains all pipeline stages together for sequential execution.
     """
     job_id = UUID(job_id)
-    
+
     logger.info("Starting scraping job pipeline", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             # Start job
             job.status = JobStatus.VALIDATING.value
             job.started_at = datetime.utcnow()
             session.commit()
-        
+
         # Execute pipeline chain
         pipeline_chain = chain(
             compliance_check_stage.s(job_id),
@@ -86,23 +91,15 @@ def process_scraping_job(self, job_id: str):
             post_processing_stage.s(),
             validation_stage.s(),
             storage_stage.s(),
-            notification_stage.s()
+            notification_stage.s(),
         )
-        
+
         result = pipeline_chain.apply_async()
-        
-        return {
-            'success': True,
-            'job_id': str(job_id),
-            'task_id': result.id
-        }
-        
+
+        return {"success": True, "job_id": str(job_id), "task_id": result.id}
+
     except Exception as exc:
-        logger.error(
-            "Pipeline orchestration failed",
-            job_id=str(job_id),
-            error=str(exc)
-        )
+        logger.error("Pipeline orchestration failed", job_id=str(job_id), error=str(exc))
         _fail_job(job_id, str(exc), PipelineStage.INIT)
         raise self.retry(exc=exc, countdown=60)
 
@@ -111,35 +108,36 @@ def process_scraping_job(self, job_id: str):
 # PIPELINE STAGES
 # =============================================================================
 
+
 @celery_app.task(bind=True, max_retries=3)
 def compliance_check_stage(self, job_id: UUID):
     """Stage 1: Compliance Check (robots.txt, rate limits, domain policies)."""
     logger.info("Starting compliance check stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             # Update stage status
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "RUNNING")
             job.status = JobStatus.VALIDATING.value
             job.progress_stage = PipelineStage.COMPLIANCE_CHECK.value
             session.commit()
-            
+
             # Get target configuration
             config = job.configuration
-            url = config.get('url', '')
-            compliance_config = config.get('compliance', {})
-            
+            url = config.get("url", "")
+            compliance_config = config.get("compliance", {})
+
             # Check robots.txt
-            if compliance_config.get('respect_robots_txt', True):
+            if compliance_config.get("respect_robots_txt", True):
                 checker = RobotsChecker(session)
-                domain = url.split('/')[2] if '/' in url else url
-                
+                domain = url.split("/")[2] if "/" in url else url
+
                 result = asyncio.run(checker.check_url(domain, url))
-                
+
                 # Log compliance check
                 log = ComplianceLog(
                     organization_id=job.organization_id,
@@ -150,36 +148,39 @@ def compliance_check_stage(self, job_id: UUID):
                     robots_txt_check={
                         "url": url,
                         "robots_txt_url": f"https://{domain}/robots.txt",
-                        "user_agent": compliance_config.get('user_agent_string', 'ValueFabricBot'),
+                        "user_agent": compliance_config.get("user_agent_string", "ValueFabricBot"),
                         "allowed": result.allowed,
-                        "crawl_delay": result.crawl_delay
+                        "crawl_delay": result.crawl_delay,
                     },
                     request_url=url,
-                    request_user_agent=compliance_config.get('user_agent_string', 'ValueFabricBot')
+                    request_user_agent=compliance_config.get("user_agent_string", "ValueFabricBot"),
                 )
                 session.add(log)
-                
+
                 if not result.allowed:
                     _fail_job(job_id, "URL blocked by robots.txt", PipelineStage.COMPLIANCE_CHECK)
-                    return {'success': False, 'error': 'robots.txt blocked', 'job_id': str(job_id)}
-                
+                    return {"success": False, "error": "robots.txt blocked", "job_id": str(job_id)}
+
                 # Apply crawl delay
                 if result.crawl_delay:
                     import time
+
                     time.sleep(result.crawl_delay)
-            
+
             # Complete stage
             _update_stage(session, job_id, PipelineStage.COMPLIANCE_CHECK, "COMPLETED")
             session.commit()
-            
+
             logger.info("Compliance check completed", job_id=str(job_id))
-            return {'success': True, 'job_id': str(job_id)}
-            
+            return {"success": True, "job_id": str(job_id)}
+
     except Exception as exc:
         logger.error("Compliance check failed", job_id=str(job_id), error=str(exc))
         try:
             with get_db_session() as error_session:
-                _update_stage(error_session, job_id, PipelineStage.COMPLIANCE_CHECK, "FAILED", str(exc))
+                _update_stage(
+                    error_session, job_id, PipelineStage.COMPLIANCE_CHECK, "FAILED", str(exc)
+                )
         except Exception as update_exc:
             logger.error("Failed to update stage status", job_id=str(job_id), error=str(update_exc))
         raise self.retry(exc=exc, countdown=30)
@@ -188,31 +189,31 @@ def compliance_check_stage(self, job_id: UUID):
 @celery_app.task(bind=True, max_retries=2)
 def browser_launch_stage(self, prev_result: dict):
     """Stage 2: Browser Acquisition and Launch."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting browser launch stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             _update_stage(session, job_id, PipelineStage.BROWSER_LAUNCH, "RUNNING")
             job.status = JobStatus.BROWSER_ACQUIRING.value
             job.progress_stage = PipelineStage.BROWSER_LAUNCH.value
             job.resources_browser_sessions_used += 1
             session.commit()
-            
+
             # Browser is launched per-URL in navigation stage
             # This stage mainly tracks resource allocation
-            
+
             _update_stage(session, job_id, PipelineStage.BROWSER_LAUNCH, "COMPLETED")
             session.commit()
-            
+
             logger.info("Browser launch completed", job_id=str(job_id))
-            return {'success': True, 'job_id': str(job_id)}
-            
+            return {"success": True, "job_id": str(job_id)}
+
     except Exception as exc:
         logger.error("Browser launch failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.BROWSER_LAUNCH, "FAILED", str(exc))
@@ -222,52 +223,56 @@ def browser_launch_stage(self, prev_result: dict):
 @celery_app.task(bind=True, max_retries=3)
 def navigation_stage(self, prev_result: dict):
     """Stage 3: Navigate to URL and handle dynamic content."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting navigation stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             _update_stage(session, job_id, PipelineStage.NAVIGATION, "RUNNING")
             job.status = JobStatus.NAVIGATING.value
             job.progress_stage = PipelineStage.NAVIGATION.value
             session.commit()
-            
+
             config = job.configuration
-            url = config.get('url', '')
-            browser_config = config.get('browser_config', {})
-            
+            url = config.get("url", "")
+            browser_config = config.get("browser_config", {})
+
             # Launch browser and navigate
             async def _navigate():
                 async with PlaywrightCrawler(
-                    headless=browser_config.get('headless', True),
-                    proxy_config=config.get('proxy_config')
+                    headless=browser_config.get("headless", True),
+                    proxy_config=config.get("proxy_config"),
                 ) as crawler:
                     result = await crawler.navigate(url)
                     return result
-            
+
             nav_result = asyncio.run(_navigate())
-            
+
             if nav_result.error:
                 raise Exception(nav_result.error)
-            
+
             # Store navigation result for next stage
-            job.configuration['navigation_result'] = {
-                'final_url': nav_result.final_url,
-                'status_code': nav_result.status_code,
-                'headers': nav_result.headers
+            job.configuration["navigation_result"] = {
+                "final_url": nav_result.final_url,
+                "status_code": nav_result.status_code,
+                "headers": nav_result.headers,
             }
-            
+
             _update_stage(session, job_id, PipelineStage.NAVIGATION, "COMPLETED")
             session.commit()
-            
+
             logger.info("Navigation completed", job_id=str(job_id), final_url=nav_result.final_url)
-            return {'success': True, 'job_id': str(job_id), 'navigation_result': nav_result.__dict__}
-            
+            return {
+                "success": True,
+                "job_id": str(job_id),
+                "navigation_result": nav_result.__dict__,
+            }
+
     except Exception as exc:
         logger.error("Navigation failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.NAVIGATION, "FAILED", str(exc))
@@ -277,53 +282,57 @@ def navigation_stage(self, prev_result: dict):
 @celery_app.task(bind=True, max_retries=2)
 def content_capture_stage(self, prev_result: dict):
     """Stage 4: Capture content (HTML, screenshots, DOM snapshot)."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting content capture stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             _update_stage(session, job_id, PipelineStage.CONTENT_CAPTURE, "RUNNING")
             job.status = JobStatus.EXTRACTING.value
             job.progress_stage = PipelineStage.CONTENT_CAPTURE.value
             session.commit()
-            
+
             config = job.configuration
-            url = config.get('url', '')
-            browser_config = config.get('browser_config', {})
-            extraction_config = config.get('extraction_config', {})
-            
+            url = config.get("url", "")
+            browser_config = config.get("browser_config", {})
+            extraction_config = config.get("extraction_config", {})
+
             async def _capture():
                 async with PlaywrightCrawler(
-                    headless=browser_config.get('headless', True)
+                    headless=browser_config.get("headless", True)
                 ) as crawler:
                     # Capture full page content
                     result = await crawler.capture_page(
                         url=url,
-                        wait_for_selector=browser_config.get('wait_for_selector'),
-                        wait_timeout=browser_config.get('wait_timeout', 30000)
+                        wait_for_selector=browser_config.get("wait_for_selector"),
+                        wait_timeout=browser_config.get("wait_timeout", 30000),
                     )
                     return result
-            
+
             capture_result = asyncio.run(_capture())
-            
+
             # Calculate content hash
             content_hash = hashlib.sha256(
-                capture_result.html_content.encode() if capture_result.html_content else b''
+                capture_result.html_content.encode() if capture_result.html_content else b""
             ).hexdigest()
-            
+
             # Check for duplicates
-            existing = session.query(RawContent).filter(
-                RawContent.organization_id == job.organization_id,
-                RawContent.content_hash == content_hash
-            ).first()
-            
+            existing = (
+                session.query(RawContent)
+                .filter(
+                    RawContent.organization_id == job.organization_id,
+                    RawContent.content_hash == content_hash,
+                )
+                .first()
+            )
+
             is_duplicate = existing is not None
-            
+
             # Create RawContent record
             raw_content = RawContent(
                 job_id=job_id,
@@ -331,42 +340,44 @@ def content_capture_stage(self, prev_result: dict):
                 target_id=job.target_id,
                 source_url=url,
                 source_final_url=capture_result.final_url,
-                source_domain=url.split('/')[2] if '/' in url else url,
+                source_domain=url.split("/")[2] if "/" in url else url,
                 source_http_status=capture_result.status_code,
                 source_headers=capture_result.headers,
-                storage_html_path=capture_result.storage_paths.get('html'),
-                storage_screenshot_path=capture_result.storage_paths.get('screenshot'),
-                storage_dom_snapshot_path=capture_result.storage_paths.get('dom_snapshot'),
+                storage_html_path=capture_result.storage_paths.get("html"),
+                storage_screenshot_path=capture_result.storage_paths.get("screenshot"),
+                storage_dom_snapshot_path=capture_result.storage_paths.get("dom_snapshot"),
                 meta_title=capture_result.title,
                 meta_description=capture_result.description,
                 capture_method="DYNAMIC",
                 capture_browser_version=capture_result.browser_version,
                 capture_javascript_executed=True,
-                capture_wait_time_ms=browser_config.get('wait_timeout', 30000),
+                capture_wait_time_ms=browser_config.get("wait_timeout", 30000),
                 content_hash=content_hash,
                 is_duplicate=is_duplicate,
                 duplicate_of_id=existing.id if existing else None,
-                processing_status="PENDING"
+                processing_status="PENDING",
             )
-            
+
             session.add(raw_content)
             session.flush()
-            
+
             # Update job with raw_content_id
-            job.configuration['raw_content_id'] = str(raw_content.id)
+            job.configuration["raw_content_id"] = str(raw_content.id)
             job.results_raw_content_count += 1
-            
+
             _update_stage(session, job_id, PipelineStage.CONTENT_CAPTURE, "COMPLETED")
             session.commit()
-            
-            logger.info("Content capture completed", job_id=str(job_id), raw_content_id=str(raw_content.id))
+
+            logger.info(
+                "Content capture completed", job_id=str(job_id), raw_content_id=str(raw_content.id)
+            )
             return {
-                'success': True,
-                'job_id': str(job_id),
-                'raw_content_id': str(raw_content.id),
-                'html_content': capture_result.html_content
+                "success": True,
+                "job_id": str(job_id),
+                "raw_content_id": str(raw_content.id),
+                "html_content": capture_result.html_content,
             }
-            
+
     except Exception as exc:
         logger.error("Content capture failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.CONTENT_CAPTURE, "FAILED", str(exc))
@@ -376,46 +387,48 @@ def content_capture_stage(self, prev_result: dict):
 @celery_app.task(bind=True, max_retries=2)
 def ai_extraction_stage(self, prev_result: dict):
     """Stage 5: AI/LLM Extraction (conditional based on config)."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting AI extraction stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             config = job.configuration
-            extraction_config = config.get('extraction_config', {})
-            method = extraction_config.get('method', 'DETERMINISTIC')
-            
+            extraction_config = config.get("extraction_config", {})
+            method = extraction_config.get("method", "DETERMINISTIC")
+
             if method == ExtractionMethod.DETERMINISTIC.value:
                 # Skip AI extraction for deterministic method
                 logger.info("Skipping AI extraction (deterministic mode)", job_id=str(job_id))
-                return {'success': True, 'job_id': str(job_id), 'skipped': True}
-            
+                return {"success": True, "job_id": str(job_id), "skipped": True}
+
             _update_stage(session, job_id, PipelineStage.AI_EXTRACTION, "RUNNING")
             job.progress_stage = PipelineStage.AI_EXTRACTION.value
             session.commit()
-            
+
             # Get raw content
-            raw_content_id = config.get('raw_content_id')
-            raw_content = session.query(RawContent).get(UUID(raw_content_id)) if raw_content_id else None
-            
+            raw_content_id = config.get("raw_content_id")
+            raw_content = (
+                session.query(RawContent).get(UUID(raw_content_id)) if raw_content_id else None
+            )
+
             if not raw_content:
                 raise ValueError("Raw content not found for AI extraction")
-            
+
             # TODO: Implement LLM extraction based on method
             # For now, mark as completed
-            
+
             _update_stage(session, job_id, PipelineStage.AI_EXTRACTION, "COMPLETED")
             job.resources_llm_tokens_consumed += 0  # TODO: Track tokens
             session.commit()
-            
+
             logger.info("AI extraction completed", job_id=str(job_id))
-            return {'success': True, 'job_id': str(job_id)}
-            
+            return {"success": True, "job_id": str(job_id)}
+
     except Exception as exc:
         logger.error("AI extraction failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.AI_EXTRACTION, "FAILED", str(exc))
@@ -425,34 +438,34 @@ def ai_extraction_stage(self, prev_result: dict):
 @celery_app.task(bind=True, max_retries=2)
 def post_processing_stage(self, prev_result: dict):
     """Stage 6: Post-processing (PII redaction, normalization)."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting post-processing stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             _update_stage(session, job_id, PipelineStage.POST_PROCESSING, "RUNNING")
             job.status = JobStatus.TRANSFORMING.value
             job.progress_stage = PipelineStage.POST_PROCESSING.value
             session.commit()
-            
+
             config = job.configuration
-            compliance_config = config.get('compliance', {})
-            raw_content_id = config.get('raw_content_id')
-            
+            compliance_config = config.get("compliance", {})
+            raw_content_id = config.get("raw_content_id")
+
             if raw_content_id:
                 raw_content = session.query(RawContent).get(UUID(raw_content_id))
-                
-                if raw_content and compliance_config.get('pii_redaction_enabled', True):
+
+                if raw_content and compliance_config.get("pii_redaction_enabled", True):
                     # Scan for PII
                     scanner = PIIScanner()
-                    scan_result = scanner.scan(raw_content.meta_title or '')
-                    scan_result.extend(scanner.scan(raw_content.meta_description or ''))
-                    
+                    scan_result = scanner.scan(raw_content.meta_title or "")
+                    scan_result.extend(scanner.scan(raw_content.meta_description or ""))
+
                     # Log PII detection
                     if scan_result:
                         log = ComplianceLog(
@@ -468,19 +481,19 @@ def post_processing_stage(self, prev_result: dict):
                                     for r in scan_result
                                 ],
                                 "redaction_applied": True,
-                                "redacted_count": len(scan_result)
+                                "redacted_count": len(scan_result),
                             },
                             request_url=raw_content.source_url,
-                            response_action_taken="REDACTED"
+                            response_action_taken="REDACTED",
                         )
                         session.add(log)
-            
+
             _update_stage(session, job_id, PipelineStage.POST_PROCESSING, "COMPLETED")
             session.commit()
-            
+
             logger.info("Post-processing completed", job_id=str(job_id))
-            return {'success': True, 'job_id': str(job_id)}
-            
+            return {"success": True, "job_id": str(job_id)}
+
     except Exception as exc:
         logger.error("Post-processing failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.POST_PROCESSING, "FAILED", str(exc))
@@ -490,33 +503,33 @@ def post_processing_stage(self, prev_result: dict):
 @celery_app.task(bind=True, max_retries=2)
 def validation_stage(self, prev_result: dict):
     """Stage 7: Validation (schema, data quality)."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting validation stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             _update_stage(session, job_id, PipelineStage.VALIDATION, "RUNNING")
             job.progress_stage = PipelineStage.VALIDATION.value
             session.commit()
-            
+
             # Validate extracted data against schema
             config = job.configuration
-            extraction_config = config.get('extraction_config', {})
-            schema = extraction_config.get('extraction_schema')
-            
+            extraction_config = config.get("extraction_config", {})
+            schema = extraction_config.get("extraction_schema")
+
             # TODO: Implement schema validation
-            
+
             _update_stage(session, job_id, PipelineStage.VALIDATION, "COMPLETED")
             session.commit()
-            
+
             logger.info("Validation completed", job_id=str(job_id))
-            return {'success': True, 'job_id': str(job_id)}
-            
+            return {"success": True, "job_id": str(job_id)}
+
     except Exception as exc:
         logger.error("Validation failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.VALIDATION, "FAILED", str(exc))
@@ -526,24 +539,24 @@ def validation_stage(self, prev_result: dict):
 @celery_app.task(bind=True, max_retries=3)
 def storage_stage(self, prev_result: dict):
     """Stage 8: Storage (save to database, update references)."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting storage stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 raise ValueError(f"Job {job_id} not found")
-            
+
             _update_stage(session, job_id, PipelineStage.STORAGE, "RUNNING")
             job.status = JobStatus.STORING.value
             job.progress_stage = PipelineStage.STORAGE.value
             session.commit()
-            
+
             config = job.configuration
-            raw_content_id = config.get('raw_content_id')
-            
+            raw_content_id = config.get("raw_content_id")
+
             if raw_content_id:
                 raw_content = session.query(RawContent).get(UUID(raw_content_id))
                 if raw_content:
@@ -553,33 +566,35 @@ def storage_stage(self, prev_result: dict):
                         organization_id=job.organization_id,
                         target_id=job.target_id,
                         raw_content_id=raw_content.id,
-                        extraction_method=config.get('extraction_config', {}).get('method', 'DETERMINISTIC'),
+                        extraction_method=config.get("extraction_config", {}).get(
+                            "method", "DETERMINISTIC"
+                        ),
                         extraction_time_ms=0,  # TODO: Track
                         data={
                             "title": raw_content.meta_title,
                             "description": raw_content.meta_description,
-                            "url": raw_content.source_url
+                            "url": raw_content.source_url,
                         },
                         provenance_source_url=raw_content.source_url,
                         storage_path=raw_content.storage_html_path,
-                        format="JSON"
+                        format="JSON",
                     )
                     session.add(extracted)
                     session.flush()
-                    
+
                     # Update references
                     raw_content.extracted_data_id = extracted.id
                     raw_content.processing_status = "EXTRACTED"
-                    
+
                     job.results_extracted_record_count += 1
                     job.results_storage_bytes_used += raw_content.source_content_length or 0
-            
+
             _update_stage(session, job_id, PipelineStage.STORAGE, "COMPLETED")
             session.commit()
-            
+
             logger.info("Storage completed", job_id=str(job_id))
-            return {'success': True, 'job_id': str(job_id)}
-            
+            return {"success": True, "job_id": str(job_id)}
+
     except Exception as exc:
         logger.error("Storage failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.STORAGE, "FAILED", str(exc))
@@ -589,29 +604,29 @@ def storage_stage(self, prev_result: dict):
 @celery_app.task
 def notification_stage(prev_result: dict):
     """Stage 9: Notification (webhooks, callbacks)."""
-    job_id = UUID(prev_result['job_id'])
-    
+    job_id = UUID(prev_result["job_id"])
+
     logger.info("Starting notification stage", job_id=str(job_id))
-    
+
     try:
         with get_db_session() as session:
             job = session.query(ScrapingJob).get(job_id)
             if not job:
                 return
-            
+
             _update_stage(session, job_id, PipelineStage.NOTIFICATION, "RUNNING")
             job.progress_stage = PipelineStage.NOTIFICATION.value
             session.commit()
-            
+
             # Complete job
             job.status = JobStatus.COMPLETED.value
             job.completed_at = datetime.utcnow()
             job.progress_percent_complete = 100
             job.progress_stage = PipelineStage.NOTIFICATION.value
-            
+
             _update_stage(session, job_id, PipelineStage.NOTIFICATION, "COMPLETED")
             session.commit()
-            
+
             # Update target stats
             target = session.query(ScrapingTarget).get(job.target_id)
             if target:
@@ -620,30 +635,36 @@ def notification_stage(prev_result: dict):
                 # Calculate average execution time
                 if job.started_at and job.completed_at:
                     duration = (job.completed_at - job.started_at).total_seconds() * 1000
-                    total_duration = target.average_execution_time_ms * (target.success_count - 1) + duration
+                    total_duration = (
+                        target.average_execution_time_ms * (target.success_count - 1) + duration
+                    )
                     target.average_execution_time_ms = int(total_duration / target.success_count)
                 session.commit()
-            
+
             logger.info("Job completed successfully", job_id=str(job_id))
-            return {'success': True, 'job_id': str(job_id)}
-            
+            return {"success": True, "job_id": str(job_id)}
+
     except Exception as exc:
         logger.error("Notification stage failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.NOTIFICATION, "FAILED", str(exc))
-        return {'success': False, 'job_id': str(job_id), 'error': str(exc)}
+        return {"success": False, "job_id": str(job_id), "error": str(exc)}
 
 
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
 
-def _update_stage(session, job_id: UUID, stage: PipelineStage, status: str, error_message: str = None):
+
+def _update_stage(
+    session, job_id: UUID, stage: PipelineStage, status: str, error_message: str = None
+):
     """Update pipeline stage status."""
-    stage_detail = session.query(JobStageDetail).filter(
-        JobStageDetail.job_id == job_id,
-        JobStageDetail.stage == stage.value
-    ).first()
-    
+    stage_detail = (
+        session.query(JobStageDetail)
+        .filter(JobStageDetail.job_id == job_id, JobStageDetail.stage == stage.value)
+        .first()
+    )
+
     if stage_detail:
         stage_detail.status = status
         if status == "RUNNING" and not stage_detail.started_at:
@@ -666,10 +687,10 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
             job.status = JobStatus.FAILED.value
             job.completed_at = datetime.utcnow()
             session.commit()
-        
+
         # Update stage
         _update_stage(session, job_id, stage, "FAILED", error)
-        
+
         # Create error record
         error_record = JobError(
             job_id=job_id,
@@ -677,11 +698,11 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
             stage=stage.value,
             error_code="PIPELINE_ERROR",
             error_message=error,
-            retryable=False
+            retryable=False,
         )
         session.add(error_record)
         session.commit()
-        
+
         # Update target error stats
         if job:
             target = session.query(ScrapingTarget).get(job.target_id)
@@ -696,7 +717,7 @@ def execute_pipeline_stage(job_id: str, stage: str):
     """Execute a single pipeline stage (for manual/retry operations)."""
     job_id = UUID(job_id)
     stage_enum = PipelineStage(stage)
-    
+
     # Dispatch to appropriate stage task
     stage_tasks = {
         PipelineStage.COMPLIANCE_CHECK.value: compliance_check_stage,
@@ -709,10 +730,10 @@ def execute_pipeline_stage(job_id: str, stage: str):
         PipelineStage.STORAGE.value: storage_stage,
         PipelineStage.NOTIFICATION.value: notification_stage,
     }
-    
+
     task = stage_tasks.get(stage_enum.value)
     if task:
-        return task.delay({'job_id': str(job_id), 'retry': True})
+        return task.delay({"job_id": str(job_id), "retry": True})
     else:
         raise ValueError(f"Unknown stage: {stage}")
 
@@ -721,29 +742,27 @@ def execute_pipeline_stage(job_id: str, stage: str):
 def cleanup_old_content(days: int = 30):
     """Clean up raw content older than specified days."""
     cutoff_date = datetime.utcnow() - timedelta(days=days)
-    
+
     logger.info("Starting content cleanup", cutoff_date=cutoff_date.isoformat())
-    
+
     with get_db_session() as session:
-        old_content = session.query(RawContent).filter(
-            RawContent.created_at < cutoff_date,
-            RawContent.processing_status != "DELETED"
-        ).all()
-        
+        old_content = (
+            session.query(RawContent)
+            .filter(RawContent.created_at < cutoff_date, RawContent.processing_status != "DELETED")
+            .all()
+        )
+
         deleted_count = 0
         for content in old_content:
             content.processing_status = "DELETED"
             deleted_count += 1
-        
+
         session.commit()
-        
+
         logger.info(
             "Content cleanup completed",
             deleted_count=deleted_count,
-            cutoff_date=cutoff_date.isoformat()
+            cutoff_date=cutoff_date.isoformat(),
         )
-        
-        return {
-            'deleted_count': deleted_count,
-            'cutoff_date': cutoff_date.isoformat()
-        }
+
+        return {"deleted_count": deleted_count, "cutoff_date": cutoff_date.isoformat()}
