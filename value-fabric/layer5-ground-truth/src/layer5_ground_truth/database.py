@@ -9,23 +9,20 @@ import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from sqlalchemy import event
-from sqlalchemy.dialects.sqlite import dialect as sqlite_dialect
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.types import TypeDecorator, CHAR
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.types import CHAR, TypeDecorator
 
 from .config import get_settings
-
 
 # ---------------------------------------------------------------------------
 # SQLite UUID type adapter
 # ---------------------------------------------------------------------------
+
 
 class SQLiteUUID(TypeDecorator):
     """
@@ -35,6 +32,7 @@ class SQLiteUUID(TypeDecorator):
     This is needed because SQLite doesn't have native UUID support and
     SQLAlchemy's UUID(as_uuid=True) stores as integers which causes issues.
     """
+
     impl = CHAR
     cache_ok = True
 
@@ -46,7 +44,7 @@ class SQLiteUUID(TypeDecorator):
             return value
         if isinstance(value, uuid.UUID):
             return value.hex
-        return str(value).replace('-', '')
+        return str(value).replace("-", "")
 
     def process_result_value(self, value, dialect):
         if value is None:
@@ -59,6 +57,7 @@ class SQLiteUUID(TypeDecorator):
                 return uuid.UUID(value)
             return uuid.UUID(value)
         return value
+
 
 # ---------------------------------------------------------------------------
 # Engine — created once at import time, reused across requests
@@ -85,7 +84,10 @@ def _setup_sqlite_uuid_handling(url: str) -> None:
     sqlite3.register_adapter(uuid.UUID, lambda u: str(u))
 
     # Register converter to convert string back to UUID when retrieving
-    sqlite3.register_converter("UUID", lambda val: uuid.UUID(val.decode() if isinstance(val, bytes) else str(val)))
+    sqlite3.register_converter(
+        "UUID",
+        lambda val: uuid.UUID(val.decode() if isinstance(val, bytes) else str(val)),
+    )
 
 
 def get_engine() -> AsyncEngine:
@@ -122,6 +124,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 # FastAPI dependency
 # ---------------------------------------------------------------------------
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session.
@@ -146,6 +149,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # Context manager for non-FastAPI usage (services, background tasks)
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for use outside of FastAPI request lifecycle."""
@@ -163,9 +167,11 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 # Lifecycle helpers (called from FastAPI lifespan)
 # ---------------------------------------------------------------------------
 
+
 async def init_db() -> None:
     """Create all tables if they do not exist (dev/test convenience)."""
     from .models import Base
+
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

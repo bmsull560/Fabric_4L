@@ -1,8 +1,8 @@
 """Knowledge tools for querying the graph database and semantic search."""
 
 import logging
-from typing import Any, Dict, List, Optional
 import time
+from typing import Any
 
 from neo4j import AsyncGraphDatabase
 
@@ -28,189 +28,193 @@ logger = logging.getLogger(__name__)
 
 class QueryGraphTool(BaseTool):
     """Execute Cypher queries against the Neo4j knowledge graph."""
-    
+
     name = "query_graph"
     category = ToolCategory.KNOWLEDGE
     description = "Executes Cypher queries against the Neo4j knowledge graph"
     input_schema = QueryGraphInput
     output_schema = QueryGraphOutput
     timeout_seconds = 30
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
-        self.neo4j_uri = config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        self.neo4j_uri = (
+            config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        )
         self.neo4j_user = config.get("neo4j_user", "neo4j") if config else "neo4j"
         self.neo4j_password = config.get("neo4j_password", "password") if config else "password"
         self.database = config.get("database", "valuefabric") if config else "valuefabric"
         self._driver = None
-    
+
     def _get_driver(self):
         """Lazy initialization of Neo4j driver."""
         if self._driver is None:
             self._driver = AsyncGraphDatabase.driver(
-                self.neo4j_uri,
-                auth=(self.neo4j_user, self.neo4j_password)
+                self.neo4j_uri, auth=(self.neo4j_user, self.neo4j_password)
             )
         return self._driver
-    
+
     async def execute(self, input_data: QueryGraphInput) -> QueryGraphOutput:
         """Execute Cypher query against Neo4j."""
         driver = self._get_driver()
-        
+
         start_time = time.time()
-        
+
         try:
             async with driver.session(database=self.database) as session:
                 result = await session.run(input_data.cypher_query, input_data.parameters or {})
                 records = await result.data()
-                
+
                 execution_time = int((time.time() - start_time) * 1000)
-                
+
                 # Extract columns from first record or result keys
                 columns = list(records[0].keys()) if records else []
-                
+
                 return QueryGraphOutput(
                     results=records,
                     columns=columns,
                     row_count=len(records),
-                    execution_time_ms=execution_time
+                    execution_time_ms=execution_time,
                 )
-                
+
         except Exception as e:
             logger.error(f"Neo4j query failed: {e}")
             return QueryGraphOutput(
                 results=[],
                 columns=[],
                 row_count=0,
-                execution_time_ms=int((time.time() - start_time) * 1000)
+                execution_time_ms=int((time.time() - start_time) * 1000),
             )
 
 
 class SemanticSearchTool(BaseTool):
     """Perform semantic search using vector similarity via Pinecone."""
-    
+
     name = "semantic_search"
     category = ToolCategory.KNOWLEDGE
     description = "Performs semantic search using vector embeddings and similarity"
     input_schema = SemanticSearchInput
     output_schema = SemanticSearchOutput
     timeout_seconds = 15
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
         self.vector_store_url = config.get("vector_store_url") if config else None
-        self.embedding_model = config.get("embedding_model", "text-embedding-3-large") if config else "text-embedding-3-large"
+        self.embedding_model = (
+            config.get("embedding_model", "text-embedding-3-large")
+            if config
+            else "text-embedding-3-large"
+        )
         self.pinecone_api_key = config.get("pinecone_api_key") if config else None
-        self.pinecone_index = config.get("pinecone_index", "value-fabric") if config else "value-fabric"
+        self.pinecone_index = (
+            config.get("pinecone_index", "value-fabric") if config else "value-fabric"
+        )
         self._pinecone_client = None
         self._index = None
-    
+
     def _get_pinecone_client(self):
         """Lazy initialization of Pinecone client."""
         if self._pinecone_client is None:
             from pinecone import Pinecone
+
             if not self.pinecone_api_key:
                 raise ValueError("Pinecone API key required for semantic search")
             self._pinecone_client = Pinecone(api_key=self.pinecone_api_key)
             self._index = self._pinecone_client.Index(self.pinecone_index)
         return self._index
-    
-    async def _get_embedding(self, text: str) -> List[float]:
+
+    async def _get_embedding(self, text: str) -> list[float]:
         """Get embedding for text using OpenAI."""
         from openai import AsyncOpenAI
-        
+
         api_key = self.config.get("openai_api_key") if self.config else None
         client = AsyncOpenAI(api_key=api_key)
-        
-        response = await client.embeddings.create(
-            model=self.embedding_model,
-            input=text
-        )
+
+        response = await client.embeddings.create(model=self.embedding_model, input=text)
         return response.data[0].embedding
-    
+
     async def execute(self, input_data: SemanticSearchInput) -> SemanticSearchOutput:
         """Execute semantic search against Pinecone vector store."""
         start_time = time.time()
-        
+
         try:
             # Get query embedding
             query_embedding = await self._get_embedding(input_data.query)
-            
+
             # Query Pinecone
             index = self._get_pinecone_client()
-            
+
             filter_dict = {}
             if input_data.entity_types:
                 filter_dict["entity_type"] = {"$in": input_data.entity_types}
-            
+
             results = index.query(
                 vector=query_embedding,
                 top_k=input_data.top_k,
                 include_metadata=True,
-                filter=filter_dict if filter_dict else None
+                filter=filter_dict if filter_dict else None,
             )
-            
+
             # Format results
             formatted_results = []
             for match in results.matches:
                 if match.score >= input_data.similarity_threshold:
-                    formatted_results.append({
-                        "entity_id": match.id,
-                        "entity_type": match.metadata.get("entity_type", "Unknown"),
-                        "name": match.metadata.get("entity_id", match.id),
-                        "description": match.metadata.get("text", "")[:200],
-                        "similarity_score": round(match.score, 3),
-                    })
-            
+                    formatted_results.append(
+                        {
+                            "entity_id": match.id,
+                            "entity_type": match.metadata.get("entity_type", "Unknown"),
+                            "name": match.metadata.get("entity_id", match.id),
+                            "description": match.metadata.get("text", "")[:200],
+                            "similarity_score": round(match.score, 3),
+                        }
+                    )
+
             embedding_time = int((time.time() - start_time) * 1000)
-            
+
             return SemanticSearchOutput(
                 results=formatted_results,
                 total_matches=len(formatted_results),
-                query_embedding_time_ms=embedding_time
+                query_embedding_time_ms=embedding_time,
             )
-            
+
         except Exception as e:
             logger.error(f"Semantic search failed: {e}")
-            return SemanticSearchOutput(
-                results=[],
-                total_matches=0,
-                query_embedding_time_ms=0
-            )
+            return SemanticSearchOutput(results=[], total_matches=0, query_embedding_time_ms=0)
 
 
 class GetEntityTool(BaseTool):
     """Retrieve a specific entity by ID with optional relationships from Neo4j."""
-    
+
     name = "get_entity"
     category = ToolCategory.KNOWLEDGE
     description = "Retrieves a specific entity by ID with optional relationships"
     input_schema = GetEntityInput
     output_schema = GetEntityOutput
     timeout_seconds = 15
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
-        self.neo4j_uri = config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        self.neo4j_uri = (
+            config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        )
         self.neo4j_user = config.get("neo4j_user", "neo4j") if config else "neo4j"
         self.neo4j_password = config.get("neo4j_password", "password") if config else "password"
         self.database = config.get("database", "valuefabric") if config else "valuefabric"
         self._driver = None
-    
+
     def _get_driver(self):
         """Lazy initialization of Neo4j driver."""
         if self._driver is None:
             self._driver = AsyncGraphDatabase.driver(
-                self.neo4j_uri,
-                auth=(self.neo4j_user, self.neo4j_password)
+                self.neo4j_uri, auth=(self.neo4j_user, self.neo4j_password)
             )
         return self._driver
-    
+
     async def execute(self, input_data: GetEntityInput) -> GetEntityOutput:
         """Get entity by ID from Neo4j."""
         driver = self._get_driver()
         entity_id = input_data.entity_id
-        
+
         try:
             async with driver.session(database=self.database) as session:
                 # Query entity by ID
@@ -221,16 +225,16 @@ class GetEntityTool(BaseTool):
                 """
                 entity_result = await session.run(entity_query, {"entity_id": entity_id})
                 entity_record = await entity_result.single()
-                
+
                 if not entity_record:
                     return GetEntityOutput(found=False)
-                
+
                 node = entity_record["n"]
                 labels = entity_record["labels"]
-                
+
                 entity = dict(node)
                 entity["entity_type"] = labels[0] if labels else "Unknown"
-                
+
                 relationships = []
                 if input_data.include_relationships:
                     # Query relationships
@@ -241,24 +245,23 @@ class GetEntityTool(BaseTool):
                         LIMIT $limit
                     """
                     rel_result = await session.run(
-                        rel_query, 
-                        {"entity_id": entity_id, "limit": input_data.relationship_limit}
+                        rel_query, {"entity_id": entity_id, "limit": input_data.relationship_limit}
                     )
-                    
+
                     async for record in rel_result:
-                        relationships.append({
-                            "predicate": record["predicate"],
-                            "target_id": record["target_id"],
-                            "target_name": record["target_name"],
-                            "target_type": record["target_labels"][0] if record["target_labels"] else "Unknown"
-                        })
-                
-                return GetEntityOutput(
-                    entity=entity,
-                    relationships=relationships,
-                    found=True
-                )
-                
+                        relationships.append(
+                            {
+                                "predicate": record["predicate"],
+                                "target_id": record["target_id"],
+                                "target_name": record["target_name"],
+                                "target_type": record["target_labels"][0]
+                                if record["target_labels"]
+                                else "Unknown",
+                            }
+                        )
+
+                return GetEntityOutput(entity=entity, relationships=relationships, found=True)
+
         except Exception as e:
             logger.error(f"Failed to get entity {entity_id}: {e}")
             return GetEntityOutput(found=False)
@@ -266,72 +269,75 @@ class GetEntityTool(BaseTool):
 
 class GetRelationshipsTool(BaseTool):
     """Get relationships for an entity with optional filtering from Neo4j."""
-    
+
     name = "get_relationships"
     category = ToolCategory.KNOWLEDGE
     description = "Retrieves relationships for an entity with optional filtering"
     input_schema = GetRelationshipsInput
     output_schema = GetRelationshipsOutput
     timeout_seconds = 15
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
-        self.neo4j_uri = config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        self.neo4j_uri = (
+            config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        )
         self.neo4j_user = config.get("neo4j_user", "neo4j") if config else "neo4j"
         self.neo4j_password = config.get("neo4j_password", "password") if config else "password"
         self.database = config.get("database", "valuefabric") if config else "valuefabric"
         self._driver = None
-    
+
     def _get_driver(self):
         """Lazy initialization of Neo4j driver."""
         if self._driver is None:
             self._driver = AsyncGraphDatabase.driver(
-                self.neo4j_uri,
-                auth=(self.neo4j_user, self.neo4j_password)
+                self.neo4j_uri, auth=(self.neo4j_user, self.neo4j_password)
             )
         return self._driver
-    
+
     async def execute(self, input_data: GetRelationshipsInput) -> GetRelationshipsOutput:
         """Get relationships for entity from Neo4j."""
         driver = self._get_driver()
-        
+
         try:
             async with driver.session(database=self.database) as session:
                 # Build query with optional predicate filter
                 if input_data.predicate:
-                    query = """
+                    query = (
+                        """
                         MATCH (n {id: $entity_id})-[r:%s]->(m)
                         RETURN n.id as source_id, type(r) as predicate, 
                                m.id as target_id, m.name as target_name, r.confidence as confidence
-                    """ % input_data.predicate
+                    """
+                        % input_data.predicate
+                    )
                 else:
                     query = """
                         MATCH (n {id: $entity_id})-[r]->(m)
                         RETURN n.id as source_id, type(r) as predicate, 
                                m.id as target_id, m.name as target_name, r.confidence as confidence
                     """
-                
+
                 result = await session.run(query, {"entity_id": input_data.entity_id})
-                
+
                 relationships = []
                 async for record in result:
-                    relationships.append({
-                        "relationship_id": f"{record['source_id']}-{record['predicate']}-{record['target_id']}",
-                        "source_id": record["source_id"],
-                        "predicate": record["predicate"],
-                        "target_id": record["target_id"],
-                        "target_name": record["target_name"],
-                        "confidence": record["confidence"] or 0.8,
-                    })
-                
+                    relationships.append(
+                        {
+                            "relationship_id": f"{record['source_id']}-{record['predicate']}-{record['target_id']}",
+                            "source_id": record["source_id"],
+                            "predicate": record["predicate"],
+                            "target_id": record["target_id"],
+                            "target_name": record["target_name"],
+                            "confidence": record["confidence"] or 0.8,
+                        }
+                    )
+
                 total = len(relationships)
-                limited = relationships[:input_data.limit]
-                
-                return GetRelationshipsOutput(
-                    relationships=limited,
-                    total_count=total
-                )
-                
+                limited = relationships[: input_data.limit]
+
+                return GetRelationshipsOutput(relationships=limited, total_count=total)
+
         except Exception as e:
             logger.error(f"Failed to get relationships for {input_data.entity_id}: {e}")
             return GetRelationshipsOutput(relationships=[], total_count=0)
@@ -339,66 +345,67 @@ class GetRelationshipsTool(BaseTool):
 
 class TraverseTreeTool(BaseTool):
     """Traverse the value tree following relationship patterns using Neo4j."""
-    
+
     name = "traverse_tree"
     category = ToolCategory.KNOWLEDGE
     description = "Traverses the value tree following relationship patterns"
     input_schema = TraverseTreeInput
     output_schema = TraverseTreeOutput
     timeout_seconds = 30
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
-        self.neo4j_uri = config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        self.neo4j_uri = (
+            config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        )
         self.neo4j_user = config.get("neo4j_user", "neo4j") if config else "neo4j"
         self.neo4j_password = config.get("neo4j_password", "password") if config else "password"
         self.database = config.get("database", "valuefabric") if config else "valuefabric"
         self._driver = None
-    
+
     def _get_driver(self):
         """Lazy initialization of Neo4j driver."""
         if self._driver is None:
             self._driver = AsyncGraphDatabase.driver(
-                self.neo4j_uri,
-                auth=(self.neo4j_user, self.neo4j_password)
+                self.neo4j_uri, auth=(self.neo4j_user, self.neo4j_password)
             )
         return self._driver
-    
+
     async def execute(self, input_data: TraverseTreeInput) -> TraverseTreeOutput:
         """Traverse tree from starting entity using Neo4j."""
         driver = self._get_driver()
-        
+
         try:
             async with driver.session(database=self.database) as session:
                 # Use variable-length path query
-                rel_pattern = "|".join(input_data.relationship_types) if input_data.relationship_types else "ENABLES|REQUIRES|BENEFITS"
-                
+                rel_pattern = (
+                    "|".join(input_data.relationship_types)
+                    if input_data.relationship_types
+                    else "ENABLES|REQUIRES|BENEFITS"
+                )
+
                 query = """
                     MATCH path = (start {id: $start_id})-[%s*1..%d]->(end)
                     RETURN [node in nodes(path) | {id: node.id, name: node.name, type: labels(node)[0]}] as path_nodes
                     LIMIT $limit
                 """ % (rel_pattern, input_data.max_depth)
-                
+
                 result = await session.run(
-                    query, 
-                    {"start_id": input_data.start_entity_id, "limit": input_data.max_paths}
+                    query, {"start_id": input_data.start_entity_id, "limit": input_data.max_paths}
                 )
-                
+
                 paths = []
                 nodes_discovered = set()
-                
+
                 async for record in result:
                     path_nodes = record["path_nodes"]
                     if path_nodes:
                         paths.append(path_nodes)
                         for node in path_nodes:
                             nodes_discovered.add(node.get("id"))
-                
-                return TraverseTreeOutput(
-                    paths=paths,
-                    nodes_discovered=len(nodes_discovered)
-                )
-                
+
+                return TraverseTreeOutput(paths=paths, nodes_discovered=len(nodes_discovered))
+
         except Exception as e:
             logger.error(f"Tree traversal failed: {e}")
             return TraverseTreeOutput(paths=[], nodes_discovered=0)
@@ -406,78 +413,81 @@ class TraverseTreeTool(BaseTool):
 
 class FindPathsTool(BaseTool):
     """Find paths between two entities in the knowledge graph using Neo4j."""
-    
+
     name = "find_paths"
     category = ToolCategory.KNOWLEDGE
     description = "Finds connection paths between two entities in the graph"
     input_schema = FindPathsInput
     output_schema = FindPathsOutput
     timeout_seconds = 30
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+
+    def __init__(self, config: dict[str, Any] | None = None):
         super().__init__(config)
-        self.neo4j_uri = config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        self.neo4j_uri = (
+            config.get("neo4j_uri", "bolt://localhost:7687") if config else "bolt://localhost:7687"
+        )
         self.neo4j_user = config.get("neo4j_user", "neo4j") if config else "neo4j"
         self.neo4j_password = config.get("neo4j_password", "password") if config else "password"
         self.database = config.get("database", "valuefabric") if config else "valuefabric"
         self._driver = None
-    
+
     def _get_driver(self):
         """Lazy initialization of Neo4j driver."""
         if self._driver is None:
             self._driver = AsyncGraphDatabase.driver(
-                self.neo4j_uri,
-                auth=(self.neo4j_user, self.neo4j_password)
+                self.neo4j_uri, auth=(self.neo4j_user, self.neo4j_password)
             )
         return self._driver
-    
+
     async def execute(self, input_data: FindPathsInput) -> FindPathsOutput:
         """Find paths between entities using Neo4j shortest path algorithms."""
         driver = self._get_driver()
-        
+
         try:
             async with driver.session(database=self.database) as session:
                 # Use apoc.algo.allSimplePaths if available, otherwise variable-length match
-                query = """
+                query = (
+                    """
                     MATCH (source {id: $source_id}), (target {id: $target_id})
                     MATCH path = allShortestPaths((source)-[*1..%d]->(target))
                     RETURN [node in nodes(path) | {id: node.id, name: node.name}] as path_nodes,
                            [rel in relationships(path) | type(rel)] as rel_types,
                            length(path) as path_length
                     LIMIT $limit
-                """ % input_data.max_depth
-                
+                """
+                    % input_data.max_depth
+                )
+
                 result = await session.run(
                     query,
                     {
                         "source_id": input_data.source_id,
                         "target_id": input_data.target_id,
-                        "limit": input_data.max_paths
-                    }
+                        "limit": input_data.max_paths,
+                    },
                 )
-                
+
                 paths = []
                 shortest_length = None
-                
+
                 async for record in result:
                     path_nodes = record["path_nodes"]
                     rel_types = record["rel_types"]
                     path_length = record["path_length"]
-                    
+
                     if shortest_length is None or path_length < shortest_length:
                         shortest_length = path_length
-                    
-                    paths.append({
-                        "path_length": path_length,
-                        "nodes": path_nodes,
-                        "relationships": rel_types
-                    })
-                
-                return FindPathsOutput(
-                    paths=paths,
-                    shortest_path_length=shortest_length
-                )
-                
+
+                    paths.append(
+                        {
+                            "path_length": path_length,
+                            "nodes": path_nodes,
+                            "relationships": rel_types,
+                        }
+                    )
+
+                return FindPathsOutput(paths=paths, shortest_path_length=shortest_length)
+
         except Exception as e:
             logger.error(f"Path finding failed: {e}")
             return FindPathsOutput(paths=[], shortest_path_length=None)

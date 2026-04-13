@@ -1,74 +1,88 @@
 """Comprehensive API documentation with interactive examples and developer guides."""
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class APIExample(BaseModel):
     """API example with request/response."""
-    
+
     title: str = Field(..., description="Example title")
     description: str = Field(..., description="Example description")
-    request: Dict[str, Any] = Field(..., description="Request body/parameters")
-    response: Dict[str, Any] = Field(..., description="Expected response")
-    headers: Optional[Dict[str, str]] = Field(None, description="Required headers")
-    curl_command: Optional[str] = Field(None, description="cURL command")
-    python_code: Optional[str] = Field(None, description="Python code example")
-    javascript_code: Optional[str] = Field(None, description="JavaScript code example")
+    request: dict[str, Any] = Field(..., description="Request body/parameters")
+    response: dict[str, Any] = Field(..., description="Expected response")
+    headers: dict[str, str] | None = Field(None, description="Required headers")
+    curl_command: str | None = Field(None, description="cURL command")
+    python_code: str | None = Field(None, description="Python code example")
+    javascript_code: str | None = Field(None, description="JavaScript code example")
 
 
 class APITutorial(BaseModel):
     """Step-by-step API tutorial."""
-    
+
     title: str = Field(..., description="Tutorial title")
     description: str = Field(..., description="Tutorial description")
-    difficulty: str = Field(..., description="Difficulty level (beginner, intermediate, advanced)")
+    difficulty: str = Field(
+        ..., description="Difficulty level (beginner, intermediate, advanced)"
+    )
     estimated_time: str = Field(..., description="Estimated completion time")
-    steps: List[Dict[str, Any]] = Field(..., description="Tutorial steps")
-    examples: List[APIExample] = Field(..., description="Related examples")
-    prerequisites: List[str] = Field(default_factory=list, description="Prerequisites")
+    steps: list[dict[str, Any]] = Field(..., description="Tutorial steps")
+    examples: list[APIExample] = Field(..., description="Related examples")
+    prerequisites: list[str] = Field(default_factory=list, description="Prerequisites")
 
 
 class APIError(BaseModel):
     """API error documentation."""
-    
+
     status_code: int = Field(..., description="HTTP status code")
     error_code: str = Field(..., description="Application error code")
     message: str = Field(..., description="Error message")
     description: str = Field(..., description="Detailed description")
-    causes: List[str] = Field(default_factory=list, description="Common causes")
-    solutions: List[str] = Field(default_factory=list, description="Solutions")
-    example_response: Dict[str, Any] = Field(..., description="Example error response")
+    causes: list[str] = Field(default_factory=list, description="Common causes")
+    solutions: list[str] = Field(default_factory=list, description="Solutions")
+    example_response: dict[str, Any] = Field(..., description="Example error response")
 
 
 class APIEndpoint(BaseModel):
     """Comprehensive API endpoint documentation."""
-    
+
     path: str = Field(..., description="Endpoint path")
     method: str = Field(..., description="HTTP method")
     title: str = Field(..., description="Endpoint title")
     description: str = Field(..., description="Detailed description")
     summary: str = Field(..., description="Brief summary")
-    tags: List[str] = Field(..., description="Endpoint tags")
-    parameters: List[Dict[str, Any]] = Field(default_factory=list, description="Parameters")
-    request_body: Optional[Dict[str, Any]] = Field(None, description="Request body schema")
-    responses: Dict[int, Dict[str, Any]] = Field(..., description="Response schemas")
-    examples: List[APIExample] = Field(default_factory=list, description="Usage examples")
-    errors: List[APIError] = Field(default_factory=list, description="Possible errors")
-    rate_limiting: Optional[Dict[str, Any]] = Field(None, description="Rate limiting info")
-    authentication: Optional[Dict[str, Any]] = Field(None, description="Authentication requirements")
-    version_info: Optional[Dict[str, Any]] = Field(None, description="Version information")
+    tags: list[str] = Field(..., description="Endpoint tags")
+    parameters: list[dict[str, Any]] = Field(
+        default_factory=list, description="Parameters"
+    )
+    request_body: dict[str, Any] | None = Field(None, description="Request body schema")
+    responses: dict[int, dict[str, Any]] = Field(..., description="Response schemas")
+    examples: list[APIExample] = Field(
+        default_factory=list, description="Usage examples"
+    )
+    errors: list[APIError] = Field(default_factory=list, description="Possible errors")
+    rate_limiting: dict[str, Any] | None = Field(None, description="Rate limiting info")
+    authentication: dict[str, Any] | None = Field(
+        None, description="Authentication requirements"
+    )
+    version_info: dict[str, Any] | None = Field(None, description="Version information")
 
 
 class APIGuide(BaseModel):
     """Developer guide section."""
-    
+
     title: str = Field(..., description="Guide title")
     content: str = Field(..., description="Guide content (Markdown)")
-    sections: List[Dict[str, Any]] = Field(default_factory=list, description="Guide sections")
-    code_examples: List[Dict[str, Any]] = Field(default_factory=list, description="Code examples")
-    related_endpoints: List[str] = Field(default_factory=list, description="Related endpoints")
+    sections: list[dict[str, Any]] = Field(
+        default_factory=list, description="Guide sections"
+    )
+    code_examples: list[dict[str, Any]] = Field(
+        default_factory=list, description="Code examples"
+    )
+    related_endpoints: list[str] = Field(
+        default_factory=list, description="Related endpoints"
+    )
 
 
 # Comprehensive API documentation
@@ -109,14 +123,10 @@ API_DOCUMENTATION = {
         "contact": {
             "name": "Value Fabric Team",
             "email": "api-support@valuefabric.ai",
-            "url": "https://valuefabric.ai/support"
+            "url": "https://valuefabric.ai/support",
         },
-        "license": {
-            "name": "MIT",
-            "url": "https://opensource.org/licenses/MIT"
-        }
+        "license": {"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
     },
-    
     "authentication": {
         "title": "Authentication & Authorization",
         "content": """
@@ -190,9 +200,8 @@ API_DOCUMENTATION = {
         X-RateLimit-Remaining: 95
         X-RateLimit-Reset: 1640995200
         ```
-        """
+        """,
     },
-    
     "endpoints": {
         "health": APIEndpoint(
             path="/health",
@@ -221,8 +230,8 @@ API_DOCUMENTATION = {
                                         "error": None,
                                         "details": {
                                             "uri": "bolt://localhost:7687",
-                                            "database": "neo4j"
-                                        }
+                                            "database": "neo4j",
+                                        },
                                     }
                                 ],
                                 "metrics": {
@@ -231,21 +240,29 @@ API_DOCUMENTATION = {
                                     "cpu_percent": 25.0,
                                     "active_connections": 10,
                                     "total_requests": 1500,
-                                    "error_rate_percent": 0.1
+                                    "error_rate_percent": 0.1,
                                 },
                                 "neo4j": {
                                     "status": "healthy",
                                     "database": "neo4j",
-                                    "uri": "bolt://localhost:7687"
+                                    "uri": "bolt://localhost:7687",
                                 },
                                 "schema_status": {
-                                    "constraints": {"expected": 10, "found": 10, "missing": []},
-                                    "indexes": {"expected": 15, "found": 15, "missing": []},
-                                    "valid": True
-                                }
+                                    "constraints": {
+                                        "expected": 10,
+                                        "found": 10,
+                                        "missing": [],
+                                    },
+                                    "indexes": {
+                                        "expected": 15,
+                                        "found": 15,
+                                        "missing": [],
+                                    },
+                                    "valid": True,
+                                },
                             }
                         }
-                    }
+                    },
                 }
             },
             examples=[
@@ -265,28 +282,28 @@ API_DOCUMENTATION = {
                             "cpu_percent": 25.0,
                             "active_connections": 10,
                             "total_requests": 1500,
-                            "error_rate_percent": 0.1
+                            "error_rate_percent": 0.1,
                         },
                         "neo4j": {
                             "status": "healthy",
                             "database": "neo4j",
-                            "uri": "bolt://localhost:7687"
+                            "uri": "bolt://localhost:7687",
                         },
                         "schema_status": {
                             "constraints": {"expected": 10, "found": 10, "missing": []},
                             "indexes": {"expected": 15, "found": 15, "missing": []},
-                            "valid": True
-                        }
+                            "valid": True,
+                        },
                     },
                     curl_command='curl -X GET "https://api.valuefabric.ai/v1/health" -H "Authorization: Bearer your_api_key"',
-                    python_code='''
+                    python_code="""
 import requests
 
 headers = {"Authorization": "Bearer your_api_key"}
 response = requests.get("https://api.valuefabric.ai/v1/health", headers=headers)
 print(response.json())
-                    ''',
-                    javascript_code='''
+                    """,
+                    javascript_code="""
 const response = await fetch('https://api.valuefabric.ai/v1/health', {
   headers: {
     'Authorization': 'Bearer your_api_key'
@@ -294,7 +311,7 @@ const response = await fetch('https://api.valuefabric.ai/v1/health', {
 });
 const data = await response.json();
 console.log(data);
-                    '''
+                    """,
                 )
             ],
             errors=[
@@ -303,26 +320,33 @@ console.log(data);
                     error_code="SERVICE_UNAVAILABLE",
                     message="Service temporarily unavailable",
                     description="The API or one of its dependencies is currently unavailable",
-                    causes=["Database connection failed", "High system load", "Maintenance mode"],
-                    solutions=["Try again later", "Check status page", "Contact support"],
+                    causes=[
+                        "Database connection failed",
+                        "High system load",
+                        "Maintenance mode",
+                    ],
+                    solutions=[
+                        "Try again later",
+                        "Check status page",
+                        "Contact support",
+                    ],
                     example_response={
                         "error": "SERVICE_UNAVAILABLE",
                         "message": "Neo4j database connection failed",
-                        "details": {"service": "neo4j", "error": "Connection timeout"}
-                    }
+                        "details": {"service": "neo4j", "error": "Connection timeout"},
+                    },
                 )
             ],
             rate_limiting={
                 "requests_per_minute": 60,
                 "burst_size": 120,
-                "per_api_key": True
+                "per_api_key": True,
             },
             authentication={
                 "required": False,
-                "roles": ["read_only", "analyst", "developer", "admin", "system"]
-            }
+                "roles": ["read_only", "analyst", "developer", "admin", "system"],
+            },
         ),
-        
         "search": APIEndpoint(
             path="/v1/search",
             method="POST",
@@ -336,29 +360,48 @@ console.log(data);
                     "in": "body",
                     "required": True,
                     "schema": {"type": "string", "minLength": 1, "maxLength": 500},
-                    "description": "Search query string"
+                    "description": "Search query string",
                 },
                 {
                     "name": "search_type",
                     "in": "body",
                     "required": False,
-                    "schema": {"type": "string", "enum": ["hybrid", "vector", "fulltext", "graph"], "default": "hybrid"},
-                    "description": "Search algorithm to use"
+                    "schema": {
+                        "type": "string",
+                        "enum": ["hybrid", "vector", "fulltext", "graph"],
+                        "default": "hybrid",
+                    },
+                    "description": "Search algorithm to use",
                 },
                 {
                     "name": "top_k",
                     "in": "body",
                     "required": False,
-                    "schema": {"type": "integer", "minimum": 1, "maximum": 50, "default": 10},
-                    "description": "Number of results to return"
+                    "schema": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 50,
+                        "default": 10,
+                    },
+                    "description": "Number of results to return",
                 },
                 {
                     "name": "entity_type",
                     "in": "body",
                     "required": False,
-                    "schema": {"type": "string", "enum": ["Capability", "UseCase", "Persona", "ValueDriver", "DataSource", "ExtractionEvent"]},
-                    "description": "Filter by entity type"
-                }
+                    "schema": {
+                        "type": "string",
+                        "enum": [
+                            "Capability",
+                            "UseCase",
+                            "Persona",
+                            "ValueDriver",
+                            "DataSource",
+                            "ExtractionEvent",
+                        ],
+                    },
+                    "description": "Filter by entity type",
+                },
             ],
             request_body={
                 "required": True,
@@ -368,23 +411,61 @@ console.log(data);
                             "type": "object",
                             "required": ["query"],
                             "properties": {
-                                "query": {"type": "string", "minLength": 1, "maxLength": 500},
-                                "search_type": {"type": "string", "enum": ["hybrid", "vector", "fulltext", "graph"], "default": "hybrid"},
-                                "top_k": {"type": "integer", "minimum": 1, "maximum": 50, "default": 10},
-                                "entity_type": {"type": "string", "enum": ["Capability", "UseCase", "Persona", "ValueDriver", "DataSource", "ExtractionEvent"]},
+                                "query": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500,
+                                },
+                                "search_type": {
+                                    "type": "string",
+                                    "enum": ["hybrid", "vector", "fulltext", "graph"],
+                                    "default": "hybrid",
+                                },
+                                "top_k": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 50,
+                                    "default": 10,
+                                },
+                                "entity_type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "Capability",
+                                        "UseCase",
+                                        "Persona",
+                                        "ValueDriver",
+                                        "DataSource",
+                                        "ExtractionEvent",
+                                    ],
+                                },
                                 "weights": {
                                     "type": "object",
                                     "properties": {
-                                        "bm25": {"type": "number", "minimum": 0, "maximum": 1},
-                                        "vector": {"type": "number", "minimum": 0, "maximum": 1},
-                                        "graph": {"type": "number", "minimum": 0, "maximum": 1}
-                                    }
+                                        "bm25": {
+                                            "type": "number",
+                                            "minimum": 0,
+                                            "maximum": 1,
+                                        },
+                                        "vector": {
+                                            "type": "number",
+                                            "minimum": 0,
+                                            "maximum": 1,
+                                        },
+                                        "graph": {
+                                            "type": "number",
+                                            "minimum": 0,
+                                            "maximum": 1,
+                                        },
+                                    },
                                 },
-                                "filters": {"type": "object", "additionalProperties": True}
-                            }
+                                "filters": {
+                                    "type": "object",
+                                    "additionalProperties": True,
+                                },
+                            },
                         }
                     }
-                }
+                },
             },
             responses={
                 200: {
@@ -404,17 +485,17 @@ console.log(data);
                                         "combined_score": 0.8,
                                         "metadata": {
                                             "description": "Processes invoices automatically",
-                                            "domain": "finance"
+                                            "domain": "finance",
                                         },
-                                        "confidence": 0.85
+                                        "confidence": 0.85,
                                     }
                                 ],
                                 "total_results": 1,
                                 "search_type": "hybrid",
-                                "processing_time_ms": 150.5
+                                "processing_time_ms": 150.5,
                             }
                         }
-                    }
+                    },
                 }
             },
             examples=[
@@ -424,7 +505,7 @@ console.log(data);
                     request={
                         "query": "automated invoice processing",
                         "search_type": "hybrid",
-                        "top_k": 5
+                        "top_k": 5,
                     },
                     response={
                         "query": "automated invoice processing",
@@ -439,16 +520,16 @@ console.log(data);
                                 "combined_score": 0.8,
                                 "metadata": {
                                     "description": "Processes invoices automatically",
-                                    "domain": "finance"
+                                    "domain": "finance",
                                 },
-                                "confidence": 0.85
+                                "confidence": 0.85,
                             }
                         ],
                         "total_results": 1,
                         "search_type": "hybrid",
-                        "processing_time_ms": 150.5
+                        "processing_time_ms": 150.5,
                     },
-                    curl_command='''curl -X POST "https://api.valuefabric.ai/v1/search" \\
+                    curl_command="""curl -X POST "https://api.valuefabric.ai/v1/search" \\
   -H "Authorization: Bearer your_api_key" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -456,8 +537,8 @@ console.log(data);
     "search_type": "hybrid",
     "top_k": 5
   }'
-''',
-                    python_code='''
+""",
+                    python_code="""
 import requests
 
 headers = {
@@ -477,8 +558,8 @@ response = requests.post(
     json=data
 )
 print(response.json())
-''',
-                    javascript_code='''
+""",
+                    javascript_code="""
 const response = await fetch('https://api.valuefabric.ai/v1/search', {
   method: 'POST',
   headers: {
@@ -493,7 +574,7 @@ const response = await fetch('https://api.valuefabric.ai/v1/search', {
 });
 const data = await response.json();
 console.log(data);
-                    '''
+                    """,
                 ),
                 APIExample(
                     title="Filtered Search by Entity Type",
@@ -501,7 +582,7 @@ console.log(data);
                     request={
                         "query": "customer onboarding",
                         "entity_type": "UseCase",
-                        "top_k": 10
+                        "top_k": 10,
                     },
                     response={
                         "query": "customer onboarding",
@@ -516,16 +597,16 @@ console.log(data);
                                 "combined_score": 0.85,
                                 "metadata": {
                                     "description": "Automates customer onboarding process",
-                                    "industry": "banking"
+                                    "industry": "banking",
                                 },
-                                "confidence": 0.9
+                                "confidence": 0.9,
                             }
                         ],
                         "total_results": 1,
                         "search_type": "hybrid",
-                        "processing_time_ms": 120.0
-                    }
-                )
+                        "processing_time_ms": 120.0,
+                    },
+                ),
             ],
             errors=[
                 APIError(
@@ -533,13 +614,21 @@ console.log(data);
                     error_code="VALIDATION_ERROR",
                     message="Invalid search parameters",
                     description="The search request contains invalid parameters",
-                    causes=["Empty query", "Invalid search type", "Invalid top_k value"],
-                    solutions=["Provide a non-empty query", "Use valid search type", "Use top_k between 1-50"],
+                    causes=[
+                        "Empty query",
+                        "Invalid search type",
+                        "Invalid top_k value",
+                    ],
+                    solutions=[
+                        "Provide a non-empty query",
+                        "Use valid search type",
+                        "Use top_k between 1-50",
+                    ],
                     example_response={
                         "error": "VALIDATION_ERROR",
                         "message": "Query cannot be empty",
-                        "details": {"field": "query", "validation_rule": "minLength=1"}
-                    }
+                        "details": {"field": "query", "validation_rule": "minLength=1"},
+                    },
                 ),
                 APIError(
                     status_code=429,
@@ -551,22 +640,25 @@ console.log(data);
                     example_response={
                         "error": "RATE_LIMIT_ERROR",
                         "message": "Rate limit exceeded",
-                        "details": {"limit": 100, "window_seconds": 60, "retry_after": 30}
-                    }
-                )
+                        "details": {
+                            "limit": 100,
+                            "window_seconds": 60,
+                            "retry_after": 30,
+                        },
+                    },
+                ),
             ],
             rate_limiting={
                 "requests_per_minute": 100,
                 "burst_size": 200,
-                "per_api_key": True
+                "per_api_key": True,
             },
             authentication={
                 "required": True,
-                "roles": ["read_only", "analyst", "developer", "admin", "system"]
-            }
-        )
+                "roles": ["read_only", "analyst", "developer", "admin", "system"],
+            },
+        ),
     },
-    
     "tutorials": [
         APITutorial(
             title="Getting Started with Semantic Search",
@@ -578,7 +670,7 @@ console.log(data);
                     "step": 1,
                     "title": "Set up authentication",
                     "description": "Configure your API key and make your first authenticated request",
-                    "code": '''import requests
+                    "code": """import requests
 
 # Configure API key
 API_KEY = "your_api_key_here"
@@ -591,13 +683,13 @@ headers = {
 
 # Test authentication with health check
 response = requests.get(f"{BASE_URL}/health", headers=headers)
-print("Health check:", response.json())'''
+print("Health check:", response.json())""",
                 },
                 {
                     "step": 2,
                     "title": "Perform basic search",
                     "description": "Make your first semantic search query",
-                    "code": '''# Basic semantic search
+                    "code": """# Basic semantic search
 search_data = {
     "query": "automated invoice processing",
     "search_type": "hybrid",
@@ -613,13 +705,13 @@ response = requests.post(
 results = response.json()
 print(f"Found {results['total_results']} results")
 for result in results['results']:
-    print(f"- {result['name']} (confidence: {result['confidence']:.2f})")'''
+    print(f"- {result['name']} (confidence: {result['confidence']:.2f})")""",
                 },
                 {
                     "step": 3,
                     "title": "Explore search options",
                     "description": "Try different search types and filters",
-                    "code": '''# Try different search types
+                    "code": """# Try different search types
 search_types = ["hybrid", "vector", "fulltext", "graph"]
 
 for search_type in search_types:
@@ -636,8 +728,8 @@ for search_type in search_types:
     )
     
     results = response.json()
-    print(f"{search_type.upper()} search: {results['total_results']} results")'''
-                }
+    print(f"{search_type.upper()} search: {results['total_results']} results")""",
+                },
             ],
             examples=[
                 APIExample(
@@ -648,20 +740,19 @@ for search_type in search_types:
                         "search_type": "hybrid",
                         "entity_type": "Capability",
                         "top_k": 10,
-                        "weights": {"bm25": 0.3, "vector": 0.5, "graph": 0.2}
+                        "weights": {"bm25": 0.3, "vector": 0.5, "graph": 0.2},
                     },
                     response={
                         "query": "financial automation",
                         "results": [],
                         "total_results": 0,
                         "search_type": "hybrid",
-                        "processing_time_ms": 45.2
-                    }
+                        "processing_time_ms": 45.2,
+                    },
                 )
             ],
-            prerequisites=["Basic Python knowledge", "API key", "HTTP client library"]
+            prerequisites=["Basic Python knowledge", "API key", "HTTP client library"],
         ),
-        
         APITutorial(
             title="Graph-based Question Answering",
             description="Learn how to use GraphRAG for natural language queries",
@@ -672,20 +763,20 @@ for search_type in search_types:
                     "step": 1,
                     "title": "Understand GraphRAG",
                     "description": "Learn how GraphRAG combines graph traversal with language models",
-                    "code": '''# GraphRAG queries use natural language
+                    "code": """# GraphRAG queries use natural language
 # The system finds relevant graph context and generates answers
 
 query = "What capabilities enable real-time financial reporting?"
 print("This query will:")
 print("1. Find entities related to 'real-time financial reporting'")
 print("2. Traverse the graph to find connected capabilities")
-print("3. Generate a natural language answer with context")'''
+print("3. Generate a natural language answer with context")""",
                 },
                 {
                     "step": 2,
                     "title": "Make GraphRAG queries",
                     "description": "Send natural language questions to the GraphRAG endpoint",
-                    "code": '''# GraphRAG query
+                    "code": """# GraphRAG query
 graphrag_data = {
     "query": "What capabilities enable automated invoice processing?",
     "max_hops": 3,
@@ -702,13 +793,13 @@ response = requests.post(
 result = response.json()
 print("Answer:", result.get("answer", "No answer generated"))
 print("Confidence:", result.get("confidence_score", 0))
-print("Entities found:", len(result.get("entities", [])))'''
+print("Entities found:", len(result.get("entities", [])))""",
                 },
                 {
                     "step": 3,
                     "title": "Analyze results",
                     "description": "Understand the GraphRAG response structure",
-                    "code": '''# Analyze GraphRAG results
+                    "code": """# Analyze GraphRAG results
 result = response.json()
 
 # Check entities and relationships
@@ -722,8 +813,8 @@ for rel in result.get("relationships", []):
 
 # Check context graph
 context = result.get("context_graph", {})
-print(f"Context: {context.get('nodes', 0)} nodes, {context.get('edges', 0)} edges")'''
-                }
+print(f"Context: {context.get('nodes', 0)} nodes, {context.get('edges', 0)} edges")""",
+                },
             ],
             examples=[
                 APIExample(
@@ -734,7 +825,7 @@ print(f"Context: {context.get('nodes', 0)} nodes, {context.get('edges', 0)} edge
                         "max_hops": 4,
                         "max_results": 15,
                         "confidence_threshold": 0.8,
-                        "entity_type": "Capability"
+                        "entity_type": "Capability",
                     },
                     response={
                         "query": "How do data sources support regulatory compliance capabilities?",
@@ -743,28 +834,34 @@ print(f"Context: {context.get('nodes', 0)} nodes, {context.get('edges', 0)} edge
                                 "id": "datasource_1",
                                 "type": "DataSource",
                                 "name": "Regulatory Data Feed",
-                                "properties": {"type": "real-time", "compliance": "SOX"}
+                                "properties": {
+                                    "type": "real-time",
+                                    "compliance": "SOX",
+                                },
                             }
                         ],
                         "relationships": [
                             {
                                 "source": "datasource_1",
                                 "target": "capability_1",
-                                "type": "enables"
+                                "type": "enables",
                             }
                         ],
                         "context_graph": {"nodes": 2, "edges": 1},
                         "confidence_score": 0.85,
                         "sources": ["datasource_1", "capability_1"],
                         "processing_time_ms": 250.0,
-                        "answer": "Regulatory data feeds enable compliance capabilities by providing real-time monitoring and audit trails."
-                    }
+                        "answer": "Regulatory data feeds enable compliance capabilities by providing real-time monitoring and audit trails.",
+                    },
                 )
             ],
-            prerequisites=["Completed semantic search tutorial", "Basic graph concepts", "API key"]
-        )
+            prerequisites=[
+                "Completed semantic search tutorial",
+                "Basic graph concepts",
+                "API key",
+            ],
+        ),
     ],
-    
     "guides": [
         APIGuide(
             title="Best Practices",
@@ -870,16 +967,28 @@ print(f"Context: {context.get('nodes', 0)} nodes, {context.get('edges', 0)} edge
             - Use `/metrics` endpoint for detailed monitoring
             """,
             sections=[
-                {"title": "Performance", "content": "Optimize API performance with proper query design"},
-                {"title": "Error Handling", "content": "Implement robust error handling and retry logic"},
-                {"title": "Security", "content": "Secure API key management and request validation"},
-                {"title": "Monitoring", "content": "Monitor API health and performance metrics"}
+                {
+                    "title": "Performance",
+                    "content": "Optimize API performance with proper query design",
+                },
+                {
+                    "title": "Error Handling",
+                    "content": "Implement robust error handling and retry logic",
+                },
+                {
+                    "title": "Security",
+                    "content": "Secure API key management and request validation",
+                },
+                {
+                    "title": "Monitoring",
+                    "content": "Monitor API health and performance metrics",
+                },
             ],
             code_examples=[
                 {
                     "title": "Retry Logic",
                     "language": "python",
-                    "code": '''def api_call_with_retry(url, headers, data, max_retries=3):
+                    "code": """def api_call_with_retry(url, headers, data, max_retries=3):
     for attempt in range(max_retries + 1):
         try:
             response = requests.post(url, headers=headers, json=data)
@@ -892,12 +1001,11 @@ print(f"Context: {context.get('nodes', 0)} nodes, {context.get('edges', 0)} edge
         except requests.exceptions.RequestException as e:
             if attempt == max_retries:
                 raise
-            time.sleep(2 ** attempt)'''
+            time.sleep(2 ** attempt)""",
                 }
             ],
-            related_endpoints=["/health", "/v1/search", "/v1/graphrag"]
+            related_endpoints=["/health", "/v1/search", "/v1/graphrag"],
         ),
-        
         APIGuide(
             title="Data Ingestion",
             content="""
@@ -1040,16 +1148,22 @@ print(f"Context: {context.get('nodes', 0)} nodes, {context.get('edges', 0)} edge
             ```
             """,
             sections=[
-                {"title": "RDF Format", "content": "Understanding RDF/Turtle syntax and structure"},
+                {
+                    "title": "RDF Format",
+                    "content": "Understanding RDF/Turtle syntax and structure",
+                },
                 {"title": "Ingestion API", "content": "Using the ingestion endpoints"},
-                {"title": "Best Practices", "content": "Tips for successful data ingestion"},
-                {"title": "Troubleshooting", "content": "Common issues and solutions"}
+                {
+                    "title": "Best Practices",
+                    "content": "Tips for successful data ingestion",
+                },
+                {"title": "Troubleshooting", "content": "Common issues and solutions"},
             ],
             code_examples=[
                 {
                     "title": "RDF Data Example",
                     "language": "turtle",
-                    "code": '''@prefix vf: <http://valuefabric.ai/ontology/> .
+                    "code": """@prefix vf: <http://valuefabric.ai/ontology/> .
 
 vf:capability1 rdf:type vf:Capability ;
     vf:name "Customer Analytics" ;
@@ -1059,12 +1173,12 @@ vf:capability1 rdf:type vf:Capability ;
 vf:usecase1 rdf:type vf:UseCase ;
     vf:name "Customer Segmentation" ;
     vf:description "Segments customers based on behavior" ;
-    vf:enables vf:capability1 .'''
+    vf:enables vf:capability1 .""",
                 },
                 {
                     "title": "Ingestion Request",
                     "language": "python",
-                    "code": '''import requests
+                    "code": """import requests
 
 def ingest_rdf_data(rdf_content, source_id, job_id):
     headers = {
@@ -1085,13 +1199,16 @@ def ingest_rdf_data(rdf_content, source_id, job_id):
         json=data
     )
     
-    return response.json()'''
-                }
+    return response.json()""",
+                },
             ],
-            related_endpoints=["/v1/ingest", "/v1/sync/{source_id}", "/v1/schema/status"]
-        )
+            related_endpoints=[
+                "/v1/ingest",
+                "/v1/sync/{source_id}",
+                "/v1/schema/status",
+            ],
+        ),
     ],
-    
     "errors": {
         "authentication_errors": [
             APIError(
@@ -1100,25 +1217,34 @@ def ingest_rdf_data(rdf_content, source_id, job_id):
                 message="API key required for this endpoint",
                 description="The endpoint requires authentication but no API key was provided",
                 causes=["Missing API key", "Invalid API key format", "Expired API key"],
-                solutions=["Include API key in Authorization header", "Check API key format", "Get new API key"],
+                solutions=[
+                    "Include API key in Authorization header",
+                    "Check API key format",
+                    "Get new API key",
+                ],
                 example_response={
                     "error": "AUTHENTICATION_REQUIRED",
                     "message": "API key required for this endpoint",
-                    "schemes": ["Bearer", "X-API-Key"]
-                }
+                    "schemes": ["Bearer", "X-API-Key"],
+                },
             ),
             APIError(
                 status_code=401,
                 error_code="AUTHENTICATION_FAILED",
                 message="Invalid or expired API key",
                 description="The provided API key is invalid, expired, or has been revoked",
-                causes=["Invalid API key", "Expired API key", "Revoked API key", "Disabled API key"],
+                causes=[
+                    "Invalid API key",
+                    "Expired API key",
+                    "Revoked API key",
+                    "Disabled API key",
+                ],
                 solutions=["Check API key", "Get new API key", "Contact administrator"],
                 example_response={
                     "error": "AUTHENTICATION_FAILED",
-                    "message": "Invalid API key"
-                }
-            )
+                    "message": "Invalid API key",
+                },
+            ),
         ],
         "authorization_errors": [
             APIError(
@@ -1126,14 +1252,22 @@ def ingest_rdf_data(rdf_content, source_id, job_id):
                 error_code="INSUFFICIENT_PERMISSIONS",
                 message="API key lacks required permissions",
                 description="The API key does not have permission to perform this operation",
-                causes=["Insufficient role", "Missing permission", "Permission revoked"],
-                solutions=["Upgrade API key role", "Contact administrator", "Check permissions"],
+                causes=[
+                    "Insufficient role",
+                    "Missing permission",
+                    "Permission revoked",
+                ],
+                solutions=[
+                    "Upgrade API key role",
+                    "Contact administrator",
+                    "Check permissions",
+                ],
                 example_response={
                     "error": "INSUFFICIENT_PERMISSIONS",
                     "message": "API key lacks required permissions",
                     "required_permission": "write:ingestion",
-                    "current_permissions": ["read:search", "read:health"]
-                }
+                    "current_permissions": ["read:search", "read:health"],
+                },
             )
         ],
         "validation_errors": [
@@ -1142,13 +1276,21 @@ def ingest_rdf_data(rdf_content, source_id, job_id):
                 error_code="VALIDATION_ERROR",
                 message="Request validation failed",
                 description="The request contains invalid data or parameters",
-                causes=["Missing required fields", "Invalid data format", "Constraint violations"],
-                solutions=["Check request format", "Validate data before sending", "Review API documentation"],
+                causes=[
+                    "Missing required fields",
+                    "Invalid data format",
+                    "Constraint violations",
+                ],
+                solutions=[
+                    "Check request format",
+                    "Validate data before sending",
+                    "Review API documentation",
+                ],
                 example_response={
                     "error": "VALIDATION_ERROR",
                     "message": "Query cannot be empty",
-                    "details": {"field": "query", "validation_rule": "minLength=1"}
-                }
+                    "details": {"field": "query", "validation_rule": "minLength=1"},
+                },
             )
         ],
         "rate_limit_errors": [
@@ -1157,13 +1299,21 @@ def ingest_rdf_data(rdf_content, source_id, job_id):
                 error_code="RATE_LIMIT_ERROR",
                 message="Rate limit exceeded",
                 description="Too many requests have been made within the time window",
-                causes=["High request volume", "Insufficient rate limit", "Burst traffic"],
-                solutions=["Wait and retry", "Implement exponential backoff", "Upgrade plan"],
+                causes=[
+                    "High request volume",
+                    "Insufficient rate limit",
+                    "Burst traffic",
+                ],
+                solutions=[
+                    "Wait and retry",
+                    "Implement exponential backoff",
+                    "Upgrade plan",
+                ],
                 example_response={
                     "error": "RATE_LIMIT_ERROR",
                     "message": "Rate limit exceeded",
-                    "details": {"limit": 100, "window_seconds": 60, "retry_after": 30}
-                }
+                    "details": {"limit": 100, "window_seconds": 60, "retry_after": 30},
+                },
             )
         ],
         "server_errors": [
@@ -1172,13 +1322,17 @@ def ingest_rdf_data(rdf_content, source_id, job_id):
                 error_code="INTERNAL_SERVER_ERROR",
                 message="Internal server error",
                 description="An unexpected error occurred on the server",
-                causes=["Database connection failed", "Service unavailable", "Bug in application"],
+                causes=[
+                    "Database connection failed",
+                    "Service unavailable",
+                    "Bug in application",
+                ],
                 solutions=["Try again later", "Contact support", "Check status page"],
                 example_response={
                     "error": "INTERNAL_SERVER_ERROR",
                     "message": "An unexpected error occurred",
-                    "request_id": "req_123456"
-                }
+                    "request_id": "req_123456",
+                },
             ),
             APIError(
                 status_code=503,
@@ -1190,92 +1344,92 @@ def ingest_rdf_data(rdf_content, source_id, job_id):
                 example_response={
                     "error": "SERVICE_UNAVAILABLE",
                     "message": "Service temporarily unavailable",
-                    "details": {"service": "neo4j", "error": "Connection timeout"}
-                }
-            )
-        ]
-    }
+                    "details": {"service": "neo4j", "error": "Connection timeout"},
+                },
+            ),
+        ],
+    },
 }
 
 
-def get_documentation() -> Dict[str, Any]:
+def get_documentation() -> dict[str, Any]:
     """Get comprehensive API documentation.
-    
+
     Returns:
         API documentation dictionary
     """
     return API_DOCUMENTATION
 
 
-def get_endpoint_documentation(path: str, method: str) -> Optional[APIEndpoint]:
+def get_endpoint_documentation(path: str, method: str) -> APIEndpoint | None:
     """Get documentation for specific endpoint.
-    
+
     Args:
         path: Endpoint path
         method: HTTP method
-        
+
     Returns:
         Endpoint documentation or None
     """
     endpoints = API_DOCUMENTATION.get("endpoints", {})
-    
+
     for endpoint in endpoints.values():
         if endpoint.path == path and endpoint.method.upper() == method.upper():
             return endpoint
-    
+
     return None
 
 
-def get_error_documentation(error_code: str) -> Optional[APIError]:
+def get_error_documentation(error_code: str) -> APIError | None:
     """Get documentation for specific error.
-    
+
     Args:
         error_code: Error code
-        
+
     Returns:
         Error documentation or None
     """
     errors = API_DOCUMENTATION.get("errors", {})
-    
+
     for error_category in errors.values():
         for error in error_category:
             if error.error_code == error_code:
                 return error
-    
+
     return None
 
 
-def get_tutorial(title: str) -> Optional[APITutorial]:
+def get_tutorial(title: str) -> APITutorial | None:
     """Get tutorial by title.
-    
+
     Args:
         title: Tutorial title
-        
+
     Returns:
         Tutorial or None
     """
     tutorials = API_DOCUMENTATION.get("tutorials", [])
-    
+
     for tutorial in tutorials:
         if tutorial.title == title:
             return tutorial
-    
+
     return None
 
 
-def get_guide(title: str) -> Optional[APIGuide]:
+def get_guide(title: str) -> APIGuide | None:
     """Get guide by title.
-    
+
     Args:
         title: Guide title
-        
+
     Returns:
         Guide or None
     """
     guides = API_DOCUMENTATION.get("guides", [])
-    
+
     for guide in guides:
         if guide.title == title:
             return guide
-    
+
     return None

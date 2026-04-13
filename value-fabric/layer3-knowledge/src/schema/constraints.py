@@ -9,7 +9,6 @@ which are supported on both Community and Enterprise editions.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 
 @dataclass
@@ -59,7 +58,7 @@ class Index:
 
     name: str
     entity_type: str
-    properties: List[str]
+    properties: list[str]
     index_type: str = "btree"  # btree, fulltext, vector, lookup
 
     @property
@@ -197,7 +196,7 @@ VECTOR_INDEX_ENTITY_TYPES = [
 ]
 
 # Constraints for data integrity
-CONSTRAINTS: List[Constraint] = [
+CONSTRAINTS: list[Constraint] = [
     # Unique constraints on entity IDs
     Constraint("capability_id", "Capability", "id", "unique"),
     Constraint("usecase_id", "UseCase", "id", "unique"),
@@ -235,7 +234,7 @@ CONSTRAINTS: List[Constraint] = [
 ]
 
 # Indexes for query performance
-INDEXES: List[Index] = [
+INDEXES: list[Index] = [
     # B-tree indexes for filtering
     Index("capability_name_idx", "Capability", ["name"], "btree"),
     Index("capability_confidence_idx", "Capability", ["confidence"], "btree"),
@@ -246,7 +245,9 @@ INDEXES: List[Index] = [
     Index("persona_name_idx", "Persona", ["name"], "btree"),  # Fixed: was "title"
     Index("persona_department_idx", "Persona", ["department"], "btree"),
     Index("persona_roletype_idx", "Persona", ["role_type"], "btree"),
-    Index("persona_roletype_idx2", "Persona", ["roleType"], "btree"),  # camelCase variant
+    Index(
+        "persona_roletype_idx2", "Persona", ["roleType"], "btree"
+    ),  # camelCase variant
     Index("valuedriver_name_idx", "ValueDriver", ["name"], "btree"),
     Index("valuedriver_category_idx", "ValueDriver", ["category"], "btree"),
     Index("valuedriver_valuecategory_idx", "ValueDriver", ["valueCategory"], "btree"),
@@ -259,7 +260,9 @@ INDEXES: List[Index] = [
     # Full-text indexes for search
     Index("capability_fulltext", "Capability", ["name", "description"], "fulltext"),
     Index("usecase_fulltext", "UseCase", ["name", "description"], "fulltext"),
-    Index("persona_fulltext", "Persona", ["name", "description", "department"], "fulltext"),  # Fixed
+    Index(
+        "persona_fulltext", "Persona", ["name", "description", "department"], "fulltext"
+    ),  # Fixed
     Index("valuedriver_fulltext", "ValueDriver", ["name", "description"], "fulltext"),
     Index("valuemetric_fulltext", "ValueMetric", ["name", "description"], "fulltext"),
     Index("product_fulltext", "Product", ["name", "description"], "fulltext"),
@@ -293,21 +296,21 @@ SCHEMA_INIT_ORDER = [
 ]
 
 
-def get_all_constraints() -> List[Constraint]:
+def get_all_constraints() -> list[Constraint]:
     """Get all schema constraints."""
     return CONSTRAINTS
 
 
-def get_all_indexes() -> List[Index]:
+def get_all_indexes() -> list[Index]:
     """Get all schema indexes."""
     return INDEXES
 
 
-def get_entity_types() -> List[str]:
+def get_entity_types() -> list[str]:
     """Get all entity types in the ontology."""
     return ENTITY_TYPES
 
 
-def get_relationship_types() -> List[str]:
+def get_relationship_types() -> list[str]:
     """Get all relationship types in the ontology."""
     return RELATIONSHIP_TYPES

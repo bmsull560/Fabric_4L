@@ -1,11 +1,16 @@
 """Prometheus metrics collection for Layer 5 Ground Truth."""
 
-import time
-from typing import Dict, List, Optional, Any
-
-from prometheus_client import Counter, Histogram, Gauge, Info, CollectorRegistry, generate_latest
-
 import logging
+from typing import Any
+
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    generate_latest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,24 +21,34 @@ class MetricsConfig:
     def __init__(
         self,
         enabled: bool = True,
-        registry: Optional[CollectorRegistry] = None,
+        registry: CollectorRegistry | None = None,
         prefix: str = "layer5_",
         label_namespace: str = "ground_truth",
-        default_buckets: Optional[List[float]] = None,
+        default_buckets: list[float] | None = None,
     ):
         self.enabled = enabled
         self.registry = registry or CollectorRegistry()
         self.prefix = prefix
         self.label_namespace = label_namespace
-        self.default_buckets = default_buckets or [0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 25.0, 50.0]
+        self.default_buckets = default_buckets or [
+            0.1,
+            0.25,
+            0.5,
+            1.0,
+            2.5,
+            5.0,
+            10.0,
+            25.0,
+            50.0,
+        ]
 
 
 class PrometheusMetrics:
     """Prometheus metrics collector for Layer 5 Ground Truth."""
 
-    def __init__(self, config: Optional[MetricsConfig] = None):
+    def __init__(self, config: MetricsConfig | None = None):
         self.config = config or MetricsConfig()
-        self._metrics: Dict[str, Any] = {}
+        self._metrics: dict[str, Any] = {}
         self._setup_metrics()
 
     def _setup_metrics(self) -> None:
@@ -45,7 +60,7 @@ class PrometheusMetrics:
             f"{prefix}http_requests_total",
             "Total HTTP requests",
             ["method", "endpoint", "status_code"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["request_duration"] = Histogram(
@@ -53,7 +68,7 @@ class PrometheusMetrics:
             "HTTP request duration",
             ["method", "endpoint"],
             buckets=self.config.default_buckets,
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Truth object metrics
@@ -61,46 +76,46 @@ class PrometheusMetrics:
             f"{prefix}truth_objects_total",
             "Total truth objects created",
             ["claim_type", "status"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["validations_total"] = Counter(
             f"{prefix}validations_total",
             "Total validation state transitions",
             ["from_status", "to_status"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["truth_objects_by_status"] = Gauge(
             f"{prefix}truth_objects_by_status",
             "Current truth objects by status",
             ["status", "claim_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["sources_added_total"] = Counter(
             f"{prefix}sources_added_total",
             "Total evidence sources added",
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["kg_sync_total"] = Counter(
             f"{prefix}kg_sync_total",
             "Total knowledge graph sync operations",
             ["status"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["freshness_checks_total"] = Counter(
             f"{prefix}freshness_checks_total",
             "Total freshness monitoring checks",
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["stale_objects_detected"] = Counter(
             f"{prefix}stale_objects_detected",
             "Total stale objects detected",
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Active connections
@@ -108,7 +123,7 @@ class PrometheusMetrics:
             f"{prefix}active_connections",
             "Number of active connections",
             ["connection_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Health status gauge (for alerting)
@@ -116,7 +131,7 @@ class PrometheusMetrics:
             f"{prefix}health_status",
             "Health status (1=healthy, 0=unhealthy)",
             ["component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
         # Initialize with healthy status
         self._metrics["health_status"].labels(component="api").set(1)
@@ -128,27 +143,28 @@ class PrometheusMetrics:
             f"{prefix}errors_total",
             "Total errors",
             ["error_type", "component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Build info
         self._metrics["build_info"] = Info(
-            f"{prefix}build_info",
-            "Build information",
-            registry=self.config.registry
+            f"{prefix}build_info", "Build information", registry=self.config.registry
         )
-        self._metrics["build_info"].info({
-            "version": "0.1.0",
-            "service": "layer5-ground-truth"
-        })
+        self._metrics["build_info"].info(
+            {"version": "0.1.0", "service": "layer5-ground-truth"}
+        )
 
-    def increment_requests_total(self, method: str, endpoint: str, status_code: int) -> None:
+    def increment_requests_total(
+        self, method: str, endpoint: str, status_code: int
+    ) -> None:
         if self.config.enabled:
             self._metrics["requests_total"].labels(
                 method=method, endpoint=endpoint, status_code=str(status_code)
             ).inc()
 
-    def observe_request_duration(self, duration: float, method: str, endpoint: str) -> None:
+    def observe_request_duration(
+        self, duration: float, method: str, endpoint: str
+    ) -> None:
         if self.config.enabled:
             self._metrics["request_duration"].labels(
                 method=method, endpoint=endpoint
@@ -166,7 +182,9 @@ class PrometheusMetrics:
                 from_status=from_status, to_status=to_status
             ).inc()
 
-    def set_truth_objects_by_status(self, status: str, claim_type: str, count: int) -> None:
+    def set_truth_objects_by_status(
+        self, status: str, claim_type: str, count: int
+    ) -> None:
         if self.config.enabled:
             self._metrics["truth_objects_by_status"].labels(
                 status=status, claim_type=claim_type
@@ -190,7 +208,9 @@ class PrometheusMetrics:
 
     def set_health_status(self, healthy: bool, component: str = "api") -> None:
         if self.config.enabled:
-            self._metrics["health_status"].labels(component=component).set(1 if healthy else 0)
+            self._metrics["health_status"].labels(component=component).set(
+                1 if healthy else 0
+            )
 
     def increment_errors(self, error_type: str, component: str) -> None:
         if self.config.enabled:
@@ -205,14 +225,14 @@ class PrometheusMetrics:
         return generate_latest(self.config.registry).decode("utf-8")
 
 
-_metrics: Optional[PrometheusMetrics] = None
+_metrics: PrometheusMetrics | None = None
 
 
-def get_metrics() -> Optional[PrometheusMetrics]:
+def get_metrics() -> PrometheusMetrics | None:
     return _metrics
 
 
-def initialize_metrics(config: Optional[MetricsConfig] = None) -> Optional[PrometheusMetrics]:
+def initialize_metrics(config: MetricsConfig | None = None) -> PrometheusMetrics | None:
     global _metrics
     _metrics = PrometheusMetrics(config)
     logger.info("Layer 5 Prometheus metrics initialized")

@@ -2,8 +2,8 @@
 
 from .prometheus_metrics import (
     MetricsConfig,
-    PrometheusMetrics,
     MetricsMiddleware,
+    PrometheusMetrics,
     get_metrics,
     initialize_metrics,
 )

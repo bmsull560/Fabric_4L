@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_any_permission
 from shared.identity.permissions import Permission
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db
 from ..service import ModelRegistryService
@@ -30,9 +29,9 @@ class ModelRegisterRequest(BaseModel):
     model_name: str = Field(..., min_length=1, max_length=100)
     model_version: str = Field(..., min_length=1, max_length=50)
     stage: str = Field(default="dev", pattern=r"^(dev|staging|production|deprecated)$")
-    config: Dict[str, Any] = Field(default_factory=dict)
-    eval_score: Optional[float] = Field(None, ge=0.0, le=1.0)
-    eval_run_id: Optional[str] = Field(None, max_length=100)
+    config: dict[str, Any] = Field(default_factory=dict)
+    eval_score: float | None = Field(None, ge=0.0, le=1.0)
+    eval_run_id: str | None = Field(None, max_length=100)
 
 
 class ModelVersionResponse(BaseModel):
@@ -44,10 +43,10 @@ class ModelVersionResponse(BaseModel):
     model_name: str
     model_version: str
     stage: str
-    promoted_by: Optional[UUID] = None
-    eval_score: Optional[float] = None
-    eval_run_id: Optional[str] = None
-    config: Dict[str, Any]
+    promoted_by: UUID | None = None
+    eval_score: float | None = None
+    eval_run_id: str | None = None
+    config: dict[str, Any]
     created_at: str
 
     class Config:
@@ -58,7 +57,7 @@ class ModelPromoteRequest(BaseModel):
     """Payload to promote a model to a new stage."""
 
     to_stage: str = Field(..., pattern=r"^(dev|staging|production|deprecated)$")
-    reason: Optional[str] = Field(None, max_length=2000)
+    reason: str | None = Field(None, max_length=2000)
 
 
 class PromotionLogResponse(BaseModel):
@@ -68,9 +67,9 @@ class PromotionLogResponse(BaseModel):
     model_version_id: UUID
     from_stage: str
     to_stage: str
-    promoted_by: Optional[UUID] = None
-    reason: Optional[str] = None
-    eval_score: Optional[float] = None
+    promoted_by: UUID | None = None
+    reason: str | None = None
+    eval_score: float | None = None
     eval_gate_passed: bool
     created_at: str
 
@@ -99,12 +98,16 @@ async def api_register_model(
     return ModelVersionResponse.model_validate(model)
 
 
-@router.get("", response_model=List[ModelVersionResponse])
+@router.get("", response_model=list[ModelVersionResponse])
 async def api_list_models(
-    stage: Optional[str] = Query(None, pattern=r"^(dev|staging|production|deprecated)$"),
-    ctx: RequestContext = Depends(require_any_permission(Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS)),
+    stage: str | None = Query(None, pattern=r"^(dev|staging|production|deprecated)$"),
+    ctx: RequestContext = Depends(
+        require_any_permission(
+            Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
+        )
+    ),
     db: AsyncSession = Depends(get_db),
-) -> List[ModelVersionResponse]:
+) -> list[ModelVersionResponse]:
     """List model versions for the caller's tenant."""
     models = await ModelRegistryService.list_models(db, ctx.tenant_id, stage=stage)
     return [ModelVersionResponse.model_validate(m) for m in models]
@@ -113,7 +116,11 @@ async def api_list_models(
 @router.get("/{model_id}", response_model=ModelVersionResponse)
 async def api_get_model(
     model_id: UUID,
-    ctx: RequestContext = Depends(require_any_permission(Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS)),
+    ctx: RequestContext = Depends(
+        require_any_permission(
+            Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
+        )
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> ModelVersionResponse:
     """Get a single model version by ID."""
@@ -149,12 +156,16 @@ async def api_promote_model(
     return ModelVersionResponse.model_validate(model)
 
 
-@router.get("/{model_id}/history", response_model=List[PromotionLogResponse])
+@router.get("/{model_id}/history", response_model=list[PromotionLogResponse])
 async def api_get_promotion_history(
     model_id: UUID,
-    ctx: RequestContext = Depends(require_any_permission(Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS)),
+    ctx: RequestContext = Depends(
+        require_any_permission(
+            Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
+        )
+    ),
     db: AsyncSession = Depends(get_db),
-) -> List[PromotionLogResponse]:
+) -> list[PromotionLogResponse]:
     """Get promotion history for a model version."""
     model = await ModelRegistryService.get_model(db, model_id)
     if model is None or model.tenant_id != ctx.tenant_id:
@@ -166,13 +177,15 @@ async def api_get_promotion_history(
 @router.get("/active", response_model=ModelVersionResponse)
 async def api_get_active_model(
     provider: str = Query(..., min_length=1, max_length=50),
-    ctx: RequestContext = Depends(require_any_permission(Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS)),
+    ctx: RequestContext = Depends(
+        require_any_permission(
+            Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
+        )
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> ModelVersionResponse:
     """Get the active production model for a provider."""
-    model = await ModelRegistryService.get_active_production_model(
-        db, ctx.tenant_id, provider
-    )
+    model = await ModelRegistryService.get_active_production_model(db, ctx.tenant_id, provider)
     if model is None:
         raise HTTPException(status_code=404, detail="No active production model found")
     return ModelVersionResponse.model_validate(model)

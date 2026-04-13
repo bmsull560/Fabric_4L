@@ -18,7 +18,7 @@ Design notes:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from neo4j import AsyncDriver
 from neo4j.exceptions import ClientError, ServiceUnavailable
@@ -41,8 +41,8 @@ class Neo4jVectorStore:
 
     def __init__(
         self,
-        driver: Optional[AsyncDriver] = None,
-        settings: Optional[Settings] = None,
+        driver: AsyncDriver | None = None,
+        settings: Settings | None = None,
     ) -> None:
         self.settings = settings or get_settings()
         self._driver = driver
@@ -74,18 +74,22 @@ class Neo4jVectorStore:
         """
         if self._embedding_model is None:
             from sentence_transformers import SentenceTransformer
+
             model_name = getattr(self.settings, "embedding_model", "all-MiniLM-L6-v2")
             self._embedding_model = SentenceTransformer(model_name)
             logger.info("Loaded embedding model: %s", model_name)
         return self._embedding_model
 
-    def _embed(self, text: str) -> List[float]:
+    def _embed(self, text: str) -> list[float]:
         model = self._get_embedding_model()
         return model.encode(text, normalize_embeddings=True).tolist()
 
-    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+    def _embed_batch(self, texts: list[str]) -> list[list[float]]:
         model = self._get_embedding_model()
-        return [v.tolist() for v in model.encode(texts, normalize_embeddings=True, batch_size=32)]
+        return [
+            v.tolist()
+            for v in model.encode(texts, normalize_embeddings=True, batch_size=32)
+        ]
 
     # ------------------------------------------------------------------
     # Write operations
@@ -96,8 +100,8 @@ class Neo4jVectorStore:
         entity_id: str,
         entity_type: str,
         text: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Upsert a single entity embedding into Neo4j."""
         if entity_type not in VECTOR_ENTITY_TYPES:
             raise VectorStoreError(
@@ -107,12 +111,13 @@ class Neo4jVectorStore:
         embedding = self._embed(text)
         driver = await self._get_driver()
 
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "id": entity_id,
             "embedding": embedding,
             "text": text[:2000],
             "metadata": {
-                k: v for k, v in (metadata or {}).items()
+                k: v
+                for k, v in (metadata or {}).items()
                 if isinstance(v, (str, int, float, bool))
             },
         }
@@ -141,13 +146,15 @@ class Neo4jVectorStore:
                     "upserted": record["upserted"] if record else False,
                 }
         except (ClientError, ServiceUnavailable) as exc:
-            raise VectorStoreError(f"Failed to upsert entity {entity_id}: {exc}") from exc
+            raise VectorStoreError(
+                f"Failed to upsert entity {entity_id}: {exc}"
+            ) from exc
 
     async def upsert_batch(
         self,
-        entities: List[Dict[str, Any]],
+        entities: list[dict[str, Any]],
         entity_type: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Batch upsert entity embeddings."""
         if not entities:
             return {"upserted": 0, "failed": []}
@@ -157,16 +164,19 @@ class Neo4jVectorStore:
 
         records = []
         for entity, embedding, text in zip(entities, embeddings, texts):
-            records.append({
-                "id": entity["id"],
-                "embedding": embedding,
-                "text": text[:2000],
-                "metadata": {
-                    k: v for k, v in entity.items()
-                    if k not in ("id", "text", "embedding")
-                    and isinstance(v, (str, int, float, bool))
-                },
-            })
+            records.append(
+                {
+                    "id": entity["id"],
+                    "embedding": embedding,
+                    "text": text[:2000],
+                    "metadata": {
+                        k: v
+                        for k, v in entity.items()
+                        if k not in ("id", "text", "embedding")
+                        and isinstance(v, (str, int, float, bool))
+                    },
+                }
+            )
 
         query = f"""
         UNWIND $records AS rec
@@ -200,15 +210,15 @@ class Neo4jVectorStore:
     async def search(
         self,
         query_text: str,
-        entity_type: Optional[str] = None,
+        entity_type: str | None = None,
         top_k: int = 10,
         min_score: float = 0.0,
-    ) -> List[Tuple[str, float, Dict[str, Any]]]:
+    ) -> list[tuple[str, float, dict[str, Any]]]:
         """ANN vector search using Neo4j native vector index."""
         query_embedding = self._embed(query_text)
         driver = await self._get_driver()
         types_to_search = [entity_type] if entity_type else VECTOR_ENTITY_TYPES
-        all_results: List[Tuple[str, float, Dict[str, Any]]] = []
+        all_results: list[tuple[str, float, dict[str, Any]]] = []
 
         for etype in types_to_search:
             index_name = f"{etype.lower()}_embedding_idx"
@@ -226,28 +236,40 @@ class Neo4jVectorStore:
             ORDER BY score DESC
             """
             try:
-                async with driver.session(database=self.settings.neo4j_database) as session:
-                    result = await session.run(cypher, {
-                        "index_name": index_name,
-                        "top_k": top_k,
-                        "embedding": query_embedding,
-                        "min_score": min_score,
-                    })
+                async with driver.session(
+                    database=self.settings.neo4j_database
+                ) as session:
+                    result = await session.run(
+                        cypher,
+                        {
+                            "index_name": index_name,
+                            "top_k": top_k,
+                            "embedding": query_embedding,
+                            "min_score": min_score,
+                        },
+                    )
                     async for record in result:
-                        all_results.append((
-                            record["entity_id"],
-                            record["score"],
-                            {
-                                "entity_type": record["entity_type"],
-                                "name": record["name"],
-                                "description": record["description"],
-                                "confidence": record["confidence"],
-                            },
-                        ))
+                        all_results.append(
+                            (
+                                record["entity_id"],
+                                record["score"],
+                                {
+                                    "entity_type": record["entity_type"],
+                                    "name": record["name"],
+                                    "description": record["description"],
+                                    "confidence": record["confidence"],
+                                },
+                            )
+                        )
             except ClientError as exc:
-                if "index does not exist" in str(exc).lower() or "no such index" in str(exc).lower():
+                if (
+                    "index does not exist" in str(exc).lower()
+                    or "no such index" in str(exc).lower()
+                ):
                     logger.warning(
-                        "Vector index '%s' not found — falling back for %s", index_name, etype
+                        "Vector index '%s' not found — falling back for %s",
+                        index_name,
+                        etype,
                     )
                     continue
                 logger.error("Vector search failed for %s: %s", etype, exc)
@@ -272,10 +294,10 @@ class Neo4jVectorStore:
             logger.error("Failed to delete embedding for %s: %s", entity_id, exc)
             return False
 
-    async def index_health(self) -> Dict[str, Any]:
+    async def index_health(self) -> dict[str, Any]:
         """Check whether all expected vector indexes exist and are online."""
         driver = await self._get_driver()
-        details: Dict[str, Any] = {}
+        details: dict[str, Any] = {}
         all_online = True
 
         try:
@@ -291,7 +313,11 @@ class Neo4jVectorStore:
                 online = state == "ONLINE"
                 if not online:
                     all_online = False
-                details[index_name] = {"entity_type": etype, "state": state or "MISSING", "online": online}
+                details[index_name] = {
+                    "entity_type": etype,
+                    "state": state or "MISSING",
+                    "online": online,
+                }
 
         except (ClientError, ServiceUnavailable) as exc:
             return {"status": "unhealthy", "error": str(exc), "indexes": {}}

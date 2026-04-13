@@ -3,35 +3,34 @@
 Neo4j-backed implementation of variable definitions and resolution.
 """
 
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timezone
-import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from neo4j import AsyncDriver
 
 from ..interfaces.variable_registry import (
     IVariableRegistry,
-    Variable,
-    VariableValue,
-    VariableSourceBinding,
-    VariableValidationRule,
-    VariableSearchCriteria,
     ResolutionContext,
-    VariableSourceType,
+    Variable,
     VariableDataType,
+    VariableSearchCriteria,
+    VariableSourceBinding,
+    VariableSourceType,
+    VariableValidationRule,
+    VariableValue,
 )
 
 
 class Neo4jVariableRegistry(IVariableRegistry):
     """Neo4j-backed Variable Registry implementation."""
-    
+
     def __init__(self, driver: AsyncDriver):
         self._driver = driver
-    
+
     async def register_variable(self, variable: Variable) -> Variable:
         """Register new variable definition in Neo4j."""
-        now = datetime.now(timezone.utc).isoformat()
-        
+        now = datetime.now(UTC).isoformat()
+
         # Build source binding properties
         source_props = {}
         if variable.source_binding:
@@ -43,16 +42,18 @@ class Neo4jVariableRegistry(IVariableRegistry):
                 "fallbackValue": variable.source_binding.fallback_value,
                 "isRequired": variable.source_binding.is_required,
             }
-        
+
         # Build validation rules
         validation_rules = []
         for rule in variable.validation_rules:
-            validation_rules.append({
-                "ruleType": rule.rule_type,
-                "parameters": rule.parameters,
-                "errorMessage": rule.error_message,
-            })
-        
+            validation_rules.append(
+                {
+                    "ruleType": rule.rule_type,
+                    "parameters": rule.parameters,
+                    "errorMessage": rule.error_message,
+                }
+            )
+
         query = """
         CREATE (v:Variable {
             id: $variable_id,
@@ -75,7 +76,7 @@ class Neo4jVariableRegistry(IVariableRegistry):
             v.isRequired = $is_required
         RETURN v
         """
-        
+
         async with self._driver.session() as session:
             result = await session.run(
                 query,
@@ -98,31 +99,31 @@ class Neo4jVariableRegistry(IVariableRegistry):
                 is_required=source_props.get("isRequired", True),
             )
             record = await result.single()
-            
+
             if not record:
                 raise ValueError("Failed to register variable")
-            
+
             v = record["v"]
             variable.created_at = datetime.fromisoformat(v["createdAt"])
-            
+
             return variable
-    
-    async def get_variable(self, variable_id: str) -> Optional[Variable]:
+
+    async def get_variable(self, variable_id: str) -> Variable | None:
         """Retrieve variable definition from Neo4j."""
         query = """
         MATCH (v:Variable {id: $variable_id})
         RETURN v
         """
-        
+
         async with self._driver.session() as session:
             result = await session.run(query, variable_id=variable_id)
             record = await result.single()
-            
+
             if not record:
                 return None
-            
+
             v = record["v"]
-            
+
             # Reconstruct source binding
             source_binding = None
             if v.get("sourceType"):
@@ -134,18 +135,20 @@ class Neo4jVariableRegistry(IVariableRegistry):
                     fallback_value=v.get("fallbackValue"),
                     is_required=v.get("isRequired", True),
                 )
-            
+
             # Reconstruct validation rules with safe key access
             validation_rules = []
             for rule_data in v.get("validationRules", []):
                 if not isinstance(rule_data, dict):
                     continue
-                validation_rules.append(VariableValidationRule(
-                    rule_type=rule_data.get("ruleType", "unknown"),
-                    parameters=rule_data.get("parameters", {}),
-                    error_message=rule_data.get("errorMessage", "Validation failed"),
-                ))
-            
+                validation_rules.append(
+                    VariableValidationRule(
+                        rule_type=rule_data.get("ruleType", "unknown"),
+                        parameters=rule_data.get("parameters", {}),
+                        error_message=rule_data.get("errorMessage", "Validation failed"),
+                    )
+                )
+
             return Variable(
                 variable_id=v["id"],
                 name=v["name"],
@@ -156,111 +159,120 @@ class Neo4jVariableRegistry(IVariableRegistry):
                 industry=v.get("industry"),
                 applicable_formulas=v.get("applicableFormulas", []),
                 applicable_packs=v.get("applicablePacks", []),
-                created_at=datetime.fromisoformat(v["createdAt"]) if "createdAt" in v else datetime.now(timezone.utc),
+                created_at=datetime.fromisoformat(v["createdAt"])
+                if "createdAt" in v
+                else datetime.now(UTC),
                 updated_at=datetime.fromisoformat(v["updatedAt"]) if "updatedAt" in v else None,
                 version=v.get("version", "1.0.0"),
                 is_active=v.get("isActive", True),
             )
-    
+
     async def update_variable(
         self,
         variable_id: str,
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
     ) -> Variable:
         """Update variable definition in Neo4j."""
         # Build dynamic update query
         set_clauses = ["v.updatedAt = $updated_at"]
         params = {
             "variable_id": variable_id,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }
-        
+
         allowed_fields = [
-            "name", "description", "dataType", "industry",
-            "applicableFormulas", "applicablePacks", "isActive"
+            "name",
+            "description",
+            "dataType",
+            "industry",
+            "applicableFormulas",
+            "applicablePacks",
+            "isActive",
         ]
-        
+
         for field in allowed_fields:
             if field in updates:
                 set_clauses.append(f"v.{field} = ${field}")
                 params[field] = updates[field]
-        
+
         # Handle source binding updates
         if "source_binding" in updates:
             sb = updates["source_binding"]
-            set_clauses.extend([
-                "v.sourceType = $source_type",
-                "v.sourceLocation = $source_location",
-            ])
+            set_clauses.extend(
+                [
+                    "v.sourceType = $source_type",
+                    "v.sourceLocation = $source_location",
+                ]
+            )
             params["source_type"] = sb.source_type.value
             params["source_location"] = sb.source_location
-        
+
         query = f"""
         MATCH (v:Variable {{id: $variable_id}})
-        SET {', '.join(set_clauses)}
+        SET {", ".join(set_clauses)}
         RETURN v
         """
-        
+
         async with self._driver.session() as session:
             result = await session.run(query, **params)
             record = await result.single()
-            
+
             if not record:
                 raise ValueError(f"Variable {variable_id} not found")
-            
+
             # Return updated variable
             return await self.get_variable(variable_id)
-    
+
     async def search_variables(
         self,
         criteria: VariableSearchCriteria,
-    ) -> List[Variable]:
+    ) -> list[Variable]:
         """Search variables by context in Neo4j."""
         # Build dynamic query based on criteria
         where_clauses = []
         params = {}
-        
+
         if criteria.industry:
             where_clauses.append("v.industry = $industry")
             params["industry"] = criteria.industry
-        
+
         if criteria.pack_id:
             where_clauses.append("$pack_id IN v.applicablePacks")
             params["pack_id"] = criteria.pack_id
-        
+
         if criteria.formula_id:
             where_clauses.append("$formula_id IN v.applicableFormulas")
             params["formula_id"] = criteria.formula_id
-        
+
         if criteria.data_type:
             where_clauses.append("v.dataType = $data_type")
             params["data_type"] = criteria.data_type.value
-        
+
         if criteria.source_type:
             where_clauses.append("v.sourceType = $source_type")
             params["source_type"] = criteria.source_type.value
-        
+
         if criteria.is_active is not None:
             where_clauses.append("v.isActive = $is_active")
             params["is_active"] = criteria.is_active
-        
+
         where_clause = " AND ".join(where_clauses) if where_clauses else "1=1"
-        
+
         query = f"""
         MATCH (v:Variable)
         WHERE {where_clause}
         RETURN v
         ORDER BY v.name
         """
-        
+
         async with self._driver.session() as session:
             result = await session.run(query, **params)
             records = await result.data()
-            
+
             variables = []
             for r in records:
                 v = r["v"]
-                
+
                 source_binding = None
                 if v.get("sourceType"):
                     source_binding = VariableSourceBinding(
@@ -271,23 +283,27 @@ class Neo4jVariableRegistry(IVariableRegistry):
                         fallback_value=v.get("fallbackValue"),
                         is_required=v.get("isRequired", True),
                     )
-                
-                variables.append(Variable(
-                    variable_id=v["id"],
-                    name=v["name"],
-                    description=v.get("description", ""),
-                    data_type=VariableDataType(v["dataType"]),
-                    source_binding=source_binding,
-                    industry=v.get("industry"),
-                    applicable_formulas=v.get("applicableFormulas", []),
-                    applicable_packs=v.get("applicablePacks", []),
-                    created_at=datetime.fromisoformat(v["createdAt"]) if "createdAt" in v else datetime.now(timezone.utc),
-                    version=v.get("version", "1.0.0"),
-                    is_active=v.get("isActive", True),
-                ))
-            
+
+                variables.append(
+                    Variable(
+                        variable_id=v["id"],
+                        name=v["name"],
+                        description=v.get("description", ""),
+                        data_type=VariableDataType(v["dataType"]),
+                        source_binding=source_binding,
+                        industry=v.get("industry"),
+                        applicable_formulas=v.get("applicableFormulas", []),
+                        applicable_packs=v.get("applicablePacks", []),
+                        created_at=datetime.fromisoformat(v["createdAt"])
+                        if "createdAt" in v
+                        else datetime.now(UTC),
+                        version=v.get("version", "1.0.0"),
+                        is_active=v.get("isActive", True),
+                    )
+                )
+
             return variables
-    
+
     async def resolve_variable(
         self,
         variable_id: str,
@@ -298,16 +314,16 @@ class Neo4jVariableRegistry(IVariableRegistry):
         variable = await self.get_variable(variable_id)
         if not variable:
             raise ValueError(f"Variable {variable_id} not found")
-        
+
         # Default value
         value = None
         source_type = VariableSourceType.USER_INPUT
         source_location = None
-        
+
         if variable.source_binding:
             source_type = variable.source_binding.source_type
             source_location = variable.source_binding.source_location
-            
+
             # Simulate source resolution based on type
             if source_type == VariableSourceType.USER_INPUT:
                 # Look for value in context variables
@@ -322,10 +338,10 @@ class Neo4jVariableRegistry(IVariableRegistry):
                 value = f"ground_truth_value_{variable_id}"  # Placeholder
             else:
                 value = variable.source_binding.fallback_value
-        
+
         # Cast to appropriate type
         typed_value = self._cast_value(value, variable.data_type)
-        
+
         return VariableValue(
             variable_id=variable_id,
             value=typed_value,
@@ -336,18 +352,18 @@ class Neo4jVariableRegistry(IVariableRegistry):
             entity_id=context.entity_id,
             confidence=1.0,
         )
-    
+
     async def resolve_variables_batch(
         self,
-        variable_ids: List[str],
+        variable_ids: list[str],
         context: ResolutionContext,
-    ) -> Dict[str, VariableValue]:
+    ) -> dict[str, VariableValue]:
         """Resolve multiple variables efficiently."""
         results = {}
         for var_id in variable_ids:
             try:
                 results[var_id] = await self.resolve_variable(var_id, context)
-            except Exception as e:
+            except Exception:
                 # Log error but continue with other variables
                 results[var_id] = VariableValue(
                     variable_id=var_id,
@@ -359,42 +375,43 @@ class Neo4jVariableRegistry(IVariableRegistry):
                     confidence=0.0,
                 )
         return results
-    
+
     async def validate_value(
         self,
         variable_id: str,
         value: Any,
-    ) -> tuple[bool, Optional[str]]:
+    ) -> tuple[bool, str | None]:
         """Validate value against variable rules."""
         variable = await self.get_variable(variable_id)
         if not variable:
             return False, f"Variable {variable_id} not found"
-        
+
         # Check data type
         try:
             self._cast_value(value, variable.data_type)
         except (ValueError, TypeError) as e:
             return False, f"Invalid data type: {str(e)}"
-        
+
         # Run validation rules
         for rule in variable.validation_rules:
             is_valid, error = self._apply_rule(value, rule)
             if not is_valid:
                 return False, error or f"Validation failed: {rule.rule_type}"
-        
+
         return True, None
-    
+
     def _cast_value(self, value: Any, data_type: VariableDataType) -> Any:
         """Cast value to appropriate data type."""
         if value is None:
             return None
-        
+
         if data_type == VariableDataType.STRING:
             return str(value)
         elif data_type == VariableDataType.INTEGER:
             return int(value)
         elif data_type == VariableDataType.DECIMAL:
             from decimal import Decimal
+
             return Decimal(str(value))
         elif data_type == VariableDataType.BOOLEAN:
             if isinstance(value, str):
@@ -409,30 +426,32 @@ class Neo4jVariableRegistry(IVariableRegistry):
         elif data_type == VariableDataType.JSON:
             if isinstance(value, str):
                 import json
+
                 return json.loads(value)
             return value
-        
+
         return value
-    
-    def _apply_rule(self, value: Any, rule: VariableValidationRule) -> tuple[bool, Optional[str]]:
+
+    def _apply_rule(self, value: Any, rule: VariableValidationRule) -> tuple[bool, str | None]:
         """Apply a validation rule to a value."""
         params = rule.parameters
-        
+
         if rule.rule_type == "range":
             if "min" in params and value < params["min"]:
                 return False, rule.error_message
             if "max" in params and value > params["max"]:
                 return False, rule.error_message
-        
+
         elif rule.rule_type == "regex":
             import re
+
             pattern = params.get("pattern", ".*")
             if not re.match(pattern, str(value)):
                 return False, rule.error_message
-        
+
         elif rule.rule_type == "enum":
             allowed = params.get("values", [])
             if value not in allowed:
                 return False, rule.error_message
-        
+
         return True, None

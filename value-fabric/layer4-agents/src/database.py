@@ -5,9 +5,9 @@ Extends the checkpoint database configuration to support operational data storag
 for accounts, CRM sync metadata, and workflow state.
 """
 
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-import os
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -21,8 +21,10 @@ from sqlalchemy.orm import DeclarativeBase
 # Declarative Base
 # ---------------------------------------------------------------------------
 
+
 class Base(DeclarativeBase):
     """Shared declarative base for all Layer 4 models."""
+
     pass
 
 
@@ -36,7 +38,7 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 def get_database_url() -> str:
     """Get database URL from environment.
-    
+
     Falls back to checkpoint database URL for compatibility,
     but allows separate configuration for operational data.
     """
@@ -44,8 +46,8 @@ def get_database_url() -> str:
         "LAYER4_DATABASE_URL",
         os.getenv(
             "CHECKPOINT_DATABASE_URL",
-            "postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents"
-        )
+            "postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents",
+        ),
     )
 
 
@@ -81,6 +83,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 # FastAPI dependency
 # ---------------------------------------------------------------------------
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session.
@@ -105,6 +108,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # Context manager for non-FastAPI usage (services, background tasks)
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for use outside of FastAPI request lifecycle."""
@@ -121,6 +125,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 # ---------------------------------------------------------------------------
 # Lifecycle helpers (called from FastAPI lifespan)
 # ---------------------------------------------------------------------------
+
 
 async def init_db() -> None:
     """Create all tables if they do not exist (dev/test convenience)."""

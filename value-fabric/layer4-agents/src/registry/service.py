@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
+from shared.audit import AuditAction, emit_audit_event
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from shared.audit import emit_audit_event, AuditAction, AuditOutcome
-from shared.identity.permissions import Permission
 
 from .eval_gate import check_eval_gate
 from .models import ModelPromotionLog, ModelVersion
@@ -40,9 +38,9 @@ class ModelRegistryService:
         model_name: str,
         model_version: str,
         stage: str = "dev",
-        config: Optional[Dict[str, Any]] = None,
-        eval_score: Optional[float] = None,
-        eval_run_id: Optional[str] = None,
+        config: dict[str, Any] | None = None,
+        eval_score: float | None = None,
+        eval_run_id: str | None = None,
     ) -> ModelVersion:
         """Register a new model version."""
         model = ModelVersion(
@@ -70,15 +68,21 @@ class ModelRegistryService:
                 "stage": stage,
             },
         )
-        logger.info("Registered model %s/%s (%s) for tenant %s", provider, model_name, model_version, tenant_id)
+        logger.info(
+            "Registered model %s/%s (%s) for tenant %s",
+            provider,
+            model_name,
+            model_version,
+            tenant_id,
+        )
         return model
 
     @staticmethod
     async def list_models(
         db: AsyncSession,
         tenant_id: UUID,
-        stage: Optional[str] = None,
-    ) -> List[ModelVersion]:
+        stage: str | None = None,
+    ) -> list[ModelVersion]:
         """List model versions for a tenant, optionally filtered by stage."""
         q = select(ModelVersion).where(ModelVersion.tenant_id == tenant_id)
         if stage:
@@ -92,7 +96,7 @@ class ModelRegistryService:
         db: AsyncSession,
         tenant_id: UUID,
         provider: str,
-    ) -> Optional[ModelVersion]:
+    ) -> ModelVersion | None:
         """Return the latest production model for a tenant/provider."""
         result = await db.execute(
             select(ModelVersion)
@@ -110,18 +114,16 @@ class ModelRegistryService:
     async def get_model(
         db: AsyncSession,
         model_version_id: UUID,
-    ) -> Optional[ModelVersion]:
+    ) -> ModelVersion | None:
         """Fetch a single model version by ID."""
-        result = await db.execute(
-            select(ModelVersion).where(ModelVersion.id == model_version_id)
-        )
+        result = await db.execute(select(ModelVersion).where(ModelVersion.id == model_version_id))
         return result.scalar_one_or_none()
 
     @staticmethod
     async def get_promotion_history(
         db: AsyncSession,
         model_version_id: UUID,
-    ) -> List[ModelPromotionLog]:
+    ) -> list[ModelPromotionLog]:
         """Return the promotion audit trail for a model version."""
         result = await db.execute(
             select(ModelPromotionLog)
@@ -139,8 +141,8 @@ class ModelRegistryService:
         db: AsyncSession,
         model_version_id: UUID,
         to_stage: str,
-        promoted_by: Optional[UUID] = None,
-        reason: Optional[str] = None,
+        promoted_by: UUID | None = None,
+        reason: str | None = None,
     ) -> ModelVersion:
         """Promote a model version to a new stage.
 
@@ -149,9 +151,7 @@ class ModelRegistryService:
         - staging → production: requires eval_score >= threshold
         - production → deprecated: always allowed
         """
-        result = await db.execute(
-            select(ModelVersion).where(ModelVersion.id == model_version_id)
-        )
+        result = await db.execute(select(ModelVersion).where(ModelVersion.id == model_version_id))
         model = result.scalar_one_or_none()
         if model is None:
             raise PromotionError(f"Model version {model_version_id} not found")
@@ -166,9 +166,7 @@ class ModelRegistryService:
         if from_stage == "staging" and to_stage == "production":
             eval_passed = await check_eval_gate(db, model_version_id)
             if not eval_passed:
-                raise PromotionError(
-                    "Evaluation gate failed: eval_score below promotion threshold"
-                )
+                raise PromotionError("Evaluation gate failed: eval_score below promotion threshold")
 
         # Update model
         model.stage = to_stage
@@ -189,9 +187,7 @@ class ModelRegistryService:
 
         # Audit event
         action = (
-            AuditAction.MODEL_DEPRECATED
-            if to_stage == "deprecated"
-            else AuditAction.MODEL_PROMOTED
+            AuditAction.MODEL_DEPRECATED if to_stage == "deprecated" else AuditAction.MODEL_PROMOTED
         )
         emit_audit_event(
             action,
@@ -224,9 +220,7 @@ async def resolve_llm_model(
     Falls back to ``os.getenv('LLM_MODEL', 'gpt-4o')`` if no production model
     is registered.
     """
-    model = await ModelRegistryService.get_active_production_model(
-        db, tenant_id, provider
-    )
+    model = await ModelRegistryService.get_active_production_model(db, tenant_id, provider)
     if model:
         return model.model_name
     return os.getenv("LLM_MODEL", "gpt-4o")

@@ -6,7 +6,6 @@ Phase 1: Accounts-first operational surface with embedded opportunities/contacts
 
 import logging
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -22,8 +21,8 @@ from ..schemas.accounts import (
     AccountListItemSchema,
     AccountListResponse,
     AccountSearchRequest,
-    OpportunitySchema,
     ContactSchema,
+    OpportunitySchema,
     SyncAccountsRequest,
     SyncAccountsResponse,
     SyncStatusListResponse,
@@ -38,11 +37,12 @@ router = APIRouter(prefix="/accounts", tags=["Accounts"])
 # Helper Functions
 # ============================================================================
 
+
 def format_source_attribution(account) -> str:
     """Generate human-readable source attribution string."""
     if not account.last_synced_at:
         return f"Pending sync from {account.provider}"
-    
+
     time_diff = datetime.utcnow() - account.last_synced_at
     if time_diff.days > 0:
         time_str = f"{time_diff.days} day{'s' if time_diff.days > 1 else ''} ago"
@@ -54,7 +54,7 @@ def format_source_attribution(account) -> str:
         time_str = f"{minutes} minute{'s' if minutes > 1 else ''} ago"
     else:
         time_str = "just now"
-    
+
     return f"Synced from {account.provider.capitalize()} {time_str}"
 
 
@@ -79,17 +79,11 @@ def to_list_item_schema(account) -> AccountListItemSchema:
 def to_detail_schema(account) -> AccountDetailSchema:
     """Convert Account model to detail schema."""
     # Convert embedded opportunities
-    opportunities = [
-        OpportunitySchema(**opp)
-        for opp in (account.opportunities or [])
-    ]
-    
+    opportunities = [OpportunitySchema(**opp) for opp in (account.opportunities or [])]
+
     # Convert embedded contacts
-    contacts = [
-        ContactSchema(**contact)
-        for contact in (account.contacts or [])
-    ]
-    
+    contacts = [ContactSchema(**contact) for contact in (account.contacts or [])]
+
     return AccountDetailSchema(
         id=account.id,
         provider=CRMProvider(account.provider),
@@ -120,13 +114,14 @@ def to_detail_schema(account) -> AccountDetailSchema:
 # Routes
 # ============================================================================
 
+
 @router.get("", response_model=AccountListResponse)
 async def list_accounts(
-    provider: Optional[CRMProvider] = None,
-    stage: Optional[str] = None,
-    industry: Optional[str] = None,
-    owner_id: Optional[str] = None,
-    sync_status: Optional[SyncStatus] = None,
+    provider: CRMProvider | None = None,
+    stage: str | None = None,
+    industry: str | None = None,
+    owner_id: str | None = None,
+    sync_status: SyncStatus | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     sort_by: str = Query("updated_at", regex="^(name|updated_at|company_size|last_synced_at)$"),
@@ -135,7 +130,7 @@ async def list_accounts(
 ) -> AccountListResponse:
     """List accounts with filtering and pagination."""
     service = AccountService(db)
-    
+
     accounts, total = await service.list_accounts(
         provider=provider,
         stage=stage,
@@ -147,7 +142,7 @@ async def list_accounts(
         sort_by=sort_by,
         sort_order=sort_order,
     )
-    
+
     return AccountListResponse(
         items=[to_list_item_schema(acc) for acc in accounts],
         total=total,
@@ -164,7 +159,7 @@ async def search_accounts(
 ) -> AccountListResponse:
     """Search accounts across name, domain, and owner."""
     service = AccountService(db)
-    
+
     accounts, total = await service.search_accounts(
         query_str=request.query,
         provider=request.provider,
@@ -177,7 +172,7 @@ async def search_accounts(
         sort_by=request.sort_by,
         sort_order=request.sort_order,
     )
-    
+
     return AccountListResponse(
         items=[to_list_item_schema(acc) for acc in accounts],
         total=total,
@@ -194,7 +189,7 @@ async def get_filter_options(
     """Get available filter options for account list."""
     service = AccountService(db)
     options = await service.get_filter_options()
-    
+
     return AccountFilterOptionsResponse(
         industries=options["industries"],
         stages=options["stages"],
@@ -209,20 +204,20 @@ async def get_sync_status_all(
 ) -> SyncStatusListResponse:
     """Get sync status for all CRM providers."""
     service = AccountService(db)
-    
+
     sync_statuses = await service.get_all_sync_status()
-    
+
     # Determine overall status
     any_failed = any(s.status == "failed" for s in sync_statuses)
     any_running = any(s.status == "running" for s in sync_statuses)
-    
+
     if any_failed:
         overall = "degraded"
     elif any_running:
         overall = "syncing"
     else:
         overall = "healthy"
-    
+
     return SyncStatusListResponse(
         providers=[
             SyncStatusSchema(
@@ -248,13 +243,13 @@ async def sync_accounts(
 ) -> SyncAccountsResponse:
     """Trigger manual sync for accounts."""
     service = AccountService(db)
-    
+
     result = await service.trigger_sync(
         provider=request.provider,
         account_ids=request.account_ids,
         force_refresh=request.force_refresh,
     )
-    
+
     return SyncAccountsResponse(**result)
 
 
@@ -265,14 +260,14 @@ async def get_account(
 ) -> AccountDetailSchema:
     """Get full account detail."""
     service = AccountService(db)
-    
+
     account = await service.get_account(account_id)
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Account not found: {account_id}",
         )
-    
+
     return to_detail_schema(account)
 
 
@@ -285,7 +280,7 @@ async def get_account_activity(
 ) -> AccountActivityResponse:
     """Get account activity timeline."""
     service = AccountService(db)
-    
+
     # Verify account exists
     account = await service.get_account(account_id)
     if not account:
@@ -293,13 +288,13 @@ async def get_account_activity(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Account not found: {account_id}",
         )
-    
+
     activity = await service.get_account_activity(
         account_id=account_id,
         limit=limit,
         since_days=since_days,
     )
-    
+
     return AccountActivityResponse(**activity)
 
 
@@ -310,7 +305,7 @@ async def refresh_account(
 ) -> AccountDetailSchema:
     """Refresh account data from CRM provider."""
     service = AccountService(db)
-    
+
     # Verify account exists
     account = await service.get_account(account_id)
     if not account:
@@ -318,7 +313,7 @@ async def refresh_account(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Account not found: {account_id}",
         )
-    
+
     # Trigger refresh
     refreshed = await service.refresh_account(account_id)
     if not refreshed:
@@ -326,5 +321,5 @@ async def refresh_account(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to refresh account from CRM",
         )
-    
+
     return to_detail_schema(refreshed)

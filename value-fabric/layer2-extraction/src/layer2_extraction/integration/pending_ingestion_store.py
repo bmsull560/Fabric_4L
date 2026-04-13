@@ -7,7 +7,6 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -20,7 +19,7 @@ class PendingIngestionRecord:
     relationships_json: str
     retry_count: int
     max_retries: int
-    last_error: Optional[str]
+    last_error: str | None
     next_retry_at: datetime
 
 
@@ -36,7 +35,7 @@ class PendingIngestionStore:
         retry_count: int,
         next_retry_at: datetime,
         max_retries: int,
-        last_error: Optional[str],
+        last_error: str | None,
     ) -> None:
         raise NotImplementedError
 
@@ -55,7 +54,7 @@ class PendingIngestionStore:
     ) -> None:
         raise NotImplementedError
 
-    async def get_retry_metadata(self, job_id: str) -> Optional[dict]:
+    async def get_retry_metadata(self, job_id: str) -> dict | None:
         raise NotImplementedError
 
 
@@ -105,7 +104,7 @@ class SqlitePendingIngestionStore(PendingIngestionStore):
         retry_count: int,
         next_retry_at: datetime,
         max_retries: int,
-        last_error: Optional[str],
+        last_error: str | None,
     ) -> None:
         now = datetime.utcnow().isoformat()
         with self._connect() as conn:
@@ -202,7 +201,7 @@ class SqlitePendingIngestionStore(PendingIngestionStore):
             )
             conn.commit()
 
-    async def get_retry_metadata(self, job_id: str) -> Optional[dict]:
+    async def get_retry_metadata(self, job_id: str) -> dict | None:
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT retry_count, last_error, next_retry_at FROM pending_ingestions WHERE job_id = ?",
@@ -271,7 +270,7 @@ class PostgresPendingIngestionStore(PendingIngestionStore):
         retry_count: int,
         next_retry_at: datetime,
         max_retries: int,
-        last_error: Optional[str],
+        last_error: str | None,
     ) -> None:
         now = datetime.utcnow()
         with self._connect() as conn:
@@ -308,10 +307,9 @@ class PostgresPendingIngestionStore(PendingIngestionStore):
             conn.commit()
 
     async def get_due(self, now: datetime, limit: int = 25) -> list[PendingIngestionRecord]:
-        with self._connect() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
                     SELECT job_id, source_url, extraction_result_json, relationships_json,
                            retry_count, max_retries, last_error, next_retry_at
                     FROM pending_ingestions
@@ -319,9 +317,9 @@ class PostgresPendingIngestionStore(PendingIngestionStore):
                     ORDER BY next_retry_at ASC
                     LIMIT %s
                     """,
-                    (now, limit),
-                )
-                rows = cur.fetchall()
+                (now, limit),
+            )
+            rows = cur.fetchall()
 
         records: list[PendingIngestionRecord] = []
         for row in rows:
@@ -367,7 +365,7 @@ class PostgresPendingIngestionStore(PendingIngestionStore):
                 )
             conn.commit()
 
-    async def get_retry_metadata(self, job_id: str) -> Optional[dict]:
+    async def get_retry_metadata(self, job_id: str) -> dict | None:
         with self._connect() as conn:
             with conn.cursor() as cur:
                 cur.execute(

@@ -7,24 +7,22 @@ Implements the workflow API as specified in value_fabric_backend_logic_specifica
 - DELETE /api/v1/workflows/{instance_id} - Cancel workflow
 """
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime
-import logging
-
-from fastapi import APIRouter, HTTPException, Depends, Request
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
 import asyncio
 import json
+import logging
+from datetime import datetime
+from typing import Any, Dict
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+from shared.identity.context import RequestContext
+from shared.identity.dependencies import require_authenticated
 
 from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
-from ...models.agent_state import WorkflowStatus
+from ...tenant.context import get_current_tenant
 from ...workflows import list_workflow_types
-from ...tenant.context import get_current_tenant, TenantContext
-from shared.identity.dependencies import require_authenticated
-from shared.identity.context import RequestContext
-
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -63,55 +61,59 @@ def extract_status_value(status_obj) -> str:
 # Request/Response Models (OpenAPI Spec Compliant)
 # ============================================================================
 
+
 class WorkflowInputs(BaseModel):
     """Workflow inputs wrapper per spec."""
-    prospect_id: Optional[str] = None
-    prospect_company: Optional[str] = None
-    use_case_ids: Optional[List[str]] = None
-    prospect_metrics: Optional[Dict[str, Any]] = None
-    custom_data: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+    prospect_id: str | None = None
+    prospect_company: str | None = None
+    use_case_ids: list[str] | None = None
+    prospect_metrics: dict[str, Any] | None = None
+    custom_data: dict[str, Any] | None = Field(default_factory=dict)
 
 
 class WorkflowCreateRequest(BaseModel):
     """Request to submit a new workflow - OpenAPI spec compliant.
-    
+
     Spec requires:
     - workflow_type: enum [whitespace_analysis, business_case_generation]
     - tenant_id: string
     - user_id: string
     - inputs: object
     """
+
     workflow_type: str = Field(
         ...,
         description="Type of workflow to run",
-        enum=["roi_calculator", "whitespace_analysis", "business_case", "orchestrator"]
+        enum=["roi_calculator", "whitespace_analysis", "business_case", "orchestrator"],
     )
     tenant_id: str = Field(..., description="Tenant identifier")
     user_id: str = Field(..., description="User identifier")
     inputs: WorkflowInputs = Field(default_factory=WorkflowInputs, description="Workflow inputs")
     priority: str = Field(default="NORMAL", description="Execution priority")
-    workflow_id: Optional[str] = Field(None, description="Optional workflow ID")
+    workflow_id: str | None = Field(None, description="Optional workflow ID")
 
 
 class WorkflowCreateResponse(BaseModel):
     """Response from workflow creation - OpenAPI spec compliant.
-    
+
     Spec requires:
     - workflow_instance_id: string
     - status: string
     - estimated_duration_seconds: integer
     """
+
     workflow_instance_id: str = Field(..., alias="workflow_instance_id")
     status: str = Field(..., description="Workflow status")
     estimated_duration_seconds: int = Field(default=300, description="Estimated execution time")
-    
+
     class Config:
         populate_by_name = True
 
 
 class WorkflowStatusResponse(BaseModel):
     """Workflow status response - OpenAPI spec compliant.
-    
+
     Spec requires:
     - workflow_instance_id: string
     - workflow_type: string
@@ -122,64 +124,64 @@ class WorkflowStatusResponse(BaseModel):
     - completed_at: datetime
     - results: object
     """
+
     workflow_instance_id: str = Field(..., alias="workflow_instance_id")
     workflow_type: str
     status: str
-    current_state: Optional[str] = Field(None, alias="current_state")
-    current_node: Optional[str] = None
+    current_state: str | None = Field(None, alias="current_state")
+    current_node: str | None = None
     progress_percentage: float = Field(default=0.0, ge=0.0, le=100.0, alias="progress_percentage")
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    started_at: str | None = None
+    completed_at: str | None = None
     error_count: int = 0
     has_output: bool = False
-    results: Optional[Dict[str, Any]] = None
-    tenant_id: Optional[str] = None
-    user_id: Optional[str] = None
-    priority: Optional[int] = None
-    scheduler_status: Optional[str] = None
-    
+    results: dict[str, Any] | None = None
+    tenant_id: str | None = None
+    user_id: str | None = None
+    priority: int | None = None
+    scheduler_status: str | None = None
+
     class Config:
         populate_by_name = True
 
 
 class WorkflowEvent(BaseModel):
     """Workflow event for streaming.
-    
+
     Spec requires:
     - event_id: string
     - event_type: string
     - timestamp: datetime
     - message: string
     """
+
     event_id: str
     event_type: str
     timestamp: str
     message: str
-    payload: Optional[Dict[str, Any]] = None
+    payload: dict[str, Any] | None = None
 
 
 class WorkflowResumeRequest(BaseModel):
     """Request to resume a paused or interrupted workflow.
-    
+
     Supports human-in-the-loop workflows where execution pauses
     for user input or approval, then resumes with decision data.
     """
+
     user_id: str = Field(..., description="User resuming the workflow")
-    resume_data: Optional[Dict[str, Any]] = Field(
-        default_factory=dict, 
-        description="Optional user decision/input data"
+    resume_data: dict[str, Any] | None = Field(
+        default_factory=dict, description="Optional user decision/input data"
     )
-    tenant_id: Optional[str] = None
+    tenant_id: str | None = None
 
 
 class WorkflowResumeResponse(BaseModel):
     """Response from workflow resume."""
+
     workflow_instance_id: str = Field(..., alias="workflow_instance_id")
     status: str = Field(..., description="resumed, completed, or failed")
-    resumed_from_node: Optional[str] = Field(
-        None,
-        description="Node from which execution resumed"
-    )
+    resumed_from_node: str | None = Field(None, description="Node from which execution resumed")
     message: str
     estimated_completion_seconds: int = Field(default=60)
 
@@ -189,17 +191,19 @@ class WorkflowResumeResponse(BaseModel):
 
 class WorkflowPauseRequest(BaseModel):
     """Request to pause a running workflow."""
+
     user_id: str = Field(..., description="User pausing the workflow")
-    reason: Optional[str] = Field(None, description="Reason for pausing")
-    tenant_id: Optional[str] = None
+    reason: str | None = Field(None, description="Reason for pausing")
+    tenant_id: str | None = None
 
 
 class WorkflowPauseResponse(BaseModel):
     """Response from workflow pause."""
+
     workflow_instance_id: str = Field(..., alias="workflow_instance_id")
     status: str = Field(..., description="paused")
     paused_at: str = Field(..., description="ISO timestamp when paused")
-    current_node: Optional[str] = Field(None, description="Current node when paused")
+    current_node: str | None = Field(None, description="Current node when paused")
     message: str
 
     class Config:
@@ -209,6 +213,7 @@ class WorkflowPauseResponse(BaseModel):
 def get_executor() -> OrchestrationController:
     """Get workflow executor instance."""
     from .main import workflow_executor
+
     if workflow_executor is None:
         raise HTTPException(status_code=503, detail="Workflow executor not initialized")
     return workflow_executor
@@ -216,11 +221,10 @@ def get_executor() -> OrchestrationController:
 
 @router.post("/workflows", response_model=WorkflowCreateResponse, status_code=201)
 async def create_workflow(
-    request: WorkflowCreateRequest,
-    executor: OrchestrationController = Depends(get_executor)
+    request: WorkflowCreateRequest, executor: OrchestrationController = Depends(get_executor)
 ) -> WorkflowCreateResponse:
     """Create and execute a new workflow - OpenAPI spec compliant.
-    
+
     Example:
         POST /v1/workflows
         {
@@ -233,17 +237,16 @@ async def create_workflow(
             },
             "priority": "HIGH"
         }
-    
+
     Returns:
         201 Created with workflow_instance_id and estimated duration
     """
     try:
         # Map priority string to enum
         priority = PRIORITY_MAP.get(request.priority.upper(), TaskPriority.NORMAL)
-        
         # Convert inputs to dict for execution
         input_data = request.inputs.dict(exclude_none=True) if request.inputs else {}
-        
+
         # Execute workflow (async - returns immediately with scheduled task)
         result = await executor.execute_workflow(
             workflow_type=request.workflow_type,
@@ -253,16 +256,16 @@ async def create_workflow(
             tenant_id=request.tenant_id,
             user_id=request.user_id,
         )
-        
+
         # Estimate duration based on workflow type
         estimated_duration = ESTIMATED_DURATION_SECONDS.get(request.workflow_type, 300)
-        
+
         return WorkflowCreateResponse(
             workflow_instance_id=result.workflow_id,
             status=extract_status_value(result.status),
             estimated_duration_seconds=estimated_duration,
         )
-    
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -271,21 +274,20 @@ async def create_workflow(
 
 @router.get("/workflows/{workflow_id}", response_model=WorkflowStatusResponse)
 async def get_workflow_status(
-    workflow_id: str,
-    executor: OrchestrationController = Depends(get_executor)
+    workflow_id: str, executor: OrchestrationController = Depends(get_executor)
 ) -> WorkflowStatusResponse:
     """Get status of a workflow - OpenAPI spec compliant.
-    
+
     Returns detailed status including:
     - progress_percentage (0-100)
     - current_state
     - tenant_id, user_id
     """
     status = await executor.get_workflow_status(workflow_id)
-    
+
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
-    
+
     return WorkflowStatusResponse(
         workflow_instance_id=status.get("workflow_id", workflow_id),
         workflow_type=status.get("workflow_type", "unknown"),
@@ -307,21 +309,20 @@ async def get_workflow_status(
 
 @router.get("/workflows/{workflow_id}/result")
 async def get_workflow_result(
-    workflow_id: str,
-    executor: OrchestrationController = Depends(get_executor)
-) -> Dict[str, Any]:
+    workflow_id: str, executor: OrchestrationController = Depends(get_executor)
+) -> dict[str, Any]:
     """Get result of a completed workflow."""
     status = await executor.get_workflow_status(workflow_id)
-    
+
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
-    
+
     if status.get("status") not in TERMINAL_STATUSES:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Workflow {workflow_id} not complete (status: {status.get('status')})"
+            status_code=400,
+            detail=f"Workflow {workflow_id} not complete (status: {status.get('status')})",
         )
-    
+
     return {
         "workflow_id": workflow_id,
         "status": status.get("status"),
@@ -333,15 +334,16 @@ async def get_workflow_result(
 
 @router.delete("/workflows/{workflow_id}")
 async def cancel_workflow(
-    workflow_id: str,
-    executor: OrchestrationController = Depends(get_executor)
-) -> Dict[str, Any]:
+    workflow_id: str, executor: OrchestrationController = Depends(get_executor)
+) -> dict[str, Any]:
     """Cancel a running workflow - OpenAPI spec compliant (DELETE method)."""
     cancelled = await executor.cancel_workflow(workflow_id)
-    
+
     if not cancelled:
-        raise HTTPException(status_code=400, detail=f"Workflow {workflow_id} could not be cancelled")
-    
+        raise HTTPException(
+            status_code=400, detail=f"Workflow {workflow_id} could not be cancelled"
+        )
+
     return {"workflow_id": workflow_id, "status": "cancelled"}
 
 
@@ -349,24 +351,24 @@ async def cancel_workflow(
 async def resume_workflow(
     workflow_id: str,
     request: WorkflowResumeRequest,
-    executor: OrchestrationController = Depends(get_executor)
+    executor: OrchestrationController = Depends(get_executor),
 ) -> WorkflowResumeResponse:
     """Resume a paused or interrupted workflow from its last checkpoint.
-    
+
     This endpoint enables human-in-the-loop workflows by allowing execution
     to pause for user input/decisions, then resume from the exact point
     where it stopped.
-    
+
     The workflow state is loaded from Postgres checkpoint storage, and
     execution continues from the last completed node.
-    
+
     Example:
         POST /v1/workflows/wf-123/resume
         {
             "user_id": "user-001",
             "resume_data": {"approved": true, "notes": "Proceed with ROI calc"}
         }
-    
+
     Returns:
         200 OK - Workflow resumed and running (or completed if fast)
         404 Not Found - Workflow not found or no checkpoint exists
@@ -376,21 +378,20 @@ async def resume_workflow(
     # Verify checkpointing is available
     if executor.checkpoint_saver is None:
         raise HTTPException(
-            status_code=503, 
-            detail="Checkpointing not configured - cannot resume workflows"
+            status_code=503, detail="Checkpointing not configured - cannot resume workflows"
         )
-    
+
     # Check current status
     status = await executor.get_workflow_status(workflow_id)
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
-    
+
     if status.get("status") in TERMINAL_STATUSES:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Workflow {workflow_id} is {status.get('status')} and cannot be resumed"
+            status_code=400,
+            detail=f"Workflow {workflow_id} is {status.get('status')} and cannot be resumed",
         )
-    
+
     # Resume execution
     try:
         result = await executor.resume_workflow(
@@ -398,11 +399,10 @@ async def resume_workflow(
             user_id=request.user_id,
             resume_data=request.resume_data,
         )
-        
+
         # Determine response status based on result
         result_status = extract_status_value(result.status)
         is_complete = result_status in TERMINAL_STATUSES
-        
         return WorkflowResumeResponse(
             workflow_instance_id=workflow_id,
             status=result_status if is_complete else "resumed",
@@ -426,7 +426,7 @@ async def resume_workflow(
 async def pause_workflow(
     workflow_id: str,
     request: WorkflowPauseRequest,
-    executor: OrchestrationController = Depends(get_executor)
+    executor: OrchestrationController = Depends(get_executor),
 ) -> WorkflowPauseResponse:
     """Pause a running workflow.
 
@@ -455,14 +455,11 @@ async def pause_workflow(
     if current_status in TERMINAL_STATUSES:
         raise HTTPException(
             status_code=400,
-            detail=f"Workflow {workflow_id} is {current_status} and cannot be paused"
+            detail=f"Workflow {workflow_id} is {current_status} and cannot be paused",
         )
 
     if current_status == "paused":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Workflow {workflow_id} is already paused"
-        )
+        raise HTTPException(status_code=400, detail=f"Workflow {workflow_id} is already paused")
 
     # Pause execution
     try:
@@ -490,17 +487,13 @@ async def pause_workflow(
 
 
 @router.get("/workflows/types")
-async def list_available_workflows() -> Dict[str, Any]:
+async def list_available_workflows() -> dict[str, Any]:
     """List available workflow types."""
     types = list_workflow_types()
-    
+
     return {
         "workflows": [
-            {
-                "type": key,
-                "name": info["name"],
-                "description": info["description"]
-            }
+            {"type": key, "name": info["name"], "description": info["description"]}
             for key, info in types.items()
         ]
     }
@@ -508,16 +501,15 @@ async def list_available_workflows() -> Dict[str, Any]:
 
 @router.get("/workflows/active")
 async def list_active_workflows(
-    request: Request,
-    executor: OrchestrationController = Depends(get_executor)
-) -> List[Dict[str, Any]]:
+    request: Request, executor: OrchestrationController = Depends(get_executor)
+) -> list[dict[str, Any]]:
     """List currently active workflows.
-    
+
     Filters by tenant_id if provided in context.
     """
     tenant = get_current_tenant()
     tenant_id = tenant.tenant_id if tenant else None
-    
+
     active = await executor.list_active_workflows(tenant_id=tenant_id)
     return active
 
@@ -529,27 +521,28 @@ async def get_workflow_events(
     _ctx: RequestContext = Depends(require_authenticated),
 ) -> StreamingResponse:
     """Get workflow events via Server-Sent Events (SSE).
-    
+
     Streams real-time workflow progress events.
-    
+
     Example:
         GET /v1/workflows/{id}/events
-        
+
         Event: workflow_event
         data: {"event_id": "...", "event_type": "node_started", ...}
     """
+
     async def event_generator():
         """Generate SSE events for workflow."""
         last_status = None
-        
+
         while True:
             # Get current status
             status = await executor.get_workflow_status(workflow_id)
-            
+
             if not status:
                 yield f"event: error\ndata: {json.dumps({'message': 'Workflow not found'})}\n\n"
                 break
-            
+
             # Send event if status changed
             if status != last_status:
                 event = WorkflowEvent(
@@ -562,13 +555,13 @@ async def get_workflow_events(
                         "status": status.get("status"),
                         "progress": status.get("progress_percentage"),
                         "current_node": status.get("current_node"),
-                    }
+                    },
                 )
-                
+
                 yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
-                
+
                 last_status = status
-            
+
             # Check if workflow is complete
             if status.get("status") in TERMINAL_STATUSES:
                 # Send completion event
@@ -581,10 +574,10 @@ async def get_workflow_events(
                 )
                 yield f"event: workflow_event\ndata: {json.dumps(event.dict())}\n\n"
                 break
-            
+
             # Wait before next poll
             await asyncio.sleep(1)
-    
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",

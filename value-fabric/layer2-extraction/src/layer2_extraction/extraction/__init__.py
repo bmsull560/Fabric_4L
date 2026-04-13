@@ -1,8 +1,8 @@
 """Extraction package for Value Fabric."""
 
-from .chunker import chunk_markdown, SemanticChunker, Chunk
-from .llm_extractor import EntityExtractor, RelationshipExtractor, LLMExtractionError
-from .deduplicator import EntityDeduplicator, deduplicate_entities, DeduplicationError
+from .chunker import Chunk, SemanticChunker, chunk_markdown
+from .deduplicator import DeduplicationError, EntityDeduplicator, deduplicate_entities
+from .llm_extractor import EntityExtractor, LLMExtractionError, RelationshipExtractor
 
 __all__ = [
     "chunk_markdown",

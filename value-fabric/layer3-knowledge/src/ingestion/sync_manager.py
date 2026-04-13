@@ -3,8 +3,6 @@
 import hashlib
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
-from uuid import UUID
 
 from neo4j import AsyncDriver
 
@@ -16,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class SyncConflictError(Exception):
     """Raised when a sync conflict is detected."""
+
     pass
 
 
@@ -31,9 +30,9 @@ class SyncManager:
 
     def __init__(
         self,
-        loader: Optional[Neo4jLoader] = None,
-        driver: Optional[AsyncDriver] = None,
-        settings: Optional[Settings] = None,
+        loader: Neo4jLoader | None = None,
+        driver: AsyncDriver | None = None,
+        settings: Settings | None = None,
     ):
         """Initialize sync manager.
 
@@ -54,7 +53,7 @@ class SyncManager:
         rdf_data: str,
         source_id: str,
         extraction_job_id: str,
-        content_hash: Optional[str] = None,
+        content_hash: str | None = None,
         force_full_sync: bool = False,
     ) -> dict:
         """Synchronize an extraction result from Layer 2.
@@ -118,9 +117,7 @@ class SyncManager:
             )
 
             stats["completed_at"] = datetime.utcnow().isoformat()
-            stats["duration_seconds"] = (
-                datetime.utcnow() - start_time
-            ).total_seconds()
+            stats["duration_seconds"] = (datetime.utcnow() - start_time).total_seconds()
 
             logger.info(
                 f"Successfully synced source {source_id} "
@@ -138,7 +135,7 @@ class SyncManager:
 
         return stats
 
-    async def get_sync_status(self, source_id: str) -> Optional[dict]:
+    async def get_sync_status(self, source_id: str) -> dict | None:
         """Get synchronization status for a source.
 
         Args:
@@ -149,9 +146,7 @@ class SyncManager:
         """
         driver = await self.loader._get_driver()
 
-        async with driver.session(
-            database=self.settings.neo4j_database
-        ) as session:
+        async with driver.session(database=self.settings.neo4j_database) as session:
             result = await session.run(
                 """
                 MATCH (s:SyncMetadata {source_id: $source_id})
@@ -175,7 +170,7 @@ class SyncManager:
                 }
             return None
 
-    async def list_synced_sources(self) -> List[dict]:
+    async def list_synced_sources(self) -> list[dict]:
         """List all sources that have been synchronized.
 
         Returns:
@@ -184,9 +179,7 @@ class SyncManager:
         driver = await self.loader._get_driver()
         sources = []
 
-        async with driver.session(
-            database=self.settings.neo4j_database
-        ) as session:
+        async with driver.session(database=self.settings.neo4j_database) as session:
             result = await session.run(
                 """
                 MATCH (s:SyncMetadata)
@@ -225,9 +218,7 @@ class SyncManager:
 
         # Delete sync metadata
         driver = await self.loader._get_driver()
-        async with driver.session(
-            database=self.settings.neo4j_database
-        ) as session:
+        async with driver.session(database=self.settings.neo4j_database) as session:
             await session.run(
                 """
                 MATCH (s:SyncMetadata {source_id: $source_id})
@@ -253,7 +244,7 @@ class SyncManager:
         """
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
-    async def _get_source_hash(self, source_id: str) -> Optional[str]:
+    async def _get_source_hash(self, source_id: str) -> str | None:
         """Get the last known content hash for a source.
 
         Args:
@@ -271,7 +262,7 @@ class SyncManager:
         extraction_job_id: str,
         content_hash: str,
         status: str,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         """Update sync metadata for a source.
 
@@ -295,9 +286,7 @@ class SyncManager:
         if error:
             metadata["error"] = error
 
-        async with driver.session(
-            database=self.settings.neo4j_database
-        ) as session:
+        async with driver.session(database=self.settings.neo4j_database) as session:
             await session.run(
                 """
                 CREATE (s:SyncMetadata $metadata)

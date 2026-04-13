@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import select
@@ -16,7 +15,7 @@ _DEFAULT_PROMOTION_THRESHOLD = 0.85
 async def check_eval_gate(
     db: AsyncSession,
     model_version_id: UUID,
-    min_score: Optional[float] = None,
+    min_score: float | None = None,
 ) -> bool:
     """Check whether a model version passes the evaluation gate for promotion.
 
@@ -24,9 +23,7 @@ async def check_eval_gate(
     tenant settings under ``model_registry.promotion_threshold``.
     Falls back to 0.85 if no custom threshold is configured.
     """
-    result = await db.execute(
-        select(ModelVersion).where(ModelVersion.id == model_version_id)
-    )
+    result = await db.execute(select(ModelVersion).where(ModelVersion.id == model_version_id))
     model = result.scalar_one_or_none()
     if model is None:
         return False
@@ -36,9 +33,7 @@ async def check_eval_gate(
         # Attempt to read tenant settings
         from ..tenants.models.tenant import Tenant
 
-        tenant_result = await db.execute(
-            select(Tenant).where(Tenant.id == model.tenant_id)
-        )
+        tenant_result = await db.execute(select(Tenant).where(Tenant.id == model.tenant_id))
         tenant = tenant_result.scalar_one_or_none()
         if tenant and tenant.settings:
             registry_settings = tenant.settings.get("model_registry", {})

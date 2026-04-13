@@ -4,27 +4,34 @@ Provides endpoints for traversing and retrieving the 4-layer value tree:
 - Capability -> UseCase -> Persona -> ValueDriver
 """
 
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from ..dependencies import get_graph_rag, get_app_state, AppState
+from ..dependencies import AppState, get_app_state
 
 router = APIRouter()
 
 
 class ValueTreeNode(BaseModel):
     """Node in the value tree."""
+
     id: str = Field(..., description="Entity ID")
     label: str = Field(..., description="Display name")
-    type: str = Field(..., description="Entity type (Capability, UseCase, Persona, ValueDriver)")
-    layer: int = Field(..., ge=1, le=4, description="Layer in value tree (1=Capability, 4=ValueDriver)")
+    type: str = Field(
+        ..., description="Entity type (Capability, UseCase, Persona, ValueDriver)"
+    )
+    layer: int = Field(
+        ..., ge=1, le=4, description="Layer in value tree (1=Capability, 4=ValueDriver)"
+    )
     confidence: float = Field(default=0.8, ge=0.0, le=1.0)
-    properties: Dict[str, Any] = Field(default_factory=dict)
+    properties: dict[str, Any] = Field(default_factory=dict)
 
 
 class ValueTreeEdge(BaseModel):
     """Edge connecting nodes in the value tree."""
+
     source: str = Field(..., description="Source node ID")
     target: str = Field(..., description="Target node ID")
     type: str = Field(..., description="Relationship type (ENABLES, BENEFITS, DRIVES)")
@@ -33,19 +40,25 @@ class ValueTreeEdge(BaseModel):
 
 class ValueTreeStats(BaseModel):
     """Statistics for the value tree."""
+
     total_nodes: int = Field(..., ge=0)
     total_edges: int = Field(..., ge=0)
-    by_layer: Dict[str, int] = Field(default_factory=dict)
+    by_layer: dict[str, int] = Field(default_factory=dict)
     max_depth: int = Field(default=0)
 
 
 class ValueTreeResponse(BaseModel):
     """Complete value tree response."""
+
     root_entity_id: str = Field(..., description="ID of the starting entity")
-    direction: Literal["upward", "downward"] = Field(..., description="Traversal direction")
-    nodes: List[ValueTreeNode] = Field(..., description="All nodes in the tree")
-    edges: List[ValueTreeEdge] = Field(..., description="All edges in the tree")
-    paths: List[Dict[str, Any]] = Field(default_factory=list, description="Value tree paths")
+    direction: Literal["upward", "downward"] = Field(
+        ..., description="Traversal direction"
+    )
+    nodes: list[ValueTreeNode] = Field(..., description="All nodes in the tree")
+    edges: list[ValueTreeEdge] = Field(..., description="All edges in the tree")
+    paths: list[dict[str, Any]] = Field(
+        default_factory=list, description="Value tree paths"
+    )
     stats: ValueTreeStats = Field(..., description="Tree statistics")
 
 
@@ -64,8 +77,18 @@ class ValueTreeResponse(BaseModel):
                         "root_entity_id": "cap-1",
                         "direction": "upward",
                         "nodes": [
-                            {"id": "cap-1", "label": "CRM Integration", "type": "Capability", "layer": 1},
-                            {"id": "uc-1", "label": "Pipeline Forecast", "type": "UseCase", "layer": 2},
+                            {
+                                "id": "cap-1",
+                                "label": "CRM Integration",
+                                "type": "Capability",
+                                "layer": 1,
+                            },
+                            {
+                                "id": "uc-1",
+                                "label": "Pipeline Forecast",
+                                "type": "UseCase",
+                                "layer": 2,
+                            },
                         ],
                         "edges": [
                             {"source": "cap-1", "target": "uc-1", "type": "ENABLES"}
@@ -73,14 +96,14 @@ class ValueTreeResponse(BaseModel):
                         "stats": {
                             "total_nodes": 15,
                             "total_edges": 14,
-                            "by_layer": {"1": 3, "2": 5, "3": 4, "4": 3}
-                        }
+                            "by_layer": {"1": 3, "2": 5, "3": 4, "4": 3},
+                        },
                     }
                 }
-            }
+            },
         },
         404: {"description": "Entity not found"},
-    }
+    },
 )
 async def get_value_tree(
     entity_id: str,
@@ -137,14 +160,13 @@ async def get_value_tree(
             """
 
         path_result = await neo4j.execute_query(
-            path_query,
-            {"entity_id": entity_id, "max_depth": max_depth}
+            path_query, {"entity_id": entity_id, "max_depth": max_depth}
         )
 
         # Collect nodes and edges
-        nodes_map: Dict[str, ValueTreeNode] = {}
-        edges_map: Dict[str, ValueTreeEdge] = {}
-        by_layer: Dict[str, int] = {}
+        nodes_map: dict[str, ValueTreeNode] = {}
+        edges_map: dict[str, ValueTreeEdge] = {}
+        by_layer: dict[str, int] = {}
 
         # Add root node
         nodes_map[entity_id] = ValueTreeNode(
@@ -153,7 +175,7 @@ async def get_value_tree(
             type=root_type,
             layer=root_layer,
             confidence=root.get("confidence") or 0.8,
-            properties={"is_root": True}
+            properties={"is_root": True},
         )
         by_layer[str(root_layer)] = by_layer.get(str(root_layer), 0) + 1
 
@@ -183,7 +205,7 @@ async def get_value_tree(
                         type=node_type,
                         layer=node_layer,
                         confidence=node_data.get("confidence") or 0.8,
-                        properties={}
+                        properties={},
                     )
 
             # Process relationships
@@ -199,15 +221,17 @@ async def get_value_tree(
                             source=start_id,
                             target=end_id,
                             type=rel_type,
-                            weight=rel.get("weight", 1.0)
+                            weight=rel.get("weight", 1.0),
                         )
 
             # Build path structure
             if path_length > 0:
-                paths.append({
-                    "length": path_length,
-                    "nodes": [n.get("id") for n in path_nodes_data if n],
-                })
+                paths.append(
+                    {
+                        "length": path_length,
+                        "nodes": [n.get("id") for n in path_nodes_data if n],
+                    }
+                )
 
         nodes = list(nodes_map.values())
         edges = list(edges_map.values())
@@ -216,7 +240,7 @@ async def get_value_tree(
             total_nodes=len(nodes),
             total_edges=len(edges),
             by_layer=by_layer,
-            max_depth=max_path_length
+            max_depth=max_path_length,
         )
 
         return ValueTreeResponse(
@@ -225,18 +249,20 @@ async def get_value_tree(
             nodes=nodes,
             edges=edges,
             paths=paths,
-            stats=stats
+            stats=stats,
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve value tree: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve value tree: {str(e)}"
+        )
 
 
 @router.get(
     "/value-trees/{entity_id}/paths",
-    response_model=List[Dict[str, Any]],
+    response_model=list[dict[str, Any]],
     tags=["Value Trees"],
     summary="Get Value Tree Paths",
     description="Returns all paths from the entity to value drivers (upward) or capabilities (downward).",
@@ -246,7 +272,7 @@ async def get_value_tree_paths(
     direction: Literal["upward", "downward"] = "upward",
     max_depth: int = 4,
     app_state: AppState = Depends(get_app_state),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get all value tree paths from a starting entity."""
     try:
         neo4j = app_state.neo4j_manager
@@ -268,18 +294,24 @@ async def get_value_tree_paths(
                    length(path) as path_length
             """
 
-        result = await neo4j.execute_query(query, {"entity_id": entity_id, "max_depth": max_depth})
+        result = await neo4j.execute_query(
+            query, {"entity_id": entity_id, "max_depth": max_depth}
+        )
 
         paths = []
         for r in result:
-            paths.append({
-                "nodes": r.get("path_nodes", []),
-                "length": r.get("path_length", 0),
-            })
+            paths.append(
+                {
+                    "nodes": r.get("path_nodes", []),
+                    "length": r.get("path_length", 0),
+                }
+            )
 
         return paths
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve paths: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve paths: {str(e)}"
+        )

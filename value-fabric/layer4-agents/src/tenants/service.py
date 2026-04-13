@@ -12,12 +12,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import List, Optional, Sequence
+from datetime import UTC, datetime
 from uuid import UUID
-
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.identity.hashing import (
     extract_key_prefix,
@@ -37,7 +33,9 @@ from shared.identity.models import (
     UserStatus,
     UserUpdateRequest,
 )
-from shared.identity.permissions import ROLE_PERMISSIONS, Role
+from shared.identity.permissions import ROLE_PERMISSIONS
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models.api_key import APIKey
 from .models.tenant import Tenant
@@ -51,9 +49,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-async def create_tenant(
-    db: AsyncSession, request: TenantCreateRequest
-) -> TenantModel:
+async def create_tenant(db: AsyncSession, request: TenantCreateRequest) -> TenantModel:
     """Create a new tenant.  Caller must hold ADMIN_TENANTS permission."""
     tenant = Tenant(
         id=uuid.uuid4(),
@@ -68,15 +64,15 @@ async def create_tenant(
     return _tenant_to_model(tenant)
 
 
-async def get_tenant(db: AsyncSession, tenant_id: UUID) -> Optional[TenantModel]:
+async def get_tenant(db: AsyncSession, tenant_id: UUID) -> TenantModel | None:
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
     return _tenant_to_model(tenant) if tenant else None
 
 
 async def list_tenants(
-    db: AsyncSession, *, status: Optional[str] = None, limit: int = 100, offset: int = 0
-) -> List[TenantModel]:
+    db: AsyncSession, *, status: str | None = None, limit: int = 100, offset: int = 0
+) -> list[TenantModel]:
     q = select(Tenant).order_by(Tenant.created_at.desc()).limit(limit).offset(offset)
     if status:
         q = q.where(Tenant.status == status)
@@ -86,7 +82,7 @@ async def list_tenants(
 
 async def update_tenant(
     db: AsyncSession, tenant_id: UUID, request: TenantUpdateRequest
-) -> Optional[TenantModel]:
+) -> TenantModel | None:
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
@@ -97,7 +93,7 @@ async def update_tenant(
         tenant.status = request.status.value
     if request.settings is not None:
         tenant.settings = request.settings
-    tenant.updated_at = datetime.now(timezone.utc)
+    tenant.updated_at = datetime.now(UTC)
     await db.flush()
     return _tenant_to_model(tenant)
 
@@ -109,7 +105,7 @@ async def delete_tenant(db: AsyncSession, tenant_id: UUID) -> bool:
     if not tenant:
         return False
     tenant.status = TenantStatus.DELETED.value
-    tenant.updated_at = datetime.now(timezone.utc)
+    tenant.updated_at = datetime.now(UTC)
     await db.flush()
     logger.info("Soft-deleted tenant %s", tenant_id)
     return True
@@ -124,7 +120,7 @@ async def invite_user(
     db: AsyncSession,
     tenant_id: UUID,
     request: UserInviteRequest,
-    invited_by: Optional[UUID] = None,
+    invited_by: UUID | None = None,
 ) -> UserModel:
     """Invite a new user to the tenant.  Caller must hold ADMIN_USERS permission."""
     user = User(
@@ -142,19 +138,15 @@ async def invite_user(
     return _user_to_model(user)
 
 
-async def get_user(
-    db: AsyncSession, tenant_id: UUID, user_id: UUID
-) -> Optional[UserModel]:
-    result = await db.execute(
-        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
-    )
+async def get_user(db: AsyncSession, tenant_id: UUID, user_id: UUID) -> UserModel | None:
+    result = await db.execute(select(User).where(User.id == user_id, User.tenant_id == tenant_id))
     user = result.scalar_one_or_none()
     return _user_to_model(user) if user else None
 
 
 async def list_users(
     db: AsyncSession, tenant_id: UUID, *, limit: int = 100, offset: int = 0
-) -> List[UserModel]:
+) -> list[UserModel]:
     result = await db.execute(
         select(User)
         .where(User.tenant_id == tenant_id)
@@ -167,10 +159,8 @@ async def list_users(
 
 async def update_user(
     db: AsyncSession, tenant_id: UUID, user_id: UUID, request: UserUpdateRequest
-) -> Optional[UserModel]:
-    result = await db.execute(
-        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
-    )
+) -> UserModel | None:
+    result = await db.execute(select(User).where(User.id == user_id, User.tenant_id == tenant_id))
     user = result.scalar_one_or_none()
     if not user:
         return None
@@ -180,22 +170,18 @@ async def update_user(
         user.role = request.role.value
     if request.status is not None:
         user.status = request.status.value
-    user.updated_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(UTC)
     await db.flush()
     return _user_to_model(user)
 
 
-async def deactivate_user(
-    db: AsyncSession, tenant_id: UUID, user_id: UUID
-) -> bool:
-    result = await db.execute(
-        select(User).where(User.id == user_id, User.tenant_id == tenant_id)
-    )
+async def deactivate_user(db: AsyncSession, tenant_id: UUID, user_id: UUID) -> bool:
+    result = await db.execute(select(User).where(User.id == user_id, User.tenant_id == tenant_id))
     user = result.scalar_one_or_none()
     if not user:
         return False
     user.status = UserStatus.DEACTIVATED.value
-    user.updated_at = datetime.now(timezone.utc)
+    user.updated_at = datetime.now(UTC)
     await db.flush()
     logger.info("Deactivated user %s in tenant %s", user_id, tenant_id)
     return True
@@ -210,7 +196,7 @@ async def create_api_key(
     db: AsyncSession,
     tenant_id: UUID,
     request: APIKeyCreateRequest,
-    user_id: Optional[UUID] = None,
+    user_id: UUID | None = None,
 ) -> APIKeyCreateResponse:
     """Issue a new API key.  Caller must hold ADMIN_API_KEYS permission.
 
@@ -260,7 +246,7 @@ async def create_api_key(
 
 async def list_api_keys(
     db: AsyncSession, tenant_id: UUID, *, enabled_only: bool = True
-) -> List[APIKeyModel]:
+) -> list[APIKeyModel]:
     q = select(APIKey).where(APIKey.tenant_id == tenant_id)
     if enabled_only:
         q = q.where(APIKey.enabled.is_(True))
@@ -268,9 +254,7 @@ async def list_api_keys(
     return [_api_key_to_model(k) for k in result.scalars().all()]
 
 
-async def revoke_api_key(
-    db: AsyncSession, tenant_id: UUID, key_id: str
-) -> bool:
+async def revoke_api_key(db: AsyncSession, tenant_id: UUID, key_id: str) -> bool:
     """Disable (soft-delete) an API key."""
     result = await db.execute(
         select(APIKey).where(APIKey.key_id == key_id, APIKey.tenant_id == tenant_id)
@@ -284,9 +268,7 @@ async def revoke_api_key(
     return True
 
 
-async def lookup_api_key_by_hash(
-    db: AsyncSession, raw_key: str
-) -> Optional[dict]:
+async def lookup_api_key_by_hash(db: AsyncSession, raw_key: str) -> dict | None:
     """Look up an API key record by its raw value (for GovernanceMiddleware).
 
     Returns a dict suitable for ``GovernanceMiddleware``'s ``api_key_resolver``
@@ -300,7 +282,7 @@ async def lookup_api_key_by_hash(
     if not key.enabled or key.is_expired():
         return None
     # Update last_used_at asynchronously (fire-and-forget inside same session)
-    key.last_used_at = datetime.now(timezone.utc)
+    key.last_used_at = datetime.now(UTC)
     return {
         "key_id": key.key_id,
         "tenant_id": str(key.tenant_id),

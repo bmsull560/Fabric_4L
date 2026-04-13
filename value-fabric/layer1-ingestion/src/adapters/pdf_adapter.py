@@ -5,21 +5,20 @@ Handles both local file paths and HTTP URLs.
 """
 
 import asyncio
-import os
 import tempfile
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-from dataclasses import dataclass, field
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 import pymupdf4llm
+import pytesseract
 import structlog
 from pdf2image import convert_from_path
-import pytesseract
 
-from .base import DataSourceAdapter, AdapterType, AdapterConfig, FilingDocument, SearchResult
+from .base import AdapterConfig, AdapterType, DataSourceAdapter, FilingDocument, SearchResult
 
 logger = structlog.get_logger()
 
@@ -41,6 +40,7 @@ DOCUMENT_TYPE_MARKERS = {
 @dataclass
 class PDFAdapterConfig(AdapterConfig):
     """Extended configuration for PDF adapter."""
+
     enable_ocr: bool = True
     ocr_language: str = "eng"
     min_text_length: int = 100
@@ -60,10 +60,10 @@ class PDFAdapter(DataSourceAdapter):
     Output: Markdown with metadata and reserved table structure field.
     """
 
-    def __init__(self, config: Optional[PDFAdapterConfig] = None):
+    def __init__(self, config: PDFAdapterConfig | None = None):
         super().__init__(config or PDFAdapterConfig())
         self.config: PDFAdapterConfig = self.config  # type: ignore
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
     def adapter_type(self) -> AdapterType:
@@ -71,7 +71,7 @@ class PDFAdapter(DataSourceAdapter):
         return AdapterType.PDF
 
     @property
-    def supported_formats(self) -> List[str]:
+    def supported_formats(self) -> list[str]:
         """Return list of supported output formats."""
         return ["pdf", "markdown", "txt", "json"]
 
@@ -79,8 +79,7 @@ class PDFAdapter(DataSourceAdapter):
         """Get or create HTTP client."""
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(
-                timeout=self.config.timeout_seconds,
-                follow_redirects=True
+                timeout=self.config.timeout_seconds, follow_redirects=True
             )
         return self._client
 
@@ -102,11 +101,11 @@ class PDFAdapter(DataSourceAdapter):
     async def search(
         self,
         query: str,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100,
-        **kwargs
-    ) -> List[SearchResult]:
+        **kwargs,
+    ) -> list[SearchResult]:
         """Search for documents - not applicable for PDF adapter.
 
         PDF adapter processes individual documents, not searchable repositories.
@@ -114,11 +113,7 @@ class PDFAdapter(DataSourceAdapter):
         self.logger.warning("Search not supported by PDF adapter")
         return []
 
-    async def fetch_document(
-        self,
-        document_id: str,
-        **kwargs
-    ) -> Optional[FilingDocument]:
+    async def fetch_document(self, document_id: str, **kwargs) -> FilingDocument | None:
         """Fetch and process a PDF document.
 
         Args:
@@ -157,7 +152,7 @@ class PDFAdapter(DataSourceAdapter):
         parsed = urlparse(url)
         suffix = Path(parsed.path).suffix or ".pdf"
 
-        temp_path: Optional[Path] = None
+        temp_path: Path | None = None
 
         for attempt in range(self.config.max_retries):
             temp_file = None
@@ -190,7 +185,7 @@ class PDFAdapter(DataSourceAdapter):
                     "Download failed, retrying",
                     url=url,
                     attempt=attempt + 1,
-                    status_code=e.response.status_code
+                    status_code=e.response.status_code,
                 )
             except Exception as e:
                 # Clean up temp file on any other error
@@ -200,27 +195,19 @@ class PDFAdapter(DataSourceAdapter):
                     temp_path.unlink()
 
                 self.logger.warning(
-                    "Download failed, retrying",
-                    url=url,
-                    attempt=attempt + 1,
-                    error=str(e)
+                    "Download failed, retrying", url=url, attempt=attempt + 1, error=str(e)
                 )
 
             # Exponential backoff before retry
             if attempt < self.config.max_retries - 1:
-                wait_time = 2 ** attempt
+                wait_time = 2**attempt
                 self.logger.debug(f"Waiting {wait_time}s before retry")
                 await asyncio.sleep(wait_time)
 
         # Max retries exceeded - temp file already cleaned up in exception handlers
         raise httpx.HTTPError(f"Failed to download PDF after {self.config.max_retries} attempts")
 
-    async def _process_pdf(
-        self,
-        local_path: Path,
-        source_url: str,
-        **kwargs
-    ) -> FilingDocument:
+    async def _process_pdf(self, local_path: Path, source_url: str, **kwargs) -> FilingDocument:
         """Process PDF file and extract content."""
         enable_ocr = kwargs.get("enable_ocr", self.config.enable_ocr)
         ocr_language = kwargs.get("ocr_language", self.config.ocr_language)
@@ -238,10 +225,7 @@ class PDFAdapter(DataSourceAdapter):
         self.logger.debug("Extracting with PyMuPDF4LLM", path=str(local_path))
 
         markdown_content = pymupdf4llm.to_markdown(
-            str(local_path),
-            page_chunks=False,
-            write_images=False,
-            embed_images=False
+            str(local_path), page_chunks=False, write_images=False, embed_images=False
         )
 
         extraction_method = "pymupdf4llm"
@@ -251,15 +235,13 @@ class PDFAdapter(DataSourceAdapter):
         text_length = len(markdown_content.strip())
         if text_length < self.config.min_text_length and enable_ocr:
             self.logger.info("Triggering OCR fallback", text_length=text_length)
-            markdown_content, ocr_confidence = await self._ocr_extract(
-                local_path, ocr_language
-            )
+            markdown_content, ocr_confidence = await self._ocr_extract(local_path, ocr_language)
             extraction_method = "ocr"
 
         # Calculate metadata (file_stats obtained earlier)
         tables_detected = markdown_content.count("|") // TABLE_PIPE_DIVISOR  # Rough heuristic
 
-        metadata: Dict[str, Any] = {
+        metadata: dict[str, Any] = {
             "source_url": source_url,
             "file_size": file_stats.st_size,
             "file_path": str(local_path),
@@ -276,21 +258,17 @@ class PDFAdapter(DataSourceAdapter):
 
         return FilingDocument(
             filing_type=filing_type,
-            filing_date=datetime.now(timezone.utc),
+            filing_date=datetime.now(UTC),
             accession_number=str(local_path.name),
             primary_document=str(local_path.name),
             html_url=source_url if source_url.startswith("http") else None,
             raw_content=None,  # PDF binary not stored
             markdown_content=markdown_content,
             structured_data=None,
-            metadata=metadata
+            metadata=metadata,
         )
 
-    async def _ocr_extract(
-        self,
-        local_path: Path,
-        language: str
-    ) -> tuple[str, Optional[float]]:
+    async def _ocr_extract(self, local_path: Path, language: str) -> tuple[str, float | None]:
         """Extract text using OCR as fallback for scanned documents."""
         self.logger.debug("Starting OCR extraction", path=str(local_path), language=language)
 
@@ -298,10 +276,7 @@ class PDFAdapter(DataSourceAdapter):
         dpi = max(MIN_DPI, min(self.config.dpi, MAX_DPI))
 
         try:
-            images = convert_from_path(
-                str(local_path),
-                dpi=dpi
-            )
+            images = convert_from_path(str(local_path), dpi=dpi)
 
             texts = []
             confidences = []
@@ -319,7 +294,7 @@ class PDFAdapter(DataSourceAdapter):
                     avg_conf = sum(confs) / len(confs)
                     confidences.append(avg_conf)
 
-                self.logger.debug(f"OCR page {i+1}/{len(images)} completed")
+                self.logger.debug(f"OCR page {i + 1}/{len(images)} completed")
 
             full_text = "\n\n".join(texts)
             avg_confidence = sum(confidences) / len(confidences) if confidences else None
@@ -328,7 +303,7 @@ class PDFAdapter(DataSourceAdapter):
                 "OCR extraction completed",
                 pages=len(images),
                 text_length=len(full_text),
-                confidence=avg_confidence
+                confidence=avg_confidence,
             )
 
             return full_text, avg_confidence

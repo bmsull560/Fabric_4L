@@ -4,9 +4,9 @@ Neo4j-backed implementation of the Value Pack domain service.
 """
 
 import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime, timezone
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 
 from neo4j import AsyncDriver
 from neo4j.exceptions import Neo4jError, ServiceUnavailable
@@ -14,28 +14,28 @@ from neo4j.exceptions import Neo4jError, ServiceUnavailable
 logger = logging.getLogger(__name__)
 
 from ..interfaces.value_pack_service import (
-    IValuePackService,
-    ValuePack,
-    ValueDriverRef,
-    FormulaRef,
     BenchmarkRef,
+    FormulaRef,
+    IValuePackService,
     PackExecutionRequest,
     PackExecutionResult,
     PackStatus,
+    ValueDriverRef,
+    ValuePack,
 )
 
 
 class Neo4jValuePackService(IValuePackService):
     """Neo4j-backed Value Pack service implementation."""
-    
+
     def __init__(self, driver: AsyncDriver):
         self._driver = driver
-    
+
     async def list_packs(
         self,
-        industry: Optional[str] = None,
-        status: Optional[PackStatus] = None,
-    ) -> List[ValuePack]:
+        industry: str | None = None,
+        status: PackStatus | None = None,
+    ) -> list[ValuePack]:
         """List available Value Packs from Neo4j."""
         query = """
         MATCH (vp:ValuePack)
@@ -49,7 +49,7 @@ class Neo4jValuePackService(IValuePackService):
                collect(DISTINCT f) as formulas,
                collect(DISTINCT b) as benchmarks
         """
-        
+
         try:
             async with self._driver.session() as session:
                 result = await session.run(
@@ -58,7 +58,7 @@ class Neo4jValuePackService(IValuePackService):
                     status=status.value if status else None,
                 )
                 records = await result.data()
-                
+
                 packs = []
                 for record in records:
                     vp = record["vp"]
@@ -91,23 +91,29 @@ class Neo4jValuePackService(IValuePackService):
                         for b in record["benchmarks"]
                         if b
                     ]
-                    
-                    packs.append(ValuePack(
-                        pack_id=vp["id"],
-                        name=vp.get("name", ""),
-                        description=vp.get("description", ""),
-                        industry=vp.get("industry", ""),
-                        segment=vp.get("segment"),
-                        status=PackStatus(vp.get("status", "draft")),
-                        version=vp.get("version", "1.0.0"),
-                        value_drivers=drivers,
-                        formulas=formulas,
-                        benchmarks=benchmarks,
-                        created_at=datetime.fromisoformat(vp["createdAt"]) if "createdAt" in vp else datetime.now(timezone.utc),
-                        updated_at=datetime.fromisoformat(vp["updatedAt"]) if "updatedAt" in vp else None,
-                        created_by=vp.get("createdBy"),
-                    ))
-                
+
+                    packs.append(
+                        ValuePack(
+                            pack_id=vp["id"],
+                            name=vp.get("name", ""),
+                            description=vp.get("description", ""),
+                            industry=vp.get("industry", ""),
+                            segment=vp.get("segment"),
+                            status=PackStatus(vp.get("status", "draft")),
+                            version=vp.get("version", "1.0.0"),
+                            value_drivers=drivers,
+                            formulas=formulas,
+                            benchmarks=benchmarks,
+                            created_at=datetime.fromisoformat(vp["createdAt"])
+                            if "createdAt" in vp
+                            else datetime.now(UTC),
+                            updated_at=datetime.fromisoformat(vp["updatedAt"])
+                            if "updatedAt" in vp
+                            else None,
+                            created_by=vp.get("createdBy"),
+                        )
+                    )
+
                 return packs
         except ServiceUnavailable as e:
             logger.error("Neo4j service unavailable", exc_info=True)
@@ -115,8 +121,8 @@ class Neo4jValuePackService(IValuePackService):
         except Neo4jError as e:
             logger.error(f"Neo4j query failed: {e}", exc_info=True)
             raise RuntimeError(f"Database query failed: {e.code}") from e
-    
-    async def get_pack(self, pack_id: str) -> Optional[ValuePack]:
+
+    async def get_pack(self, pack_id: str) -> ValuePack | None:
         """Retrieve Value Pack by ID from Neo4j."""
         query = """
         MATCH (vp:ValuePack {id: $pack_id})
@@ -128,14 +134,14 @@ class Neo4jValuePackService(IValuePackService):
                collect(DISTINCT f) as formulas,
                collect(DISTINCT b) as benchmarks
         """
-        
+
         async with self._driver.session() as session:
             result = await session.run(query, pack_id=pack_id)
             record = await result.single()
-            
+
             if not record:
                 return None
-            
+
             vp = record["vp"]
             drivers = [
                 ValueDriverRef(
@@ -166,7 +172,7 @@ class Neo4jValuePackService(IValuePackService):
                 for b in record["benchmarks"]
                 if b
             ]
-            
+
             return ValuePack(
                 pack_id=vp["id"],
                 name=vp.get("name", ""),
@@ -178,11 +184,13 @@ class Neo4jValuePackService(IValuePackService):
                 value_drivers=drivers,
                 formulas=formulas,
                 benchmarks=benchmarks,
-                created_at=datetime.fromisoformat(vp["createdAt"]) if "createdAt" in vp else datetime.now(timezone.utc),
+                created_at=datetime.fromisoformat(vp["createdAt"])
+                if "createdAt" in vp
+                else datetime.now(UTC),
                 updated_at=datetime.fromisoformat(vp["updatedAt"]) if "updatedAt" in vp else None,
                 created_by=vp.get("createdBy"),
             )
-    
+
     async def load_pack_into_workspace(
         self,
         pack_id: str,
@@ -192,7 +200,7 @@ class Neo4jValuePackService(IValuePackService):
         pack = await self.get_pack(pack_id)
         if not pack:
             raise ValueError(f"Pack {pack_id} not found")
-        
+
         # Mark as loaded in workspace
         query = """
         MATCH (vp:ValuePack {id: $pack_id})
@@ -201,27 +209,27 @@ class Neo4jValuePackService(IValuePackService):
             vp.loadedAt = $loaded_at
         RETURN vp
         """
-        
+
         async with self._driver.session() as session:
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             await session.run(
                 query,
                 pack_id=pack_id,
                 workspace_id=workspace_id,
                 now=now,
             )
-        
+
         pack.is_loaded = True
         pack.workspace_id = workspace_id
         return pack
-    
+
     async def execute_pack(
         self,
         request: PackExecutionRequest,
     ) -> PackExecutionResult:
         """Execute pack workflow with provided variables."""
         execution_id = str(uuid.uuid4())
-        
+
         # Get pack
         pack = await self.get_pack(request.pack_id)
         if not pack:
@@ -232,7 +240,7 @@ class Neo4jValuePackService(IValuePackService):
                 outputs={},
                 errors=[f"Pack {request.pack_id} not found"],
             )
-        
+
         # Store execution context
         query = """
         MATCH (vp:ValuePack {id: $pack_id})
@@ -247,9 +255,9 @@ class Neo4jValuePackService(IValuePackService):
         CREATE (vp)-[:HAS_EXECUTION]->(pe)
         RETURN pe
         """
-        
+
         async with self._driver.session() as session:
-            started_at = datetime.now(timezone.utc).isoformat()
+            started_at = datetime.now(UTC).isoformat()
             await session.run(
                 query,
                 pack_id=request.pack_id,
@@ -258,7 +266,7 @@ class Neo4jValuePackService(IValuePackService):
                 variables=request.variables,
                 started_at=started_at,
             )
-        
+
         # TODO: Integrate with formula evaluation service
         # For now, return placeholder result
         outputs = {
@@ -266,7 +274,7 @@ class Neo4jValuePackService(IValuePackService):
             "formulas_evaluated": len(pack.formulas),
             "variables_provided": len(request.variables),
         }
-        
+
         # Update execution status
         complete_query = """
         MATCH (pe:PackExecution {id: $execution_id})
@@ -274,9 +282,9 @@ class Neo4jValuePackService(IValuePackService):
             pe.outputs = $outputs,
             pe.completedAt = $completed_at
         """
-        
+
         async with self._driver.session() as session:
-            completed_at = datetime.now(timezone.utc).isoformat()
+            completed_at = datetime.now(UTC).isoformat()
             await session.run(
                 complete_query,
                 execution_id=execution_id,
@@ -284,7 +292,7 @@ class Neo4jValuePackService(IValuePackService):
                 outputs=outputs,
                 completed_at=completed_at,
             )
-        
+
         return PackExecutionResult(
             execution_id=execution_id,
             pack_id=request.pack_id,
@@ -293,22 +301,22 @@ class Neo4jValuePackService(IValuePackService):
             errors=[],
             completed_at=datetime.fromisoformat(completed_at),
         )
-    
+
     async def customize_pack(
         self,
         pack_id: str,
         workspace_id: str,
-        modifications: Dict[str, Any],
+        modifications: dict[str, Any],
     ) -> ValuePack:
         """Fork and customize pack for account-specific needs."""
         original = await self.get_pack(pack_id)
         if not original:
             raise ValueError(f"Pack {pack_id} not found")
-        
+
         # Create new pack ID
         new_pack_id = str(uuid.uuid4())
         new_version = self._increment_version(original.version)
-        
+
         query = """
         MATCH (old:ValuePack {id: $old_pack_id})
         CREATE (new:ValuePack {
@@ -338,9 +346,9 @@ class Neo4jValuePackService(IValuePackService):
         )
         RETURN new
         """
-        
+
         async with self._driver.session() as session:
-            created_at = datetime.now(timezone.utc).isoformat()
+            created_at = datetime.now(UTC).isoformat()
             result = await session.run(
                 query,
                 old_pack_id=pack_id,
@@ -355,12 +363,12 @@ class Neo4jValuePackService(IValuePackService):
                 created_by=modifications.get("user_id"),
             )
             record = await result.single()
-            
+
             if not record:
                 raise ValueError("Failed to create customized pack")
-            
+
             new_vp = record["new"]
-            
+
             return ValuePack(
                 pack_id=new_vp["id"],
                 name=new_vp["name"],
@@ -374,7 +382,7 @@ class Neo4jValuePackService(IValuePackService):
                 is_loaded=True,
                 created_by=new_vp.get("createdBy"),
             )
-    
+
     async def save_pack(self, pack: ValuePack) -> ValuePack:
         """Save pack (create new version or update draft)."""
         query = """
@@ -388,7 +396,7 @@ class Neo4jValuePackService(IValuePackService):
             vp.updatedAt = $updated_at
         RETURN vp
         """
-        
+
         async with self._driver.session() as session:
             result = await session.run(
                 query,
@@ -399,16 +407,16 @@ class Neo4jValuePackService(IValuePackService):
                 segment=pack.segment,
                 status=pack.status.value,
                 version=pack.version,
-                updated_at=datetime.now(timezone.utc).isoformat(),
+                updated_at=datetime.now(UTC).isoformat(),
             )
             record = await result.single()
-            
+
             if record:
                 vp = record["vp"]
                 pack.updated_at = datetime.fromisoformat(vp["updatedAt"])
-            
+
             return pack
-    
+
     def _increment_version(self, version: str) -> str:
         """Increment patch version number."""
         parts = version.split(".")

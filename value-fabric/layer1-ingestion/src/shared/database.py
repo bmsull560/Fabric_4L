@@ -1,19 +1,16 @@
 """Database engine and session management."""
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from .config import settings
 
 # Create engine
 engine = create_engine(
-    settings.database_url,
-    pool_size=5,
-    max_overflow=10,
-    pool_pre_ping=True,
-    echo=settings.debug
+    settings.database_url, pool_size=5, max_overflow=10, pool_pre_ping=True, echo=settings.debug
 )
 
 # Session factory

@@ -9,19 +9,18 @@ from __future__ import annotations
 
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from shared.audit import emit_audit_event, AuditAction, AuditOutcome
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.jwt import encode_jwt
 from shared.identity.oidc import OIDCClient, map_role_from_claims
 from shared.identity.oidc_config import OIDCProviderConfig
 from shared.identity.permissions import Role
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ....database import get_db
 from ....tenants.models.tenant import Tenant
@@ -42,17 +41,13 @@ def _generate_nonce() -> str:
     return secrets.token_urlsafe(32)
 
 
-async def _get_tenant_by_slug(db: AsyncSession, slug: str) -> Optional[Tenant]:
+async def _get_tenant_by_slug(db: AsyncSession, slug: str) -> Tenant | None:
     result = await db.execute(select(Tenant).where(Tenant.slug == slug))
     return result.scalar_one_or_none()
 
 
-async def _get_user_by_email(
-    db: AsyncSession, tenant_id: UUID, email: str
-) -> Optional[User]:
-    result = await db.execute(
-        select(User).where(User.tenant_id == tenant_id, User.email == email)
-    )
+async def _get_user_by_email(db: AsyncSession, tenant_id: UUID, email: str) -> User | None:
+    result = await db.execute(select(User).where(User.tenant_id == tenant_id, User.email == email))
     return result.scalar_one_or_none()
 
 
@@ -68,6 +63,7 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
         # Handle Vault references
         if config.client_secret_ref.startswith("vault:"):
             from shared.identity.vault_check import resolve_vault_secret
+
             secret = await resolve_vault_secret(config.client_secret_ref)
             if secret:
                 return secret
@@ -83,9 +79,9 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
 @router.get("/{tenant_slug}/login")
 async def oidc_login(
     tenant_slug: str,
-    redirect_uri: Optional[str] = Query(None),
+    redirect_uri: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Initiate OIDC login for a tenant.
 
     Stores state/nonce in ``oidc_sessions`` and returns the IdP authorize URL.
@@ -125,7 +121,7 @@ async def oidc_login(
             "state": state,
             "nonce": nonce,
             "redirect_uri": final_redirect,
-            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
+            "expires_at": datetime.now(UTC) + timedelta(minutes=10),
         },
     )
     await db.commit()
@@ -148,7 +144,7 @@ async def oidc_callback(
     state: str = Query(...),
     code: str = Query(...),
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Handle OIDC callback from the identity provider.
 
     Validates state, exchanges code for tokens, verifies id_token,
@@ -177,10 +173,8 @@ async def oidc_callback(
         )
         raise HTTPException(status_code=400, detail="Invalid or expired state parameter")
 
-    if row["expires_at"] < datetime.now(timezone.utc):
-        await db.execute(
-            text("DELETE FROM oidc_sessions WHERE state = :state"), {"state": state}
-        )
+    if row["expires_at"] < datetime.now(UTC):
+        await db.execute(text("DELETE FROM oidc_sessions WHERE state = :state"), {"state": state})
         await db.commit()
         emit_audit_event(
             AuditAction.OIDC_LOGIN_FAILED,
@@ -196,9 +190,7 @@ async def oidc_callback(
     redirect_uri: str = row["redirect_uri"]
 
     # Clean up session
-    await db.execute(
-        text("DELETE FROM oidc_sessions WHERE state = :state"), {"state": state}
-    )
+    await db.execute(text("DELETE FROM oidc_sessions WHERE state = :state"), {"state": state})
     await db.commit()
 
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
@@ -249,6 +241,7 @@ async def oidc_callback(
     token_nonce = claims.get("nonce")
     if token_nonce:
         import hmac
+
         if not hmac.compare_digest(str(token_nonce), str(nonce)):
             emit_audit_event(
                 AuditAction.OIDC_LOGIN_FAILED,
@@ -271,7 +264,11 @@ async def oidc_callback(
     try:
         role_enum = Role(mapped_role)
     except ValueError:
-        role_enum = Role(oidc_config.default_role) if oidc_config.default_role in Role._value2member_map_ else Role.READ_ONLY
+        role_enum = (
+            Role(oidc_config.default_role)
+            if oidc_config.default_role in Role._value2member_map_
+            else Role.READ_ONLY
+        )
         mapped_role = role_enum.value
 
     # Find or auto-provision user
@@ -296,12 +293,14 @@ async def oidc_callback(
                 outcome=AuditOutcome.FAILURE,
                 details={"reason": "user_not_found", "email": email},
             )
-            raise HTTPException(status_code=403, detail="User not found and auto-provisioning is disabled")
+            raise HTTPException(
+                status_code=403, detail="User not found and auto-provisioning is disabled"
+            )
     else:
         # Update role if claim mapping changed (optional behaviour)
         if user.role != mapped_role:
             user.role = mapped_role
-        user.last_login_at = datetime.now(timezone.utc)
+        user.last_login_at = datetime.now(UTC)
 
     await db.commit()
 
@@ -337,7 +336,7 @@ async def oidc_callback(
 async def oidc_metadata(
     tenant_slug: str,
     db: AsyncSession = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return non-sensitive OIDC configuration for a tenant."""
     tenant = await _get_tenant_by_slug(db, tenant_slug)
     if tenant is None:

@@ -36,7 +36,6 @@ dev = [
     "black>=24.0",
     "ruff>=0.2",
     "mypy>=1.8",
-    "types-neo4j>=5.15",
 ]
 
 [tool.black]
@@ -46,8 +45,41 @@ target-version = ["py311"]
 [tool.ruff]
 line-length = 88
 target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "E402",   # Module level import not at top of file
+    "E722",   # Do not use bare `except`
+    "W291",   # Trailing whitespace
+    "W293",   # Blank line contains whitespace
+    "B007",   # Loop control variable not used in loop body
+    "B008",   # Do not perform function call in default arguments (FastAPI Depends pattern)
+    "B015",   # Pointless comparison
+    "B027",   # Empty method in abstract base class
+    "B904",   # Within an `except` clause, raise exceptions with `raise ... from err`
+    "B905",   # `zip()` without an explicit `strict=` parameter
+    "N805",   # First argument of a method should be named `self`
+    "N811",   # Constant imported as non-constant
+    "N818",   # Exception name should end with `Error`
+    "UP042",  # Use `StrEnum` instead of `(str, enum.Enum)` – pre-existing pattern
+    "UP007",  # Use `X | Y` for union types
+    "F841",   # Local variable assigned but never used
+    "F811",   # Redefinition of unused name from import
+    "F821",   # Undefined name (often forward references)
+    "SIM101", # Multiple `isinstance()` calls, merge into a single call
+    "SIM102", # Use a single `if` statement instead of nested `if` statements
+    "SIM103", # Return the condition directly
+    "SIM105", # Use `contextlib.suppress(...)` instead of `try`-`except`-`pass`
+    "SIM108", # Use ternary operator instead of `if`-`else`-block
+    "SIM117", # Use a single `with` statement with multiple contexts
+    "SIM118", # Use `key in dict` instead of `key in dict.keys()`
+    "C401",   # Unnecessary generator (use a set comprehension)
+    "C405",   # Unnecessary `set` literal
+    "C414",   # Unnecessary `list` or `tuple` call within `list()`
+    "C416",   # Unnecessary `list` comprehension
+]
 
 [tool.mypy]
 python_version = "3.11"

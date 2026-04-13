@@ -15,9 +15,8 @@ Design notes:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum as PyEnum
-from typing import Optional
 
 from sqlalchemy import (
     Boolean,
@@ -29,20 +28,19 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.types import JSON, TypeDecorator, String
-import uuid
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-
+from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
+from sqlalchemy.types import JSON, String, TypeDecorator
 
 # ---------------------------------------------------------------------------
 # Declarative Base
 # ---------------------------------------------------------------------------
 
+
 class Base(DeclarativeBase):
     """Shared declarative base for all Layer 5 models."""
+
     pass
 
 
@@ -50,28 +48,30 @@ class Base(DeclarativeBase):
 # Cross-platform UUID Type
 # ---------------------------------------------------------------------------
 
+
 class UUID(TypeDecorator):
     """
     Cross-platform UUID type that works with PostgreSQL and SQLite.
-    
+
     Uses PostgreSQL's native UUID type when available, falls back to
     String(36) for SQLite (used in testing).
     """
+
     impl = String(36)
     cache_ok = True
-    
+
     def load_dialect_impl(self, dialect):
         if dialect.name == "postgresql":
             return dialect.type_descriptor(PG_UUID(as_uuid=True))
         return dialect.type_descriptor(String(36))
-    
+
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
         if isinstance(value, uuid.UUID):
             return str(value)
         return str(uuid.UUID(value))
-    
+
     def process_result_value(self, value, dialect):
         if value is None:
             return None
@@ -84,8 +84,10 @@ class UUID(TypeDecorator):
 # Enumerations
 # ---------------------------------------------------------------------------
 
+
 class ClaimType(str, PyEnum):
     """Semantic category of the claim being recorded."""
+
     COST_SAVINGS_BASELINE = "cost_savings_baseline"
     REVENUE_IMPACT = "revenue_impact"
     EFFICIENCY_GAIN = "efficiency_gain"
@@ -107,11 +109,12 @@ class TruthStatus(str, PyEnum):
       extracted → supported → corroborated → approved
                                            ↘ disputed (can revert to corroborated)
     """
-    EXTRACTED = "extracted"         # AI-identified claim, not yet validated
-    SUPPORTED = "supported"         # Has at least one linked source + confidence ≥ threshold
-    CORROBORATED = "corroborated"   # Multiple independent sources confirm the claim
-    APPROVED = "approved"           # Human reviewer has explicitly approved
-    DISPUTED = "disputed"           # Flagged as conflicting or unreliable
+
+    EXTRACTED = "extracted"  # AI-identified claim, not yet validated
+    SUPPORTED = "supported"  # Has at least one linked source + confidence ≥ threshold
+    CORROBORATED = "corroborated"  # Multiple independent sources confirm the claim
+    APPROVED = "approved"  # Human reviewer has explicitly approved
+    DISPUTED = "disputed"  # Flagged as conflicting or unreliable
 
 
 class MaturityLevel(int, PyEnum):
@@ -125,6 +128,7 @@ class MaturityLevel(int, PyEnum):
     4 = Approved   : Human validated
     5 = Operationalized: Used in ROI / board-level decisions
     """
+
     RAW = 0
     EXTRACTED = 1
     SUPPORTED = 2
@@ -135,6 +139,7 @@ class MaturityLevel(int, PyEnum):
 
 class DisputeReason(str, PyEnum):
     """Reason a truth object was marked as disputed."""
+
     CONFLICTING_SOURCES = "conflicting_sources"
     STALE_DATA = "stale_data"
     METHODOLOGY_FLAW = "methodology_flaw"
@@ -146,6 +151,7 @@ class DisputeReason(str, PyEnum):
 # ---------------------------------------------------------------------------
 # TruthObject — the central model
 # ---------------------------------------------------------------------------
+
 
 class TruthObject(Base):
     """
@@ -159,6 +165,7 @@ class TruthObject(Base):
       claim, claim_type, value, sources[], confidence, status,
       approved_by, freshness, applies_to
     """
+
     __tablename__ = "truth_objects"
 
     # -------------------------------------------------------------------------
@@ -248,7 +255,7 @@ class TruthObject(Base):
     freshness = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         comment="Date the claim was last validated or refreshed",
     )
     expires_at = Column(
@@ -340,13 +347,13 @@ class TruthObject(Base):
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
     deleted_at = Column(
         DateTime(timezone=True),
@@ -402,8 +409,10 @@ class TruthObject(Base):
 # TruthSource — individual evidence records
 # ---------------------------------------------------------------------------
 
+
 class SourceType(str, PyEnum):
     """Type of evidence source."""
+
     CALL_TRANSCRIPT = "call_transcript"
     CRM_FIELD = "crm_field"
     EMAIL = "email"
@@ -426,6 +435,7 @@ class TruthSource(Base):
     ≥ 2 distinct TruthSource records with different source_types or
     source_urls, confirming the claim from independent angles.
     """
+
     __tablename__ = "truth_sources"
 
     id = Column(UUID, primary_key=True, default=lambda: uuid.uuid4())
@@ -488,7 +498,9 @@ class TruthSource(Base):
     # Extra metadata (renamed from 'metadata' to avoid SQLAlchemy reserved name)
     extra_metadata = Column("metadata", JSON, nullable=True, default=dict)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
     created_by = Column(String(255), nullable=True)
 
     # Relationships
@@ -513,6 +525,7 @@ class TruthSource(Base):
 # ValidationEvent — immutable state transition audit log
 # ---------------------------------------------------------------------------
 
+
 class ValidationEvent(Base):
     """
     Immutable record of every validation state transition.
@@ -520,6 +533,7 @@ class ValidationEvent(Base):
     Never updated or deleted — provides a complete audit trail of how
     a TruthObject moved through the validation state machine.
     """
+
     __tablename__ = "validation_events"
 
     id = Column(UUID, primary_key=True, default=lambda: uuid.uuid4())
@@ -567,7 +581,7 @@ class ValidationEvent(Base):
     created_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         index=True,
     )
 
@@ -593,6 +607,7 @@ class ValidationEvent(Base):
 # MaturityHistory — maturity ladder progression log
 # ---------------------------------------------------------------------------
 
+
 class MaturityHistory(Base):
     """
     Tracks progression through the 0–5 maturity ladder.
@@ -601,6 +616,7 @@ class MaturityHistory(Base):
     advancement (e.g. a fact can be APPROVED at maturity=4 and later
     advance to OPERATIONALIZED=5 when it is used in a board deck).
     """
+
     __tablename__ = "maturity_history"
 
     id = Column(UUID, primary_key=True, default=lambda: uuid.uuid4())
@@ -629,7 +645,7 @@ class MaturityHistory(Base):
     recorded_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         index=True,
     )
 
@@ -641,6 +657,5 @@ class MaturityHistory(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<MaturityHistory id={self.id} "
-            f"level {self.from_level} → {self.to_level}>"
+            f"<MaturityHistory id={self.id} level {self.from_level} → {self.to_level}>"
         )

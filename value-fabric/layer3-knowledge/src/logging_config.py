@@ -4,10 +4,8 @@ import json
 import logging
 import logging.handlers
 import sys
-import time
 import traceback
 from datetime import datetime
-from typing import Any, Dict, Optional
 
 try:
     from .config import Settings, get_settings
@@ -26,7 +24,7 @@ class JSONFormatter(logging.Formatter):
         include_line_number: bool = True,
     ):
         """Initialize JSON formatter.
-        
+
         Args:
             timestamp_format: Format for timestamp strings
             include_module: Whether to include module name in logs
@@ -49,15 +47,15 @@ class JSONFormatter(logging.Formatter):
         }
 
         # Add optional fields based on configuration
-        if self.include_module and hasattr(record, 'module'):
+        if self.include_module and hasattr(record, "module"):
             log_entry["module"] = record.module
         elif self.include_module:
-            log_entry["module"] = record.name.split('.')[-1]
+            log_entry["module"] = record.name.split(".")[-1]
 
-        if self.include_function and hasattr(record, 'funcName'):
+        if self.include_function and hasattr(record, "funcName"):
             log_entry["function"] = record.funcName
 
-        if self.include_line_number and hasattr(record, 'lineno'):
+        if self.include_line_number and hasattr(record, "lineno"):
             log_entry["line_number"] = record.lineno
 
         # Add exception information if present
@@ -69,18 +67,36 @@ class JSONFormatter(logging.Formatter):
             }
 
         # Add request ID if present (from middleware)
-        if hasattr(record, 'request_id'):
+        if hasattr(record, "request_id"):
             log_entry["request_id"] = record.request_id
 
         # Add any extra fields
         extra_fields = set(record.__dict__.keys()) - {
-            'name', 'msg', 'args', 'levelname', 'levelno', 'pathname',
-            'filename', 'module', 'lineno', 'funcName', 'created',
-            'msecs', 'relativeCreated', 'thread', 'threadName',
-            'processName', 'process', 'getMessage', 'exc_info',
-            'exc_text', 'stack_info', 'request_id', 'message'
+            "name",
+            "msg",
+            "args",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "lineno",
+            "funcName",
+            "created",
+            "msecs",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "processName",
+            "process",
+            "getMessage",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "request_id",
+            "message",
         }
-        
+
         for key in extra_fields:
             log_entry[key] = getattr(record, key)
 
@@ -90,9 +106,9 @@ class JSONFormatter(logging.Formatter):
 class StructuredLogger:
     """Configured structured logger with JSON formatting."""
 
-    def __init__(self, settings: Optional[Settings] = None):
+    def __init__(self, settings: Settings | None = None):
         """Initialize structured logger.
-        
+
         Args:
             settings: Application settings. If None, loads from environment.
         """
@@ -139,19 +155,19 @@ class StructuredLogger:
     @staticmethod
     def get_logger(name: str) -> logging.Logger:
         """Get a logger instance with the given name.
-        
+
         Args:
             name: Logger name (typically __name__)
-            
+
         Returns:
             Configured logger instance
         """
         return logging.getLogger(name)
 
 
-def setup_logging(settings: Optional[Settings] = None) -> None:
+def setup_logging(settings: Settings | None = None) -> None:
     """Setup structured logging for the application.
-    
+
     Args:
         settings: Application settings. If None, loads from environment.
     """
@@ -160,10 +176,10 @@ def setup_logging(settings: Optional[Settings] = None) -> None:
 
 def get_logger(name: str) -> logging.Logger:
     """Get a configured logger instance.
-    
+
     Args:
         name: Logger name (typically __name__)
-        
+
     Returns:
         Configured logger instance
     """

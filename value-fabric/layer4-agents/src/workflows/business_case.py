@@ -2,9 +2,9 @@
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..integration.layer5_client import Layer5GroundTruthClient, get_layer5_client
+from ..integration.layer5_client import Layer5GroundTruthClient
 from ..models.agent_state import (
     BusinessCaseAgentState,
     BusinessCaseInputData,
@@ -21,14 +21,14 @@ logger = logging.getLogger(__name__)
 
 class BusinessCaseGeneratorWorkflow(BaseWorkflow):
     """Workflow for generating comprehensive business case documents.
-    
+
     Pipeline:
     1. Gather inputs from CRM and prior analyses
     2. Run ROI calculation (sub-workflow)
     3. Generate narrative sections using LLM
     4. Create charts and tables
     5. Assemble into final document
-    
+
     Example:
         workflow = BusinessCaseGeneratorWorkflow(tool_registry)
         initial_state = workflow.create_initial_state({
@@ -38,28 +38,24 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         })
         result = await workflow.run(initial_state)
     """
-    
-    def __init__(
-        self,
-        tool_registry: ToolRegistry,
-        checkpoint_saver=None
-    ):
+
+    def __init__(self, tool_registry: ToolRegistry, checkpoint_saver=None):
         """Initialize Business Case Generator workflow."""
         super().__init__(
             config=BUSINESS_CASE_WORKFLOW_CONFIG,
             tool_registry=tool_registry,
-            checkpoint_saver=checkpoint_saver
+            checkpoint_saver=checkpoint_saver,
         )
         self.roi_workflow = ROICalculatorWorkflow(tool_registry, checkpoint_saver)
-    
+
     def _get_state_type(self):
         """Return Business Case-specific state type."""
         return BusinessCaseAgentState
-    
-    def create_initial_state(self, input_data: Dict[str, Any]) -> BusinessCaseAgentState:
+
+    def create_initial_state(self, input_data: dict[str, Any]) -> BusinessCaseAgentState:
         """Create initial state from input data."""
         case_input = BusinessCaseInputData(**input_data)
-        
+
         return BusinessCaseAgentState(
             workflow_type=self.config.workflow_type,
             status=WorkflowStatus.PENDING,
@@ -67,119 +63,110 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             input_data=input_data,
             output_data={},
             errors=[],
-            metadata={"workflow_name": self.name}
+            metadata={"workflow_name": self.name},
         )
-    
-    async def _execute_tool(self, tool_name: str, state: BusinessCaseAgentState, config: Dict[str, Any]) -> Dict[str, Any]:
+
+    async def _execute_tool(
+        self, tool_name: str, state: BusinessCaseAgentState, config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Execute tool with Business Case-specific input building."""
-        
+
         if tool_name == "gather_case_inputs":
             return await self._execute_gather_inputs(state)
-        
+
         elif tool_name == "assemble_document":
             return await self._execute_assemble_document(state)
-        
+
         return await super()._execute_tool(tool_name, state, config)
-    
-    async def _execute_agent(self, node_config, state: BusinessCaseAgentState) -> Dict[str, Any]:
+
+    async def _execute_agent(self, node_config, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Execute agent node (sub-workflow)."""
         if node_config.id == "run_roi":
             return await self._execute_roi_subworkflow(state)
-        
+
         return {"status": "agent_not_implemented"}
-    
-    async def _execute_llm(self, node_config, state: BusinessCaseAgentState) -> Dict[str, Any]:
+
+    async def _execute_llm(self, node_config, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Execute LLM node for section generation."""
         if node_config.id == "generate_narrative":
             return await self._execute_generate_sections(state)
-        
+
         return {"status": "llm_not_implemented"}
-    
-    async def _execute_gather_inputs(self, state: BusinessCaseAgentState) -> Dict[str, Any]:
+
+    async def _execute_gather_inputs(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Gather all inputs needed for business case generation."""
         if not state.case_input:
             return {"error": "No business case input configured"}
-        
+
         prospect_id = state.case_input.prospect_id
-        
+
         # Fetch prospect data
         prospect_data = await self.tool_registry.execute(
             "get_prospect_data",
             {
                 "prospect_id": prospect_id,
-                "data_types": ["profile", "interactions", "opportunities"]
-            }
+                "data_types": ["profile", "interactions", "opportunities"],
+            },
         )
-        
+
         # Fetch interaction history
         interactions = await self.tool_registry.execute(
-            "fetch_interaction_history",
-            {
-                "prospect_id": prospect_id,
-                "limit": 10
-            }
+            "fetch_interaction_history", {"prospect_id": prospect_id, "limit": 10}
         )
-        
+
         # Score lead for additional context
-        lead_score = await self.tool_registry.execute(
-            "score_lead",
-            {"prospect_id": prospect_id}
-        )
-        
+        lead_score = await self.tool_registry.execute("score_lead", {"prospect_id": prospect_id})
+
         return {
             "prospect": prospect_data,
             "interactions": interactions,
             "lead_score": lead_score,
             "sections_requested": state.case_input.sections_requested,
-            "output_format": state.case_input.output_format
+            "output_format": state.case_input.output_format,
         }
-    
-    async def _execute_roi_subworkflow(self, state: BusinessCaseAgentState) -> Dict[str, Any]:
+
+    async def _execute_roi_subworkflow(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Execute ROI calculation as sub-workflow."""
         if not state.case_input:
             return {"error": "No business case input configured"}
-        
+
         prospect_id = state.case_input.prospect_id
-        
+
         # Create ROI workflow state
         roi_input_data = {
             "prospect_id": prospect_id,
             "value_driver_ids": ["vd-001", "vd-002", "vd-003"],  # Default set
-            "use_benchmarks": True
+            "use_benchmarks": True,
         }
-        
+
         roi_initial_state = self.roi_workflow.create_initial_state(roi_input_data)
-        
+
         # Run ROI workflow
         try:
             roi_result = await self.roi_workflow.run(roi_initial_state)
-            
+
             return {
                 "status": "completed",
                 "roi_results": roi_result.output_data.get("aggregate", {}),
-                "detailed_calculations": roi_result.calculation_results
+                "detailed_calculations": roi_result.calculation_results,
             }
         except Exception as e:
-            return {
-                "status": "failed",
-                "error": str(e),
-                "roi_results": {}
-            }
-    
-    async def _execute_generate_sections(self, state: BusinessCaseAgentState) -> Dict[str, Any]:
+            return {"status": "failed", "error": str(e), "roi_results": {}}
+
+    async def _execute_generate_sections(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Generate all requested narrative sections."""
         if not state.case_input:
             return {"error": "No business case input configured", "sections": []}
-        
+
         gathered = state.output_data.get("gather_inputs", {})
         roi_data = state.output_data.get("run_roi", {})
-        
+
         prospect = gathered.get("prospect", {})
         profile = prospect.get("profile", {})
         roi_results = roi_data.get("roi_results", {})
-        
-        sections_generated: List[BusinessCaseSection] = []
-        
+
+        sections_generated: list[BusinessCaseSection] = []
+
         # Build context for section generation
         context = {
             "company_name": profile.get("name", "the prospect"),
@@ -190,9 +177,9 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             "payback_months": roi_results.get("payback_period_months", 0),
             "three_year_npv": roi_results.get("three_year_npv", 0),
         }
-        
+
         requested_sections = state.case_input.sections_requested
-        
+
         # Map section types to titles
         section_titles = {
             "executive_summary": "Executive Summary",
@@ -202,10 +189,10 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             "implementation": "Implementation Plan",
             "next_steps": "Recommended Next Steps",
         }
-        
+
         for section_type in requested_sections:
             title = section_titles.get(section_type, section_type.replace("_", " ").title())
-            
+
             try:
                 # Generate section content
                 section_result = await self.tool_registry.execute(
@@ -214,10 +201,10 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                         "section_type": section_type,
                         "context": context,
                         "tone": "professional",
-                        "max_length": 500
-                    }
+                        "max_length": 500,
+                    },
                 )
-                
+
                 # Create charts for ROI section
                 charts = []
                 if section_type == "roi_analysis" and roi_results:
@@ -227,60 +214,65 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                         {
                             "chart_type": "bar",
                             "data": [
-                                {"label": "Investment", "value": roi_results.get("investment_required", 0)},
-                                {"label": "Year 1 Value", "value": roi_results.get("total_annual_value", 0)},
-                                {"label": "3-Year NPV", "value": roi_results.get("three_year_npv", 0)},
+                                {
+                                    "label": "Investment",
+                                    "value": roi_results.get("investment_required", 0),
+                                },
+                                {
+                                    "label": "Year 1 Value",
+                                    "value": roi_results.get("total_annual_value", 0),
+                                },
+                                {
+                                    "label": "3-Year NPV",
+                                    "value": roi_results.get("three_year_npv", 0),
+                                },
                             ],
                             "title": "ROI Summary",
-                        }
+                        },
                     )
                     charts.append(chart_result.get("chart_data", {}))
-                
+
                 section = BusinessCaseSection(
-                    title=title,
-                    content=section_result.get("content", ""),
-                    charts=charts,
-                    tables=[]
+                    title=title, content=section_result.get("content", ""), charts=charts, tables=[]
                 )
                 sections_generated.append(section)
-                
+
             except Exception as e:
                 # Add error section
                 section = BusinessCaseSection(
-                    title=title,
-                    content=f"Error generating section: {str(e)}",
-                    charts=[],
-                    tables=[]
+                    title=title, content=f"Error generating section: {str(e)}", charts=[], tables=[]
                 )
                 sections_generated.append(section)
-        
+
         return {
             "sections": [s.model_dump() for s in sections_generated],
-            "section_count": len(sections_generated)
+            "section_count": len(sections_generated),
         }
-    
-    async def _execute_assemble_document(self, state: BusinessCaseAgentState) -> Dict[str, Any]:
+
+    async def _execute_assemble_document(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Assemble sections into final document, then sync ground truths to KG."""
         if not state.case_input:
             return {"error": "No business case input configured"}
-        
+
         sections_data = state.output_data.get("generate_narrative", {}).get("sections", [])
-        
+
         if not sections_data:
             return {"error": "No sections generated"}
-        
+
         # Prepare sections for assembly
         assembly_sections = []
         for s in sections_data:
-            assembly_sections.append({
-                "title": s.get("title", "Section"),
-                "content": s.get("content", ""),
-                "charts": s.get("charts", []),
-                "tables": s.get("tables", [])
-            })
-        
+            assembly_sections.append(
+                {
+                    "title": s.get("title", "Section"),
+                    "content": s.get("content", ""),
+                    "charts": s.get("charts", []),
+                    "tables": s.get("tables", []),
+                }
+            )
+
         # Assemble document
-        assemble_result: Dict[str, Any] = {}
+        assemble_result: dict[str, Any] = {}
         try:
             result = await self.tool_registry.execute(
                 "assemble_document",
@@ -289,10 +281,12 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                     "template": "business_case",
                     "output_format": state.case_input.output_format,
                     "branding": {
-                        "company_name": state.case_input.custom_inputs.get("company_name", "Value Fabric"),
-                        "date": state.case_input.custom_inputs.get("date", "2024")
-                    }
-                }
+                        "company_name": state.case_input.custom_inputs.get(
+                            "company_name", "Value Fabric"
+                        ),
+                        "date": state.case_input.custom_inputs.get("date", "2024"),
+                    },
+                },
             )
             assemble_result = {
                 "document_bytes": result.get("document_bytes"),
@@ -318,9 +312,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         return assemble_result
 
-    async def _sync_ground_truths_to_kg(
-        self, state: BusinessCaseAgentState
-    ) -> Dict[str, Any]:
+    async def _sync_ground_truths_to_kg(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Best-effort sync of approved TruthObjects to the KG via Layer 5.
 
         Resolves the tenant/organization ID from (in priority order):
@@ -330,7 +322,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         Returns a dict with sync statistics or an ``error`` key.
         """
-        organization_id: Optional[str] = None
+        organization_id: str | None = None
 
         if state.case_input and state.case_input.custom_inputs:
             organization_id = state.case_input.custom_inputs.get("organization_id")
@@ -342,8 +334,8 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             organization_id = os.getenv("LAYER5_DEFAULT_ORG_ID")
 
         # Resolve service token for Layer 5 auth
-        service_token: Optional[str] = os.getenv("LAYER5_SERVICE_TOKEN")
-        layer5_url: Optional[str] = os.getenv(
+        service_token: str | None = os.getenv("LAYER5_SERVICE_TOKEN")
+        layer5_url: str | None = os.getenv(
             "LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005"
         )
 
@@ -354,9 +346,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         )
 
         try:
-            sync_result = await client.sync_approved_truths(
-                organization_id=organization_id
-            )
+            sync_result = await client.sync_approved_truths(organization_id=organization_id)
             logger.info(
                 "Business case ground-truth sync complete for org=%s: %s",
                 organization_id,

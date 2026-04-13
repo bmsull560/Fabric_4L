@@ -6,12 +6,13 @@ Storage model aligned with Neo4j + provenance tracking.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, Optional
 
 
 @dataclass
 class StatisticalProfile:
     """Statistical profile for a benchmark metric."""
+
     p10: Decimal
     p25: Decimal
     p50: Decimal
@@ -20,7 +21,7 @@ class StatisticalProfile:
     mean: Decimal
     std_dev: Decimal
     sample_size: int
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "p10": str(self.p10),
@@ -32,7 +33,7 @@ class StatisticalProfile:
             "std_dev": str(self.std_dev),
             "sample_size": self.sample_size,
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "StatisticalProfile":
         return cls(
@@ -50,11 +51,12 @@ class StatisticalProfile:
 @dataclass
 class BenchmarkMetric:
     """Individual metric within a benchmark dataset."""
+
     name: str
     unit: str  # e.g., "USD", "hours", "percent"
     description: str
     profile: StatisticalProfile
-    
+
     # Validation rules
     lower_bound: Optional[Decimal] = None
     upper_bound: Optional[Decimal] = None
@@ -64,36 +66,37 @@ class BenchmarkMetric:
 @dataclass
 class BenchmarkDataset:
     """Benchmark dataset for an industry/segment.
-    
+
     Curated dataset (not validated claims) for peer comparison
     and statistical validation.
     """
+
     dataset_id: str
     name: str
     description: str
-    
+
     # Classification
     industry: str
     segment: Optional[str]  # e.g., "enterprise", "mid-market", "small"
     geography: Optional[str]  # e.g., "US", "EU", "global"
-    
+
     # Metrics
     metrics: Dict[str, BenchmarkMetric] = field(default_factory=dict)
-    
+
     # Metadata
     version: str = "1.0.0"
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
     data_source: Optional[str] = None  # e.g., "Gartner 2024", "Internal Study"
-    
+
     # Provenance
     provenance_id: Optional[str] = None  # Links to L4 provenance tracking
     is_public: bool = False
-    
+
     def get_metric(self, name: str) -> Optional[BenchmarkMetric]:
         """Get metric by name."""
         return self.metrics.get(name)
-    
+
     def add_metric(self, metric: BenchmarkMetric) -> None:
         """Add metric to dataset."""
         self.metrics[metric.name] = metric
@@ -103,6 +106,7 @@ class BenchmarkDataset:
 @dataclass
 class ComparisonRequest:
     """Request for peer comparison."""
+
     dataset_id: str
     metric: str
     company_value: Decimal
@@ -113,15 +117,16 @@ class ComparisonRequest:
 @dataclass
 class ComparisonResult:
     """Result of peer comparison with statistical profile."""
+
     percentile: int  # 0-100
     peer_median: Decimal
     peer_range: tuple[Decimal, Decimal]  # (p10, p90)
     sample_size: int
     confidence: str  # high, medium, low
-    
+
     # Detailed breakdown
     statistical_profile: Optional[StatisticalProfile] = None
-    
+
     # Interpretation
     assessment: str = ""  # e.g., "above average", "top performer"
 
@@ -129,6 +134,7 @@ class ComparisonResult:
 @dataclass
 class RangeValidationRequest:
     """Request for range validation."""
+
     dataset_id: str
     metric: str
     value: Decimal
@@ -138,12 +144,13 @@ class RangeValidationRequest:
 @dataclass
 class RangeValidationResult:
     """Result of range validation."""
+
     is_valid: bool
     expected_range: tuple[Decimal, Decimal]
     actual_value: Decimal
     deviation_percent: Optional[float]
     severity: str  # info, warning, error
-    
+
     # Guidance
     message: str = ""
     recommended_action: Optional[str] = None

@@ -3,17 +3,17 @@
 Provides endpoints for variable definitions, search, and resolution.
 """
 
-from typing import List, Optional, Dict, Any, Literal
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
-from ...db.driver import get_driver
-from neo4j import AsyncDriver
-from ...logging_config import get_logger
-from ...auth.middleware import get_current_api_key
 from ...auth.api_keys import APIKey
+from ...auth.middleware import get_current_api_key
+from ...db.driver import get_driver
+from ...logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -22,131 +22,164 @@ router = APIRouter()
 
 # Pydantic Models
 
+
 class SourceBinding(BaseModel):
     """Source binding configuration."""
-    source_type: Literal["user_input", "crm_field", "erp_field", "benchmark_lookup", "formula_calculation", "database_query", "api_call", "ground_truth"]
+
+    source_type: Literal[
+        "user_input",
+        "crm_field",
+        "erp_field",
+        "benchmark_lookup",
+        "formula_calculation",
+        "database_query",
+        "api_call",
+        "ground_truth",
+    ]
     source_location: str
-    extraction_query: Optional[str] = None
-    transformation: Optional[str] = None
-    fallback_value: Optional[Any] = None
+    extraction_query: str | None = None
+    transformation: str | None = None
+    fallback_value: Any | None = None
     is_required: bool = True
 
 
 class ValidationRule(BaseModel):
     """Validation rule for variable."""
+
     rule_type: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     error_message: str
 
 
 class VariableSummary(BaseModel):
     """Summary of variable definition."""
+
     variable_id: str
     name: str
     description: str
     data_type: str
-    industry: Optional[str]
-    source_type: Optional[str]
+    industry: str | None
+    source_type: str | None
     is_active: bool
     version: str
 
 
 class VariableDetail(BaseModel):
     """Full variable definition."""
+
     variable_id: str
     name: str
     description: str
     data_type: str
-    industry: Optional[str]
-    applicable_formulas: List[str]
-    applicable_packs: List[str]
-    source_binding: Optional[SourceBinding]
-    validation_rules: List[ValidationRule]
+    industry: str | None
+    applicable_formulas: list[str]
+    applicable_packs: list[str]
+    source_binding: SourceBinding | None
+    validation_rules: list[ValidationRule]
     created_at: str
-    updated_at: Optional[str]
+    updated_at: str | None
     version: str
     is_active: bool
 
 
 VALID_DATA_TYPES = ["string", "integer", "decimal", "boolean", "date", "enum", "json"]
-VALID_SOURCE_TYPES = ["user_input", "crm_field", "erp_field", "benchmark_lookup", "formula_calculation", "database_query", "api_call", "ground_truth"]
+VALID_SOURCE_TYPES = [
+    "user_input",
+    "crm_field",
+    "erp_field",
+    "benchmark_lookup",
+    "formula_calculation",
+    "database_query",
+    "api_call",
+    "ground_truth",
+]
 
 
 class VariableCreateRequest(BaseModel):
     """Request to create a variable."""
+
     name: str
     description: str
-    data_type: Literal["string", "integer", "decimal", "boolean", "date", "enum", "json"]
-    industry: Optional[str] = None
-    applicable_formulas: List[str] = Field(default_factory=list)
-    applicable_packs: List[str] = Field(default_factory=list)
-    source_binding: Optional[SourceBinding] = None
-    validation_rules: List[ValidationRule] = Field(default_factory=list)
+    data_type: Literal[
+        "string", "integer", "decimal", "boolean", "date", "enum", "json"
+    ]
+    industry: str | None = None
+    applicable_formulas: list[str] = Field(default_factory=list)
+    applicable_packs: list[str] = Field(default_factory=list)
+    source_binding: SourceBinding | None = None
+    validation_rules: list[ValidationRule] = Field(default_factory=list)
 
 
 class VariableUpdateRequest(BaseModel):
     """Request to update a variable."""
-    name: Optional[str] = None
-    description: Optional[str] = None
-    data_type: Optional[str] = None
-    industry: Optional[str] = None
-    applicable_formulas: Optional[List[str]] = None
-    applicable_packs: Optional[List[str]] = None
-    source_binding: Optional[SourceBinding] = None
-    validation_rules: Optional[List[ValidationRule]] = None
-    is_active: Optional[bool] = None
+
+    name: str | None = None
+    description: str | None = None
+    data_type: str | None = None
+    industry: str | None = None
+    applicable_formulas: list[str] | None = None
+    applicable_packs: list[str] | None = None
+    source_binding: SourceBinding | None = None
+    validation_rules: list[ValidationRule] | None = None
+    is_active: bool | None = None
 
 
 class VariableSearchRequest(BaseModel):
     """Request to search variables."""
-    industry: Optional[str] = None
-    pack_id: Optional[str] = None
-    formula_id: Optional[str] = None
-    data_type: Optional[str] = None
-    source_type: Optional[str] = None
+
+    industry: str | None = None
+    pack_id: str | None = None
+    formula_id: str | None = None
+    data_type: str | None = None
+    source_type: str | None = None
     is_active: bool = True
 
 
 class ResolveRequest(BaseModel):
     """Request to resolve variable value."""
+
     workspace_id: str
-    entity_id: Optional[str] = None
-    user_id: Optional[str] = None
-    pack_id: Optional[str] = None
-    industry: Optional[str] = None
+    entity_id: str | None = None
+    user_id: str | None = None
+    pack_id: str | None = None
+    industry: str | None = None
 
 
 class ResolveResponse(BaseModel):
     """Response from variable resolution."""
+
     variable_id: str
     value: Any
     data_type: str
     source_type: str
-    source_location: Optional[str]
+    source_location: str | None
     confidence: float
     extracted_at: str
 
 
 class ValidateRequest(BaseModel):
     """Request to validate variable value."""
+
     value: Any
 
 
 class ValidateResponse(BaseModel):
     """Response from validation."""
+
     is_valid: bool
-    error: Optional[str]
+    error: str | None
 
 
 # API Endpoints
 
-@router.get("/variables", response_model=List[VariableSummary])
+
+@router.get("/variables", response_model=list[VariableSummary])
 async def search_variables(
-    industry: Optional[str] = Query(None, description="Filter by industry"),
-    pack_id: Optional[str] = Query(None, description="Filter by pack ID"),
-    formula_id: Optional[str] = Query(None, description="Filter by formula ID"),
-    data_type: Optional[str] = Query(None, description="Filter by data type"),
-    source_type: Optional[str] = Query(None, description="Filter by source type"),
+    industry: str | None = Query(None, description="Filter by industry"),
+    pack_id: str | None = Query(None, description="Filter by pack ID"),
+    formula_id: str | None = Query(None, description="Filter by formula ID"),
+    data_type: str | None = Query(None, description="Filter by data type"),
+    source_type: str | None = Query(None, description="Filter by source type"),
     is_active: bool = Query(True, description="Only active variables"),
     driver: AsyncDriver = Depends(get_driver),
 ):
@@ -154,40 +187,46 @@ async def search_variables(
     # Build safe query with parameterized WHERE conditions only
     # NEVER use string interpolation (f-strings or .format()) for Cypher queries
     where_conditions = ["v.isActive = $is_active"]
-    params: Dict[str, Any] = {"is_active": is_active}
-    
+    params: dict[str, Any] = {"is_active": is_active}
+
     if industry:
         where_conditions.append("v.industry = $industry")
         params["industry"] = industry
-    
+
     if data_type:
         where_conditions.append("v.dataType = $data_type")
         params["data_type"] = data_type
-    
+
     if source_type:
         where_conditions.append("v.sourceType = $source_type")
         params["source_type"] = source_type
-    
+
     # pack_id and formula_id filters use relationship patterns - safely built
     match_pattern = "(v:Variable)"
     if pack_id:
         match_pattern = "(v:Variable)-[:USED_IN_PACK]->(p:ValuePack)"
         where_conditions.append("p.id = $pack_id")
         params["pack_id"] = pack_id
-    
+
     if formula_id:
         match_pattern = "(v:Variable)-[:USED_IN_FORMULA]->(f:Formula)"
         where_conditions.append("f.id = $formula_id")
         params["formula_id"] = formula_id
-    
+
     # Static query structure - no user input in query text
-    query_parts = ["MATCH", match_pattern, "WHERE", " AND ".join(where_conditions), "RETURN v ORDER BY v.name"]
+    query_parts = [
+        "MATCH",
+        match_pattern,
+        "WHERE",
+        " AND ".join(where_conditions),
+        "RETURN v ORDER BY v.name",
+    ]
     query = " ".join(query_parts)
-    
+
     async with driver.session() as session:
         result = await session.run(query, **params)
         records = await result.data()
-        
+
         return [
             VariableSummary(
                 variable_id=r["v"]["id"],
@@ -213,16 +252,16 @@ async def get_variable(
     MATCH (v:Variable {id: $variable_id})
     RETURN v
     """
-    
+
     async with driver.session() as session:
         result = await session.run(query, variable_id=variable_id)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Variable not found")
-        
+
         v = record["v"]
-        
+
         # Reconstruct source binding
         source_binding = None
         if v.get("sourceType"):
@@ -234,16 +273,18 @@ async def get_variable(
                 fallback_value=v.get("fallbackValue"),
                 is_required=v.get("isRequired", True),
             )
-        
+
         # Reconstruct validation rules
         validation_rules = []
         for rule_data in v.get("validationRules", []):
-            validation_rules.append(ValidationRule(
-                rule_type=rule_data["ruleType"],
-                parameters=rule_data["parameters"],
-                error_message=rule_data["errorMessage"],
-            ))
-        
+            validation_rules.append(
+                ValidationRule(
+                    rule_type=rule_data["ruleType"],
+                    parameters=rule_data["parameters"],
+                    error_message=rule_data["errorMessage"],
+                )
+            )
+
         return VariableDetail(
             variable_id=v["id"],
             name=v["name"],
@@ -254,7 +295,7 @@ async def get_variable(
             applicable_packs=v.get("applicablePacks", []),
             source_binding=source_binding,
             validation_rules=validation_rules,
-            created_at=v.get("createdAt", datetime.now(timezone.utc).isoformat()),
+            created_at=v.get("createdAt", datetime.now(UTC).isoformat()),
             updated_at=v.get("updatedAt"),
             version=v.get("version", "1.0.0"),
             is_active=v.get("isActive", True),
@@ -269,19 +310,21 @@ async def create_variable(
 ):
     """Register a new variable definition. Requires authentication."""
     import uuid
-    
+
     variable_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    
+    now = datetime.now(UTC).isoformat()
+
     # Build validation rules
     validation_rules = []
     for rule in request.validation_rules:
-        validation_rules.append({
-            "ruleType": rule.rule_type,
-            "parameters": rule.parameters,
-            "errorMessage": rule.error_message,
-        })
-    
+        validation_rules.append(
+            {
+                "ruleType": rule.rule_type,
+                "parameters": rule.parameters,
+                "errorMessage": rule.error_message,
+            }
+        )
+
     query = """
     CREATE (v:Variable {
         id: $variable_id,
@@ -304,7 +347,7 @@ async def create_variable(
         v.isRequired = $is_required
     RETURN v
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -317,20 +360,32 @@ async def create_variable(
             applicable_packs=request.applicable_packs,
             validation_rules=validation_rules,
             created_at=now,
-            source_type=request.source_binding.source_type if request.source_binding else None,
-            source_location=request.source_binding.source_location if request.source_binding else None,
-            extraction_query=request.source_binding.extraction_query if request.source_binding else None,
-            transformation=request.source_binding.transformation if request.source_binding else None,
-            fallback_value=request.source_binding.fallback_value if request.source_binding else None,
-            is_required=request.source_binding.is_required if request.source_binding else True,
+            source_type=request.source_binding.source_type
+            if request.source_binding
+            else None,
+            source_location=request.source_binding.source_location
+            if request.source_binding
+            else None,
+            extraction_query=request.source_binding.extraction_query
+            if request.source_binding
+            else None,
+            transformation=request.source_binding.transformation
+            if request.source_binding
+            else None,
+            fallback_value=request.source_binding.fallback_value
+            if request.source_binding
+            else None,
+            is_required=request.source_binding.is_required
+            if request.source_binding
+            else True,
         )
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=500, detail="Failed to create variable")
-        
+
         v = record["v"]
-        
+
         return VariableDetail(
             variable_id=v["id"],
             name=v["name"],
@@ -361,14 +416,14 @@ async def update_variable(
         result = await session.run(check_query, variable_id=variable_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Variable not found")
-    
+
     # Build update query
     set_clauses = ["v.updatedAt = $updated_at"]
     params = {
         "variable_id": variable_id,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
-    
+
     if request.name is not None:
         set_clauses.append("v.name = $name")
         params["name"] = request.name
@@ -390,39 +445,43 @@ async def update_variable(
     if request.is_active is not None:
         set_clauses.append("v.isActive = $is_active")
         params["is_active"] = request.is_active
-    
+
     if request.source_binding is not None:
-        set_clauses.extend([
-            "v.sourceType = $source_type",
-            "v.sourceLocation = $source_location",
-        ])
+        set_clauses.extend(
+            [
+                "v.sourceType = $source_type",
+                "v.sourceLocation = $source_location",
+            ]
+        )
         params["source_type"] = request.source_binding.source_type
         params["source_location"] = request.source_binding.source_location
-    
+
     if request.validation_rules is not None:
         set_clauses.append("v.validationRules = $validation_rules")
         validation_rules = []
         for rule in request.validation_rules:
-            validation_rules.append({
-                "ruleType": rule.rule_type,
-                "parameters": rule.parameters,
-                "errorMessage": rule.error_message,
-            })
+            validation_rules.append(
+                {
+                    "ruleType": rule.rule_type,
+                    "parameters": rule.parameters,
+                    "errorMessage": rule.error_message,
+                }
+            )
         params["validation_rules"] = validation_rules
-    
+
     query = f"""
     MATCH (v:Variable {{id: $variable_id}})
-    SET {', '.join(set_clauses)}
+    SET {", ".join(set_clauses)}
     RETURN v
     """
-    
+
     async with driver.session() as session:
         result = await session.run(query, **params)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=500, detail="Failed to update variable")
-    
+
     # Return updated variable
     return await get_variable(variable_id, driver)
 
@@ -440,19 +499,19 @@ async def resolve_variable(
     MATCH (v:Variable {id: $variable_id})
     RETURN v
     """
-    
+
     async with driver.session() as session:
         result = await session.run(var_query, variable_id=variable_id)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Variable not found")
-        
+
         v = record["v"]
         data_type = v["dataType"]
         source_type = v.get("sourceType", "user_input")
         source_location = v.get("sourceLocation")
-    
+
     # Simulate resolution based on source type
     # In production, this would query CRM, benchmarks, formulas, etc.
     value = None
@@ -466,16 +525,17 @@ async def resolve_variable(
         value = 100.0  # Mock calculated value
     else:
         value = v.get("fallbackValue")
-    
+
     # Cast to appropriate type
     if data_type == "integer":
         value = int(value) if value else 0
     elif data_type == "decimal":
         from decimal import Decimal
+
         value = float(Decimal(str(value))) if value else 0.0
     elif data_type == "boolean":
         value = bool(value)
-    
+
     return ResolveResponse(
         variable_id=variable_id,
         value=value,
@@ -483,7 +543,7 @@ async def resolve_variable(
         source_type=source_type,
         source_location=source_location,
         confidence=1.0,
-        extracted_at=datetime.now(timezone.utc).isoformat(),
+        extracted_at=datetime.now(UTC).isoformat(),
     )
 
 
@@ -499,17 +559,17 @@ async def validate_value(
     MATCH (v:Variable {id: $variable_id})
     RETURN v.dataType as data_type, v.validationRules as validation_rules
     """
-    
+
     async with driver.session() as session:
         result = await session.run(query, variable_id=variable_id)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Variable not found")
-        
+
         data_type = record["data_type"]
         validation_rules = record["validation_rules"] or []
-    
+
     # Check data type
     try:
         if data_type == "integer":
@@ -521,56 +581,65 @@ async def validate_value(
                 request.value.lower() in ("true", "false", "1", "0", "yes", "no")
         elif data_type == "date":
             datetime.fromisoformat(str(request.value))
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         return ValidateResponse(
             is_valid=False,
             error=f"Invalid data type: expected {data_type}",
         )
-    
+
     # Run validation rules
     for rule in validation_rules:
         params = rule.get("parameters", {})
-        
+
         if rule["ruleType"] == "range":
             try:
                 val = float(request.value)
                 if "min" in params and val < params["min"]:
                     return ValidateResponse(
                         is_valid=False,
-                        error=rule.get("errorMessage", f"Value below minimum {params['min']}"),
+                        error=rule.get(
+                            "errorMessage", f"Value below minimum {params['min']}"
+                        ),
                     )
                 if "max" in params and val > params["max"]:
                     return ValidateResponse(
                         is_valid=False,
-                        error=rule.get("errorMessage", f"Value above maximum {params['max']}"),
+                        error=rule.get(
+                            "errorMessage", f"Value above maximum {params['max']}"
+                        ),
                     )
             except (ValueError, TypeError):
                 pass
-        
+
         elif rule["ruleType"] == "regex":
             import re
+
             pattern = params.get("pattern", ".*")
             if not re.match(pattern, str(request.value)):
                 return ValidateResponse(
                     is_valid=False,
                     error=rule.get("errorMessage", "Value does not match pattern"),
                 )
-        
+
         elif rule["ruleType"] == "enum":
             allowed = params.get("values", [])
             if request.value not in allowed:
                 return ValidateResponse(
                     is_valid=False,
-                    error=rule.get("errorMessage", f"Value not in allowed values: {allowed}"),
+                    error=rule.get(
+                        "errorMessage", f"Value not in allowed values: {allowed}"
+                    ),
                 )
-    
+
     return ValidateResponse(is_valid=True, error=None)
 
 
 # ── Aggregate Endpoints ──────────────────────────────────────────────────────
 
+
 class VariableStatsResponse(BaseModel):
     """Aggregate statistics for the variable registry."""
+
     total: int = 0
     validated: int = 0
     pending: int = 0
@@ -581,14 +650,15 @@ class VariableStatsResponse(BaseModel):
 
 class SourceBindingResponse(BaseModel):
     """Source binding connection metadata."""
+
     id: str
     name: str
     source_type: str
-    connection_string: Optional[str] = None
+    connection_string: str | None = None
     status: Literal["connected", "disconnected", "error"]
-    last_sync: Optional[str] = None
+    last_sync: str | None = None
     variables_bound: int = 0
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 @router.get("/variables/stats", response_model=VariableStatsResponse)
@@ -624,7 +694,7 @@ async def get_variable_stats(
         )
 
 
-@router.get("/variables/bindings", response_model=List[SourceBindingResponse])
+@router.get("/variables/bindings", response_model=list[SourceBindingResponse])
 async def list_source_bindings(
     driver: AsyncDriver = Depends(get_driver),
 ):

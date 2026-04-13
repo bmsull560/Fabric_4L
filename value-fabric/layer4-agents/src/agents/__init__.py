@@ -11,17 +11,17 @@ Provides 8 agent types as defined in the specification:
 - OrchestrationController
 """
 
-from .base import BaseAgent, AgentState, AgentCapability
+from .base import AgentCapability, AgentState, BaseAgent
 from .taxonomy import (
     AgentType,
     DocumentIngestionAgent,
     FinancialExtractionAgent,
+    NarrativeSynthesisAgent,
+    OrchestrationController,
+    ProvenanceTrackingAgent,
+    ROICalculationAgent,
     ValueTreeProjectionAgent,
     WhitespaceAnalysisAgent,
-    ROICalculationAgent,
-    NarrativeSynthesisAgent,
-    ProvenanceTrackingAgent,
-    OrchestrationController,
 )
 
 __all__ = [

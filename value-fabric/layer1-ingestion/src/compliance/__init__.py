@@ -1,12 +1,12 @@
 """Compliance package for data protection and ethical crawling."""
 
+from .pii_scanner import PIIEntity, PIIScanner, PIIScanResult, get_scanner
 from .robots_checker import RobotsChecker
-from .pii_scanner import PIIScanner, PIIEntity, PIIScanResult, get_scanner
 
 __all__ = [
-    'RobotsChecker',
-    'PIIScanner',
-    'PIIEntity',
-    'PIIScanResult',
-    'get_scanner',
+    "RobotsChecker",
+    "PIIScanner",
+    "PIIEntity",
+    "PIIScanResult",
+    "get_scanner",
 ]

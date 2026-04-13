@@ -1,12 +1,10 @@
 """Prometheus metrics collection for Layer 1 Ingestion Service."""
 
-import time
-from typing import Dict, List, Optional, Any
-from functools import wraps
-
-from prometheus_client import Counter, Histogram, Gauge, Info, CollectorRegistry, generate_latest
-
 import logging
+import time
+from typing import Any
+
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, Info, generate_latest
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +15,10 @@ class MetricsConfig:
     def __init__(
         self,
         enabled: bool = True,
-        registry: Optional[CollectorRegistry] = None,
+        registry: CollectorRegistry | None = None,
         prefix: str = "layer1_",
         label_namespace: str = "ingestion",
-        default_buckets: Optional[List[float]] = None,
+        default_buckets: list[float] | None = None,
     ):
         self.enabled = enabled
         self.registry = registry or CollectorRegistry()
@@ -32,9 +30,9 @@ class MetricsConfig:
 class PrometheusMetrics:
     """Prometheus metrics collector for Layer 1."""
 
-    def __init__(self, config: Optional[MetricsConfig] = None):
+    def __init__(self, config: MetricsConfig | None = None):
         self.config = config or MetricsConfig()
-        self._metrics: Dict[str, Any] = {}
+        self._metrics: dict[str, Any] = {}
         self._setup_metrics()
 
     def _setup_metrics(self) -> None:
@@ -46,7 +44,7 @@ class PrometheusMetrics:
             f"{prefix}http_requests_total",
             "Total HTTP requests",
             ["method", "endpoint", "status_code"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["request_duration"] = Histogram(
@@ -54,7 +52,7 @@ class PrometheusMetrics:
             "HTTP request duration",
             ["method", "endpoint"],
             buckets=self.config.default_buckets,
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Ingestion-specific metrics
@@ -62,7 +60,7 @@ class PrometheusMetrics:
             f"{prefix}ingestion_jobs_total",
             "Total ingestion jobs",
             ["status", "target_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["ingestion_duration"] = Histogram(
@@ -70,21 +68,21 @@ class PrometheusMetrics:
             "Ingestion job duration",
             ["target_type"],
             buckets=self.config.default_buckets,
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["bytes_ingested_total"] = Counter(
             f"{prefix}bytes_ingested_total",
             "Total bytes ingested",
             ["source_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["pages_crawled_total"] = Counter(
             f"{prefix}pages_crawled_total",
             "Total pages crawled",
             ["status"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Active connections
@@ -92,7 +90,7 @@ class PrometheusMetrics:
             f"{prefix}active_connections",
             "Number of active connections",
             ["connection_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Health status gauge (for alerting)
@@ -100,7 +98,7 @@ class PrometheusMetrics:
             f"{prefix}health_status",
             "Health status (1=healthy, 0=unhealthy)",
             ["component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
         # Initialize with healthy status
         self._metrics["health_status"].labels(component="api").set(1)
@@ -112,19 +110,14 @@ class PrometheusMetrics:
             f"{prefix}errors_total",
             "Total errors",
             ["error_type", "component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Build info
         self._metrics["build_info"] = Info(
-            f"{prefix}build_info",
-            "Build information",
-            registry=self.config.registry
+            f"{prefix}build_info", "Build information", registry=self.config.registry
         )
-        self._metrics["build_info"].info({
-            "version": "1.0.0",
-            "service": "layer1-ingestion"
-        })
+        self._metrics["build_info"].info({"version": "1.0.0", "service": "layer1-ingestion"})
 
     def increment_requests_total(self, method: str, endpoint: str, status_code: int) -> None:
         if self.config.enabled:
@@ -134,9 +127,9 @@ class PrometheusMetrics:
 
     def observe_request_duration(self, duration: float, method: str, endpoint: str) -> None:
         if self.config.enabled:
-            self._metrics["request_duration"].labels(
-                method=method, endpoint=endpoint
-            ).observe(duration)
+            self._metrics["request_duration"].labels(method=method, endpoint=endpoint).observe(
+                duration
+            )
 
     def increment_ingestion_jobs(self, status: str, target_type: str) -> None:
         if self.config.enabled:
@@ -146,15 +139,11 @@ class PrometheusMetrics:
 
     def observe_ingestion_duration(self, duration: float, target_type: str) -> None:
         if self.config.enabled:
-            self._metrics["ingestion_duration"].labels(
-                target_type=target_type
-            ).observe(duration)
+            self._metrics["ingestion_duration"].labels(target_type=target_type).observe(duration)
 
     def increment_bytes_ingested(self, bytes_count: int, source_type: str) -> None:
         if self.config.enabled:
-            self._metrics["bytes_ingested_total"].labels(
-                source_type=source_type
-            ).inc(bytes_count)
+            self._metrics["bytes_ingested_total"].labels(source_type=source_type).inc(bytes_count)
 
     def increment_pages_crawled(self, status: str) -> None:
         if self.config.enabled:
@@ -162,9 +151,7 @@ class PrometheusMetrics:
 
     def set_active_connections(self, count: int, connection_type: str = "total") -> None:
         if self.config.enabled:
-            self._metrics["active_connections"].labels(
-                connection_type=connection_type
-            ).set(count)
+            self._metrics["active_connections"].labels(connection_type=connection_type).set(count)
 
     def set_health_status(self, healthy: bool, component: str = "api") -> None:
         """Set health status gauge (1=healthy, 0=unhealthy)."""
@@ -174,9 +161,7 @@ class PrometheusMetrics:
 
     def increment_errors(self, error_type: str, component: str) -> None:
         if self.config.enabled:
-            self._metrics["errors_total"].labels(
-                error_type=error_type, component=component
-            ).inc()
+            self._metrics["errors_total"].labels(error_type=error_type, component=component).inc()
 
     def get_metrics(self) -> str:
         """Get Prometheus metrics output."""
@@ -216,14 +201,14 @@ class MetricsMiddleware:
         return response
 
 
-_metrics: Optional[PrometheusMetrics] = None
+_metrics: PrometheusMetrics | None = None
 
 
-def get_metrics() -> Optional[PrometheusMetrics]:
+def get_metrics() -> PrometheusMetrics | None:
     return _metrics
 
 
-def initialize_metrics(config: Optional[MetricsConfig] = None) -> Optional[PrometheusMetrics]:
+def initialize_metrics(config: MetricsConfig | None = None) -> PrometheusMetrics | None:
     global _metrics
     _metrics = PrometheusMetrics(config)
     logger.info("Layer 1 Prometheus metrics initialized")

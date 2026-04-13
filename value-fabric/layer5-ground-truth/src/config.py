@@ -1,7 +1,6 @@
 """Configuration for Layer 5 Ground Truth Layer."""
 
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -42,7 +41,7 @@ class Settings(BaseSettings):
         default="http://localhost:8001",
         alias="LAYER3_BASE_URL",
     )
-    layer3_api_key: Optional[str] = Field(default=None, alias="LAYER3_API_KEY")
+    layer3_api_key: str | None = Field(default=None, alias="LAYER3_API_KEY")
     layer3_timeout_seconds: int = Field(default=30, alias="LAYER3_TIMEOUT_SECONDS")
     layer3_sync_enabled: bool = Field(default=True, alias="LAYER3_SYNC_ENABLED")
 
@@ -122,7 +121,7 @@ class Settings(BaseSettings):
         return v
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()

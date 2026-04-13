@@ -1,7 +1,6 @@
 """FastAPI dependencies for Layer 3 API."""
 
 import logging
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, HTTPException, Request
 from neo4j import AsyncDriver
@@ -153,7 +152,9 @@ async def init_app_state(app: FastAPI) -> AppState:
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
         await _cleanup_partial_state(state)
-        app.state.app_state = state  # attach partial state so health check can report it
+        app.state.app_state = (
+            state  # attach partial state so health check can report it
+        )
         return state
 
 
@@ -165,43 +166,43 @@ async def _cleanup_partial_state(state: AppState) -> None:
     cleanup_errors = []
 
     # Analytics and retrieval components (have close() methods)
-    if state.similarity_analyzer and hasattr(state.similarity_analyzer, 'close'):
+    if state.similarity_analyzer and hasattr(state.similarity_analyzer, "close"):
         try:
             await state.similarity_analyzer.close()
         except Exception as e:
             cleanup_errors.append(f"similarity_analyzer: {e}")
 
-    if state.centrality_analyzer and hasattr(state.centrality_analyzer, 'close'):
+    if state.centrality_analyzer and hasattr(state.centrality_analyzer, "close"):
         try:
             await state.centrality_analyzer.close()
         except Exception as e:
             cleanup_errors.append(f"centrality_analyzer: {e}")
 
-    if state.community_detector and hasattr(state.community_detector, 'close'):
+    if state.community_detector and hasattr(state.community_detector, "close"):
         try:
             await state.community_detector.close()
         except Exception as e:
             cleanup_errors.append(f"community_detector: {e}")
 
-    if state.hybrid_search and hasattr(state.hybrid_search, 'close'):
+    if state.hybrid_search and hasattr(state.hybrid_search, "close"):
         try:
             await state.hybrid_search.close()
         except Exception as e:
             cleanup_errors.append(f"hybrid_search: {e}")
 
-    if state.graph_rag and hasattr(state.graph_rag, 'close'):
+    if state.graph_rag and hasattr(state.graph_rag, "close"):
         try:
             await state.graph_rag.close()
         except Exception as e:
             cleanup_errors.append(f"graph_rag: {e}")
 
-    if state.sync_manager and hasattr(state.sync_manager, 'close'):
+    if state.sync_manager and hasattr(state.sync_manager, "close"):
         try:
             await state.sync_manager.close()
         except Exception as e:
             cleanup_errors.append(f"sync_manager: {e}")
 
-    if state.schema_initializer and hasattr(state.schema_initializer, 'close'):
+    if state.schema_initializer and hasattr(state.schema_initializer, "close"):
         try:
             await state.schema_initializer.close()
         except Exception as e:

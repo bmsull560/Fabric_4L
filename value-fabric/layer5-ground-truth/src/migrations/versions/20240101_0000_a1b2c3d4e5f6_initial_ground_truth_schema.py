@@ -1,7 +1,7 @@
 """Initial Ground Truth schema — four tables
 
 Revision ID: a1b2c3d4e5f6
-Revises: 
+Revises:
 Create Date: 2024-01-01 00:00:00.000000
 
 Creates:
@@ -11,7 +11,7 @@ Creates:
   - maturity_history   (MaturityHistory — maturity ladder log)
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
@@ -19,9 +19,9 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision: str = "a1b2c3d4e5f6"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -63,11 +63,25 @@ def upgrade() -> None:
     op.create_index("ix_truth_objects_org_id", "truth_objects", ["organization_id"])
     op.create_index("ix_truth_objects_status", "truth_objects", ["status"])
     op.create_index("ix_truth_objects_kg_node_id", "truth_objects", ["kg_node_id"])
-    op.create_index("ix_truth_objects_extraction_job_id", "truth_objects", ["extraction_job_id"])
-    op.create_index("ix_truth_objects_org_status", "truth_objects", ["organization_id", "status"])
-    op.create_index("ix_truth_objects_org_claim_type", "truth_objects", ["organization_id", "claim_type"])
-    op.create_index("ix_truth_objects_org_maturity", "truth_objects", ["organization_id", "maturity_level"])
-    op.create_index("ix_truth_objects_active", "truth_objects", ["organization_id", "deleted_at"])
+    op.create_index(
+        "ix_truth_objects_extraction_job_id", "truth_objects", ["extraction_job_id"]
+    )
+    op.create_index(
+        "ix_truth_objects_org_status", "truth_objects", ["organization_id", "status"]
+    )
+    op.create_index(
+        "ix_truth_objects_org_claim_type",
+        "truth_objects",
+        ["organization_id", "claim_type"],
+    )
+    op.create_index(
+        "ix_truth_objects_org_maturity",
+        "truth_objects",
+        ["organization_id", "maturity_level"],
+    )
+    op.create_index(
+        "ix_truth_objects_active", "truth_objects", ["organization_id", "deleted_at"]
+    )
     op.create_index(
         "ix_truth_objects_applies_to",
         "truth_objects",
@@ -100,17 +114,23 @@ def upgrade() -> None:
         sa.Column("source_title", sa.String(512), nullable=True),
         sa.Column("excerpt", sa.Text(), nullable=True),
         sa.Column("excerpt_location", sa.String(255), nullable=True),
-        sa.Column("confidence_contribution", sa.Float(), nullable=False, server_default="0.0"),
+        sa.Column(
+            "confidence_contribution", sa.Float(), nullable=False, server_default="0.0"
+        ),
         sa.Column("source_date", sa.DateTime(timezone=True), nullable=True),
         sa.Column("metadata", postgresql.JSONB(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("created_by", sa.String(255), nullable=True),
     )
 
-    op.create_index("ix_truth_sources_truth_object_id", "truth_sources", ["truth_object_id"])
+    op.create_index(
+        "ix_truth_sources_truth_object_id", "truth_sources", ["truth_object_id"]
+    )
     op.create_index("ix_truth_sources_org_id", "truth_sources", ["organization_id"])
     op.create_index("ix_truth_sources_source_id", "truth_sources", ["source_id"])
-    op.create_index("ix_truth_sources_org_type", "truth_sources", ["organization_id", "source_type"])
+    op.create_index(
+        "ix_truth_sources_org_type", "truth_sources", ["organization_id", "source_type"]
+    )
 
     # ------------------------------------------------------------------
     # validation_events
@@ -138,10 +158,20 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
     )
 
-    op.create_index("ix_validation_events_truth_object_id", "validation_events", ["truth_object_id"])
-    op.create_index("ix_validation_events_org_id", "validation_events", ["organization_id"])
-    op.create_index("ix_validation_events_created_at", "validation_events", ["created_at"])
-    op.create_index("ix_validation_events_org_status", "validation_events", ["organization_id", "to_status"])
+    op.create_index(
+        "ix_validation_events_truth_object_id", "validation_events", ["truth_object_id"]
+    )
+    op.create_index(
+        "ix_validation_events_org_id", "validation_events", ["organization_id"]
+    )
+    op.create_index(
+        "ix_validation_events_created_at", "validation_events", ["created_at"]
+    )
+    op.create_index(
+        "ix_validation_events_org_status",
+        "validation_events",
+        ["organization_id", "to_status"],
+    )
     op.create_index("ix_validation_events_actor", "validation_events", ["actor"])
 
     # ------------------------------------------------------------------
@@ -165,9 +195,15 @@ def upgrade() -> None:
         sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False),
     )
 
-    op.create_index("ix_maturity_history_truth_object_id", "maturity_history", ["truth_object_id"])
-    op.create_index("ix_maturity_history_org_id", "maturity_history", ["organization_id"])
-    op.create_index("ix_maturity_history_recorded_at", "maturity_history", ["recorded_at"])
+    op.create_index(
+        "ix_maturity_history_truth_object_id", "maturity_history", ["truth_object_id"]
+    )
+    op.create_index(
+        "ix_maturity_history_org_id", "maturity_history", ["organization_id"]
+    )
+    op.create_index(
+        "ix_maturity_history_recorded_at", "maturity_history", ["recorded_at"]
+    )
 
 
 def downgrade() -> None:

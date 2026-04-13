@@ -5,14 +5,14 @@ Benchmarks are stored as Neo4j Benchmark nodes and may be linked to
 ValuePacks via hasBenchmark relationships.
 """
 
-from typing import List, Optional, Dict, Any, Literal
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
 from ...db.driver import get_driver
-from neo4j import AsyncDriver
 from ...logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -22,27 +22,30 @@ router = APIRouter()
 
 # ── Pydantic Models ──────────────────────────────────────────────────────────
 
+
 class BenchmarkSummary(BaseModel):
     """Benchmark list item."""
+
     id: str
     benchmark_id: str
     name: str
     industry: str
-    vertical: Optional[str] = None
+    vertical: str | None = None
     value_range: str
     confidence: Literal["High", "Medium", "Low"]
     source: str
-    source_url: Optional[str] = None
+    source_url: str | None = None
     year: int
     status: Literal["active", "draft", "deprecated"]
-    tags: List[str] = Field(default_factory=list)
-    last_verified: Optional[str] = None
+    tags: list[str] = Field(default_factory=list)
+    last_verified: str | None = None
     usage_count: int = 0
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class BenchmarkPolicy(BaseModel):
     """Benchmark policy configuration."""
+
     id: str
     policy_type: Literal["threshold", "cadence", "fallback", "override"]
     name: str
@@ -54,26 +57,28 @@ class BenchmarkPolicy(BaseModel):
 
 class BenchmarkPolicyUpdate(BaseModel):
     """Update payload for a benchmark policy (all fields optional)."""
-    name: Optional[str] = None
-    description: Optional[str] = None
-    value: Optional[str] = None
-    is_enabled: Optional[bool] = None
-    scope: Optional[Literal["tenant", "pack", "formula"]] = None
+
+    name: str | None = None
+    description: str | None = None
+    value: str | None = None
+    is_enabled: bool | None = None
+    scope: Literal["tenant", "pack", "formula"] | None = None
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
-@router.get("/benchmarks", response_model=List[BenchmarkSummary])
+
+@router.get("/benchmarks", response_model=list[BenchmarkSummary])
 async def list_benchmarks(
-    industry: Optional[str] = Query(None, description="Filter by industry"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    confidence: Optional[str] = Query(None, description="Filter by confidence level"),
-    search: Optional[str] = Query(None, description="Search benchmarks by name"),
+    industry: str | None = Query(None, description="Filter by industry"),
+    status: str | None = Query(None, description="Filter by status"),
+    confidence: str | None = Query(None, description="Filter by confidence level"),
+    search: str | None = Query(None, description="Search benchmarks by name"),
     driver: AsyncDriver = Depends(get_driver),
 ):
     """List benchmarks with optional filters."""
-    where_conditions: List[str] = []
-    params: Dict[str, Any] = {}
+    where_conditions: list[str] = []
+    params: dict[str, Any] = {}
 
     if industry:
         where_conditions.append("b.industry = $industry")
@@ -105,7 +110,7 @@ async def list_benchmarks(
         result = await session.run(query, **params)
         records = await result.data()
 
-        current_year = datetime.now(timezone.utc).year
+        current_year = datetime.now(UTC).year
         return [
             BenchmarkSummary(
                 id=r["b"]["id"],
@@ -119,7 +124,9 @@ async def list_benchmarks(
                 source_url=r["b"].get("sourceUrl"),
                 year=r["b"].get("year", current_year),
                 status=r["b"].get("status", "active"),
-                tags=r["b"].get("tags", []) if isinstance(r["b"].get("tags"), list) else [],
+                tags=r["b"].get("tags", [])
+                if isinstance(r["b"].get("tags"), list)
+                else [],
                 last_verified=r["b"].get("lastVerified"),
                 usage_count=r.get("usage_count", 0),
                 description=r["b"].get("description"),
@@ -128,7 +135,7 @@ async def list_benchmarks(
         ]
 
 
-@router.get("/benchmarks/policies", response_model=List[BenchmarkPolicy])
+@router.get("/benchmarks/policies", response_model=list[BenchmarkPolicy])
 async def list_benchmark_policies(
     driver: AsyncDriver = Depends(get_driver),
 ):
@@ -177,7 +184,7 @@ async def get_benchmark(
             raise HTTPException(status_code=404, detail="Benchmark not found")
 
         b = record["b"]
-        current_year = datetime.now(timezone.utc).year
+        current_year = datetime.now(UTC).year
         return BenchmarkSummary(
             id=b["id"],
             benchmark_id=b.get("benchmarkId", b["id"]),
@@ -205,8 +212,8 @@ async def update_benchmark_policy(
 ):
     """Update a benchmark policy."""
     # Build SET clauses dynamically from provided fields
-    set_parts: List[str] = []
-    params: Dict[str, Any] = {"policy_id": policy_id}
+    set_parts: list[str] = []
+    params: dict[str, Any] = {"policy_id": policy_id}
 
     update_data = update.model_dump(exclude_none=True)
     field_map = {
@@ -225,7 +232,7 @@ async def update_benchmark_policy(
     if not set_parts:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     set_parts.append("bp.updatedAt = $updated_at")
     params["updated_at"] = now
 

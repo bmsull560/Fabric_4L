@@ -10,7 +10,6 @@ Design philosophy:
 
 import asyncio
 import logging
-from typing import Optional
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 from neo4j.exceptions import (
@@ -25,10 +24,10 @@ from ..config import Settings, get_settings
 logger = logging.getLogger(__name__)
 
 # Module-level singleton — shared across all components in the same process
-_driver: Optional[AsyncDriver] = None
+_driver: AsyncDriver | None = None
 
 
-async def create_driver(settings: Optional[Settings] = None) -> AsyncDriver:
+async def create_driver(settings: Settings | None = None) -> AsyncDriver:
     """Create and verify a Neo4j async driver.
 
     Attempts to connect with exponential backoff.  Raises on permanent
@@ -63,13 +62,20 @@ async def create_driver(settings: Optional[Settings] = None) -> AsyncDriver:
             await driver.verify_connectivity()
             logger.info(
                 "Neo4j driver connected",
-                extra={"uri": cfg.neo4j_uri, "database": cfg.neo4j_database, "attempt": attempt},
+                extra={
+                    "uri": cfg.neo4j_uri,
+                    "database": cfg.neo4j_database,
+                    "attempt": attempt,
+                },
             )
             return driver
 
         except AuthError as exc:
             # Wrong credentials — no point retrying
-            logger.error("Neo4j authentication failed — check NEO4J_USER / NEO4J_PASSWORD: %s", exc)
+            logger.error(
+                "Neo4j authentication failed — check NEO4J_USER / NEO4J_PASSWORD: %s",
+                exc,
+            )
             raise ConfigurationError(f"Neo4j auth failed: {exc}") from exc
 
         except ConfigurationError as exc:
@@ -100,7 +106,7 @@ async def create_driver(settings: Optional[Settings] = None) -> AsyncDriver:
     raise ServiceUnavailable("Neo4j driver could not be created")
 
 
-async def get_driver(settings: Optional[Settings] = None) -> AsyncDriver:
+async def get_driver(settings: Settings | None = None) -> AsyncDriver:
     """Return the module-level singleton driver, creating it if necessary.
 
     This is the preferred entry point for all Layer 3 components.
@@ -136,7 +142,7 @@ async def reset_driver() -> None:
     await close_driver()
 
 
-async def health_check(settings: Optional[Settings] = None) -> dict:
+async def health_check(settings: Settings | None = None) -> dict:
     """Check Neo4j connectivity without raising.
 
     Returns a dict with ``status`` (``"healthy"`` or ``"unhealthy"``) and

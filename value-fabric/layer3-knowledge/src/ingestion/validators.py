@@ -6,7 +6,7 @@ rules on Community Edition without relying on database-level constraints.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from ..api.exceptions import IngestionError
 
@@ -16,15 +16,15 @@ class ValidationResult:
     """Result of entity validation."""
 
     is_valid: bool
-    errors: List[str]
+    errors: list[str]
     entity_type: str
-    entity_id: Optional[str] = None
+    entity_id: str | None = None
 
 
 # Required fields by entity type (aligned with ontology schema)
 # These enforce the same rules that would be enforced by Neo4j Enterprise
 # property existence constraints.
-ENTITY_REQUIRED_FIELDS: Dict[str, Set[str]] = {
+ENTITY_REQUIRED_FIELDS: dict[str, set[str]] = {
     # Primary Business Concepts
     "Capability": {"id", "name"},
     "UseCase": {"id", "name"},
@@ -58,7 +58,7 @@ ENTITY_REQUIRED_FIELDS: Dict[str, Set[str]] = {
 }
 
 # Optional: Fields that should have non-empty values if present
-NON_EMPTY_FIELDS: Set[str] = {"name", "description", "title", "summary"}
+NON_EMPTY_FIELDS: set[str] = {"name", "description", "title", "summary"}
 
 
 class RequiredFieldValidator:
@@ -80,8 +80,8 @@ class RequiredFieldValidator:
 
     def __init__(
         self,
-        required_fields: Optional[Dict[str, Set[str]]] = None,
-        non_empty_fields: Optional[Set[str]] = None,
+        required_fields: dict[str, set[str]] | None = None,
+        non_empty_fields: set[str] | None = None,
         strict_mode: bool = True,
     ):
         """Initialize validator.
@@ -98,8 +98,8 @@ class RequiredFieldValidator:
     def validate_entity(
         self,
         entity_type: str,
-        data: Dict[str, Any],
-        entity_id: Optional[str] = None,
+        data: dict[str, Any],
+        entity_id: str | None = None,
     ) -> ValidationResult:
         """Validate a single entity against required field rules.
 
@@ -111,7 +111,7 @@ class RequiredFieldValidator:
         Returns:
             ValidationResult with is_valid flag and error list
         """
-        errors: List[str] = []
+        errors: list[str] = []
 
         # Check if entity type has defined required fields
         required = self.required_fields.get(entity_type)
@@ -119,7 +119,9 @@ class RequiredFieldValidator:
             # Unknown entity type - allow but warn
             return ValidationResult(
                 is_valid=True,
-                errors=[f"Unknown entity type '{entity_type}' - no validation rules defined"],
+                errors=[
+                    f"Unknown entity type '{entity_type}' - no validation rules defined"
+                ],
                 entity_type=entity_type,
                 entity_id=entity_id,
             )
@@ -150,8 +152,8 @@ class RequiredFieldValidator:
     def validate_entities_batch(
         self,
         entity_type: str,
-        entities: List[Dict[str, Any]],
-    ) -> List[ValidationResult]:
+        entities: list[dict[str, Any]],
+    ) -> list[ValidationResult]:
         """Validate a batch of entities.
 
         Args:
@@ -171,9 +173,9 @@ class RequiredFieldValidator:
     def validate_and_raise(
         self,
         entity_type: str,
-        data: Dict[str, Any],
-        entity_id: Optional[str] = None,
-        source_id: Optional[str] = None,
+        data: dict[str, Any],
+        entity_id: str | None = None,
+        source_id: str | None = None,
     ) -> None:
         """Validate entity and raise IngestionError if invalid.
 
@@ -211,8 +213,8 @@ class RequiredFieldValidator:
     def get_missing_fields(
         self,
         entity_type: str,
-        data: Dict[str, Any],
-    ) -> Set[str]:
+        data: dict[str, Any],
+    ) -> set[str]:
         """Get set of missing required fields without raising.
 
         Args:

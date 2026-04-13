@@ -15,8 +15,7 @@ Endpoints:
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -60,6 +59,7 @@ router = APIRouter(prefix="/api/v1", tags=["ground-truth"])
 # POST /truths
 # ---------------------------------------------------------------------------
 
+
 @router.post(
     "/truths",
     response_model=TruthObjectResponse,
@@ -81,7 +81,9 @@ async def create_truth(
     db: AsyncSession = Depends(get_db),
 ) -> TruthObjectResponse:
     organization_id = caller.organization_id
-    sources_data = [s.model_dump() for s in payload.sources] if payload.sources else None
+    sources_data = (
+        [s.model_dump() for s in payload.sources] if payload.sources else None
+    )
 
     truth = await create_truth_object(
         db=db,
@@ -98,7 +100,11 @@ async def create_truth(
     )
 
     # Best-effort KG sync for high-confidence objects
-    if truth.confidence >= 0.8 and truth.status in ("supported", "corroborated", "approved"):
+    if truth.confidence >= 0.8 and truth.status in (
+        "supported",
+        "corroborated",
+        "approved",
+    ):
         client = get_layer3_client()
         node_id = await client.sync_truth_object(
             truth_object_id=truth.id,
@@ -114,7 +120,7 @@ async def create_truth(
         )
         if node_id:
             truth.kg_node_id = node_id
-            truth.kg_synced_at = datetime.now(timezone.utc)
+            truth.kg_synced_at = datetime.now(UTC)
 
     return TruthObjectResponse.model_validate(truth)
 
@@ -122,6 +128,7 @@ async def create_truth(
 # ---------------------------------------------------------------------------
 # GET /truths
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/truths",
@@ -132,32 +139,32 @@ async def create_truth(
 async def list_truths(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    status_filter: Optional[TruthStatus] = Query(
+    status_filter: TruthStatus | None = Query(
         default=None,
         alias="status",
         description="Filter by validation status",
     ),
-    claim_type: Optional[ClaimType] = Query(
+    claim_type: ClaimType | None = Query(
         default=None,
         description="Filter by claim type",
     ),
-    min_maturity: Optional[int] = Query(
+    min_maturity: int | None = Query(
         default=None,
         ge=0,
         le=5,
         description="Minimum maturity level (0–5)",
     ),
-    min_confidence: Optional[float] = Query(
+    min_confidence: float | None = Query(
         default=None,
         ge=0.0,
         le=1.0,
         description="Minimum confidence score",
     ),
-    is_stale: Optional[bool] = Query(
+    is_stale: bool | None = Query(
         default=None,
         description="Filter by staleness",
     ),
-    applies_to_opportunity: Optional[str] = Query(
+    applies_to_opportunity: str | None = Query(
         default=None,
         description="Filter by opportunity_id in applies_to",
     ),
@@ -208,6 +215,7 @@ async def list_truths(
 # GET /truths/{id}
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/truths/{truth_id}",
     response_model=TruthObjectResponse,
@@ -236,6 +244,7 @@ async def get_truth(
 # ---------------------------------------------------------------------------
 # POST /truths/{id}/validate
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/truths/{truth_id}/validate",
@@ -277,7 +286,9 @@ async def validate_truth(
             actor=payload.actor,
             actor_type=payload.actor_type,
             notes=payload.notes,
-            dispute_reason=payload.dispute_reason.value if payload.dispute_reason else None,
+            dispute_reason=payload.dispute_reason.value
+            if payload.dispute_reason
+            else None,
         )
     except InvalidTransitionError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
@@ -303,7 +314,7 @@ async def validate_truth(
         )
         if node_id:
             truth.kg_node_id = node_id
-            truth.kg_synced_at = datetime.now(timezone.utc)
+            truth.kg_synced_at = datetime.now(UTC)
 
     return ValidateResponse(
         truth_object_id=truth.id,
@@ -322,6 +333,7 @@ async def validate_truth(
 # ---------------------------------------------------------------------------
 # POST /truths/{id}/sources
 # ---------------------------------------------------------------------------
+
 
 @router.post(
     "/truths/{truth_id}/sources",
@@ -365,6 +377,7 @@ async def add_truth_source(
 # GET /truths/{id}/audit
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/truths/{truth_id}/audit",
     response_model=list[ValidationEventResponse],
@@ -390,6 +403,7 @@ async def get_audit_trail(
 # DELETE /truths/{id}
 # ---------------------------------------------------------------------------
 
+
 @router.delete(
     "/truths/{truth_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -400,7 +414,7 @@ async def delete_truth(
     truth_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    deleted_by: Optional[str] = Query(default=None),
+    deleted_by: str | None = Query(default=None),
 ) -> None:
     organization_id = caller.organization_id
     deleted_by = deleted_by or caller.user_id
@@ -417,6 +431,7 @@ async def delete_truth(
 # POST /truths/sync-kg
 # ---------------------------------------------------------------------------
 
+
 @router.post(
     "/truths/sync-kg",
     summary="Sync approved TruthObjects to Layer 3 Knowledge Graph",
@@ -431,6 +446,7 @@ async def sync_to_kg(
 ) -> dict:
     organization_id = caller.organization_id
     from sqlalchemy import and_, select
+
     from ..models.truth_object import TruthObject
 
     result = await db.execute(
@@ -463,7 +479,7 @@ async def sync_to_kg(
         )
         if node_id:
             truth.kg_node_id = node_id
-            truth.kg_synced_at = datetime.now(timezone.utc)
+            truth.kg_synced_at = datetime.now(UTC)
             synced += 1
         else:
             failed += 1
@@ -478,6 +494,7 @@ async def sync_to_kg(
 # ---------------------------------------------------------------------------
 # GET /maturity-ladder
 # ---------------------------------------------------------------------------
+
 
 @router.get(
     "/maturity-ladder",
@@ -540,6 +557,7 @@ async def get_maturity_ladder() -> MaturityLadderResponse:
 # GET /health
 # ---------------------------------------------------------------------------
 
+
 @router.get(
     "/health",
     response_model=HealthResponse,
@@ -551,6 +569,7 @@ async def health_check(
     request: Request = None,
 ) -> HealthResponse:
     import time
+
     settings = get_settings()
     start_time = time.time()
 
@@ -559,6 +578,7 @@ async def health_check(
     db_response_ms = None
     try:
         from sqlalchemy import text
+
         db_start = time.time()
         await db.execute(text("SELECT 1"))
         db_response_ms = round((time.time() - db_start) * 1000, 2)
@@ -583,7 +603,7 @@ async def health_check(
     total_response_ms = round((time.time() - start_time) * 1000, 2)
 
     # Update Prometheus health metrics if available
-    if request and hasattr(request.app.state, 'metrics') and request.app.state.metrics:
+    if request and hasattr(request.app.state, "metrics") and request.app.state.metrics:
         metrics = request.app.state.metrics
         metrics.set_health_status(overall_status == "ok", component="api")
         metrics.set_health_status(db_status == "ok", component="database")
@@ -592,7 +612,7 @@ async def health_check(
     return HealthResponse(
         status=overall_status,
         version="0.1.0",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         database=db_status,
         layer3_connected=l3_connected,
         layer3_url=settings.layer3_base_url,

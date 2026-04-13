@@ -4,40 +4,48 @@ Provides endpoints for formula evaluation and variable registry.
 Delegates calculation logic to the ROI calculation agent.
 """
 
-from typing import Any, Dict, List, Optional, Literal
-from decimal import Decimal, InvalidOperation
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Any, Literal
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, validator
 
-from ..dependencies import get_roi_calculation_agent
-from ...agents.scenario_engine import scenario_engine, VariableAdjustment
+from ...agents.scenario_engine import VariableAdjustment, scenario_engine
 
 router = APIRouter()
 
 
 class FormulaInput(BaseModel):
     """Single formula input variable."""
+
     name: str = Field(..., description="Variable name")
     value: float = Field(..., description="Variable value")
-    unit: Optional[str] = Field(None, description="Unit of measurement")
+    unit: str | None = Field(None, description="Unit of measurement")
 
 
 class FormulaEvaluateRequest(BaseModel):
     """Request to evaluate a formula."""
-    formula_id: Optional[str] = Field(None, description="Optional formula identifier from registry")
-    expression: Optional[str] = Field(None, description="Custom formula expression (if formula_id not provided)")
-    inputs: List[FormulaInput] = Field(default_factory=list, description="Input variables")
-    output_unit: Optional[str] = Field(None, description="Desired output unit")
 
-    @validator('expression')
+    formula_id: str | None = Field(
+        None, description="Optional formula identifier from registry"
+    )
+    expression: str | None = Field(
+        None, description="Custom formula expression (if formula_id not provided)"
+    )
+    inputs: list[FormulaInput] = Field(
+        default_factory=list, description="Input variables"
+    )
+    output_unit: str | None = Field(None, description="Desired output unit")
+
+    @validator("expression")
     def validate_expression_or_formula_id(cls, v, values):
-        if not v and not values.get('formula_id'):
-            raise ValueError('Either formula_id or expression must be provided')
+        if not v and not values.get("formula_id"):
+            raise ValueError("Either formula_id or expression must be provided")
         return v
 
 
 class CalculationStep(BaseModel):
     """Single step in formula calculation."""
+
     step: int = Field(..., description="Step number")
     operation: str = Field(..., description="Operation performed")
     result: str = Field(..., description="Intermediate result")
@@ -45,47 +53,62 @@ class CalculationStep(BaseModel):
 
 class FormulaEvaluateResponse(BaseModel):
     """Response from formula evaluation."""
+
     result: float = Field(..., description="Calculated result")
     unit: str = Field(..., description="Output unit")
-    confidence: float = Field(default=0.95, ge=0.0, le=1.0, description="Confidence in result")
-    calculation_steps: List[CalculationStep] = Field(default_factory=list, description="Step-by-step calculation")
+    confidence: float = Field(
+        default=0.95, ge=0.0, le=1.0, description="Confidence in result"
+    )
+    calculation_steps: list[CalculationStep] = Field(
+        default_factory=list, description="Step-by-step calculation"
+    )
     formula_used: str = Field(..., description="Formula expression used")
 
 
 class VariableMetadata(BaseModel):
     """Metadata for a formula variable."""
+
     name: str = Field(..., description="Variable name")
     display_name: str = Field(..., description="Human-readable name")
-    description: Optional[str] = Field(None, description="Variable description")
-    type: Literal["number", "currency", "percentage", "count"] = Field(..., description="Data type")
-    unit: Optional[str] = Field(None, description="Default unit")
-    default_value: Optional[float] = Field(None, description="Default value if not provided")
-    min_value: Optional[float] = Field(None, description="Minimum allowed value")
-    max_value: Optional[float] = Field(None, description="Maximum allowed value")
+    description: str | None = Field(None, description="Variable description")
+    type: Literal["number", "currency", "percentage", "count"] = Field(
+        ..., description="Data type"
+    )
+    unit: str | None = Field(None, description="Default unit")
+    default_value: float | None = Field(
+        None, description="Default value if not provided"
+    )
+    min_value: float | None = Field(None, description="Minimum allowed value")
+    max_value: float | None = Field(None, description="Maximum allowed value")
     required: bool = Field(default=True, description="Whether variable is required")
 
 
 class FormulaMetadata(BaseModel):
     """Metadata for a registered formula."""
+
     id: str = Field(..., description="Formula identifier")
     name: str = Field(..., description="Formula name")
     description: str = Field(..., description="Formula description")
     category: str = Field(..., description="Formula category (e.g., ROI, Payback, NPV)")
     expression: str = Field(..., description="Formula expression template")
-    variables: List[VariableMetadata] = Field(..., description="Required variables")
+    variables: list[VariableMetadata] = Field(..., description="Required variables")
     output_unit: str = Field(..., description="Output unit")
 
 
 class VariablesRegistryResponse(BaseModel):
     """Response containing available variables."""
-    variables: List[VariableMetadata] = Field(..., description="Available variables")
+
+    variables: list[VariableMetadata] = Field(..., description="Available variables")
     total: int = Field(..., description="Total number of variables")
-    categories: List[str] = Field(default_factory=list, description="Variable categories")
+    categories: list[str] = Field(
+        default_factory=list, description="Variable categories"
+    )
 
 
 class FormulasRegistryResponse(BaseModel):
     """Response containing registered formulas."""
-    formulas: List[FormulaMetadata] = Field(..., description="Registered formulas")
+
+    formulas: list[FormulaMetadata] = Field(..., description="Registered formulas")
     total: int = Field(..., description="Total number of formulas")
 
 
@@ -93,7 +116,7 @@ class FormulasRegistryResponse(BaseModel):
 # Variable Registry
 # ============================================================================
 
-VARIABLE_REGISTRY: List[VariableMetadata] = [
+VARIABLE_REGISTRY: list[VariableMetadata] = [
     VariableMetadata(
         name="annual_cost_savings",
         display_name="Annual Cost Savings",
@@ -213,7 +236,7 @@ VARIABLE_REGISTRY: List[VariableMetadata] = [
 # Formula Registry
 # ============================================================================
 
-FORMULA_REGISTRY: List[FormulaMetadata] = [
+FORMULA_REGISTRY: list[FormulaMetadata] = [
     FormulaMetadata(
         id="roi_basic",
         name="Basic ROI",
@@ -356,6 +379,7 @@ FORMULA_REGISTRY: List[FormulaMetadata] = [
 # Endpoints
 # ============================================================================
 
+
 @router.post(
     "/formulas/evaluate",
     response_model=FormulaEvaluateResponse,
@@ -372,17 +396,25 @@ FORMULA_REGISTRY: List[FormulaMetadata] = [
                         "unit": "percent",
                         "confidence": 0.92,
                         "calculation_steps": [
-                            {"step": 1, "operation": "annual_benefit - annual_cost", "result": "245500.0"},
-                            {"step": 2, "operation": "divide by implementation_cost", "result": "245.5"},
+                            {
+                                "step": 1,
+                                "operation": "annual_benefit - annual_cost",
+                                "result": "245500.0",
+                            },
+                            {
+                                "step": 2,
+                                "operation": "divide by implementation_cost",
+                                "result": "245.5",
+                            },
                         ],
-                        "formula_used": "(annual_benefit - annual_cost) / implementation_cost * 100"
+                        "formula_used": "(annual_benefit - annual_cost) / implementation_cost * 100",
                     }
                 }
-            }
+            },
         },
         400: {"description": "Invalid inputs or formula"},
         422: {"description": "Validation error"},
-    }
+    },
 )
 async def evaluate_formula(
     request: FormulaEvaluateRequest,
@@ -395,9 +427,13 @@ async def evaluate_formula(
     try:
         # Get formula and variables
         if request.formula_id:
-            formula = next((f for f in FORMULA_REGISTRY if f.id == request.formula_id), None)
+            formula = next(
+                (f for f in FORMULA_REGISTRY if f.id == request.formula_id), None
+            )
             if not formula:
-                raise HTTPException(status_code=404, detail=f"Formula {request.formula_id} not found")
+                raise HTTPException(
+                    status_code=404, detail=f"Formula {request.formula_id} not found"
+                )
             expression = formula.expression
             output_unit = request.output_unit or formula.output_unit
         else:
@@ -411,7 +447,9 @@ async def evaluate_formula(
         try:
             result = evaluate_expression(expression, inputs_dict)
         except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Formula evaluation error: {str(e)}")
+            raise HTTPException(
+                status_code=400, detail=f"Formula evaluation error: {str(e)}"
+            )
 
         # Generate calculation steps for transparency
         steps = generate_calculation_steps(expression, inputs_dict, result)
@@ -427,7 +465,9 @@ async def evaluate_formula(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to evaluate formula: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to evaluate formula: {str(e)}"
+        )
 
 
 @router.get(
@@ -438,7 +478,7 @@ async def evaluate_formula(
     description="Returns metadata for all available formula variables.",
 )
 async def get_variables_registry(
-    category: Optional[str] = None,
+    category: str | None = None,
 ) -> VariablesRegistryResponse:
     """Get the registry of available variables for formula building."""
     variables = VARIABLE_REGISTRY
@@ -447,9 +487,7 @@ async def get_variables_registry(
         # Filter by implied category from name patterns
         pass  # All variables returned for now
 
-    categories = list(set([
-        "Financial", "Operational", "Efficiency", "Quality"
-    ]))
+    categories = list(set(["Financial", "Operational", "Efficiency", "Quality"]))
 
     return VariablesRegistryResponse(
         variables=variables,
@@ -466,7 +504,7 @@ async def get_variables_registry(
     description="Returns all registered formulas with their metadata.",
 )
 async def list_formulas(
-    category: Optional[str] = None,
+    category: str | None = None,
 ) -> FormulasRegistryResponse:
     """List all registered formulas."""
     formulas = FORMULA_REGISTRY
@@ -499,30 +537,48 @@ async def get_formula(formula_id: str) -> FormulaMetadata:
 # Scenario / What-If Analysis Endpoints
 # ============================================================================
 
+
 class VariableAdjustmentInput(BaseModel):
     """Variable adjustment for scenario analysis."""
+
     name: str = Field(..., description="Variable name to adjust")
     value: float = Field(..., description="New value for the variable")
-    original_value: float = Field(..., description="Original/base value for delta calculation")
+    original_value: float = Field(
+        ..., description="Original/base value for delta calculation"
+    )
 
 
 class ScenarioRequest(BaseModel):
     """Request to calculate a what-if scenario."""
+
     base_case_id: str = Field(..., description="Reference business case ID")
-    adjustments: List[VariableAdjustmentInput] = Field(..., description="Variable adjustments to apply")
+    adjustments: list[VariableAdjustmentInput] = Field(
+        ..., description="Variable adjustments to apply"
+    )
 
 
 class ScenarioResponse(BaseModel):
     """Response from scenario calculation."""
+
     scenario_id: str = Field(..., description="Generated scenario identifier")
-    original_value: float = Field(..., description="Original total value from base case")
+    original_value: float = Field(
+        ..., description="Original total value from base case"
+    )
     adjusted_value: float = Field(..., description="New total value after adjustments")
     delta_percentage: float = Field(..., description="Percentage change from original")
     new_roi: float = Field(..., description="Recalculated ROI ratio")
-    new_payback_months: float = Field(..., description="Recalculated payback period in months")
-    formula_used: str = Field(..., description="Formula expression used for calculations")
-    calculation_steps: List[Dict[str, Any]] = Field(default_factory=list, description="Step-by-step breakdown")
-    warnings: List[str] = Field(default_factory=list, description="Warning messages (e.g., mock data usage)")
+    new_payback_months: float = Field(
+        ..., description="Recalculated payback period in months"
+    )
+    formula_used: str = Field(
+        ..., description="Formula expression used for calculations"
+    )
+    calculation_steps: list[dict[str, Any]] = Field(
+        default_factory=list, description="Step-by-step breakdown"
+    )
+    warnings: list[str] = Field(
+        default_factory=list, description="Warning messages (e.g., mock data usage)"
+    )
 
 
 @router.post(
@@ -545,15 +601,23 @@ class ScenarioResponse(BaseModel):
                         "new_payback_months": 8.5,
                         "formula_used": "(total_value - implementation_cost) / implementation_cost",
                         "calculation_steps": [
-                            {"step": 1, "operation": "Base case values", "details": {"total_value": 500000}},
-                            {"step": 2, "operation": "Adjust implementation_cost", "details": {"from": 200000, "to": 180000}},
-                        ]
+                            {
+                                "step": 1,
+                                "operation": "Base case values",
+                                "details": {"total_value": 500000},
+                            },
+                            {
+                                "step": 2,
+                                "operation": "Adjust implementation_cost",
+                                "details": {"from": 200000, "to": 180000},
+                            },
+                        ],
                     }
                 }
-            }
+            },
         },
         400: {"description": "Invalid adjustments or missing base case data"},
-    }
+    },
 )
 async def calculate_scenario(
     request: ScenarioRequest,
@@ -564,6 +628,7 @@ async def calculate_scenario(
     ROI and payback metrics based on adjusted input variables.
     """
     import logging
+
     logger = logging.getLogger(__name__)
 
     try:
@@ -616,28 +681,31 @@ async def calculate_scenario(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Scenario calculation failed: {str(e)}")
+        raise HTTPException(
+            status_code=400, detail=f"Scenario calculation failed: {str(e)}"
+        )
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
 
-def evaluate_expression(expression: str, variables: Dict[str, float]) -> float:
+
+def evaluate_expression(expression: str, variables: dict[str, float]) -> float:
     """Safely evaluate a mathematical expression with variables."""
     # Simple expression evaluation with basic operators
     # In production, use a proper math parser like numexpr or asteval
 
-    import re
     import operator
+    import re
 
     # Supported operators
     ops = {
-        '+': operator.add,
-        '-': operator.sub,
-        '*': operator.mul,
-        '/': operator.truediv,
-        '**': operator.pow,
+        "+": operator.add,
+        "-": operator.sub,
+        "*": operator.mul,
+        "/": operator.truediv,
+        "**": operator.pow,
     }
 
     # Replace variable names with values
@@ -649,14 +717,14 @@ def evaluate_expression(expression: str, variables: Dict[str, float]) -> float:
     # This is a simplified evaluator - production should use a proper parser
     try:
         # Handle parentheses with recursive evaluation
-        while '(' in expr:
+        while "(" in expr:
             # Find innermost parentheses
-            match = re.search(r'\(([^()]+)\)', expr)
+            match = re.search(r"\(([^()]+)\)", expr)
             if not match:
                 break
             inner = match.group(1)
             inner_result = evaluate_simple(inner)
-            expr = expr[:match.start()] + str(inner_result) + expr[match.end():]
+            expr = expr[: match.start()] + str(inner_result) + expr[match.end() :]
 
         result = evaluate_simple(expr)
         return float(result)
@@ -669,11 +737,11 @@ def evaluate_simple(expr: str) -> float:
     import operator
 
     ops = {
-        '+': operator.add,
-        '-': operator.sub,
-        '*': operator.mul,
-        '/': operator.truediv,
-        '**': operator.pow,
+        "+": operator.add,
+        "-": operator.sub,
+        "*": operator.mul,
+        "/": operator.truediv,
+        "**": operator.pow,
     }
 
     # Tokenize by operators (respecting operator precedence)
@@ -681,13 +749,13 @@ def evaluate_simple(expr: str) -> float:
     current = ""
     i = 0
     while i < len(expr):
-        if expr[i:i+2] == '**':
+        if expr[i : i + 2] == "**":
             if current.strip():
                 tokens.append(float(current.strip()))
                 current = ""
-            tokens.append('**')
+            tokens.append("**")
             i += 2
-        elif expr[i] in '+-*/':
+        elif expr[i] in "+-*/":
             if current.strip():
                 tokens.append(float(current.strip()))
                 current = ""
@@ -704,40 +772,42 @@ def evaluate_simple(expr: str) -> float:
     # First: **
     i = 0
     while i < len(tokens):
-        if tokens[i] == '**':
-            result = tokens[i-1] ** tokens[i+1]
-            tokens = tokens[:i-1] + [result] + tokens[i+2:]
+        if tokens[i] == "**":
+            result = tokens[i - 1] ** tokens[i + 1]
+            tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
         else:
             i += 1
 
     # Then: *, /
     i = 0
     while i < len(tokens):
-        if tokens[i] == '*':
-            result = tokens[i-1] * tokens[i+1]
-            tokens = tokens[:i-1] + [result] + tokens[i+2:]
-        elif tokens[i] == '/':
-            result = tokens[i-1] / tokens[i+1]
-            tokens = tokens[:i-1] + [result] + tokens[i+2:]
+        if tokens[i] == "*":
+            result = tokens[i - 1] * tokens[i + 1]
+            tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
+        elif tokens[i] == "/":
+            result = tokens[i - 1] / tokens[i + 1]
+            tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
         else:
             i += 1
 
     # Finally: +, -
     i = 0
     while i < len(tokens):
-        if tokens[i] == '+':
-            result = tokens[i-1] + tokens[i+1]
-            tokens = tokens[:i-1] + [result] + tokens[i+2:]
-        elif tokens[i] == '-':
-            result = tokens[i-1] - tokens[i+1]
-            tokens = tokens[:i-1] + [result] + tokens[i+2:]
+        if tokens[i] == "+":
+            result = tokens[i - 1] + tokens[i + 1]
+            tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
+        elif tokens[i] == "-":
+            result = tokens[i - 1] - tokens[i + 1]
+            tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
         else:
             i += 1
 
     return tokens[0] if tokens else 0.0
 
 
-def generate_calculation_steps(expression: str, variables: Dict[str, float], final_result: float) -> List[CalculationStep]:
+def generate_calculation_steps(
+    expression: str, variables: dict[str, float], final_result: float
+) -> list[CalculationStep]:
     """Generate human-readable calculation steps."""
     steps = []
 
@@ -746,17 +816,21 @@ def generate_calculation_steps(expression: str, variables: Dict[str, float], fin
     for var, val in variables.items():
         substituted = substituted.replace(var, str(val))
 
-    steps.append(CalculationStep(
-        step=1,
-        operation="Substitute variables",
-        result=substituted,
-    ))
+    steps.append(
+        CalculationStep(
+            step=1,
+            operation="Substitute variables",
+            result=substituted,
+        )
+    )
 
     # Show final result
-    steps.append(CalculationStep(
-        step=2,
-        operation="Evaluate expression",
-        result=str(final_result),
-    ))
+    steps.append(
+        CalculationStep(
+            step=2,
+            operation="Evaluate expression",
+            result=str(final_result),
+        )
+    )
 
     return steps

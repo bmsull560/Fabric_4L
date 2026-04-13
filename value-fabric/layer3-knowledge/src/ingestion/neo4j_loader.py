@@ -13,12 +13,11 @@ Changes from original:
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
-from uuid import UUID
+from typing import Any
 
 from neo4j import AsyncDriver
 from rdflib import Graph, Literal, Namespace, URIRef
-from rdflib.namespace import RDF, RDFS
+from rdflib.namespace import RDF
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
@@ -44,8 +43,8 @@ class Neo4jLoader:
 
     def __init__(
         self,
-        driver: Optional[AsyncDriver] = None,
-        settings: Optional[Settings] = None,
+        driver: AsyncDriver | None = None,
+        settings: Settings | None = None,
         batch_size: int = 1000,
     ):
         """Initialize RDF loader.
@@ -81,8 +80,8 @@ class Neo4jLoader:
     async def load_rdf_graph(
         self,
         rdf_graph: Graph,
-        source_id: Optional[str] = None,
-        extraction_job_id: Optional[str] = None,
+        source_id: str | None = None,
+        extraction_job_id: str | None = None,
     ) -> dict:
         """Load an RDF graph into Neo4j.
 
@@ -134,8 +133,8 @@ class Neo4jLoader:
     async def load_turtle_string(
         self,
         turtle_data: str,
-        source_id: Optional[str] = None,
-        extraction_job_id: Optional[str] = None,
+        source_id: str | None = None,
+        extraction_job_id: str | None = None,
     ) -> dict:
         """Load Turtle-formatted RDF string into Neo4j.
 
@@ -155,15 +154,15 @@ class Neo4jLoader:
             logger.error(f"Failed to parse Turtle data: {e}")
             raise RDFLoadError(f"Turtle parsing failed: {e}") from e
 
-    def _extract_entities_from_rdf(self, graph: Graph) -> Dict[str, List[dict]]:
+    def _extract_entities_from_rdf(self, graph: Graph) -> dict[str, list[dict]]:
         """Extract entities grouped by type from RDF graph."""
-        entities: Dict[str, List[dict]] = {et: [] for et in ENTITY_TYPES}
+        entities: dict[str, list[dict]] = {et: [] for et in ENTITY_TYPES}
 
         for entity_type in ENTITY_TYPES:
             type_uri = VF[entity_type]
 
             for subject in graph.subjects(RDF.type, type_uri):
-                entity_data: Dict[str, Any] = {"uri": str(subject)}
+                entity_data: dict[str, Any] = {"uri": str(subject)}
 
                 for predicate, obj in graph.predicate_objects(subject):
                     pred_name = self._extract_property_name(predicate)
@@ -193,11 +192,11 @@ class Neo4jLoader:
     def _extract_relationships_from_rdf(
         self,
         graph: Graph,
-        source_id: Optional[str],
-        extraction_job_id: Optional[str],
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        source_id: str | None,
+        extraction_job_id: str | None,
+    ) -> dict[str, list[dict[str, Any]]]:
         """Extract relationships from RDF graph by type."""
-        relationships: Dict[str, List[Dict[str, Any]]] = {
+        relationships: dict[str, list[dict[str, Any]]] = {
             rel_type: [] for rel_type in RELATIONSHIP_TYPES
         }
 
@@ -258,7 +257,9 @@ class Neo4jLoader:
                 self._embedding_model = SentenceTransformer(model_name)
                 logger.info("Loaded ingestion embedding model: %s", model_name)
             except Exception:
-                logger.warning("sentence-transformers not available, embeddings disabled")
+                logger.warning(
+                    "sentence-transformers not available, embeddings disabled"
+                )
                 self._embedding_model = None
         return self._embedding_model
 
@@ -273,7 +274,7 @@ class Neo4jLoader:
             text_parts.append(str(entity.get("id", "")))
         return "\n".join(text_parts)[:4000]
 
-    def _generate_embedding(self, text: str) -> Optional[List[float]]:
+    def _generate_embedding(self, text: str) -> list[float] | None:
         """Generate embedding vector using local sentence-transformers model."""
         if not text.strip():
             return None
@@ -288,12 +289,12 @@ class Neo4jLoader:
             # Fallback: return zero embedding for tests when encoding fails
             return [0.0] * 384
 
-    def _attach_embeddings(self, entity_type: str, entities: List[dict]) -> List[dict]:
+    def _attach_embeddings(self, entity_type: str, entities: list[dict]) -> list[dict]:
         """Attach embeddings to retrieval entity records before persistence."""
         if entity_type not in VECTOR_ENTITY_TYPES or not entities:
             return entities
 
-        prepared: List[dict] = []
+        prepared: list[dict] = []
         for entity in entities:
             entity_copy = dict(entity)
             existing_embedding = entity_copy.get("embedding")
@@ -314,9 +315,9 @@ class Neo4jLoader:
         self,
         session,
         entity_type: str,
-        entities: List[dict],
-        source_id: Optional[str],
-        extraction_job_id: Optional[str],
+        entities: list[dict],
+        source_id: str | None,
+        extraction_job_id: str | None,
     ) -> int:
         """Load a batch of entities into Neo4j.
 
@@ -385,16 +386,16 @@ class Neo4jLoader:
     async def _load_relationships_batch(
         self,
         session,
-        relationships: Dict[str, List[dict]],
-        source_id: Optional[str],
-        extraction_job_id: Optional[str],
+        relationships: dict[str, list[dict]],
+        source_id: str | None,
+        extraction_job_id: str | None,
     ) -> int:
         """Load relationships into Neo4j.
 
         Routes to the APOC implementation when ``self.use_apoc`` is True,
         otherwise uses the native Cypher implementation which works without
         the APOC plugin.
-        
+
         Args:
             relationships: Dict mapping relationship type to list of relationship dicts
         """
@@ -402,7 +403,7 @@ class Neo4jLoader:
         all_relationships = []
         for rel_list in relationships.values():
             all_relationships.extend(rel_list)
-        
+
         if not all_relationships:
             return 0
 
@@ -449,9 +450,9 @@ class Neo4jLoader:
     async def _load_relationships_native(
         self,
         session,
-        relationships: List[dict],
-        source_id: Optional[str],
-        extraction_job_id: Optional[str],
+        relationships: list[dict],
+        source_id: str | None,
+        extraction_job_id: str | None,
     ) -> int:
         """Load relationships using native Cypher (no APOC required).
 
@@ -464,10 +465,12 @@ class Neo4jLoader:
         injection.
         """
         loaded_at = datetime.utcnow().isoformat()
-        by_type: Dict[str, List[dict]] = defaultdict(list)
+        by_type: dict[str, list[dict]] = defaultdict(list)
 
         for rel in relationships:
-            predicate = rel.get("predicate", "").lower().replace("-", "_").replace(" ", "_")
+            predicate = (
+                rel.get("predicate", "").lower().replace("-", "_").replace(" ", "_")
+            )
             if predicate in RELATIONSHIP_TYPES:
                 by_type[predicate].append(rel)
             else:
