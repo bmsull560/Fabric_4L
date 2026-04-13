@@ -3,11 +3,15 @@ Async SQLAlchemy engine and session management for Layer 4.
 
 Extends the checkpoint database configuration to support operational data storage
 for accounts, CRM sync metadata, and workflow state.
+
+P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
 """
 
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Optional
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -16,6 +20,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text
 
 # ---------------------------------------------------------------------------
 # Declarative Base
@@ -84,6 +89,28 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 # ---------------------------------------------------------------------------
 
 
+async def set_tenant_context(session: AsyncSession, tenant_id: Optional[UUID | str]) -> None:
+    """P0-08: Set PostgreSQL app.tenant_id for RLS policies.
+
+    Executes SET LOCAL app.tenant_id = '...' which applies for the
+    duration of the current transaction. RLS policies in PostgreSQL
+    can reference current_setting('app.tenant_id') to filter rows.
+
+    Args:
+        session: SQLAlchemy async session
+        tenant_id: Tenant UUID or string identifier
+    """
+    if tenant_id:
+        # Use SET LOCAL - only affects current transaction
+        await session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": str(tenant_id)}
+        )
+    else:
+        # Clear tenant context for system-level operations
+        await session.execute(text("SET LOCAL app.tenant_id = ''"))
+
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session.
@@ -110,10 +137,17 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @asynccontextmanager
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Async context manager for use outside of FastAPI request lifecycle."""
+async def db_session(tenant_id: Optional[UUID | str] = None) -> AsyncGenerator[AsyncSession, None]:
+    """Async context manager for use outside of FastAPI request lifecycle.
+
+    Args:
+        tenant_id: Optional tenant ID to set for RLS context (P0-08)
+    """
     factory = get_session_factory()
     async with factory() as session:
+        # P0-08: Set tenant context for RLS if provided
+        if tenant_id:
+            await set_tenant_context(session, tenant_id)
         try:
             yield session
             await session.commit()

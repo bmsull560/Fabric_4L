@@ -233,6 +233,29 @@ CONSTRAINTS: list[Constraint] = [
     # 3. Required field validation in API models
 ]
 
+# P0-03: Tenant isolation constraints (requires Neo4j Enterprise Edition)
+# These enforce that tenant_id cannot be null on any entity
+# For Community Edition, tenant_id validation is done at application level
+TENANT_CONSTRAINTS: list[Constraint] = [
+    Constraint("capability_tenant_id", "Capability", "tenant_id", "exists"),
+    Constraint("usecase_tenant_id", "UseCase", "tenant_id", "exists"),
+    Constraint("persona_tenant_id", "Persona", "tenant_id", "exists"),
+    Constraint("valuedriver_tenant_id", "ValueDriver", "tenant_id", "exists"),
+    Constraint("valuemetric_tenant_id", "ValueMetric", "tenant_id", "exists"),
+    Constraint("product_tenant_id", "Product", "tenant_id", "exists"),
+    Constraint("feature_tenant_id", "Feature", "tenant_id", "exists"),
+    Constraint("service_tenant_id", "Service", "tenant_id", "exists"),
+    Constraint("solution_tenant_id", "Solution", "tenant_id", "exists"),
+    Constraint("technology_tenant_id", "Technology", "tenant_id", "exists"),
+    Constraint("organization_tenant_id", "Organization", "tenant_id", "exists"),
+    Constraint("businessunit_tenant_id", "BusinessUnit", "tenant_id", "exists"),
+    Constraint("process_tenant_id", "Process", "tenant_id", "exists"),
+    Constraint("activity_tenant_id", "Activity", "tenant_id", "exists"),
+    Constraint("valuepack_tenant_id", "ValuePack", "tenant_id", "exists"),
+    Constraint("variable_tenant_id", "Variable", "tenant_id", "exists"),
+    Constraint("formula_tenant_id", "Formula", "tenant_id", "exists"),
+]
+
 # Indexes for query performance
 INDEXES: list[Index] = [
     # B-tree indexes for filtering
@@ -298,6 +321,29 @@ SCHEMA_INIT_ORDER = [
 
 def get_all_constraints() -> list[Constraint]:
     """Get all schema constraints."""
+    return CONSTRAINTS
+
+
+def get_tenant_constraints() -> list[Constraint]:
+    """Get tenant isolation constraints (P0-03).
+
+    These require Neo4j Enterprise Edition. Returns empty list for
+    Community Edition compatibility.
+    """
+    return TENANT_CONSTRAINTS
+
+
+def get_all_constraints_with_tenant(include_tenant: bool = False) -> list[Constraint]:
+    """Get all constraints, optionally including tenant constraints.
+
+    Args:
+        include_tenant: If True, includes TENANT_CONSTRAINTS (Enterprise only)
+
+    Returns:
+        Combined list of constraints
+    """
+    if include_tenant:
+        return CONSTRAINTS + TENANT_CONSTRAINTS
     return CONSTRAINTS
 
 

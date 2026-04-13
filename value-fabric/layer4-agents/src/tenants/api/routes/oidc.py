@@ -1,12 +1,14 @@
-"""OIDC SSO routes for tenant authentication.
+"""OIDC SSO routes for tenant authentication with PKCE support (P0-10).
 
-GET /auth/oidc/{tenant_slug}/login   — initiate OIDC flow
-GET /auth/oidc/callback              — handle IdP callback
+GET /auth/oidc/{tenant_slug}/login   — initiate OIDC flow with PKCE
+GET /auth/oidc/callback              — handle IdP callback with PKCE verification
 GET /auth/oidc/{tenant_slug}/metadata — return non-sensitive IdP config
 """
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import os
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -39,6 +41,20 @@ def _generate_state() -> str:
 
 def _generate_nonce() -> str:
     return secrets.token_urlsafe(32)
+
+
+# P0-10: PKCE helper functions
+def _generate_code_verifier() -> str:
+    """Generate PKCE code_verifier (43-128 chars, base64url)."""
+    # RFC 7636: code_verifier is 43-128 chars of [A-Z] / [a-z] / [0-9] / "-" / "." / "_" / "~"
+    return base64.urlsafe_b64encode(os.urandom(32)).decode("ascii").rstrip("=")
+
+
+def _generate_code_challenge(code_verifier: str) -> str:
+    """Generate PKCE code_challenge from code_verifier using S256 method."""
+    # RFC 7636: code_challenge = BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
 
 
 async def _get_tenant_by_slug(db: AsyncSession, slug: str) -> Tenant | None:
@@ -104,28 +120,34 @@ async def oidc_login(
 
     state = _generate_state()
     nonce = _generate_nonce()
+    # P0-10: Generate PKCE parameters
+    code_verifier = _generate_code_verifier()
+    code_challenge = _generate_code_challenge(code_verifier)
     final_redirect = redirect_uri or _DEFAULT_REDIRECT_URI
 
-    # Store session
+    # Store session with PKCE code_verifier
     from sqlalchemy import text
 
     await db.execute(
         text(
             """
-            INSERT INTO oidc_sessions (tenant_id, state, nonce, redirect_uri, expires_at)
-            VALUES (:tenant_id, :state, :nonce, :redirect_uri, :expires_at)
+            INSERT INTO oidc_sessions (tenant_id, state, nonce, code_verifier, redirect_uri, expires_at, use_pkce)
+            VALUES (:tenant_id, :state, :nonce, :code_verifier, :redirect_uri, :expires_at, :use_pkce)
             """
         ),
         {
             "tenant_id": tenant.id,
             "state": state,
             "nonce": nonce,
+            "code_verifier": code_verifier,
             "redirect_uri": final_redirect,
             "expires_at": datetime.now(UTC) + timedelta(minutes=10),
+            "use_pkce": True,
         },
     )
     await db.commit()
 
+    # P0-10: Build authorize URL with PKCE code_challenge
     auth_url = oidc_client.build_authorize_url(
         metadata=metadata,
         client_id=oidc_config.client_id,
@@ -133,6 +155,8 @@ async def oidc_login(
         state=state,
         nonce=nonce,
         scopes=oidc_config.scopes,
+        code_challenge=code_challenge,
+        code_challenge_method="S256",
     )
 
     return {"authorization_url": auth_url, "state": state}
@@ -153,11 +177,11 @@ async def oidc_callback(
     """
     from sqlalchemy import text
 
-    # Look up and validate session
+    # Look up and validate session (P0-10: include code_verifier for PKCE)
     result = await db.execute(
         text(
             """
-            SELECT tenant_id, nonce, redirect_uri, expires_at
+            SELECT tenant_id, nonce, code_verifier, redirect_uri, expires_at
             FROM oidc_sessions WHERE state = :state
             """
         ),
@@ -187,6 +211,7 @@ async def oidc_callback(
 
     tenant_id: UUID = row["tenant_id"]
     nonce: str = row["nonce"]
+    code_verifier: str | None = row["code_verifier"]
     redirect_uri: str = row["redirect_uri"]
 
     # Clean up session
@@ -207,12 +232,14 @@ async def oidc_callback(
 
     try:
         metadata = await oidc_client.discover(oidc_config.issuer_url)
+        # P0-10: Pass code_verifier for PKCE verification
         token_response = await oidc_client.exchange_code(
             token_endpoint=metadata["token_endpoint"],
             code=code,
             redirect_uri=redirect_uri,
             client_id=oidc_config.client_id,
             client_secret=client_secret,
+            code_verifier=code_verifier,  # PKCE parameter
         )
         id_token = token_response.get("id_token")
         if not id_token:
