@@ -159,9 +159,11 @@ describe('useCreateWorkflow', () => {
     // Mutate to create workflow
     result.current.mutate({ name: 'Test Workflow', type: 'analysis' });
 
-    // Wait for settled state: not pending AND success
-    await waitFor(() => expect(result.current.isPending).toBe(false));
-    expect(result.current.isSuccess).toBe(true);
+    // Wait for settled state: not pending AND success in same assertion block
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+      expect(result.current.isSuccess).toBe(true);
+    });
     expect(result.current.data).toBeDefined();
   });
 
@@ -177,9 +179,11 @@ describe('useCreateWorkflow', () => {
 
     result.current.mutate({ name: 'Bad Workflow', type: 'invalid_type' });
 
-    // Wait for settled state: not pending AND error
-    await waitFor(() => expect(result.current.isPending).toBe(false));
-    expect(result.current.isError).toBe(true);
+    // Wait for settled state: not pending AND error in same assertion block
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+      expect(result.current.isError).toBe(true);
+    });
   });
 });
 
@@ -190,9 +194,11 @@ describe('useCancelWorkflow', () => {
 
     result.current.mutate('wf-1');
 
-    // Wait for settled state: not pending AND success
-    await waitFor(() => expect(result.current.isPending).toBe(false));
-    expect(result.current.isSuccess).toBe(true);
+    // Wait for settled state: not pending AND success in same assertion block
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+      expect(result.current.isSuccess).toBe(true);
+    });
   });
 
   it('handles cancellation error', async () => {
@@ -207,8 +213,10 @@ describe('useCancelWorkflow', () => {
 
     result.current.mutate('non-existent-wf');
 
-    // Wait for settled state: not pending AND error
-    await waitFor(() => expect(result.current.isPending).toBe(false));
-    expect(result.current.isError).toBe(true);
+    // Wait for settled state: not pending AND error in same assertion block
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+      expect(result.current.isError).toBe(true);
+    });
   });
 });

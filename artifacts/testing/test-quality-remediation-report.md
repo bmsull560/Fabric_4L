@@ -1,9 +1,35 @@
 # Test Quality Remediation Report
 
 **Repository**: Value Fabric Monorepo  
-**Remediation Dates**: 2026-04-09, 2026-04-10  
+**Remediation Dates**: 2026-04-09, 2026-04-10, 2026-04-13  
 **Agent**: Test Quality Remediation Agent  
-**Scope**: Python backend layers (1-5) and TypeScript frontend testing infrastructure
+**Scope**: Python backend layers (1-6) and TypeScript frontend testing infrastructure
+
+---
+
+## Update: 2026-04-13 Session
+
+### Fixes Applied Today
+
+| Issue | Severity | File | Fix Applied |
+|-------|----------|------|-------------|
+| Wrong relative import path | P0 | `layer4-agents/src/api/routes/workflows.py` | Fixed `..engine` → `...engine` (engine is at src/engine/, not src/api/engine/) |
+| Wrong relative import path | P0 | `layer4-agents/src/api/routes/workflows.py` | Fixed `..workflows` → `...workflows` (workflows is at src/workflows/, not src/api/workflows/) |
+| Race condition in tests | P0 | `frontend/client/src/hooks/useWorkflows.test.ts` | Combined isPending + isSuccess/isError assertions in single waitFor block |
+| Race condition in tests | P0 | `frontend/client/src/hooks/useWorkflows.test.ts` | Combined isPending + isSuccess/isError assertions in same waitFor for cancel workflow |
+
+**Verification**:
+- L4 tests now collect successfully (was failing with `ModuleNotFoundError`)
+- Frontend useWorkflows tests: 12/12 passing (was 10/12 failing)
+- All frontend tests: 326/326 passing
+
+### Pre-existing Issues Documented (Not Fixed - Infrastructure)
+
+| Issue | Layer | Details |
+|-------|-------|---------|
+| SQLite JSONB incompatibility | L4 | Tests use SQLite but models use PostgreSQL JSONB type |
+| Neo4j Community vs Enterprise | L3 | E2E tests fail on Community edition (enterprise-only constraints) |
+| Import path complexity | L2/L3 | Shared src/ layout causes import conflicts |
 
 ---
 

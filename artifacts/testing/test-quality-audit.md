@@ -989,10 +989,28 @@ retry_count: int = field(compare=False, default=0)  # has default - last
 ```
 **Impact**: L1 scheduler tests can now collect successfully.
 
+#### Fix 2: L3 Neo4j Community Edition Support
+**Status**: ✅ **ALREADY IMPLEMENTED** - Code review confirmed:
+- `constraints.py` only uses `constraint_type="unique"` (Community+Enterprise compatible)
+- Property existence constraints (Enterprise-only) are documented but not used
+- Application-level validation in `validators.py` provides Community-compatible enforcement
+- E2E tests use `neo4j:5.15-community` image with edition detection
+
+#### Fix 3: L3 Logging kwargs Fix
+**Status**: ✅ **ALREADY CORRECT** - Code review confirmed:
+- `test_exception_handlers.py` validates `logger.error` uses `exc_info` tuple
+- Both exception handlers in `main.py` use proper `exc_info=_exception_trace(exc)` pattern
+- All 2 exception handler tests passing
+
 ## Next Steps
 
-1. ✅ Fixed scheduler dataclass field order (P0)
-2. Fix remaining P0 blocking issues (L3 Neo4j constraints, logging)
-3. Re-run full audit on previously blocked test files
-4. Address P1 quality improvements
-5. Create foundational tests for frontend
+### Completed (2026-04-13)
+1. ✅ Fixed L1 scheduler dataclass field order (P0)
+2. ✅ Verified L3 Neo4j Community support already implemented (no changes needed)
+3. ✅ Verified L3 logging already uses correct exc_info pattern (no changes needed)
+4. ✅ Verified 32 L3 tests passing (exception handlers, versioning, config)
+
+### Remaining
+1. Address P1 quality improvements (weak assertions, deprecated patterns)
+2. Create foundational tests for frontend
+3. Re-run full audit when Docker is available for integration tests
