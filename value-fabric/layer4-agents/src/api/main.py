@@ -1,6 +1,7 @@
 """FastAPI main application for Layer 4 Agentic Workflow Engine."""
 
 from contextlib import asynccontextmanager
+import logging
 import os
 import time
 
@@ -184,9 +185,8 @@ _cors_raw = os.getenv("CORS_ORIGINS", "")
 _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] if _cors_raw else ["*"]
 _cors_credentials = "*" not in _cors_origins  # Must be False when using wildcard origins
 
-import logging as _cors_log
 if "*" in _cors_origins:
-    _cors_log.getLogger(__name__).warning(
+    logging.getLogger(__name__).warning(
         "CORS_ORIGINS not set — using wildcard origins. "
         "Set CORS_ORIGINS to specific origins in production."
     )

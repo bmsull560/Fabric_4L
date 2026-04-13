@@ -3,6 +3,7 @@
 Standalone service on port 8006 for comparative intelligence.
 """
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
@@ -96,8 +97,7 @@ _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] if _cors_
 _cors_credentials = "*" not in _cors_origins  # Must be False when using wildcard origins
 
 if "*" in _cors_origins:
-    import logging as _cors_log
-    _cors_log.getLogger(__name__).warning(
+    logging.getLogger(__name__).warning(
         "CORS_ORIGINS not set — using wildcard origins. "
         "Set CORS_ORIGINS to specific origins in production."
     )
@@ -178,7 +178,6 @@ class ValidationResponse(BaseModel):
 
 # API Routes
 
-import logging
 import time
 from datetime import datetime
 
