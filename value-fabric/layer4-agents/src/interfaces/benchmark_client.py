@@ -6,35 +6,39 @@ Uses REST API contracts for cross-service operations.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
 from decimal import Decimal
+from typing import Any
+
 import httpx
 
 
 @dataclass
 class BenchmarkDataset:
     """Benchmark dataset reference."""
+
     id: str
     name: str
     industry: str
-    segment: Optional[str]
-    metrics: List[str]  # e.g., ["revenue", "efficiency", "cost"]
-    statistical_profile: Dict[str, Any]  # p10, p50, p90, etc.
+    segment: str | None
+    metrics: list[str]  # e.g., ["revenue", "efficiency", "cost"]
+    statistical_profile: dict[str, Any]  # p10, p50, p90, etc.
 
 
 @dataclass
 class ComparisonRequest:
     """Request for peer comparison."""
+
     dataset_id: str
     metric: str
     company_value: Decimal
     industry: str
-    segment: Optional[str] = None
+    segment: str | None = None
 
 
 @dataclass
 class ComparisonResult:
     """Result of peer comparison."""
+
     percentile: int  # 0-100
     peer_median: Decimal
     peer_range: tuple[Decimal, Decimal]  # (p10, p90)
@@ -45,6 +49,7 @@ class ComparisonResult:
 @dataclass
 class RangeValidationRequest:
     """Request for range validation."""
+
     dataset_id: str
     metric: str
     value: Decimal
@@ -54,41 +59,42 @@ class RangeValidationRequest:
 @dataclass
 class RangeValidationResult:
     """Result of range validation."""
+
     is_valid: bool
     expected_range: tuple[Decimal, Decimal]
     actual_value: Decimal
-    deviation_percent: Optional[float]
+    deviation_percent: float | None
     severity: str  # info, warning, error
 
 
 class IBenchmarkClient(ABC):
     """Abstract interface for benchmark service client.
-    
+
     Implementation can be:
     - HTTP client for standalone L6 service (production)
     - In-memory mock for testing
     - Direct class instance for in-process usage
     """
-    
+
     @abstractmethod
-    async def get_dataset(self, dataset_id: str) -> Optional[BenchmarkDataset]:
+    async def get_dataset(self, dataset_id: str) -> BenchmarkDataset | None:
         """Retrieve benchmark dataset by ID."""
         pass
-    
+
     @abstractmethod
     async def list_datasets(
         self,
-        industry: Optional[str] = None,
-        segment: Optional[str] = None,
-    ) -> List[BenchmarkDataset]:
+        industry: str | None = None,
+        segment: str | None = None,
+    ) -> list[BenchmarkDataset]:
         """List available benchmark datasets."""
         pass
-    
+
     @abstractmethod
     async def compare(self, request: ComparisonRequest) -> ComparisonResult:
         """Execute peer comparison."""
         pass
-    
+
     @abstractmethod
     async def validate_range(
         self,
@@ -100,11 +106,11 @@ class IBenchmarkClient(ABC):
 
 class HTTPBenchmarkClient(IBenchmarkClient):
     """HTTP client for Layer 6 Benchmark Service.
-    
+
     Production implementation communicating with standalone
     benchmark service on port 8006.
     """
-    
+
     def __init__(
         self,
         base_url: str = "http://localhost:8006",
@@ -112,45 +118,43 @@ class HTTPBenchmarkClient(IBenchmarkClient):
     ):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
-    
+        self._client: httpx.AsyncClient | None = None
+
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client."""
         if self._client is None:
             self._client = httpx.AsyncClient(timeout=self.timeout)
         return self._client
-    
+
     async def close(self) -> None:
         """Close HTTP client."""
         if self._client:
             await self._client.aclose()
             self._client = None
-    
-    async def get_dataset(self, dataset_id: str) -> Optional[BenchmarkDataset]:
+
+    async def get_dataset(self, dataset_id: str) -> BenchmarkDataset | None:
         """Retrieve benchmark dataset by ID."""
         client = await self._get_client()
-        response = await client.get(
-            f"{self.base_url}/v1/benchmarks/datasets/{dataset_id}"
-        )
+        response = await client.get(f"{self.base_url}/v1/benchmarks/datasets/{dataset_id}")
         if response.status_code == 404:
             return None
         response.raise_for_status()
         data = response.json()
         return BenchmarkDataset(**data)
-    
+
     async def list_datasets(
         self,
-        industry: Optional[str] = None,
-        segment: Optional[str] = None,
-    ) -> List[BenchmarkDataset]:
+        industry: str | None = None,
+        segment: str | None = None,
+    ) -> list[BenchmarkDataset]:
         """List available benchmark datasets."""
         client = await self._get_client()
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if industry:
             params["industry"] = industry
         if segment:
             params["segment"] = segment
-        
+
         response = await client.get(
             f"{self.base_url}/v1/benchmarks/datasets",
             params=params,
@@ -158,7 +162,7 @@ class HTTPBenchmarkClient(IBenchmarkClient):
         response.raise_for_status()
         data = response.json()
         return [BenchmarkDataset(**item) for item in data["datasets"]]
-    
+
     async def compare(self, request: ComparisonRequest) -> ComparisonResult:
         """Execute peer comparison."""
         client = await self._get_client()
@@ -182,7 +186,7 @@ class HTTPBenchmarkClient(IBenchmarkClient):
             sample_size=data["sample_size"],
             confidence=data["confidence"],
         )
-    
+
     async def validate_range(
         self,
         request: RangeValidationRequest,

@@ -3,29 +3,29 @@
 Defines typed state schemas for all workflow types in Layer 4.
 """
 
-from enum import Enum
-from typing import Annotated, Any, Dict, List, Optional, TYPE_CHECKING
 from datetime import datetime
+from enum import Enum
+from typing import TYPE_CHECKING, Annotated, Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator
 
 if TYPE_CHECKING:
-    from .pause_point import PausePoint
+    pass
 
 
 def _last_value(left: Any, right: Any) -> Any:
     """Reducer that keeps the rightmost (last) value.
-    
+
     Used with Annotated for LangGraph state fields that may receive
     multiple updates per step. Always returns the most recent value.
     """
     return right
 
 
-def _merge_dicts(left: Dict[str, Any], right: Dict[str, Any]) -> Dict[str, Any]:
+def _merge_dicts(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     """Reducer that merges two dicts, with right values taking precedence.
-    
+
     Used with Annotated for output_data to accumulate node results.
     """
     return {**left, **right}
@@ -33,6 +33,7 @@ def _merge_dicts(left: Dict[str, Any], right: Dict[str, Any]) -> Dict[str, Any]:
 
 class WorkflowStatus(str, Enum):
     """Status of a workflow execution."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -43,12 +44,13 @@ class WorkflowStatus(str, Enum):
 
 class WorkflowType(str, Enum):
     """Types of supported workflows per spec."""
+
     # Existing workflows
     ROI_CALCULATOR = "roi_calculator"
     WHITESPACE_ANALYSIS = "whitespace_analysis"
     BUSINESS_CASE = "business_case"
     ORCHESTRATOR = "orchestrator"
-    
+
     # Additional spec workflows
     WHITESPACE_ANALYSIS_WORKFLOW = "whitespace_analysis"  # Full workflow alias
     BUSINESS_CASE_GENERATION = "business_case_generation"
@@ -59,19 +61,20 @@ class WorkflowType(str, Enum):
 
 class WorkflowNodeType(str, Enum):
     """Workflow node/states per spec definition."""
+
     # Document Ingestion
     DOCUMENT_INGESTION = "DOCUMENT_INGESTION"
-    
+
     # Financial Extraction
     FINANCIAL_EXTRACTION = "FINANCIAL_EXTRACTION"
-    
+
     # Value Tree Projection
     VALUE_TREE_PROJECTION = "VALUE_TREE_PROJECTION"
-    
+
     # Whitespace Analysis
     WHITESPACE_IDENTIFICATION = "WHITESPACE_IDENTIFICATION"
     ACCOUNT_PLAN_GENERATION = "ACCOUNT_PLAN_GENERATION"
-    
+
     # Business Case Generation
     OPPORTUNITY_EVALUATION = "OPPORTUNITY_EVALUATION"
     FORMULA_RETRIEVAL = "FORMULA_RETRIEVAL"
@@ -80,10 +83,10 @@ class WorkflowNodeType(str, Enum):
     SENSITIVITY_ANALYSIS = "SENSITIVITY_ANALYSIS"
     NARRATIVE_SYNTHESIS = "NARRATIVE_SYNTHESIS"
     OUTPUT_GENERATION = "OUTPUT_GENERATION"
-    
+
     # Provenance
     PROVENANCE_RECORDING = "PROVENANCE_RECORDING"
-    
+
     # Terminal states
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
@@ -91,7 +94,7 @@ class WorkflowNodeType(str, Enum):
 
 class BaseAgentState(BaseModel):
     """Base state shared across all workflows.
-    
+
     Attributes:
         workflow_id: Unique identifier for this workflow instance
         workflow_type: Type of workflow being executed
@@ -107,42 +110,44 @@ class BaseAgentState(BaseModel):
         resumed_by: User who resumed the workflow
         resumed_at: When the workflow was resumed
     """
+
     workflow_id: str = Field(default_factory=lambda: str(uuid4()))
     workflow_type: WorkflowType
     status: Annotated[WorkflowStatus, _last_value] = WorkflowStatus.PENDING
-    current_node: Annotated[Optional[str], _last_value] = None
-    input_data: Annotated[Dict[str, Any], _merge_dicts] = Field(default_factory=dict)
-    output_data: Annotated[Dict[str, Any], _merge_dicts] = Field(default_factory=dict)
-    errors: List[str] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    
+    current_node: Annotated[str | None, _last_value] = None
+    input_data: Annotated[dict[str, Any], _merge_dicts] = Field(default_factory=dict)
+    output_data: Annotated[dict[str, Any], _merge_dicts] = Field(default_factory=dict)
+    errors: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
     # Human-in-the-loop fields
-    pause_point: Optional[Dict[str, Any]] = Field(
-        default=None, 
-        description="Structured pause point when workflow requires human input"
+    pause_point: dict[str, Any] | None = Field(
+        default=None, description="Structured pause point when workflow requires human input"
     )
-    paused_by: Optional[str] = Field(None, description="User who paused the workflow")
-    paused_at: Optional[datetime] = Field(None, description="When workflow was paused")
-    resumed_by: Optional[str] = Field(None, description="User who resumed the workflow")
-    resumed_at: Optional[datetime] = Field(None, description="When workflow was resumed")
+    paused_by: str | None = Field(None, description="User who paused the workflow")
+    paused_at: datetime | None = Field(None, description="When workflow was paused")
+    resumed_by: str | None = Field(None, description="User who resumed the workflow")
+    resumed_at: datetime | None = Field(None, description="When workflow was resumed")
     pause_count: int = Field(default=0, description="Number of times workflow has been paused")
-    
+
     class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-    
+        json_encoders = {datetime: lambda v: v.isoformat()}
+
     def is_paused(self) -> bool:
         """Check if workflow is currently paused."""
         return self.status == WorkflowStatus.PAUSED
-    
+
     def can_resume(self) -> bool:
         """Check if workflow can be resumed."""
-        return self.status in [WorkflowStatus.PAUSED, WorkflowStatus.RUNNING, WorkflowStatus.PENDING]
-    
-    def get_pause_summary(self) -> Optional[Dict[str, Any]]:
+        return self.status in [
+            WorkflowStatus.PAUSED,
+            WorkflowStatus.RUNNING,
+            WorkflowStatus.PENDING,
+        ]
+
+    def get_pause_summary(self) -> dict[str, Any] | None:
         """Get summary of current pause point if paused."""
         if not self.is_paused() or not self.pause_point:
             return None
@@ -151,8 +156,7 @@ class BaseAgentState(BaseModel):
             "reason": self.pause_point.get("reason"),
             "severity": self.pause_point.get("severity"),
             "required_inputs": [
-                field.get("name") 
-                for field in self.pause_point.get("required_inputs", [])
+                field.get("name") for field in self.pause_point.get("required_inputs", [])
             ],
             "paused_at": self.paused_at.isoformat() if self.paused_at else None,
             "paused_by": self.paused_by,
@@ -161,7 +165,7 @@ class BaseAgentState(BaseModel):
 
 class ROIInputData(BaseModel):
     """Input data for ROI calculation workflow.
-    
+
     Attributes:
         prospect_id: CRM identifier for the prospect
         value_driver_ids: Value drivers to calculate ROI for
@@ -169,16 +173,17 @@ class ROIInputData(BaseModel):
         industry_vertical: Industry for benchmark lookup
         company_size: Company size category
     """
+
     prospect_id: str
-    value_driver_ids: List[str]
-    prospect_data: Dict[str, float] = Field(default_factory=dict)
-    industry_vertical: Optional[str] = None
-    company_size: Optional[str] = None
+    value_driver_ids: list[str]
+    prospect_data: dict[str, float] = Field(default_factory=dict)
+    industry_vertical: str | None = None
+    company_size: str | None = None
     use_benchmarks: bool = True
-    
+
     @field_validator("value_driver_ids")
     @classmethod
-    def validate_non_empty(cls, v: List[str]) -> List[str]:
+    def validate_non_empty(cls, v: list[str]) -> list[str]:
         if not v:
             raise ValueError("At least one value_driver_id is required")
         return v
@@ -186,7 +191,7 @@ class ROIInputData(BaseModel):
 
 class ROIResult(BaseModel):
     """Result of a single ROI calculation.
-    
+
     Attributes:
         value_driver_id: ID of the value driver calculated
         value_driver_name: Human-readable name
@@ -198,6 +203,7 @@ class ROIResult(BaseModel):
         variables_used: Variables and their values
         missing_variables: Variables that couldn't be resolved
     """
+
     value_driver_id: str
     value_driver_name: str
     formula: str
@@ -205,39 +211,41 @@ class ROIResult(BaseModel):
     result: float
     unit: str
     confidence: float = Field(ge=0.0, le=1.0)
-    variables_used: Dict[str, float] = Field(default_factory=dict)
-    missing_variables: List[str] = Field(default_factory=list)
-    benchmark_comparison: Optional[Dict[str, Any]] = None
+    variables_used: dict[str, float] = Field(default_factory=dict)
+    missing_variables: list[str] = Field(default_factory=list)
+    benchmark_comparison: dict[str, Any] | None = None
 
 
 class ROIAgentState(BaseAgentState):
     """State for ROI Calculator workflow.
-    
+
     Extends base state with ROI-specific fields.
     """
+
     workflow_type: WorkflowType = WorkflowType.ROI_CALCULATOR
-    roi_input: Optional[ROIInputData] = None
-    prospect_data_enriched: Dict[str, Any] = Field(default_factory=dict)
-    benchmarks_fetched: Dict[str, Any] = Field(default_factory=dict)
-    calculation_results: List[ROIResult] = Field(default_factory=list)
-    aggregated_roi: Optional[Dict[str, Any]] = None
+    roi_input: ROIInputData | None = None
+    prospect_data_enriched: dict[str, Any] = Field(default_factory=dict)
+    benchmarks_fetched: dict[str, Any] = Field(default_factory=dict)
+    calculation_results: list[ROIResult] = Field(default_factory=list)
+    aggregated_roi: dict[str, Any] | None = None
 
 
 class WhitespaceInputData(BaseModel):
     """Input data for whitespace analysis workflow.
-    
+
     Attributes:
         prospect_id: CRM identifier for the prospect
         prospect_needs: Description of prospect's stated needs
         solution_capabilities: Capabilities to match against
         analysis_depth: Level of analysis detail
     """
+
     prospect_id: str
     prospect_needs: str = Field(..., min_length=10)
-    solution_capabilities: Optional[List[str]] = None
+    solution_capabilities: list[str] | None = None
     analysis_depth: str = "standard"  # "quick", "standard", "deep"
     include_competitive: bool = True
-    
+
     @field_validator("analysis_depth")
     @classmethod
     def validate_depth(cls, v: str) -> str:
@@ -249,7 +257,7 @@ class WhitespaceInputData(BaseModel):
 
 class GapAnalysis(BaseModel):
     """Identified gap between need and capability.
-    
+
     Attributes:
         need_statement: The prospect need identified
         matched_capability: Best matching capability (if any)
@@ -258,8 +266,9 @@ class GapAnalysis(BaseModel):
         impact: Business impact assessment
         recommendation: Suggested action
     """
+
     need_statement: str
-    matched_capability: Optional[str] = None
+    matched_capability: str | None = None
     match_score: float = Field(ge=0.0, le=1.0)
     gap_type: str  # "coverage", "capability", "maturity", "none"
     impact: str = "medium"  # "low", "medium", "high"
@@ -268,52 +277,57 @@ class GapAnalysis(BaseModel):
 
 class WhitespaceAgentState(BaseAgentState):
     """State for Whitespace Analysis workflow."""
+
     workflow_type: WorkflowType = WorkflowType.WHITESPACE_ANALYSIS
-    whitespace_input: Optional[WhitespaceInputData] = None
-    extracted_needs: List[str] = Field(default_factory=list)
-    capabilities_queried: List[Dict[str, Any]] = Field(default_factory=list)
-    gap_analysis: List[GapAnalysis] = Field(default_factory=list)
-    opportunity_score: Optional[float] = None
-    recommendations: List[str] = Field(default_factory=list)
+    whitespace_input: WhitespaceInputData | None = None
+    extracted_needs: list[str] = Field(default_factory=list)
+    capabilities_queried: list[dict[str, Any]] = Field(default_factory=list)
+    gap_analysis: list[GapAnalysis] = Field(default_factory=list)
+    opportunity_score: float | None = None
+    recommendations: list[str] = Field(default_factory=list)
 
 
 class BusinessCaseSection(BaseModel):
     """Section of a generated business case.
-    
+
     Attributes:
         title: Section heading
         content: Generated text content
         charts: List of chart data for this section
         tables: List of table data for this section
     """
+
     title: str
     content: str
-    charts: List[Dict[str, Any]] = Field(default_factory=list)
-    tables: List[Dict[str, Any]] = Field(default_factory=list)
+    charts: list[dict[str, Any]] = Field(default_factory=list)
+    tables: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class BusinessCaseInputData(BaseModel):
     """Input data for business case generation workflow.
-    
+
     Attributes:
         prospect_id: CRM identifier
         opportunity_id: CRM opportunity identifier
         sections_requested: Which sections to include
         output_format: Desired output format
     """
+
     prospect_id: str
-    opportunity_id: Optional[str] = None
-    sections_requested: List[str] = Field(default_factory=lambda: [
-        "executive_summary",
-        "current_state",
-        "proposed_solution",
-        "roi_analysis",
-        "implementation",
-        "next_steps"
-    ])
+    opportunity_id: str | None = None
+    sections_requested: list[str] = Field(
+        default_factory=lambda: [
+            "executive_summary",
+            "current_state",
+            "proposed_solution",
+            "roi_analysis",
+            "implementation",
+            "next_steps",
+        ]
+    )
     output_format: str = "pdf"  # "pdf", "docx", "html"
-    custom_inputs: Dict[str, Any] = Field(default_factory=dict)
-    
+    custom_inputs: dict[str, Any] = Field(default_factory=dict)
+
     @field_validator("output_format")
     @classmethod
     def validate_format(cls, v: str) -> str:
@@ -325,22 +339,24 @@ class BusinessCaseInputData(BaseModel):
 
 class BusinessCaseAgentState(BaseAgentState):
     """State for Business Case Generator workflow."""
+
     workflow_type: WorkflowType = WorkflowType.BUSINESS_CASE
-    case_input: Optional[BusinessCaseInputData] = None
-    sections_generated: List[BusinessCaseSection] = Field(default_factory=list)
-    roi_results: Optional[Dict[str, Any]] = None
-    assembled_document: Optional[bytes] = None
-    document_url: Optional[str] = None
+    case_input: BusinessCaseInputData | None = None
+    sections_generated: list[BusinessCaseSection] = Field(default_factory=list)
+    roi_results: dict[str, Any] | None = None
+    assembled_document: bytes | None = None
+    document_url: str | None = None
 
 
 class OrchestratorAgentState(BaseAgentState):
     """State for Multi-Agent Orchestrator workflow."""
+
     workflow_type: WorkflowType = WorkflowType.ORCHESTRATOR
-    user_intent: Optional[str] = None
-    identified_workflows: List[str] = Field(default_factory=list)
-    sub_workflow_results: List[Dict[str, Any]] = Field(default_factory=list)
-    aggregated_response: Optional[str] = None
-    suggested_actions: List[str] = Field(default_factory=list)
+    user_intent: str | None = None
+    identified_workflows: list[str] = Field(default_factory=list)
+    sub_workflow_results: list[dict[str, Any]] = Field(default_factory=list)
+    aggregated_response: str | None = None
+    suggested_actions: list[str] = Field(default_factory=list)
 
 
 # Union type for all workflow states

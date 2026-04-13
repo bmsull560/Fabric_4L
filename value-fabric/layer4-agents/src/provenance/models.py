@@ -11,25 +11,25 @@ References:
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 from uuid import uuid4
 
 
 class PROVNamespace:
     """PROV-O namespace constants."""
-    
+
     # Core namespaces
     PROV = "http://www.w3.org/ns/prov#"
     RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
     RDFS = "http://www.w3.org/2000/01/rdf-schema#"
     XSD = "http://www.w3.org/2001/XMLSchema#"
-    
+
     # Value Fabric namespace
     VF = "http://valuefabric.io/ns/prov#"
-    
+
     # Common prefixes
     @classmethod
-    def get_prefixes(cls) -> Dict[str, str]:
+    def get_prefixes(cls) -> dict[str, str]:
         return {
             "prov": cls.PROV,
             "rdf": cls.RDF,
@@ -41,22 +41,22 @@ class PROVNamespace:
 
 class PROVType(str, Enum):
     """PROV-O entity/activity/agent types."""
-    
+
     # Entities
     ENTITY = "prov:Entity"
     COLLECTION = "prov:Collection"
     BUNDLE = "prov:Bundle"
     PLAN = "prov:Plan"
-    
+
     # Activities
     ACTIVITY = "prov:Activity"
-    
+
     # Agents
     AGENT = "prov:Agent"
     PERSON = "prov:Person"
     ORGANIZATION = "prov:Organization"
     SOFTWARE_AGENT = "prov:SoftwareAgent"
-    
+
     # Value Fabric specific
     LLM_MODEL = "vf:LLMModel"
     AI_AGENT = "vf:AIAgent"
@@ -68,10 +68,10 @@ class PROVType(str, Enum):
 @dataclass
 class PROVEntity:
     """PROV-O Entity representation.
-    
+
     An entity is a physical, digital, conceptual, or other kind of thing
     with some fixed aspects; entities may be real or imaginary.
-    
+
     Attributes:
         entity_id: Unique identifier (URI)
         entity_type: Type of entity
@@ -79,48 +79,45 @@ class PROVEntity:
         generated_at: When entity was generated
         attributes: Additional entity attributes
     """
+
     entity_id: str
     entity_type: PROVType = PROVType.ENTITY
-    label: Optional[str] = None
-    generated_at: Optional[datetime] = None
-    generated_by: Optional[str] = None  # Activity ID
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    
+    label: str | None = None
+    generated_at: datetime | None = None
+    generated_by: str | None = None  # Activity ID
+    attributes: dict[str, Any] = field(default_factory=dict)
+
     def __post_init__(self):
         if not self.entity_id.startswith(("http://", "https://", "urn:")):
             # Generate URN if not a full URI
             self.entity_id = f"urn:uuid:{self.entity_id}"
-    
-    def to_triples(self) -> List[Tuple[str, str, Union[str, Any]]]:
+
+    def to_triples(self) -> list[tuple[str, str, str | Any]]:
         """Convert to RDF triples.
-        
+
         Returns:
             List of (subject, predicate, object) triples
         """
         triples = [
             (self.entity_id, "rdf:type", self.entity_type.value),
         ]
-        
+
         if self.label:
             triples.append((self.entity_id, "rdfs:label", self.label))
-        
+
         if self.generated_at:
-            triples.append((
-                self.entity_id,
-                "prov:generatedAtTime",
-                self.generated_at.isoformat()
-            ))
-        
+            triples.append((self.entity_id, "prov:generatedAtTime", self.generated_at.isoformat()))
+
         if self.generated_by:
             triples.append((self.entity_id, "prov:wasGeneratedBy", self.generated_by))
-        
+
         # Add custom attributes
         for key, value in self.attributes.items():
             triples.append((self.entity_id, f"vf:{key}", value))
-        
+
         return triples
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "@id": self.entity_id,
@@ -135,11 +132,11 @@ class PROVEntity:
 @dataclass
 class PROVActivity:
     """PROV-O Activity representation.
-    
+
     An activity is something that occurs over a period of time and acts upon
     or with entities; it may include consuming, processing, transforming,
     modifying, relocating, using, or generating entities.
-    
+
     Attributes:
         activity_id: Unique identifier (URI)
         activity_type: Type of activity
@@ -151,59 +148,52 @@ class PROVActivity:
         was_associated_with: Agents associated with activity
         attributes: Additional activity attributes
     """
+
     activity_id: str
     activity_type: PROVType = PROVType.ACTIVITY
-    label: Optional[str] = None
-    started_at: Optional[datetime] = None
-    ended_at: Optional[datetime] = None
-    used_entities: List[str] = field(default_factory=list)  # Entity IDs
-    generated_entities: List[str] = field(default_factory=list)  # Entity IDs
-    was_associated_with: List[str] = field(default_factory=list)  # Agent IDs
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    
+    label: str | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    used_entities: list[str] = field(default_factory=list)  # Entity IDs
+    generated_entities: list[str] = field(default_factory=list)  # Entity IDs
+    was_associated_with: list[str] = field(default_factory=list)  # Agent IDs
+    attributes: dict[str, Any] = field(default_factory=dict)
+
     def __post_init__(self):
         if not self.activity_id.startswith(("http://", "https://", "urn:")):
             self.activity_id = f"urn:uuid:{self.activity_id}"
-    
-    def to_triples(self) -> List[Tuple[str, str, Union[str, Any]]]:
+
+    def to_triples(self) -> list[tuple[str, str, str | Any]]:
         """Convert to RDF triples."""
         triples = [
             (self.activity_id, "rdf:type", self.activity_type.value),
         ]
-        
+
         if self.label:
             triples.append((self.activity_id, "rdfs:label", self.label))
-        
+
         if self.started_at:
-            triples.append((
-                self.activity_id,
-                "prov:startedAtTime",
-                self.started_at.isoformat()
-            ))
-        
+            triples.append((self.activity_id, "prov:startedAtTime", self.started_at.isoformat()))
+
         if self.ended_at:
-            triples.append((
-                self.activity_id,
-                "prov:endedAtTime",
-                self.ended_at.isoformat()
-            ))
-        
+            triples.append((self.activity_id, "prov:endedAtTime", self.ended_at.isoformat()))
+
         for entity_id in self.used_entities:
             triples.append((self.activity_id, "prov:used", entity_id))
-        
+
         for entity_id in self.generated_entities:
             triples.append((entity_id, "prov:wasGeneratedBy", self.activity_id))
-        
+
         for agent_id in self.was_associated_with:
             triples.append((self.activity_id, "prov:wasAssociatedWith", agent_id))
-        
+
         # Add custom attributes
         for key, value in self.attributes.items():
             triples.append((self.activity_id, f"vf:{key}", value))
-        
+
         return triples
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "@id": self.activity_id,
@@ -221,10 +211,10 @@ class PROVActivity:
 @dataclass
 class PROVAgent:
     """PROV-O Agent representation.
-    
+
     An agent is something that bears some form of responsibility for an activity
     taking place, for the existence of an entity, or for another agent's activity.
-    
+
     Attributes:
         agent_id: Unique identifier (URI)
         agent_type: Type of agent
@@ -232,39 +222,36 @@ class PROVAgent:
         acted_on_behalf_of: Agent this agent acts for
         attributes: Additional agent attributes
     """
+
     agent_id: str
     agent_type: PROVType = PROVType.AGENT
-    label: Optional[str] = None
-    acted_on_behalf_of: Optional[str] = None  # Agent ID
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    
+    label: str | None = None
+    acted_on_behalf_of: str | None = None  # Agent ID
+    attributes: dict[str, Any] = field(default_factory=dict)
+
     def __post_init__(self):
         if not self.agent_id.startswith(("http://", "https://", "urn:")):
             self.agent_id = f"urn:uuid:{self.agent_id}"
-    
-    def to_triples(self) -> List[Tuple[str, str, Union[str, Any]]]:
+
+    def to_triples(self) -> list[tuple[str, str, str | Any]]:
         """Convert to RDF triples."""
         triples = [
             (self.agent_id, "rdf:type", self.agent_type.value),
         ]
-        
+
         if self.label:
             triples.append((self.agent_id, "rdfs:label", self.label))
-        
+
         if self.acted_on_behalf_of:
-            triples.append((
-                self.agent_id,
-                "prov:actedOnBehalfOf",
-                self.acted_on_behalf_of
-            ))
-        
+            triples.append((self.agent_id, "prov:actedOnBehalfOf", self.acted_on_behalf_of))
+
         # Add custom attributes
         for key, value in self.attributes.items():
             triples.append((self.agent_id, f"vf:{key}", value))
-        
+
         return triples
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "@id": self.agent_id,
@@ -278,46 +265,47 @@ class PROVAgent:
 @dataclass
 class RDFStarTriple:
     """RDF* triple for annotating statements.
-    
+
     RDF* allows making statements about statements:
     <<(subject predicate object)>> annotation_predicate annotation_value
-    
+
     Example:
         <<(:calculation123 :produces :roi_value_456)>>
             vf:executionTrace "trace_data";
             vf:algorithmVersion "2.1.0".
-    
+
     Attributes:
         subject: Triple subject
         predicate: Triple predicate
         object_: Triple object
         annotations: Annotations on the statement
     """
+
     subject: str
     predicate: str
-    object_: Union[str, Any]
-    annotations: Dict[str, Any] = field(default_factory=dict)
-    
+    object_: str | Any
+    annotations: dict[str, Any] = field(default_factory=dict)
+
     def to_rdf_star(self) -> str:
         """Convert to RDF* Turtle syntax.
-        
+
         Returns:
             RDF* Turtle representation
         """
         # Escape quotes in object
         obj_str = str(self.object_).replace('"', '\\"')
-        
+
         lines = [f'<<({self.subject} {self.predicate} "{obj_str}")>>']
-        
+
         for pred, value in self.annotations.items():
             value_str = str(value).replace('"', '\\"')
             lines.append(f'    {pred} "{value_str}";')
-        
-        lines[-1] = lines[-1].rstrip(';') + '.'
-        
-        return '\n'.join(lines)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+        lines[-1] = lines[-1].rstrip(";") + "."
+
+        return "\n".join(lines)
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "subject": self.subject,
@@ -329,56 +317,56 @@ class RDFStarTriple:
 
 class PROVGraph:
     """Collection of PROV-O entities, activities, and agents.
-    
+
     Represents a provenance graph that can be serialized to various formats.
     """
-    
-    def __init__(self, graph_id: Optional[str] = None):
+
+    def __init__(self, graph_id: str | None = None):
         """Initialize provenance graph.
-        
+
         Args:
             graph_id: Unique graph identifier
         """
         self.graph_id = graph_id or f"urn:uuid:{uuid4()}"
-        self.entities: Dict[str, PROVEntity] = {}
-        self.activities: Dict[str, PROVActivity] = {}
-        self.agents: Dict[str, PROVAgent] = {}
-        self.rdf_star_triples: List[RDFStarTriple] = []
-    
+        self.entities: dict[str, PROVEntity] = {}
+        self.activities: dict[str, PROVActivity] = {}
+        self.agents: dict[str, PROVAgent] = {}
+        self.rdf_star_triples: list[RDFStarTriple] = []
+
     def add_entity(self, entity: PROVEntity) -> None:
         """Add entity to graph."""
         self.entities[entity.entity_id] = entity
-    
+
     def add_activity(self, activity: PROVActivity) -> None:
         """Add activity to graph."""
         self.activities[activity.activity_id] = activity
-    
+
     def add_agent(self, agent: PROVAgent) -> None:
         """Add agent to graph."""
         self.agents[agent.agent_id] = agent
-    
+
     def add_rdf_star(self, triple: RDFStarTriple) -> None:
         """Add RDF* annotated triple."""
         self.rdf_star_triples.append(triple)
-    
-    def to_triples(self) -> List[Tuple[str, str, Union[str, Any]]]:
+
+    def to_triples(self) -> list[tuple[str, str, str | Any]]:
         """Convert entire graph to RDF triples."""
         triples = []
-        
+
         for entity in self.entities.values():
             triples.extend(entity.to_triples())
-        
+
         for activity in self.activities.values():
             triples.extend(activity.to_triples())
-        
+
         for agent in self.agents.values():
             triples.extend(agent.to_triples())
-        
+
         return triples
-    
+
     def to_turtle(self) -> str:
         """Serialize graph to Turtle format.
-        
+
         Returns:
             Turtle serialization
         """
@@ -390,14 +378,14 @@ class PROVGraph:
             "@prefix vf: <http://valuefabric.io/ns/prov#> .",
             "",
         ]
-        
+
         # Add RDF* triples first
         if self.rdf_star_triples:
             lines.append("# RDF* Annotations")
             for triple in self.rdf_star_triples:
                 lines.append(triple.to_rdf_star())
             lines.append("")
-        
+
         # Add entities
         if self.entities:
             lines.append("# Entities")
@@ -406,7 +394,7 @@ class PROVGraph:
                     obj = f'"{triple[2]}"' if isinstance(triple[2], str) else str(triple[2])
                     lines.append(f"{triple[0]} {triple[1]} {obj} .")
             lines.append("")
-        
+
         # Add activities
         if self.activities:
             lines.append("# Activities")
@@ -415,7 +403,7 @@ class PROVGraph:
                     obj = f'"{triple[2]}"' if isinstance(triple[2], str) else str(triple[2])
                     lines.append(f"{triple[0]} {triple[1]} {obj} .")
             lines.append("")
-        
+
         # Add agents
         if self.agents:
             lines.append("# Agents")
@@ -424,10 +412,10 @@ class PROVGraph:
                     obj = f'"{triple[2]}"' if isinstance(triple[2], str) else str(triple[2])
                     lines.append(f"{triple[0]} {triple[1]} {obj} .")
             lines.append("")
-        
-        return '\n'.join(lines)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+        return "\n".join(lines)
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "@id": self.graph_id,
@@ -445,13 +433,13 @@ class PROVGraph:
 def create_prov_graph(
     workflow_id: str,
     agent_id: str,
-    inputs: List[Dict[str, Any]],
-    outputs: List[Dict[str, Any]],
+    inputs: list[dict[str, Any]],
+    outputs: list[dict[str, Any]],
     started_at: datetime,
     ended_at: datetime,
 ) -> PROVGraph:
     """Create a PROV-O graph for workflow execution.
-    
+
     Args:
         workflow_id: Workflow instance ID
         agent_id: Agent that executed workflow
@@ -459,12 +447,12 @@ def create_prov_graph(
         outputs: Output entities
         started_at: When workflow started
         ended_at: When workflow ended
-        
+
     Returns:
         PROVGraph with workflow provenance
     """
     graph = PROVGraph(graph_id=f"prov:{workflow_id}")
-    
+
     # Create agent
     agent = PROVAgent(
         agent_id=f"agent:{agent_id}",
@@ -472,7 +460,7 @@ def create_prov_graph(
         label=f"Agent {agent_id}",
     )
     graph.add_agent(agent)
-    
+
     # Create workflow activity
     activity = PROVActivity(
         activity_id=f"activity:{workflow_id}",
@@ -482,7 +470,7 @@ def create_prov_graph(
         ended_at=ended_at,
         was_associated_with=[agent.agent_id],
     )
-    
+
     # Add input entities
     for inp in inputs:
         entity = PROVEntity(
@@ -492,7 +480,7 @@ def create_prov_graph(
         )
         graph.add_entity(entity)
         activity.used_entities.append(entity.entity_id)
-    
+
     # Add output entities
     for out in outputs:
         entity = PROVEntity(
@@ -504,7 +492,7 @@ def create_prov_graph(
         )
         graph.add_entity(entity)
         activity.generated_entities.append(entity.entity_id)
-    
+
     graph.add_activity(activity)
-    
+
     return graph

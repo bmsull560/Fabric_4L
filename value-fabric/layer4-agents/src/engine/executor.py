@@ -10,11 +10,12 @@ Provides comprehensive workflow orchestration with:
 This implements the OrchestrationController agent type from the specification.
 """
 
-from typing import Any, Callable, Dict, List, Optional, Set
-from datetime import datetime, timezone
-from uuid import UUID
 import asyncio
 import logging
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
+from uuid import UUID
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
@@ -23,20 +24,19 @@ from ..models.agent_state import AgentState, WorkflowStatus
 
 class WorkflowExecutionError(Exception):
     """Raised when workflow execution fails."""
+
     pass
 
 
-from ..tools.registry import ToolRegistry
-from ..workflows.base import BaseWorkflow
-from ..workflows import create_workflow
 from ..agents.base import BaseAgent
-from ..agents.taxonomy import OrchestrationController as OrchestrationAgent
-from ..messaging.bus import MessageBus, InMemoryMessageBus
+from ..messaging.bus import InMemoryMessageBus, MessageBus
 from ..messaging.router import MessageRouter
-from ..messaging.types import MessageType, MessagePriority
+from ..messaging.types import MessageType
 from ..registry.service import resolve_llm_model
+from ..tools.registry import ToolRegistry
+from ..workflows import create_workflow
+from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from .state_manager import StateManager
-from .scheduler import TaskScheduler, ScheduledTask, TaskPriority
 
 logger = logging.getLogger(__name__)
 
@@ -73,22 +73,22 @@ logger = logging.getLogger(__name__)
 
 class OrchestrationController:
     """Enhanced workflow executor with multi-agent orchestration.
-    
+
     Implements the OrchestrationController from the specification:
     - workflow_scheduling: Schedule workflows with priority
     - task_distribution: Distribute tasks to agents
     - failure_recovery: Handle failures with retry
     - resource_management: Manage agent pool scaling
-    
+
     Scaling Policy: min_instances=2, max_instances=50
-    
+
     Example:
         controller = OrchestrationController(
             tool_registry=tool_registry,
             message_bus=message_bus,
         )
         await controller.start()
-        
+
         # Execute workflow
         result = await controller.execute_workflow(
             workflow_type="roi_calculator",
@@ -96,18 +96,18 @@ class OrchestrationController:
             priority=TaskPriority.HIGH,
         )
     """
-    
+
     def __init__(
         self,
         tool_registry: ToolRegistry,
-        state_manager: Optional[StateManager] = None,
-        message_bus: Optional[MessageBus] = None,
+        state_manager: StateManager | None = None,
+        message_bus: MessageBus | None = None,
         max_concurrent: int = 100,
-        scaling_config: Optional[Dict[str, Any]] = None,
-        checkpoint_saver: Optional[BaseCheckpointSaver] = None,
+        scaling_config: dict[str, Any] | None = None,
+        checkpoint_saver: BaseCheckpointSaver | None = None,
     ):
         """Initialize orchestration controller.
-        
+
         Args:
             tool_registry: Registry of available tools
             state_manager: State persistence manager
@@ -121,65 +121,65 @@ class OrchestrationController:
         self.message_bus = message_bus or InMemoryMessageBus()
         self.checkpoint_saver = checkpoint_saver
         self.max_concurrent = max_concurrent
-        
+
         # Scaling configuration per spec
         self.scaling_config = scaling_config or {
             "min_instances": 2,
             "max_instances": 50,
             "scale_trigger": "queue_depth > 100",
         }
-        
+
         # Task scheduling
         self.scheduler = TaskScheduler(max_concurrent_tasks=max_concurrent)
         self.scheduler.set_callbacks(
             on_complete=self._on_task_complete,
             on_fail=self._on_task_fail,
         )
-        
+
         # Message routing
         self.message_router = MessageRouter(self.message_bus)
-        
+
         # Agent management
-        self._registered_agents: Dict[str, BaseAgent] = {}
-        self._agent_pool: Dict[str, Dict[str, Any]] = {}
-        
+        self._registered_agents: dict[str, BaseAgent] = {}
+        self._agent_pool: dict[str, dict[str, Any]] = {}
+
         # Workflow tracking
-        self._active_workflows: Dict[str, asyncio.Task] = {}
-        self._workflow_metadata: Dict[str, Dict[str, Any]] = {}
-        
+        self._active_workflows: dict[str, asyncio.Task] = {}
+        self._workflow_metadata: dict[str, dict[str, Any]] = {}
+
         # Lifecycle
         self._started = False
         self._shutdown = False
-    
+
     async def start(self) -> None:
         """Start the orchestration controller."""
         if self._started:
             return
-        
+
         await self.scheduler.start()
         self._started = True
         logger.info("OrchestrationController started")
-    
+
     async def stop(self) -> None:
         """Stop the orchestration controller."""
         if not self._started:
             return
-        
+
         self._shutdown = True
-        
+
         # Cancel active workflows
         for workflow_id, task in list(self._active_workflows.items()):
             task.cancel()
-        
+
         # Stop scheduler
         await self.scheduler.stop()
-        
+
         # Close message bus
         await self.message_bus.close()
-        
+
         self._started = False
         logger.info("OrchestrationController stopped")
-    
+
     async def resolve_model(self, tenant_id: UUID, provider: str = "openai") -> str:
         """Resolve the active production LLM model for a tenant.
 
@@ -187,8 +187,10 @@ class OrchestrationController:
         model is registered or the lookup fails.
         """
         import os
+
         try:
             from ..database import db_session
+
             async with db_session() as db:
                 return await resolve_llm_model(db, tenant_id, provider)
         except Exception:
@@ -196,36 +198,36 @@ class OrchestrationController:
 
     async def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent with the controller.
-        
+
         Args:
             agent: Agent instance to register
         """
         await agent.initialize()
-        
+
         self._registered_agents[agent.agent_id] = agent
-        
+
         # Register with message router
         capabilities = agent.get_capabilities()
         capability_names = [c.name for c in capabilities]
-        
+
         self.message_router.register_agent(
             agent_id=agent.agent_id,
             capabilities=capability_names,
             metadata={"agent_type": agent.agent_type},
         )
-        
+
         # Subscribe to task assignments
         await self.message_bus.subscribe(
             subscriber_id=agent.agent_id,
             message_type=MessageType.TASK_ASSIGNMENT,
             handler=self._create_agent_handler(agent),
         )
-        
+
         logger.info(f"Registered agent {agent.agent_id} ({agent.agent_type})")
-    
+
     def unregister_agent(self, agent_id: str) -> None:
         """Unregister an agent.
-        
+
         Args:
             agent_id: Agent to unregister
         """
@@ -233,19 +235,19 @@ class OrchestrationController:
             del self._registered_agents[agent_id]
             self.message_router.unregister_agent(agent_id)
             logger.info(f"Unregistered agent {agent_id}")
-    
+
     async def execute_workflow(
         self,
         workflow_type: str,
-        input_data: Dict[str, Any],
-        workflow_id: Optional[str] = None,
+        input_data: dict[str, Any],
+        workflow_id: str | None = None,
         priority: TaskPriority = TaskPriority.NORMAL,
-        tenant_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
         checkpoint_interval: int = 5,
     ) -> AgentState:
         """Execute a workflow with orchestration.
-        
+
         Args:
             workflow_type: Type of workflow to run
             input_data: Workflow input parameters
@@ -254,7 +256,7 @@ class OrchestrationController:
             tenant_id: Tenant context
             user_id: User context
             checkpoint_interval: Save state every N nodes
-            
+
         Returns:
             Final workflow state
         """
@@ -262,20 +264,20 @@ class OrchestrationController:
         workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
         initial_state = workflow.create_initial_state(input_data)
         workflow_id = workflow_id or initial_state.workflow_id
-        
+
         # Store metadata
         self._workflow_metadata[workflow_id] = {
             "workflow_type": workflow_type,
             "tenant_id": tenant_id,
             "user_id": user_id,
             "priority": priority.value,
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
         }
-        
+
         # Schedule workflow execution
         task = ScheduledTask(
             priority=priority.value,
-            scheduled_time=datetime.now(timezone.utc),
+            scheduled_time=datetime.now(UTC),
             task_id=f"wf-{workflow_id}",
             workflow_instance_id=workflow_id,
             capability="workflow_execution",
@@ -292,23 +294,23 @@ class OrchestrationController:
                 "checkpoint_interval": checkpoint_interval,
             },
         )
-        
+
         await self.scheduler.schedule_task(task)
-        
+
         # Wait for completion (blocking call)
         return await self._wait_for_workflow(workflow_id)
-    
+
     async def schedule_workflow(
         self,
         workflow_type: str,
-        input_data: Dict[str, Any],
-        scheduled_time: Optional[datetime] = None,
+        input_data: dict[str, Any],
+        scheduled_time: datetime | None = None,
         priority: TaskPriority = TaskPriority.NORMAL,
-        tenant_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
     ) -> str:
         """Schedule workflow for future execution.
-        
+
         Args:
             workflow_type: Type of workflow
             input_data: Input parameters
@@ -316,14 +318,14 @@ class OrchestrationController:
             priority: Execution priority
             tenant_id: Tenant context
             user_id: User context
-            
+
         Returns:
             schedule_id: ID for tracking
         """
-        schedule_id = f"sched-{datetime.now(timezone.utc).timestamp()}"
-        
-        execute_time = scheduled_time or datetime.now(timezone.utc)
-        
+        schedule_id = f"sched-{datetime.now(UTC).timestamp()}"
+
+        execute_time = scheduled_time or datetime.now(UTC)
+
         # Create scheduled task
         task = ScheduledTask(
             priority=priority.value,
@@ -344,45 +346,45 @@ class OrchestrationController:
                 "user_id": user_id,
             },
         )
-        
+
         await self.scheduler.schedule_task(task)
-        
+
         logger.info(f"Scheduled workflow {schedule_id} for {execute_time}")
         return schedule_id
-    
+
     async def distribute_task(
         self,
         capability: str,
-        parameters: Dict[str, Any],
+        parameters: dict[str, Any],
         priority: TaskPriority = TaskPriority.NORMAL,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
         timeout_seconds: int = 300,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Distribute task to appropriate agent.
-        
+
         Args:
             capability: Required capability
             parameters: Task parameters
             priority: Task priority
             tenant_id: Tenant context
             timeout_seconds: Task timeout
-            
+
         Returns:
             task_id: ID of scheduled task, or None if no agent available
         """
         # Route to agent
         agent_id = self.message_router.route_task(capability)
-        
+
         if not agent_id:
             logger.warning(f"No agent available for capability: {capability}")
             return None
-        
+
         # Create and schedule task
-        task_id = f"task-{datetime.now(timezone.utc).timestamp()}"
-        
+        task_id = f"task-{datetime.now(UTC).timestamp()}"
+
         task = ScheduledTask(
             priority=priority.value,
-            scheduled_time=datetime.now(timezone.utc),
+            scheduled_time=datetime.now(UTC),
             task_id=task_id,
             workflow_instance_id=task_id,
             capability=capability,
@@ -391,9 +393,9 @@ class OrchestrationController:
             parameters=parameters,
             timeout_seconds=timeout_seconds,
         )
-        
+
         await self.scheduler.schedule_task(task)
-        
+
         # Send task assignment via message bus
         await self.message_bus.publish(
             agent_id="orchestrator",
@@ -405,15 +407,15 @@ class OrchestrationController:
             },
             recipient_id=agent_id,
         )
-        
+
         return task_id
-    
-    async def get_workflow_status(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+
+    async def get_workflow_status(self, workflow_id: str) -> dict[str, Any] | None:
         """Get workflow status with orchestration context.
-        
+
         Args:
             workflow_id: Workflow identifier
-            
+
         Returns:
             Status dict with progress information
         """
@@ -421,17 +423,19 @@ class OrchestrationController:
         state = await self.state_manager.load_state(workflow_id)
         if not state:
             return None
-        
+
         # Get scheduler status
         scheduler_status = await self.scheduler.get_task_status(f"wf-{workflow_id}")
-        
+
         # Get metadata
         metadata = self._workflow_metadata.get(workflow_id, {})
-        
+
         return {
             "workflow_id": workflow_id,
-            "workflow_type": state.workflow_type.value if hasattr(state.workflow_type, 'value') else str(state.workflow_type),
-            "status": state.status.value if hasattr(state.status, 'value') else str(state.status),
+            "workflow_type": state.workflow_type.value
+            if hasattr(state.workflow_type, "value")
+            else str(state.workflow_type),
+            "status": state.status.value if hasattr(state.status, "value") else str(state.status),
             "current_node": state.current_node,
             "progress_percentage": self._calculate_progress(state),
             "started_at": state.started_at.isoformat() if state.started_at else None,
@@ -444,19 +448,19 @@ class OrchestrationController:
             "priority": metadata.get("priority"),
             "scheduler_status": scheduler_status.get("status") if scheduler_status else None,
         }
-    
+
     async def cancel_workflow(self, workflow_id: str) -> bool:
         """Cancel a workflow.
-        
+
         Args:
             workflow_id: Workflow to cancel
-            
+
         Returns:
             True if cancelled
         """
         # Cancel in scheduler
         cancelled = await self.scheduler.cancel_task(f"wf-{workflow_id}")
-        
+
         # Cancel active task
         if workflow_id in self._active_workflows:
             task = self._active_workflows[workflow_id]
@@ -466,36 +470,36 @@ class OrchestrationController:
                     await task
                 except asyncio.CancelledError:
                     pass
-        
+
         # Update state
         state = await self.state_manager.load_state(workflow_id)
         if state:
             state.status = WorkflowStatus.CANCELLED
-            state.completed_at = datetime.now(timezone.utc)
+            state.completed_at = datetime.now(UTC)
             await self.state_manager.save_state(workflow_id, state)
-        
+
         return cancelled
-    
+
     async def resume_workflow(
         self,
         workflow_id: str,
         user_id: str,
-        resume_data: Optional[Dict[str, Any]] = None,
+        resume_data: dict[str, Any] | None = None,
     ) -> AgentState:
         """Resume a workflow from its last checkpoint.
-        
+
         Reloads workflow state from checkpoint storage and continues execution
         from the last completed node. Supports human-in-the-loop workflows where
         execution pauses for user input/decisions.
-        
+
         Args:
             workflow_id: Workflow to resume
             user_id: User initiating resume
             resume_data: Optional user input/decision data to merge into state
-            
+
         Returns:
             Final or updated workflow state
-            
+
         Raises:
             WorkflowExecutionError: If workflow not found, completed, or resume fails
         """
@@ -503,81 +507,85 @@ class OrchestrationController:
         state = await self.state_manager.load_state(workflow_id)
         if not state:
             raise WorkflowExecutionError(f"No state found for workflow {workflow_id}")
-        
+
         # Check if workflow is in a resumable state
         # Only PAUSED or RUNNING workflows can be resumed
-        if state.status not in [WorkflowStatus.PAUSED, WorkflowStatus.RUNNING, WorkflowStatus.PENDING]:
+        if state.status not in [
+            WorkflowStatus.PAUSED,
+            WorkflowStatus.RUNNING,
+            WorkflowStatus.PENDING,
+        ]:
             raise WorkflowExecutionError(
                 f"Workflow {workflow_id} is {state.status.value} and cannot be resumed. "
                 f"Only PAUSED, RUNNING, or PENDING workflows can be resumed."
             )
-        
+
         # Validate workflow_id matches state
         if state.workflow_id != workflow_id:
             raise WorkflowExecutionError(
                 f"Workflow ID mismatch: requested {workflow_id} but state has {state.workflow_id}"
             )
-        
+
         # Merge resume data into state if provided
         # Store in output_data to avoid mutating original input_data
         if resume_data:
             state.output_data["resume_decision"] = resume_data
             state.output_data["resumed_by"] = user_id
-            state.output_data["resumed_at"] = datetime.now(timezone.utc).isoformat()
-        
+            state.output_data["resumed_at"] = datetime.now(UTC).isoformat()
+
         # Get workflow type from metadata
         metadata = self._workflow_metadata.get(workflow_id, {})
         workflow_type = metadata.get("workflow_type")
-        
+
         if not workflow_type:
             raise WorkflowExecutionError(f"No workflow type found for {workflow_id}")
-        
+
         # Re-create workflow with checkpoint saver
         workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
-        
+
         # Update metadata
-        metadata["resumed_at"] = datetime.now(timezone.utc).isoformat()
+        metadata["resumed_at"] = datetime.now(UTC).isoformat()
         metadata["resumed_by"] = user_id
-        
+
         # Resume execution - LangGraph will load from checkpoint via thread_id
         # The workflow continues from where it left off
         result = await workflow.run(state, thread_id=workflow_id)
-        
+
         return result
-    
+
     async def list_active_workflows(
         self,
-        tenant_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         """List active workflows.
-        
+
         Args:
             tenant_id: Filter by tenant
-            
+
         Returns:
             List of workflow status dicts
         """
         active = []
-        
+
         for workflow_id, metadata in self._workflow_metadata.items():
             if tenant_id and metadata.get("tenant_id") != tenant_id:
                 continue
-            
+
             status = await self.get_workflow_status(workflow_id)
             if status and status.get("status") in ["pending", "running", "retrying"]:
                 active.append(status)
-        
+
         return active
-    
-    def get_cluster_health(self) -> Dict[str, Any]:
+
+    def get_cluster_health(self) -> dict[str, Any]:
         """Get orchestration cluster health.
-        
+
         Returns:
             Health metrics
         """
         router_health = self.message_router.get_cluster_health()
         scheduler_stats = self.scheduler.get_stats()
-        
+
         return {
             "status": router_health.get("status", "unknown"),
             "registered_agents": len(self._registered_agents),
@@ -587,19 +595,20 @@ class OrchestrationController:
             "avg_load": router_health.get("avg_load", 0),
             "utilization": scheduler_stats.get("utilization", 0),
         }
-    
+
     def _create_agent_handler(
         self,
         agent: BaseAgent,
     ) -> Callable:
         """Create message handler for an agent.
-        
+
         Args:
             agent: Agent to handle messages
-            
+
         Returns:
             Handler function
         """
+
         async def handler(message):
             if message.message_type == MessageType.TASK_ASSIGNMENT:
                 payload = message.payload
@@ -611,10 +620,10 @@ class OrchestrationController:
                     "tenant_id": payload.get("tenant_id"),
                     "correlation_id": message.correlation_id,
                 }
-                
+
                 try:
                     result = await agent.run(task, context)
-                    
+
                     # Send result back
                     await self.message_bus.publish(
                         agent_id=agent.agent_id,
@@ -640,37 +649,37 @@ class OrchestrationController:
                         recipient_id=message.sender_id,
                         correlation_id=message.correlation_id,
                     )
-        
+
         return handler
-    
+
     async def _wait_for_workflow(self, workflow_id: str) -> AgentState:
         """Wait for workflow completion.
-        
+
         Args:
             workflow_id: Workflow to wait for
-            
+
         Returns:
             Final workflow state
         """
         # Poll until complete
         while True:
             state = await self.state_manager.load_state(workflow_id)
-            
+
             if state and state.status in [
                 WorkflowStatus.COMPLETED,
                 WorkflowStatus.FAILED,
                 WorkflowStatus.CANCELLED,
             ]:
                 return state
-            
+
             await asyncio.sleep(0.5)
-    
+
     def _calculate_progress(self, state: AgentState) -> int:
         """Calculate workflow progress percentage.
-        
+
         Args:
             state: Current workflow state
-            
+
         Returns:
             Progress percentage (0-100)
         """
@@ -682,20 +691,20 @@ class OrchestrationController:
             WorkflowStatus.FAILED: 100,
             WorkflowStatus.CANCELLED: 100,
         }
-        
+
         return status_progress.get(state.status, 0)
-    
+
     async def _on_task_complete(self, task: ScheduledTask) -> None:
         """Callback for task completion.
-        
+
         Args:
             task: Completed task
         """
         logger.info(f"Task {task.task_id} completed")
-    
+
     async def _on_task_fail(self, task: ScheduledTask, exception: Exception) -> None:
         """Callback for task failure.
-        
+
         Args:
             task: Failed task
             exception: Exception that caused failure

@@ -1,7 +1,7 @@
 """Entity similarity analysis using graph and vector methods."""
 
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
@@ -24,9 +24,9 @@ class SimilarityAnalyzer:
 
     def __init__(
         self,
-        driver: Optional[AsyncDriver] = None,
-        vector_store: Optional[VectorStore] = None,
-        settings: Optional[Settings] = None,
+        driver: AsyncDriver | None = None,
+        vector_store: VectorStore | None = None,
+        settings: Settings | None = None,
     ):
         """Initialize similarity analyzer.
 
@@ -61,7 +61,7 @@ class SimilarityAnalyzer:
         entity_id: str,
         method: str = "combined",
         top_k: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Find similar entities using specified method.
 
         Args:
@@ -90,7 +90,7 @@ class SimilarityAnalyzer:
         entity_id: str,
         target_type: str,
         top_k: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Find similar entities of a specific type.
 
         Useful for finding similar capabilities, personas, etc.
@@ -106,8 +106,7 @@ class SimilarityAnalyzer:
                 )
                 # Filter by target type
                 vector_results = [
-                    r for r in vector_results
-                    if r.get("entity_type") == target_type
+                    r for r in vector_results if r.get("entity_type") == target_type
                 ][:top_k]
 
             # Get graph-based similar entities
@@ -135,14 +134,16 @@ class SimilarityAnalyzer:
 
             graph_results = []
             async for record in graph_result:
-                graph_results.append({
-                    "id": record["id"],
-                    "name": record["name"],
-                    "type": record["type"],
-                    "score": record["score"],
-                    "shared_entities": record["shared"],
-                    "method": "graph_common_neighbors",
-                })
+                graph_results.append(
+                    {
+                        "id": record["id"],
+                        "name": record["name"],
+                        "type": record["type"],
+                        "score": record["score"],
+                        "shared_entities": record["shared"],
+                        "method": "graph_common_neighbors",
+                    }
+                )
 
             # Combine and deduplicate
             seen_ids = set()
@@ -151,13 +152,15 @@ class SimilarityAnalyzer:
             for r in vector_results:
                 if r["id"] not in seen_ids:
                     seen_ids.add(r["id"])
-                    combined.append({
-                        "id": r["id"],
-                        "name": r.get("text", "")[:100],
-                        "type": target_type,
-                        "score": r["score"],
-                        "method": "vector",
-                    })
+                    combined.append(
+                        {
+                            "id": r["id"],
+                            "name": r.get("text", "")[:100],
+                            "type": target_type,
+                            "score": r["score"],
+                            "method": "vector",
+                        }
+                    )
 
             for r in graph_results:
                 if r["id"] not in seen_ids:
@@ -221,7 +224,11 @@ class SimilarityAnalyzer:
 
             if common_record:
                 common = common_record["common_count"]
-                total = common_record["e1_neighbors"] + common_record["e2_neighbors"] - common
+                total = (
+                    common_record["e1_neighbors"]
+                    + common_record["e2_neighbors"]
+                    - common
+                )
                 jaccard = common / total if total > 0 else 0.0
             else:
                 jaccard = 0.0
@@ -247,15 +254,23 @@ class SimilarityAnalyzer:
             }
 
             return {
-                "entity1": {"id": entity_id1, "name": e1.get("name", "Unknown"), "type": record["type1"]},
-                "entity2": {"id": entity_id2, "name": e2.get("name", "Unknown"), "type": record["type2"]},
+                "entity1": {
+                    "id": entity_id1,
+                    "name": e1.get("name", "Unknown"),
+                    "type": record["type1"],
+                },
+                "entity2": {
+                    "id": entity_id2,
+                    "name": e2.get("name", "Unknown"),
+                    "type": record["type2"],
+                },
                 "same_type": record["type1"] == record["type2"],
                 "jaccard_similarity": jaccard,
                 "common_neighbors": common,
                 "path_info": path_info,
             }
 
-    async def _jaccard_similarity(self, entity_id: str, top_k: int) -> List[Dict]:
+    async def _jaccard_similarity(self, entity_id: str, top_k: int) -> list[dict]:
         """Calculate Jaccard similarity based on common neighbors."""
         driver = await self._get_driver()
 
@@ -302,7 +317,7 @@ class SimilarityAnalyzer:
                 async for r in result
             ]
 
-    async def _adamic_adar_similarity(self, entity_id: str, top_k: int) -> List[Dict]:
+    async def _adamic_adar_similarity(self, entity_id: str, top_k: int) -> list[dict]:
         """Calculate Adamic-Adar similarity (weighted common neighbors)."""
         driver = await self._get_driver()
 
@@ -339,7 +354,7 @@ class SimilarityAnalyzer:
                 async for r in result
             ]
 
-    async def _vector_similarity(self, entity_id: str, top_k: int) -> List[Dict]:
+    async def _vector_similarity(self, entity_id: str, top_k: int) -> list[dict]:
         """Calculate vector-based similarity."""
         if not self.vector_store:
             return []
@@ -357,7 +372,7 @@ class SimilarityAnalyzer:
             for r in results
         ]
 
-    async def _path_similarity(self, entity_id: str, top_k: int) -> List[Dict]:
+    async def _path_similarity(self, entity_id: str, top_k: int) -> list[dict]:
         """Calculate similarity based on common paths in value tree."""
         driver = await self._get_driver()
 
@@ -397,15 +412,28 @@ class SimilarityAnalyzer:
                 async for r in result
             ]
 
-    async def _combined_similarity(self, entity_id: str, top_k: int) -> List[Dict]:
+    async def _combined_similarity(self, entity_id: str, top_k: int) -> list[dict]:
         """Combine multiple similarity methods."""
         # Get scores from different methods
-        jaccard_scores = {r["id"]: r["score"] for r in await self._jaccard_similarity(entity_id, top_k * 2)}
-        vector_scores = {r["id"]: r["score"] for r in await self._vector_similarity(entity_id, top_k * 2)}
-        path_scores = {r["id"]: r["score"] for r in await self._path_similarity(entity_id, top_k * 2)}
+        jaccard_scores = {
+            r["id"]: r["score"]
+            for r in await self._jaccard_similarity(entity_id, top_k * 2)
+        }
+        vector_scores = {
+            r["id"]: r["score"]
+            for r in await self._vector_similarity(entity_id, top_k * 2)
+        }
+        path_scores = {
+            r["id"]: r["score"]
+            for r in await self._path_similarity(entity_id, top_k * 2)
+        }
 
         # Combine all unique entity IDs
-        all_ids = set(jaccard_scores.keys()) | set(vector_scores.keys()) | set(path_scores.keys())
+        all_ids = (
+            set(jaccard_scores.keys())
+            | set(vector_scores.keys())
+            | set(path_scores.keys())
+        )
 
         # Calculate weighted combined score
         combined = []
@@ -418,16 +446,18 @@ class SimilarityAnalyzer:
             combined_score = 0.4 * j_score + 0.4 * v_score + 0.2 * p_score
 
             if combined_score > 0:
-                combined.append({
-                    "id": entity_id,
-                    "score": combined_score,
-                    "component_scores": {
-                        "jaccard": j_score,
-                        "vector": v_score,
-                        "path": p_score,
-                    },
-                    "method": "combined",
-                })
+                combined.append(
+                    {
+                        "id": entity_id,
+                        "score": combined_score,
+                        "component_scores": {
+                            "jaccard": j_score,
+                            "vector": v_score,
+                            "path": p_score,
+                        },
+                        "method": "combined",
+                    }
+                )
 
         # Sort and get entity details
         combined.sort(key=lambda x: x["score"], reverse=True)

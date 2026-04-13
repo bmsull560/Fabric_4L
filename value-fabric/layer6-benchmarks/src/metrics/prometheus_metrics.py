@@ -1,6 +1,5 @@
 """Prometheus metrics collection for Layer 6 Benchmark Service."""
 
-import time
 from typing import Dict, List, Optional, Any
 
 from prometheus_client import Counter, Histogram, Gauge, Info, CollectorRegistry, generate_latest
@@ -45,7 +44,7 @@ class PrometheusMetrics:
             f"{prefix}http_requests_total",
             "Total HTTP requests",
             ["method", "endpoint", "status_code"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["request_duration"] = Histogram(
@@ -53,7 +52,7 @@ class PrometheusMetrics:
             "HTTP request duration",
             ["method", "endpoint"],
             buckets=self.config.default_buckets,
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Benchmark-specific metrics
@@ -61,27 +60,27 @@ class PrometheusMetrics:
             f"{prefix}comparisons_total",
             "Total benchmark comparisons performed",
             ["dataset_id", "industry"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["validations_total"] = Counter(
             f"{prefix}validations_total",
             "Total benchmark validations performed",
             ["dataset_id", "result"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["datasets_loaded"] = Gauge(
             f"{prefix}datasets_loaded",
             "Number of benchmark datasets currently loaded",
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         self._metrics["comparison_duration"] = Histogram(
             f"{prefix}comparison_duration_seconds",
             "Comparison operation duration",
             buckets=self.config.default_buckets,
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Active connections
@@ -89,7 +88,7 @@ class PrometheusMetrics:
             f"{prefix}active_connections",
             "Number of active connections",
             ["connection_type"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Health status gauge (for alerting)
@@ -97,7 +96,7 @@ class PrometheusMetrics:
             f"{prefix}health_status",
             "Health status (1=healthy, 0=unhealthy)",
             ["component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
         # Initialize with healthy status
         self._metrics["health_status"].labels(component="api").set(1)
@@ -107,19 +106,14 @@ class PrometheusMetrics:
             f"{prefix}errors_total",
             "Total errors",
             ["error_type", "component"],
-            registry=self.config.registry
+            registry=self.config.registry,
         )
 
         # Build info
         self._metrics["build_info"] = Info(
-            f"{prefix}build_info",
-            "Build information",
-            registry=self.config.registry
+            f"{prefix}build_info", "Build information", registry=self.config.registry
         )
-        self._metrics["build_info"].info({
-            "version": "1.0.0",
-            "service": "layer6-benchmarks"
-        })
+        self._metrics["build_info"].info({"version": "1.0.0", "service": "layer6-benchmarks"})
 
     def increment_requests_total(self, method: str, endpoint: str, status_code: int) -> None:
         if self.config.enabled:
@@ -129,9 +123,9 @@ class PrometheusMetrics:
 
     def observe_request_duration(self, duration: float, method: str, endpoint: str) -> None:
         if self.config.enabled:
-            self._metrics["request_duration"].labels(
-                method=method, endpoint=endpoint
-            ).observe(duration)
+            self._metrics["request_duration"].labels(method=method, endpoint=endpoint).observe(
+                duration
+            )
 
     def increment_comparisons(self, dataset_id: str, industry: str) -> None:
         if self.config.enabled:
@@ -141,9 +135,7 @@ class PrometheusMetrics:
 
     def increment_validations(self, dataset_id: str, result: str) -> None:
         if self.config.enabled:
-            self._metrics["validations_total"].labels(
-                dataset_id=dataset_id, result=result
-            ).inc()
+            self._metrics["validations_total"].labels(dataset_id=dataset_id, result=result).inc()
 
     def set_datasets_loaded(self, count: int) -> None:
         if self.config.enabled:
@@ -159,9 +151,7 @@ class PrometheusMetrics:
 
     def increment_errors(self, error_type: str, component: str) -> None:
         if self.config.enabled:
-            self._metrics["errors_total"].labels(
-                error_type=error_type, component=component
-            ).inc()
+            self._metrics["errors_total"].labels(error_type=error_type, component=component).inc()
 
     def get_metrics(self) -> str:
         """Get Prometheus metrics output."""

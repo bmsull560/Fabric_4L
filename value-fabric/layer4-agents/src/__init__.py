@@ -2,7 +2,7 @@
 
 LangGraph-powered workflow orchestration layer providing:
 - ROI Calculator with formula evaluation
-- Whitespace Analysis for gap identification  
+- Whitespace Analysis for gap identification
 - Business Case Generator with document assembly
 - 24+ tools for knowledge, calculation, CRM, and generation
 """

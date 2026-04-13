@@ -7,8 +7,8 @@ adding tenant_id scoping, issuing user, and HMAC-SHA256 key hashing.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -40,7 +40,7 @@ class APIKey(Base):
         comment="Owning tenant",
     )
 
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -74,7 +74,7 @@ class APIKey(Base):
     )
 
     # Optional per-key permission overrides (stored as list of permission strings)
-    permissions: Mapped[Optional[List[str]]] = mapped_column(
+    permissions: Mapped[list[str] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment="Explicit permission overrides (null → inherit from role)",
@@ -89,26 +89,26 @@ class APIKey(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
-    expires_at: Mapped[Optional[datetime]] = mapped_column(
+    expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+    last_used_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    rate_limit_per_minute: Mapped[Optional[int]] = mapped_column(
+    rate_limit_per_minute: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
         comment="Per-key override (null → inherit from tenant settings)",
     )
 
-    metadata_: Mapped[Optional[Dict[str, Any]]] = mapped_column(
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata",
         JSONB,
         nullable=True,
@@ -124,7 +124,7 @@ class APIKey(Base):
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def __repr__(self) -> str:
         return f"<APIKey(key_id={self.key_id!r}, tenant={self.tenant_id}, role={self.role!r})>"

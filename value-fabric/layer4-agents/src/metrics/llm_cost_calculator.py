@@ -5,11 +5,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Dict, Tuple
 
 logger = logging.getLogger(__name__)
 
-COST_PER_1K_TOKENS: Dict[Tuple[str, str], Dict[str, float]] = {
+COST_PER_1K_TOKENS: dict[tuple[str, str], dict[str, float]] = {
     ("openai", "gpt-4o"): {"prompt": 0.005, "completion": 0.015},
     ("openai", "gpt-4o-mini"): {"prompt": 0.00015, "completion": 0.0006},
     ("anthropic", "claude-3-opus"): {"prompt": 0.015, "completion": 0.075},
@@ -22,7 +21,7 @@ class LLMCostCalculator:
     """Calculate LLM inference cost in USD based on token usage."""
 
     def __init__(self) -> None:
-        self._pricing: Dict[Tuple[str, str], Dict[str, float]] = dict(COST_PER_1K_TOKENS)
+        self._pricing: dict[tuple[str, str], dict[str, float]] = dict(COST_PER_1K_TOKENS)
         self._load_override()
 
     def _load_override(self) -> None:
@@ -31,7 +30,7 @@ class LLMCostCalculator:
         if not path:
             return
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             for key, rates in data.items():
                 parts = key.split("/", 1)

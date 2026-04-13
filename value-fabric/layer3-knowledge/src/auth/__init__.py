@@ -1,20 +1,20 @@
 """Authentication package initialization."""
 
 from .api_keys import (
-    Permission,
-    Role,
+    ROLE_PERMISSIONS,
     APIKey,
     APIKeyCreateRequest,
-    APIKeyResponse,
     APIKeyCreateResponse,
+    APIKeyManager,
+    APIKeyResponse,
     APIKeyUpdateRequest,
     AuthenticationResult,
-    APIKeyManager,
     AuthorizationChecker,
+    Permission,
+    Role,
     get_api_key_manager,
     get_authorization_checker,
     initialize_authentication,
-    ROLE_PERMISSIONS,
 )
 
 __all__ = [

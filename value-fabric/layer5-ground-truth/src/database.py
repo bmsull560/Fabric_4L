@@ -58,6 +58,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 # FastAPI dependency
 # ---------------------------------------------------------------------------
 
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session.
@@ -82,6 +83,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 # Context manager for non-FastAPI usage (services, background tasks)
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for use outside of FastAPI request lifecycle."""
@@ -99,9 +101,11 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 # Lifecycle helpers (called from FastAPI lifespan)
 # ---------------------------------------------------------------------------
 
+
 async def init_db() -> None:
     """Create all tables if they do not exist (dev/test convenience)."""
     from .models import Base
+
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

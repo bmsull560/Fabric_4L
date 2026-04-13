@@ -1,22 +1,23 @@
 """Document export tool for generating PDFs from business cases."""
 
 import logging
-from typing import Any, Dict, Optional, List
-from io import BytesIO
 from datetime import datetime
+from io import BytesIO
+from typing import Any
 
 from jinja2 import Template
 
 # Optional weasyprint import - allows tests to run without it
 try:
     from weasyprint import HTML
+
     WEASYPRINT_AVAILABLE = True
 except (ImportError, OSError):
     # OSError: missing GTK system libraries on Windows
     WEASYPRINT_AVAILABLE = False
     HTML = None  # type: ignore
 
-from ..models.tool_schemas import ToolCategory, ExportDocumentInput, ExportDocumentOutput
+from ..models.tool_schemas import ExportDocumentInput, ExportDocumentOutput, ToolCategory
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -309,9 +310,9 @@ class DocumentExportTool(BaseTool):
 
     async def _generate_business_case_pdf(
         self,
-        data: Dict[str, Any],
-        custom_template: Optional[str] = None,
-        branding: Optional[Dict[str, str]] = None,
+        data: dict[str, Any],
+        custom_template: str | None = None,
+        branding: dict[str, str] | None = None,
     ) -> ExportDocumentOutput:
         """Generate business case PDF."""
         template_str = custom_template or BUSINESS_CASE_TEMPLATE
@@ -323,9 +324,11 @@ class DocumentExportTool(BaseTool):
             sum(self._parse_currency(uc.get("roi", "$0")) for uc in use_cases)
         )
 
-        avg_confidence = int(
-            sum(uc.get("confidence", 0) for uc in use_cases) / len(use_cases)
-        ) if use_cases else 0
+        avg_confidence = (
+            int(sum(uc.get("confidence", 0) for uc in use_cases) / len(use_cases))
+            if use_cases
+            else 0
+        )
 
         avg_payback = self._calculate_avg_payback(use_cases)
 
@@ -348,7 +351,7 @@ class DocumentExportTool(BaseTool):
                 "methodology",
                 "Value estimation based on industry benchmarks and organizational data. "
                 "ROI calculations include direct cost savings, efficiency gains, and risk mitigation. "
-                "Confidence scores reflect data quality and extraction certainty."
+                "Confidence scores reflect data quality and extraction certainty.",
             ),
             year=datetime.now().year,
         )
@@ -357,7 +360,7 @@ class DocumentExportTool(BaseTool):
         if not WEASYPRINT_AVAILABLE:
             logger.warning("weasyprint not available, returning HTML content instead of PDF")
             # Return HTML as bytes for testing purposes
-            html_bytes = html_content.encode('utf-8')
+            html_bytes = html_content.encode("utf-8")
             safe_title = "".join(
                 c if c.isalnum() or c in ("-", "_") else "_"
                 for c in data.get("title", "business_case")
@@ -377,8 +380,7 @@ class DocumentExportTool(BaseTool):
 
         # Generate filename
         safe_title = "".join(
-            c if c.isalnum() or c in ("-", "_") else "_"
-            for c in data.get("title", "business_case")
+            c if c.isalnum() or c in ("-", "_") else "_" for c in data.get("title", "business_case")
         ).lower()
         filename = f"{safe_title}_{datetime.now().strftime('%Y%m%d')}.pdf"
 
@@ -393,47 +395,47 @@ class DocumentExportTool(BaseTool):
     def _format_currency(self, amount: float) -> str:
         """Format amount as currency string."""
         if amount >= 1_000_000:
-            return f"${amount/1_000_000:.2f}M"
+            return f"${amount / 1_000_000:.2f}M"
         elif amount >= 1_000:
-            return f"${amount/1_000:.1f}K"
+            return f"${amount / 1_000:.1f}K"
         else:
             return f"${amount:,.0f}"
 
     def _parse_currency(self, value: str) -> float:
         """Parse currency string to float.
-        
+
         Supports formats: $1.5M, $500K, $1,234.56, 1000
         Returns 0.0 for invalid/empty input.
         """
         if not value or not isinstance(value, str):
             return 0.0
-        
+
         # Remove $ and commas
         cleaned = value.replace("$", "").replace(",", "").strip()
         if not cleaned:
             return 0.0
-        
+
         # Handle M/Million suffix
         if cleaned.endswith("M") and len(cleaned) > 1:
             try:
                 return float(cleaned[:-1]) * 1_000_000
             except ValueError:
                 return 0.0
-        
-        # Handle K/Thousand suffix  
+
+        # Handle K/Thousand suffix
         if cleaned.endswith("K") and len(cleaned) > 1:
             try:
                 return float(cleaned[:-1]) * 1_000
             except ValueError:
                 return 0.0
-        
+
         # Plain number
         try:
             return float(cleaned)
         except ValueError:
             return 0.0
 
-    def _calculate_avg_payback(self, use_cases: List[Dict[str, Any]]) -> str:
+    def _calculate_avg_payback(self, use_cases: list[dict[str, Any]]) -> str:
         """Calculate average payback period."""
         months = []
         for uc in use_cases:
@@ -453,14 +455,14 @@ class DocumentExportTool(BaseTool):
 class PDFGenerator:
     """Standalone PDF generator for non-tool usage."""
 
-    def __init__(self, template_dir: Optional[str] = None):
+    def __init__(self, template_dir: str | None = None):
         self.template_dir = template_dir
         self.logger = logging.getLogger(__name__)
 
     async def generate_business_case_pdf(
         self,
-        data: Dict[str, Any],
-        output_path: Optional[str] = None,
+        data: dict[str, Any],
+        output_path: str | None = None,
     ) -> bytes:
         """Generate PDF from business case data.
 

@@ -8,12 +8,18 @@ This module implements the agent framework defined in the backend logic spec:
 - ProvenanceTrackingAgent: PROV-O lineage tracking
 """
 
-from .value_tree_projection import ValueTreeProjectionAgent
-from .whitespace_analysis import WhitespaceAnalysisAgent
-from .roi_calculation import ROICalculationAgent
 from .narrative_synthesis import NarrativeSynthesisAgent
 from .provenance_tracking import ProvenanceTrackingAgent
-from .scenario_engine import scenario_engine, VariableAdjustment, ScenarioResult, SavedScenario, ScenarioEngine
+from .roi_calculation import ROICalculationAgent
+from .scenario_engine import (
+    SavedScenario,
+    ScenarioEngine,
+    ScenarioResult,
+    VariableAdjustment,
+    scenario_engine,
+)
+from .value_tree_projection import ValueTreeProjectionAgent
+from .whitespace_analysis import WhitespaceAnalysisAgent
 
 __all__ = [
     "ValueTreeProjectionAgent",

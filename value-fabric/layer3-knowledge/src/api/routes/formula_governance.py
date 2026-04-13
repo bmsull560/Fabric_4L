@@ -4,18 +4,18 @@ Provides endpoints for formula versioning, lifecycle, and governance.
 """
 
 import uuid
-from typing import List, Optional, Dict, Any, Literal
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
-
-from ...db.driver import get_driver
 from neo4j import AsyncDriver
-from ...logging_config import get_logger
-from ._utils import semver_key, is_valid_semver
-from ...auth.middleware import require_admin_role
+from pydantic import BaseModel, Field
+
 from ...auth.api_keys import APIKey
+from ...auth.middleware import require_admin_role
+from ...db.driver import get_driver
+from ...logging_config import get_logger
+from ._utils import semver_key
 
 logger = get_logger(__name__)
 
@@ -32,57 +32,75 @@ router = APIRouter()
 
 # Pydantic Models
 
+
 class FormulaVersionResponse(BaseModel):
     """Formula version response."""
+
     version: str
     formula_id: str
     status: str
     created_at: str
     created_by: str
     change_summary: str
-    previous_version: Optional[str]
+    previous_version: str | None
 
 
 class FormulaGovernanceResponse(BaseModel):
     """Formula governance metadata response."""
+
     formula_id: str
     current_version: str
     status: str
-    owner: Optional[str]
-    department: Optional[str]
+    owner: str | None
+    department: str | None
     review_cycle_days: int
-    approved_by: Optional[str]
-    approved_at: Optional[str]
-    last_reviewed_at: Optional[str]
-    next_review_at: Optional[str]
-    versions: List[FormulaVersionResponse]
+    approved_by: str | None
+    approved_at: str | None
+    last_reviewed_at: str | None
+    next_review_at: str | None
+    versions: list[FormulaVersionResponse]
 
 
-VALID_FORMULA_STATUSES = [STATUS_DRAFT, STATUS_UNDER_REVIEW, STATUS_APPROVED, STATUS_ACTIVE, STATUS_DEPRECATED, STATUS_RETIRED]
+VALID_FORMULA_STATUSES = [
+    STATUS_DRAFT,
+    STATUS_UNDER_REVIEW,
+    STATUS_APPROVED,
+    STATUS_ACTIVE,
+    STATUS_DEPRECATED,
+    STATUS_RETIRED,
+]
 
 
 class CreateVersionRequest(BaseModel):
     """Request to create new formula version."""
-    version: str = Field(..., pattern=r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$', description="Semver version (e.g., 1.2.3)")
+
+    version: str = Field(
+        ...,
+        pattern=r"^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$",
+        description="Semver version (e.g., 1.2.3)",
+    )
     change_summary: str
     created_by: str
 
 
 class SubmitForReviewRequest(BaseModel):
     """Request to submit formula for review."""
+
     version: str
     submitted_by: str
 
 
 class ApproveRequest(BaseModel):
     """Request to approve formula."""
+
     version: str
     approved_by: str
-    comments: Optional[str] = None
+    comments: str | None = None
 
 
 class RejectRequest(BaseModel):
     """Request to reject formula."""
+
     version: str
     rejected_by: str
     reason: str
@@ -90,32 +108,36 @@ class RejectRequest(BaseModel):
 
 class ActivateRequest(BaseModel):
     """Request to activate formula version."""
+
     version: str
     requested_by: str
     justification: str
-    effective_date: Optional[datetime] = None
+    effective_date: datetime | None = None
 
 
 class DeprecateRequest(BaseModel):
     """Request to deprecate formula."""
+
     reason: str
     requested_by: str
     deprecation_date: datetime
-    replacement_formula_id: Optional[str] = None
+    replacement_formula_id: str | None = None
 
 
 class TransitionResponse(BaseModel):
     """Governance transition result."""
+
     success: bool
     formula_id: str
     old_status: str
     new_status: str
-    error_message: Optional[str]
+    error_message: str | None
     requires_approval: bool = False
 
 
 class DependencyResponse(BaseModel):
     """Formula dependency response."""
+
     source_formula_id: str
     target_formula_id: str
     dependency_type: str
@@ -123,9 +145,10 @@ class DependencyResponse(BaseModel):
 
 class ValidationResponse(BaseModel):
     """Validation result for activation."""
+
     can_activate: bool
-    errors: List[str]
-    warnings: List[str]
+    errors: list[str]
+    warnings: list[str]
 
 
 # API Endpoints
@@ -133,6 +156,7 @@ class ValidationResponse(BaseModel):
 
 class ApprovalQueueItem(BaseModel):
     """Pending approval queue entry."""
+
     id: str
     formula_id: str
     formula_name: str
@@ -143,7 +167,7 @@ class ApprovalQueueItem(BaseModel):
     status: Literal["pending", "approved", "rejected"] = "pending"
 
 
-@router.get("/formulas/approvals/pending", response_model=List[ApprovalQueueItem])
+@router.get("/formulas/approvals/pending", response_model=list[ApprovalQueueItem])
 async def list_pending_approvals(
     driver: AsyncDriver = Depends(get_driver),
 ):
@@ -170,14 +194,21 @@ async def list_pending_approvals(
                 formula_name=r["f"].get("name", ""),
                 submitted_by=r["f"].get("submittedBy", ""),
                 submitted_at=r["f"].get("submittedAt", ""),
-                change_summary=r["latest_version"].get("changeSummary", "") if r.get("latest_version") else "",
-                previous_version=r["latest_version"].get("previousVersion", "") if r.get("latest_version") else "",
+                change_summary=r["latest_version"].get("changeSummary", "")
+                if r.get("latest_version")
+                else "",
+                previous_version=r["latest_version"].get("previousVersion", "")
+                if r.get("latest_version")
+                else "",
                 status="pending",
             )
             for r in records
         ]
 
-@router.get("/formulas/{formula_id}/versions", response_model=List[FormulaVersionResponse])
+
+@router.get(
+    "/formulas/{formula_id}/versions", response_model=list[FormulaVersionResponse]
+)
 async def list_formula_versions(
     formula_id: str,
     include_retired: bool = Query(False, description="Include retired versions"),
@@ -190,7 +221,7 @@ async def list_formula_versions(
     RETURN fv
     ORDER BY fv.createdAt DESC
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -198,13 +229,13 @@ async def list_formula_versions(
             include_retired=include_retired,
         )
         records = await result.data()
-        
+
         return [
             FormulaVersionResponse(
                 version=r["fv"]["version"],
                 formula_id=formula_id,
                 status=r["fv"].get("status", "draft"),
-                created_at=r["fv"].get("createdAt", datetime.now(timezone.utc).isoformat()),
+                created_at=r["fv"].get("createdAt", datetime.now(UTC).isoformat()),
                 created_by=r["fv"].get("createdBy", "system"),
                 change_summary=r["fv"].get("changeSummary", ""),
                 previous_version=r["fv"].get("previousVersion"),
@@ -213,7 +244,9 @@ async def list_formula_versions(
         ]
 
 
-@router.get("/formulas/{formula_id}/governance", response_model=FormulaGovernanceResponse)
+@router.get(
+    "/formulas/{formula_id}/governance", response_model=FormulaGovernanceResponse
+)
 async def get_formula_governance(
     formula_id: str,
     driver: AsyncDriver = Depends(get_driver),
@@ -225,23 +258,23 @@ async def get_formula_governance(
     RETURN f,
            collect(DISTINCT fv) as versions
     """
-    
+
     async with driver.session() as session:
         result = await session.run(query, formula_id=formula_id)
         record = await result.single()
-        
+
         if not record or not record["f"]:
             raise HTTPException(status_code=404, detail="Formula not found")
-        
+
         f = record["f"]
         versions_data = record["versions"]
-        
+
         versions = [
             FormulaVersionResponse(
                 version=v["version"],
                 formula_id=formula_id,
                 status=v.get("status", "draft"),
-                created_at=v.get("createdAt", datetime.now(timezone.utc).isoformat()),
+                created_at=v.get("createdAt", datetime.now(UTC).isoformat()),
                 created_by=v.get("createdBy", "system"),
                 change_summary=v.get("changeSummary", ""),
                 previous_version=v.get("previousVersion"),
@@ -249,10 +282,10 @@ async def get_formula_governance(
             for v in versions_data
             if v
         ]
-        
+
         # Sort by semver (descending) using shared utility
         versions.sort(key=lambda v: semver_key(v.version), reverse=True)
-        
+
         return FormulaGovernanceResponse(
             formula_id=formula_id,
             current_version=f.get("version", "1.0.0"),
@@ -268,7 +301,11 @@ async def get_formula_governance(
         )
 
 
-@router.post("/formulas/{formula_id}/versions", response_model=FormulaVersionResponse, status_code=201)
+@router.post(
+    "/formulas/{formula_id}/versions",
+    response_model=FormulaVersionResponse,
+    status_code=201,
+)
 async def create_formula_version(
     formula_id: str,
     request: CreateVersionRequest,
@@ -281,10 +318,10 @@ async def create_formula_version(
         result = await session.run(check_query, formula_id=formula_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Formula not found")
-    
-    now = datetime.now(timezone.utc).isoformat()
+
+    now = datetime.now(UTC).isoformat()
     version_id = str(uuid.uuid4())
-    
+
     # Get current version as previous
     prev_query = """
     MATCH (f:Formula {id: $formula_id})
@@ -294,7 +331,7 @@ async def create_formula_version(
         result = await session.run(prev_query, formula_id=formula_id)
         record = await result.single()
         previous_version = record["current_version"] if record else None
-    
+
     # Create version
     query = """
     MATCH (f:Formula {id: $formula_id})
@@ -314,7 +351,7 @@ async def create_formula_version(
         f.updatedAt = $created_at
     RETURN fv
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -327,12 +364,12 @@ async def create_formula_version(
             previous_version=previous_version,
         )
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=500, detail="Failed to create version")
-        
+
         fv = record["fv"]
-        
+
         return FormulaVersionResponse(
             version=fv["version"],
             formula_id=formula_id,
@@ -356,16 +393,16 @@ async def submit_for_review(
     MATCH (f:Formula {id: $formula_id})
     RETURN f.status as status
     """
-    
+
     async with driver.session() as session:
         result = await session.run(check_query, formula_id=formula_id)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Formula not found")
-        
+
         current_status = record["status"] or "draft"
-        
+
         if current_status != "draft":
             return TransitionResponse(
                 success=False,
@@ -374,9 +411,9 @@ async def submit_for_review(
                 new_status=current_status,
                 error_message=f"Formula must be in draft status to submit for review, currently {current_status}",
             )
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
+
+    now = datetime.now(UTC).isoformat()
+
     query = """
     MATCH (f:Formula {id: $formula_id})
     MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
@@ -386,7 +423,7 @@ async def submit_for_review(
         fv.status = 'under_review'
     RETURN f
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -396,7 +433,7 @@ async def submit_for_review(
             submitted_by=request.submitted_by,
         )
         record = await result.single()
-        
+
         if not record:
             return TransitionResponse(
                 success=False,
@@ -405,7 +442,7 @@ async def submit_for_review(
                 new_status="draft",
                 error_message="Failed to submit for review",
             )
-        
+
         return TransitionResponse(
             success=True,
             formula_id=formula_id,
@@ -422,8 +459,8 @@ async def approve_formula(
     api_key: APIKey = Depends(require_admin_role),
 ):
     """Approve formula (admin only)."""
-    now = datetime.now(timezone.utc).isoformat()
-    
+    now = datetime.now(UTC).isoformat()
+
     query = """
     MATCH (f:Formula {id: $formula_id})
     MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
@@ -434,7 +471,7 @@ async def approve_formula(
         fv.status = 'approved'
     RETURN f
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -445,10 +482,10 @@ async def approve_formula(
             comments=request.comments,
         )
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Formula or version not found")
-        
+
         return TransitionResponse(
             success=True,
             formula_id=formula_id,
@@ -464,24 +501,24 @@ async def activate_formula(
     driver: AsyncDriver = Depends(get_driver),
 ):
     """Activate a formula version."""
-    now = datetime.now(timezone.utc).isoformat()
-    effective_date = (request.effective_date or datetime.now(timezone.utc)).isoformat()
-    
+    now = datetime.now(UTC).isoformat()
+    effective_date = (request.effective_date or datetime.now(UTC)).isoformat()
+
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})
     RETURN f.status as status
     """
-    
+
     async with driver.session() as session:
         result = await session.run(check_query, formula_id=formula_id)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Formula not found")
-        
+
         old_status = record["status"] or "draft"
-        
+
         if old_status == "active":
             return TransitionResponse(
                 success=False,
@@ -490,7 +527,7 @@ async def activate_formula(
                 new_status=old_status,
                 error_message="Formula is already active",
             )
-    
+
     # Perform activation
     query = """
     MATCH (f:Formula {id: $formula_id})
@@ -503,7 +540,7 @@ async def activate_formula(
         fv.status = 'active'
     RETURN f
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -515,10 +552,10 @@ async def activate_formula(
             justification=request.justification,
         )
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=500, detail="Failed to activate formula")
-        
+
         return TransitionResponse(
             success=True,
             formula_id=formula_id,
@@ -539,16 +576,16 @@ async def deprecate_formula(
     MATCH (f:Formula {id: $formula_id})
     RETURN f.status as status
     """
-    
+
     async with driver.session() as session:
         result = await session.run(check_query, formula_id=formula_id)
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=404, detail="Formula not found")
-        
+
         old_status = record["status"] or "draft"
-        
+
         if old_status in ["deprecated", "retired"]:
             return TransitionResponse(
                 success=False,
@@ -557,7 +594,7 @@ async def deprecate_formula(
                 new_status=old_status,
                 error_message=f"Formula is already {old_status}",
             )
-    
+
     query = """
     MATCH (f:Formula {id: $formula_id})
     SET f.status = 'deprecated',
@@ -567,7 +604,7 @@ async def deprecate_formula(
         f.replacementFormulaId = $replacement_id
     RETURN f
     """
-    
+
     async with driver.session() as session:
         result = await session.run(
             query,
@@ -578,10 +615,10 @@ async def deprecate_formula(
             replacement_id=request.replacement_formula_id,
         )
         record = await result.single()
-        
+
         if not record:
             raise HTTPException(status_code=500, detail="Failed to deprecate formula")
-        
+
         return TransitionResponse(
             success=True,
             formula_id=formula_id,
@@ -590,15 +627,19 @@ async def deprecate_formula(
         )
 
 
-@router.get("/formulas/{formula_id}/dependencies", response_model=List[DependencyResponse])
+@router.get(
+    "/formulas/{formula_id}/dependencies", response_model=list[DependencyResponse]
+)
 async def get_formula_dependencies(
     formula_id: str,
-    direction: str = Query("both", description="Dependency direction: outgoing, incoming, or both"),
+    direction: str = Query(
+        "both", description="Dependency direction: outgoing, incoming, or both"
+    ),
     driver: AsyncDriver = Depends(get_driver),
 ):
     """Get formula dependencies."""
     deps = []
-    
+
     if direction in ["outgoing", "both"]:
         outgoing_query = """
         MATCH (f:Formula {id: $formula_id})-[:DEPENDS_ON]->(dep:Formula)
@@ -608,12 +649,14 @@ async def get_formula_dependencies(
             result = await session.run(outgoing_query, formula_id=formula_id)
             records = await result.data()
             for r in records:
-                deps.append(DependencyResponse(
-                    source_formula_id=formula_id,
-                    target_formula_id=r["dep_id"],
-                    dependency_type="uses",
-                ))
-    
+                deps.append(
+                    DependencyResponse(
+                        source_formula_id=formula_id,
+                        target_formula_id=r["dep_id"],
+                        dependency_type="uses",
+                    )
+                )
+
     if direction in ["incoming", "both"]:
         incoming_query = """
         MATCH (other:Formula)-[:DEPENDS_ON]->(f:Formula {id: $formula_id})
@@ -623,12 +666,14 @@ async def get_formula_dependencies(
             result = await session.run(incoming_query, formula_id=formula_id)
             records = await result.data()
             for r in records:
-                deps.append(DependencyResponse(
-                    source_formula_id=r["other_id"],
-                    target_formula_id=formula_id,
-                    dependency_type="uses",
-                ))
-    
+                deps.append(
+                    DependencyResponse(
+                        source_formula_id=r["other_id"],
+                        target_formula_id=formula_id,
+                        dependency_type="uses",
+                    )
+                )
+
     return deps
 
 
@@ -648,34 +693,34 @@ async def validate_activation(
            fv IS NOT NULL as version_exists,
            count(dep) as inactive_deps
     """
-    
+
     async with driver.session() as session:
         result = await session.run(query, formula_id=formula_id, version=version)
         record = await result.single()
-        
+
         if not record:
             return ValidationResponse(
                 can_activate=False,
                 errors=["Formula not found"],
                 warnings=[],
             )
-        
+
         errors = []
         warnings = []
-        
+
         if not record["version_exists"]:
             errors.append(f"Version {version} does not exist")
-        
+
         current_status = record["status"] or "draft"
         if current_status == "active":
             warnings.append("Formula is already active")
         elif current_status == "retired":
             errors.append("Cannot activate retired formula")
-        
+
         inactive_deps = record["inactive_deps"]
         if inactive_deps > 0:
             warnings.append(f"Formula has {inactive_deps} inactive dependencies")
-        
+
         return ValidationResponse(
             can_activate=len(errors) == 0,
             errors=errors,

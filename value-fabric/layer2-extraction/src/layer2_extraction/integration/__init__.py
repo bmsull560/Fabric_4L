@@ -11,8 +11,8 @@ from .layer3_client import (
     ingest_to_knowledge_graph,
 )
 from .pending_ingestion_store import (
-    PendingIngestionStore,
     PendingIngestionRecord,
+    PendingIngestionStore,
     PostgresPendingIngestionStore,
     SqlitePendingIngestionStore,
     build_pending_ingestion_store,

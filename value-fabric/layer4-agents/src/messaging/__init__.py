@@ -3,9 +3,9 @@
 Provides pub/sub messaging, message routing, and inter-agent communication.
 """
 
-from .types import MessageType, AgentMessage, MessagePriority
-from .bus import MessageBus, InMemoryMessageBus, RedisMessageBus
+from .bus import InMemoryMessageBus, MessageBus, RedisMessageBus
 from .router import MessageRouter
+from .types import AgentMessage, MessagePriority, MessageType
 
 __all__ = [
     "MessageType",

@@ -1,10 +1,9 @@
 """Workflows package for Layer 4 Agentic Workflow Engine."""
 
 from .base import BaseWorkflow, NodeExecutionError, WorkflowBuilder, WorkflowError
+from .business_case import BusinessCaseGeneratorWorkflow
 from .roi_calculator import ROICalculatorWorkflow
 from .whitespace import WhitespaceAnalysisWorkflow
-from .business_case import BusinessCaseGeneratorWorkflow
-
 
 # Workflow type registry
 WORKFLOW_TYPES = {
@@ -14,27 +13,23 @@ WORKFLOW_TYPES = {
 }
 
 
-def create_workflow(
-    workflow_type: str,
-    tool_registry,
-    checkpoint_saver=None
-) -> BaseWorkflow:
+def create_workflow(workflow_type: str, tool_registry, checkpoint_saver=None) -> BaseWorkflow:
     """Create a workflow instance by type.
-    
+
     Args:
         workflow_type: Type identifier (e.g., "roi_calculator")
         tool_registry: Tool registry for workflow
         checkpoint_saver: Optional checkpoint saver
-        
+
     Returns:
         Workflow instance
-        
+
     Raises:
         ValueError: If workflow type is unknown
     """
     if workflow_type not in WORKFLOW_TYPES:
         raise ValueError(f"Unknown workflow type: {workflow_type}")
-    
+
     workflow_class = WORKFLOW_TYPES[workflow_type]
     return workflow_class(tool_registry, checkpoint_saver)
 
@@ -45,17 +40,17 @@ def list_workflow_types() -> dict:
         "roi_calculator": {
             "name": "ROI Calculator",
             "description": "Calculates ROI from value driver formulas with prospect data",
-            "class": ROICalculatorWorkflow
+            "class": ROICalculatorWorkflow,
         },
         "whitespace_analysis": {
             "name": "Whitespace Analysis",
             "description": "Identifies gaps between prospect needs and solution capabilities",
-            "class": WhitespaceAnalysisWorkflow
+            "class": WhitespaceAnalysisWorkflow,
         },
         "business_case": {
             "name": "Business Case Generator",
             "description": "Generates comprehensive business case documents",
-            "class": BusinessCaseGeneratorWorkflow
+            "class": BusinessCaseGeneratorWorkflow,
         },
     }
 

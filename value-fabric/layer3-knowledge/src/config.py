@@ -1,7 +1,6 @@
 """Configuration for Layer 3 Knowledge Graph."""
 
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,36 +20,48 @@ class Settings(BaseSettings):
     api_port: int = Field(default=8001, alias="API_PORT")
     api_workers: int = Field(default=1, alias="API_WORKERS")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
-    
+
     # Logging Configuration
     log_format: str = Field(default="json", alias="LOG_FORMAT")  # json or text
-    log_timestamp_format: str = Field(default="%Y-%m-%dT%H:%M:%S.%fZ", alias="LOG_TIMESTAMP_FORMAT")
+    log_timestamp_format: str = Field(
+        default="%Y-%m-%dT%H:%M:%S.%fZ", alias="LOG_TIMESTAMP_FORMAT"
+    )
     log_include_module: bool = Field(default=True, alias="LOG_INCLUDE_MODULE")
     log_include_function: bool = Field(default=True, alias="LOG_INCLUDE_FUNCTION")
     log_include_line_number: bool = Field(default=True, alias="LOG_INCLUDE_LINE_NUMBER")
-    log_request_id_header: str = Field(default="X-Request-ID", alias="LOG_REQUEST_ID_HEADER")
-    
+    log_request_id_header: str = Field(
+        default="X-Request-ID", alias="LOG_REQUEST_ID_HEADER"
+    )
+
     # Rate Limiting Configuration
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
-    rate_limit_requests_per_minute: int = Field(default=100, alias="RATE_LIMIT_REQUESTS_PER_MINUTE")
+    rate_limit_requests_per_minute: int = Field(
+        default=100, alias="RATE_LIMIT_REQUESTS_PER_MINUTE"
+    )
     rate_limit_burst_size: int = Field(default=200, alias="RATE_LIMIT_BURST_SIZE")
-    rate_limit_cleanup_interval: int = Field(default=300, alias="RATE_LIMIT_CLEANUP_INTERVAL")
-    
+    rate_limit_cleanup_interval: int = Field(
+        default=300, alias="RATE_LIMIT_CLEANUP_INTERVAL"
+    )
+
     # Cache Configuration
     cache_enabled: bool = Field(default=True, alias="CACHE_ENABLED")
-    cache_redis_url: str = Field(default="redis://localhost:6379/0", alias="CACHE_REDIS_URL")
+    cache_redis_url: str = Field(
+        default="redis://localhost:6379/0", alias="CACHE_REDIS_URL"
+    )
     cache_default_ttl: int = Field(default=300, alias="CACHE_DEFAULT_TTL")
     cache_max_ttl: int = Field(default=3600, alias="CACHE_MAX_TTL")
     cache_key_prefix: str = Field(default="value_fabric:", alias="CACHE_KEY_PREFIX")
     cache_serializer: str = Field(default="json", alias="CACHE_SERIALIZER")
     cache_compression: bool = Field(default=True, alias="CACHE_COMPRESSION")
-    
+
     # Metrics Configuration
     metrics_enabled: bool = Field(default=True, alias="METRICS_ENABLED")
     metrics_prefix: str = Field(default="value_fabric_", alias="METRICS_PREFIX")
     metrics_namespace: str = Field(default="layer3", alias="METRICS_NAMESPACE")
     metrics_path: str = Field(default="/metrics", alias="METRICS_PATH")
-    metrics_include_timestamp: bool = Field(default=True, alias="METRICS_INCLUDE_TIMESTAMP")
+    metrics_include_timestamp: bool = Field(
+        default=True, alias="METRICS_INCLUDE_TIMESTAMP"
+    )
 
     # Neo4j Configuration
     neo4j_uri: str = Field(default="bolt://localhost:7687", alias="NEO4J_URI")
@@ -60,7 +71,7 @@ class Settings(BaseSettings):
     neo4j_max_pool_size: int = Field(default=50, alias="NEO4J_MAX_POOL_SIZE")
 
     # Pinecone Configuration
-    pinecone_api_key: Optional[str] = Field(default=None, alias="PINECONE_API_KEY")
+    pinecone_api_key: str | None = Field(default=None, alias="PINECONE_API_KEY")
     pinecone_index: str = Field(default="value-fabric", alias="PINECONE_INDEX")
     pinecone_namespace: str = Field(default="entities", alias="PINECONE_NAMESPACE")
     pinecone_dimension: int = Field(default=768, alias="PINECONE_DIMENSION")
@@ -87,11 +98,13 @@ class Settings(BaseSettings):
 
     # Ingestion Configuration
     ingestion_batch_size: int = Field(default=1000, alias="INGESTION_BATCH_SIZE")
-    ingestion_timeout_seconds: int = Field(default=300, alias="INGESTION_TIMEOUT_SECONDS")
+    ingestion_timeout_seconds: int = Field(
+        default=300, alias="INGESTION_TIMEOUT_SECONDS"
+    )
 
     @field_validator("neo4j_password")
     @classmethod
-    def validate_neo4j_password(cls, v: Optional[str]) -> str:
+    def validate_neo4j_password(cls, v: str | None) -> str:
         """Validate that Neo4j password is configured."""
         if v is None or v.strip() == "":
             raise ValueError(
@@ -111,7 +124,7 @@ class Settings(BaseSettings):
         return (self.neo4j_user, self.neo4j_password)
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> Settings:
     """Get cached settings instance."""
     return Settings()

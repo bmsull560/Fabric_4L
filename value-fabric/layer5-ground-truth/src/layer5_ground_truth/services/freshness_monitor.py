@@ -12,15 +12,15 @@ Can be run:
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Any
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
-from ..models.truth_object import ClaimType, TruthObject, TruthStatus, ValidationEvent
+from ..models.truth_object import ClaimType, TruthObject, ValidationEvent
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ DEFAULT_TTL_BY_CLAIM_TYPE: dict[str, int] = {
 # Freshness Monitor Service
 # ---------------------------------------------------------------------------
 
+
 class FreshnessMonitor:
     """
     Monitors and enforces truth object freshness policies.
@@ -61,7 +62,7 @@ class FreshnessMonitor:
     TTL is configurable per claim_type via config.
     """
 
-    def __init__(self, custom_ttls: Optional[dict[str, int]] = None) -> None:
+    def __init__(self, custom_ttls: dict[str, int] | None = None) -> None:
         """
         Initialize the freshness monitor.
 
@@ -97,7 +98,7 @@ class FreshnessMonitor:
     async def check_and_mark_stale(
         self,
         db: AsyncSession,
-        organization_id: Optional[UUID] = None,
+        organization_id: UUID | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
         """
@@ -111,18 +112,15 @@ class FreshnessMonitor:
         Returns:
             Dict with counts: {"checked": int, "marked_stale": int, "already_stale": int}
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Build query to find non-deleted, non-stale truths that have expired
-        stmt = (
-            select(TruthObject)
-            .where(
-                and_(
-                    TruthObject.deleted_at.is_(None),
-                    TruthObject.is_stale.is_(False),
-                    TruthObject.expires_at.isnot(None),
-                    TruthObject.expires_at < now,
-                )
+        stmt = select(TruthObject).where(
+            and_(
+                TruthObject.deleted_at.is_(None),
+                TruthObject.is_stale.is_(False),
+                TruthObject.expires_at.isnot(None),
+                TruthObject.expires_at < now,
             )
         )
 
@@ -150,7 +148,9 @@ class FreshnessMonitor:
                     actor="system:freshness_monitor",
                     actor_type="system",
                     confidence_at_transition=truth.confidence,
-                    source_count_at_transition=len(truth.sources) if truth.sources else 0,
+                    source_count_at_transition=len(truth.sources)
+                    if truth.sources
+                    else 0,
                     notes=f"Automatically marked stale: expired at {truth.expires_at.isoformat()}",
                 )
                 db.add(event)
@@ -201,6 +201,7 @@ class FreshnessMonitor:
         """
         # Get total count using func.count() for efficiency
         from sqlalchemy import func as sa_func
+
         count_stmt = (
             select(sa_func.count())
             .select_from(TruthObject)
@@ -244,7 +245,7 @@ class FreshnessMonitor:
 
         Returns counts by status and days until expiry breakdown.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Base where clause
         base_where = and_(
@@ -256,16 +257,13 @@ class FreshnessMonitor:
 
         # Count expiring soon (within warning period)
         warning_date = now + timedelta(days=self._settings.stale_warning_days)
-        expiring_soon_stmt = (
-            select(func.count())
-            .where(
-                and_(
-                    base_where,
-                    TruthObject.is_stale.is_(False),
-                    TruthObject.expires_at.isnot(None),
-                    TruthObject.expires_at <= warning_date,
-                    TruthObject.expires_at > now,
-                )
+        expiring_soon_stmt = select(func.count()).where(
+            and_(
+                base_where,
+                TruthObject.is_stale.is_(False),
+                TruthObject.expires_at.isnot(None),
+                TruthObject.expires_at <= warning_date,
+                TruthObject.expires_at > now,
             )
         )
         expiring_soon_result = await db.execute(expiring_soon_stmt)
@@ -289,23 +287,12 @@ class FreshnessMonitor:
         base_where: Any,
     ) -> tuple[int, int]:
         """Count truths by stale status in a single query for efficiency."""
-        stmt = (
-            select(
-                func.sum(
-                    case(
-                        (TruthObject.is_stale.is_(True), 1),
-                        else_=0
-                    )
-                ).label("stale"),
-                func.sum(
-                    case(
-                        (TruthObject.is_stale.is_(False), 1),
-                        else_=0
-                    )
-                ).label("fresh"),
-            )
-            .where(base_where)
-        )
+        stmt = select(
+            func.sum(case((TruthObject.is_stale.is_(True), 1), else_=0)).label("stale"),
+            func.sum(case((TruthObject.is_stale.is_(False), 1), else_=0)).label(
+                "fresh"
+            ),
+        ).where(base_where)
         result = await db.execute(stmt)
         row = result.one()
         return int(row.stale or 0), int(row.fresh or 0)
@@ -315,9 +302,10 @@ class FreshnessMonitor:
 # Module-level convenience functions
 # ---------------------------------------------------------------------------
 
+
 async def check_freshness(
     db: AsyncSession,
-    organization_id: Optional[UUID] = None,
+    organization_id: UUID | None = None,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """

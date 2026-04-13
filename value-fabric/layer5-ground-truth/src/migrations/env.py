@@ -10,10 +10,10 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
 
 # Import the declarative Base so Alembic can detect model changes
 from layer5_ground_truth.src.models import Base
+from sqlalchemy import engine_from_config, pool
 
 # ---------------------------------------------------------------------------
 # Alembic Config object
@@ -40,6 +40,7 @@ target_metadata = Base.metadata
 # Offline mode
 # ---------------------------------------------------------------------------
 
+
 def run_migrations_offline() -> None:
     """
     Run migrations in 'offline' mode.
@@ -64,6 +65,7 @@ def run_migrations_offline() -> None:
 # ---------------------------------------------------------------------------
 # Online mode
 # ---------------------------------------------------------------------------
+
 
 def run_migrations_online() -> None:
     """

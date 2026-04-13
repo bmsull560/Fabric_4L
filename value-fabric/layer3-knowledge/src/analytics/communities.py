@@ -1,7 +1,7 @@
 """Community detection algorithms for Knowledge Graph analysis."""
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
@@ -19,8 +19,8 @@ class CommunityDetector:
 
     def __init__(
         self,
-        driver: Optional[AsyncDriver] = None,
-        settings: Optional[Settings] = None,
+        driver: AsyncDriver | None = None,
+        settings: Settings | None = None,
     ):
         """Initialize community detector.
 
@@ -50,8 +50,8 @@ class CommunityDetector:
 
     async def detect_louvain(
         self,
-        node_labels: Optional[List[str]] = None,
-        relationship_types: Optional[List[str]] = None,
+        node_labels: list[str] | None = None,
+        relationship_types: list[str] | None = None,
         min_community_size: int = 3,
         max_levels: int = 10,
     ) -> dict:
@@ -88,7 +88,7 @@ class CommunityDetector:
             try:
                 # Project graph
                 await session.run(
-                    f"""
+                    """
                     CALL gds.graph.project(
                         $graph_name,
                         $node_filter,
@@ -117,7 +117,7 @@ class CommunityDetector:
                 )
 
                 # Collect results
-                communities: Dict[int, List[Dict]] = {}
+                communities: dict[int, list[dict]] = {}
                 async for record in result:
                     node = record["node"]
                     community_id = record["communityId"]
@@ -125,16 +125,19 @@ class CommunityDetector:
                     if community_id not in communities:
                         communities[community_id] = []
 
-                    communities[community_id].append({
-                        "id": node["id"],
-                        "name": node.get("name", node.get("title", "Unknown")),
-                        "type": list(node.labels)[0] if hasattr(node, "labels") else "Unknown",
-                    })
+                    communities[community_id].append(
+                        {
+                            "id": node["id"],
+                            "name": node.get("name", node.get("title", "Unknown")),
+                            "type": list(node.labels)[0]
+                            if hasattr(node, "labels")
+                            else "Unknown",
+                        }
+                    )
 
                 # Filter small communities
                 valid_communities = {
-                    k: v for k, v in communities.items()
-                    if len(v) >= min_community_size
+                    k: v for k, v in communities.items() if len(v) >= min_community_size
                 }
 
                 return {
@@ -167,8 +170,8 @@ class CommunityDetector:
 
     async def detect_leiden(
         self,
-        node_labels: Optional[List[str]] = None,
-        relationship_types: Optional[List[str]] = None,
+        node_labels: list[str] | None = None,
+        relationship_types: list[str] | None = None,
         min_community_size: int = 3,
     ) -> dict:
         """Detect communities using Leiden algorithm (higher quality than Louvain).
@@ -225,7 +228,7 @@ class CommunityDetector:
                     {"graph_name": graph_name},
                 )
 
-                communities: Dict[int, List[Dict]] = {}
+                communities: dict[int, list[dict]] = {}
                 async for record in result:
                     node = record["node"]
                     community_id = record["communityId"]
@@ -233,15 +236,18 @@ class CommunityDetector:
                     if community_id not in communities:
                         communities[community_id] = []
 
-                    communities[community_id].append({
-                        "id": node["id"],
-                        "name": node.get("name", node.get("title", "Unknown")),
-                        "type": list(node.labels)[0] if hasattr(node, "labels") else "Unknown",
-                    })
+                    communities[community_id].append(
+                        {
+                            "id": node["id"],
+                            "name": node.get("name", node.get("title", "Unknown")),
+                            "type": list(node.labels)[0]
+                            if hasattr(node, "labels")
+                            else "Unknown",
+                        }
+                    )
 
                 valid_communities = {
-                    k: v for k, v in communities.items()
-                    if len(v) >= min_community_size
+                    k: v for k, v in communities.items() if len(v) >= min_community_size
                 }
 
                 return {
@@ -309,29 +315,29 @@ class CommunityDetector:
                             all_members.append(node)
 
                 if len(all_members) >= 2:  # At least some connection
-                    communities.append({
-                        "value_driver_id": record["value_driver_id"],
-                        "value_driver_name": record["value_driver_name"],
-                        "category": record["category"],
-                        "size": len(all_members),
-                        "members": all_members,
-                    })
+                    communities.append(
+                        {
+                            "value_driver_id": record["value_driver_id"],
+                            "value_driver_name": record["value_driver_name"],
+                            "category": record["category"],
+                            "size": len(all_members),
+                            "members": all_members,
+                        }
+                    )
 
             return {
                 "algorithm": "value_tree",
                 "total_communities": len(communities),
                 "communities": sorted(
-                    communities,
-                    key=lambda x: x["size"],
-                    reverse=True
+                    communities, key=lambda x: x["size"], reverse=True
                 ),
             }
 
     async def _fallback_community_detection(
         self,
         session,
-        node_labels: Optional[List[str]],
-        relationship_types: Optional[List[str]],
+        node_labels: list[str] | None,
+        relationship_types: list[str] | None,
         min_size: int,
     ) -> dict:
         """Fallback using connected components when GDS unavailable."""
@@ -361,13 +367,15 @@ class CommunityDetector:
 
         communities = []
         async for record in result:
-            communities.append({
-                "center_id": record["id"],
-                "center_name": record["name"],
-                "center_type": record["type"],
-                "size": len(record["neighbor_ids"]) + 1,
-                "members": [record["id"]] + record["neighbor_ids"],
-            })
+            communities.append(
+                {
+                    "center_id": record["id"],
+                    "center_name": record["name"],
+                    "center_type": record["type"],
+                    "size": len(record["neighbor_ids"]) + 1,
+                    "members": [record["id"]] + record["neighbor_ids"],
+                }
+            )
 
         return {
             "algorithm": "connected_components_fallback",
@@ -380,7 +388,7 @@ class CommunityDetector:
         self,
         session,
         graph_name: str,
-        communities: Dict[int, List],
+        communities: dict[int, list],
     ) -> float:
         """Calculate modularity score for community quality."""
         try:
@@ -400,13 +408,13 @@ class CommunityDetector:
             logger.debug(f"Could not calculate modularity: {e}")
             return 0.0
 
-    def _build_node_filter(self, node_labels: Optional[List[str]]) -> Any:
+    def _build_node_filter(self, node_labels: list[str] | None) -> Any:
         """Build node filter for GDS graph projection."""
         if not node_labels:
             return ["Capability", "UseCase", "Persona", "ValueDriver"]
         return node_labels
 
-    def _build_rel_filter(self, relationship_types: Optional[List[str]]) -> Any:
+    def _build_rel_filter(self, relationship_types: list[str] | None) -> Any:
         """Build relationship filter for GDS graph projection."""
         if not relationship_types:
             return {
@@ -420,4 +428,5 @@ class CommunityDetector:
         """Generate random ID for graph projection."""
         import random
         import string
+
         return "".join(random.choices(string.ascii_lowercase + string.digits, k=8))

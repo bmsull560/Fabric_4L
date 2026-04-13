@@ -8,35 +8,35 @@ Provides adapters for:
 """
 
 from .base import (
-    DataSourceAdapter,
-    AdapterType,
     AdapterConfig,
-    FilingType,
+    AdapterType,
+    DataSourceAdapter,
     FilingDocument,
+    FilingType,
     SearchResult,
 )
-from .sec_edgar import SECEdgarAdapter
 from .pdf_adapter import PDFAdapter, PDFAdapterConfig
-from .xbrl_parser import XBRLParser, ParsedXBRL, FinancialFact, FinancialStatement
 from .registry import AdapterRegistry, get_registry
+from .sec_edgar import SECEdgarAdapter
+from .xbrl_parser import FinancialFact, FinancialStatement, ParsedXBRL, XBRLParser
 
 __all__ = [
     # Base classes
-    'DataSourceAdapter',
-    'AdapterType',
-    'AdapterConfig',
-    'FilingType',
-    'FilingDocument',
-    'SearchResult',
+    "DataSourceAdapter",
+    "AdapterType",
+    "AdapterConfig",
+    "FilingType",
+    "FilingDocument",
+    "SearchResult",
     # Implementations
-    'SECEdgarAdapter',
-    'PDFAdapter',
-    'PDFAdapterConfig',
-    'XBRLParser',
-    'ParsedXBRL',
-    'FinancialFact',
-    'FinancialStatement',
+    "SECEdgarAdapter",
+    "PDFAdapter",
+    "PDFAdapterConfig",
+    "XBRLParser",
+    "ParsedXBRL",
+    "FinancialFact",
+    "FinancialStatement",
     # Registry
-    'AdapterRegistry',
-    'get_registry',
+    "AdapterRegistry",
+    "get_registry",
 ]

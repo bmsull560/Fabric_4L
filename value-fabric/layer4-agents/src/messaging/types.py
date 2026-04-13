@@ -5,14 +5,14 @@ Based on the specification's agent messaging patterns.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, auto
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any
 from uuid import uuid4
 
 
 class MessageType(Enum):
     """Types of messages passed between agents.
-    
+
     From spec:
     - TASK_ASSIGNMENT: Assign a task to an agent
     - TASK_RESULT: Return result from task execution
@@ -21,6 +21,7 @@ class MessageType(Enum):
     - COORDINATION: Coordination between agents
     - PROVENANCE_EVENT: Provenance tracking event
     """
+
     TASK_ASSIGNMENT = "task_assignment"
     TASK_RESULT = "task_result"
     STATUS_UPDATE = "status_update"
@@ -35,6 +36,7 @@ class MessageType(Enum):
 
 class MessagePriority(Enum):
     """Message priority levels."""
+
     CRITICAL = 1
     HIGH = 2
     NORMAL = 3
@@ -45,7 +47,7 @@ class MessagePriority(Enum):
 @dataclass
 class AgentMessage:
     """Message passed between agents.
-    
+
     From spec section 1.4 Inter-Agent Communication Patterns:
     - message_id: Unique identifier
     - message_type: Type of message
@@ -55,7 +57,7 @@ class AgentMessage:
     - payload: Message content
     - correlation_id: For request/response correlation
     - priority: Message priority
-    
+
     Attributes:
         message_id: Unique message identifier
         message_type: Type of message
@@ -67,17 +69,18 @@ class AgentMessage:
         priority: Message priority level
         ttl_seconds: Time-to-live for message expiration
     """
+
     message_type: MessageType
     sender_id: str
-    payload: Dict[str, Any]
-    recipient_id: Optional[str] = None
+    payload: dict[str, Any]
+    recipient_id: str | None = None
     message_id: str = field(default_factory=lambda: str(uuid4()))
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    correlation_id: Optional[str] = None
+    correlation_id: str | None = None
     priority: MessagePriority = MessagePriority.NORMAL
     ttl_seconds: int = 300
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert message to dictionary."""
         return {
             "message_id": self.message_id,
@@ -90,9 +93,9 @@ class AgentMessage:
             "priority": self.priority.value,
             "ttl_seconds": self.ttl_seconds,
         }
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentMessage":
+    def from_dict(cls, data: dict[str, Any]) -> "AgentMessage":
         """Create message from dictionary."""
         return cls(
             message_id=data["message_id"],
@@ -105,12 +108,12 @@ class AgentMessage:
             priority=MessagePriority(data.get("priority", 3)),
             ttl_seconds=data.get("ttl_seconds", 300),
         )
-    
+
     def is_expired(self) -> bool:
         """Check if message has expired based on TTL."""
         elapsed = (datetime.utcnow() - self.timestamp).total_seconds()
         return elapsed > self.ttl_seconds
-    
+
     def is_broadcast(self) -> bool:
         """Check if message is a broadcast (no specific recipient)."""
         return self.recipient_id is None
@@ -119,7 +122,7 @@ class AgentMessage:
 @dataclass
 class TaskAssignment:
     """Task assignment message payload.
-    
+
     Attributes:
         task_id: Unique task identifier
         capability: Capability to execute
@@ -127,13 +130,14 @@ class TaskAssignment:
         deadline: Optional deadline
         tenant_id: Tenant context
     """
+
     task_id: str
     capability: str
-    parameters: Dict[str, Any]
-    deadline: Optional[datetime] = None
-    tenant_id: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
+    parameters: dict[str, Any]
+    deadline: datetime | None = None
+    tenant_id: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "task_id": self.task_id,
             "capability": self.capability,
@@ -146,7 +150,7 @@ class TaskAssignment:
 @dataclass
 class TaskResult:
     """Task result message payload.
-    
+
     Attributes:
         task_id: Task identifier from assignment
         success: Whether task succeeded
@@ -154,13 +158,14 @@ class TaskResult:
         error: Error message (if failed)
         execution_time_ms: Time taken to execute
     """
+
     task_id: str
     success: bool
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
     execution_time_ms: int = 0
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "task_id": self.task_id,
             "success": self.success,
@@ -173,7 +178,7 @@ class TaskResult:
 @dataclass
 class StatusUpdate:
     """Status update message payload.
-    
+
     Attributes:
         agent_id: Agent reporting status
         status: Current status (IDLE, RUNNING, COMPLETED, etc.)
@@ -181,13 +186,14 @@ class StatusUpdate:
         progress_percent: Completion percentage (0-100)
         metadata: Additional status info
     """
+
     agent_id: str
     status: str
-    current_task: Optional[str] = None
+    current_task: str | None = None
     progress_percent: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "status": self.status,
@@ -200,7 +206,7 @@ class StatusUpdate:
 @dataclass
 class ErrorNotification:
     """Error notification message payload.
-    
+
     Attributes:
         error_id: Unique error identifier
         severity: Error severity (WARNING, ERROR, CRITICAL)
@@ -208,13 +214,14 @@ class ErrorNotification:
         stack_trace: Optional stack trace
         context: Error context
     """
+
     error_id: str
     severity: str
     message: str
-    stack_trace: Optional[str] = None
-    context: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    stack_trace: str | None = None
+    context: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "error_id": self.error_id,
             "severity": self.severity,
@@ -227,7 +234,7 @@ class ErrorNotification:
 @dataclass
 class ProvenanceEvent:
     """Provenance tracking event payload.
-    
+
     Attributes:
         event_type: Type of provenance event
         activity_id: Activity being tracked
@@ -236,14 +243,15 @@ class ProvenanceEvent:
         timestamp: When event occurred
         attributes: Additional provenance attributes
     """
+
     event_type: str
     activity_id: str
     entity_id: str
     agent_id: str
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
+    attributes: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "event_type": self.event_type,
             "activity_id": self.activity_id,

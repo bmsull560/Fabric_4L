@@ -5,9 +5,9 @@ and provides quarantine functionality for compliance.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 from enum import Enum
+from typing import Any
 
 import structlog
 
@@ -15,6 +15,7 @@ try:
     from presidio_analyzer import AnalyzerEngine
     from presidio_analyzer.nlp_engine import NlpEngineProvider
     from presidio_anonymizer import AnonymizerEngine
+
     PRESIDIO_AVAILABLE = True
 except ImportError:
     PRESIDIO_AVAILABLE = False
@@ -26,6 +27,7 @@ logger = structlog.get_logger()
 
 class PIIEntityType(str, Enum):
     """Types of PII entities that can be detected."""
+
     CREDIT_CARD = "CREDIT_CARD"
     CRYPTO = "CRYPTO"
     DATE_TIME = "DATE_TIME"
@@ -48,51 +50,53 @@ class PIIEntityType(str, Enum):
 @dataclass
 class PIIEntity:
     """A detected PII entity."""
+
     entity_type: str
     text: str
     start: int
     end: int
     score: float  # Confidence score 0.0-1.0
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
-            'entity_type': self.entity_type,
-            'text': self.text,
-            'start': self.start,
-            'end': self.end,
-            'score': round(self.score, 4)
+            "entity_type": self.entity_type,
+            "text": self.text,
+            "start": self.start,
+            "end": self.end,
+            "score": round(self.score, 4),
         }
 
 
 @dataclass
 class PIIScanResult:
     """Result of a PII scan."""
+
     text_hash: str
-    entities: List[PIIEntity] = field(default_factory=list)
+    entities: list[PIIEntity] = field(default_factory=list)
     has_pii: bool = False
     highest_score: float = 0.0
     scan_timestamp: datetime = field(default_factory=datetime.utcnow)
     engine_version: str = "presidio"
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
-            'text_hash': self.text_hash,
-            'has_pii': self.has_pii,
-            'entities': [e.to_dict() for e in self.entities],
-            'highest_score': round(self.highest_score, 4),
-            'entity_count': len(self.entities),
-            'scan_timestamp': self.scan_timestamp.isoformat(),
-            'engine_version': self.engine_version
+            "text_hash": self.text_hash,
+            "has_pii": self.has_pii,
+            "entities": [e.to_dict() for e in self.entities],
+            "highest_score": round(self.highest_score, 4),
+            "entity_count": len(self.entities),
+            "scan_timestamp": self.scan_timestamp.isoformat(),
+            "engine_version": self.engine_version,
         }
 
 
 class PIIScanner:
     """PII detection scanner using Microsoft Presidio.
-    
+
     Scans text content for personally identifiable information
     and provides classification (clean/flagged/quarantined).
     """
-    
+
     # PII types to check by default
     DEFAULT_ENTITIES = [
         PIIEntityType.CREDIT_CARD,
@@ -106,230 +110,211 @@ class PIIScanner:
         PIIEntityType.IP_ADDRESS,
         PIIEntityType.US_ITIN,
     ]
-    
+
     def __init__(
         self,
         threshold_flag: float = None,
         threshold_quarantine: float = None,
-        enabled_entities: List[PIIEntityType] = None
+        enabled_entities: list[PIIEntityType] = None,
     ):
         self.threshold_flag = threshold_flag or settings.pii_threshold_flag
         self.threshold_quarantine = threshold_quarantine or settings.pii_threshold_quarantine
         self.enabled_entities = enabled_entities or self.DEFAULT_ENTITIES
         self.logger = logger
-        
+
         # Initialize Presidio engines
-        self._analyzer: Optional[Any] = None
-        self._anonymizer: Optional[Any] = None
-        self._nlp_engine: Optional[Any] = None
-        
+        self._analyzer: Any | None = None
+        self._anonymizer: Any | None = None
+        self._nlp_engine: Any | None = None
+
         self._init_engines()
-    
+
     def _init_engines(self):
         """Initialize Presidio analyzer and anonymizer engines."""
         if not PRESIDIO_AVAILABLE:
             self.logger.warning("Presidio not available - PII scanning disabled")
             return
-        
+
         try:
             # Initialize NLP engine
             # For production, you'd want to configure this properly
             # with a loaded spaCy model
             self._analyzer = AnalyzerEngine()
             self._anonymizer = AnonymizerEngine()
-            
+
             self.logger.info("PII scanner initialized with Presidio")
-            
+
         except Exception as e:
             self.logger.error("Failed to initialize Presidio engines", error=str(e))
             self._analyzer = None
             self._anonymizer = None
-    
+
     def is_available(self) -> bool:
         """Check if PII scanning is available."""
         return PRESIDIO_AVAILABLE and self._analyzer is not None
-    
-    def scan(
-        self,
-        text: str,
-        language: str = "en"
-    ) -> PIIScanResult:
+
+    def scan(self, text: str, language: str = "en") -> PIIScanResult:
         """Scan text for PII.
-        
+
         Args:
             text: Text to scan
             language: Language code (default: en)
-            
+
         Returns:
             PIIScanResult with detected entities
         """
         if not text or not self.is_available():
-            return PIIScanResult(
-                text_hash=self._hash_text(text or ""),
-                has_pii=False
-            )
-        
+            return PIIScanResult(text_hash=self._hash_text(text or ""), has_pii=False)
+
         try:
             # Run analysis
             entity_types = [e.value for e in self.enabled_entities]
-            
-            results = self._analyzer.analyze(
-                text=text,
-                entities=entity_types,
-                language=language
-            )
-            
+
+            results = self._analyzer.analyze(text=text, entities=entity_types, language=language)
+
             # Convert to PIIEntity objects
             entities = []
             highest_score = 0.0
-            
+
             for result in results:
                 entity = PIIEntity(
                     entity_type=result.entity_type,
-                    text=text[result.start:result.end],
+                    text=text[result.start : result.end],
                     start=result.start,
                     end=result.end,
-                    score=result.score
+                    score=result.score,
                 )
                 entities.append(entity)
                 highest_score = max(highest_score, result.score)
-            
+
             scan_result = PIIScanResult(
                 text_hash=self._hash_text(text),
                 entities=entities,
                 has_pii=len(entities) > 0,
-                highest_score=highest_score
+                highest_score=highest_score,
             )
-            
+
             self.logger.debug(
-                "PII scan completed",
-                entity_count=len(entities),
-                highest_score=highest_score
+                "PII scan completed", entity_count=len(entities), highest_score=highest_score
             )
-            
+
             return scan_result
-            
+
         except Exception as e:
             self.logger.error("PII scan failed", error=str(e))
             return PIIScanResult(
-                text_hash=self._hash_text(text),
-                has_pii=False,
-                scan_timestamp=datetime.utcnow()
+                text_hash=self._hash_text(text), has_pii=False, scan_timestamp=datetime.utcnow()
             )
-    
+
     def classify_content(self, scan_result: PIIScanResult) -> str:
         """Classify content based on PII scan results.
-        
+
         Args:
             scan_result: Result from scan()
-            
+
         Returns:
             Classification: 'clean', 'flagged', or 'quarantined'
         """
         from ..shared.models import PIIStatus
-        
+
         if not scan_result.has_pii:
             return PIIStatus.CLEAN.value
-        
+
         if scan_result.highest_score >= self.threshold_quarantine:
             return PIIStatus.QUARANTINED.value
-        
+
         if scan_result.highest_score >= self.threshold_flag:
             return PIIStatus.FLAGGED.value
-        
+
         return PIIStatus.CLEAN.value
-    
-    def anonymize(
-        self,
-        text: str,
-        scan_result: Optional[PIIScanResult] = None
-    ) -> str:
+
+    def anonymize(self, text: str, scan_result: PIIScanResult | None = None) -> str:
         """Anonymize PII in text.
-        
+
         Replaces PII with placeholders like <CREDIT_CARD>, <EMAIL_ADDRESS>.
-        
+
         Args:
             text: Text to anonymize
             scan_result: Optional pre-computed scan result
-            
+
         Returns:
             Anonymized text
         """
         if not self.is_available() or not text:
             return text
-        
+
         if scan_result is None:
             scan_result = self.scan(text)
-        
+
         if not scan_result.has_pii:
             return text
-        
+
         try:
             # Build anonymizer operators
             operators = {}
             for entity in scan_result.entities:
                 # Use entity type as the anonymized value
                 operators[entity.entity_type] = self._anonymizer.operators.REPLACE
-            
+
             # Anonymize
             anonymized = self._anonymizer.anonymize(
                 text=text,
                 analyzer_results=[
-                    type('Result', (), {
-                        'entity_type': e.entity_type,
-                        'start': e.start,
-                        'end': e.end,
-                        'score': e.score
-                    })() for e in scan_result.entities
+                    type(
+                        "Result",
+                        (),
+                        {
+                            "entity_type": e.entity_type,
+                            "start": e.start,
+                            "end": e.end,
+                            "score": e.score,
+                        },
+                    )()
+                    for e in scan_result.entities
                 ],
-                operators=operators
+                operators=operators,
             )
-            
+
             return anonymized.text
-            
+
         except Exception as e:
             self.logger.error("Anonymization failed", error=str(e))
             return text
-    
+
     def _hash_text(self, text: str) -> str:
         """Create a simple hash of text for identification."""
         import hashlib
+
         return hashlib.md5(text.encode()).hexdigest()[:16]
-    
-    def get_summary_stats(self, scan_results: List[PIIScanResult]) -> Dict[str, Any]:
+
+    def get_summary_stats(self, scan_results: list[PIIScanResult]) -> dict[str, Any]:
         """Get summary statistics from multiple scan results.
-        
+
         Args:
             scan_results: List of scan results
-            
+
         Returns:
             Summary statistics dict
         """
         total_scanned = len(scan_results)
         pii_detected = sum(1 for r in scan_results if r.has_pii)
-        quarantined = sum(
-            1 for r in scan_results
-            if self.classify_content(r) == "quarantined"
-        )
-        flagged = sum(
-            1 for r in scan_results
-            if self.classify_content(r) == "flagged"
-        )
-        
+        quarantined = sum(1 for r in scan_results if self.classify_content(r) == "quarantined")
+        flagged = sum(1 for r in scan_results if self.classify_content(r) == "flagged")
+
         # Count by entity type
-        entity_counts: Dict[str, int] = {}
+        entity_counts: dict[str, int] = {}
         for result in scan_results:
             for entity in result.entities:
                 entity_counts[entity.entity_type] = entity_counts.get(entity.entity_type, 0) + 1
-        
+
         return {
-            'total_scanned': total_scanned,
-            'pii_detected': pii_detected,
-            'quarantined': quarantined,
-            'flagged': flagged,
-            'clean': total_scanned - pii_detected,
-            'entity_type_counts': entity_counts,
-            'detection_rate': round(pii_detected / total_scanned, 4) if total_scanned > 0 else 0
+            "total_scanned": total_scanned,
+            "pii_detected": pii_detected,
+            "quarantined": quarantined,
+            "flagged": flagged,
+            "clean": total_scanned - pii_detected,
+            "entity_type_counts": entity_counts,
+            "detection_rate": round(pii_detected / total_scanned, 4) if total_scanned > 0 else 0,
         }
 
 

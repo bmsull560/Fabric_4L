@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import BackgroundTasks
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from shared.audit import emit_audit_event, AuditEmitter
+from shared.audit import AuditEmitter, emit_audit_event
 from shared.audit.models import AuditAction
 from shared.identity.context import RequestContext
 from shared.identity.feature_flags import is_enabled, register_feature_flag_lookup
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import FeatureFlag
 
@@ -29,7 +28,7 @@ class FeatureFlagService:
         tenant_id: UUID | None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[FeatureFlag]:
+    ) -> list[FeatureFlag]:
         """List feature flags scoped to a tenant or platform-wide."""
         q = select(FeatureFlag)
         if tenant_id is not None:
@@ -45,7 +44,7 @@ class FeatureFlagService:
         db: AsyncSession,
         flag_key: str,
         tenant_id: UUID | None,
-    ) -> Optional[FeatureFlag]:
+    ) -> FeatureFlag | None:
         """Fetch a single flag by key and tenant scope."""
         q = select(FeatureFlag).where(
             FeatureFlag.flag_key == flag_key,
@@ -61,11 +60,11 @@ class FeatureFlagService:
         tenant_id: UUID | None,
         enabled: bool,
         rollout_percentage: int,
-        description: Optional[str],
-        metadata: Optional[Dict[str, Any]],
-        updated_by: Optional[UUID],
-        background_tasks: Optional[BackgroundTasks] = None,
-        ctx: Optional[RequestContext] = None,
+        description: str | None,
+        metadata: dict[str, Any] | None,
+        updated_by: UUID | None,
+        background_tasks: BackgroundTasks | None = None,
+        ctx: RequestContext | None = None,
     ) -> FeatureFlag:
         """Create or update a feature flag."""
         existing = await FeatureFlagService.get_flag(db, flag_key, tenant_id)
@@ -108,6 +107,7 @@ class FeatureFlagService:
         )
         if background_tasks is not None:
             from ...database import db_session
+
             background_tasks.add_task(AuditEmitter.write_to_db, event, db_session)
 
         return existing
@@ -117,8 +117,8 @@ class FeatureFlagService:
         db: AsyncSession,
         flag_key: str,
         tenant_id: UUID | None,
-        background_tasks: Optional[BackgroundTasks] = None,
-        ctx: Optional[RequestContext] = None,
+        background_tasks: BackgroundTasks | None = None,
+        ctx: RequestContext | None = None,
     ) -> bool:
         """Delete a feature flag."""
         existing = await FeatureFlagService.get_flag(db, flag_key, tenant_id)
@@ -138,6 +138,7 @@ class FeatureFlagService:
         )
         if background_tasks is not None:
             from ...database import db_session
+
             background_tasks.add_task(AuditEmitter.write_to_db, event, db_session)
 
         return True

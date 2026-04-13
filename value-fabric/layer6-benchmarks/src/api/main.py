@@ -10,7 +10,6 @@ from typing import Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
 from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
 
@@ -19,10 +18,6 @@ from ..metrics import initialize_metrics, get_metrics
 from ..models.benchmark_dataset import (
     BenchmarkDataset,
     BenchmarkMetric,
-    ComparisonRequest,
-    ComparisonResult,
-    RangeValidationRequest,
-    RangeValidationResult,
     StatisticalProfile,
     MANUFACTURING_BENCHMARK_SEED,
 )
@@ -45,7 +40,7 @@ def _init_seed_data():
         data_source=seed["data_source"],
         is_public=seed["is_public"],
     )
-    
+
     for metric_data in seed["metrics"].values():
         profile = StatisticalProfile.from_dict(metric_data["profile"])
         metric = BenchmarkMetric(
@@ -53,12 +48,16 @@ def _init_seed_data():
             unit=metric_data["unit"],
             description=metric_data["description"],
             profile=profile,
-            lower_bound=Decimal(metric_data.get("lower_bound", "0")) if "lower_bound" in metric_data else None,
-            upper_bound=Decimal(metric_data.get("upper_bound", "0")) if "upper_bound" in metric_data else None,
+            lower_bound=Decimal(metric_data.get("lower_bound", "0"))
+            if "lower_bound" in metric_data
+            else None,
+            upper_bound=Decimal(metric_data.get("upper_bound", "0"))
+            if "upper_bound" in metric_data
+            else None,
             is_higher_better=metric_data.get("is_higher_better", True),
         )
         dataset.add_metric(metric)
-    
+
     _benchmark_store[dataset.dataset_id] = dataset
 
 
@@ -106,6 +105,7 @@ app.mount("/metrics", metrics_app)
 # Pydantic models for API
 class DatasetSummary(BaseModel):
     """Summary of benchmark dataset."""
+
     dataset_id: str
     name: str
     industry: str
@@ -116,6 +116,7 @@ class DatasetSummary(BaseModel):
 
 class DatasetDetail(BaseModel):
     """Detailed benchmark dataset."""
+
     dataset_id: str
     name: str
     description: str
@@ -129,6 +130,7 @@ class DatasetDetail(BaseModel):
 
 class ComparisonRequestPayload(BaseModel):
     """Payload for comparison request."""
+
     dataset_id: str
     metric: str
     company_value: str = Field(..., description="Company value as string (Decimal)")
@@ -138,6 +140,7 @@ class ComparisonRequestPayload(BaseModel):
 
 class ComparisonResponse(BaseModel):
     """Response from comparison."""
+
     percentile: int
     peer_median: str
     peer_range: tuple[str, str]
@@ -148,6 +151,7 @@ class ComparisonResponse(BaseModel):
 
 class ValidationRequestPayload(BaseModel):
     """Payload for validation request."""
+
     dataset_id: str
     metric: str
     value: str = Field(..., description="Value as string (Decimal)")
@@ -156,6 +160,7 @@ class ValidationRequestPayload(BaseModel):
 
 class ValidationResponse(BaseModel):
     """Response from validation."""
+
     is_valid: bool
     expected_range: tuple[str, str]
     actual_value: str
@@ -177,6 +182,7 @@ logger = logging.getLogger(__name__)
 async def health_check(request: Request = None):
     """Health check endpoint with system metrics."""
     import psutil
+
     start_time = time.time()
 
     metrics = get_metrics()
@@ -192,7 +198,7 @@ async def health_check(request: Request = None):
     response_time_ms = round((time.time() - start_time) * 1000, 2)
 
     # Update Prometheus health metrics if available
-    if request and hasattr(request.app.state, 'metrics') and request.app.state.metrics:
+    if request and hasattr(request.app.state, "metrics") and request.app.state.metrics:
         request.app.state.metrics.set_health_status(overall_status == "healthy", component="api")
         request.app.state.metrics.set_datasets_loaded(dataset_count)
 
@@ -206,8 +212,8 @@ async def health_check(request: Request = None):
         "system": {
             "memory_usage_mb": round(memory_info.used / (1024 * 1024), 2),
             "memory_percent": memory_info.percent,
-            "cpu_percent": cpu_percent
-        }
+            "cpu_percent": cpu_percent,
+        },
     }
 
 
@@ -223,14 +229,16 @@ async def list_datasets(
             continue
         if segment and dataset.segment != segment:
             continue
-        datasets.append(DatasetSummary(
-            dataset_id=dataset.dataset_id,
-            name=dataset.name,
-            industry=dataset.industry,
-            segment=dataset.segment,
-            metrics=list(dataset.metrics.keys()),
-            version=dataset.version,
-        ))
+        datasets.append(
+            DatasetSummary(
+                dataset_id=dataset.dataset_id,
+                name=dataset.name,
+                industry=dataset.industry,
+                segment=dataset.segment,
+                metrics=list(dataset.metrics.keys()),
+                version=dataset.version,
+            )
+        )
     return datasets
 
 
@@ -240,7 +248,7 @@ async def get_dataset(dataset_id: str):
     dataset = _benchmark_store.get(dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    
+
     return DatasetDetail(
         dataset_id=dataset.dataset_id,
         name=dataset.name,
@@ -268,18 +276,18 @@ async def compare(payload: ComparisonRequestPayload):
     dataset = _benchmark_store.get(payload.dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    
+
     metric = dataset.get_metric(payload.metric)
     if not metric:
         raise HTTPException(status_code=404, detail=f"Metric '{payload.metric}' not found")
-    
+
     try:
         company_value = Decimal(payload.company_value)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid company_value format")
-    
+
     profile = metric.profile
-    
+
     # Calculate percentile (simplified)
     if company_value <= profile.p10:
         percentile = 5
@@ -293,7 +301,7 @@ async def compare(payload: ComparisonRequestPayload):
         percentile = 82
     else:
         percentile = 95
-    
+
     # Assessment
     if percentile >= 80:
         assessment = "top performer"
@@ -305,7 +313,7 @@ async def compare(payload: ComparisonRequestPayload):
         assessment = "below average"
     else:
         assessment = "needs improvement"
-    
+
     # Confidence based on sample size
     if profile.sample_size >= 1000:
         confidence = "high"
@@ -313,7 +321,7 @@ async def compare(payload: ComparisonRequestPayload):
         confidence = "medium"
     else:
         confidence = "low"
-    
+
     return ComparisonResponse(
         percentile=percentile,
         peer_median=str(profile.p50),
@@ -330,33 +338,33 @@ async def validate(payload: ValidationRequestPayload):
     dataset = _benchmark_store.get(payload.dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    
+
     metric = dataset.get_metric(payload.metric)
     if not metric:
         raise HTTPException(status_code=404, detail=f"Metric '{payload.metric}' not found")
-    
+
     try:
         value = Decimal(payload.value)
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid value format")
-    
+
     profile = metric.profile
-    
+
     # Calculate expected range with tolerance
     tolerance_factor = Decimal(payload.tolerance_percent) / Decimal(100)
     range_min = profile.p10 * (Decimal(1) - tolerance_factor)
     range_max = profile.p90 * (Decimal(1) + tolerance_factor)
-    
+
     # Check if within range
     is_valid = range_min <= value <= range_max
-    
+
     # Calculate deviation
     median = profile.p50
     if value != median:
         deviation_percent = float((value - median) / median * 100)
     else:
         deviation_percent = 0.0
-    
+
     # Determine severity
     if is_valid:
         severity = "info"
@@ -372,7 +380,7 @@ async def validate(payload: ValidationRequestPayload):
         else:
             severity = "info"
             message = f"Value {value} slightly outside tolerance range"
-    
+
     return ValidationResponse(
         is_valid=is_valid,
         expected_range=(str(range_min), str(range_max)),
@@ -394,5 +402,6 @@ async def list_industries():
 
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.getenv("PORT", "8006"))
     uvicorn.run(app, host="0.0.0.0", port=port)

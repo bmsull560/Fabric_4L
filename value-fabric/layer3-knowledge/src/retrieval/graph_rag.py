@@ -2,8 +2,7 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Tuple
-from uuid import uuid4
+from typing import Any
 
 from neo4j import AsyncDriver
 
@@ -19,12 +18,12 @@ class GraphRAGResult:
     """Result from a GraphRAG query."""
 
     query: str
-    entities: List[Dict[str, Any]]
-    relationships: List[Dict[str, Any]]
-    context_graph: Dict[str, Any]
-    traversal_path: List[str]
+    entities: list[dict[str, Any]]
+    relationships: list[dict[str, Any]]
+    context_graph: dict[str, Any]
+    traversal_path: list[str]
     confidence_score: float
-    sources: List[str]
+    sources: list[str]
 
 
 class GraphRAGEngine:
@@ -36,9 +35,9 @@ class GraphRAGEngine:
 
     def __init__(
         self,
-        driver: Optional[AsyncDriver] = None,
-        vector_store: Optional[VectorStore] = None,
-        settings: Optional[Settings] = None,
+        driver: AsyncDriver | None = None,
+        vector_store: VectorStore | None = None,
+        settings: Settings | None = None,
     ):
         """Initialize GraphRAG engine.
 
@@ -67,9 +66,9 @@ class GraphRAGEngine:
     async def query(
         self,
         query_text: str,
-        entity_type: Optional[str] = None,
-        max_hops: Optional[int] = None,
-        min_confidence: Optional[float] = None,
+        entity_type: str | None = None,
+        max_hops: int | None = None,
+        min_confidence: float | None = None,
         max_results: int = 10,
     ) -> GraphRAGResult:
         """Execute a GraphRAG query.
@@ -118,8 +117,8 @@ class GraphRAGEngine:
         self,
         entity_id: str,
         hops: int = 2,
-        relationship_types: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        relationship_types: list[str] | None = None,
+    ) -> dict[str, Any]:
         """Get the neighborhood context around an entity.
 
         Args:
@@ -136,7 +135,9 @@ class GraphRAGEngine:
         rel_filter = ""
         if relationship_types:
             rel_list = "|".join(f"`{r}`" for r in relationship_types)
-            rel_filter = f"AND type(r) IN [{', '.join(f"'{r}'" for r in relationship_types)}]"
+            rel_filter = (
+                f"AND type(r) IN [{', '.join(f"'{r}'" for r in relationship_types)}]"
+            )
 
         query = f"""
         MATCH path = (center {{id: $entity_id}})-[r*1..{hops}]-(connected)
@@ -170,12 +171,14 @@ class GraphRAGEngine:
                 rels = path_info["rel"]
                 if isinstance(rels, list):
                     for rel in rels:
-                        relationships.append({
-                            "type": rel.type,
-                            "source": rel.start_node["id"],
-                            "target": rel.end_node["id"],
-                            "properties": dict(rel),
-                        })
+                        relationships.append(
+                            {
+                                "type": rel.type,
+                                "source": rel.start_node["id"],
+                                "target": rel.end_node["id"],
+                                "properties": dict(rel),
+                            }
+                        )
 
             return {
                 "center": center,
@@ -189,7 +192,7 @@ class GraphRAGEngine:
         self,
         start_entity_id: str,
         direction: str = "both",  # up, down, both
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Traverse the 4-layer value tree from a starting entity.
 
         Args:
@@ -243,12 +246,14 @@ class GraphRAGEngine:
                 # Convert relationships
                 relationships = []
                 for rel in rels:
-                    relationships.append({
-                        "type": rel.type,
-                        "source": rel.start_node["id"],
-                        "target": rel.end_node["id"],
-                        "properties": dict(rel),
-                    })
+                    relationships.append(
+                        {
+                            "type": rel.type,
+                            "source": rel.start_node["id"],
+                            "target": rel.end_node["id"],
+                            "properties": dict(rel),
+                        }
+                    )
 
                 paths.append({"nodes": nodes, "relationships": relationships})
 
@@ -262,9 +267,9 @@ class GraphRAGEngine:
     async def _find_seed_entities(
         self,
         query_text: str,
-        entity_type: Optional[str],
+        entity_type: str | None,
         max_results: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Find seed entities using vector search."""
         if not self.vector_store:
             # Fallback to Neo4j full-text search
@@ -308,9 +313,9 @@ class GraphRAGEngine:
     async def _fulltext_search(
         self,
         query_text: str,
-        entity_type: Optional[str],
+        entity_type: str | None,
         max_results: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Fallback full-text search using Neo4j indexes."""
         driver = await self._get_driver()
 
@@ -359,17 +364,17 @@ class GraphRAGEngine:
 
     async def _expand_context(
         self,
-        seed_entities: List[Dict[str, Any]],
+        seed_entities: list[dict[str, Any]],
         max_hops: int,
         min_confidence: float,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Expand context via graph traversal from seed entities."""
         driver = await self._get_driver()
 
         seed_ids = [e["id"] for e in seed_entities]
-        all_entities: Dict[str, Dict] = {e["id"]: e for e in seed_entities}
-        all_relationships: List[Dict] = []
-        traversal_path: List[str] = []
+        all_entities: dict[str, dict] = {e["id"]: e for e in seed_entities}
+        all_relationships: list[dict] = []
+        traversal_path: list[str] = []
 
         async with driver.session(database=self.settings.neo4j_database) as session:
             # Find connected entities within max_hops
@@ -429,8 +434,8 @@ class GraphRAGEngine:
     def _build_result(
         self,
         query: str,
-        seed_entities: List[Dict],
-        expanded_context: Dict,
+        seed_entities: list[dict],
+        expanded_context: dict,
     ) -> GraphRAGResult:
         """Build final GraphRAG result."""
         # Calculate confidence score based on entity confidence and vector scores
@@ -479,9 +484,9 @@ class GraphRAGEngine:
     async def query_stream(
         self,
         query_text: str,
-        entity_type: Optional[str] = None,
-        max_hops: Optional[int] = None,
-        min_confidence: Optional[float] = None,
+        entity_type: str | None = None,
+        max_hops: int | None = None,
+        min_confidence: float | None = None,
         max_results: int = 10,
     ):
         """Execute a streaming GraphRAG query.
@@ -510,7 +515,11 @@ class GraphRAGEngine:
         # Start event
         yield {
             "event_type": "start",
-            "data": {"query": query_text, "max_hops": max_hops, "entity_type": entity_type},
+            "data": {
+                "query": query_text,
+                "max_hops": max_hops,
+                "entity_type": entity_type,
+            },
             "progress_percent": self._PROGRESS_START,
         }
 
@@ -535,7 +544,9 @@ class GraphRAGEngine:
         # Yield seed entities
         seed_count = len(seed_entities)
         for i, entity in enumerate(seed_entities):
-            progress = self._PROGRESS_SEED_BEGIN + (i / seed_count) * self._PROGRESS_SEED_RANGE
+            progress = (
+                self._PROGRESS_SEED_BEGIN + (i / seed_count) * self._PROGRESS_SEED_RANGE
+            )
             yield {
                 "event_type": "seed_entity",
                 "data": {"entity": entity, "index": i, "total": seed_count},
@@ -544,9 +555,9 @@ class GraphRAGEngine:
 
         # Step 2: Stream context expansion hop by hop (50% of progress)
         seed_ids = [e["id"] for e in seed_entities]
-        all_entities: Dict[str, Dict] = {e["id"]: e for e in seed_entities}
-        all_relationships: List[Dict] = []
-        traversal_path: List[str] = []
+        all_entities: dict[str, dict] = {e["id"]: e for e in seed_entities}
+        all_relationships: list[dict] = []
+        traversal_path: list[str] = []
 
         driver = await self._get_driver()
 
@@ -623,7 +634,9 @@ class GraphRAGEngine:
                     }
 
                 # Progress update
-                next_hop_progress = ((current_hop + 1) / max_hops) * self._PROGRESS_HOPS_RANGE
+                next_hop_progress = (
+                    (current_hop + 1) / max_hops
+                ) * self._PROGRESS_HOPS_RANGE
                 yield {
                     "event_type": "progress",
                     "data": {
@@ -636,13 +649,17 @@ class GraphRAGEngine:
                 }
 
         # Build final result
-        final_result = self._build_result(query_text, seed_entities, {
-            "entities": list(all_entities.values()),
-            "relationships": all_relationships,
-            "traversal_path": traversal_path,
-            "seed_count": len(seed_entities),
-            "expanded_count": len(all_entities) - len(seed_entities),
-        })
+        final_result = self._build_result(
+            query_text,
+            seed_entities,
+            {
+                "entities": list(all_entities.values()),
+                "relationships": all_relationships,
+                "traversal_path": traversal_path,
+                "seed_count": len(seed_entities),
+                "expanded_count": len(all_entities) - len(seed_entities),
+            },
+        )
 
         # Result event
         yield {

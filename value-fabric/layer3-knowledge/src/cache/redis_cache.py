@@ -1,18 +1,19 @@
 """Redis caching layer for Value Fabric Layer 3 API."""
 
+import asyncio
+import hashlib
 import json
 import pickle
-import hashlib
 import time
-from typing import Any, Dict, List, Optional, Union, Callable
-from datetime import datetime, timedelta
+from collections.abc import Callable
 from functools import wraps
-import asyncio
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
 try:
     import redis.asyncio as redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -24,7 +25,7 @@ logger = get_logger(__name__)
 
 class CacheConfig:
     """Configuration for caching behavior."""
-    
+
     def __init__(
         self,
         default_ttl: int = 300,  # 5 minutes
@@ -34,7 +35,7 @@ class CacheConfig:
         compression: bool = True,
     ):
         """Initialize cache configuration.
-        
+
         Args:
             default_ttl: Default time-to-live in seconds
             max_ttl: Maximum allowed TTL in seconds
@@ -51,26 +52,22 @@ class CacheConfig:
 
 class CacheKey:
     """Utility class for generating cache keys."""
-    
+
     @staticmethod
-    def generate(
-        prefix: str,
-        *args,
-        **kwargs
-    ) -> str:
+    def generate(prefix: str, *args, **kwargs) -> str:
         """Generate a cache key from arguments.
-        
+
         Args:
             prefix: Key prefix
             *args: Positional arguments
             **kwargs: Keyword arguments
-            
+
         Returns:
             Cache key string
         """
         # Create a deterministic string representation
         key_parts = [prefix]
-        
+
         # Add positional arguments
         for arg in args:
             if isinstance(arg, BaseModel):
@@ -79,7 +76,7 @@ class CacheKey:
                 key_parts.append(json.dumps(arg, sort_keys=True))
             else:
                 key_parts.append(str(arg))
-        
+
         # Add keyword arguments (sorted for consistency)
         for key in sorted(kwargs.keys()):
             value = kwargs[key]
@@ -89,27 +86,24 @@ class CacheKey:
                 key_parts.append(f"{key}={json.dumps(value, sort_keys=True)}")
             else:
                 key_parts.append(f"{key}={value}")
-        
+
         # Create hash for long keys
         key_string = ":".join(key_parts)
         if len(key_string) > 200:
             key_hash = hashlib.sha256(key_string.encode()).hexdigest()[:16]
             return f"{prefix}:{key_hash}"
-        
+
         return key_string
 
 
 class RedisCache:
     """Redis-based cache implementation."""
-    
+
     def __init__(
-        self,
-        redis_url: str,
-        config: Optional[CacheConfig] = None,
-        **redis_kwargs
+        self, redis_url: str, config: CacheConfig | None = None, **redis_kwargs
     ):
         """Initialize Redis cache.
-        
+
         Args:
             redis_url: Redis connection URL
             config: Cache configuration
@@ -117,23 +111,20 @@ class RedisCache:
         """
         if not REDIS_AVAILABLE:
             raise ImportError("redis library is required for RedisCache")
-        
+
         self.config = config or CacheConfig()
         self.redis_url = redis_url
         self.redis_kwargs = redis_kwargs
         self._redis_client = None
         self._connected = False
-    
+
     async def connect(self) -> None:
         """Connect to Redis."""
         if self._connected:
             return
-        
+
         try:
-            self._redis_client = redis.from_url(
-                self.redis_url,
-                **self.redis_kwargs
-            )
+            self._redis_client = redis.from_url(self.redis_url, **self.redis_kwargs)
             # Test connection
             await self._redis_client.ping()
             self._connected = True
@@ -141,20 +132,20 @@ class RedisCache:
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
             raise
-    
+
     async def disconnect(self) -> None:
         """Disconnect from Redis."""
         if self._redis_client and self._connected:
             await self._redis_client.close()
             self._connected = False
             logger.info("Disconnected from Redis cache")
-    
-    def _serialize(self, data: Any) -> Union[str, bytes]:
+
+    def _serialize(self, data: Any) -> str | bytes:
         """Serialize data for caching.
-        
+
         Args:
             data: Data to serialize
-            
+
         Returns:
             Serialized data
         """
@@ -162,19 +153,19 @@ class RedisCache:
             return pickle.dumps(data)
         else:
             return json.dumps(data, default=str)
-    
-    def _deserialize(self, data: Union[str, bytes]) -> Any:
+
+    def _deserialize(self, data: str | bytes) -> Any:
         """Deserialize cached data.
-        
+
         Args:
             data: Serialized data
-            
+
         Returns:
             Deserialized data
-            
+
         Note:
             Pickle deserialization is restricted to prevent arbitrary code execution.
-            Only use pickle for caches that are fully controlled internally and never 
+            Only use pickle for caches that are fully controlled internally and never
             accept user-generated cache data.
         """
         if self.config.serializer == "pickle":
@@ -184,91 +175,82 @@ class RedisCache:
             return pickle.loads(data)
         else:
             return json.loads(data)
-    
+
     def _make_key(self, key: str) -> str:
         """Add prefix to cache key.
-        
+
         Args:
             key: Original key
-            
+
         Returns:
             Prefixed key
         """
         return f"{self.config.key_prefix}{key}"
-    
-    async def get(self, key: str) -> Optional[Any]:
+
+    async def get(self, key: str) -> Any | None:
         """Get value from cache.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             Cached value or None
         """
         if not self._connected:
             await self.connect()
-        
+
         try:
             prefixed_key = self._make_key(key)
             data = await self._redis_client.get(prefixed_key)
-            
+
             if data is None:
                 return None
-            
+
             return self._deserialize(data)
         except Exception as e:
             logger.warning(f"Cache get error for key {key}: {e}")
             return None
-    
-    async def set(
-        self,
-        key: str,
-        value: Any,
-        ttl: Optional[int] = None
-    ) -> bool:
+
+    async def set(self, key: str, value: Any, ttl: int | None = None) -> bool:
         """Set value in cache.
-        
+
         Args:
             key: Cache key
             value: Value to cache
             ttl: Time-to-live in seconds
-            
+
         Returns:
             True if successful
         """
         if not self._connected:
             await self.connect()
-        
+
         try:
             prefixed_key = self._make_key(key)
             serialized_value = self._serialize(value)
-            
+
             # Use provided TTL or default
             cache_ttl = ttl or self.config.default_ttl
             cache_ttl = min(cache_ttl, self.config.max_ttl)
-            
-            await self._redis_client.setex(
-                prefixed_key,
-                cache_ttl,
-                serialized_value
-            )
+
+            await self._redis_client.setex(prefixed_key, cache_ttl, serialized_value)
             return True
         except Exception as e:
             logger.warning(f"Cache set error for key {key}: {e}")
             return False
-    
+
     async def delete(self, key: str) -> bool:
         """Delete value from cache.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             True if successful
         """
         if not self._connected:
             await self.connect()
-        
+
         try:
             prefixed_key = self._make_key(key)
             result = await self._redis_client.delete(prefixed_key)
@@ -276,19 +258,19 @@ class RedisCache:
         except Exception as e:
             logger.warning(f"Cache delete error for key {key}: {e}")
             return False
-    
+
     async def clear_pattern(self, pattern: str) -> int:
         """Clear keys matching pattern.
-        
+
         Args:
             pattern: Key pattern (with * wildcard)
-            
+
         Returns:
             Number of keys deleted
         """
         if not self._connected:
             await self.connect()
-        
+
         try:
             prefixed_pattern = self._make_key(pattern)
             keys = await self._redis_client.keys(prefixed_pattern)
@@ -298,19 +280,19 @@ class RedisCache:
         except Exception as e:
             logger.warning(f"Cache clear pattern error for {pattern}: {e}")
             return 0
-    
+
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache.
-        
+
         Args:
             key: Cache key
-            
+
         Returns:
             True if key exists
         """
         if not self._connected:
             await self.connect()
-        
+
         try:
             prefixed_key = self._make_key(key)
             result = await self._redis_client.exists(prefixed_key)
@@ -318,20 +300,20 @@ class RedisCache:
         except Exception as e:
             logger.warning(f"Cache exists error for key {key}: {e}")
             return False
-    
-    async def increment(self, key: str, amount: int = 1) -> Optional[int]:
+
+    async def increment(self, key: str, amount: int = 1) -> int | None:
         """Increment numeric value in cache.
-        
+
         Args:
             key: Cache key
             amount: Increment amount
-            
+
         Returns:
             New value or None
         """
         if not self._connected:
             await self.connect()
-        
+
         try:
             prefixed_key = self._make_key(key)
             result = await self._redis_client.incrby(prefixed_key, amount)
@@ -339,16 +321,16 @@ class RedisCache:
         except Exception as e:
             logger.warning(f"Cache increment error for key {key}: {e}")
             return None
-    
-    async def get_stats(self) -> Dict[str, Any]:
+
+    async def get_stats(self) -> dict[str, Any]:
         """Get Redis statistics.
-        
+
         Returns:
             Redis statistics
         """
         if not self._connected:
             await self.connect()
-        
+
         try:
             info = await self._redis_client.info()
             return {
@@ -366,42 +348,37 @@ class RedisCache:
 
 class CacheManager:
     """High-level cache manager with decorators and utilities."""
-    
+
     def __init__(self, cache: RedisCache):
         """Initialize cache manager.
-        
+
         Args:
             cache: Redis cache instance
         """
         self.cache = cache
         # Lock dictionary for per-key locking to prevent cache stampedes
-        self._locks: Dict[str, asyncio.Lock] = {}
+        self._locks: dict[str, asyncio.Lock] = {}
         # Lock for thread-safe lock creation
         self._lock_creation_lock = asyncio.Lock()
-    
+
     async def disconnect(self) -> None:
         """Disconnect from Redis cache."""
         await self.cache.disconnect()
-    
+
     async def get_or_set(
-        self,
-        key: str,
-        factory: Callable,
-        ttl: Optional[int] = None,
-        *args,
-        **kwargs
+        self, key: str, factory: Callable, ttl: int | None = None, *args, **kwargs
     ) -> Any:
         """Get value from cache or set using factory function.
-        
+
         Uses per-key locking to prevent cache stampedes (thundering herd).
-        
+
         Args:
             key: Cache key
             factory: Function to generate value if not cached
             ttl: Time-to-live in seconds
             *args: Arguments for factory function
             **kwargs: Keyword arguments for factory function
-            
+
         Returns:
             Cached or generated value
         """
@@ -409,12 +386,12 @@ class CacheManager:
         cached_value = await self.cache.get(key)
         if cached_value is not None:
             return cached_value
-        
+
         # Use per-key lock to prevent multiple concurrent factory executions
         async with self._lock_creation_lock:
             if key not in self._locks:
                 self._locks[key] = asyncio.Lock()
-        
+
         lock = self._locks[key]
         async with lock:
             # Double-check after acquiring lock
@@ -447,23 +424,24 @@ class CacheManager:
                 pass
 
             return value
-    
+
     def cache_result(
         self,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
         key_prefix: str = "",
-        key_generator: Optional[Callable] = None,
+        key_generator: Callable | None = None,
     ):
         """Decorator to cache function results.
-        
+
         Args:
             ttl: Time-to-live in seconds
             key_prefix: Prefix for cache keys
             key_generator: Custom key generator function
-            
+
         Returns:
             Decorated function
         """
+
         def decorator(func):
             @wraps(func)
             async def wrapper(*args, **kwargs):
@@ -472,65 +450,55 @@ class CacheManager:
                     cache_key = key_generator(*args, **kwargs)
                 else:
                     cache_key = CacheKey.generate(
-                        f"{key_prefix}{func.__name__}",
-                        *args,
-                        **kwargs
+                        f"{key_prefix}{func.__name__}", *args, **kwargs
                     )
-                
+
                 # Use get_or_set pattern
-                return await self.get_or_set(
-                    cache_key,
-                    func,
-                    ttl,
-                    *args,
-                    **kwargs
-                )
-            
+                return await self.get_or_set(cache_key, func, ttl, *args, **kwargs)
+
             return wrapper
+
         return decorator
-    
+
     async def invalidate_pattern(self, pattern: str) -> int:
         """Invalidate cache keys matching pattern.
-        
+
         Args:
             pattern: Pattern to match
-            
+
         Returns:
             Number of keys invalidated
         """
         return await self.cache.clear_pattern(pattern)
-    
-    async def warm_cache(
-        self,
-        cache_entries: List[Dict[str, Any]]
-    ) -> Dict[str, bool]:
+
+    async def warm_cache(self, cache_entries: list[dict[str, Any]]) -> dict[str, bool]:
         """Warm cache with predefined entries.
-        
+
         Args:
             cache_entries: List of cache entries with keys, values, and TTLs
-            
+
         Returns:
             Results of cache warming
         """
         results = {}
-        
+
         for entry in cache_entries:
             key = entry["key"]
             value = entry["value"]
             ttl = entry.get("ttl")
-            
+
             success = await self.cache.set(key, value, ttl)
             results[key] = success
-        
+
         return results
 
 
 # Global cache instance (using string annotations for forward references)
-_cache_manager: Optional[CacheManager] = None
+_cache_manager: CacheManager | None = None
 _request_deduplicator: Optional["RequestDeduplicator"] = None
 
 
-def get_cache_manager() -> Optional[CacheManager]:
+def get_cache_manager() -> CacheManager | None:
     """Get global cache manager instance.
 
     Returns:
@@ -549,9 +517,7 @@ def get_request_deduplicator() -> Optional["RequestDeduplicator"]:
 
 
 def initialize_cache(
-    redis_url: str,
-    config: Optional[CacheConfig] = None,
-    **redis_kwargs
+    redis_url: str, config: CacheConfig | None = None, **redis_kwargs
 ) -> CacheManager:
     """Initialize global cache manager.
 
@@ -574,9 +540,9 @@ def initialize_cache(
 
 
 def cache_result(
-    ttl: Optional[int] = None,
+    ttl: int | None = None,
     key_prefix: str = "",
-    key_generator: Optional[Callable] = None,
+    key_generator: Callable | None = None,
 ):
     """Decorator to cache function results using global cache manager.
 
@@ -588,6 +554,7 @@ def cache_result(
     Returns:
         Decorated function
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -604,21 +571,14 @@ def cache_result(
                 cache_key = key_generator(*args, **kwargs)
             else:
                 cache_key = CacheKey.generate(
-                    f"{key_prefix}{func.__name__}",
-                    *args,
-                    **kwargs
+                    f"{key_prefix}{func.__name__}", *args, **kwargs
                 )
 
             # Use get_or_set pattern
-            return await cache_manager.get_or_set(
-                cache_key,
-                func,
-                ttl,
-                *args,
-                **kwargs
-            )
+            return await cache_manager.get_or_set(cache_key, func, ttl, *args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -650,10 +610,10 @@ class RequestDeduplicator:
         """
         self.cache = cache
         # In-memory pending request tracking for same-process deduplication
-        self._pending: Dict[str, asyncio.Future] = {}
+        self._pending: dict[str, asyncio.Future] = {}
         self._lock = asyncio.Lock()
 
-    def _generate_request_key(self, operation: str, params: Dict[str, Any]) -> str:
+    def _generate_request_key(self, operation: str, params: dict[str, Any]) -> str:
         """Generate unique key for request deduplication.
 
         Args:
@@ -671,11 +631,11 @@ class RequestDeduplicator:
     async def execute(
         self,
         operation: str,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         executor: Callable,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
         *args,
-        **kwargs
+        **kwargs,
     ) -> Any:
         """Execute operation with request deduplication.
 
@@ -707,8 +667,10 @@ class RequestDeduplicator:
                 # Wait with timeout to prevent hanging forever
                 try:
                     return await asyncio.wait_for(future, timeout=self.MAX_FUTURE_WAIT)
-                except asyncio.TimeoutError:
-                    logger.warning(f"Timeout waiting for deduplicated {operation}, executing")
+                except TimeoutError:
+                    logger.warning(
+                        f"Timeout waiting for deduplicated {operation}, executing"
+                    )
                     # Remove stale future and proceed with execution
                     self._pending.pop(dedup_key, None)
 
@@ -723,13 +685,17 @@ class RequestDeduplicator:
                 while time.monotonic() - wait_start < ttl:
                     result = await self.cache.get(f"{dedup_key}:result")
                     if result:
-                        logger.debug(f"Retrieved deduplicated result from cache: {operation}")
+                        logger.debug(
+                            f"Retrieved deduplicated result from cache: {operation}"
+                        )
                         return result
                     await asyncio.sleep(poll_interval)
                     poll_interval = min(poll_interval * 2, self.MAX_POLL_INTERVAL)
 
                 # Timeout waiting for other process, proceed with execution
-                logger.warning(f"Deduplication timeout for {operation}, executing anyway")
+                logger.warning(
+                    f"Deduplication timeout for {operation}, executing anyway"
+                )
         except Exception as e:
             logger.warning(f"Deduplication check error: {e}")
 
@@ -741,10 +707,9 @@ class RequestDeduplicator:
             if dedup_key in self._pending:
                 try:
                     return await asyncio.wait_for(
-                        self._pending[dedup_key],
-                        timeout=self.MAX_FUTURE_WAIT
+                        self._pending[dedup_key], timeout=self.MAX_FUTURE_WAIT
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._pending.pop(dedup_key, None)
             self._pending[dedup_key] = future
 
@@ -764,9 +729,7 @@ class RequestDeduplicator:
             # Cache result briefly for late-arriving deduplicated requests
             try:
                 await self.cache.set(
-                    f"{dedup_key}:result",
-                    result,
-                    ttl=self.RESULT_CACHE_TTL
+                    f"{dedup_key}:result", result, ttl=self.RESULT_CACHE_TTL
                 )
             except Exception:
                 pass

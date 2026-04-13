@@ -17,7 +17,6 @@ Design notes:
 import uuid
 from datetime import datetime
 from enum import Enum as PyEnum
-from typing import Optional
 
 from sqlalchemy import (
     Boolean,
@@ -29,18 +28,18 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
-
 
 # ---------------------------------------------------------------------------
 # Declarative Base
 # ---------------------------------------------------------------------------
 
+
 class Base(DeclarativeBase):
     """Shared declarative base for all Layer 5 models."""
+
     pass
 
 
@@ -48,8 +47,10 @@ class Base(DeclarativeBase):
 # Enumerations
 # ---------------------------------------------------------------------------
 
+
 class ClaimType(str, PyEnum):
     """Semantic category of the claim being recorded."""
+
     COST_SAVINGS_BASELINE = "cost_savings_baseline"
     REVENUE_IMPACT = "revenue_impact"
     EFFICIENCY_GAIN = "efficiency_gain"
@@ -72,11 +73,12 @@ class TruthStatus(str, PyEnum):
       extracted → supported → corroborated → approved
                                            ↘ disputed (can revert to corroborated)
     """
-    EXTRACTED = "extracted"         # AI-identified claim, not yet validated
-    SUPPORTED = "supported"         # Has at least one linked source + confidence ≥ threshold
-    CORROBORATED = "corroborated"   # Multiple independent sources confirm the claim
-    APPROVED = "approved"           # Human reviewer has explicitly approved
-    DISPUTED = "disputed"           # Flagged as conflicting or unreliable
+
+    EXTRACTED = "extracted"  # AI-identified claim, not yet validated
+    SUPPORTED = "supported"  # Has at least one linked source + confidence ≥ threshold
+    CORROBORATED = "corroborated"  # Multiple independent sources confirm the claim
+    APPROVED = "approved"  # Human reviewer has explicitly approved
+    DISPUTED = "disputed"  # Flagged as conflicting or unreliable
 
 
 class MaturityLevel(int, PyEnum):
@@ -90,6 +92,7 @@ class MaturityLevel(int, PyEnum):
     4 = Approved   : Human validated
     5 = Operationalized: Used in ROI / board-level decisions
     """
+
     RAW = 0
     EXTRACTED = 1
     SUPPORTED = 2
@@ -100,6 +103,7 @@ class MaturityLevel(int, PyEnum):
 
 class DisputeReason(str, PyEnum):
     """Reason a truth object was marked as disputed."""
+
     CONFLICTING_SOURCES = "conflicting_sources"
     STALE_DATA = "stale_data"
     METHODOLOGY_FLAW = "methodology_flaw"
@@ -111,6 +115,7 @@ class DisputeReason(str, PyEnum):
 # ---------------------------------------------------------------------------
 # TruthObject — the central model
 # ---------------------------------------------------------------------------
+
 
 class TruthObject(Base):
     """
@@ -124,6 +129,7 @@ class TruthObject(Base):
       claim, claim_type, value, sources[], confidence, status,
       approved_by, freshness, applies_to
     """
+
     __tablename__ = "truth_objects"
 
     # -------------------------------------------------------------------------
@@ -366,8 +372,10 @@ class TruthObject(Base):
 # TruthSource — individual evidence records
 # ---------------------------------------------------------------------------
 
+
 class SourceType(str, PyEnum):
     """Type of evidence source."""
+
     CALL_TRANSCRIPT = "call_transcript"
     CRM_FIELD = "crm_field"
     EMAIL = "email"
@@ -390,6 +398,7 @@ class TruthSource(Base):
     ≥ 2 distinct TruthSource records with different source_types or
     source_urls, confirming the claim from independent angles.
     """
+
     __tablename__ = "truth_sources"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -453,7 +462,9 @@ class TruthSource(Base):
     # Metadata
     metadata = Column(JSONB, nullable=True, default=dict)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=datetime.utcnow
+    )
     created_by = Column(String(255), nullable=True)
 
     # Relationships
@@ -478,6 +489,7 @@ class TruthSource(Base):
 # ValidationEvent — immutable state transition audit log
 # ---------------------------------------------------------------------------
 
+
 class ValidationEvent(Base):
     """
     Immutable record of every validation state transition.
@@ -485,6 +497,7 @@ class ValidationEvent(Base):
     Never updated or deleted — provides a complete audit trail of how
     a TruthObject moved through the validation state machine.
     """
+
     __tablename__ = "validation_events"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -558,6 +571,7 @@ class ValidationEvent(Base):
 # MaturityHistory — maturity ladder progression log
 # ---------------------------------------------------------------------------
 
+
 class MaturityHistory(Base):
     """
     Tracks progression through the 0–5 maturity ladder.
@@ -566,6 +580,7 @@ class MaturityHistory(Base):
     advancement (e.g. a fact can be APPROVED at maturity=4 and later
     advance to OPERATIONALIZED=5 when it is used in a board deck).
     """
+
     __tablename__ = "maturity_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -606,6 +621,5 @@ class MaturityHistory(Base):
 
     def __repr__(self) -> str:
         return (
-            f"<MaturityHistory id={self.id} "
-            f"level {self.from_level} → {self.to_level}>"
+            f"<MaturityHistory id={self.id} level {self.from_level} → {self.to_level}>"
         )

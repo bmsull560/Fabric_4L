@@ -13,16 +13,13 @@ a Layer 5 outage never blocks a business case generation.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_BASE_URL = os.getenv(
-    "LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005"
-)
+_DEFAULT_BASE_URL = os.getenv("LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005")
 _DEFAULT_TIMEOUT = 30.0
 
 
@@ -46,8 +43,8 @@ class Layer5GroundTruthClient:
     def __init__(
         self,
         base_url: str = _DEFAULT_BASE_URL,
-        service_token: Optional[str] = None,
-        tenant_id: Optional[str] = None,
+        service_token: str | None = None,
+        tenant_id: str | None = None,
         timeout: float = _DEFAULT_TIMEOUT,
     ) -> None:
         """Initialise the client.
@@ -63,7 +60,7 @@ class Layer5GroundTruthClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
-        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        headers: dict[str, str] = {"Content-Type": "application/json"}
         if service_token:
             headers["Authorization"] = f"Bearer {service_token}"
         elif tenant_id:
@@ -94,8 +91,8 @@ class Layer5GroundTruthClient:
 
     async def sync_approved_truths(
         self,
-        organization_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        organization_id: str | None = None,
+    ) -> dict[str, Any]:
         """Trigger a bulk sync of all APPROVED TruthObjects to Layer 3 KG.
 
         This is the primary integration point called at the end of the
@@ -110,14 +107,12 @@ class Layer5GroundTruthClient:
             Dict with keys ``synced``, ``failed``, ``total_pending``,
             or ``error`` on failure.
         """
-        params: Dict[str, str] = {}
+        params: dict[str, str] = {}
         if organization_id:
             params["organization_id"] = str(organization_id)
 
         try:
-            resp = await self._client.post(
-                "/api/v1/truths/sync-kg", params=params
-            )
+            resp = await self._client.post("/api/v1/truths/sync-kg", params=params)
             resp.raise_for_status()
             data = resp.json()
             logger.info(
@@ -152,14 +147,14 @@ class Layer5GroundTruthClient:
         claim: str,
         claim_type: str,
         confidence: float,
-        organization_id: Optional[str] = None,
-        value: Optional[float] = None,
-        applies_to: Optional[Dict[str, Any]] = None,
-        sources: Optional[List[Dict[str, Any]]] = None,
-        extraction_job_id: Optional[str] = None,
-        extraction_model: Optional[str] = None,
-        raw_extraction_data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        organization_id: str | None = None,
+        value: float | None = None,
+        applies_to: dict[str, Any] | None = None,
+        sources: list[dict[str, Any]] | None = None,
+        extraction_job_id: str | None = None,
+        extraction_model: str | None = None,
+        raw_extraction_data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Create a new TruthObject in Layer 5.
 
         Args:
@@ -180,7 +175,7 @@ class Layer5GroundTruthClient:
         Returns:
             Created TruthObject dict, or ``{"error": ...}`` on failure.
         """
-        body: Dict[str, Any] = {
+        body: dict[str, Any] = {
             "claim": claim,
             "claim_type": claim_type,
             "confidence": confidence,
@@ -198,14 +193,12 @@ class Layer5GroundTruthClient:
         if raw_extraction_data:
             body["raw_extraction_data"] = raw_extraction_data
 
-        params: Dict[str, str] = {}
+        params: dict[str, str] = {}
         if organization_id:
             params["organization_id"] = str(organization_id)
 
         try:
-            resp = await self._client.post(
-                "/api/v1/truths", json=body, params=params
-            )
+            resp = await self._client.post("/api/v1/truths", json=body, params=params)
             resp.raise_for_status()
             return resp.json()
         except httpx.HTTPStatusError as exc:
@@ -228,22 +221,22 @@ class Layer5GroundTruthClient:
 
     async def list_truths(
         self,
-        organization_id: Optional[str] = None,
-        status: Optional[str] = None,
-        claim_type: Optional[str] = None,
-        min_maturity: Optional[int] = None,
-        min_confidence: Optional[float] = None,
-        applies_to_opportunity: Optional[str] = None,
+        organization_id: str | None = None,
+        status: str | None = None,
+        claim_type: str | None = None,
+        min_maturity: int | None = None,
+        min_confidence: float | None = None,
+        applies_to_opportunity: str | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """List TruthObjects with optional filters.
 
         Returns:
             Dict with ``items``, ``total``, ``limit``, ``offset``,
             ``has_more``, or ``{"error": ...}`` on failure.
         """
-        params: Dict[str, Any] = {"limit": limit, "offset": offset}
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         if organization_id:
             params["organization_id"] = str(organization_id)
         if status:
@@ -284,13 +277,13 @@ class Layer5GroundTruthClient:
 # Module-level singleton factory
 # ---------------------------------------------------------------------------
 
-_client_instance: Optional[Layer5GroundTruthClient] = None
+_client_instance: Layer5GroundTruthClient | None = None
 
 
 def get_layer5_client(
-    base_url: Optional[str] = None,
-    service_token: Optional[str] = None,
-    tenant_id: Optional[str] = None,
+    base_url: str | None = None,
+    service_token: str | None = None,
+    tenant_id: str | None = None,
 ) -> Layer5GroundTruthClient:
     """Return a module-level singleton Layer5GroundTruthClient.
 

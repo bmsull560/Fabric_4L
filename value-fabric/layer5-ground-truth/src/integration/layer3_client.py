@@ -11,7 +11,7 @@ Layer 3 API base URL is configured via LAYER3_BASE_URL env var (default: http://
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 import httpx
@@ -27,23 +27,24 @@ logger = logging.getLogger(__name__)
 
 # Maps Layer 5 ClaimType → Layer 3 node label for relationship creation
 CLAIM_TYPE_TO_KG_LABEL: dict[str, str] = {
-    "cost_savings_baseline":   "ValueDriver",
-    "revenue_impact":          "ValueDriver",
-    "efficiency_gain":         "ValueDriver",
-    "risk_reduction":          "ValueDriver",
-    "compliance_requirement":  "Outcome",
-    "customer_outcome":        "Outcome",
-    "technical_capability":    "Capability",
-    "market_benchmark":        "ValueDriver",
-    "persona_pain_point":      "Persona",
-    "value_driver_metric":     "ValueDriver",
-    "other":                   "Entity",
+    "cost_savings_baseline": "ValueDriver",
+    "revenue_impact": "ValueDriver",
+    "efficiency_gain": "ValueDriver",
+    "risk_reduction": "ValueDriver",
+    "compliance_requirement": "Outcome",
+    "customer_outcome": "Outcome",
+    "technical_capability": "Capability",
+    "market_benchmark": "ValueDriver",
+    "persona_pain_point": "Persona",
+    "value_driver_metric": "ValueDriver",
+    "other": "Entity",
 }
 
 
 # ---------------------------------------------------------------------------
 # Client
 # ---------------------------------------------------------------------------
+
 
 class Layer3Client:
     """
@@ -69,7 +70,9 @@ class Layer3Client:
         """Return True if Layer 3 is reachable."""
         try:
             async with httpx.AsyncClient(timeout=5) as client:
-                resp = await client.get(f"{self._base_url}/health", headers=self._headers)
+                resp = await client.get(
+                    f"{self._base_url}/health", headers=self._headers
+                )
                 return resp.status_code == 200
         except Exception as exc:
             logger.debug("Layer 3 ping failed: %s", exc)
@@ -88,10 +91,10 @@ class Layer3Client:
         confidence: float,
         status: str,
         maturity_level: int,
-        value: Optional[dict] = None,
-        applies_to: Optional[dict] = None,
+        value: dict | None = None,
+        applies_to: dict | None = None,
         source_count: int = 0,
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Create or update a :GroundTruth node in the Layer 3 Knowledge Graph.
 
@@ -103,7 +106,9 @@ class Layer3Client:
           RETURN g.id
         """
         if not self._settings.layer3_sync_enabled:
-            logger.debug("Layer 3 sync disabled — skipping sync for %s", truth_object_id)
+            logger.debug(
+                "Layer 3 sync disabled — skipping sync for %s", truth_object_id
+            )
             return None
 
         payload = {
@@ -164,7 +169,7 @@ class Layer3Client:
         kg_node_id: str,
         target_entity_id: str,
         relationship_type: str = "GROUNDS",
-        properties: Optional[dict] = None,
+        properties: dict | None = None,
     ) -> bool:
         """
         Create a relationship between a GroundTruth node and an existing KG entity.
@@ -216,7 +221,7 @@ class Layer3Client:
         self,
         entity_id: str,
         organization_id: UUID,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Fetch entity metadata from Layer 3 to enrich a TruthObject.
 
@@ -246,13 +251,13 @@ class Layer3Client:
     async def bulk_sync_approved(
         self,
         truth_objects: list[dict[str, Any]],
-    ) -> dict[str, Optional[str]]:
+    ) -> dict[str, str | None]:
         """
         Sync a list of approved TruthObjects to Layer 3.
 
         Returns a mapping of truth_object_id → kg_node_id (or None on failure).
         """
-        results: dict[str, Optional[str]] = {}
+        results: dict[str, str | None] = {}
         for obj in truth_objects:
             node_id = await self.sync_truth_object(
                 truth_object_id=obj["id"],
@@ -274,7 +279,7 @@ class Layer3Client:
 # Singleton accessor
 # ---------------------------------------------------------------------------
 
-_client: Optional[Layer3Client] = None
+_client: Layer3Client | None = None
 
 
 def get_layer3_client() -> Layer3Client:

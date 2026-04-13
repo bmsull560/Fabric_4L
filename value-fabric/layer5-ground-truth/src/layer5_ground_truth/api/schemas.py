@@ -9,11 +9,10 @@ Follows the same style as Layer 3's src/api/models.py:
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-
 
 # Re-export enums so API consumers only need to import from schemas
 from ..models.truth_object import (
@@ -52,6 +51,7 @@ __all__ = [
 # Source schemas
 # ---------------------------------------------------------------------------
 
+
 class TruthSourceCreate(BaseModel):
     """Schema for creating a new TruthSource."""
 
@@ -59,26 +59,26 @@ class TruthSourceCreate(BaseModel):
         default=SourceType.OTHER,
         description="Category of evidence",
     )
-    source_url: Optional[str] = Field(
+    source_url: str | None = Field(
         default=None,
         max_length=2048,
         description="URL or URI of the source document",
     )
-    source_id: Optional[str] = Field(
+    source_id: str | None = Field(
         default=None,
         max_length=255,
         description="Internal document / asset ID",
     )
-    source_title: Optional[str] = Field(
+    source_title: str | None = Field(
         default=None,
         max_length=512,
         description="Human-readable title of the source",
     )
-    excerpt: Optional[str] = Field(
+    excerpt: str | None = Field(
         default=None,
         description="Verbatim excerpt supporting the claim",
     )
-    excerpt_location: Optional[str] = Field(
+    excerpt_location: str | None = Field(
         default=None,
         max_length=255,
         description='Location within source, e.g. "page 3, paragraph 2"',
@@ -89,7 +89,7 @@ class TruthSourceCreate(BaseModel):
         le=1.0,
         description="Contribution to overall confidence (0.0–1.0)",
     )
-    source_date: Optional[datetime] = Field(
+    source_date: datetime | None = Field(
         default=None,
         description="Date the source was published or captured",
     )
@@ -103,7 +103,7 @@ class TruthSourceResponse(TruthSourceCreate):
     truth_object_id: UUID
     organization_id: UUID
     created_at: datetime
-    created_by: Optional[str] = None
+    created_by: str | None = None
     # Map from SQLAlchemy's extra_metadata column
     metadata: dict[str, Any] = Field(default_factory=dict, alias="extra_metadata")
 
@@ -125,19 +125,20 @@ class TruthSourceResponse(TruthSourceCreate):
 # Validation event schemas
 # ---------------------------------------------------------------------------
 
+
 class ValidationEventResponse(BaseModel):
     """Schema for a ValidationEvent in API responses."""
 
     id: UUID
-    from_status: Optional[str] = None
+    from_status: str | None = None
     to_status: str
-    from_maturity: Optional[int] = None
+    from_maturity: int | None = None
     to_maturity: int
-    actor: Optional[str] = None
+    actor: str | None = None
     actor_type: str
-    confidence_at_transition: Optional[float] = None
-    source_count_at_transition: Optional[int] = None
-    notes: Optional[str] = None
+    confidence_at_transition: float | None = None
+    source_count_at_transition: int | None = None
+    notes: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -147,15 +148,16 @@ class ValidationEventResponse(BaseModel):
 # Maturity history schemas
 # ---------------------------------------------------------------------------
 
+
 class MaturityHistoryResponse(BaseModel):
     """Schema for a MaturityHistory entry in API responses."""
 
     id: UUID
-    from_level: Optional[int] = None
+    from_level: int | None = None
     to_level: int
-    trigger: Optional[str] = None
-    triggered_by: Optional[str] = None
-    context: Optional[dict[str, Any]] = None
+    trigger: str | None = None
+    triggered_by: str | None = None
+    context: dict[str, Any] | None = None
     recorded_at: datetime
 
     model_config = {"from_attributes": True}
@@ -164,6 +166,7 @@ class MaturityHistoryResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # TruthObject create schema
 # ---------------------------------------------------------------------------
+
 
 class TruthObjectCreate(BaseModel):
     """
@@ -191,7 +194,7 @@ class TruthObjectCreate(BaseModel):
         description="Extraction model confidence score",
         examples=[0.82],
     )
-    value: Optional[dict[str, Any]] = Field(
+    value: dict[str, Any] | None = Field(
         default=None,
         description=(
             "Structured value: {amount, unit, currency, period} "
@@ -199,22 +202,22 @@ class TruthObjectCreate(BaseModel):
         ),
         examples=[{"amount": 20, "unit": "hours", "period": "month"}],
     )
-    applies_to: Optional[dict[str, Any]] = Field(
+    applies_to: dict[str, Any] | None = Field(
         default=None,
         description="Scope: {opportunity_id, account_id, industry, product_line, geography}",
         examples=[{"opportunity_id": "opp-123", "account_id": "acct-456"}],
     )
-    extraction_job_id: Optional[str] = Field(
+    extraction_job_id: str | None = Field(
         default=None,
         max_length=255,
         description="Layer 2 extraction job that produced this claim",
     )
-    extraction_model: Optional[str] = Field(
+    extraction_model: str | None = Field(
         default=None,
         max_length=128,
         description="LLM / model version used for extraction",
     )
-    raw_extraction_data: Optional[dict[str, Any]] = Field(
+    raw_extraction_data: dict[str, Any] | None = Field(
         default=None,
         description="Original extraction payload for reproducibility",
     )
@@ -235,6 +238,7 @@ class TruthObjectCreate(BaseModel):
 # TruthObject response schemas
 # ---------------------------------------------------------------------------
 
+
 class TruthObjectResponse(BaseModel):
     """
     Full TruthObject response including related sources and audit trail.
@@ -244,25 +248,25 @@ class TruthObjectResponse(BaseModel):
     organization_id: UUID
     claim: str
     claim_type: str
-    value: Optional[dict[str, Any]] = None
+    value: dict[str, Any] | None = None
     confidence: float
     status: str
     maturity_level: int
-    approved_by: Optional[str] = None
-    approved_at: Optional[datetime] = None
-    approval_notes: Optional[str] = None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    approval_notes: str | None = None
     freshness: datetime
-    expires_at: Optional[datetime] = None
+    expires_at: datetime | None = None
     is_stale: bool
-    applies_to: Optional[dict[str, Any]] = None
-    dispute_reason: Optional[str] = None
-    dispute_notes: Optional[str] = None
-    disputed_by: Optional[str] = None
-    disputed_at: Optional[datetime] = None
-    kg_node_id: Optional[str] = None
-    kg_synced_at: Optional[datetime] = None
-    extraction_job_id: Optional[str] = None
-    extraction_model: Optional[str] = None
+    applies_to: dict[str, Any] | None = None
+    dispute_reason: str | None = None
+    dispute_notes: str | None = None
+    disputed_by: str | None = None
+    disputed_at: datetime | None = None
+    kg_node_id: str | None = None
+    kg_synced_at: datetime | None = None
+    extraction_job_id: str | None = None
+    extraction_model: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -291,7 +295,7 @@ class TruthObjectSummary(BaseModel):
     maturity_level: int
     is_stale: bool
     source_count: int = 0
-    approved_by: Optional[str] = None
+    approved_by: str | None = None
     freshness: datetime
     created_at: datetime
 
@@ -311,6 +315,7 @@ class TruthObjectListResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Validate request/response
 # ---------------------------------------------------------------------------
+
 
 class ValidateRequest(BaseModel):
     """
@@ -344,12 +349,12 @@ class ValidateRequest(BaseModel):
         default="human",
         description="'human' | 'system' | 'agent'",
     )
-    notes: Optional[str] = Field(
+    notes: str | None = Field(
         default=None,
         max_length=2000,
         description="Optional notes for the audit trail",
     )
-    dispute_reason: Optional[DisputeReason] = Field(
+    dispute_reason: DisputeReason | None = Field(
         default=None,
         description="Required when action == 'dispute'",
     )
@@ -378,14 +383,17 @@ class ValidateResponse(BaseModel):
 # Add source request
 # ---------------------------------------------------------------------------
 
+
 class AddSourceRequest(TruthSourceCreate):
     """Schema for POST /truths/{id}/sources."""
+
     pass
 
 
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
+
 
 class HealthResponse(BaseModel):
     """Health check response."""
@@ -402,6 +410,7 @@ class HealthResponse(BaseModel):
 # Maturity ladder reference
 # ---------------------------------------------------------------------------
 
+
 class MaturityLevelDetail(BaseModel):
     level: int
     name: str
@@ -412,4 +421,5 @@ class MaturityLevelDetail(BaseModel):
 
 class MaturityLadderResponse(BaseModel):
     """Reference endpoint — returns the full maturity ladder definition."""
+
     levels: list[MaturityLevelDetail]

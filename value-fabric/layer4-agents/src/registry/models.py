@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, Float, Text, Boolean
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -55,24 +55,24 @@ class ModelVersion(Base):
         comment="One of: dev, staging, production, deprecated",
     )
 
-    promoted_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    promoted_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
 
-    eval_score: Mapped[Optional[float]] = mapped_column(
+    eval_score: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
         comment="Latest evaluation score",
     )
 
-    eval_run_id: Mapped[Optional[str]] = mapped_column(
+    eval_run_id: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
 
-    config: Mapped[Dict[str, Any]] = mapped_column(
+    config: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
         nullable=False,
         default=dict,
@@ -82,7 +82,7 @@ class ModelVersion(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
     __table_args__ = (
@@ -125,18 +125,18 @@ class ModelPromotionLog(Base):
         nullable=False,
     )
 
-    promoted_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    promoted_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
 
-    reason: Mapped[Optional[str]] = mapped_column(
+    reason: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
 
-    eval_score: Mapped[Optional[float]] = mapped_column(
+    eval_score: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
     )
@@ -150,12 +150,10 @@ class ModelPromotionLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
-    __table_args__ = (
-        Index("ix_model_promotion_log_model_version_id", "model_version_id"),
-    )
+    __table_args__ = (Index("ix_model_promotion_log_model_version_id", "model_version_id"),)
 
     def __repr__(self) -> str:
         return (

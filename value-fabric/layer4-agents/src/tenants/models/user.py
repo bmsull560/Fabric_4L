@@ -7,8 +7,7 @@ unlike API keys which use HMAC-SHA256 for throughput reasons).
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
@@ -42,13 +41,13 @@ class User(Base):
     )
 
     # bcrypt hash — never store raw passwords
-    hashed_password: Mapped[Optional[str]] = mapped_column(
+    hashed_password: Mapped[str | None] = mapped_column(
         String(72),
         nullable=True,
         comment="bcrypt hash of the user's password (null until user activates invite)",
     )
 
-    display_name: Mapped[Optional[str]] = mapped_column(
+    display_name: Mapped[str | None] = mapped_column(
         String(200),
         nullable=True,
     )
@@ -67,12 +66,12 @@ class User(Base):
         comment="Lifecycle: invited | active | deactivated",
     )
 
-    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+    last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    invited_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+    invited_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -82,14 +81,14 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
     __table_args__ = (

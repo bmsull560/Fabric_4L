@@ -32,8 +32,7 @@ APPROVED → OPERATIONALIZED (maturity only, status stays APPROVED)
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -57,13 +56,16 @@ logger = logging.getLogger(__name__)
 # Custom exceptions
 # ---------------------------------------------------------------------------
 
+
 class InvalidTransitionError(ValueError):
     """Raised when a requested state transition is not permitted."""
+
     pass
 
 
 class InsufficientEvidenceError(ValueError):
     """Raised when the evidence requirements for a transition are not met."""
+
     pass
 
 
@@ -72,26 +74,27 @@ class InsufficientEvidenceError(ValueError):
 # ---------------------------------------------------------------------------
 
 ALLOWED_TRANSITIONS: dict[TruthStatus, set[TruthStatus]] = {
-    TruthStatus.EXTRACTED:    {TruthStatus.SUPPORTED, TruthStatus.DISPUTED},
-    TruthStatus.SUPPORTED:    {TruthStatus.CORROBORATED, TruthStatus.DISPUTED},
+    TruthStatus.EXTRACTED: {TruthStatus.SUPPORTED, TruthStatus.DISPUTED},
+    TruthStatus.SUPPORTED: {TruthStatus.CORROBORATED, TruthStatus.DISPUTED},
     TruthStatus.CORROBORATED: {TruthStatus.APPROVED, TruthStatus.DISPUTED},
-    TruthStatus.APPROVED:     {TruthStatus.DISPUTED},
-    TruthStatus.DISPUTED:     {TruthStatus.CORROBORATED},  # revert after resolution
+    TruthStatus.APPROVED: {TruthStatus.DISPUTED},
+    TruthStatus.DISPUTED: {TruthStatus.CORROBORATED},  # revert after resolution
 }
 
 # Status → maturity level mapping (minimum maturity for a given status)
 STATUS_TO_MATURITY: dict[TruthStatus, MaturityLevel] = {
-    TruthStatus.EXTRACTED:    MaturityLevel.EXTRACTED,
-    TruthStatus.SUPPORTED:    MaturityLevel.SUPPORTED,
+    TruthStatus.EXTRACTED: MaturityLevel.EXTRACTED,
+    TruthStatus.SUPPORTED: MaturityLevel.SUPPORTED,
     TruthStatus.CORROBORATED: MaturityLevel.CORROBORATED,
-    TruthStatus.APPROVED:     MaturityLevel.APPROVED,
-    TruthStatus.DISPUTED:     MaturityLevel.EXTRACTED,   # maturity does not advance on dispute
+    TruthStatus.APPROVED: MaturityLevel.APPROVED,
+    TruthStatus.DISPUTED: MaturityLevel.EXTRACTED,  # maturity does not advance on dispute
 }
 
 
 # ---------------------------------------------------------------------------
 # State machine service
 # ---------------------------------------------------------------------------
+
 
 class ValidationStateMachine:
     """
@@ -113,8 +116,8 @@ class ValidationStateMachine:
         self,
         db: AsyncSession,
         truth_object: TruthObject,
-        actor: Optional[str] = None,
-        notes: Optional[str] = None,
+        actor: str | None = None,
+        notes: str | None = None,
     ) -> TruthObject:
         """
         Advance a TruthObject from EXTRACTED → SUPPORTED.
@@ -151,8 +154,8 @@ class ValidationStateMachine:
         self,
         db: AsyncSession,
         truth_object: TruthObject,
-        actor: Optional[str] = None,
-        notes: Optional[str] = None,
+        actor: str | None = None,
+        notes: str | None = None,
     ) -> TruthObject:
         """
         Advance a TruthObject from SUPPORTED → CORROBORATED.
@@ -186,7 +189,7 @@ class ValidationStateMachine:
         db: AsyncSession,
         truth_object: TruthObject,
         approved_by: str,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> TruthObject:
         """
         Advance a TruthObject from CORROBORATED → APPROVED.
@@ -203,7 +206,7 @@ class ValidationStateMachine:
         source_count = await self._count_sources(db, truth_object.id)
 
         truth_object.approved_by = approved_by
-        truth_object.approved_at = datetime.now(timezone.utc)
+        truth_object.approved_at = datetime.now(UTC)
         truth_object.approval_notes = notes
 
         return await self._apply_transition(
@@ -222,7 +225,7 @@ class ValidationStateMachine:
         truth_object: TruthObject,
         reason: DisputeReason,
         disputed_by: str,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> TruthObject:
         """
         Mark a TruthObject as DISPUTED from any non-DISPUTED status.
@@ -238,7 +241,7 @@ class ValidationStateMachine:
         truth_object.dispute_reason = reason.value
         truth_object.dispute_notes = notes
         truth_object.disputed_by = disputed_by
-        truth_object.disputed_at = datetime.now(timezone.utc)
+        truth_object.disputed_at = datetime.now(UTC)
 
         return await self._apply_transition(
             db=db,
@@ -255,7 +258,7 @@ class ValidationStateMachine:
         db: AsyncSession,
         truth_object: TruthObject,
         resolved_by: str,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> TruthObject:
         """
         Revert a DISPUTED TruthObject back to CORROBORATED after resolution.
@@ -289,8 +292,8 @@ class ValidationStateMachine:
         db: AsyncSession,
         truth_object: TruthObject,
         trigger: str,
-        triggered_by: Optional[str] = None,
-        context: Optional[dict] = None,
+        triggered_by: str | None = None,
+        context: dict | None = None,
     ) -> TruthObject:
         """
         Advance maturity to OPERATIONALIZED (level 5) without changing status.
@@ -315,7 +318,7 @@ class ValidationStateMachine:
 
         old_maturity = truth_object.maturity_level
         truth_object.maturity_level = MaturityLevel.OPERATIONALIZED.value
-        truth_object.updated_at = datetime.now(timezone.utc)
+        truth_object.updated_at = datetime.now(UTC)
 
         history = MaturityHistory(
             truth_object_id=truth_object.id,
@@ -401,9 +404,7 @@ class ValidationStateMachine:
     ) -> int:
         """Count the number of TruthSource records for a given TruthObject."""
         result = await db.execute(
-            select(TruthSource).where(
-                TruthSource.truth_object_id == truth_object_id
-            )
+            select(TruthSource).where(TruthSource.truth_object_id == truth_object_id)
         )
         return len(result.scalars().all())
 
@@ -415,7 +416,7 @@ class ValidationStateMachine:
         actor: str,
         actor_type: str,
         source_count: int,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> TruthObject:
         """Apply a validated status transition and record audit events."""
         old_status = truth_object.status
@@ -428,7 +429,7 @@ class ValidationStateMachine:
         # Update the truth object
         truth_object.status = new_status.value
         truth_object.maturity_level = new_maturity
-        truth_object.updated_at = datetime.now(timezone.utc)
+        truth_object.updated_at = datetime.now(UTC)
 
         # Record validation event (immutable audit)
         event = ValidationEvent(

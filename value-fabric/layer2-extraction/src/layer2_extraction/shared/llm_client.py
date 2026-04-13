@@ -10,12 +10,13 @@ import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any
 
 # OpenAI import with graceful fallback
 try:
     from openai import AsyncOpenAI
     from openai.types.chat import ChatCompletion
+
     OPENAI_AVAILABLE = True
 except ImportError:
     OPENAI_AVAILABLE = False
@@ -25,6 +26,7 @@ except ImportError:
 # Anthropic import with graceful fallback
 try:
     from anthropic import AsyncAnthropic
+
     ANTHROPIC_AVAILABLE = True
 except ImportError:
     ANTHROPIC_AVAILABLE = False
@@ -33,6 +35,7 @@ except ImportError:
 
 class LLMProvider(str, Enum):
     """Supported LLM providers."""
+
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
 
@@ -40,6 +43,7 @@ class LLMProvider(str, Enum):
 @dataclass
 class CostRecord:
     """Cost tracking record for a single API call."""
+
     extraction_job_id: str
     provider: str
     model: str
@@ -48,8 +52,8 @@ class CostRecord:
     output_tokens: int
     cost_usd: float
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         return {
             "extraction_job_id": self.extraction_job_id,
             "provider": self.provider,
@@ -79,31 +83,31 @@ PRICING = {
 
 class LLMClient:
     """Unified LLM client with cost tracking.
-    
+
     Supports both OpenAI and Anthropic with automatic provider switching,
     cost calculation, and retry logic.
-    
+
     Example:
         client = LLMClient(provider="openai", model="gpt-4o")
-        
+
         response, cost = await client.chat_completion(
             messages=[{"role": "user", "content": "Hello"}],
             extraction_job_id="job_123",
             endpoint="entity_extraction"
         )
     """
-    
+
     def __init__(
         self,
-        provider: Union[str, LLMProvider] = "openai",
-        model: Optional[str] = None,
-        api_key: Optional[str] = None,
+        provider: str | LLMProvider = "openai",
+        model: str | None = None,
+        api_key: str | None = None,
         timeout: float = 60.0,
         max_retries: int = 3,
         cost_tracking_enabled: bool = True,
     ):
         """Initialize LLM client.
-        
+
         Args:
             provider: "openai" or "anthropic"
             model: Model name (uses env var default if not provided)
@@ -116,8 +120,8 @@ class LLMClient:
         self.timeout = timeout
         self.max_retries = max_retries
         self.cost_tracking_enabled = cost_tracking_enabled
-        self._cost_records: List[CostRecord] = []
-        
+        self._cost_records: list[CostRecord] = []
+
         # Set model with fallback to env vars
         if model:
             self.model = model
@@ -125,7 +129,7 @@ class LLMClient:
             self.model = os.getenv("L2_OPENAI_MODEL", "gpt-4o")
         else:
             self.model = os.getenv("L2_ANTHROPIC_MODEL", "claude-3-5-sonnet")
-        
+
         # Initialize provider client
         if self.provider == LLMProvider.OPENAI:
             if not OPENAI_AVAILABLE:
@@ -134,28 +138,30 @@ class LLMClient:
             if not api_key:
                 raise ValueError("OpenAI API key required (pass api_key or set OPENAI_API_KEY)")
             self._client = AsyncOpenAI(api_key=api_key, timeout=timeout)
-            
+
         elif self.provider == LLMProvider.ANTHROPIC:
             if not ANTHROPIC_AVAILABLE:
                 raise ImportError("anthropic package not installed. Run: pip install anthropic")
             api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
             if not api_key:
-                raise ValueError("Anthropic API key required (pass api_key or set ANTHROPIC_API_KEY)")
+                raise ValueError(
+                    "Anthropic API key required (pass api_key or set ANTHROPIC_API_KEY)"
+                )
             self._client = AsyncAnthropic(api_key=api_key, timeout=timeout)
-    
+
     async def chat_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         extraction_job_id: str,
         endpoint: str,
         temperature: float = 0.0,
-        tools: Optional[List[Dict]] = None,
-        tool_choice: Optional[Dict] = None,
+        tools: list[dict] | None = None,
+        tool_choice: dict | None = None,
         logprobs: bool = False,
-        top_logprobs: Optional[int] = None,
-    ) -> tuple[ChatCompletion, Optional[CostRecord]]:
+        top_logprobs: int | None = None,
+    ) -> tuple[ChatCompletion, CostRecord | None]:
         """Execute chat completion with cost tracking.
-        
+
         Args:
             messages: Chat messages
             extraction_job_id: Job ID for cost attribution
@@ -165,33 +171,39 @@ class LLMClient:
             tool_choice: Force specific tool (OpenAI only)
             logprobs: Request logprobs (OpenAI only)
             top_logprobs: Number of alternative logprobs per token (OpenAI only)
-            
+
         Returns:
             Tuple of (response, cost_record)
         """
         if self.provider == LLMProvider.OPENAI:
             return await self._openai_completion(
-                messages, extraction_job_id, endpoint,
-                temperature, tools, tool_choice, logprobs, top_logprobs
+                messages,
+                extraction_job_id,
+                endpoint,
+                temperature,
+                tools,
+                tool_choice,
+                logprobs,
+                top_logprobs,
             )
         else:
             return await self._anthropic_completion(
                 messages, extraction_job_id, endpoint, temperature
             )
-    
+
     async def _openai_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         extraction_job_id: str,
         endpoint: str,
         temperature: float,
-        tools: Optional[List[Dict]],
-        tool_choice: Optional[Dict],
+        tools: list[dict] | None,
+        tool_choice: dict | None,
         logprobs: bool,
-        top_logprobs: Optional[int],
-    ) -> tuple[ChatCompletion, Optional[CostRecord]]:
+        top_logprobs: int | None,
+    ) -> tuple[ChatCompletion, CostRecord | None]:
         """Execute OpenAI chat completion."""
-        
+
         for attempt in range(self.max_retries):
             try:
                 response = await self._client.chat.completions.create(
@@ -203,7 +215,7 @@ class LLMClient:
                     logprobs=logprobs if logprobs else None,
                     top_logprobs=top_logprobs if logprobs and top_logprobs else None,
                 )
-                
+
                 # Calculate cost
                 cost_record = None
                 if self.cost_tracking_enabled:
@@ -216,26 +228,26 @@ class LLMClient:
                         output_tokens=response.usage.completion_tokens if response.usage else 0,
                     )
                     self._cost_records.append(cost_record)
-                
+
                 return response, cost_record
-                
+
             except Exception:
                 if attempt == self.max_retries - 1:
                     raise
-                wait_time = (2 ** attempt) + random.uniform(0, 0.25)
+                wait_time = (2**attempt) + random.uniform(0, 0.25)
                 await asyncio.sleep(wait_time)
-        
+
         raise RuntimeError("Max retries exceeded")
-    
+
     async def _anthropic_completion(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         extraction_job_id: str,
         endpoint: str,
         temperature: float,
-    ) -> tuple[Any, Optional[CostRecord]]:
+    ) -> tuple[Any, CostRecord | None]:
         """Execute Anthropic chat completion."""
-        
+
         # Convert messages to Anthropic format
         system_msg = None
         anthropic_messages = []
@@ -243,11 +255,8 @@ class LLMClient:
             if msg["role"] == "system":
                 system_msg = msg["content"]
             else:
-                anthropic_messages.append({
-                    "role": msg["role"],
-                    "content": msg["content"]
-                })
-        
+                anthropic_messages.append({"role": msg["role"], "content": msg["content"]})
+
         for attempt in range(self.max_retries):
             try:
                 kwargs = {
@@ -258,9 +267,9 @@ class LLMClient:
                 }
                 if system_msg:
                     kwargs["system"] = system_msg
-                
+
                 response = await self._client.messages.create(**kwargs)
-                
+
                 # Calculate cost
                 cost_record = None
                 if self.cost_tracking_enabled:
@@ -274,17 +283,17 @@ class LLMClient:
                         output_tokens=usage.output_tokens,
                     )
                     self._cost_records.append(cost_record)
-                
+
                 return response, cost_record
-                
+
             except Exception:
                 if attempt == self.max_retries - 1:
                     raise
-                wait_time = (2 ** attempt) + random.uniform(0, 0.25)
+                wait_time = (2**attempt) + random.uniform(0, 0.25)
                 await asyncio.sleep(wait_time)
-        
+
         raise RuntimeError("Max retries exceeded")
-    
+
     def _calculate_cost(
         self,
         extraction_job_id: str,
@@ -295,16 +304,16 @@ class LLMClient:
         output_tokens: int,
     ) -> CostRecord:
         """Calculate USD cost from token usage."""
-        
+
         # Get pricing for model
         provider_pricing = PRICING.get(provider, {})
         model_pricing = provider_pricing.get(model, {"input": 0, "output": 0})
-        
+
         # Calculate cost per 1M tokens
         input_cost = (input_tokens / 1_000_000) * model_pricing["input"]
         output_cost = (output_tokens / 1_000_000) * model_pricing["output"]
         total_cost = input_cost + output_cost
-        
+
         return CostRecord(
             extraction_job_id=extraction_job_id,
             provider=provider,
@@ -314,15 +323,15 @@ class LLMClient:
             output_tokens=output_tokens,
             cost_usd=total_cost,
         )
-    
-    def get_cost_records(self) -> List[CostRecord]:
+
+    def get_cost_records(self) -> list[CostRecord]:
         """Get all recorded costs."""
         return self._cost_records.copy()
-    
+
     def get_total_cost(self) -> float:
         """Get total cost of all requests."""
         return sum(record.cost_usd for record in self._cost_records)
-    
+
     def clear_cost_records(self) -> None:
         """Clear cost history."""
         self._cost_records.clear()

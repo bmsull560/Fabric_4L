@@ -9,15 +9,14 @@ GET    /v1/feature-flags/{key}/evaluate — evaluate for current user
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db
 from ..service import FeatureFlagService
@@ -34,7 +33,7 @@ class FeatureFlagResponse(BaseModel):
     enabled: bool
     rollout_percentage: int = Field(..., ge=0, le=100)
     description: str | None
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
     created_at: str
     updated_at: str
     updated_by: UUID | None
@@ -48,17 +47,17 @@ class FeatureFlagUpsertRequest(BaseModel):
 
     enabled: bool
     rollout_percentage: int = Field(..., ge=0, le=100)
-    description: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    description: str | None = None
+    metadata: dict[str, Any] | None = Field(default_factory=dict)
 
 
-@router.get("", response_model=List[FeatureFlagResponse])
+@router.get("", response_model=list[FeatureFlagResponse])
 async def list_feature_flags(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: RequestContext = Depends(require_tenant_admin),
     db: AsyncSession = Depends(get_db),
-) -> List[FeatureFlagResponse]:
+) -> list[FeatureFlagResponse]:
     """List feature flags for the caller's tenant."""
     # super_admin can list platform-wide flags if they omit tenant context,
     # but for simplicity we always scope to the resolved tenant.

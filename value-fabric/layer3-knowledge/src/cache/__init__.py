@@ -3,13 +3,13 @@
 from .redis_cache import (
     CacheConfig,
     CacheKey,
-    RedisCache,
     CacheManager,
+    RedisCache,
     RequestDeduplicator,
+    cache_result,
     get_cache_manager,
     get_request_deduplicator,
     initialize_cache,
-    cache_result,
 )
 
 __all__ = [
