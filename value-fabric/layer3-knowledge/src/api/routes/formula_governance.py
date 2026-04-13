@@ -310,8 +310,9 @@ async def create_formula_version(
     formula_id: str,
     request: CreateVersionRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Create a new formula version."""
+    """Create a new formula version. Requires authentication."""
     # Check formula exists
     check_query = "MATCH (f:Formula {id: $formula_id}) RETURN f"
     async with driver.session() as session:
@@ -386,8 +387,9 @@ async def submit_for_review(
     formula_id: str,
     request: SubmitForReviewRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Submit formula for review."""
+    """Submit formula for review. Requires authentication."""
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})
@@ -499,8 +501,9 @@ async def activate_formula(
     formula_id: str,
     request: ActivateRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Activate a formula version."""
+    """Activate a formula version. Requires authentication."""
     now = datetime.now(UTC).isoformat()
     effective_date = (request.effective_date or datetime.now(UTC)).isoformat()
 
@@ -569,8 +572,9 @@ async def deprecate_formula(
     formula_id: str,
     request: DeprecateRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Deprecate a formula."""
+    """Deprecate a formula. Requires authentication."""
     # Check current status
     check_query = """
     MATCH (f:Formula {id: $formula_id})

@@ -86,50 +86,86 @@ const getDefaultPermissions = (tier: UserTier): UserPermissions => {
   }
 };
 
-// Routes and their required tiers
+// Routes and their required tiers — Canonical Navigation Taxonomy
+// Single spine with progressive disclosure: Home, Library, Discover, Model, Deliver, Evidence, Govern
 const ROUTE_TIER_MAP: Record<string, UserTier> = {
-  // Tier 1 (Standard) routes
-  '/command-center': 'standard',
-  '/value-packs': 'standard',
-  '/agents': 'standard',
-  '/agents/business-cases': 'standard',
-  '/agents/dashboard': 'standard',
-  '/research': 'standard',
-  '/data-sources/targets': 'standard',
-  '/data-sources/jobs': 'standard',
-  '/audit': 'standard',
-  '/audit/traces': 'standard',
-  '/settings': 'standard',
-  
-  // Tier 2 (Advanced) routes
-  '/extraction-engine': 'advanced',
-  '/value-trees': 'advanced',
-  '/value-trees/explorer': 'advanced',
-  '/value-trees/normalization': 'advanced',
-  '/value-trees/formulas': 'advanced',
-  '/graph': 'advanced',
-  '/graph/explorer': 'advanced',
-  '/graph/query': 'advanced',
-  '/graph/communities': 'advanced',
-  '/ontology': 'advanced',
-  '/ontology/entities': 'advanced',
-  '/ontology/extractions': 'advanced',
-  '/ontology/validation': 'advanced',
-  '/audit/lineage': 'advanced',
-  '/audit/reports': 'advanced',
-  
-  // Tier 3 (Admin) routes
+  // ───────────────────────────────────────────────────────────────
+  // Home — All tiers
+  // ───────────────────────────────────────────────────────────────
+  '/home': 'standard',
+
+  // ───────────────────────────────────────────────────────────────
+  // Library — All tiers (authoring is admin)
+  // ───────────────────────────────────────────────────────────────
+  '/library': 'standard',
+  '/library/packs': 'standard',
+  '/library/models': 'standard',
+  '/library/authoring': 'admin',
+
+  // ───────────────────────────────────────────────────────────────
+  // Discover — Tier 1+ (advanced features hidden)
+  // ───────────────────────────────────────────────────────────────
+  '/discover': 'standard',
+  '/discover/accounts': 'standard',
+  '/discover/jobs': 'standard',
+  '/discover/extraction': 'advanced',
+  '/discover/knowledge': 'advanced',
+  '/discover/knowledge/entities': 'advanced',
+  '/discover/knowledge/graph': 'advanced',
+  '/discover/knowledge/ontology': 'advanced',
+  '/discover/integrations': 'admin',
+  '/discover/sources': 'admin',
+
+  // ───────────────────────────────────────────────────────────────
+  // Model — Tier 2+ only (hidden from Tier 1)
+  // ───────────────────────────────────────────────────────────────
+  '/model': 'advanced',
+  '/model/value-studio': 'advanced',
+  '/model/value-studio/explorer': 'advanced',
+  '/model/value-studio/normalization': 'advanced',
+  '/model/value-studio/formulas': 'advanced',
+
+  // ───────────────────────────────────────────────────────────────
+  // Deliver — All tiers (advanced features hidden)
+  // ───────────────────────────────────────────────────────────────
+  '/deliver': 'standard',
+  '/deliver/cases': 'standard',
+  '/deliver/opportunities': 'standard',
+  '/deliver/whitespace': 'advanced',
+  '/deliver/agents': 'advanced',
+  '/deliver/cases/explore': 'advanced',
+
+  // ───────────────────────────────────────────────────────────────
+  // Evidence — All tiers (advanced features hidden)
+  // ───────────────────────────────────────────────────────────────
+  '/evidence': 'standard',
+  '/evidence/traces': 'standard',
+  '/evidence/export': 'standard',
+  '/evidence/lineage': 'advanced',
+  '/evidence/compliance': 'advanced',
+  '/evidence/changelog': 'admin',
+
+  // ───────────────────────────────────────────────────────────────
+  // Govern — Tier 3 only
+  // ───────────────────────────────────────────────────────────────
   '/admin': 'admin',
-  '/admin/formulas': 'admin',
-  '/admin/formulas/versions': 'admin',
-  '/admin/formulas/approvals': 'admin',
-  '/admin/benchmarks': 'admin',
-  '/admin/benchmarks/policies': 'admin',
-  '/admin/variables': 'admin',
-  '/admin/variables/bindings': 'admin',
-  '/admin/packs': 'admin',
-  '/admin/permissions': 'admin',
-  '/admin/permissions/teams': 'admin',
+  '/admin/content': 'admin',
+  '/admin/content/formulas': 'admin',
+  '/admin/content/versions': 'admin',
+  '/admin/content/approvals': 'admin',
+  '/admin/content/benchmarks': 'admin',
+  '/admin/data': 'admin',
+  '/admin/data/variables': 'admin',
+  '/admin/data/bindings': 'admin',
+  '/admin/data/quality': 'admin',
+  '/admin/access': 'admin',
+  '/admin/access/roles': 'admin',
+  '/admin/access/teams': 'admin',
+  '/admin/access/keys': 'admin',
+  '/admin/system': 'admin',
+  '/admin/system/settings': 'admin',
+  '/admin/system/audit': 'admin',
+  '/admin/system/health': 'admin',
 };
 
 export const useUserTierStore = create<UserTierState>()(

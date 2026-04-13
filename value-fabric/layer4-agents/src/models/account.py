@@ -180,6 +180,12 @@ class Account(Base):
         comment="Account stage: prospect, qualified, opportunity, customer",
     )
 
+    employees: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Employee count (alias for company_size from CRM sync)",
+    )
+
     # -----------------------------------------------------------------------
     # Sync Metadata
     # -----------------------------------------------------------------------
