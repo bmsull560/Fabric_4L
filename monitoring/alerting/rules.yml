@@ -12,6 +12,10 @@ groups:
             sum(rate(value_fabric_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(value_fabric_http_requests_total[5m])) > 0.05
             or
             sum(rate(layer4_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer4_http_requests_total[5m])) > 0.05
+            or
+            sum(rate(layer5_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer5_http_requests_total[5m])) > 0.05
+            or
+            sum(rate(layer6_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer6_http_requests_total[5m])) > 0.05
           )
         for: 5m
         labels:
@@ -63,8 +67,12 @@ groups:
             histogram_quantile(0.95, sum(rate(value_fabric_http_request_duration_seconds_bucket[10m])) by (le)) > 2
             or
             histogram_quantile(0.95, sum(rate(layer4_http_request_duration_seconds_bucket[10m])) by (le)) > 2
+            or
+            histogram_quantile(0.95, sum(rate(layer5_http_request_duration_seconds_bucket[10m])) by (le)) > 2
+            or
+            histogram_quantile(0.95, sum(rate(layer6_http_request_duration_seconds_bucket[10m])) by (le)) > 2
           )
-        for: 10m
+        for: 5m
         labels:
           severity: warning
         annotations:
@@ -133,13 +141,17 @@ groups:
             value_fabric_memory_usage_bytes / (1024 * 1024 * 1024) > 4
             or
             layer4_memory_usage_bytes / (1024 * 1024 * 1024) > 4
+            or
+            layer5_memory_usage_bytes / (1024 * 1024 * 1024) > 4
+            or
+            layer6_memory_usage_bytes / (1024 * 1024 * 1024) > 4
           )
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High memory usage"
-          description: "Memory usage exceeds 4GB"
+          description: "Memory usage exceeds 4 GB in one or more layers"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-memory-usage.md"
 
       # CPU usage alert
@@ -153,6 +165,10 @@ groups:
             value_fabric_cpu_usage_percent > 80
             or
             layer4_cpu_usage_percent > 80
+            or
+            layer5_cpu_usage_percent > 80
+            or
+            layer6_cpu_usage_percent > 80
           )
         for: 10m
         labels:
@@ -160,6 +176,7 @@ groups:
         annotations:
           summary: "High CPU usage"
           description: "CPU usage exceeds 80% for more than 10 minutes"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-cpu-usage.md"
 
       # High LLM cost rate alert
       - alert: HighLLMCostRate
@@ -180,5 +197,40 @@ groups:
           severity: warning
         annotations:
           summary: "Formula approval required"
-          description: "One or more formulas are pending approval"
+          description: "One or more formulas are pending human approval"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/formula-approval.md"
+
+      # Ground truth staleness (L5)
+      - alert: StaleGroundTruthObjects
+        expr: layer5_stale_objects_detected > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Stale ground truth objects detected"
+          description: "More than 10 ground truth objects are stale and need refreshing"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/stale-ground-truth.md"
+
+      # Service down (API health endpoint reporting unhealthy)
+      - alert: ServiceDown
+        expr: |
+          (
+            layer1_health_status{component="api"} == 0
+            or
+            layer2_health_status{component="api"} == 0
+            or
+            value_fabric_health_status{component="api"} == 0
+            or
+            layer4_health_status{component="api"} == 0
+            or
+            layer5_health_status{component="api"} == 0
+            or
+            layer6_health_status{component="api"} == 0
+          )
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service is down: {{ $labels.job }}"
+          description: "The API health check for {{ $labels.job }} has been reporting unhealthy for more than 2 minutes"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/service-down.md"
