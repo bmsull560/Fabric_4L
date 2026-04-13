@@ -34,7 +34,7 @@ dependencies = [
     "pandas>=2.2.0",
     "numpy>=2.1.0",
     # Provenance & RDF
-    "rdflib>=7.0.0",
+    "rdflib>=7.6.0",
     "prov>=2.0.0",
     # JWT for tenant middleware
     "PyJWT>=2.8.0",
