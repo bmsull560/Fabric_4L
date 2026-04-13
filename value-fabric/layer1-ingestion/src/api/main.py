@@ -119,11 +119,19 @@ except ImportError:
         "Ensure the shared package is installed."
     )
 
-# CORS middleware
+# CORS middleware with production validation (P0-20)
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
-# In production, specify exact origins or use environment variable
-allow_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else ["*"]
-allow_credentials = False  # Must be False when using wildcard origins
+_environment = os.getenv("ENVIRONMENT", "development")
+_cors_origins_env = os.getenv("CORS_ORIGINS", "")
+
+if _environment == "production" and not _cors_origins_env:
+    raise RuntimeError(
+        "FATAL: CORS_ORIGINS environment variable must be set in production. "
+        "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
+    )
+
+allow_origins = _cors_origins_env.split(",") if _cors_origins_env else ["*"]
+allow_credentials = False if "*" in allow_origins else True  # Must be False when using wildcard origins
 
 app.add_middleware(
     CORSMiddleware,

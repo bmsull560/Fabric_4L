@@ -18,6 +18,9 @@ ehthumbs.db
 .env.local
 .env.*.local
 
+# Kubernetes secrets (use External Secrets Operator in production)
+k8s/secrets.yml
+
 # Logs
 *.log
 logs/
