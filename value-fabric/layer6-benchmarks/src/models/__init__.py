@@ -1,6 +1,7 @@
 """Models for Benchmark Service."""
 
 from .benchmark_dataset import (
+    MANUFACTURING_BENCHMARK_SEED,
     BenchmarkDataset,
     BenchmarkMetric,
     ComparisonRequest,
@@ -8,7 +9,6 @@ from .benchmark_dataset import (
     RangeValidationRequest,
     RangeValidationResult,
     StatisticalProfile,
-    MANUFACTURING_BENCHMARK_SEED,
 )
 
 __all__ = [

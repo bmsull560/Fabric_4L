@@ -6,7 +6,7 @@ Storage model aligned with Neo4j + provenance tracking.
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 
 @dataclass

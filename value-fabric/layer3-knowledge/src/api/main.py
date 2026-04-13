@@ -51,8 +51,6 @@ from .rate_limiter import add_rate_limiting
 try:
     from ..cache import (
         CacheConfig,
-        RequestDeduplicator,
-        cache_result,
         get_request_deduplicator,
         initialize_cache,
     )

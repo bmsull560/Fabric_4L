@@ -135,9 +135,8 @@ class GraphRAGEngine:
         rel_filter = ""
         if relationship_types:
             rel_list = "|".join(f"`{r}`" for r in relationship_types)
-            rel_filter = (
-                f"AND type(r) IN [{', '.join(f"'{r}'" for r in relationship_types)}]"
-            )
+            rel_types_str = ", ".join(f"'{r}'" for r in relationship_types)
+            rel_filter = f"AND type(r) IN [{rel_types_str}]"
 
         query = f"""
         MATCH path = (center {{id: $entity_id}})-[r*1..{hops}]-(connected)

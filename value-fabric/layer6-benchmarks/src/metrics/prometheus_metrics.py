@@ -1,10 +1,9 @@
 """Prometheus metrics collection for Layer 6 Benchmark Service."""
 
-from typing import Dict, List, Optional, Any
-
-from prometheus_client import Counter, Histogram, Gauge, Info, CollectorRegistry, generate_latest
-
 import logging
+from typing import Any, Dict, List, Optional
+
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, Info, generate_latest
 
 logger = logging.getLogger(__name__)
 

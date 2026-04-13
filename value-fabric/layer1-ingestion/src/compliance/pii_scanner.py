@@ -13,7 +13,6 @@ import structlog
 
 try:
     from presidio_analyzer import AnalyzerEngine
-    from presidio_analyzer.nlp_engine import NlpEngineProvider
     from presidio_anonymizer import AnonymizerEngine
 
     PRESIDIO_AVAILABLE = True

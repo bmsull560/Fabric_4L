@@ -13,13 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
 
-from ..metrics import initialize_metrics, get_metrics
-
+from ..metrics import get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
+    MANUFACTURING_BENCHMARK_SEED,
     BenchmarkDataset,
     BenchmarkMetric,
     StatisticalProfile,
-    MANUFACTURING_BENCHMARK_SEED,
 )
 
 # In-memory storage (replace with Neo4j in production)
