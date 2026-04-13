@@ -128,6 +128,53 @@ class ValidationResponse(BaseModel):
 
 # API Endpoints
 
+
+class ApprovalQueueItem(BaseModel):
+    """Pending approval queue entry."""
+    id: str
+    formula_id: str
+    formula_name: str
+    submitted_by: str
+    submitted_at: str
+    change_summary: str
+    previous_version: str
+    status: Literal["pending", "approved", "rejected"] = "pending"
+
+
+@router.get("/formulas/approvals/pending", response_model=List[ApprovalQueueItem])
+async def list_pending_approvals(
+    driver: AsyncDriver = Depends(get_driver),
+):
+    """List all formulas currently pending review/approval."""
+    query = """
+    MATCH (f:Formula)
+    WHERE f.status = 'under_review'
+    OPTIONAL MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion)
+    WITH f, fv
+    ORDER BY fv.createdAt DESC
+    WITH f, head(collect(fv)) AS latest_version
+    RETURN f, latest_version
+    ORDER BY f.submittedAt DESC
+    """
+
+    async with driver.session() as session:
+        result = await session.run(query)
+        records = await result.data()
+
+        return [
+            ApprovalQueueItem(
+                id=r["f"]["id"],
+                formula_id=r["f"]["id"],
+                formula_name=r["f"].get("name", ""),
+                submitted_by=r["f"].get("submittedBy", ""),
+                submitted_at=r["f"].get("submittedAt", ""),
+                change_summary=r["latest_version"].get("changeSummary", "") if r.get("latest_version") else "",
+                previous_version=r["latest_version"].get("previousVersion", "") if r.get("latest_version") else "",
+                status="pending",
+            )
+            for r in records
+        ]
+
 @router.get("/formulas/{formula_id}/versions", response_model=List[FormulaVersionResponse])
 async def list_formula_versions(
     formula_id: str,

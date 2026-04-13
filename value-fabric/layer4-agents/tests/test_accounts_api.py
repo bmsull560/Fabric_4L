@@ -10,6 +10,7 @@ Tests the accounts-first CRM integration API contract:
 """
 
 import pytest
+import pytest_asyncio
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 from typing import AsyncGenerator
@@ -17,18 +18,32 @@ from typing import AsyncGenerator
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from testcontainers.postgres import PostgresContainer
 
 from src.api.main import app
 from src.database import get_db, Base
 from src.models.account import Account, AccountSyncStatus, CRMProvider, SyncStatus
 
-# Test database URL (SQLite for tests)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+@pytest.fixture(scope="session")
+def postgres_container():
+    """Start PostgreSQL container for test session."""
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres
 
 
-@pytest.fixture(scope="function")
-async def test_db() -> AsyncGenerator[AsyncSession, None]:
-    """Create a test database session with fresh tables."""
+@pytest_asyncio.fixture(scope="function")
+async def test_db(postgres_container) -> AsyncGenerator[AsyncSession, None]:
+    """Create a test database session with fresh tables using PostgreSQL."""
+    # Build async PostgreSQL URL
+    host = postgres_container.get_container_host_ip()
+    port = postgres_container.get_exposed_port(5432)
+    username = postgres_container.username
+    password = postgres_container.password
+    dbname = postgres_container.dbname
+    
+    TEST_DATABASE_URL = f"postgresql+asyncpg://{username}:{password}@{host}:{port}/{dbname}"
+    
     engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

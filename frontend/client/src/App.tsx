@@ -21,7 +21,7 @@ import DecisionTrace     from "./pages/DecisionTrace";
 import ValuePacks        from "./pages/ValuePacks";
 import Accounts          from "./pages/Accounts";
 import Integrations      from "./pages/Integrations";
-import { FormulaGovernance, BenchmarkPolicies, VariableRegistry } from "./pages/admin";
+import { FormulaGovernance, BenchmarkPolicies, VariableRegistry, PackManagement, PermissionsAdmin } from "./pages/admin";
 import NotFound          from "./pages/NotFound";
 
 /**
@@ -262,14 +262,19 @@ function Router() {
             <ErrorBoundary><VariableRegistry /></ErrorBoundary>
           </RouteGuard>
         </Route>
+        <Route path="/admin/packs">
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><PackManagement /></ErrorBoundary>
+          </RouteGuard>
+        </Route>
         <Route path="/admin/permissions">
           <RouteGuard requiredTier="admin">
-            <ErrorBoundary><CommandCenter /></ErrorBoundary>
+            <ErrorBoundary><PermissionsAdmin /></ErrorBoundary>
           </RouteGuard>
         </Route>
         <Route path="/admin/permissions/teams">
           <RouteGuard requiredTier="admin">
-            <ErrorBoundary><CommandCenter /></ErrorBoundary>
+            <ErrorBoundary><PermissionsAdmin /></ErrorBoundary>
           </RouteGuard>
         </Route>
 

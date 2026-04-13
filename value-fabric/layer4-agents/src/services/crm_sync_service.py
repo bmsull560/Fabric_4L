@@ -394,7 +394,10 @@ class CRMSyncService:
             return None
         
         # Get provider
-        provider = CRMProvider(account.provider)
+        try:
+            provider = CRMProvider(account.provider)
+        except ValueError as e:
+            raise ValueError(f"Invalid CRM provider '{account.provider}' for account {account_id}") from e
         
         # Get CRM config
         config = self._get_crm_config(provider)

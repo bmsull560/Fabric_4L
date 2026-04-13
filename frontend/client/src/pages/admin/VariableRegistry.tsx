@@ -13,6 +13,7 @@
  */
 
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import {
   ListChecks, Plus, Search, Filter, Edit3, Trash2, Eye, Link2,
   CheckCircle2, AlertCircle, Database, Code2, Hash, DollarSign,
@@ -192,7 +193,9 @@ function VariableRegistrySkeleton() {
 type TabType = "catalog" | "bindings";
 
 function VariableRegistryContent() {
-  const [activeTab, setActiveTab] = useState<TabType>("catalog");
+  const [location] = useLocation();
+  const initialTab: TabType = location.includes("/bindings") ? "bindings" : "catalog";
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | VariableType>("all");
   const [sourceFilter, setSourceFilter] = useState<"all" | SourceType>("all");

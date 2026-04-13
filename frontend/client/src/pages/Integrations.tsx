@@ -7,7 +7,7 @@
  * - View sync logs and health
  * - Manage OAuth tokens
  */
-import { useState } from "react";
+import React, { useState } from "react";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";

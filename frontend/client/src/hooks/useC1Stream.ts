@@ -73,9 +73,10 @@ export function useC1Stream(options: UseC1StreamOptions): UseC1StreamReturn {
    * Send a natural language query to C1
    */
   const sendQuery = useCallback((query: string) => {
-    // Cancel any existing stream
+    // Cancel any existing stream and clear ref to prevent race conditions
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
 
     abortControllerRef.current = new AbortController();
@@ -142,6 +143,10 @@ When sliders change, the system will recalculate metrics via the formula API.`,
                 isStreaming: false,
                 isComplete: true,
               }));
+              // Clean up AbortController when stream completes naturally
+              if (abortControllerRef.current) {
+                abortControllerRef.current = null;
+              }
               break;
           }
         }

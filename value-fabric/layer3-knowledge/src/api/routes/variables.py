@@ -560,3 +560,91 @@ async def validate_value(
                 )
     
     return ValidateResponse(is_valid=True, error=None)
+
+
+# ── Aggregate Endpoints ──────────────────────────────────────────────────────
+
+class VariableStatsResponse(BaseModel):
+    """Aggregate statistics for the variable registry."""
+    total: int = 0
+    validated: int = 0
+    pending: int = 0
+    failed: int = 0
+    manual_sources: int = 0
+    avg_usage: float = 0.0
+
+
+class SourceBindingResponse(BaseModel):
+    """Source binding connection metadata."""
+    id: str
+    name: str
+    source_type: str
+    connection_string: Optional[str] = None
+    status: Literal["connected", "disconnected", "error"]
+    last_sync: Optional[str] = None
+    variables_bound: int = 0
+    error_message: Optional[str] = None
+
+
+@router.get("/variables/stats", response_model=VariableStatsResponse)
+async def get_variable_stats(
+    driver: AsyncDriver = Depends(get_driver),
+):
+    """Return aggregate statistics for the variable registry."""
+    query = """
+    MATCH (v:Variable)
+    WITH count(v) AS total,
+         count(CASE WHEN v.validationStatus = 'validated' THEN 1 END) AS validated,
+         count(CASE WHEN v.validationStatus = 'pending' THEN 1 END) AS pending,
+         count(CASE WHEN v.validationStatus = 'failed' THEN 1 END) AS failed,
+         count(CASE WHEN v.sourceType IN ['user_input', 'Manual'] THEN 1 END) AS manual_sources,
+         avg(COALESCE(v.usedInCount, 0)) AS avg_usage
+    RETURN total, validated, pending, failed, manual_sources, avg_usage
+    """
+
+    async with driver.session() as session:
+        result = await session.run(query)
+        record = await result.single()
+
+        if not record:
+            return VariableStatsResponse()
+
+        return VariableStatsResponse(
+            total=record["total"],
+            validated=record["validated"],
+            pending=record["pending"],
+            failed=record["failed"],
+            manual_sources=record["manual_sources"],
+            avg_usage=round(record["avg_usage"] or 0, 1),
+        )
+
+
+@router.get("/variables/bindings", response_model=List[SourceBindingResponse])
+async def list_source_bindings(
+    driver: AsyncDriver = Depends(get_driver),
+):
+    """List data source binding configurations and their health status."""
+    query = """
+    MATCH (sb:SourceBinding)
+    OPTIONAL MATCH (v:Variable)-[:BOUND_TO]->(sb)
+    RETURN sb, count(v) AS variables_bound
+    ORDER BY sb.name
+    """
+
+    async with driver.session() as session:
+        result = await session.run(query)
+        records = await result.data()
+
+        return [
+            SourceBindingResponse(
+                id=r["sb"]["id"],
+                name=r["sb"]["name"],
+                source_type=r["sb"].get("sourceType", "unknown"),
+                connection_string=r["sb"].get("connectionString"),
+                status=r["sb"].get("status", "disconnected"),
+                last_sync=r["sb"].get("lastSync"),
+                variables_bound=r.get("variables_bound", 0),
+                error_message=r["sb"].get("errorMessage"),
+            )
+            for r in records
+        ]

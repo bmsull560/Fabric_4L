@@ -5,6 +5,18 @@
 
 import { apiClient } from './client';
 
+/**
+ * Validate if a string is valid JSON without throwing
+ */
+function isValidJson(str: string): boolean {
+  try {
+    JSON.parse(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const L4_PREFIX = import.meta.env.VITE_L4_PREFIX || '/agents';
 const ENABLE_C1 = import.meta.env.VITE_ENABLE_C1_REPORTS === 'true';
@@ -51,7 +63,9 @@ export async function* streamC1Response(
   }
 
   const url = `${API_BASE}${L4_PREFIX}/c1/stream`;
-  const tenantId = localStorage.getItem('tenantId') || 'default';
+  // Validate tenantId to prevent header injection via XSS-compromised localStorage
+  const rawTenantId = localStorage.getItem('tenantId');
+  const tenantId = rawTenantId && /^[a-zA-Z0-9_-]+$/.test(rawTenantId) ? rawTenantId : 'default';
 
   try {
     const response = await fetch(url, {
@@ -101,20 +115,30 @@ export async function* streamC1Response(
           try {
             const data = JSON.parse(trimmed.slice(6)) as C1StreamChunk;
             yield data;
-          } catch {
-            // Ignore malformed chunks
+          } catch (err) {
+            // Log malformed chunks in development for debugging
+            if (import.meta.env.DEV) {
+              console.warn('[thesysClient] Malformed SSE chunk:', trimmed.slice(0, 100), err);
+            }
           }
         }
       }
     }
 
-    // Process any remaining buffered data
-    if (buffer.trim().startsWith('data: ')) {
-      try {
-        const data = JSON.parse(buffer.trim().slice(6)) as C1StreamChunk;
-        yield data;
-      } catch {
-        // Ignore malformed final chunk
+    // Process any remaining buffered data - only if it looks complete
+    const remaining = buffer.trim();
+    if (remaining.startsWith('data: ')) {
+      const jsonPart = remaining.slice(6);
+      // Only parse if the JSON looks complete (ends with } or ] and has matching braces)
+      if ((jsonPart.endsWith('}') || jsonPart.endsWith(']')) && isValidJson(jsonPart)) {
+        try {
+          const data = JSON.parse(jsonPart) as C1StreamChunk;
+          yield data;
+        } catch (err) {
+          console.warn('[thesysClient] Failed to parse final SSE chunk:', err);
+        }
+      } else {
+        console.warn('[thesysClient] Discarding incomplete final chunk:', remaining.slice(0, 100));
       }
     }
 

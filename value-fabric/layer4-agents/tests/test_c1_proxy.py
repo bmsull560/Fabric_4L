@@ -4,7 +4,6 @@ import json
 from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
-from httpx import AsyncClient, Response, Request
 
 from src.api.routes.c1 import router, C1StreamRequest, C1Message
 
