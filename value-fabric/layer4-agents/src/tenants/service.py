@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Sequence
 from uuid import UUID
 
@@ -97,7 +97,7 @@ async def update_tenant(
         tenant.status = request.status.value
     if request.settings is not None:
         tenant.settings = request.settings
-    tenant.updated_at = datetime.utcnow()
+    tenant.updated_at = datetime.now(timezone.utc)
     await db.flush()
     return _tenant_to_model(tenant)
 
@@ -109,7 +109,7 @@ async def delete_tenant(db: AsyncSession, tenant_id: UUID) -> bool:
     if not tenant:
         return False
     tenant.status = TenantStatus.DELETED.value
-    tenant.updated_at = datetime.utcnow()
+    tenant.updated_at = datetime.now(timezone.utc)
     await db.flush()
     logger.info("Soft-deleted tenant %s", tenant_id)
     return True
@@ -180,7 +180,7 @@ async def update_user(
         user.role = request.role.value
     if request.status is not None:
         user.status = request.status.value
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     await db.flush()
     return _user_to_model(user)
 
@@ -195,7 +195,7 @@ async def deactivate_user(
     if not user:
         return False
     user.status = UserStatus.DEACTIVATED.value
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(timezone.utc)
     await db.flush()
     logger.info("Deactivated user %s in tenant %s", user_id, tenant_id)
     return True
@@ -300,7 +300,7 @@ async def lookup_api_key_by_hash(
     if not key.enabled or key.is_expired():
         return None
     # Update last_used_at asynchronously (fire-and-forget inside same session)
-    key.last_used_at = datetime.utcnow()
+    key.last_used_at = datetime.now(timezone.utc)
     return {
         "key_id": key.key_id,
         "tenant_id": str(key.tenant_id),

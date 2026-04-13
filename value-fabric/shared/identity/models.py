@@ -11,7 +11,7 @@ The corresponding SQLAlchemy ORM models live in
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, FrozenSet, List, Optional
 from uuid import UUID, uuid4
@@ -61,8 +61,8 @@ class TenantModel(BaseModel):
     )
     status: TenantStatus = Field(default=TenantStatus.ACTIVE)
     settings: Dict[str, Any] = Field(default_factory=dict, description="Tenant-level config blob")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class TenantCreateRequest(BaseModel):
@@ -102,8 +102,8 @@ class UserModel(BaseModel):
     status: UserStatus = Field(default=UserStatus.INVITED)
     last_login_at: Optional[datetime] = None
     invited_by: Optional[UUID] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class UserInviteRequest(BaseModel):
@@ -152,7 +152,7 @@ class APIKeyModel(BaseModel):
     role: Role
     permissions: FrozenSet[Permission]
     enabled: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
     rate_limit_per_minute: Optional[int] = Field(
@@ -181,7 +181,7 @@ class APIKeyModel(BaseModel):
         """Return True if this key has passed its expiry timestamp."""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
 
 class APIKeyCreateRequest(BaseModel):

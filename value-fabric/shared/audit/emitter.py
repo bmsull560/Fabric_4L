@@ -18,12 +18,34 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Set
 from uuid import UUID
 
 from .models import AuditAction, AuditEvent, AuditOutcome
 
 logger = logging.getLogger("vf.audit")
+
+# Keys that must never appear in the structured log (scrubbed from ``details``).
+_SENSITIVE_KEYS: Set[str] = {
+    "password",
+    "hashed_password",
+    "secret",
+    "token",
+    "api_key",
+    "key_hash",
+    "access_token",
+    "refresh_token",
+    "private_key",
+    "client_secret",
+}
+
+
+def _scrub_details(details: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of *details* with sensitive keys replaced by '[REDACTED]'."""
+    return {
+        k: "[REDACTED]" if k.lower() in _SENSITIVE_KEYS else v
+        for k, v in details.items()
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -64,6 +86,8 @@ def emit_audit_event(
         )
         background_tasks.add_task(AuditEmitter.write_to_db, event, get_db)
     """
+    safe_details = _scrub_details(details or {})
+
     event = AuditEvent(
         action=action,
         tenant_id=tenant_id,
@@ -75,10 +99,10 @@ def emit_audit_event(
         user_agent=user_agent,
         request_id=request_id,
         outcome=outcome,
-        details=details or {},
+        details=safe_details,
     )
 
-    # Write to structured log (always)
+    # Write to structured log (always).  Sensitive keys are scrubbed above.
     logger.info(
         json.dumps(
             {
@@ -187,3 +211,4 @@ class AuditEmitter:
                 exc,
                 exc_info=True,
             )
+

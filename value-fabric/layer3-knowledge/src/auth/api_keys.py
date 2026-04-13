@@ -274,10 +274,9 @@ class APIKeyManager:
         secret = os.getenv("API_KEY_HMAC_SECRET", "").encode("utf-8")
         if not secret:
             logger.warning(
-                "API_KEY_HMAC_SECRET is not set; using unsalted SHA-256. "
-                "Set API_KEY_HMAC_SECRET in production."
+                "API_KEY_HMAC_SECRET is not set. "
+                "Set API_KEY_HMAC_SECRET in production for secure API key hashing."
             )
-            return hashlib.sha256(api_key.encode()).hexdigest()
         return hmac.new(secret, api_key.encode("utf-8"), hashlib.sha256).hexdigest()
     
     def extract_prefix(self, api_key: str, prefix_length: int = 8) -> str:

@@ -7,7 +7,7 @@ adding tenant_id scoping, issuing user, and HMAC-SHA256 key hashing.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
@@ -89,7 +89,7 @@ class APIKey(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc),
     )
 
     expires_at: Mapped[Optional[datetime]] = mapped_column(
@@ -124,7 +124,7 @@ class APIKey(Base):
     def is_expired(self) -> bool:
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def __repr__(self) -> str:
         return f"<APIKey(key_id={self.key_id!r}, tenant={self.tenant_id}, role={self.role!r})>"

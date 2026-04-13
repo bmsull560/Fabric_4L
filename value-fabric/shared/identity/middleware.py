@@ -202,6 +202,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     api_key_id=record.get("key_id"),
                     permissions=permissions,
                     source="api_key",
+                    raw={},
                 )
 
         # 3. X-Tenant-ID (service-to-service)

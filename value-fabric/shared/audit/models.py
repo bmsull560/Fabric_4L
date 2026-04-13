@@ -7,7 +7,7 @@ trigger in production; enforced in application code by design).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
@@ -76,7 +76,7 @@ class AuditEvent(BaseModel):
     request_id: Optional[str] = None
     outcome: AuditOutcome = AuditOutcome.SUCCESS
     details: Dict[str, Any] = Field(default_factory=dict, description="Action-specific metadata")
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Config:
         use_enum_values = True
