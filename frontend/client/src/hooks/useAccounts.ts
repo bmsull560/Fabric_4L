@@ -219,15 +219,17 @@ export function useAccountFilterOptions() {
   });
 }
 
+export interface SyncAccountsParams {
+  provider?: CRMProvider;
+  account_ids?: string[];
+  force_refresh?: boolean;
+}
+
 export function useSyncAccounts() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (params: {
-      provider?: CRMProvider;
-      account_ids?: string[];
-      force_refresh?: boolean;
-    } = {}) => {
+  return useMutation<SyncResult, AccountApiError, SyncAccountsParams>({
+    mutationFn: async (params = {}) => {
       const response = await apiClient.post('l4', '/accounts/sync', {
         provider: params.provider,
         account_ids: params.account_ids,
@@ -239,14 +241,20 @@ export function useSyncAccounts() {
       // Invalidate all account queries to refresh data
       queryClient.invalidateQueries({ queryKey: ACCOUNT_KEYS.all });
     },
+    onError: (error) => {
+      console.error('[useSyncAccounts] Sync failed:', error.message);
+    },
   });
 }
 
 export function useRefreshAccount() {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<Account, AccountApiError, string>({
     mutationFn: async (accountId: string) => {
+      if (!accountId || accountId.trim() === '') {
+        throw new AccountApiError('Account ID is required');
+      }
       const response = await apiClient.post('l4', `/accounts/${accountId}/refresh`, {});
       return response.data as Account;
     },
@@ -254,6 +262,9 @@ export function useRefreshAccount() {
       // Invalidate specific account queries
       queryClient.invalidateQueries({ queryKey: ACCOUNT_KEYS.detail(data.id) });
       queryClient.invalidateQueries({ queryKey: ACCOUNT_KEYS.list({}) });
+    },
+    onError: (error, accountId) => {
+      console.error(`[useRefreshAccount] Failed to refresh account ${accountId}:`, error.message);
     },
   });
 }

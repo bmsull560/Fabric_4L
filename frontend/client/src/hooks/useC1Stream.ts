@@ -107,7 +107,8 @@ When sliders change, the system will recalculate metrics via the formula API.`,
         const stream = streamC1Response(
           messages,
           businessCaseId,
-          businessCaseData
+          businessCaseData,
+          abortControllerRef.current?.signal
         );
 
         for await (const chunk of stream) {

@@ -5,6 +5,7 @@ Handles periodic syncing of accounts from Salesforce and HubSpot,
 with rate limiting, deduplication, and error handling.
 """
 
+import asyncio
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -26,6 +27,10 @@ from ..models.tool_schemas import GetProspectDataInput
 
 logger = logging.getLogger(__name__)
 
+# Module-level constants for configuration
+DEFAULT_SYNC_BATCH_SIZE = int(os.getenv("CRM_SYNC_BATCH_SIZE", "100"))
+DEFAULT_SYNC_INTERVAL_MINUTES = int(os.getenv("CRM_SYNC_INTERVAL_MINUTES", "60"))
+
 
 class CRMSyncService:
     """Service for orchestrating CRM account synchronization.
@@ -38,9 +43,9 @@ class CRMSyncService:
     - Deduplication across providers
     """
     
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, batch_size: int = DEFAULT_SYNC_BATCH_SIZE):
         self.db = db
-        self.sync_batch_size = int(os.getenv("CRM_SYNC_BATCH_SIZE", "100"))
+        self.sync_batch_size = batch_size
         
     async def sync_provider(
         self,
@@ -122,6 +127,50 @@ class CRMSyncService:
             stats["errors"].append(str(e))
             return stats
     
+    async def _execute_with_retry(
+        self,
+        tool: GetProspectDataTool,
+        prospect_id: str,
+        max_retries: int = 3,
+        base_delay: float = 1.0,
+    ):
+        """Execute tool with exponential backoff retry logic.
+        
+        Args:
+            tool: Configured GetProspectDataTool
+            prospect_id: Provider's record ID
+            max_retries: Maximum number of retry attempts
+            base_delay: Base delay in seconds for exponential backoff
+            
+        Returns:
+            Tool execution result
+            
+        Raises:
+            Exception: If all retries are exhausted
+        """
+        last_exception = None
+        
+        for attempt in range(max_retries):
+            try:
+                return await tool.execute(
+                    GetProspectDataInput(
+                        prospect_id=prospect_id,
+                        data_types=["profile", "opportunities", "interactions"],
+                    )
+                )
+            except Exception as e:
+                last_exception = e
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)  # Exponential backoff
+                    logger.warning(
+                        f"Retry {attempt + 1}/{max_retries} for {prospect_id} after {delay}s: {e}"
+                    )
+                    await asyncio.sleep(delay)
+                else:
+                    break
+        
+        raise last_exception
+
     async def _sync_single_account(
         self,
         tool: GetProspectDataTool,
@@ -138,13 +187,8 @@ class CRMSyncService:
         Returns:
             True if account was updated (existed), False if created (new)
         """
-        # Fetch data from CRM
-        result = await tool.execute(
-            GetProspectDataInput(
-                prospect_id=prospect_id,
-                data_types=["profile", "opportunities", "interactions"],
-            )
-        )
+        # Fetch data from CRM with retry logic
+        result = await self._execute_with_retry(tool, prospect_id)
         
         if not result.profile:
             raise ValueError(f"No profile data returned for {prospect_id}")

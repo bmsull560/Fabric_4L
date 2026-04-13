@@ -7,7 +7,7 @@
  * - Sync accounts from Salesforce/HubSpot
  * - View sync status and health
  */
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";

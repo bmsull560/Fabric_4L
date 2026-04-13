@@ -45,17 +45,25 @@ interface CRMConfig {
   syncBatchSize: number;
 }
 
-const PROVIDER_CONFIG: Record<CRMProvider, {
+const PROVIDER_STYLES: Record<CRMProvider, {
   name: string;
   description: string;
-  color: string;
+  headerBg: string;
+  iconBg: string;
+  iconText: string;
+  toggleFocus: string;
+  toggleBg: string;
   icon: React.ReactNode;
   fields: { key: keyof CRMConfig; label: string; type: string; required: boolean; placeholder: string }[];
 }> = {
   salesforce: {
     name: "Salesforce",
     description: "Sync accounts, opportunities, and activities from Salesforce CRM",
-    color: "blue",
+    headerBg: "bg-blue-50/50",
+    iconBg: "bg-blue-100",
+    iconText: "text-blue-600",
+    toggleFocus: "peer-focus:ring-blue-300",
+    toggleBg: "peer-checked:bg-blue-600",
     icon: <Cloud size={24} />,
     fields: [
       { key: "apiKey", label: "Access Token", type: "password", required: true, placeholder: "00D...!ARQA..." },
@@ -66,7 +74,11 @@ const PROVIDER_CONFIG: Record<CRMProvider, {
   hubspot: {
     name: "HubSpot",
     description: "Sync companies, deals, and engagements from HubSpot CRM",
-    color: "orange",
+    headerBg: "bg-orange-50/50",
+    iconBg: "bg-orange-100",
+    iconText: "text-orange-600",
+    toggleFocus: "peer-focus:ring-orange-300",
+    toggleBg: "peer-checked:bg-orange-600",
     icon: <Cloud size={24} />,
     fields: [
       { key: "apiKey", label: "Private App Token", type: "password", required: true, placeholder: "pat-na1-..." },
@@ -103,8 +115,7 @@ function ConnectionCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editConfig, setEditConfig] = useState(config);
-  const providerInfo = PROVIDER_CONFIG[provider];
-  const colorClass = providerInfo.color === "blue" ? "blue" : "orange";
+  const providerInfo = PROVIDER_STYLES[provider];
 
   const handleSave = () => {
     onUpdate(editConfig);
@@ -117,12 +128,12 @@ function ConnectionCard({
     <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
       {/* Header */}
       <div className={`px-6 py-5 border-b border-neutral-100 ${
-        isConnected ? `bg-${colorClass}-50/50` : "bg-neutral-50"
+        isConnected ? providerInfo.headerBg : "bg-neutral-50"
       }`}>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl ${
-              isConnected ? `bg-${colorClass}-100 text-${colorClass}-600` : "bg-neutral-100 text-neutral-400"
+              isConnected ? `${providerInfo.iconBg} ${providerInfo.iconText}` : "bg-neutral-100 text-neutral-400"
             } flex items-center justify-center`}>
               {providerInfo.icon}
             </div>
@@ -143,26 +154,26 @@ function ConnectionCard({
             }`}>
               {isConnected ? (
                 status?.status === "failed" ? (
-                  <>
+                  <span className="flex items-center gap-1">
                     <AlertCircle size={12} />
                     Error
-                  </>
+                  </span>
                 ) : status?.status === "running" ? (
                   <>
                     <Loader2 size={12} className="animate-spin" />
                     Syncing...
                   </>
                 ) : (
-                  <>
+                  <span className="flex items-center gap-1">
                     <CheckCircle2 size={12} />
                     Connected
-                  </>
+                  </span>
                 )
               ) : (
-                <>
+                <span className="flex items-center gap-1">
                   <CloudOff size={12} />
                   Disconnected
-                </>
+                </span>
               )}
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -172,8 +183,8 @@ function ConnectionCard({
                 onChange={(e) => onToggle(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className={`w-11 h-6 rounded-full peer peer-focus:ring-2 peer-focus:ring-${colorClass}-300 ${
-                config.enabled ? `bg-${colorClass}-600` : "bg-neutral-200"
+              <div className={`w-11 h-6 rounded-full peer peer-focus:ring-2 ${providerInfo.toggleFocus} ${
+                config.enabled ? providerInfo.toggleBg : "bg-neutral-200"
               } peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}></div>
             </label>
           </div>
