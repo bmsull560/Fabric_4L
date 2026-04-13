@@ -86,7 +86,8 @@ const TIER_1_NAV: NavItem[] = [
     tier: "standard",
     description: "Accounts and data source management",
     children: [
-      { label: "Accounts",          path: "/data-sources/targets", tier: "standard" },
+      { label: "Accounts",          path: "/accounts", tier: "standard" },
+      { label: "Integrations",      path: "/integrations", tier: "admin" },
       { label: "Ingestion Jobs",    path: "/data-sources/jobs", tier: "standard" },
     ],
   },

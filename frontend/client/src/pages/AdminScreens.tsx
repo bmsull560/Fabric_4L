@@ -8,9 +8,11 @@ import { useState } from "react";
 import {
   FlaskConical, CheckCircle2, Clock, AlertCircle, History, ChevronRight,
   BarChart3, ListChecks, Plus, Search, Filter, Tag, Users, Globe, Lock,
-  ArrowUpDown, Edit3, Trash2, Eye, GitBranch, Link2, Database,
+  ArrowUpDown, Edit3, Trash2, Eye, GitBranch, Link2, Database, Loader2,
 } from "lucide-react";
 import { PageHeader, Btn, SectionCard, DataTable, StatusBadge } from "@/components/WfPrimitives";
+import { useVariables, useVariableStats, type Variable } from "@/hooks/useVariables";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Shared types ──────────────────────────────────────────────────────────────
 
@@ -242,36 +244,71 @@ export function BenchmarkPolicies() {
 
 // ── Variable Registry ─────────────────────────────────────────────────────────
 
-const VARIABLES = [
-  { id: "v-001", name: "Current_Churn_Rate",       type: "rate",     unit: "%",   source: "CRM",     binding: "salesforce.churn_rate",    usedIn: 4, validated: true },
-  { id: "v-002", name: "Average_Contract_Value",   type: "currency", unit: "USD", source: "Billing", binding: "stripe.avg_contract_value", usedIn: 7, validated: true },
-  { id: "v-003", name: "Customer_Count",           type: "integer",  unit: "—",   source: "CRM",     binding: "salesforce.account_count",  usedIn: 6, validated: true },
-  { id: "v-004", name: "Implementation_Cost",      type: "currency", unit: "USD", source: "Manual",  binding: "manual.impl_cost",          usedIn: 3, validated: false },
-  { id: "v-005", name: "Projected_Retention_Lift", type: "rate",     unit: "%",   source: "Model",   binding: "ml_model.retention_lift",   usedIn: 5, validated: true },
-  { id: "v-006", name: "Support_Ticket_Volume",    type: "integer",  unit: "—",   source: "CRM",     binding: "zendesk.ticket_count",      usedIn: 2, validated: false },
-];
-
 const TYPE_COLOR: Record<string, string> = {
   rate:     "bg-cyan-50 text-cyan-700",
   currency: "bg-emerald-50 text-emerald-700",
   integer:  "bg-neutral-100 text-neutral-600",
+  float:    "bg-neutral-100 text-neutral-600",
+  boolean:  "bg-neutral-100 text-neutral-600",
+  string:   "bg-neutral-100 text-neutral-600",
 };
 
 const SOURCE_COLOR: Record<string, string> = {
-  CRM:     "bg-blue-50 text-blue-700",
-  Billing: "bg-violet-50 text-violet-700",
-  Model:   "bg-amber-50 text-amber-700",
-  Manual:  "bg-neutral-100 text-neutral-600",
+  CRM:      "bg-blue-50 text-blue-700",
+  Billing:  "bg-violet-50 text-violet-700",
+  ERP:      "bg-purple-50 text-purple-700",
+  Model:    "bg-amber-50 text-amber-700",
+  API:      "bg-pink-50 text-pink-700",
+  Database: "bg-cyan-50 text-cyan-700",
+  Manual:   "bg-neutral-100 text-neutral-600",
+};
+
+const VALIDATION_STATUS_MAP: Record<string, boolean> = {
+  validated: true,
+  pending: false,
+  failed: false,
+  deprecated: false,
 };
 
 export function VariableRegistry() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  const filtered = VARIABLES.filter(v =>
-    (typeFilter === "all" || v.type === typeFilter) &&
-    (search === "" || v.name.toLowerCase().includes(search.toLowerCase()))
+  const { data: variables, isLoading, error } = useVariables({ search: search || undefined });
+  const { data: stats } = useVariableStats();
+
+  const filtered = (variables || []).filter(v =>
+    typeFilter === "all" || v.type === typeFilter
   );
+
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-5xl">
+        <div className="flex items-start justify-between mb-6">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-8 w-32" />
+        </div>
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 max-w-5xl">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+          <AlertCircle size={32} className="mx-auto mb-3 text-red-500" />
+          <h3 className="text-[16px] font-semibold text-neutral-800 mb-2">Failed to load variables</h3>
+          <p className="text-[13px] text-neutral-500">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl">
@@ -286,10 +323,10 @@ export function VariableRegistry() {
       {/* Stats row */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
-          { label: "Total Variables", value: VARIABLES.length.toString() },
-          { label: "Validated",       value: VARIABLES.filter(v => v.validated).length.toString() },
-          { label: "Manual Sources",  value: VARIABLES.filter(v => v.source === "Manual").length.toString() },
-          { label: "Avg Usage",       value: (VARIABLES.reduce((s, v) => s + v.usedIn, 0) / VARIABLES.length).toFixed(1) },
+          { label: "Total Variables", value: stats?.total.toString() || "0" },
+          { label: "Validated",       value: stats?.validated.toString() || "0" },
+          { label: "Manual Sources",  value: stats?.manual_sources?.toString() || "0" },
+          { label: "Avg Usage",       value: stats?.avg_usage?.toFixed(1) || "0.0" },
         ].map(s => (
           <div key={s.label} className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
             <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-semibold mb-0.5">{s.label}</p>
@@ -310,7 +347,7 @@ export function VariableRegistry() {
           />
         </div>
         <div className="flex items-center gap-1.5">
-          {["all", "rate", "currency", "integer"].map(t => (
+          {["all", "rate", "currency", "integer", "float", "boolean", "string"].map(t => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
@@ -331,13 +368,13 @@ export function VariableRegistry() {
         <table className="w-full text-[12px]">
           <thead>
             <tr className="border-b border-neutral-100 bg-neutral-50">
-              {["Variable Name", "Type", "Unit", "Source", "Binding", "Used In", "Validated", ""].map(h => (
+              {["Variable Name", "Type", "Unit", "Source", "Binding", "Used In", "Status", ""].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-[10px] uppercase tracking-widest text-neutral-400 font-semibold">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
-            {filtered.map(v => (
+            {filtered.map((v: Variable) => (
               <tr key={v.id} className="hover:bg-neutral-50 transition-colors group">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -346,19 +383,24 @@ export function VariableRegistry() {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLOR[v.type]}`}>{v.type}</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLOR[v.type] || TYPE_COLOR.string}`}>{v.type}</span>
                 </td>
                 <td className="px-4 py-3 text-neutral-500">{v.unit}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_COLOR[v.source]}`}>{v.source}</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_COLOR[v.source] || SOURCE_COLOR.Manual}`}>{v.source}</span>
                 </td>
                 <td className="px-4 py-3 font-mono text-[11px] text-neutral-500">{v.binding}</td>
-                <td className="px-4 py-3 text-neutral-600">{v.usedIn} formulas</td>
+                <td className="px-4 py-3 text-neutral-600">{v.used_in_count} formulas</td>
                 <td className="px-4 py-3">
-                  {v.validated
-                    ? <CheckCircle2 size={14} className="text-emerald-500"/>
-                    : <AlertCircle size={14} className="text-amber-500"/>
-                  }
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    v.validation_status === 'validated'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : v.validation_status === 'failed'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {v.validation_status}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -372,7 +414,11 @@ export function VariableRegistry() {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <div className="text-center py-12 text-neutral-400 text-[12px]">No variables match your filters.</div>
+          <div className="text-center py-12 text-neutral-400 text-[12px]">
+            {search || typeFilter !== "all"
+              ? "No variables match your filters."
+              : "No variables registered yet. Click 'Register Variable' to add one."}
+          </div>
         )}
       </div>
     </div>

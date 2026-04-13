@@ -19,6 +19,8 @@ import BusinessCase      from "./pages/BusinessCase";
 import InteractiveBusinessCase from "./pages/InteractiveBusinessCase";
 import DecisionTrace     from "./pages/DecisionTrace";
 import ValuePacks        from "./pages/ValuePacks";
+import Accounts          from "./pages/Accounts";
+import Integrations      from "./pages/Integrations";
 import { FormulaGovernance, BenchmarkPolicies, VariableRegistry } from "./pages/admin";
 import NotFound          from "./pages/NotFound";
 
@@ -199,11 +201,26 @@ function Router() {
         <Route path="/research">
           <ErrorBoundary><CommandCenter /></ErrorBoundary>
         </Route>
+        <Route path="/accounts">
+          <RouteGuard>
+            <ErrorBoundary><Accounts /></ErrorBoundary>
+          </RouteGuard>
+        </Route>
+        <Route path="/accounts/:id">
+          <RouteGuard>
+            <ErrorBoundary><Accounts /></ErrorBoundary>
+          </RouteGuard>
+        </Route>
+        <Route path="/integrations">
+          <RouteGuard requiredTier="admin">
+            <ErrorBoundary><Integrations /></ErrorBoundary>
+          </RouteGuard>
+        </Route>
         <Route path="/data-sources">
           <ErrorBoundary><CommandCenter /></ErrorBoundary>
         </Route>
         <Route path="/data-sources/targets">
-          <ErrorBoundary><CommandCenter /></ErrorBoundary>
+          <Redirect to="/accounts" />
         </Route>
         <Route path="/data-sources/jobs">
           <ErrorBoundary><ExtractionEngine /></ErrorBoundary>
