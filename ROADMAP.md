@@ -16,11 +16,12 @@ The Value Fabric platform has substantial implementation across all 4 original l
 |-------|-----------|--------|----------|
 | **L1: Ingestion** | ~75% | Advanced | Celery/Redis wiring, monitoring |
 | **L2: Extraction** | ~90% | Advanced | Production smoke verification |
-| **L3: Knowledge Graph** | ~82% | Advanced | Runtime verification, performance tuning |
-| **L4: Agents** | ~78% | Advanced | Pause controls, orchestration hardening |
+| **L3: Knowledge Graph** | ~85% | Advanced | API versioning bug ✅ FIXED, performance tuning |
+| **L4: Agents** | ~78% | Advanced | Pause controls ✅, orchestration hardening |
 | **L5: Ground Truth** | ~100% | Production Ready | ✅ Complete |
-| **Frontend** | ~85% | Advanced | Admin screens remaining (Task 36), core screens API-wired ✅ |
-| **DevOps/Infra** | ~40% | Intermediate | Docker Compose ready, needs monitoring/grafana |
+| **L6: Benchmarks** | ~90% | Advanced | CI coverage gate ✅ COMPLETE (Task 42) |
+| **Frontend** | ~90% | Advanced | API-wired ✅, 5 test fixes needed (Tasks 43-45) |
+| **DevOps/Infra** | ~40% | Intermediate | Tasks 46-47: Monitoring + K8s (P0 launch-blocking) |
 
 ---
 
@@ -1016,6 +1017,204 @@ run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
 
 ---
 
+## New Roadmap Additions (2026-04-12)
+
+Generated from test quality audit and launch readiness assessment. Tasks 40-50 address critical gaps in test stability, CI enforcement, observability, and production readiness.
+
+---
+
+### **Task 40: Fix L3 API Versioning Bug (L3)** ⭐ CRITICAL ✅ COMPLETE
+**Priority:** P0 | **Effort:** 30 min | **Status:** ✅ COMPLETE 2026-04-12 | **Unblocks:** 53 errored tests, production startup
+
+**Gap:** `VersionCompatibility.register_migration_handler()` signature mismatch causes 53 test errors and production startup risk.
+
+**Acceptance Criteria:**
+- [x] `register_migration_handler()` signature fixed in `main.py:195-196`
+- [x] 53 errored tests now pass
+- [x] No TypeError on service startup
+
+**Verification:**
+```python
+# Fixed: Changed from 2-arg to 3-arg signature
+version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_search_request)
+version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_ingestion_request)
+```
+
+**Implementation:**
+- Modify: `value-fabric/layer3-knowledge/src/api/main.py:195-196`
+- Change: `register_migration_handler("v1", "v2", handler)` (3 args)
+
+---
+
+### **Task 41: Add Frontend Tests to CI (FRONTEND/DEVOPS)** ⭐ CRITICAL ✅ COMPLETE
+**Priority:** P0 | **Effort:** 15 min | **Status:** ✅ COMPLETE 2026-04-12 | **Unblocks:** CI green status, test regression detection
+
+**Gap:** Frontend unit tests (Vitest) are not run in any CI workflow. The PR check invokes TypeScript compile and lint but no `pnpm test`.
+
+**Acceptance Criteria:**
+- [x] `pnpm test` runs in `pr-checks.yml` frontend job
+- [x] `working-directory: frontend` (not `frontend/client`)
+- [x] `cache-dependency-path: frontend/pnpm-lock.yaml` (not `frontend/client`)
+- [x] CI fails on test failure
+
+**Implementation:**
+- Modified: `.github/workflows/pr-checks.yml:173,188,202-203`
+- Fixed: `working-directory: frontend` (was `frontend/client`)
+- Fixed: `cache-dependency-path: frontend/pnpm-lock.yaml`
+- Added: `pnpm test` step after build
+
+---
+
+### **Task 42: Add L5/L6 Coverage Gates to CI (DEVOPS)** ⭐ P1 ✅ COMPLETE
+**Priority:** P1 | **Effort:** 2 hrs | **Status:** ✅ COMPLETE 2026-04-12 | **Unblocks:** Coverage enforcement for all layers
+
+**Gap:** pr-checks.yml only checks L1-L4. L5 (ground truth, evidence lifecycle) and L6 (benchmarks) ship without minimum coverage enforcement.
+
+**Acceptance Criteria:**
+- [x] `layer5-ground-truth` job in `pr-checks.yml` with `--cov-fail-under=80`
+- [x] `layer6-benchmarks` job in `pr-checks.yml` with `--cov-fail-under=80`
+- [x] Coverage artifacts uploaded for both layers
+
+**Implementation:**
+- Created: `.github/workflows/pr-checks.yml:166-242` (L5 and L6 jobs)
+- Added: `layer5-checks` job with full test/coverage pipeline
+- Added: `layer6-checks` job with full test/coverage pipeline
+
+---
+
+### **Task 43: Fix useJobStream Mock Strategy (FRONTEND)** ⭐ P1
+**Priority:** P1 | **Effort:** 2 hrs | **Status:** 🔴 Not Started | **Unblocks:** 4 failing tests, SSE hook validation
+
+**Gap:** useJobStream hook relies on SSE connection to transition status. MSW mock intercepts REST but EventSource state machine not driven.
+
+**Acceptance Criteria:**
+- [ ] MockEventSource emits proper events in tests
+- [ ] `useJobStream.test.ts` 4 tests pass
+- [ ] Hook state machine validated
+
+**Implementation:**
+- Modify: `frontend/client/src/hooks/useJobStream.test.ts`
+- Modify: `frontend/test/mocks/handlers.ts` (SSE simulation)
+
+---
+
+### **Task 44: Fix BusinessCase Component Context (FRONTEND)** ⭐ P1
+**Priority:** P1 | **Effort:** 1 hr | **Status:** 🔴 Not Started | **Unblocks:** BusinessCase error state test
+
+**Gap:** BusinessCase.test.tsx sets `window.location.search` at module scope, persists across all tests, bleeds into setup order.
+
+**Acceptance Criteria:**
+- [ ] Remove `window.location` mutation at module scope
+- [ ] Use wouter MemoryRouter in tests
+- [ ] Error state test passes
+
+**Implementation:**
+- Modify: `frontend/client/src/pages/BusinessCase.test.tsx`
+
+---
+
+### **Task 45: Fix MSW Filter Handlers (FRONTEND)** ⭐ P2
+**Priority:** P2 | **Effort:** 1 hr | **Status:** 🔴 Not Started | **Unblocks:** useVariables filter tests
+
+**Gap:** MSW handler for `/api/v1/graph/variables` returns full unfiltered list regardless of query params.
+
+**Acceptance Criteria:**
+- [ ] MSW handler reads `url.searchParams` for filters
+- [ ] `useVariables` filter tests pass
+- [ ] type/source/status params respected
+
+**Implementation:**
+- Modify: `frontend/test/mocks/handlers.ts`
+
+---
+
+### **Task 46: Monitoring Stack Completion (DEVOPS)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 2 days | **Status:** 🟡 Partial (Grafana dashboards exist, Prometheus status TBD) | **Unblocks:** Production observability criterion
+
+**Gap:** Prometheus stubs return zeros; no real counters. Health checks don't show dependency status. No Grafana dashboards.
+
+**Acceptance Criteria:**
+- [ ] Prometheus `/metrics` returns real counters (not zeros) on all layers
+- [ ] Health checks show dependency status (Neo4j, Postgres, Redis)
+- [ ] Grafana dashboard JSON for Value Fabric core metrics
+- [ ] Alerting rules: high error rate (>5%), slow queries (>2s), disk space
+- [ ] Structured JSON logging with correlation IDs
+
+**Implementation:**
+- Modify: All `src/api/main.py` (replace mocked metrics)
+- Create: `monitoring/grafana/dashboards/value-fabric.json`
+- Create: `monitoring/alerting/rules.yml`
+
+---
+
+### **Task 47: Kubernetes Manifests (DEVOPS)** ⭐ CRITICAL
+**Priority:** P0 | **Effort:** 2 days | **Status:** 🟡 Partial (K8s manifests exist for all layers, verification TBD) | **Unblocks:** Production deployment
+
+**Gap:** No Kubernetes manifests for production deployment. No infrastructure as code.
+
+**Acceptance Criteria:**
+- [ ] `k8s/` directory with deployments for L1-L5, Frontend
+- [ ] Services, ConfigMaps, Secrets templates
+- [ ] `kubectl apply -f k8s/` deploys all services
+- [ ] Health checks configured for K8s probes
+
+**Implementation:**
+- Create: `k8s/base/` with Kustomize structure
+- Create: `k8s/overlays/dev/`, `k8s/overlays/prod/`
+
+---
+
+### **Task 48: API Contract Tests (Cross-Layer)** ⭐ P1
+**Priority:** P1 | **Effort:** 4 hrs | **Status:** 🔴 Not Started | **Unblocks:** Silent API contract regression prevention
+
+**Gap:** No contract validation between L2→L3, L3→L4, or L4→frontend. API changes silently break consumers.
+
+**Acceptance Criteria:**
+- [ ] Contract tests for L2→L3 ingestion API
+- [ ] Contract tests for L3→Frontend graph query
+- [ ] Contract tests for L4→Frontend workflow events
+- [ ] CI job runs contract validation
+
+**Implementation:**
+- Create: `tests/contract/test_l2_l3_contract.py`
+- Create: `tests/contract/test_l3_frontend_contract.py`
+- Modify: `.github/workflows/pr-checks.yml`
+
+---
+
+### **Task 49: L1 Celery + L4 LangGraph Execution Tests (L1/L4)** ⭐ P1
+**Priority:** P1 | **Effort:** 1 day | **Status:** 🔴 Not Started | **Unblocks:** LLM path validation, async pipeline testing
+
+**Gap:** Celery task execution, LangGraph workflows, token/cost tracking, SSE streaming are untested in CI.
+
+**Acceptance Criteria:**
+- [ ] Celery task dispatch tests with mocked broker
+- [ ] LangGraph workflow execution tests with mocked LLM
+- [ ] Token/cost tracking validation
+- [ ] SSE streaming output tests
+
+**Implementation:**
+- Create: `value-fabric/layer1-ingestion/tests/test_celery_tasks.py`
+- Create: `value-fabric/layer4-agents/tests/test_langgraph_execution.py`
+
+---
+
+### **Task 50: Integration Tests PR-Blocking (DEVOPS)** ⭐ P2
+**Priority:** P2 | **Effort:** 2 hrs | **Status:** 🔴 Not Started | **Unblocks:** Early detection of cross-layer regressions
+
+**Gap:** Integration tests run nightly only, not on PRs. Breaking changes merge all day before they're caught.
+
+**Acceptance Criteria:**
+- [ ] Integration tests run on PR (not just nightly)
+- [ ] Lightweight service smoke without Docker Compose
+- [ ] Fails CI on contract/status code regressions
+
+**Implementation:**
+- Modify: `.github/workflows/integration-tests.yml`
+- Add: `workflow_run` trigger or required status check
+
+---
+
 ## Updated Dependency Graph
 
 ```
@@ -1370,11 +1569,12 @@ Requirements:
 ## Summary
 
 **Estimated Time to Production:**
-- **Current State:** ~90% overall, ~88% production-ready (Task 32 core screens complete)
-- **After Task 36 (P0):** ~95% overall, 95% production-ready (admin screens reality pass)
-- **After All Tasks (6-14, 20-39):** ~96% overall, 98% production-ready
-- **Sequential:** 3 days (was 2-3, Task 32 completed ahead of estimate)
-- **Parallel (3 tracks):** 2 days
+- **Current State:** ~90% overall, ~88% production-ready (Tasks 32, 36 core/admin screens complete)
+- **After Tasks 40-42 (P0 Test/CI fixes):** ~92% overall, 90% production-ready
+- **After Tasks 46-47 (P0 Observability/K8s):** ~96% overall, 95% production-ready
+- **After All Tasks (6-14, 20-50):** ~97% overall, 98% production-ready
+- **Sequential:** 10 days (Tasks 40-50)
+- **Parallel (4 tracks):** 5-7 days
 
 **Estimated Time to Full Architecture (Phase 1 + Phase 2):**
 - **Phase 1 (Production):** 2-3 weeks (Tasks 6-14, 20-31)
@@ -1383,7 +1583,9 @@ Requirements:
 - **Total Parallel (4 tracks):** 5-6 weeks
 
 **Biggest Risks (Phase 1):**
-1. **Task 36 (Admin Screens):** ValuePacks and admin screens may have API contract gaps similar to earlier frontend issues
+1. **Tasks 40-42 (Test/CI Stability):** L3 API bug and CI gaps block 53 tests and test regression detection
+2. **Tasks 46-47 (Production Readiness):** Monitoring stack and K8s manifests are launch-blocking gaps
+3. **Frontend Test Failures:** 5 failing tests block CI green status
 
 **Recently Resolved:**
 - ✅ Task 25 (Vector E2E): COMPLETE - embedding generation + vector indexes verified
@@ -1393,6 +1595,7 @@ Requirements:
 - ✅ Task 30 (CI Coverage): COMPLETE - 80% threshold enforcement in CI
 - ✅ Task 31 (L4 Test Stabilization): COMPLETE - import issues resolved
 - ✅ Task 32 (Frontend Reality - Core): COMPLETE - GraphExplorer, ExtractionEngine, BusinessCase, DecisionTrace all API-wired
+- ✅ Task 36 (Admin Screens): COMPLETE - ValuePacks, BenchmarkPolicies, FormulaGovernance, VariableRegistry API-wired
 
 **Biggest Risks (Phase 2):**
 1. **Layer 6 Benchmark Service:** New layer means new deployment, monitoring, operational overhead
@@ -1407,11 +1610,11 @@ Requirements:
 5. **Enterprise-ready:** Phase 2 adds governance, benchmarking, tiered UX for enterprise sales
 
 **Next Action:**
-🚀 **Start Task 36 (Admin Screens Reality Pass)** — Wire remaining admin screens (ValuePacks, BenchmarkPolicies, FormulaGovernance, VariableRegistry) to real APIs. Only remaining P0 before production-ready.
+🚀 **Start Task 40 (L3 API Versioning Bug)** — Fix `register_migration_handler()` signature to unblock 53 tests. Then proceed to Tasks 41-42 for CI stability.
 
 **Critical Path (Phase 1):**
 ```
-Task 36 (1d) = 1 day to production-ready E2E
+Task 40 (30min) → Task 41 (15min) → Task 42 (2hrs) → Tasks 46-47 (4 days) = ~5 days to production-ready
 ```
 
 *Note: Tasks 25, 26, 28, 29, 30, 31, 32 completed, saving 7 days from original estimate (was 8, now 1 day remaining).*
@@ -1445,10 +1648,12 @@ Task 36 (1d) = 1 day to production-ready E2E
 - **Tasks 6-14:** 🔄 Phase 1A - Core Production (9 tasks, 4 P0, 3 P1, 2 P2)
 - **Tasks 20-24:** ✅ Completed/Added Stabilization Sprint + New Frontend Tasks
 - **Tasks 25-31:** ✅ Phase 1B - Production Evidence (7 tasks, 5 P0, 2 P1) ✅ COMPLETE
-- **Tasks 32-35:** � Phase 1C - Final Production Push (Task 32 ~90% complete, 3 P1/P2 remaining)
-- **Total Tasks:** 39 tasks + 1 new layer
-- **Estimated Effort:** 8-11 weeks (full implementation)
-- **New Additions (2026-04-11):** 4 tasks added (Tasks 36-39), 1 P0, 1 P1, 2 P2
+- **Tasks 32-36:** ✅ Phase 1C - Frontend Reality Pass (Task 32, 36 complete; 35 remaining)
+- **Tasks 37-39:** 🔄 Phase 1D - Final Additions (Monitoring, Documentation, UX)
+- **Tasks 40-50:** ⭐ NEW Phase 1E - Test Quality & Production Readiness (11 tasks, 4 P0, 5 P1, 2 P2)
+- **Total Tasks:** 50 tasks + 1 new layer
+- **Estimated Effort:** 10-13 weeks (full implementation)
+- **New Additions (2026-04-12):** 11 tasks added (Tasks 40-50), 4 P0, 5 P1, 2 P2
 
 ```
 

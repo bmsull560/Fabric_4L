@@ -1,9 +1,13 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { waitFor } from '@testing-library/react';
 import { renderHook, act } from "@testing-library/react";
 import { useUserTierStore, getRouteTier, type UserTier } from "./userTierStore";
 
 describe("useUserTierStore", () => {
   beforeEach(() => {
+    // Clear localStorage to reset persisted state
+    localStorage.clear();
+
     // Reset store to initial state - use setTier to properly reset permissions
     const { result } = renderHook(() => useUserTierStore());
     act(() => {
@@ -253,35 +257,58 @@ describe("useUserTierStore", () => {
     });
   });
 
-  describe("computed properties", () => {
-    // NOTE: Computed getters (effectiveTier, isPrivileged) have timing issues
-    // with Zustand + React Testing Library. These are tested indirectly via
-    // canAccessRoute() which uses the same logic internally.
+  describe("computed properties via behavior", () => {
+    // Note: Zustand getters (effectiveTier, isPrivileged) don't trigger React re-renders
+    // when their dependencies change. We test the actual behavior through canAccessRoute
+    // which internally uses the same effectiveTier logic.
 
-    it.skip("should return effective tier based on current tier", () => {
-      // Skipped: Getter timing issues with Zustand + RTL
-    });
-
-    it.skip("should return advanced as effective tier when standard with advanced mode", () => {
-      // Skipped: Getter timing issues with Zustand + RTL
-    });
-
-    it.skip("should determine if user is privileged", () => {
-      // Skipped: Getter timing issues with Zustand + RTL
-    });
-
-    it.skip("should consider standard user with advanced mode as privileged", () => {
-      // Skipped: Getter timing issues with Zustand + RTL
-    });
-
-    // Verify the logic works via canAccessRoute (which uses effectiveTier internally)
-    it("should allow standard user with advanced mode to access advanced routes (via canAccessRoute)", () => {
+    it("effectiveTier works - standard user can access advanced routes with advanced mode enabled", () => {
       const { result } = renderHook(() => useUserTierStore());
 
       act(() => result.current.setTier("standard"));
+      act(() => result.current.disableAdvancedMode());
+
+      // Without advanced mode, standard user cannot access advanced routes
+      expect(result.current.canAccessRoute("advanced")).toBe(false);
+
       act(() => result.current.enableAdvancedMode());
 
-      // This proves effectiveTier logic is working
+      // With advanced mode, effectiveTier becomes 'advanced', allowing access
+      expect(result.current.canAccessRoute("advanced")).toBe(true);
+    });
+
+    it("isPrivileged works - tier-based privileges are enforced", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      // Standard user is not privileged
+      act(() => result.current.setTier("standard"));
+      act(() => result.current.disableAdvancedMode());
+      expect(result.current.canAccessFeature("canAccessAdvanced")).toBe(false);
+
+      // Advanced user is privileged (can access advanced features)
+      act(() => result.current.setTier("advanced"));
+      expect(result.current.canAccessFeature("canAccessAdvanced")).toBe(true);
+
+      // Admin user is fully privileged
+      act(() => result.current.setTier("admin"));
+      expect(result.current.canAccessFeature("canAccessAdmin")).toBe(true);
+      expect(result.current.canAccessFeature("canManageUsers")).toBe(true);
+    });
+
+    it("standard user with advanced mode gains privileged access", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      act(() => result.current.setTier("standard"));
+      act(() => result.current.disableAdvancedMode());
+
+      // Standard user without advanced mode - no advanced access
+      expect(result.current.canAccessRoute("advanced")).toBe(false);
+      expect(result.current.canAccessFeature("canEditFormulas")).toBe(false);
+
+      // Enable advanced mode
+      act(() => result.current.enableAdvancedMode());
+
+      // Now has advanced access via effectiveTier logic
       expect(result.current.canAccessRoute("advanced")).toBe(true);
     });
   });

@@ -16,6 +16,7 @@ from .base import (
     SearchResult,
 )
 from .sec_edgar import SECEdgarAdapter
+from .pdf_adapter import PDFAdapter, PDFAdapterConfig
 from .xbrl_parser import XBRLParser, ParsedXBRL, FinancialFact, FinancialStatement
 from .registry import AdapterRegistry, get_registry
 
@@ -29,6 +30,8 @@ __all__ = [
     'SearchResult',
     # Implementations
     'SECEdgarAdapter',
+    'PDFAdapter',
+    'PDFAdapterConfig',
     'XBRLParser',
     'ParsedXBRL',
     'FinancialFact',

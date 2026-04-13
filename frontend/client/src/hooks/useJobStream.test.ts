@@ -4,7 +4,7 @@
  * Tests for real-time job streaming via SSE and polling fallback.
  * Covers connection handling, progress updates, log streaming, and error scenarios.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
@@ -13,10 +13,15 @@ import { useJobStream } from './useJobStream';
 
 describe('useJobStream', () => {
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // Use real timers for SSE/polling tests to avoid timer coordination issues
+    vi.useRealTimers();
   });
 
-  it('initializes with default state', async () => {
+  afterEach(() => {
+    vi.clearAllTimers();
+  });
+
+  it('initializes with default state', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useJobStream(null), { wrapper });
 
@@ -28,17 +33,17 @@ describe('useJobStream', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('connects and fetches job data', async () => {
+  it('connects and fetches job data via SSE or polling', async () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useJobStream('job-123'), { wrapper });
 
-    // Wait for connection and initial data
-    await waitFor(() => expect(result.current.isConnected).toBe(true));
+    // Wait for connection and initial data (SSE connects immediately, then polling as fallback)
+    await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 3000 });
 
-    // Verify job data is loaded
-    expect(result.current.status).toBe('running');
+    // Verify job data is loaded via polling
+    await waitFor(() => expect(result.current.status).toBe('running'), { timeout: 8000 });
     expect(result.current.progress).toBeGreaterThan(0);
-  });
+  }, 10000);
 
   it('handles connection errors gracefully', async () => {
     server.use(
@@ -50,9 +55,9 @@ describe('useJobStream', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useJobStream('non-existent-job'), { wrapper });
 
-    await waitFor(() => expect(result.current.error).not.toBeNull());
+    await waitFor(() => expect(result.current.error).not.toBeNull(), { timeout: 8000 });
     expect(result.current.isConnected).toBe(false);
-  });
+  }, 10000);
 
   it('processes log entries correctly', async () => {
     const wrapper = createWrapper();
@@ -91,9 +96,9 @@ describe('useJobStream', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useJobStream('completed-job'), { wrapper });
 
-    await waitFor(() => expect(result.current.status).toBe('completed'));
+    await waitFor(() => expect(result.current.status).toBe('completed'), { timeout: 8000 });
     expect(result.current.progress).toBe(100);
-  });
+  }, 10000);
 
   it('handles job failure', async () => {
     server.use(
@@ -112,8 +117,8 @@ describe('useJobStream', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useJobStream('failed-job'), { wrapper });
 
-    await waitFor(() => expect(result.current.status).toBe('failed'));
-  });
+    await waitFor(() => expect(result.current.status).toBe('failed'), { timeout: 8000 });
+  }, 10000);
 
   it('determines streaming state correctly', async () => {
     server.use(

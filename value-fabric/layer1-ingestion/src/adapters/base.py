@@ -20,6 +20,7 @@ class AdapterType(str, Enum):
     SEC_EDGAR = "sec_edgar"
     USPTO_PATENTS = "uspto_patents"
     NEWS = "news"
+    PDF = "pdf"
 
 
 class FilingType(str, Enum):

@@ -192,8 +192,8 @@ async def lifespan(app: FastAPI):
     from .versioning import migrate_v1_to_v2_search_request, migrate_v1_to_v2_ingestion_request
     from .versioning import transform_v1_search_response, transform_v1_health_response
     
-    version_compatibility.register_migration_handler("v1->v2", migrate_v1_to_v2_search_request)
-    version_compatibility.register_migration_handler("v1->v2", migrate_v1_to_v2_ingestion_request)
+    version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_search_request)
+    version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_ingestion_request)
     version_compatibility.register_response_transformer("v1", "/v1/search", transform_v1_search_response)
     version_compatibility.register_response_transformer("v1", "/health", transform_v1_health_response)
     

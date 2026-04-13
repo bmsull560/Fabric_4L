@@ -8,7 +8,7 @@
  * - Empty/error states
  * - PDF export functionality
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
@@ -16,15 +16,14 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import BusinessCase from './BusinessCase';
 
-// Mock wouter's useSearchParams - use getter function for live reference
-const getMockSearchParams = () => mockSearchParams;
-let mockSearchParams = new Map<string, string>([['id', 'test-case-123']]);
+// Mutable mock state for wouter's useSearchParams - works with vitest hoisting
+const mockState = { searchParams: new Map([['id', 'test-case-123']]) };
 
 vi.mock('wouter', async () => {
   const actual = await vi.importActual('wouter');
   return {
     ...actual,
-    useSearchParams: () => [getMockSearchParams(), () => {}],
+    useSearchParams: () => [mockState.searchParams, () => {}],
     useLocation: () => ['/', () => {}],
   };
 });
@@ -48,7 +47,11 @@ Object.defineProperty(window, 'location', {
 describe('BusinessCase', () => {
   beforeEach(() => {
     // Reset and set default mock search param
-    mockSearchParams = new Map([['id', 'test-case-123']]);
+    mockState.searchParams = new Map([['id', 'test-case-123']]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
   it('renders loading state initially', () => {
@@ -98,7 +101,7 @@ describe('BusinessCase', () => {
 
   it('shows warning when no case ID provided', async () => {
     // Clear mock search params to simulate no ID in URL
-    mockSearchParams = new Map<string, string>();
+    mockState.searchParams = new Map<string, string>();
 
     const wrapper = createWrapper();
     render(<BusinessCase />, { wrapper });
@@ -108,16 +111,10 @@ describe('BusinessCase', () => {
     });
   });
 
-  it.skip('shows error state when case fails to load', async () => {
-    // TODO: Fix mock reference update issue with vitest hoisting
-    mockSearchParams = new Map([['id', 'not-found-case']]);
-
+  it('shows error state when case fails to load', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', ({ params }) => {
-        if (params.caseId === 'not-found-case') {
-          return HttpResponse.json({ error: 'Case not found' }, { status: 404 });
-        }
-        return HttpResponse.json({ case_id: params.caseId });
+      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+        return HttpResponse.json({ error: 'Case not found' }, { status: 404 });
       })
     );
 
@@ -130,30 +127,24 @@ describe('BusinessCase', () => {
     }, { timeout: 3000 });
   });
 
-  it.skip('renders recommendations', async () => {
-    // TODO: Fix mock reference update issue with vitest hoisting
-    mockSearchParams = new Map([['id', 'test-case']]);
-
+  it('renders recommendations', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', ({ params }) => {
-        if (params.caseId === 'test-case') {
-          return HttpResponse.json({
-            case_id: 'test-case',
-            title: 'Test Case',
-            summary: 'Summary',
-            total_value: 100000,
-            implementation_cost: 25000,
-            roi_ratio: 4.0,
-            payback_months: 6,
-            confidence_score: 0.85,
-            recommendations: ['Recommendation One', 'Recommendation Two'],
-            status: 'completed',
-            created_at: '2024-01-15T10:00:00Z',
-            page_count: 10,
-            file_size_bytes: 51200,
-          });
-        }
-        return new HttpResponse(null, { status: 404 });
+      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+        return HttpResponse.json({
+          case_id: 'test-case-123',
+          title: 'Test Case',
+          summary: 'Summary',
+          total_value: 100000,
+          implementation_cost: 25000,
+          roi_ratio: 4.0,
+          payback_months: 6,
+          confidence_score: 0.85,
+          recommendations: ['Recommendation One', 'Recommendation Two'],
+          status: 'completed',
+          created_at: '2024-01-15T10:00:00Z',
+          page_count: 10,
+          file_size_bytes: 51200,
+        });
       })
     );
 
@@ -168,31 +159,25 @@ describe('BusinessCase', () => {
     expect(screen.getByText('Recommendation Two')).toBeInTheDocument();
   });
 
-  it.skip('renders export button when document_url is present', async () => {
-    // TODO: Fix mock reference update issue with vitest hoisting
-    mockSearchParams = new Map([['id', 'test-case']]);
-
+  it('renders export button when document_url is present', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', ({ params }) => {
-        if (params.caseId === 'test-case') {
-          return HttpResponse.json({
-            case_id: 'test-case',
-            title: 'Test',
-            summary: 'Summary',
-            total_value: 100000,
-            implementation_cost: 25000,
-            roi_ratio: 4.0,
-            payback_months: 6,
-            confidence_score: 0.85,
-            recommendations: [],
-            status: 'completed',
-            document_url: 'https://example.com/doc.pdf',
-            created_at: '2024-01-15T10:00:00Z',
-            page_count: 10,
-            file_size_bytes: 51200,
-          });
-        }
-        return new HttpResponse(null, { status: 404 });
+      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+        return HttpResponse.json({
+          case_id: 'test-case-123',
+          title: 'Test',
+          summary: 'Summary',
+          total_value: 100000,
+          implementation_cost: 25000,
+          roi_ratio: 4.0,
+          payback_months: 6,
+          confidence_score: 0.85,
+          recommendations: [],
+          status: 'completed',
+          document_url: 'https://example.com/doc.pdf',
+          created_at: '2024-01-15T10:00:00Z',
+          page_count: 10,
+          file_size_bytes: 51200,
+        });
       })
     );
 
@@ -204,30 +189,24 @@ describe('BusinessCase', () => {
     }, { timeout: 3000 });
   });
 
-  it.skip('renders page header with breadcrumbs', async () => {
-    // TODO: Fix mock reference update issue with vitest hoisting
-    mockSearchParams = new Map([['id', 'test-case']]);
-
+  it('renders page header with breadcrumbs', async () => {
     server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', ({ params }) => {
-        if (params.caseId === 'test-case') {
-          return HttpResponse.json({
-            case_id: 'test-case',
-            title: 'Test',
-            summary: 'Summary',
-            total_value: 100000,
-            implementation_cost: 25000,
-            roi_ratio: 4.0,
-            payback_months: 6,
-            confidence_score: 0.85,
-            recommendations: [],
-            status: 'completed',
-            created_at: '2024-01-15T10:00:00Z',
-            page_count: 10,
-            file_size_bytes: 51200,
-          });
-        }
-        return new HttpResponse(null, { status: 404 });
+      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
+        return HttpResponse.json({
+          case_id: 'test-case-123',
+          title: 'Test',
+          summary: 'Summary',
+          total_value: 100000,
+          implementation_cost: 25000,
+          roi_ratio: 4.0,
+          payback_months: 6,
+          confidence_score: 0.85,
+          recommendations: [],
+          status: 'completed',
+          created_at: '2024-01-15T10:00:00Z',
+          page_count: 10,
+          file_size_bytes: 51200,
+        });
       })
     );
 

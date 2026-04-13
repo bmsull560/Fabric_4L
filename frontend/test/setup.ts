@@ -1,3 +1,23 @@
+/**
+ * ProgressEvent polyfill for MSW XMLHttpRequest interception
+ * MUST be defined before importing MSW to avoid reference errors
+ */
+class MockProgressEvent extends Event {
+  readonly lengthComputable: boolean;
+  readonly loaded: number;
+  readonly total: number;
+
+  constructor(type: string, eventInitDict?: EventInit & { lengthComputable?: boolean; loaded?: number; total?: number }) {
+    super(type, eventInitDict);
+    this.lengthComputable = (eventInitDict as any)?.lengthComputable ?? false;
+    this.loaded = (eventInitDict as any)?.loaded ?? 0;
+    this.total = (eventInitDict as any)?.total ?? 0;
+  }
+}
+
+// @ts-ignore - ProgressEvent not in jsdom types
+global.ProgressEvent = MockProgressEvent;
+
 import "@testing-library/jest-dom";
 import { vi, beforeAll, afterAll, afterEach } from "vitest";
 import { server } from "./mocks/server";
@@ -135,26 +155,6 @@ global.requestAnimationFrame = (callback: FrameRequestCallback) => {
 global.cancelAnimationFrame = (id: number) => {
   clearTimeout(id);
 };
-
-/**
- * ProgressEvent polyfill for MSW XMLHttpRequest interception
- * MSW's XMLHttpRequest interceptor requires ProgressEvent which is not available in jsdom
- */
-class MockProgressEvent extends Event {
-  readonly lengthComputable: boolean;
-  readonly loaded: number;
-  readonly total: number;
-
-  constructor(type: string, eventInitDict?: { lengthComputable?: boolean; loaded?: number; total?: number }) {
-    super(type, eventInitDict);
-    this.lengthComputable = eventInitDict?.lengthComputable ?? false;
-    this.loaded = eventInitDict?.loaded ?? 0;
-    this.total = eventInitDict?.total ?? 0;
-  }
-}
-
-// @ts-expect-error - ProgressEvent not in jsdom types
-global.ProgressEvent = MockProgressEvent;
 
 // Reset all mocks after each test to ensure isolation
 afterEach(() => {

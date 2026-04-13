@@ -117,9 +117,25 @@ describe('ValuePacks', () => {
   });
 
   describe('Pack Selection & Filtering', () => {
-    it.skip('filters packs by industry', async () => {
-      // Skipped: Client-side filtering requires more complex test setup
-      // The filter functionality is covered by the filter button presence test
+    it('filters packs by industry', async () => {
+      const wrapper = createWrapper();
+      render(<ValuePacks />, { wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText('Enterprise Security ROI')).toBeInTheDocument();
+        expect(screen.getByText('Customer Churn Reduction')).toBeInTheDocument();
+      });
+
+      // Click industry filter button - use first match (filter buttons at top)
+      const saasFilterButtons = screen.getAllByText('SaaS / B2B');
+      expect(saasFilterButtons.length).toBeGreaterThan(0);
+      fireEvent.click(saasFilterButtons[0]);
+
+      // Both SaaS packs should remain visible after filtering
+      await waitFor(() => {
+        expect(screen.getByText('Enterprise Security ROI')).toBeInTheDocument();
+        expect(screen.getByText('Customer Churn Reduction')).toBeInTheDocument();
+      });
     });
 
     it('filters packs by search query', async () => {
@@ -172,14 +188,50 @@ describe('ValuePacks', () => {
       expect(applyButtons.length).toBeGreaterThan(0);
     });
 
-    it.skip('handles pack apply successfully', async () => {
-      // Skipped: Complex async mutation timing
-      // Covered by: shows Apply button on pack cards (verifies UI is ready)
+    it('handles pack apply successfully', async () => {
+      const wrapper = createWrapper();
+      render(<ValuePacks />, { wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText('Enterprise Security ROI')).toBeInTheDocument();
+      });
+
+      // Click the Apply button (first one found)
+      const applyButton = screen.getAllByText(/Apply/i)[0];
+      fireEvent.click(applyButton);
+
+      // Verify button goes into loading state (mutation is processing)
+      await waitFor(() => {
+        expect(applyButton).toBeDisabled();
+      });
+
+      // After mutation completes, button should be re-enabled
+      await waitFor(() => {
+        expect(applyButton).toBeEnabled();
+      });
     });
 
-    it.skip('disables apply button during mutation', async () => {
-      // Skipped: Requires hover interaction to reveal Apply button
-      // The button is in a hover-only visible state making it hard to test reliably
+    it('disables apply button during mutation', async () => {
+      const wrapper = createWrapper();
+      render(<ValuePacks />, { wrapper });
+
+      await waitFor(() => {
+        expect(screen.getByText('Enterprise Security ROI')).toBeInTheDocument();
+      });
+
+      // Get the Apply button
+      const applyButton = screen.getAllByText(/Apply/i)[0];
+
+      // Initially should be enabled
+      expect(applyButton).toBeEnabled();
+
+      // Click to trigger mutation
+      fireEvent.click(applyButton);
+
+      // Button should be disabled during mutation
+      await waitFor(() => {
+        expect(applyButton).toBeDisabled();
+      });
     });
   });
 

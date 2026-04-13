@@ -163,6 +163,84 @@ jobs:
           path: value-fabric/layer4-agents/coverage.xml
           retention-days: 14
 
+  # Layer 5 - Ground Truth
+  layer5-checks:
+    name: Layer 5 - Ground Truth
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: value-fabric/layer5-ground-truth
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install pytest-cov
+
+      - name: Lint with ruff
+        run: ruff check src/
+
+      - name: Type check with mypy
+        run: mypy src/ --ignore-missing-imports
+
+      - name: Run tests with coverage
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-layer5
+          path: value-fabric/layer5-ground-truth/coverage.xml
+          retention-days: 14
+
+  # Layer 6 - Benchmarks
+  layer6-checks:
+    name: Layer 6 - Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: value-fabric/layer6-benchmarks
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install pytest-cov
+
+      - name: Lint with ruff
+        run: ruff check src/
+
+      - name: Type check with mypy
+        run: mypy src/ --ignore-missing-imports
+
+      - name: Run tests with coverage
+        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-layer6
+          path: value-fabric/layer6-benchmarks/coverage.xml
+          retention-days: 14
+
   # Frontend checks
   frontend-checks:
     name: Frontend
@@ -170,7 +248,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend/client
+        working-directory: frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -185,7 +263,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'pnpm'
-          cache-dependency-path: frontend/client/pnpm-lock.yaml
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -198,6 +276,9 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      - name: Test
+        run: pnpm test
 
       - name: Upload build artifacts on failure
         if: failure()
