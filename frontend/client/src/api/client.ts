@@ -34,6 +34,12 @@ class ApiClient {
         (config) => {
           const tenantId = localStorage.getItem('tenantId') || 'default';
           config.headers['X-Tenant-ID'] = tenantId;
+
+          const token = localStorage.getItem('authToken');
+          if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+          }
+
           return config;
         },
         (error) => Promise.reject(error)

@@ -13,11 +13,12 @@
  */
 
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import {
   FlaskConical, CheckCircle2, Clock, AlertCircle, History, ChevronRight,
   Plus, Search, Filter, Tag, Users, Eye, Edit3, Trash2, GitBranch,
   ArrowUpDown, MoreHorizontal, Download, FileText, Check, X,
-  MessageSquare, Shield, Loader2, RefreshCw,
+  MessageSquare, Shield, Loader2, RefreshCw, Send,
 } from "lucide-react";
 import { PageHeader, Btn, SectionCard, StatusBadge } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,6 +28,7 @@ import {
   useFormulas,
   useFormulaApprovals,
   useApproveFormula,
+  useSubmitFormula,
   type Formula,
   type ApprovalRequest,
   type FormulaStatus,
@@ -238,7 +240,11 @@ function FormulaGovernanceSkeleton() {
 }
 
 function FormulaGovernanceContent() {
-  const [activeTab, setActiveTab] = useState<TabType>("registry");
+  const [location] = useLocation();
+  const initialTab: TabType = location.includes("/approvals") ? "approvals"
+    : location.includes("/versions") ? "versions"
+    : "registry";
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | FormulaStatus>("all");
   const [selectedFormulas, setSelectedFormulas] = useState<Set<string>>(new Set());
@@ -259,6 +265,7 @@ function FormulaGovernanceContent() {
   } = useFormulaApprovals();
 
   const approveMutation = useApproveFormula();
+  const submitMutation = useSubmitFormula();
 
   const stats = useMemo(() => {
     return formulas.reduce(
@@ -500,6 +507,16 @@ function FormulaGovernanceContent() {
                     <button className="p-1.5 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700" title="Edit">
                       <Edit3 size={13}/>
                     </button>
+                    {f.status === "draft" && (
+                      <button
+                        className="p-1.5 rounded hover:bg-blue-50 text-neutral-400 hover:text-blue-600"
+                        title="Submit for Review"
+                        onClick={() => submitMutation.mutate(f.id)}
+                        disabled={submitMutation.isPending}
+                      >
+                        <Send size={13}/>
+                      </button>
+                    )}
                     <button className="p-1.5 rounded hover:bg-red-50 text-neutral-400 hover:text-red-500" title="Delete">
                       <Trash2 size={13}/>
                     </button>
