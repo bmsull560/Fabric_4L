@@ -190,7 +190,6 @@ async def lifespan(app: FastAPI):
     await close_db()
 
     # P1-29: Shutdown OpenTelemetry tracer
-    global _tracer_provider
     if _tracer_provider:
         _tracer_provider.shutdown()
         _tracer_provider = None

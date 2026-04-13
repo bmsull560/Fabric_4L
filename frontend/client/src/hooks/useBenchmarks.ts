@@ -142,8 +142,8 @@ export interface UpdateBenchmarkPolicyParams extends Partial<BenchmarkPolicy> {
 export function useUpdateBenchmarkPolicy() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (policy: Partial<BenchmarkPolicy> & { id: string }) => {
+  return useMutation<BenchmarkPolicy, BenchmarkApiError, UpdateBenchmarkPolicyParams>({
+    mutationFn: async (policy) => {
       if (!policy.id) throw new BenchmarkApiError('Policy ID is required');
       const response = await apiClient.put('l3', `/benchmarks/policies/${policy.id}`, policy);
       return response.data as BenchmarkPolicy;

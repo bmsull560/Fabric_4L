@@ -8,27 +8,12 @@
  * - Search/filter interactions
  * - Loading and error states
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import GraphExplorer from './GraphExplorer';
-
-// Mock matchMedia for responsive tests
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
 
 describe('GraphExplorer', () => {
   it('renders with graph data', async () => {

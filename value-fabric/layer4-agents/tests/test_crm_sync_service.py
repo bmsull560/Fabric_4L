@@ -21,14 +21,14 @@ import httpx
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..src.models.account import (
+from src.models.account import (
     Account,
     AccountSyncStatus,
     CRMProvider,
     SyncStatus,
 )
-from ..src.services.crm_sync_service import CRMSyncService
-from ..src.api.main import app
+from src.services.crm_sync_service import CRMSyncService
+from src.api.main import app
 
 
 # =============================================================================
