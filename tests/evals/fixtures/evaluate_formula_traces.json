@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "skill": "evaluate_formula",
+  "traces": [
+    {
+      "id": "ef-001",
+      "description": "Basic ROI calculation: hours saved × hourly rate",
+      "input": {
+        "formula_id": "vd-labor-savings-001",
+        "variables": {
+          "hours_saved": 5000,
+          "hourly_rate": 75
+        },
+        "scenario": "BASE"
+      },
+      "assertions": {
+        "value": 375000,
+        "unit_contains": "USD",
+        "confidence_min": 0.8,
+        "steps_not_empty": true
+      }
+    },
+    {
+      "id": "ef-002",
+      "description": "BEST scenario produces higher value than BASE",
+      "input": {
+        "formula_id": "vd-labor-savings-001",
+        "variables": {
+          "hours_saved": 5000,
+          "hourly_rate": 75
+        },
+        "scenario": "BEST"
+      },
+      "assertions": {
+        "value_gt": 375000
+      }
+    },
+    {
+      "id": "ef-003",
+      "description": "WORST scenario produces lower value than BASE",
+      "input": {
+        "formula_id": "vd-labor-savings-001",
+        "variables": {
+          "hours_saved": 5000,
+          "hourly_rate": 75
+        },
+        "scenario": "WORST"
+      },
+      "assertions": {
+        "value_lt": 375000
+      }
+    }
+  ]
+}

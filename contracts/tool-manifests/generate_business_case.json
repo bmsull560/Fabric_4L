@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/generate_business_case.json",
+  "name": "generate_business_case",
+  "version": "1.0.0",
+  "description": "Generate a consultant-grade business case document from capabilities and prospect context.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "opportunity_context": {
+        "type": "object",
+        "description": "Context about the prospect and opportunity.",
+        "properties": {
+          "prospect_name": { "type": "string" },
+          "industry": { "type": "string" },
+          "challenges": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["prospect_name", "industry"]
+      },
+      "capability_ids": {
+        "type": "array",
+        "items": { "type": "string" },
+        "minItems": 1,
+        "description": "Capability node IDs to include in the business case."
+      },
+      "output_format": {
+        "type": "string",
+        "enum": ["MARKDOWN", "DOCX", "PDF", "PPTX"],
+        "default": "MARKDOWN"
+      },
+      "sections": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "EXECUTIVE_SUMMARY",
+            "ROI_ANALYSIS",
+            "RISK_MITIGATION",
+            "IMPLEMENTATION_ROADMAP",
+            "SUPPORTING_EVIDENCE"
+          ]
+        },
+        "description": "Sections to include. Omit to include all sections."
+      },
+      "tone": {
+        "type": "string",
+        "enum": ["EXECUTIVE", "TECHNICAL", "FINANCIAL"],
+        "default": "EXECUTIVE"
+      }
+    },
+    "required": ["opportunity_context", "capability_ids"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "document": {
+        "type": "string",
+        "description": "Generated business case content in the requested format."
+      },
+      "roi_summary": {
+        "type": "object",
+        "properties": {
+          "total_value": { "type": "number" },
+          "payback_period_months": { "type": "number" },
+          "confidence_score": { "type": "number" }
+        }
+      },
+      "sections_included": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["document", "sections_included"]
+  }
+}

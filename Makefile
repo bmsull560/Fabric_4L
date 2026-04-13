@@ -1,0 +1,117 @@
+.PHONY: help verify lint typecheck test test-layer1 test-layer2 test-layer3 test-layer4 \
+        test-frontend build migrate evals clean
+
+PYTHON := python3
+PIP    := pip install -e
+PYTEST := pytest -v --tb=short
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+# ─── Verification ────────────────────────────────────────────────────────────
+
+verify: lint typecheck test ## Run all checks (lint + typecheck + tests) — required before PR
+	@echo "✅  All checks passed"
+
+# ─── Linting ─────────────────────────────────────────────────────────────────
+
+lint: ## Lint all Python layers with ruff
+	@echo "→ Linting Layer 1..."
+	cd value-fabric/layer1-ingestion && ruff check src/
+	@echo "→ Linting Layer 2..."
+	cd value-fabric/layer2-extraction && ruff check src/
+	@echo "→ Linting Layer 3..."
+	cd value-fabric/layer3-knowledge && ruff check src/
+	@echo "→ Linting Layer 4..."
+	cd value-fabric/layer4-agents && ruff check src/
+	@echo "→ Linting Layer 5..."
+	cd value-fabric/layer5-ground-truth && ruff check src/
+	@echo "→ Linting Layer 6..."
+	cd value-fabric/layer6-benchmarks && ruff check src/
+
+typecheck: ## Type-check all Python layers with mypy
+	@echo "→ Type-checking Layer 1..."
+	cd value-fabric/layer1-ingestion && mypy src/ --ignore-missing-imports
+	@echo "→ Type-checking Layer 2..."
+	cd value-fabric/layer2-extraction && mypy src/ --ignore-missing-imports
+	@echo "→ Type-checking Layer 3..."
+	cd value-fabric/layer3-knowledge && mypy src/ --ignore-missing-imports
+	@echo "→ Type-checking Layer 4..."
+	cd value-fabric/layer4-agents && mypy src/ --ignore-missing-imports
+	@echo "→ Type-checking Layer 5..."
+	cd value-fabric/layer5-ground-truth && mypy src/ --ignore-missing-imports
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+
+test: test-layer1 test-layer2 test-layer3 test-layer4 ## Run all backend unit tests
+
+test-layer1: ## Run Layer 1 tests
+	cd value-fabric/layer1-ingestion && $(PYTEST) tests/
+
+test-layer2: ## Run Layer 2 tests
+	cd value-fabric/layer2-extraction && $(PYTEST) tests/
+
+test-layer3: ## Run Layer 3 tests
+	cd value-fabric/layer3-knowledge && $(PYTEST) tests/
+
+test-layer4: ## Run Layer 4 tests
+	cd value-fabric/layer4-agents && $(PYTEST) tests/
+
+test-layer5: ## Run Layer 5 tests
+	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/
+
+test-frontend: ## Run frontend unit tests
+	cd frontend/client && pnpm run test
+
+test-e2e: ## Run Playwright end-to-end tests (requires running stack)
+	cd frontend && pnpm exec playwright test
+
+# ─── Agent Evaluations ────────────────────────────────────────────────────────
+
+evals: ## Run agent golden-trace evaluations (requires OPENAI_API_KEY)
+	$(PYTEST) tests/evals/ -v --tb=short -m "not slow"
+
+evals-full: ## Run full eval suite including slow/expensive traces
+	$(PYTEST) tests/evals/ -v --tb=short
+
+# ─── Build ────────────────────────────────────────────────────────────────────
+
+build: ## Build frontend production bundle
+	cd frontend/client && pnpm run build
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+
+migrate: ## Run Alembic migrations for all layers
+	@echo "→ Migrating Layer 1..."
+	cd value-fabric/layer1-ingestion && alembic upgrade head
+	@echo "→ Migrating Layer 4..."
+	cd value-fabric/layer4-agents && alembic upgrade head
+	@echo "→ Migrating Layer 5..."
+	cd value-fabric/layer5-ground-truth && alembic upgrade head
+
+# ─── Contracts ────────────────────────────────────────────────────────────────
+
+contracts: ## Export OpenAPI specs from all layers
+	$(PYTHON) scripts/export_openapi.py
+
+# ─── Dev Infrastructure ───────────────────────────────────────────────────────
+
+up: ## Start all services with Docker Compose
+	cd value-fabric && docker compose up -d
+
+down: ## Stop all services
+	cd value-fabric && docker compose down
+
+logs: ## Tail logs for all services
+	cd value-fabric && docker compose logs -f
+
+# ─── Cleanup ─────────────────────────────────────────────────────────────────
+
+clean: ## Remove build artifacts and caches
+	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name .pytest_cache -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name .mypy_cache -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
+	find . -name "*.pyc" -delete 2>/dev/null || true
+	@echo "✅  Clean complete"
