@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 from ...db.driver import get_driver
 from neo4j import AsyncDriver
 from ...logging_config import get_logger
+from ...auth.middleware import get_current_api_key
+from ...auth.api_keys import APIKey
 
 logger = get_logger(__name__)
 
@@ -428,6 +430,7 @@ async def resolve_variable(
     variable_id: str,
     request: ResolveRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Resolve variable value for given context."""
     # Get variable definition

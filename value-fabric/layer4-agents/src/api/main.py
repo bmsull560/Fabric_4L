@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
 from .routes import workflows, tools, analysis, accounts
+from .routes.crm_webhooks import router as crm_webhooks_router
 from .routes.checkpoints import checkpoint_router
 from .routes.state_inspector import state_inspector_router
 from .routes.health_badges import health_badges_router
@@ -192,6 +193,7 @@ app.include_router(workflows.router, prefix="/v1", tags=["workflows"])
 app.include_router(tools.router, prefix="/v1", tags=["tools"])
 app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
 app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
+app.include_router(crm_webhooks_router, prefix="/v1")
 app.include_router(checkpoint_router, prefix="/v1", tags=["checkpoints"])
 app.include_router(state_inspector_router, prefix="/v1", tags=["state-inspector"])
 app.include_router(health_badges_router, prefix="/v1", tags=["health"])

@@ -14,6 +14,8 @@ from ...db.driver import get_driver
 from neo4j import AsyncDriver
 from ...logging_config import get_logger
 from ._utils import semver_key, is_valid_semver
+from ...auth.middleware import require_admin_role
+from ...auth.api_keys import APIKey
 
 logger = get_logger(__name__)
 
@@ -417,6 +419,7 @@ async def approve_formula(
     formula_id: str,
     request: ApproveRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(require_admin_role),
 ):
     """Approve formula (admin only)."""
     now = datetime.now(timezone.utc).isoformat()

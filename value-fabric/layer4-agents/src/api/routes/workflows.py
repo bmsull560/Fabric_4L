@@ -22,6 +22,8 @@ from ...engine.scheduler import TaskPriority
 from ...models.agent_state import WorkflowStatus
 from ...workflows import list_workflow_types
 from ...tenant.context import get_current_tenant, TenantContext
+from shared.identity.dependencies import require_authenticated
+from shared.identity.context import RequestContext
 
 
 router = APIRouter()
@@ -506,7 +508,8 @@ async def list_active_workflows(
 @router.get("/workflows/{workflow_id}/events")
 async def get_workflow_events(
     workflow_id: str,
-    executor: OrchestrationController = Depends(get_executor)
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> StreamingResponse:
     """Get workflow events via Server-Sent Events (SSE).
     

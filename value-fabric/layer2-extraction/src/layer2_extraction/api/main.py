@@ -24,10 +24,21 @@ try:
 except ImportError:
     psutil = None  # Health check will work without system metrics
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
+
+# Shared identity imports for authentication
+# Layer2 requires shared.identity for all audit endpoints - fail fast if unavailable
+try:
+    from shared.identity.dependencies import require_authenticated
+    from shared.identity.context import RequestContext
+except ImportError as e:
+    raise RuntimeError(
+        "shared.identity package is required for Layer2 authentication. "
+        "Install the shared package or set up the Python path correctly."
+    ) from e
 
 from layer2_extraction.metrics import initialize_metrics, MetricsMiddleware, get_metrics
 
@@ -1244,8 +1255,11 @@ async def get_relationships(entity_id: str):
 
 
 @app.get("/v1/audit/trace/{job_id}", response_model=ProvenanceResponse)
-async def get_provenance(job_id: str):
-    """Get full provenance trace for an extraction job."""
+async def get_provenance(
+    job_id: str,
+    ctx: RequestContext = Depends(require_authenticated),
+):
+    """Get full provenance trace for an extraction job. Requires authentication."""
     tracker = get_provenance_tracker()
     activity = tracker.get_activity(job_id)
     
@@ -1264,8 +1278,11 @@ async def get_provenance(job_id: str):
 
 
 @app.get("/v1/audit/entity/{entity_id}")
-async def get_entity_provenance(entity_id: str):
-    """Get provenance for a specific entity."""
+async def get_entity_provenance(
+    entity_id: str,
+    ctx: RequestContext = Depends(require_authenticated),
+):
+    """Get provenance for a specific entity. Requires authentication."""
     tracker = get_provenance_tracker()
     chain = tracker.get_provenance_for_entity(entity_id)
     
