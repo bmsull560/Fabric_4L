@@ -9,7 +9,7 @@ import json
 import logging
 import uuid
 from typing import Dict, List, Optional, Set, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -25,7 +25,7 @@ class EventStore:
     
     def add(self, event: Dict[str, Any]) -> None:
         """Add event to buffer, maintaining max size."""
-        event["_stored_at"] = datetime.utcnow().isoformat()
+        event["_stored_at"] = datetime.now(timezone.utc).isoformat()
         self.events.append(event)
         if len(self.events) > self.max_events:
             self.events.pop(0)
@@ -46,7 +46,7 @@ class WorkflowConnection:
     """Represents a WebSocket connection tracking its state."""
     websocket: WebSocket
     workflow_id: str
-    connected_at: datetime = field(default_factory=datetime.utcnow)
+    connected_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     last_event_id: Optional[str] = None
     is_alive: bool = True
     _conn_id: str = field(default_factory=lambda: str(uuid.uuid4()), compare=False)
@@ -174,10 +174,11 @@ class WorkflowWebSocketManager:
                 await conn.send_event(event)
         
         # Send connection established event
+        now = datetime.now(timezone.utc)
         await conn.send_event({
-            "event_id": f"conn-{datetime.utcnow().timestamp()}",
+            "event_id": f"conn-{now.timestamp()}-{uuid.uuid4().hex[:8]}",
             "event_type": "connection_established",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": now.isoformat(),
             "workflow_id": workflow_id,
             "message": f"Subscribed to workflow {workflow_id}",
             "replay_count": len(missed_events) if last_event_id else 0
@@ -207,6 +208,21 @@ class WorkflowWebSocketManager:
         
         logger.info(f"WebSocket disconnected for workflow {workflow_id}")
     
+    async def cleanup_workflow(self, workflow_id: str) -> None:
+        """Remove event store for completed workflows to prevent memory leak.
+        
+        Call this when a workflow completes and no longer needs replay capability.
+        """
+        async with self._lock:
+            # Only clean up if no active connections
+            if workflow_id in self._workflow_connections:
+                logger.warning(f"Cannot cleanup workflow {workflow_id}: has active connections")
+                return
+            
+            if workflow_id in self._event_stores:
+                del self._event_stores[workflow_id]
+                logger.info(f"Cleaned up event store for workflow {workflow_id}")
+    
     async def broadcast_to_workflow(
         self,
         workflow_id: str,
@@ -220,28 +236,29 @@ class WorkflowWebSocketManager:
             Number of successful deliveries
         """
         event = {
-            "event_id": f"evt-{datetime.utcnow().timestamp()}-{id(payload)}",
+            "event_id": f"evt-{datetime.now(timezone.utc).timestamp()}-{uuid.uuid4().hex[:8]}",
             "event_type": event_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "workflow_id": workflow_id,
             "message": message or event_type,
             "payload": payload
         }
         
-        # Store for replay
+        # Store for replay and get connections atomically under lock
         async with self._lock:
-            if workflow_id in self._event_stores:
-                self._event_stores[workflow_id].add(event)
-        
-        # Broadcast to all connections
-        delivered = 0
-        dead_connections = []
-        
-        async with self._lock:
+            # Ensure event store exists
+            if workflow_id not in self._event_stores:
+                self._event_stores[workflow_id] = EventStore()
+            self._event_stores[workflow_id].add(event)
+            
+            # Get connections under same lock to prevent race with disconnect
             if workflow_id not in self._workflow_connections:
                 return 0
-            
             connections = list(self._workflow_connections[workflow_id])
+        
+        # Broadcast to all connections (outside lock to avoid blocking)
+        delivered = 0
+        dead_connections: List[WorkflowConnection] = []
         
         for conn in connections:
             success = await conn.send_event(event)
@@ -256,6 +273,9 @@ class WorkflowWebSocketManager:
                 if workflow_id in self._workflow_connections:
                     for conn in dead_connections:
                         self._workflow_connections[workflow_id].discard(conn)
+                    # Clean up empty workflow entry
+                    if not self._workflow_connections[workflow_id]:
+                        del self._workflow_connections[workflow_id]
         
         return delivered
     
@@ -346,7 +366,7 @@ class WorkflowWebSocketManager:
                 "status": status,
                 "final_output": final_output,
                 "errors": errors or [],
-                "completion_time": datetime.utcnow().isoformat()
+                "completion_time": datetime.now(timezone.utc).isoformat()
             },
             message=f"Workflow {status}"
         )
@@ -386,7 +406,7 @@ class WorkflowWebSocketManager:
     async def _cleanup_stale_connections(self) -> None:
         """Remove connections that haven't responded."""
         stale_threshold = timedelta(minutes=5)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         dead_connections = []
         
         async with self._lock:
@@ -420,7 +440,7 @@ class WorkflowWebSocketManager:
                     try:
                         await conn.websocket.send_json({
                             "event_type": "ping",
-                            "timestamp": datetime.utcnow().isoformat()
+                            "timestamp": datetime.now(timezone.utc).isoformat()
                         })
                     except Exception:
                         conn.is_alive = False
@@ -455,11 +475,25 @@ class WorkflowWebSocketManager:
         
         elif msg_type == "subscribe_history":
             # Client requesting full history
-            events = self._event_stores.get(workflow_id, EventStore()).events
+            async with self._lock:
+                event_store = self._event_stores.get(workflow_id)
+                events = event_store.events if event_store else []
             await websocket.send_json({
                 "event_type": "history_response",
                 "events": events[-50:]  # Send last 50 events
             })
+        
+        elif msg_type == "workflow_complete_ack":
+            # Client acknowledged workflow completion - safe to cleanup
+            logger.debug(f"Client acknowledged completion for workflow {workflow_id}")
+            # Schedule cleanup after a delay to allow other clients to reconnect
+            asyncio.create_task(self._delayed_cleanup(workflow_id, delay_seconds=300))
+
+
+    async def _delayed_cleanup(self, workflow_id: str, delay_seconds: int) -> None:
+        """Schedule cleanup of workflow event store after a delay."""
+        await asyncio.sleep(delay_seconds)
+        await self.cleanup_workflow(workflow_id)
 
 
 # Global singleton instance

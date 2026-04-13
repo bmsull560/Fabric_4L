@@ -8,7 +8,7 @@ Provides endpoints for:
 """
 
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from fastapi import APIRouter, HTTPException, Depends, Query
@@ -218,7 +218,7 @@ async def get_checkpoint_state(
         return StateSnapshotResponse(
             workflow_id=workflow_id,
             checkpoint_id=checkpoint_id,
-            timestamp=state_data.get("timestamp", datetime.utcnow().isoformat()),
+            timestamp=state_data.get("timestamp", datetime.now(timezone.utc).isoformat()),
             node_name=state_data.get("node_name", "unknown"),
             full_state=state_data.get("state", {}),
             state_schema=state_data.get("workflow_type", "unknown")
@@ -423,6 +423,15 @@ async def _query_checkpoints(
         # with thread_id as the key. We need to query this.
         conn = checkpoint_saver.conn if hasattr(checkpoint_saver, 'conn') else None
         
+        # Validate connection type to prevent SQL injection
+        if conn is None:
+            logger.warning("Checkpoint saver has no database connection")
+            return []
+        
+        if not hasattr(conn, 'fetch'):
+            logger.error("Checkpoint saver connection doesn't support fetch operation")
+            return []
+        
         if conn:
             # Query the checkpoint table
             rows = await conn.fetch(
@@ -452,7 +461,7 @@ async def _query_checkpoints(
                     checkpoint_id=row['checkpoint_id'],
                     thread_id=row['thread_id'],
                     node_name=node_name,
-                    timestamp=row['created_at'].isoformat() if row['created_at'] else datetime.utcnow().isoformat(),
+                    timestamp=row['created_at'].isoformat() if row['created_at'] else datetime.now(timezone.utc).isoformat(),
                     step_number=i + 1,
                     state_summary=_summarize_state(state_data)
                 ))
@@ -474,6 +483,15 @@ async def _get_checkpoint_data(
     try:
         conn = checkpoint_saver.conn if hasattr(checkpoint_saver, 'conn') else None
         
+        # Validate connection type to prevent SQL injection
+        if conn is None:
+            logger.warning("Checkpoint saver has no database connection")
+            return None
+        
+        if not hasattr(conn, 'fetchrow'):
+            logger.error("Checkpoint saver connection doesn't support fetchrow operation")
+            return None
+        
         if conn:
             row = await conn.fetchrow(
                 """
@@ -493,7 +511,7 @@ async def _get_checkpoint_data(
                     "checkpoint_id": row['checkpoint_id'],
                     "thread_id": row['thread_id'],
                     "state": state_data,
-                    "timestamp": row['created_at'].isoformat() if row['created_at'] else datetime.utcnow().isoformat(),
+                    "timestamp": row['created_at'].isoformat() if row['created_at'] else datetime.now(timezone.utc).isoformat(),
                     "node_name": state_data.get('current_node', 'unknown') if isinstance(state_data, dict) else 'unknown',
                     "workflow_type": state_data.get('workflow_type', 'unknown') if isinstance(state_data, dict) else 'unknown'
                 }

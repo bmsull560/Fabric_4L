@@ -243,7 +243,8 @@ async def get_websocket_status() -> WebSocketStatusResponse:
     )
     
     # Determine status
-    ws_health = tracker.get_component_health("websocket") if (tracker := get_health_tracker()) else None
+    tracker = get_health_tracker()
+    ws_health = tracker.get_component_health("websocket") if tracker else None
     
     if ws_health and ws_health.status == HealthStatus.HEALTHY:
         status = "connected"

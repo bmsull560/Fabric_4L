@@ -56,8 +56,14 @@ class RedisRateLimiter:
         logged (graceful degradation).
         """
         now = time.time()
-        window = 60  # per-minute window
-        limit = config.requests_per_minute
+        
+        # Support both per-minute and per-hour limits
+        if config.requests_per_hour is not None:
+            window = 3600  # per-hour window
+            limit = config.requests_per_hour
+        else:
+            window = 60  # per-minute window
+            limit = config.requests_per_minute
 
         if self._redis is None:
             return RateLimitResult(

@@ -3,7 +3,7 @@
 import json
 import logging
 from typing import Any, Dict, Optional, TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..models.agent_state import AgentState, WorkflowStatus
 
@@ -75,7 +75,7 @@ class StateManager:
         else:
             self._memory_store[key] = {
                 "data": state_dict,
-                "expires": datetime.utcnow().timestamp() + ttl_seconds
+                "expires": datetime.now(timezone.utc).timestamp() + ttl_seconds
             }
         
         # Broadcast state update via WebSocket
@@ -131,7 +131,7 @@ class StateManager:
                     return None
         else:
             stored = self._memory_store.get(key)
-            if stored and stored["expires"] > datetime.utcnow().timestamp():
+            if stored and stored["expires"] > datetime.now(timezone.utc).timestamp():
                 return self._deserialize_state(stored["data"])
 
         return None
@@ -194,7 +194,7 @@ class StateManager:
         key = self._get_history_key(workflow_id)
         
         entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "node_id": node_id,
             "input_summary": self._summarize(input_data),
             "output_summary": self._summarize(output_data),

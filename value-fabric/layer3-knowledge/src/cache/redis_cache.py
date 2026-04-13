@@ -3,6 +3,7 @@
 import json
 import pickle
 import hashlib
+import time
 from typing import Any, Dict, List, Optional, Union, Callable
 from datetime import datetime, timedelta
 from functools import wraps
@@ -524,9 +525,9 @@ class CacheManager:
         return results
 
 
-# Global cache instance
+# Global cache instance (using string annotations for forward references)
 _cache_manager: Optional[CacheManager] = None
-_request_deduplicator: Optional[RequestDeduplicator] = None
+_request_deduplicator: Optional["RequestDeduplicator"] = None
 
 
 def get_cache_manager() -> Optional[CacheManager]:
@@ -538,7 +539,7 @@ def get_cache_manager() -> Optional[CacheManager]:
     return _cache_manager
 
 
-def get_request_deduplicator() -> Optional[RequestDeduplicator]:
+def get_request_deduplicator() -> Optional["RequestDeduplicator"]:
     """Get global request deduplicator instance.
 
     Returns:
@@ -634,6 +635,13 @@ class RequestDeduplicator:
     - Analytics computations (community detection, centrality)
     """
 
+    # Constants for deduplication behavior
+    DEFAULT_LOCK_TTL = 30  # seconds to hold deduplication lock
+    RESULT_CACHE_TTL = 10  # seconds to cache result for late arrivals
+    MAX_FUTURE_WAIT = 60  # seconds to wait for in-flight request
+    POLL_INTERVAL_BASE = 0.05  # base poll interval (exponential backoff)
+    MAX_POLL_INTERVAL = 1.0  # max poll interval
+
     def __init__(self, cache: RedisCache):
         """Initialize request deduplicator.
 
@@ -665,7 +673,7 @@ class RequestDeduplicator:
         operation: str,
         params: Dict[str, Any],
         executor: Callable,
-        ttl: int = 30,  # Short TTL for pending locks
+        ttl: Optional[int] = None,
         *args,
         **kwargs
     ) -> Any:
@@ -678,13 +686,17 @@ class RequestDeduplicator:
             operation: Operation type identifier
             params: Request parameters for deduplication key
             executor: Async function to execute
-            ttl: TTL for the deduplication lock
+            ttl: TTL for the deduplication lock (defaults to DEFAULT_LOCK_TTL)
             *args: Arguments for executor
             **kwargs: Keyword arguments for executor
 
         Returns:
             Execution result (shared if deduplicated)
+
+        Raises:
+            asyncio.TimeoutError: If waiting for deduplicated request exceeds MAX_FUTURE_WAIT
         """
+        ttl = ttl or self.DEFAULT_LOCK_TTL
         dedup_key = self._generate_request_key(operation, params)
 
         # Check for in-flight request in memory (fast path)
@@ -692,23 +704,29 @@ class RequestDeduplicator:
             if dedup_key in self._pending:
                 future = self._pending[dedup_key]
                 logger.debug(f"Request deduplicated: {operation}, waiting for result")
-                return await future
+                # Wait with timeout to prevent hanging forever
+                try:
+                    return await asyncio.wait_for(future, timeout=self.MAX_FUTURE_WAIT)
+                except asyncio.TimeoutError:
+                    logger.warning(f"Timeout waiting for deduplicated {operation}, executing")
+                    # Remove stale future and proceed with execution
+                    self._pending.pop(dedup_key, None)
 
         # Check distributed cache for cross-process deduplication
         try:
             pending_result = await self.cache.get(dedup_key)
             if pending_result:
-                # Another process is handling this request
-                # Wait and poll for result
-                wait_start = asyncio.get_event_loop().time()
-                max_wait = ttl
+                # Another process is handling this request - poll with exponential backoff
+                poll_interval = self.POLL_INTERVAL_BASE
+                wait_start = time.monotonic()
 
-                while asyncio.get_event_loop().time() - wait_start < max_wait:
+                while time.monotonic() - wait_start < ttl:
                     result = await self.cache.get(f"{dedup_key}:result")
                     if result:
                         logger.debug(f"Retrieved deduplicated result from cache: {operation}")
                         return result
-                    await asyncio.sleep(0.1)
+                    await asyncio.sleep(poll_interval)
+                    poll_interval = min(poll_interval * 2, self.MAX_POLL_INTERVAL)
 
                 # Timeout waiting for other process, proceed with execution
                 logger.warning(f"Deduplication timeout for {operation}, executing anyway")
@@ -721,7 +739,13 @@ class RequestDeduplicator:
         async with self._lock:
             # Double-check after acquiring lock
             if dedup_key in self._pending:
-                return await self._pending[dedup_key]
+                try:
+                    return await asyncio.wait_for(
+                        self._pending[dedup_key],
+                        timeout=self.MAX_FUTURE_WAIT
+                    )
+                except asyncio.TimeoutError:
+                    self._pending.pop(dedup_key, None)
             self._pending[dedup_key] = future
 
         # Set distributed lock
@@ -739,7 +763,11 @@ class RequestDeduplicator:
 
             # Cache result briefly for late-arriving deduplicated requests
             try:
-                await self.cache.set(f"{dedup_key}:result", result, ttl=10)
+                await self.cache.set(
+                    f"{dedup_key}:result",
+                    result,
+                    ttl=self.RESULT_CACHE_TTL
+                )
             except Exception:
                 pass
 

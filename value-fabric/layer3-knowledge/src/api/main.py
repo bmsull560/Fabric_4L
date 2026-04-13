@@ -1945,10 +1945,17 @@ async def batch_analytics(
 
 
 # Helper functions for batch operations
-async def _create_entity(driver, operation):
-    """Create a single entity."""
+async def _create_entity(driver, operation: BatchEntityOperation) -> Dict[str, Any]:
+    """Create a single entity in Neo4j.
+
+    Args:
+        driver: Neo4j async driver
+        operation: Batch entity operation with entity_type and properties
+
+    Returns:
+        Dict with success flag and entity_id or error message
+    """
     try:
-        import uuid
         entity_id = str(uuid.uuid4())
 
         async with driver.session() as session:
@@ -1978,8 +1985,16 @@ async def _create_entity(driver, operation):
         return {"success": False, "error": str(e)}
 
 
-async def _update_entity(driver, operation):
-    """Update a single entity."""
+async def _update_entity(driver, operation: BatchEntityOperation) -> Dict[str, Any]:
+    """Update a single entity in Neo4j.
+
+    Args:
+        driver: Neo4j async driver
+        operation: Batch entity operation with entity_id and properties
+
+    Returns:
+        Dict with success flag or error message
+    """
     try:
         async with driver.session() as session:
             query = """
@@ -2002,8 +2017,16 @@ async def _update_entity(driver, operation):
         return {"success": False, "error": str(e)}
 
 
-async def _delete_entity(driver, operation):
-    """Delete a single entity."""
+async def _delete_entity(driver, operation: BatchEntityOperation) -> Dict[str, Any]:
+    """Delete a single entity from Neo4j.
+
+    Args:
+        driver: Neo4j async driver
+        operation: Batch entity operation with entity_id
+
+    Returns:
+        Dict with success flag or error message
+    """
     try:
         async with driver.session() as session:
             query = """
@@ -2020,8 +2043,13 @@ async def _delete_entity(driver, operation):
         return {"success": False, "error": str(e)}
 
 
-async def _delete_entity_by_id(driver, entity_id):
-    """Delete entity by ID (for rollback)."""
+async def _delete_entity_by_id(driver, entity_id: str) -> None:
+    """Delete entity by ID (used for atomic rollback).
+
+    Args:
+        driver: Neo4j async driver
+        entity_id: Entity ID to delete
+    """
     async with driver.session() as session:
         query = "MATCH (n {id: $entity_id}) DETACH DELETE n"
         await session.run(query, {"entity_id": entity_id})

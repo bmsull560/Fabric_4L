@@ -151,6 +151,24 @@ class FeatureFlagService:
         """Evaluate a feature flag for the given context (uses Redis cache)."""
         return await is_enabled(flag_key, tenant_id, user_id)
 
+    @staticmethod
+    async def lookup_flag(
+        db: AsyncSession,
+        flag_key: str,
+        tenant_id: UUID | None,
+    ) -> dict[str, Any] | None:
+        """Lookup flag data for evaluation (used by shared identity feature flag system).
+
+        Returns dict with 'enabled' and 'rollout_percentage' keys, or None if not found.
+        """
+        flag = await FeatureFlagService.get_flag(db, flag_key, tenant_id)
+        if flag is None:
+            return None
+        return {
+            "enabled": flag.enabled,
+            "rollout_percentage": flag.rollout_percentage,
+        }
+
 
 async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] | None:
     """DB lookup callback registered with ``shared.identity.feature_flags``."""

@@ -6,10 +6,7 @@ import typer
 
 from ._utils import get_client, print_object
 
-app = typer.Typer(help="Health checks")
 
-
-@app.command()
 def health(
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ) -> None:

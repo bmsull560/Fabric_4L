@@ -56,12 +56,26 @@ async def _get_user_by_email(
     return result.scalar_one_or_none()
 
 
-def _get_client_secret(config: OIDCProviderConfig) -> str:
-    """Resolve the OIDC client secret from config reference."""
+async def _get_client_secret(config: OIDCProviderConfig) -> str:
+    """Resolve the OIDC client secret from config reference.
+
+    Supports:
+    - Vault references: "vault:secret/data/path#key"
+    - Environment variable references: "ENV_VAR_NAME"
+    - Direct values (fallback)
+    """
     if config.client_secret_ref:
-        secret = os.getenv(config.client_secret_ref)
-        if secret:
-            return secret
+        # Handle Vault references
+        if config.client_secret_ref.startswith("vault:"):
+            from shared.identity.vault_check import resolve_vault_secret
+            secret = await resolve_vault_secret(config.client_secret_ref)
+            if secret:
+                return secret
+        else:
+            # Treat as environment variable name
+            secret = os.getenv(config.client_secret_ref)
+            if secret:
+                return secret
     # Fallback env var pattern
     return os.getenv(f"OIDC_CLIENT_SECRET_{config.provider_name.upper()}", "")
 
@@ -185,6 +199,7 @@ async def oidc_callback(
     await db.execute(
         text("DELETE FROM oidc_sessions WHERE state = :state"), {"state": state}
     )
+    await db.commit()
 
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = tenant_result.scalar_one_or_none()
@@ -195,7 +210,7 @@ async def oidc_callback(
     if oidc_config is None or not oidc_config.enabled:
         raise HTTPException(status_code=400, detail="OIDC is not enabled for this tenant")
 
-    client_secret = _get_client_secret(oidc_config)
+    client_secret = await _get_client_secret(oidc_config)
     oidc_client = OIDCClient()
 
     try:
@@ -230,17 +245,19 @@ async def oidc_callback(
             status_code=502, detail=f"OIDC token verification failed: {exc}"
         ) from exc
 
-    # Validate nonce if present in token
+    # Validate nonce if present in token (constant-time comparison to prevent timing attacks)
     token_nonce = claims.get("nonce")
-    if token_nonce and token_nonce != nonce:
-        emit_audit_event(
-            AuditAction.OIDC_LOGIN_FAILED,
-            tenant_id=tenant_id,
-            resource_type="OIDCSession",
-            outcome=AuditOutcome.FAILURE,
-            details={"reason": "nonce_mismatch"},
-        )
-        raise HTTPException(status_code=400, detail="OIDC nonce mismatch")
+    if token_nonce:
+        import hmac
+        if not hmac.compare_digest(str(token_nonce), str(nonce)):
+            emit_audit_event(
+                AuditAction.OIDC_LOGIN_FAILED,
+                tenant_id=tenant_id,
+                resource_type="OIDCSession",
+                outcome=AuditOutcome.FAILURE,
+                details={"reason": "nonce_mismatch"},
+            )
+            raise HTTPException(status_code=400, detail="OIDC nonce mismatch")
 
     # Map claims to role
     email = claims.get("email", "")

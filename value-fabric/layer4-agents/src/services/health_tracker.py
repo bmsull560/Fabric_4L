@@ -14,7 +14,7 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional, Callable, Set
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -90,6 +90,7 @@ class HealthTracker:
         self._callbacks: List[Callable[[HealthBadge], None]] = []
         self._status_callbacks: List[Callable[[str, HealthStatus, HealthStatus], None]] = []
         self._check_task: Optional[asyncio.Task] = None
+        self._auto_hide_tasks: Set[asyncio.Task] = set()
         self._lock = asyncio.Lock()
         
         # Badge priority mapping
@@ -165,6 +166,11 @@ class HealthTracker:
                 await self._check_task
             except asyncio.CancelledError:
                 pass
+        
+        # Cancel any pending auto-hide tasks
+        for task in list(self._auto_hide_tasks):
+            task.cancel()
+        
         logger.info("Health tracker stopped")
     
     def register_badge_callback(self, callback: Callable[[HealthBadge], None]) -> None:
@@ -197,21 +203,32 @@ class HealthTracker:
             old_health = self._components.get(name)
             
             # Update component health
+            # Calculate counters: increment only on status transitions, preserve otherwise
+            old_status = old_health.status if old_health else HealthStatus.UNKNOWN
+            failure_count = old_health.failure_count if old_health else 0
+            recovery_count = old_health.recovery_count if old_health else 0
+            
+            if old_status != status:
+                # Status changed - update transition counters
+                if status == HealthStatus.UNHEALTHY:
+                    failure_count += 1
+                elif status == HealthStatus.HEALTHY and old_status in (HealthStatus.UNHEALTHY, HealthStatus.DEGRADED):
+                    recovery_count += 1
+            
             health = ComponentHealth(
                 name=name,
                 status=status,
-                last_checked=datetime.utcnow(),
+                last_checked=datetime.now(timezone.utc),
                 response_time_ms=response_time_ms,
                 error_message=error_message,
-                failure_count=old_health.failure_count + 1 if old_health and status == HealthStatus.UNHEALTHY else 0,
-                recovery_count=old_health.recovery_count + 1 if old_health and status == HealthStatus.HEALTHY else 0,
+                failure_count=failure_count,
+                recovery_count=recovery_count,
                 metadata=metadata or {}
             )
             
             self._components[name] = health
             
-            # Check if status changed
-            old_status = old_health.status if old_health else HealthStatus.UNKNOWN
+            # Notify on status change
             if old_status != status:
                 # Notify status callbacks
                 for callback in self._status_callbacks:
@@ -280,9 +297,11 @@ class HealthTracker:
         
         # Auto-hide if configured
         if badge.auto_hide_after_seconds:
-            asyncio.create_task(
+            task = asyncio.create_task(
                 self._auto_hide_badge(badge_id, badge.auto_hide_after_seconds)
             )
+            self._auto_hide_tasks.add(task)
+            task.add_done_callback(self._auto_hide_tasks.discard)
     
     async def _auto_hide_badge(self, badge_id: str, delay_seconds: int) -> None:
         """Automatically hide a badge after a delay."""
@@ -375,25 +394,31 @@ class HealthTracker:
     async def _run_health_checks(self) -> None:
         """Run health checks on all components."""
         # Check for stale health data
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         stale_threshold = timedelta(minutes=5)
         
+        # Collect stale components first (under lock)
+        stale_components: List[str] = []
         async with self._lock:
             for name, health in self._components.items():
                 if now - health.last_checked > stale_threshold:
-                    # Mark as unknown if not updated recently
                     if health.status == HealthStatus.HEALTHY:
-                        await self.update_component(
-                            name,
-                            HealthStatus.UNKNOWN,
-                            error_message="Health check stale - no recent updates"
-                        )
+                        stale_components.append(name)
+        
+        # Update stale components outside lock to avoid contention
+        # and potential deadlock (update_component also acquires the lock)
+        for name in stale_components:
+            await self.update_component(
+                name,
+                HealthStatus.UNKNOWN,
+                error_message="Health check stale - no recent updates"
+            )
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert health status to dictionary for API response."""
         return {
             "overall_status": self.get_overall_status().value,
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(timezone.utc).isoformat(),
             "components": {
                 name: {
                     "status": health.status.value,

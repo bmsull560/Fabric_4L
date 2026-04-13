@@ -162,9 +162,10 @@ class ModelRegistryService:
             raise PromotionError(f"Model is already in stage '{to_stage}'")
 
         # Enforce promotion gates
+        eval_passed = None
         if from_stage == "staging" and to_stage == "production":
-            passed = await check_eval_gate(db, model_version_id)
-            if not passed:
+            eval_passed = await check_eval_gate(db, model_version_id)
+            if not eval_passed:
                 raise PromotionError(
                     "Evaluation gate failed: eval_score below promotion threshold"
                 )
@@ -181,7 +182,7 @@ class ModelRegistryService:
             promoted_by=promoted_by,
             reason=reason,
             eval_score=model.eval_score,
-            eval_gate_passed=(from_stage != "staging" or to_stage != "production" or await check_eval_gate(db, model_version_id)),
+            eval_gate_passed=eval_passed if eval_passed is not None else True,
         )
         db.add(log_entry)
         await db.flush()

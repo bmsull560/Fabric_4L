@@ -11,7 +11,7 @@ This implements the OrchestrationController agent type from the specification.
 """
 
 from typing import Any, Callable, Dict, List, Optional, Set
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 import asyncio
 import logging
@@ -269,13 +269,13 @@ class OrchestrationController:
             "tenant_id": tenant_id,
             "user_id": user_id,
             "priority": priority.value,
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
         }
         
         # Schedule workflow execution
         task = ScheduledTask(
             priority=priority.value,
-            scheduled_time=datetime.utcnow(),
+            scheduled_time=datetime.now(timezone.utc),
             task_id=f"wf-{workflow_id}",
             workflow_instance_id=workflow_id,
             capability="workflow_execution",
@@ -320,9 +320,9 @@ class OrchestrationController:
         Returns:
             schedule_id: ID for tracking
         """
-        schedule_id = f"sched-{datetime.utcnow().timestamp()}"
+        schedule_id = f"sched-{datetime.now(timezone.utc).timestamp()}"
         
-        execute_time = scheduled_time or datetime.utcnow()
+        execute_time = scheduled_time or datetime.now(timezone.utc)
         
         # Create scheduled task
         task = ScheduledTask(
@@ -378,11 +378,11 @@ class OrchestrationController:
             return None
         
         # Create and schedule task
-        task_id = f"task-{datetime.utcnow().timestamp()}"
+        task_id = f"task-{datetime.now(timezone.utc).timestamp()}"
         
         task = ScheduledTask(
             priority=priority.value,
-            scheduled_time=datetime.utcnow(),
+            scheduled_time=datetime.now(timezone.utc),
             task_id=task_id,
             workflow_instance_id=task_id,
             capability=capability,
@@ -471,7 +471,7 @@ class OrchestrationController:
         state = await self.state_manager.load_state(workflow_id)
         if state:
             state.status = WorkflowStatus.CANCELLED
-            state.completed_at = datetime.utcnow()
+            state.completed_at = datetime.now(timezone.utc)
             await self.state_manager.save_state(workflow_id, state)
         
         return cancelled
@@ -523,7 +523,7 @@ class OrchestrationController:
         if resume_data:
             state.output_data["resume_decision"] = resume_data
             state.output_data["resumed_by"] = user_id
-            state.output_data["resumed_at"] = datetime.utcnow().isoformat()
+            state.output_data["resumed_at"] = datetime.now(timezone.utc).isoformat()
         
         # Get workflow type from metadata
         metadata = self._workflow_metadata.get(workflow_id, {})
@@ -536,7 +536,7 @@ class OrchestrationController:
         workflow = create_workflow(workflow_type, self.tool_registry, self.checkpoint_saver)
         
         # Update metadata
-        metadata["resumed_at"] = datetime.utcnow().isoformat()
+        metadata["resumed_at"] = datetime.now(timezone.utc).isoformat()
         metadata["resumed_by"] = user_id
         
         # Resume execution - LangGraph will load from checkpoint via thread_id

@@ -467,6 +467,15 @@ class GraphRAGEngine:
             sources=sources,
         )
 
+    # Progress calculation constants for streaming
+    _PROGRESS_START = 0.0
+    _PROGRESS_SEED_BEGIN = 5.0
+    _PROGRESS_SEED_RANGE = 20.0  # Seeds fill 5% -> 25%
+    _PROGRESS_HOPS_BEGIN = 25.0
+    _PROGRESS_HOPS_RANGE = 50.0  # Hops fill 25% -> 75%
+    _PROGRESS_RESULT = 95.0
+    _PROGRESS_COMPLETE = 100.0
+
     async def query_stream(
         self,
         query_text: str,
@@ -495,14 +504,14 @@ class GraphRAGEngine:
         Yields:
             Dict representing streaming event with event_type and data
         """
-        max_hops = max_hops or self.settings.graphrag_max_hops
+        max_hops = max(max_hops or self.settings.graphrag_max_hops, 1)  # Ensure >= 1
         min_confidence = min_confidence or self.settings.graphrag_min_confidence
 
         # Start event
         yield {
             "event_type": "start",
             "data": {"query": query_text, "max_hops": max_hops, "entity_type": entity_type},
-            "progress_percent": 0.0,
+            "progress_percent": self._PROGRESS_START,
         }
 
         # Step 1: Find seed entities via vector search (25% of progress)
@@ -514,21 +523,23 @@ class GraphRAGEngine:
             yield {
                 "event_type": "error",
                 "data": {"message": f"No seed entities found for query: {query_text}"},
-                "progress_percent": 100.0,
+                "progress_percent": self._PROGRESS_COMPLETE,
             }
             yield {
                 "event_type": "complete",
                 "data": {"entities_found": 0, "relationships_found": 0},
-                "progress_percent": 100.0,
+                "progress_percent": self._PROGRESS_COMPLETE,
             }
             return
 
         # Yield seed entities
+        seed_count = len(seed_entities)
         for i, entity in enumerate(seed_entities):
+            progress = self._PROGRESS_SEED_BEGIN + (i / seed_count) * self._PROGRESS_SEED_RANGE
             yield {
                 "event_type": "seed_entity",
-                "data": {"entity": entity, "index": i, "total": len(seed_entities)},
-                "progress_percent": 5.0 + (i / len(seed_entities)) * 20.0,
+                "data": {"entity": entity, "index": i, "total": seed_count},
+                "progress_percent": progress,
             }
 
         # Step 2: Stream context expansion hop by hop (50% of progress)
@@ -554,13 +565,16 @@ class GraphRAGEngine:
                 LIMIT $max_nodes
                 """
 
+                # Avoid division by zero - distribute max_nodes across hops evenly
+                nodes_per_hop = max(self.settings.graphrag_max_nodes // max_hops, 1)
+
                 result = await session.run(
                     hop_query,
                     {
                         "seed_ids": seed_ids,
                         "existing_ids": list(all_entities.keys()),
                         "min_confidence": min_confidence,
-                        "max_nodes": self.settings.graphrag_max_nodes // max_hops,
+                        "max_nodes": nodes_per_hop,
                     },
                 )
 
@@ -590,8 +604,9 @@ class GraphRAGEngine:
                             all_relationships.append(rel_data)
                             hop_relationships.append(rel_data)
 
-                # Stream hop results
-                progress_base = 25.0 + (current_hop / max_hops) * 50.0
+                # Stream hop results with progress based on current hop
+                hop_progress = (current_hop / max_hops) * self._PROGRESS_HOPS_RANGE
+                progress_base = self._PROGRESS_HOPS_BEGIN + hop_progress
 
                 for entity in hop_entities:
                     yield {
@@ -608,6 +623,7 @@ class GraphRAGEngine:
                     }
 
                 # Progress update
+                next_hop_progress = ((current_hop + 1) / max_hops) * self._PROGRESS_HOPS_RANGE
                 yield {
                     "event_type": "progress",
                     "data": {
@@ -616,7 +632,7 @@ class GraphRAGEngine:
                         "entities_found": len(all_entities),
                         "relationships_found": len(all_relationships),
                     },
-                    "progress_percent": progress_base + (5.0 / max_hops),
+                    "progress_percent": self._PROGRESS_HOPS_BEGIN + next_hop_progress,
                 }
 
         # Build final result
@@ -638,7 +654,7 @@ class GraphRAGEngine:
                 "relationship_count": len(final_result.relationships),
                 "sources": final_result.sources,
             },
-            "progress_percent": 95.0,
+            "progress_percent": self._PROGRESS_RESULT,
         }
 
         # Complete event
@@ -649,5 +665,5 @@ class GraphRAGEngine:
                 "relationships_found": len(all_relationships),
                 "hops_traversed": max_hops,
             },
-            "progress_percent": 100.0,
+            "progress_percent": self._PROGRESS_COMPLETE,
         }

@@ -94,9 +94,9 @@ async def lifespan(app: FastAPI):
 
     # Register DB-backed feature flag lookup
     async def _feature_flag_lookup(flag_key: str, tenant_id):
+        from ..database import db_session
         async with db_session() as db:
-            svc = FeatureFlagService(db)
-            return await svc.lookup_flag(flag_key, tenant_id)
+            return await FeatureFlagService.lookup_flag(db, flag_key, tenant_id)
     register_feature_flag_lookup(_feature_flag_lookup)
 
     # Wire WebSocket manager for real-time state broadcasting

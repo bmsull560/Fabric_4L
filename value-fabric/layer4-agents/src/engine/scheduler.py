@@ -10,7 +10,7 @@ import asyncio
 import heapq
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Set
 from uuid import uuid4
@@ -90,7 +90,7 @@ class TaskScheduler:
         
         task = ScheduledTask(
             priority=TaskPriority.HIGH.value,
-            scheduled_time=datetime.utcnow(),
+            scheduled_time=datetime.now(timezone.utc),
             task_id="task-1",
             workflow_instance_id="wf-1",
             capability="document_parsing",
@@ -290,7 +290,7 @@ class TaskScheduler:
             if not self._task_queue:
                 return
             
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             ready_tasks = []
             
             # Find tasks ready to execute
@@ -316,7 +316,7 @@ class TaskScheduler:
         """
         async with self._semaphore:
             task.status = TaskStatus.RUNNING
-            task.started_at = datetime.utcnow()
+            task.started_at = datetime.now(timezone.utc)
             
             task_id = task.task_id
             
@@ -332,7 +332,7 @@ class TaskScheduler:
                 
                 task.result = result
                 task.status = TaskStatus.COMPLETED
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(timezone.utc)
                 
                 logger.info(f"Task {task_id} completed successfully")
                 
@@ -342,7 +342,7 @@ class TaskScheduler:
             except asyncio.TimeoutError:
                 task.status = TaskStatus.FAILED
                 task.error = f"Task timed out after {task.timeout_seconds}s"
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(timezone.utc)
                 
                 logger.error(f"Task {task_id} timed out")
                 
@@ -355,7 +355,7 @@ class TaskScheduler:
             except Exception as e:
                 task.status = TaskStatus.FAILED
                 task.error = str(e)
-                task.completed_at = datetime.utcnow()
+                task.completed_at = datetime.now(timezone.utc)
                 
                 logger.error(f"Task {task_id} failed: {e}")
                 
@@ -413,7 +413,7 @@ class TaskScheduler:
         task.retry_count += 1
         task.status = TaskStatus.RETRYING
         
-        next_scheduled = datetime.utcnow() + timedelta(seconds=delay)
+        next_scheduled = datetime.now(timezone.utc) + timedelta(seconds=delay)
         
         logger.info(f"Scheduling retry {task.retry_count}/{task.max_retries} for task {task.task_id} in {delay}s")
         

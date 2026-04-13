@@ -7,7 +7,7 @@ import typer
 from .api_keys import app as api_keys_app
 from .config import app as config_app
 from .flags import app as flags_app
-from .health import app as health_app
+from .health import health as health_command
 from .models import app as models_app
 from .tenants import app as tenants_app
 from .users import app as users_app
@@ -22,7 +22,7 @@ app.add_typer(api_keys_app, name="api-keys", help="API key management")
 app.add_typer(workflows_app, name="workflows", help="Workflow management")
 app.add_typer(models_app, name="models", help="Model registry")
 app.add_typer(flags_app, name="feature-flags", help="Feature flags")
-app.add_typer(health_app, name="health", help="Health checks")
+app.command("health")(health_command)
 
 
 def main() -> None:

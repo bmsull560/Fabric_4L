@@ -5,7 +5,7 @@ Business logic and data access for the accounts surface.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
@@ -207,7 +207,7 @@ class AccountService:
             raise ValueError(f"Account not found: {account_id}")
         
         # Calculate since date
-        since_date = (datetime.utcnow() - timedelta(days=since_days)).strftime("%Y-%m-%d")
+        since_date = (datetime.now(timezone.utc) - timedelta(days=since_days)).strftime("%Y-%m-%d")
         
         try:
             # Use the fetch_interaction_history tool
@@ -274,7 +274,7 @@ class AccountService:
         initiates the sync process. The actual sync implementation would
         typically be handled by a background job.
         """
-        sync_id = f"sync-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        sync_id = f"sync-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
         
         if provider:
             # Sync specific provider
@@ -341,15 +341,15 @@ class AccountService:
                         "value": opp.get("value"),
                         "probability": opp.get("probability"),
                         "close_date": opp.get("close_date"),
-                        "last_synced_at": datetime.utcnow().isoformat(),
+                        "last_synced_at": datetime.now(timezone.utc).isoformat(),
                     }
                     for opp in result.opportunities
                 ]
             
             # Update sync metadata
-            account.last_synced_at = datetime.utcnow()
+            account.last_synced_at = datetime.now(timezone.utc)
             account.sync_status = SyncStatus.SYNCED.value
-            account.updated_at = datetime.utcnow()
+            account.updated_at = datetime.now(timezone.utc)
             
             await self.db.commit()
             await self.db.refresh(account)

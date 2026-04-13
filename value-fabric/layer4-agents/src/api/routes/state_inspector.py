@@ -8,9 +8,15 @@ Provides endpoints for:
 - Performance metrics per node
 """
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime
+import sys
 import logging
+from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+
+try:
+    from dateutil import parser as dateutil_parser
+except ImportError:
+    dateutil_parser = None
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, Field
@@ -243,7 +249,7 @@ async def get_state_values(
     
     return StateValueResponse(
         workflow_id=workflow_id,
-        timestamp=datetime.utcnow().isoformat(),
+        timestamp=datetime.now(timezone.utc).isoformat(),
         status=state.status.value if hasattr(state.status, 'value') else str(state.status),
         current_node=state.current_node,
         values=values,
@@ -456,16 +462,15 @@ async def get_performance_metrics(
     
     # Calculate total duration
     total_duration = None
-    if len(history) >= 2:
+    if len(history) >= 2 and dateutil_parser:
         first_ts = history[-1].get("timestamp", "")
         last_ts = history[0].get("timestamp", "")
         try:
-            from dateutil import parser
-            first_dt = parser.isoparse(first_ts) if first_ts else None
-            last_dt = parser.isoparse(last_ts) if last_ts else None
+            first_dt = dateutil_parser.isoparse(first_ts) if first_ts else None
+            last_dt = dateutil_parser.isoparse(last_ts) if last_ts else None
             if first_dt and last_dt:
                 total_duration = int((last_dt - first_dt).total_seconds() * 1000)
-        except:
+        except (ValueError, TypeError):
             pass
     
     return PerformanceMetricsResponse(
@@ -511,7 +516,7 @@ async def get_state_history(
             field_change_frequency[field] = field_change_frequency.get(field, 0) + 1
         
         entries.append(StateHistoryEntry(
-            timestamp=entry.get("timestamp", datetime.utcnow().isoformat()),
+            timestamp=entry.get("timestamp", datetime.now(timezone.utc).isoformat()),
             node_name=node_name,
             status=entry.get("status", "unknown"),
             changed_fields=changed_fields,
@@ -532,12 +537,11 @@ async def get_state_history(
 
 def _estimate_size(value: Any) -> int:
     """Estimate memory size of a value in bytes."""
-    import sys
     if value is None:
         return 0
     try:
         return sys.getsizeof(value)
-    except:
+    except (TypeError, ValueError):
         return 0
 
 

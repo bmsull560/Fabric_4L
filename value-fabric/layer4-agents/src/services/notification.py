@@ -8,11 +8,13 @@ Provides multi-channel notifications:
 """
 
 import asyncio
+import hmac
+import hashlib
 import json
 import logging
 from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import aiohttp
 
@@ -136,8 +138,14 @@ class NotificationService:
         """Stop background processing."""
         if self._batch_task:
             self._batch_task.cancel()
+            try:
+                await self._batch_task
+            except asyncio.CancelledError:
+                pass
+            self._batch_task = None
         if self._webhook_session:
             await self._webhook_session.close()
+            self._webhook_session = None
         logger.info("Notification service stopped")
     
     def register_in_app_callback(self, callback: Callable[[NotificationEvent], None]) -> None:
@@ -186,7 +194,7 @@ class NotificationService:
         priority = priority_map.get(severity, NotificationPriority.HIGH)
         
         event = NotificationEvent(
-            event_id=f"notif-{datetime.utcnow().timestamp()}-{workflow_id}",
+            event_id=f"notif-{datetime.now(timezone.utc).timestamp()}-{workflow_id}-{id(pause_point) % 10000:04d}",
             workflow_id=workflow_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -218,7 +226,7 @@ class NotificationService:
     ) -> NotificationEvent:
         """Send notification when workflow completes."""
         event = NotificationEvent(
-            event_id=f"notif-{datetime.utcnow().timestamp()}-{workflow_id}",
+            event_id=f"notif-{datetime.now(timezone.utc).timestamp()}-{workflow_id}-{hash(str(status)) % 10000:04d}",
             workflow_id=workflow_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -247,7 +255,7 @@ class NotificationService:
     ) -> NotificationEvent:
         """Send notification when workflow reaches a checkpoint."""
         event = NotificationEvent(
-            event_id=f"notif-{datetime.utcnow().timestamp()}-{workflow_id}",
+            event_id=f"notif-{datetime.now(timezone.utc).timestamp()}-{workflow_id}-{hash(checkpoint_id) % 10000:04d}",
             workflow_id=workflow_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -439,19 +447,16 @@ class NotificationService:
     
     def _generate_signature(self, payload: Dict) -> str:
         """Generate HMAC signature for webhook verification."""
-        import hmac
-        import hashlib
-        
         if not self.webhook_secret:
             return ""
-        
+
         payload_str = json.dumps(payload, sort_keys=True)
         signature = hmac.new(
             self.webhook_secret.encode(),
             payload_str.encode(),
             hashlib.sha256
         ).hexdigest()
-        
+
         return f"sha256={signature}"
     
     def is_quiet_hours(self, user_id: str) -> bool:
@@ -461,7 +466,7 @@ class NotificationService:
         if prefs.quiet_hours_start is None or prefs.quiet_hours_end is None:
             return False
         
-        current_hour = datetime.utcnow().hour
+        current_hour = datetime.now(timezone.utc).hour
         
         if prefs.quiet_hours_start <= prefs.quiet_hours_end:
             # Simple range (e.g., 22:00 - 08:00 doesn't work here)
