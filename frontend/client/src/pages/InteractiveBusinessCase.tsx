@@ -306,7 +306,10 @@ export default function InteractiveBusinessCase() {
     if (!businessCaseId) return;
     const allScenarios = getScenarios(businessCaseId);
     const scenario = allScenarios.find(s => s.id === scenarioId);
-    if (!scenario) return;
+    if (!scenario) {
+      console.warn(`[InteractiveBusinessCase] Scenario ${scenarioId} not found`);
+      return;
+    }
 
     // Apply each adjustment from the saved scenario to the matching slider
     for (const adj of scenario.adjustments) {
