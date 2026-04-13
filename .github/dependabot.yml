@@ -1,0 +1,68 @@
+version: 2
+updates:
+  # Python dependencies — all layers
+  - package-ecosystem: pip
+    directory: /value-fabric/layer1-ingestion
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: pip
+    directory: /value-fabric/layer2-extraction
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: pip
+    directory: /value-fabric/layer3-knowledge
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: pip
+    directory: /value-fabric/layer4-agents
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: pip
+    directory: /value-fabric/layer5-ground-truth
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  - package-ecosystem: pip
+    directory: /value-fabric/layer6-benchmarks
+    schedule:
+      interval: weekly
+    labels: [dependencies, python]
+    commit-message:
+      prefix: chore(deps)
+
+  # Node.js — frontend
+  - package-ecosystem: npm
+    directory: /frontend/client
+    schedule:
+      interval: weekly
+    labels: [dependencies, javascript]
+    commit-message:
+      prefix: chore(deps)
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, github-actions]
+    commit-message:
+      prefix: chore(ci)

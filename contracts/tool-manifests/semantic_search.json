@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/semantic_search.json",
+  "name": "semantic_search",
+  "version": "1.0.0",
+  "description": "Find entities in the Knowledge Graph by semantic meaning using vector similarity.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "description": "Natural language description of what to find.",
+        "minLength": 1
+      },
+      "entity_types": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["Capability", "UseCase", "Persona", "ValueDriver"]
+        },
+        "description": "Restrict results to these entity types. Omit to search all types."
+      },
+      "top_k": {
+        "type": "integer",
+        "description": "Maximum number of results to return.",
+        "default": 5,
+        "minimum": 1,
+        "maximum": 50
+      },
+      "similarity_threshold": {
+        "type": "number",
+        "description": "Minimum cosine similarity score (0.0–1.0).",
+        "default": 0.8,
+        "minimum": 0.0,
+        "maximum": 1.0
+      }
+    },
+    "required": ["query"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "entity_id": { "type": "string" },
+            "entity_type": { "type": "string" },
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "similarity_score": { "type": "number" },
+            "context_snippet": { "type": "string" }
+          },
+          "required": ["entity_id", "entity_type", "name", "similarity_score"]
+        }
+      },
+      "total": { "type": "integer" }
+    },
+    "required": ["results", "total"]
+  }
+}

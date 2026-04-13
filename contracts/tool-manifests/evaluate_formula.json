@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/evaluate_formula.json",
+  "name": "evaluate_formula",
+  "version": "1.0.0",
+  "description": "Execute mathematical formulas from Value Driver nodes with variable substitution.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "formula_id": {
+        "type": "string",
+        "description": "ValueDriver node ID whose formula will be executed.",
+        "minLength": 1
+      },
+      "variables": {
+        "type": "object",
+        "description": "Map of variable names to numeric values for substitution.",
+        "additionalProperties": { "type": "number" }
+      },
+      "scenario": {
+        "type": "string",
+        "enum": ["BASE", "BEST", "WORST"],
+        "default": "BASE",
+        "description": "Scenario context for sensitivity analysis."
+      }
+    },
+    "required": ["formula_id", "variables"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "value": { "type": "number", "description": "Calculated result." },
+      "unit": { "type": "string", "description": "Unit of the result (e.g., USD, hours, %)." },
+      "steps": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Intermediate calculation steps for auditability."
+      },
+      "substitutions": {
+        "type": "object",
+        "additionalProperties": { "type": "number" },
+        "description": "Variable values that were substituted."
+      },
+      "confidence_score": {
+        "type": "number",
+        "minimum": 0.0,
+        "maximum": 1.0,
+        "description": "Confidence in the result based on input data quality."
+      }
+    },
+    "required": ["value", "unit", "steps", "confidence_score"]
+  }
+}
