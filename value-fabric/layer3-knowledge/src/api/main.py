@@ -126,6 +126,34 @@ logger = get_logger(__name__)
 _app_start_time = time.time()
 
 
+def _register_migration_handler_with_policy(
+    version_compatibility: Any,
+    *,
+    from_version: str,
+    to_version: str,
+    handler: Any,
+    required: bool,
+) -> None:
+    """Register migration handler with explicit startup failure policy."""
+    expected_interface = "Callable[[Dict[str, Any]], Dict[str, Any]]"
+    handler_name = getattr(handler, "__name__", repr(handler))
+    actual_type = type(handler).__name__
+
+    try:
+        version_compatibility.register_migration_handler(from_version, to_version, handler)
+    except Exception as exc:
+        message = (
+            "Migration handler registration failed "
+            f"for {from_version}->{to_version}: handler='{handler_name}', "
+            f"expected={expected_interface}, actual_type={actual_type}, error={exc}"
+        )
+        if required:
+            logger.error(message, exc_info=True)
+            raise RuntimeError(message) from exc
+
+        logger.warning(message, exc_info=True)
+
+
 def _get_settings_with_fallback() -> Any:
     try:
         return get_settings()
@@ -192,8 +220,20 @@ async def lifespan(app: FastAPI):
     from .versioning import migrate_v1_to_v2_search_request, migrate_v1_to_v2_ingestion_request
     from .versioning import transform_v1_search_response, transform_v1_health_response
     
-    version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_search_request)
-    version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_ingestion_request)
+    _register_migration_handler_with_policy(
+        version_compatibility,
+        from_version="v1",
+        to_version="v2",
+        handler=migrate_v1_to_v2_search_request,
+        required=True,
+    )
+    _register_migration_handler_with_policy(
+        version_compatibility,
+        from_version="v1",
+        to_version="v2",
+        handler=migrate_v1_to_v2_ingestion_request,
+        required=True,
+    )
     version_compatibility.register_response_transformer("v1", "/v1/search", transform_v1_search_response)
     version_compatibility.register_response_transformer("v1", "/health", transform_v1_health_response)
     
@@ -208,9 +248,13 @@ async def lifespan(app: FastAPI):
     set_app_metrics(metrics)
     
     # Add metrics middleware if available
-    if metrics:
+    if metrics and not getattr(app.state, "_metrics_middleware_installed", False):
         metrics_middleware = MetricsMiddleware(metrics)
-        app.middleware("http")(metrics_middleware)
+        try:
+            app.middleware("http")(metrics_middleware)
+            app.state._metrics_middleware_installed = True
+        except RuntimeError as exc:
+            logger.warning(f"Skipping metrics middleware registration at startup: {exc}")
     
     # Startup
     await init_app_state(app)

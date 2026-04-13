@@ -21,6 +21,11 @@ global.ProgressEvent = MockProgressEvent;
 import "@testing-library/jest-dom";
 import { vi, beforeAll, afterAll, afterEach } from "vitest";
 import { server } from "./mocks/server";
+import {
+  clearActiveEventSources,
+  getLastEventSource,
+  installMockEventSource,
+} from "./mocks/event-source-mock";
 
 // Set base URL for jsdom to support relative API calls
 Object.defineProperty(window, 'location', {
@@ -52,6 +57,7 @@ beforeAll(() => {
 afterEach(() => {
   server.resetHandlers();
   vi.clearAllMocks();
+  clearActiveEventSources();
 });
 
 // Close server after all tests
@@ -86,54 +92,9 @@ Object.defineProperty(window, "IntersectionObserver", {
   value: MockIntersectionObserver,
 });
 
-// Mock EventSource for SSE testing
-class MockEventSource {
-  url: string;
-  readyState: number = 0;
-  CONNECTING = 0;
-  OPEN = 1;
-  CLOSED = 2;
-  withCredentials = false;
-  onopen: ((ev: Event) => void) | null = null;
-  onmessage: ((ev: MessageEvent) => void) | null = null;
-  onerror: ((ev: Event) => void) | null = null;
-  addEventListener = vi.fn();
-  removeEventListener = vi.fn();
-  dispatchEvent = vi.fn();
+installMockEventSource(window);
 
-  constructor(url: string | URL) {
-    this.url = url.toString();
-    // Simulate connection opening
-    setTimeout(() => {
-      this.readyState = 1;
-      if (this.onopen) {
-        this.onopen(new Event('open'));
-      }
-    }, 0);
-  }
-
-  close() {
-    this.readyState = 2;
-  }
-
-  // Helper for tests to simulate incoming messages
-  _emitMessage(data: unknown) {
-    if (this.onmessage) {
-      this.onmessage(new MessageEvent('message', { data: JSON.stringify(data) }));
-    }
-  }
-
-  _emitError() {
-    if (this.onerror) {
-      this.onerror(new Event('error'));
-    }
-  }
-}
-
-Object.defineProperty(window, "EventSource", {
-  writable: true,
-  value: MockEventSource,
-});
+export { getLastEventSource };
 
 /** Mock ResizeObserver for responsive layout components */
 class MockResizeObserver {
@@ -156,7 +117,3 @@ global.cancelAnimationFrame = (id: number) => {
   clearTimeout(id);
 };
 
-// Reset all mocks after each test to ensure isolation
-afterEach(() => {
-  vi.clearAllMocks();
-});

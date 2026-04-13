@@ -4,6 +4,7 @@ Supports digitally-born PDFs via PyMuPDF4LLM and scanned documents via OCR fallb
 Handles both local file paths and HTTP URLs.
 """
 
+import asyncio
 import os
 import tempfile
 from datetime import datetime, timezone
@@ -22,6 +23,21 @@ from .base import DataSourceAdapter, AdapterType, AdapterConfig, FilingDocument,
 
 logger = structlog.get_logger()
 
+# Constants for content analysis
+MAX_CONTENT_ANALYSIS_LENGTH = 5000  # Characters to scan for document type detection
+TABLE_PIPE_DIVISOR = 3  # Pipes per row heuristic for table detection
+MIN_DPI = 72  # Minimum valid DPI for OCR
+MAX_DPI = 1200  # Maximum reasonable DPI for OCR
+DEFAULT_OCR_CONFIDENCE_THRESHOLD = 0.0  # Minimum confidence for OCR results
+
+# Document type detection markers
+DOCUMENT_TYPE_MARKERS = {
+    "ANALYST_REPORT": ["GARTNER", "FORRESTER", "IDC", "MAGIC QUADRANT", "WAVE"],
+    "PATENT_FILING": ["PATENT", "USPTO", "CLAIMS", "INVENTION", "ASSIGNEE"],
+    "SEC_FILING": ["10-K", "10-Q", "8-K", "SECURITIES AND EXCHANGE COMMISSION"],
+    "WHITE_PAPER": ["WHITE PAPER", "WHITEPAPER", "EXECUTIVE SUMMARY", "ABSTRACT"],
+}
+
 
 @dataclass
 class PDFAdapterConfig(AdapterConfig):
@@ -31,6 +47,7 @@ class PDFAdapterConfig(AdapterConfig):
     min_text_length: int = 100
     preserve_tables: bool = True
     dpi: int = 300
+    max_file_size_mb: float = 100.0  # Maximum PDF file size to process
 
 
 class PDFAdapter(DataSourceAdapter):
@@ -137,28 +154,57 @@ class PDFAdapter(DataSourceAdapter):
             return None
 
     async def _download_to_temp(self, url: str) -> Path:
-        """Download URL content to temporary file."""
+        """Download URL content to temporary file with retry logic."""
         parsed = urlparse(url)
         suffix = Path(parsed.path).suffix or ".pdf"
 
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
         temp_path = Path(temp_file.name)
 
-        try:
-            client = await self._get_client()
-            response = await client.get(url)
-            response.raise_for_status()
+        for attempt in range(self.config.max_retries):
+            try:
+                client = await self._get_client()
+                response = await client.get(url)
+                response.raise_for_status()
 
-            temp_file.write(response.content)
-            temp_file.close()
+                temp_file.write(response.content)
+                temp_file.close()
 
-            self.logger.info("Downloaded PDF", url=url, size=len(response.content))
-            return temp_path
-        except Exception:
-            temp_file.close()
-            if temp_path.exists():
-                temp_path.unlink()
-            raise
+                self.logger.info("Downloaded PDF", url=url, size=len(response.content))
+                return temp_path
+            except httpx.HTTPStatusError as e:
+                # Don't retry 4xx client errors
+                if e.response.status_code < 500:
+                    temp_file.close()
+                    if temp_path.exists():
+                        temp_path.unlink()
+                    raise
+
+                self.logger.warning(
+                    "Download failed, retrying",
+                    url=url,
+                    attempt=attempt + 1,
+                    status_code=e.response.status_code
+                )
+            except Exception as e:
+                self.logger.warning(
+                    "Download failed, retrying",
+                    url=url,
+                    attempt=attempt + 1,
+                    error=str(e)
+                )
+
+            # Exponential backoff before retry
+            if attempt < self.config.max_retries - 1:
+                wait_time = 2 ** attempt
+                self.logger.debug(f"Waiting {wait_time}s before retry")
+                await asyncio.sleep(wait_time)
+
+        # Max retries exceeded
+        temp_file.close()
+        if temp_path.exists():
+            temp_path.unlink()
+        raise httpx.HTTPError(f"Failed to download PDF after {self.config.max_retries} attempts")
 
     async def _process_pdf(
         self,
@@ -169,6 +215,15 @@ class PDFAdapter(DataSourceAdapter):
         """Process PDF file and extract content."""
         enable_ocr = kwargs.get("enable_ocr", self.config.enable_ocr)
         ocr_language = kwargs.get("ocr_language", self.config.ocr_language)
+
+        # Validate file size
+        file_stats = local_path.stat()
+        file_size_mb = file_stats.st_size / (1024 * 1024)
+        if file_size_mb > self.config.max_file_size_mb:
+            raise ValueError(
+                f"PDF file too large: {file_size_mb:.1f}MB exceeds "
+                f"limit of {self.config.max_file_size_mb}MB"
+            )
 
         # Primary extraction with PyMuPDF4LLM
         self.logger.debug("Extracting with PyMuPDF4LLM", path=str(local_path))
@@ -192,9 +247,8 @@ class PDFAdapter(DataSourceAdapter):
             )
             extraction_method = "ocr"
 
-        # Calculate metadata
-        file_stats = local_path.stat()
-        tables_detected = markdown_content.count("|") // 3  # Rough heuristic
+        # Calculate metadata (file_stats obtained earlier)
+        tables_detected = markdown_content.count("|") // TABLE_PIPE_DIVISOR  # Rough heuristic
 
         metadata: Dict[str, Any] = {
             "source_url": source_url,
@@ -231,10 +285,13 @@ class PDFAdapter(DataSourceAdapter):
         """Extract text using OCR as fallback for scanned documents."""
         self.logger.debug("Starting OCR extraction", path=str(local_path), language=language)
 
+        # Validate and clamp DPI to valid range
+        dpi = max(MIN_DPI, min(self.config.dpi, MAX_DPI))
+
         try:
             images = convert_from_path(
                 str(local_path),
-                dpi=self.config.dpi
+                dpi=dpi
             )
 
             texts = []

@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional, Union, Callable
 from datetime import datetime
 from enum import Enum
+import inspect
 import json
 
 from fastapi import Request, Response, HTTPException
@@ -154,6 +155,57 @@ class VersionCompatibility:
             sunset_date=sunset_date
         )
     
+    @staticmethod
+    def _validate_migration_handler(
+        handler: Any,
+        from_version: str,
+        to_version: str
+    ) -> None:
+        """Validate migration handler contract at registration boundary."""
+        expected_interface = "Callable[[Dict[str, Any]], Dict[str, Any]]"
+        handler_name = getattr(handler, "__name__", repr(handler))
+        actual_type = type(handler).__name__
+
+        if not callable(handler):
+            raise TypeError(
+                "Invalid migration handler registration "
+                f"for {from_version}->{to_version}: handler '{handler_name}' "
+                f"must implement {expected_interface}; got {actual_type}."
+            )
+
+        try:
+            signature = inspect.signature(handler)
+        except (TypeError, ValueError):
+            # Some callables cannot be introspected; allow callable boundary above.
+            return
+
+        parameters = list(signature.parameters.values())
+        has_var_positional = any(
+            param.kind == inspect.Parameter.VAR_POSITIONAL
+            for param in parameters
+        )
+        positional = [
+            param for param in parameters
+            if param.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        ]
+        required_positional = [
+            param for param in positional
+            if param.default is inspect.Parameter.empty
+        ]
+
+        accepts_one_argument = has_var_positional or len(positional) >= 1
+        requires_too_many_arguments = not has_var_positional and len(required_positional) > 1
+
+        if not accepts_one_argument or requires_too_many_arguments:
+            raise TypeError(
+                "Invalid migration handler registration "
+                f"for {from_version}->{to_version}: handler '{handler_name}' "
+                f"must implement {expected_interface}; got callable signature {signature}."
+            )
+
     def register_migration_handler(
         self,
         from_version: str,
@@ -170,6 +222,8 @@ class VersionCompatibility:
             to_version: Target version
             handler: Migration function
         """
+        self._validate_migration_handler(handler, from_version, to_version)
+
         key = f"{from_version}->{to_version}"
         if key not in self.migration_handlers:
             self.migration_handlers[key] = []

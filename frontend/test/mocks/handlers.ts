@@ -542,6 +542,7 @@ export const variableMocks = [
     const type = url.searchParams.get('type');
     const status = url.searchParams.get('status');
     const source = url.searchParams.get('source');
+    const search = url.searchParams.get('search')?.toLowerCase();
 
     let variables = [
       {
@@ -549,7 +550,7 @@ export const variableMocks = [
         variable_id: 'var-1',
         name: 'monthly_revenue',
         display_name: 'Monthly Revenue',
-        type: type || 'currency',
+        type: 'currency',
         unit: 'USD',
         source: 'CRM',
         binding: 'salesforce.revenue',
@@ -589,6 +590,13 @@ export const variableMocks = [
     }
     if (type) {
       variables = variables.filter(v => v.type === type);
+    }
+    if (search) {
+      variables = variables.filter(
+        v =>
+          v.name.toLowerCase().includes(search) ||
+          v.display_name.toLowerCase().includes(search)
+      );
     }
 
     return HttpResponse.json(variables);

@@ -16,6 +16,9 @@ export type EventSourceConfig = {
 };
 
 export class MockEventSource {
+  CONNECTING = 0;
+  OPEN = 1;
+  CLOSED = 2;
   url: string;
   withCredentials: boolean;
   readyState: number = 0; // 0=CONNECTING, 1=OPEN, 2=CLOSED
@@ -143,18 +146,49 @@ export class MockEventSource {
       data: { type, name },
     });
   }
+
+  // Backward-compatible aliases used by existing tests
+  _emitMessage(data: unknown): void {
+    this.simulateMessage(data);
+  }
+
+  _emitError(): void {
+    this.simulateError();
+  }
+
+  _simulateProgress(progress: number, status: string = 'running'): void {
+    this.simulateProgress(progress, status);
+  }
+
+  _simulateCompletion(): void {
+    this.simulateCompletion();
+  }
+
+  _simulateFailure(error: string = 'Job failed'): void {
+    this.simulateFailure(error);
+  }
+
+  _simulateLog(level: string, message: string): void {
+    this.simulateLog(level, message);
+  }
 }
 
 // Store active mock instances for test access
 export const activeEventSources: MockEventSource[] = [];
+
+export class TrackedMockEventSource extends MockEventSource {
+  constructor(url: string | URL, eventSourceInitDict?: EventSourceInit) {
+    super(url.toString(), eventSourceInitDict);
+    activeEventSources.push(this);
+  }
+}
 
 // Factory function that tracks instances
 export function createMockEventSource(
   url: string,
   eventSourceInitDict?: EventSourceInit
 ): MockEventSource {
-  const instance = new MockEventSource(url, eventSourceInitDict);
-  activeEventSources.push(instance);
+  const instance = new TrackedMockEventSource(url, eventSourceInitDict);
   return instance;
 }
 
@@ -167,4 +201,11 @@ export function clearActiveEventSources(): void {
 // Get the most recent EventSource instance (useful for emitting events)
 export function getLastEventSource(): MockEventSource | undefined {
   return activeEventSources[activeEventSources.length - 1];
+}
+
+export function installMockEventSource(target: Window = window): void {
+  Object.defineProperty(target, 'EventSource', {
+    writable: true,
+    value: TrackedMockEventSource,
+  });
 }

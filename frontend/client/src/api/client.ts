@@ -90,6 +90,41 @@ class ApiClient {
       // Match any job ID pattern with test-friendly data
       l2Mock.onGet(/\/jobs\/.+/).reply((config) => {
         const jobId = config.url?.split('/').pop() || 'unknown';
+
+        // Return different statuses based on job ID for testing
+        if (jobId === 'completed-job') {
+          return [200, {
+            id: jobId,
+            status: 'COMPLETED',
+            progress_percent_complete: 100,
+            progress_pages_found: 10,
+            progress_processed_pages: 10,
+            progress_logs: [],
+            extracted_entities: [],
+            configuration: { url: 'https://example.com' },
+            created_at: '2024-01-15T10:00:00Z',
+            updated_at: '2024-01-15T10:05:00Z',
+          }];
+        }
+
+        if (jobId === 'failed-job') {
+          return [200, {
+            id: jobId,
+            status: 'FAILED',
+            progress_percent_complete: 45,
+            progress_pages_found: 10,
+            progress_processed_pages: 5,
+            progress_logs: [
+              { timestamp: '2024-01-15T10:00:00Z', level: 'ERROR', message: 'Extraction failed', status: 'ERROR' },
+            ],
+            extracted_entities: [],
+            configuration: { url: 'https://example.com' },
+            created_at: '2024-01-15T10:00:00Z',
+            updated_at: '2024-01-15T10:05:00Z',
+          }];
+        }
+
+        // Default: return EXTRACTING status
         return [200, {
           id: jobId,
           status: 'EXTRACTING',
@@ -110,9 +145,32 @@ class ApiClient {
         }];
       });
 
-      // Polling endpoint
+      // Polling endpoint - return same data as main endpoint
       l2Mock.onGet(/\/jobs\/.+\/poll/).reply((config) => {
         const jobId = config.url?.split('/')[2] || 'unknown';
+
+        if (jobId === 'completed-job') {
+          return [200, {
+            id: jobId,
+            status: 'COMPLETED',
+            progress_percent_complete: 100,
+            progress_logs: [],
+            extracted_entities: [],
+          }];
+        }
+
+        if (jobId === 'failed-job') {
+          return [200, {
+            id: jobId,
+            status: 'FAILED',
+            progress_percent_complete: 45,
+            progress_logs: [
+              { timestamp: '2024-01-15T10:00:00Z', level: 'ERROR', message: 'Extraction failed' },
+            ],
+            extracted_entities: [],
+          }];
+        }
+
         return [200, {
           id: jobId,
           status: 'EXTRACTING',

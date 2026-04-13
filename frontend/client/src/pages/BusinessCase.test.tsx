@@ -8,55 +8,21 @@
  * - Empty/error states
  * - PDF export functionality
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import '@testing-library/jest-dom';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { createWrapper } from '../test-utils';
+import { screen, waitFor } from '@testing-library/react';
+import { renderWithRouter } from '../test-utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import BusinessCase from './BusinessCase';
 
-// Mutable mock state for wouter's useSearchParams - works with vitest hoisting
-const mockState = { searchParams: new Map([['id', 'test-case-123']]) };
-
-vi.mock('wouter', async () => {
-  const actual = await vi.importActual('wouter');
-  return {
-    ...actual,
-    useSearchParams: () => [mockState.searchParams, () => {}],
-    useLocation: () => ['/', () => {}],
-  };
-});
-
-// Mock window.location.search for id param
-Object.defineProperty(window, 'location', {
-  writable: true,
-  value: {
-    href: 'http://localhost:3000/business-case?id=test-case-123',
-    origin: 'http://localhost:3000',
-    protocol: 'http:',
-    host: 'localhost:3000',
-    hostname: 'localhost',
-    port: '3000',
-    pathname: '/business-case',
-    search: '?id=test-case-123',
-    hash: '',
-  },
-});
-
 describe('BusinessCase', () => {
-  beforeEach(() => {
-    // Reset and set default mock search param
-    mockState.searchParams = new Map([['id', 'test-case-123']]);
-  });
-
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('renders loading state initially', () => {
-    const wrapper = createWrapper();
-    render(<BusinessCase />, { wrapper });
+    renderWithRouter(<BusinessCase />, { path: '/business-case?id=test-case-123' });
 
     // Should show loading skeletons
     expect(document.querySelector('[class*="skeleton"]')).toBeDefined();
@@ -88,8 +54,7 @@ describe('BusinessCase', () => {
       })
     );
 
-    const wrapper = createWrapper();
-    render(<BusinessCase />, { wrapper });
+    renderWithRouter(<BusinessCase />, { path: '/business-case?id=test-case-123' });
 
     await waitFor(() => {
       expect(screen.getByText('Test Business Case')).toBeInTheDocument();
@@ -100,11 +65,7 @@ describe('BusinessCase', () => {
   });
 
   it('shows warning when no case ID provided', async () => {
-    // Clear mock search params to simulate no ID in URL
-    mockState.searchParams = new Map<string, string>();
-
-    const wrapper = createWrapper();
-    render(<BusinessCase />, { wrapper });
+    renderWithRouter(<BusinessCase />, { path: '/business-case' });
 
     await waitFor(() => {
       expect(screen.getByText(/No business case ID provided/i)).toBeInTheDocument();
@@ -118,8 +79,7 @@ describe('BusinessCase', () => {
       })
     );
 
-    const wrapper = createWrapper();
-    render(<BusinessCase />, { wrapper });
+    renderWithRouter(<BusinessCase />, { path: '/business-case?id=test-case-123' });
 
     await waitFor(() => {
       // React Query displays HTTP error message for 404 responses
@@ -128,35 +88,21 @@ describe('BusinessCase', () => {
   });
 
   it('renders recommendations', async () => {
-    server.use(
-      http.get('/api/v1/agents/analysis/cases/:caseId', () => {
-        return HttpResponse.json({
-          case_id: 'test-case-123',
-          title: 'Test Case',
-          summary: 'Summary',
-          total_value: 100000,
-          implementation_cost: 25000,
-          roi_ratio: 4.0,
-          payback_months: 6,
-          confidence_score: 0.85,
-          recommendations: ['Recommendation One', 'Recommendation Two'],
-          status: 'completed',
-          created_at: '2024-01-15T10:00:00Z',
-          page_count: 10,
-          file_size_bytes: 51200,
-        });
-      })
-    );
+    // Uses default MSW mock which has recommendations
+    renderWithRouter(<BusinessCase />, { path: '/business-case?id=test-case-123' });
 
-    const wrapper = createWrapper();
-    render(<BusinessCase />, { wrapper });
-
+    // First wait for the business case to load (not skeleton)
     await waitFor(() => {
-      expect(screen.getByText('Recommendations')).toBeInTheDocument();
+      expect(screen.getByText('Test Business Case')).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    expect(screen.getByText('Recommendation One')).toBeInTheDocument();
-    expect(screen.getByText('Recommendation Two')).toBeInTheDocument();
+    // Then check recommendations section
+    expect(screen.getByText('Recommendations')).toBeInTheDocument();
+
+    // Check for actual recommendation text from the mock
+    expect(screen.getByText('Implement solution within Q2')).toBeInTheDocument();
+    expect(screen.getByText('Focus on high-value customer segments')).toBeInTheDocument();
+    expect(screen.getByText('Monitor metrics monthly')).toBeInTheDocument();
   });
 
   it('renders export button when document_url is present', async () => {
@@ -181,8 +127,7 @@ describe('BusinessCase', () => {
       })
     );
 
-    const wrapper = createWrapper();
-    render(<BusinessCase />, { wrapper });
+    renderWithRouter(<BusinessCase />, { path: '/business-case?id=test-case-123' });
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /export pdf/i })).toBeEnabled();
@@ -210,8 +155,7 @@ describe('BusinessCase', () => {
       })
     );
 
-    const wrapper = createWrapper();
-    render(<BusinessCase />, { wrapper });
+    renderWithRouter(<BusinessCase />, { path: '/business-case?id=test-case-123' });
 
     // PageHeader component renders breadcrumbs - check for the title instead
     await waitFor(() => {

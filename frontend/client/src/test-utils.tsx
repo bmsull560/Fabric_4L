@@ -1,4 +1,5 @@
-import { ReactNode } from "react";
+import { ReactElement, ReactNode } from "react";
+import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router } from "wouter";
 
@@ -28,6 +29,46 @@ export function createWrapper() {
       </Router>
     );
   };
+}
+
+export function createWrapperWithRouterPath(path: string) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    const queryClient = createTestQueryClient();
+    if (typeof window !== "undefined") {
+      const url = new URL(path, "http://localhost:3000");
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        writable: true,
+        value: {
+          ...window.location,
+          href: url.toString(),
+          pathname: url.pathname,
+          search: url.search,
+          hash: url.hash,
+        },
+      });
+      window.history.replaceState({}, "", path);
+    }
+    return (
+      <Router>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </Router>
+    );
+  };
+}
+
+type RenderWithRouterOptions = Omit<RenderOptions, "wrapper"> & {
+  path?: string;
+};
+
+export function renderWithRouter(
+  ui: ReactElement,
+  { path = "/", ...renderOptions }: RenderWithRouterOptions = {}
+) {
+  const wrapper = createWrapperWithRouterPath(path);
+  return render(ui, { wrapper, ...renderOptions });
 }
 
 /** Create a wrapper with configurable retry behavior for error state testing */

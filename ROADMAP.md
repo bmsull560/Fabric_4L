@@ -1083,48 +1083,53 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 ---
 
 ### **Task 43: Fix useJobStream Mock Strategy (FRONTEND)** ⭐ P1
-**Priority:** P1 | **Effort:** 2 hrs | **Status:** 🔴 Not Started | **Unblocks:** 4 failing tests, SSE hook validation
+**Priority:** P1 | **Effort:** 2 hrs | **Status:** ✅ COMPLETE 2026-04-12 | **Unblocks:** SSE hook validation
 
 **Gap:** useJobStream hook relies on SSE connection to transition status. MSW mock intercepts REST but EventSource state machine not driven.
 
-**Acceptance Criteria:**
-- [ ] MockEventSource emits proper events in tests
-- [ ] `useJobStream.test.ts` 4 tests pass
-- [ ] Hook state machine validated
+**Resolution:**
+- ✅ Enhanced `MockEventSource` in `test/setup.ts` with helper methods (`_emitMessage`, `_simulateProgress`, `_emitError`)
+- ✅ Added `getLastEventSource()` helper for test access to EventSource instances
+- ✅ Updated 4 tests to use proper SSE event simulation with `act()` wrappers
+- ✅ All 9 useJobStream tests now passing (was 4 skipped + 2 failing)
 
 **Implementation:**
-- Modify: `frontend/client/src/hooks/useJobStream.test.ts`
-- Modify: `frontend/test/mocks/handlers.ts` (SSE simulation)
+- ✅ `frontend/test/setup.ts` - Enhanced MockEventSource with test helpers
+- ✅ `frontend/client/src/hooks/useJobStream.test.ts` - Fixed tests using SSE simulation
 
 ---
 
 ### **Task 44: Fix BusinessCase Component Context (FRONTEND)** ⭐ P1
-**Priority:** P1 | **Effort:** 1 hr | **Status:** 🔴 Not Started | **Unblocks:** BusinessCase error state test
+**Priority:** P1 | **Effort:** 1 hr | **Status:** ✅ COMPLETE 2026-04-12 | **Unblocks:** BusinessCase test isolation
 
 **Gap:** BusinessCase.test.tsx sets `window.location.search` at module scope, persists across all tests, bleeds into setup order.
 
-**Acceptance Criteria:**
-- [ ] Remove `window.location` mutation at module scope
-- [ ] Use wouter MemoryRouter in tests
-- [ ] Error state test passes
+**Resolution:**
+- ✅ Added shared generic router helper in `frontend/client/src/test-utils.tsx`
+- ✅ Removed direct `wouter` hook mocking and mutable mock state from `BusinessCase.test.tsx`
+- ✅ Each BusinessCase test now declares route via `renderWithRouter(..., { path })`
+- ✅ All 7 BusinessCase tests passing with isolated route state
 
 **Implementation:**
-- Modify: `frontend/client/src/pages/BusinessCase.test.tsx`
+- ✅ `frontend/client/src/test-utils.tsx` - Added `renderWithRouter` + `createWrapperWithRouterPath`
+- ✅ `frontend/client/src/pages/BusinessCase.test.tsx` - Migrated to real router wrapper pattern
 
 ---
 
 ### **Task 45: Fix MSW Filter Handlers (FRONTEND)** ⭐ P2
-**Priority:** P2 | **Effort:** 1 hr | **Status:** 🔴 Not Started | **Unblocks:** useVariables filter tests
+**Priority:** P2 | **Effort:** 1 hr | **Status:** ✅ COMPLETE 2026-04-12 | **Unblocks:** useVariables filter tests
 
 **Gap:** MSW handler for `/api/v1/graph/variables` returns full unfiltered list regardless of query params.
 
 **Acceptance Criteria:**
-- [ ] MSW handler reads `url.searchParams` for filters
-- [ ] `useVariables` filter tests pass
-- [ ] type/source/status params respected
+- [x] MSW handler reads `url.searchParams` for filters
+- [x] `useVariables` filter tests pass
+- [x] type/source/status params respected
+- [x] search param respected
 
 **Implementation:**
-- Modify: `frontend/test/mocks/handlers.ts`
+- ✅ `frontend/test/mocks/handlers.ts` - Added deterministic `searchParams` filtering for `type`, `source`, `status`, `search`
+- ✅ `frontend/client/src/hooks/useVariables.test.ts` - Verified all filter tests pass
 
 ---
 

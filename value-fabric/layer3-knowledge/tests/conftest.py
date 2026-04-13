@@ -1,11 +1,12 @@
 """Test configuration and fixtures for Value Fabric Layer 3 API."""
 
 import pytest
+import pytest_asyncio
 import json
 from typing import AsyncGenerator, Dict, Any, Optional
 from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from src.config import Settings, get_settings
 from src.api.main import app
@@ -107,7 +108,7 @@ def test_client(test_settings: TestSettings, mock_app_state: AppState) -> TestCl
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_client(test_settings: TestSettings, mock_app_state: AppState) -> AsyncGenerator[AsyncClient, None]:
     """Create async test client with mocked dependencies."""
     # Override settings
@@ -127,7 +128,8 @@ async def async_client(test_settings: TestSettings, mock_app_state: AppState) ->
     app.dependency_overrides[get_similarity_analyzer] = lambda: mock_app_state.similarity_analyzer
     app.dependency_overrides[get_sync_manager] = lambda: mock_app_state.sync_manager
     
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
     
     # Clean up overrides
