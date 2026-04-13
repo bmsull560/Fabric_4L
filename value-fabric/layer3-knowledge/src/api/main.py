@@ -889,8 +889,12 @@ async def health_check(
         try:
             neo4j_health = await schema_initializer.health_check()
             schema_status = await schema_initializer.verify_schema()
-        except Exception as e:
-            logger.warning("Health check failed for Neo4j", exc_info=e, request_id=request_id)
+        except Exception:
+            logger.warning(
+                "Health check failed for Neo4j",
+                exc_info=True,
+                extra={"health_request_id": request_id},
+            )
             error_msg = "Neo4j health check failed"
             neo4j_health = {"status": "error", "message": error_msg}
             schema_status = {"status": "error", "message": error_msg}
@@ -908,10 +912,12 @@ async def health_check(
 
     logger.info(
         "Health check completed",
-        request_id=request_id,
-        status=overall_status,
-        response_time_ms=round(response_time_ms, 2),
-        neo4j_status=neo4j_health.get("status"),
+        extra={
+            "health_request_id": request_id,
+            "status": overall_status,
+            "response_time_ms": round(response_time_ms, 2),
+            "neo4j_status": neo4j_health.get("status"),
+        },
     )
 
     # Create response data

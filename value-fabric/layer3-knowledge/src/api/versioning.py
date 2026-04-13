@@ -1,8 +1,9 @@
 """API versioning and backward compatibility utilities."""
 
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 from datetime import datetime
 from enum import Enum
+import asyncio
 import inspect
 import json
 
@@ -13,6 +14,12 @@ from pydantic import BaseModel, Field
 from ..logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+MigrationHandler = Union[
+    Callable[[Dict[str, Any]], Dict[str, Any]],
+    Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]],
+]
 
 
 class APIVersion(str, Enum):
@@ -162,7 +169,10 @@ class VersionCompatibility:
         to_version: str
     ) -> None:
         """Validate migration handler contract at registration boundary."""
-        expected_interface = "Callable[[Dict[str, Any]], Dict[str, Any]]"
+        expected_interface = (
+            "Callable[[Dict[str, Any]], Dict[str, Any]] or "
+            "Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]"
+        )
         handler_name = getattr(handler, "__name__", repr(handler))
         actual_type = type(handler).__name__
 
@@ -210,7 +220,9 @@ class VersionCompatibility:
         self,
         from_version: str,
         to_version: str,
-        handler: Callable[[Dict[str, Any]], Dict[str, Any]]
+        handler: Optional[MigrationHandler] = None,
+        *,
+        migration_handler: Optional[MigrationHandler] = None,
     ) -> None:
         """Register a migration handler for version upgrades.
         
@@ -222,12 +234,60 @@ class VersionCompatibility:
             to_version: Target version
             handler: Migration function
         """
-        self._validate_migration_handler(handler, from_version, to_version)
+        if handler is not None and migration_handler is not None:
+            raise TypeError("Provide either 'handler' or 'migration_handler', not both.")
+
+        selected_handler = handler if handler is not None else migration_handler
+        if selected_handler is None:
+            raise TypeError("Missing migration handler: provide 'handler' or 'migration_handler'.")
+
+        self._validate_migration_handler(selected_handler, from_version, to_version)
 
         key = f"{from_version}->{to_version}"
         if key not in self.migration_handlers:
             self.migration_handlers[key] = []
-        self.migration_handlers[key].append(handler)
+        self.migration_handlers[key].append(selected_handler)
+
+    async def migrate_request_data_async(
+        self,
+        data: Dict[str, Any],
+        from_version: str,
+        to_version: str,
+    ) -> Dict[str, Any]:
+        """Async variant of request-data migration with sync/async handler support."""
+        if from_version == to_version:
+            return data
+
+        key = f"{from_version}->{to_version}"
+        handlers = self.migration_handlers.get(key, [])
+
+        if not handlers:
+            return data
+
+        result = data
+        failed_handlers = []
+
+        for i, handler in enumerate(handlers):
+            try:
+                handler_result = handler(result)
+                if inspect.isawaitable(handler_result):
+                    result = await handler_result
+                else:
+                    result = handler_result
+            except Exception as e:
+                handler_name = getattr(handler, '__name__', f'handler_{i}')
+                logger.warning(
+                    f"Migration handler '{handler_name}' failed from {from_version} to {to_version}: {e}",
+                    exc_info=True
+                )
+                failed_handlers.append(handler_name)
+
+        if failed_handlers:
+            logger.warning(
+                f"Migration from {from_version} to {to_version} completed with {len(failed_handlers)} failed handlers: {failed_handlers}"
+            )
+
+        return result
     
     def register_response_transformer(
         self,
@@ -279,7 +339,19 @@ class VersionCompatibility:
         
         for i, handler in enumerate(handlers):
             try:
-                result = handler(result)
+                handler_result = handler(result)
+                if inspect.isawaitable(handler_result):
+                    try:
+                        asyncio.get_running_loop()
+                    except RuntimeError:
+                        result = asyncio.run(handler_result)
+                    else:
+                        raise RuntimeError(
+                            "Async migration handlers are registered; call "
+                            "'await migrate_request_data_async(...)' in async contexts."
+                        )
+                else:
+                    result = handler_result
             except Exception as e:
                 handler_name = getattr(handler, '__name__', f'handler_{i}')
                 logger.warning(

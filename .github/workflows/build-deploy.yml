@@ -36,20 +36,22 @@ jobs:
     timeout-minutes: 30
     strategy:
       matrix:
-        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks]
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
         include:
           - layer: layer1-ingestion
             port: 8000
           - layer: layer2-extraction
-            port: 8004
+            port: 8000
           - layer: layer3-knowledge
             port: 8001
           - layer: layer4-agents
-            port: 8002
+            port: 8000
           - layer: layer5-ground-truth
             port: 8005
           - layer: layer6-benchmarks
             port: 8006
+          - layer: frontend
+            port: 3000
 
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +73,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v5
         with:
-          context: value-fabric/${{ matrix.layer }}
+          context: ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
@@ -90,19 +92,19 @@ jobs:
     timeout-minutes: 20
     strategy:
       matrix:
-        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks]
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
         include:
           - layer: layer1-ingestion
             port: 8000
             health_path: /api/v1/ingestion/health
           - layer: layer2-extraction
-            port: 8001
+            port: 8000
             health_path: /health
           - layer: layer3-knowledge
             port: 8001
             health_path: /health
           - layer: layer4-agents
-            port: 8002
+            port: 8000
             health_path: /health
           - layer: layer5-ground-truth
             port: 8005
@@ -110,6 +112,9 @@ jobs:
           - layer: layer6-benchmarks
             port: 8006
             health_path: /health
+          - layer: frontend
+            port: 3000
+            health_path: /
 
     steps:
       - name: Set up Docker
@@ -174,6 +179,14 @@ jobs:
           # Check metrics endpoint (may return 503 if metrics disabled, but should not 500)
           metrics_status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${{ matrix.port }}/metrics || echo "000")
           echo "Metrics endpoint status: $metrics_status"
+
+          if [ "$metrics_status" = "000" ]; then
+            echo "❌ Metrics endpoint unreachable"
+            docker logs ${{ matrix.layer }}-metrics || true
+            docker stop ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
+            docker rm ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
+            exit 1
+          fi
 
           if [ "$metrics_status" = "500" ]; then
             echo "❌ Metrics endpoint returned 500 - service error"

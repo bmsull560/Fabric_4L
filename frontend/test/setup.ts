@@ -19,6 +19,7 @@ class MockProgressEvent extends Event {
 global.ProgressEvent = MockProgressEvent;
 
 import "@testing-library/jest-dom";
+import { cleanup } from "@testing-library/react";
 import { vi, beforeAll, afterAll, afterEach } from "vitest";
 import { server } from "./mocks/server";
 import {
@@ -29,6 +30,7 @@ import {
 
 // Set base URL for jsdom to support relative API calls
 Object.defineProperty(window, 'location', {
+  configurable: true,
   writable: true,
   value: {
     href: 'http://localhost:3000',
@@ -55,8 +57,11 @@ beforeAll(() => {
 
 // Reset handlers after each test for clean state
 afterEach(() => {
+  cleanup();
   server.resetHandlers();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
+  vi.clearAllTimers();
   clearActiveEventSources();
 });
 

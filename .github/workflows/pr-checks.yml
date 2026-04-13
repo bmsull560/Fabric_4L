@@ -286,3 +286,40 @@ jobs:
         with:
           name: frontend-build-failure
           path: frontend/client/dist/
+
+  # Kubernetes manifest validation (server-side dry-run)
+  k8s-dry-run:
+    name: Kubernetes Dry-Run Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Apply namespace
+        run: kubectl apply -f k8s/namespace.yml
+
+      - name: Server-side dry-run core manifests
+        run: |
+          kubectl apply --dry-run=server -f k8s/configmap-global.yml
+          kubectl apply --dry-run=server -f k8s/secrets.yml
+          kubectl apply --dry-run=server -f k8s/redis.yml
+          kubectl apply --dry-run=server -f k8s/postgres.yml
+          kubectl apply --dry-run=server -f k8s/neo4j.yml
+          kubectl apply --dry-run=server -f k8s/layer1-ingestion.yml
+          kubectl apply --dry-run=server -f k8s/layer2-extraction.yml
+          kubectl apply --dry-run=server -f k8s/layer3-knowledge.yml
+          kubectl apply --dry-run=server -f k8s/layer4-agents.yml
+          kubectl apply --dry-run=server -f k8s/layer5-ground-truth.yml
+          kubectl apply --dry-run=server -f k8s/layer6-benchmarks.yml
+
+      - name: Server-side dry-run monitoring manifests
+        run: |
+          kubectl apply --dry-run=server -f k8s/monitoring-alertmanager.yml
+          kubectl apply --dry-run=server -f k8s/monitoring-prometheus.yml

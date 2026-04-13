@@ -2,11 +2,39 @@
 
 Production-grade Kubernetes manifests for the Value Fabric platform.
 
+This directory supports both:
+- Legacy flat manifests (`kubectl apply -f k8s/`) for compatibility.
+- Canonical Kustomize deployments (`k8s/base`, `k8s/overlays/dev`, `k8s/overlays/prod`) for production readiness.
+
 ## Prerequisites
 
 - Kubernetes 1.24+
 - kubectl configured
 - Container images built and available in registry
+
+## Recommended: Kustomize Deployment
+
+Deploy using overlays for environment-specific behavior.
+
+```bash
+# Render manifests
+kubectl kustomize k8s/overlays/dev
+kubectl kustomize k8s/overlays/prod
+
+# Validate against API server (recommended in staging/prod clusters)
+kubectl apply --dry-run=server -k k8s/overlays/dev
+kubectl apply --dry-run=server -k k8s/overlays/prod
+
+# Deploy
+kubectl apply -k k8s/overlays/dev
+# or
+kubectl apply -k k8s/overlays/prod
+```
+
+### Overlay Policy
+
+- `dev` overlay: pragmatic defaults for local/staging iteration.
+- `prod` overlay: pinned registry/tag images (no `:latest`), higher replica counts.
 
 ## Deployment Order
 
@@ -52,6 +80,10 @@ kubectl wait --for=condition=ready pod -l app=layer4-agents -n value-fabric --ti
 kubectl apply -f layer5-ground-truth.yml
 kubectl apply -f layer6-benchmarks.yml
 
+# 7. Deploy monitoring stack
+kubectl apply -f monitoring-alertmanager.yml
+kubectl apply -f monitoring-prometheus.yml
+
 # Verify all services
 kubectl get pods -n value-fabric
 ```
@@ -71,6 +103,7 @@ layer3-knowledge → neo4j, redis
 layer4-agents → redis, neo4j, postgres
 layer5-ground-truth → postgres, layer3-knowledge
 layer6-benchmarks → (standalone - no deps)
+frontend → layer4-agents, layer5-ground-truth, layer6-benchmarks
 ```
 
 ## Health Checks
@@ -85,10 +118,41 @@ All services expose health endpoints:
 | layer4 | `/health` |
 | layer5 | `/api/v1/health` |
 | layer6 | `/health` |
+| frontend | `/` |
 
 ## Monitoring
 
 Prometheus metrics available at `/metrics` on all services.
+
+Monitoring manifests:
+
+- `monitoring-alertmanager.yml`
+- `monitoring-prometheus.yml`
+
+Runtime verification playbook:
+
+```bash
+# Forward monitoring services locally
+kubectl port-forward -n value-fabric svc/prometheus 9090:9090
+kubectl port-forward -n value-fabric svc/alertmanager 9093:9093
+
+# Verify target health and scrape status
+curl -fsS http://localhost:9090/api/v1/targets
+
+# Verify loaded rules and evaluation health
+curl -fsS http://localhost:9090/api/v1/rules
+
+# Verify active alerts in Prometheus
+curl -fsS http://localhost:9090/api/v1/alerts
+
+# Verify Alertmanager pipeline endpoint
+curl -fsS http://localhost:9093/api/v2/status
+
+# Smoke an alert directly into Alertmanager
+curl -X POST http://localhost:9093/api/v2/alerts \
+  -H "Content-Type: application/json" \
+  -d '[{"labels":{"alertname":"Task46Smoke","severity":"warning"},"annotations":{"summary":"Task 46 smoke alert"}}]'
+```
 
 ## Secrets Management
 
@@ -137,3 +201,7 @@ Port forward for local testing:
 ```bash
 kubectl port-forward -n value-fabric svc/layer5-ground-truth 8005:8005
 ```
+
+## Migration Note
+
+Flat manifests are intentionally preserved during migration. New CI and production checks should target Kustomize overlays first.

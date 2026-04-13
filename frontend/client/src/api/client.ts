@@ -1,13 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import MockAdapter from 'axios-mock-adapter';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
-// Use mocks if explicitly enabled, or default to true in test environment
-const isTestEnv = typeof process !== 'undefined' && process.env?.VITEST === 'true';
-const envMocks = import.meta.env.VITE_USE_MOCKS;
-const USE_MOCKS = envMocks === 'true' || (envMocks === undefined && isTestEnv);
-// Disable axios-mock-adapter in test environment - MSW handles mocking
-const ENABLE_MOCKS = USE_MOCKS && !isTestEnv;
 
 const LAYER_PREFIXES = {
   l1: import.meta.env.VITE_L1_PREFIX || '/ingest',
@@ -21,15 +14,9 @@ type LayerKey = keyof typeof LAYER_PREFIXES;
 
 class ApiClient {
   private clients: Map<LayerKey, AxiosInstance> = new Map();
-  private mockAdapter: MockAdapter | null = null;
-  private mockEnabled: boolean;
 
   constructor() {
-    this.mockEnabled = ENABLE_MOCKS;
     this.initializeClients();
-    if (this.mockEnabled) {
-      this.setupMocks();
-    }
   }
 
   private initializeClients() {
@@ -65,123 +52,6 @@ class ApiClient {
     });
   }
 
-  private setupMocks() {
-    const l4Client = this.clients.get('l4');
-    const l2Client = this.clients.get('l2');
-
-    if (l4Client) {
-      const l4Mock = new MockAdapter(l4Client, { delayResponse: 500 });
-
-      l4Mock.onGet('/workflows/active').reply(200, [
-        { workflow_id: 'wf-1', workflow_type: 'market_analysis', status: 'running', progress_percentage: 65 },
-        { workflow_id: 'wf-2', workflow_type: 'entity_extraction', status: 'pending', progress_percentage: 0 },
-      ]);
-
-      l4Mock.onPost('/workflows').reply(200, {
-        workflow_id: 'wf-new',
-        status: 'started',
-      });
-    }
-
-    // L2 mocks for extraction job endpoints
-    if (l2Client) {
-      const l2Mock = new MockAdapter(l2Client, { delayResponse: 100 });
-
-      // Match any job ID pattern with test-friendly data
-      l2Mock.onGet(/\/jobs\/.+/).reply((config) => {
-        const jobId = config.url?.split('/').pop() || 'unknown';
-
-        // Return different statuses based on job ID for testing
-        if (jobId === 'completed-job') {
-          return [200, {
-            id: jobId,
-            status: 'COMPLETED',
-            progress_percent_complete: 100,
-            progress_pages_found: 10,
-            progress_processed_pages: 10,
-            progress_logs: [],
-            extracted_entities: [],
-            configuration: { url: 'https://example.com' },
-            created_at: '2024-01-15T10:00:00Z',
-            updated_at: '2024-01-15T10:05:00Z',
-          }];
-        }
-
-        if (jobId === 'failed-job') {
-          return [200, {
-            id: jobId,
-            status: 'FAILED',
-            progress_percent_complete: 45,
-            progress_pages_found: 10,
-            progress_processed_pages: 5,
-            progress_logs: [
-              { timestamp: '2024-01-15T10:00:00Z', level: 'ERROR', message: 'Extraction failed', status: 'ERROR' },
-            ],
-            extracted_entities: [],
-            configuration: { url: 'https://example.com' },
-            created_at: '2024-01-15T10:00:00Z',
-            updated_at: '2024-01-15T10:05:00Z',
-          }];
-        }
-
-        // Default: return EXTRACTING status
-        return [200, {
-          id: jobId,
-          status: 'EXTRACTING',
-          progress_percent_complete: 50,
-          progress_pages_found: 10,
-          progress_processed_pages: 5,
-          progress_logs: [
-            { timestamp: '2024-01-15T10:00:00Z', level: 'INFO', message: 'Starting extraction', status: 'OK' },
-            { timestamp: '2024-01-15T10:05:00Z', level: 'INFO', message: 'Crawling pages', status: 'OK' },
-          ],
-          extracted_entities: [
-            { type: 'Outcome', name: 'Revenue Growth' },
-            { type: 'Capability', name: 'Analytics' },
-          ],
-          configuration: { url: 'https://example.com' },
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:05:00Z',
-        }];
-      });
-
-      // Polling endpoint - return same data as main endpoint
-      l2Mock.onGet(/\/jobs\/.+\/poll/).reply((config) => {
-        const jobId = config.url?.split('/')[2] || 'unknown';
-
-        if (jobId === 'completed-job') {
-          return [200, {
-            id: jobId,
-            status: 'COMPLETED',
-            progress_percent_complete: 100,
-            progress_logs: [],
-            extracted_entities: [],
-          }];
-        }
-
-        if (jobId === 'failed-job') {
-          return [200, {
-            id: jobId,
-            status: 'FAILED',
-            progress_percent_complete: 45,
-            progress_logs: [
-              { timestamp: '2024-01-15T10:00:00Z', level: 'ERROR', message: 'Extraction failed' },
-            ],
-            extracted_entities: [],
-          }];
-        }
-
-        return [200, {
-          id: jobId,
-          status: 'EXTRACTING',
-          progress_percent_complete: 50,
-          progress_logs: [],
-          extracted_entities: [],
-        }];
-      });
-    }
-  }
-
   getClient(layer: LayerKey): AxiosInstance {
     const client = this.clients.get(layer);
     if (!client) throw new Error(`API client for layer ${layer} not initialized`);
@@ -202,10 +72,6 @@ class ApiClient {
 
   async delete(layer: LayerKey, path: string, config?: AxiosRequestConfig) {
     return this.getClient(layer).delete(path, config);
-  }
-
-  isMockEnabled(): boolean {
-    return this.mockEnabled;
   }
 }
 

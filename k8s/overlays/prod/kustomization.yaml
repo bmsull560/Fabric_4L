@@ -1,0 +1,37 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: value-fabric
+
+resources:
+  - ../../base
+
+labels:
+  - pairs:
+      environment: prod
+
+patches:
+  - path: prod-replicas-patch.yml
+
+images:
+  - name: value-fabric/layer1-ingestion
+    newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
+    newTag: prod-2026-04-12
+  - name: value-fabric/layer2-extraction
+    newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
+    newTag: prod-2026-04-12
+  - name: value-fabric/layer3-knowledge
+    newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
+    newTag: prod-2026-04-12
+  - name: value-fabric/layer4-agents
+    newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
+    newTag: prod-2026-04-12
+  - name: value-fabric/layer5-ground-truth
+    newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
+    newTag: prod-2026-04-12
+  - name: value-fabric/layer6-benchmarks
+    newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
+    newTag: prod-2026-04-12
+  - name: value-fabric/frontend
+    newName: ghcr.io/bmsull560/fabric_4l/frontend
+    newTag: prod-2026-04-12

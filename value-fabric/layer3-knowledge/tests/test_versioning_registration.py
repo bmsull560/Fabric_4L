@@ -21,6 +21,18 @@ def test_register_migration_handler_accepts_valid_callable() -> None:
     assert compatibility.migration_handlers["v1->v2"][0] is valid_handler
 
 
+def test_register_migration_handler_accepts_migration_handler_keyword_alias() -> None:
+    compatibility = VersionCompatibility(current_version="v1")
+
+    def valid_handler(data: dict) -> dict:
+        return data
+
+    compatibility.register_migration_handler("v1", "v2", migration_handler=valid_handler)
+
+    assert "v1->v2" in compatibility.migration_handlers
+    assert compatibility.migration_handlers["v1->v2"][0] is valid_handler
+
+
 def test_register_migration_handler_rejects_non_callable() -> None:
     compatibility = VersionCompatibility(current_version="v1")
 
@@ -59,3 +71,32 @@ async def test_startup_registers_versioning_handlers_successfully(monkeypatch: p
         compatibility = main_module.app.state.version_compatibility
         assert "v1->v2" in compatibility.migration_handlers
         assert len(compatibility.migration_handlers["v1->v2"]) >= 2
+
+
+@pytest.mark.asyncio
+async def test_migrate_request_data_async_supports_async_handler() -> None:
+    compatibility = VersionCompatibility(current_version="v1")
+
+    async def async_handler(data: dict) -> dict:
+        return {**data, "migrated": True}
+
+    compatibility.register_migration_handler("v1", "v2", async_handler)
+
+    result = await compatibility.migrate_request_data_async({"k": "v"}, "v1", "v2")
+
+    assert result["k"] == "v"
+    assert result["migrated"] is True
+
+
+def test_migrate_request_data_supports_async_handler_from_sync_context() -> None:
+    compatibility = VersionCompatibility(current_version="v1")
+
+    async def async_handler(data: dict) -> dict:
+        return {**data, "migrated_sync": True}
+
+    compatibility.register_migration_handler("v1", "v2", async_handler)
+
+    result = compatibility.migrate_request_data({"k": "v"}, "v1", "v2")
+
+    assert result["k"] == "v"
+    assert result["migrated_sync"] is True

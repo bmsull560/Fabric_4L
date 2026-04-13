@@ -37,13 +37,13 @@ jobs:
         run: |
           cd value-fabric/layer2-extraction
           pip install pytest httpx pytest-asyncio
-          pytest tests/test_extract_and_ingest_pipeline.py -v --tb=short || echo "L2 tests completed with issues"
+          pytest tests/test_extract_and_ingest_pipeline.py -v --tb=short
 
       - name: Run L3 E2E pipeline tests
         run: |
           cd value-fabric/layer3-knowledge
           pip install pytest httpx pytest-asyncio
-          pytest tests/test_e2e_pipeline.py -v --tb=short || echo "L3 tests completed with issues"
+          pytest tests/test_e2e_pipeline.py -v --tb=short
 
       - name: Run integration tests
         run: |

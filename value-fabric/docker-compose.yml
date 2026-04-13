@@ -243,6 +243,88 @@ services:
       retries: 3
       start_period: 5s
 
+  # Monitoring: Prometheus
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: value-fabric-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/alerting/rules.yml:/etc/prometheus/alerting/rules.yml:ro
+    depends_on:
+      layer1-ingestion:
+        condition: service_healthy
+      layer2-extraction:
+        condition: service_healthy
+      layer3-knowledge:
+        condition: service_healthy
+      layer4-agents:
+        condition: service_healthy
+      layer5-ground-truth:
+        condition: service_healthy
+      layer6-benchmarks:
+        condition: service_healthy
+      alertmanager:
+        condition: service_started
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring: Alertmanager
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: value-fabric-alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
+    volumes:
+      - ../monitoring/alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring: Grafana
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: value-fabric-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ../monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Redis (shared across all layers)
   redis:
     image: redis:7-alpine
@@ -291,6 +373,7 @@ volumes:
   neo4j-logs:
   rdf-output:
   ground-truth-data:
+  grafana-data:
 
 networks:
   value-fabric-network:

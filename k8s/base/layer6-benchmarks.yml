@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: layer6-benchmarks
+  namespace: value-fabric
+  labels:
+    app: layer6-benchmarks
+    component: layer6
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: layer6-benchmarks
+  template:
+    metadata:
+      labels:
+        app: layer6-benchmarks
+        component: layer6
+    spec:
+      containers:
+        - name: api
+          image: value-fabric/layer6-benchmarks:latest
+          ports:
+            - containerPort: 8006
+              name: http
+          envFrom:
+            - configMapRef:
+                name: value-fabric-config
+          env:
+            - name: PORT
+              value: "8006"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8006
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: layer6-benchmarks
+  namespace: value-fabric
+  labels:
+    app: layer6-benchmarks
+    component: layer6
+spec:
+  selector:
+    app: layer6-benchmarks
+  ports:
+    - port: 8006
+      targetPort: 8006
+      name: http
+  type: ClusterIP
