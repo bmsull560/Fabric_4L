@@ -15,7 +15,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
 
@@ -107,8 +107,7 @@ class WorkflowCreateResponse(BaseModel):
     status: str = Field(..., description="Workflow status")
     estimated_duration_seconds: int = Field(default=300, description="Estimated execution time")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class WorkflowStatusResponse(BaseModel):
@@ -141,8 +140,7 @@ class WorkflowStatusResponse(BaseModel):
     priority: int | None = None
     scheduler_status: str | None = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class WorkflowEvent(BaseModel):
@@ -185,8 +183,7 @@ class WorkflowResumeResponse(BaseModel):
     message: str
     estimated_completion_seconds: int = Field(default=60)
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class WorkflowPauseRequest(BaseModel):
@@ -206,8 +203,7 @@ class WorkflowPauseResponse(BaseModel):
     current_node: str | None = Field(None, description="Current node when paused")
     message: str
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 def get_executor() -> OrchestrationController:

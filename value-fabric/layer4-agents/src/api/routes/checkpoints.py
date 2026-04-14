@@ -38,8 +38,7 @@ class CheckpointInfo(BaseModel):
         default_factory=dict, description="Summary of state at this checkpoint"
     )
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class CheckpointListResponse(BaseModel):

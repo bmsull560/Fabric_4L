@@ -49,8 +49,7 @@ class ModelVersionResponse(BaseModel):
     config: dict[str, Any]
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ModelPromoteRequest(BaseModel):
@@ -73,8 +72,7 @@ class PromotionLogResponse(BaseModel):
     eval_gate_passed: bool
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 @router.post("", response_model=ModelVersionResponse, status_code=status.HTTP_201_CREATED)

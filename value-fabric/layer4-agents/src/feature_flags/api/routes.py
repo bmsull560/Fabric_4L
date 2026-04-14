@@ -38,8 +38,7 @@ class FeatureFlagResponse(BaseModel):
     updated_at: str
     updated_by: UUID | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FeatureFlagUpsertRequest(BaseModel):
