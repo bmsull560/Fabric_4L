@@ -163,11 +163,16 @@ class WorkflowWebSocketManager:
 
             self._workflow_connections[workflow_id].add(conn)
 
-        # Send missed events if reconnecting
-        if last_event_id:
-            missed_events = self._event_stores[workflow_id].get_since(last_event_id)
-            for event in missed_events:
-                await conn.send_event(event)
+            # Send missed events if reconnecting (inside lock to prevent race
+            # with cleanup_workflow removing the event store)
+            missed_events = []
+            if last_event_id:
+                event_store = self._event_stores.get(workflow_id)
+                if event_store:
+                    missed_events = event_store.get_since(last_event_id)
+
+        for event in missed_events:
+            await conn.send_event(event)
 
         # Send connection established event
         now = datetime.now(UTC)
