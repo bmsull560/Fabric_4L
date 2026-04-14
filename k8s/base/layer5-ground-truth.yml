@@ -11,6 +11,11 @@ spec:
   selector:
     matchLabels:
       app: layer5-ground-truth
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
@@ -26,7 +31,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: migrate
-          image: value-fabric/layer5-ground-truth:latest
+          image: value-fabric/layer5-ground-truth:main
           command: ["alembic", "upgrade", "head"]
           env:
             - name: DATABASE_URL_SYNC
@@ -41,7 +46,7 @@ spec:
               drop: ["ALL"]
       containers:
         - name: api
-          image: value-fabric/layer5-ground-truth:latest
+          image: value-fabric/layer5-ground-truth:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

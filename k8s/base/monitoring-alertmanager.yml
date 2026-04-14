@@ -64,6 +64,11 @@ spec:
   selector:
     matchLabels:
       app: alertmanager
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:

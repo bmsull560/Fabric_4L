@@ -199,3 +199,92 @@ jobs:
           echo "✓ Metrics endpoint check passed"
           docker stop ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
           docker rm ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
+
+  deploy-ephemeral-and-smoke:
+    name: Deploy K8s Ephemeral Env + Smoke (L1-L5 + Frontend)
+    needs: test-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Install kind
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: fabric-ephemeral
+          wait: 120s
+
+      - name: Install kustomize
+        run: |
+          curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz -o kustomize.tar.gz
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+          kustomize version
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install preflight dependency
+        run: pip install pyyaml
+
+      - name: Run preflight guardrails
+        run: python3 scripts/ci/k8s_preflight.py
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Pull and load service images into kind
+        run: |
+          for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+            image="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:sha-${{ steps.sha.outputs.short }}"
+            docker pull "${image}"
+            kind load docker-image "${image}" --name fabric-ephemeral
+          done
+
+      - name: Render manifests for ephemeral environment
+        run: |
+          kustomize build k8s/overlays/dev > /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer1-ingestion:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer1-ingestion:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer2-extraction:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer2-extraction:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer3-knowledge:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer3-knowledge:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer4-agents:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer4-agents:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer5-ground-truth:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer5-ground-truth:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/layer6-benchmarks:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/layer6-benchmarks:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+          sed -i "s|value-fabric/frontend:main|${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/frontend:sha-${{ steps.sha.outputs.short }}|g" /tmp/ephemeral.yaml
+
+      - name: Create required secrets for ephemeral cluster
+        run: |
+          kubectl create namespace value-fabric --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic postgres-secret --from-literal=password=postgres --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic neo4j-secret --from-literal=auth=neo4j/password --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic openai-secret --from-literal=api-key=dummy --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic jwt-secret --from-literal=secret=abcdefghijklmnopqrstuvwxyz123456 --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n value-fabric create secret generic anthropic-secret --from-literal=api-key=dummy --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply manifests to ephemeral environment
+        run: kubectl apply -f /tmp/ephemeral.yaml
+
+      - name: Post-deploy smoke checks
+        run: bash scripts/ci/k8s_postdeploy_smoke.sh
+
+      - name: Capture diagnostics on failure
+        if: failure()
+        run: |
+          kubectl get all -n value-fabric -o wide
+          kubectl get events -n value-fabric --sort-by=.lastTimestamp

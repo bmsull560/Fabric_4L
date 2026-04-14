@@ -11,6 +11,11 @@ spec:
   selector:
     matchLabels:
       app: layer3-knowledge
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
@@ -52,7 +57,7 @@ spec:
           emptyDir: {}
       containers:
         - name: api
-          image: value-fabric/layer3-knowledge:latest
+          image: value-fabric/layer3-knowledge:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

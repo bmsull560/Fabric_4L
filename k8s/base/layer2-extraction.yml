@@ -11,6 +11,11 @@ spec:
   selector:
     matchLabels:
       app: layer2-extraction
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
@@ -43,7 +48,7 @@ spec:
               drop: ["ALL"]
       containers:
         - name: api
-          image: value-fabric/layer2-extraction:latest
+          image: value-fabric/layer2-extraction:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

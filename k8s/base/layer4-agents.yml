@@ -11,6 +11,11 @@ spec:
   selector:
     matchLabels:
       app: layer4-agents
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
@@ -41,7 +46,7 @@ spec:
           emptyDir: {}
       containers:
         - name: api
-          image: value-fabric/layer4-agents:latest
+          image: value-fabric/layer4-agents:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

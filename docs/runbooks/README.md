@@ -18,3 +18,7 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 | HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning |
 | HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning |
 | FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning |
+
+## Deployment Operations
+
+- [deployment-rollout-and-rollback.md](deployment-rollout-and-rollback.md): CI/CD rollout policy, canary vs blue-green selection, and rollback steps.

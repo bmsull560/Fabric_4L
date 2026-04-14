@@ -11,6 +11,11 @@ spec:
   selector:
     matchLabels:
       app: layer6-benchmarks
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
@@ -26,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api
-          image: value-fabric/layer6-benchmarks:latest
+          image: value-fabric/layer6-benchmarks:main
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

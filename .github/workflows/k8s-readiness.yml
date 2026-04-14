@@ -43,6 +43,17 @@ jobs:
           sudo mv kubeconform /usr/local/bin/kubeconform
           kubeconform -v
 
+      - name: Set up Python for preflight checks
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install preflight dependencies
+        run: pip install pyyaml
+
+      - name: Run Kubernetes preflight guardrails
+        run: python3 scripts/ci/k8s_preflight.py
+
       - name: Render overlays
         run: |
           kustomize build k8s/overlays/dev > /tmp/dev.yaml
