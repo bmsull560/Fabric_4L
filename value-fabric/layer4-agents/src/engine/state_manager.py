@@ -13,6 +13,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Redis key constants
+_WORKFLOW_KEY_PREFIX = "layer4:workflow"
+_HISTORY_KEY_SUFFIX = ":history"
+
 
 class StateManager:
     """Manages workflow state persistence using Redis.
@@ -53,11 +57,11 @@ class StateManager:
 
     def _get_key(self, workflow_id: str) -> str:
         """Generate Redis key for workflow state."""
-        return f"layer4:workflow:{workflow_id}"
+        return f"{_WORKFLOW_KEY_PREFIX}:{workflow_id}"
 
     def _get_history_key(self, workflow_id: str) -> str:
         """Generate Redis key for workflow history."""
-        return f"layer4:workflow:{workflow_id}:history"
+        return f"{_WORKFLOW_KEY_PREFIX}:{workflow_id}{_HISTORY_KEY_SUFFIX}"
 
     def set_ws_manager(self, ws_manager: "WorkflowWebSocketManager") -> None:
         """Set WebSocket manager for real-time broadcasting."""
@@ -223,7 +227,7 @@ class StateManager:
             await self.redis.lpush(key, json.dumps(entry))
             await self.redis.ltrim(key, 0, 99)  # Keep last 100
         else:
-            history_key = f"{workflow_id}:history"
+            history_key = f"{workflow_id}{_HISTORY_KEY_SUFFIX}"
             if history_key not in self._memory_store:
                 self._memory_store[history_key] = []
             self._memory_store[history_key].insert(0, entry)
@@ -251,7 +255,7 @@ class StateManager:
                     continue
             return history
         else:
-            history_key = f"{workflow_id}:history"
+            history_key = f"{workflow_id}{_HISTORY_KEY_SUFFIX}"
             history = self._memory_store.get(history_key, [])
             return history[:limit]
 
@@ -268,18 +272,18 @@ class StateManager:
         active_statuses = {WorkflowStatus.RUNNING.value, WorkflowStatus.PENDING.value, WorkflowStatus.PAUSED.value}
         
         if self.redis:
-            # Scan for workflow keys (layer4:workflow:* without :history suffix)
+            # Scan for workflow keys (prefix:* without history suffix)
             # This is a simple scan; production may want to use a secondary index
-            pattern = "layer4:workflow:*"
+            pattern = f"{_WORKFLOW_KEY_PREFIX}:*"
             cursor = 0
             while True:
                 cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
                 for key in keys:
                     # Skip history keys
-                    if b":history" in key:
+                    if _HISTORY_KEY_SUFFIX.encode() in key:
                         continue
                     
-                    workflow_id = key.decode().replace("layer4:workflow:", "")
+                    workflow_id = key.decode().replace(f"{_WORKFLOW_KEY_PREFIX}:", "")
                     try:
                         state = await self.load_state(workflow_id)
                         if state and state.status.value in active_statuses:
@@ -292,8 +296,8 @@ class StateManager:
         else:
             # In-memory fallback: scan _memory_store
             for key in self._memory_store:
-                if key.startswith("layer4:workflow:") and ":history" not in key:
-                    workflow_id = key.replace("layer4:workflow:", "")
+                if key.startswith(f"{_WORKFLOW_KEY_PREFIX}:") and _HISTORY_KEY_SUFFIX not in key:
+                    workflow_id = key.replace(f"{_WORKFLOW_KEY_PREFIX}:", "")
                     try:
                         state = await self.load_state(workflow_id)
                         if state and state.status.value in active_statuses:

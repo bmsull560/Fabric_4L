@@ -325,14 +325,19 @@ class NotificationService:
             self._dropped_count += 1
             return False
 
-    async def _drop_oldest_by_priority(self, priority: NotificationPriority) -> bool:
+    def _drop_oldest_by_priority(self, priority: NotificationPriority) -> bool:
         """Drop oldest event of specified priority from queue.
         
         Returns True if an event was dropped.
+        
+        Note: This drains the entire queue and rebuilds it. In high-concurrency
+        scenarios, some events may be dropped if the queue refills during re-add.
+        This is acceptable behavior for preventing OOM under extreme load.
         """
         # asyncio.Queue doesn't support peek/remove, so we drain and re-add
-        # This is a best-effort approach for high-water scenarios
-        temp_events = []
+        # We use a list that can grow beyond maxsize, then truncate
+        temp_events: list[NotificationEvent] = []
+        overflow_events: list[NotificationEvent] = []
         dropped = False
         
         try:
@@ -349,13 +354,30 @@ class NotificationService:
                 except asyncio.QueueEmpty:
                     break
             
-            # Re-add non-dropped events
+            # Sort by priority (URGENT first, LOW last) to ensure important events stay
+            PRIORITY_ORDER = {
+                NotificationPriority.URGENT: 0,
+                NotificationPriority.HIGH: 1,
+                NotificationPriority.NORMAL: 2,
+                NotificationPriority.LOW: 3,
+            }
+            temp_events.sort(key=lambda e: PRIORITY_ORDER.get(e.priority, 2))
+            
+            # Re-add events, respecting max size
             for event in temp_events:
                 try:
                     self._event_queue.put_nowait(event)
                 except asyncio.QueueFull:
-                    # Shouldn't happen since we dropped one, but handle gracefully
-                    self._dropped_count += 1
+                    # Queue full during re-add, collect overflow
+                    overflow_events.append(event)
+            
+            # Count dropped overflow events
+            if overflow_events:
+                self._dropped_count += len(overflow_events)
+                logger.warning(
+                    f"Dropped {len(overflow_events)} events during priority eviction "
+                    f"(queue refilled during re-add)"
+                )
             
             return dropped
         except Exception as e:

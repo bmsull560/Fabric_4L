@@ -3,29 +3,13 @@
  * 
  * Simplified interface for auth operations:
  * - Check authentication status
- * - Require auth (redirect if not authenticated)
  * - Get auth headers for API calls
  */
 
-import { useEffect } from 'react';
-import { useLocation } from 'wouter';
 import { useAuthContext } from '../contexts/AuthContext';
 
 export function useAuth() {
   const auth = useAuthContext();
-  const [, navigate] = useLocation();
-
-  /**
-   * Redirect to login if not authenticated
-   * Use this in protected route components
-   */
-  const requireAuth = () => {
-    useEffect(() => {
-      if (!auth.isLoading && !auth.isAuthenticated) {
-        navigate('/login');
-      }
-    }, [auth.isLoading, auth.isAuthenticated, navigate]);
-  };
 
   /**
    * Get authorization headers for API requests
@@ -39,9 +23,34 @@ export function useAuth() {
 
   return {
     ...auth,
-    requireAuth,
     getAuthHeaders,
   };
+}
+
+/**
+ * useRequireAuth Hook — Redirect to login if not authenticated
+ * 
+ * Use this in protected route components at the top level.
+ * Must follow React Hooks rules (call at component top level, not conditionally).
+ * 
+ * Example:
+ *   function ProtectedPage() {
+ *     useRequireAuth();
+ *     return <div>Protected content</div>;
+ *   }
+ */
+import { useEffect } from 'react';
+import { useLocation } from 'wouter';
+
+export function useRequireAuth() {
+  const { isLoading, isAuthenticated } = useAuthContext();
+  const [, navigate] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isLoading, isAuthenticated, navigate]);
 }
 
 /**

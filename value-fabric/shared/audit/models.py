@@ -62,6 +62,10 @@ class AuditAction(str, Enum):
     BUSINESS_CASE_GENERATED = "business_case.generated"
     ROI_CALCULATED = "roi.calculated"
 
+    # ── Integrations ─────────────────────────────────────────────────────────
+    WEBHOOK_RECEIVED = "webhook.received"
+    WEBHOOK_PROCESSING_FAILED = "webhook.processing_failed"
+
 
 class AuditOutcome(str, Enum):
     """Outcome of the audited action."""

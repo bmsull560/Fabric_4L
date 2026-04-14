@@ -103,6 +103,9 @@ class IngestRequest(BaseModel):
     content_hash: constr(min_length=32, max_length=128) | None = Field(
         None, description="SHA-256 hash for change detection", example="a1b2c3d4e5f6..."
     )
+    tenant_id: constr(min_length=1, max_length=255) | None = Field(
+        None, description="Tenant ID for data isolation (extracted from X-Tenant-ID header if not provided)", example="tenant-abc123"
+    )
 
     @validator("content_hash")
     def validate_content_hash(cls, v):

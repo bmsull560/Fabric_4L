@@ -15,9 +15,9 @@ layer4_dir = os.path.dirname(tests_dir)
 value_fabric_dir = os.path.dirname(layer4_dir)
 
 if layer4_dir not in sys.path:
-    sys.path.insert(0, layer4_dir)
+    sys.path.append(layer4_dir)
 if value_fabric_dir not in sys.path:
-    sys.path.insert(0, value_fabric_dir)
+    sys.path.append(value_fabric_dir)
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────

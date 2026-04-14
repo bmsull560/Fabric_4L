@@ -10,12 +10,13 @@ import hmac
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db
 from ...models.account import CRMProvider
 from ...services.crm_sync_service import CRMSyncService
+from shared.audit import emit_audit_event, AuditAction, AuditOutcome
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/crm", tags=["CRM Webhooks"])
@@ -26,9 +27,10 @@ router = APIRouter(prefix="/webhooks/crm", tags=["CRM Webhooks"])
 # ============================================================================
 
 
-@router.post("/salesforce", status_code=status.HTTP_200_OK)
+@router.post("/salesforce", status_code=status.HTTP_202_ACCEPTED)
 async def salesforce_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_salesforce_signature: str | None = Header(None),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
@@ -93,11 +95,25 @@ async def salesforce_webhook(
 
     except Exception as e:
         logger.error(f"Failed to process Salesforce webhook: {e}")
-        # Return 200 to prevent Salesforce from retrying (we logged the error)
+        # Emit audit event for tracking (fire-and-forget via background task)
+        event = emit_audit_event(
+            AuditAction.WEBHOOK_PROCESSING_FAILED,
+            resource_type="CRM_Webhook",
+            resource_id=record_id,
+            outcome=AuditOutcome.FAILURE,
+            details={
+                "provider": "salesforce",
+                "event_type": event_type,
+                "error": str(e),
+                "record_id": record_id,
+            },
+        )
+        # Return 202 to acknowledge receipt while preventing retry storms
         return {
             "status": "error",
             "provider": "salesforce",
             "error": str(e),
+            "audit_event_id": str(event.id),
         }
 
 
@@ -144,9 +160,10 @@ def _extract_salesforce_event_type(data: dict) -> str:
 # ============================================================================
 
 
-@router.post("/hubspot", status_code=status.HTTP_200_OK)
+@router.post("/hubspot", status_code=status.HTTP_202_ACCEPTED)
 async def hubspot_webhook(
     request: Request,
+    background_tasks: BackgroundTasks,
     x_hubspot_signature: str | None = Header(None),
     x_hubspot_signature_v3: str | None = Header(None),
     db: AsyncSession = Depends(get_db),
@@ -241,11 +258,25 @@ async def hubspot_webhook(
 
     except Exception as e:
         logger.error(f"Failed to process HubSpot webhook: {e}")
-        # Return 200 to prevent HubSpot from retrying
+        # Emit audit event for tracking
+        event = emit_audit_event(
+            AuditAction.WEBHOOK_PROCESSING_FAILED,
+            resource_type="CRM_Webhook",
+            resource_id=f"hubspot_{event_count}_events",
+            outcome=AuditOutcome.FAILURE,
+            details={
+                "provider": "hubspot",
+                "event_count": event_count,
+                "companies_to_sync": len(company_ids),
+                "error": str(e),
+            },
+        )
+        # Return 202 to acknowledge receipt while preventing retry storms
         return {
             "status": "error",
             "provider": "hubspot",
             "error": str(e),
+            "audit_event_id": str(event.id),
         }
 
 

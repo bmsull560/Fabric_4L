@@ -648,11 +648,6 @@ class OrchestrationController:
                 )
                 await self.state_manager.save_state(workflow_id, state)
                 
-                # Try to restore metadata if available
-                if workflow_id in self._workflow_metadata:
-                    self._workflow_metadata[workflow_id]["interrupted_at"] = datetime.now(UTC).isoformat()
-                    self._workflow_metadata[workflow_id]["recovery_available"] = True
-                
                 recovered.append({
                     "workflow_id": workflow_id,
                     "workflow_type": state.workflow_type.value if hasattr(state.workflow_type, "value") else str(state.workflow_type),

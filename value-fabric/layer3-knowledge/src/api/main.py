@@ -1212,14 +1212,19 @@ async def get_schema_statistics(
 async def ingest_rdf(
     request: IngestRequest,
     sync_manager=Depends(get_sync_manager),
+    x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
 ):
     """Ingest RDF data from Layer 2 extraction pipeline."""
+    # Extract tenant_id from header or request body (header takes precedence)
+    tenant_id = x_tenant_id or request.tenant_id or "system"
+
     try:
         stats = await sync_manager.sync_extraction_result(
             rdf_data=request.rdf_data,
             source_id=request.source_id,
             extraction_job_id=request.extraction_job_id,
             content_hash=request.content_hash,
+            tenant_id=tenant_id,
         )
 
         raw_status = stats.get("status", "unknown")

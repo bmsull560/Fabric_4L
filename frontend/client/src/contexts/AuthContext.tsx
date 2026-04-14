@@ -35,8 +35,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Constants
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const L4_PREFIX = import.meta.env.VITE_L4_PREFIX || '/agents';
+const TOKEN_EXPIRY_BUFFER_MS = 60_000; // 1 minute buffer before actual expiry
+
+/**
+ * Validate JWT structure without verifying signature.
+ * Checks that token has 3 parts (header.payload.signature) and parsable JSON.
+ */
+function isValidJwtStructure(token: string): boolean {
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+  
+  try {
+    // Try to parse header and payload as base64url
+    atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'));
+    atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -187,17 +207,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem('accessToken');
     if (!token) return false;
     
-    // Simple expiry check (JWTs have exp claim)
+    // Validate JWT structure first
+    if (!isValidJwtStructure(token)) {
+      console.error('Invalid token structure');
+      logout();
+      return false;
+    }
+    
+    // Check expiry (JWTs have exp claim)
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      // base64url decode with proper padding
+      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padding = '='.repeat((4 - base64.length % 4) % 4);
+      const payload = JSON.parse(atob(base64 + padding));
+      
       const exp = payload.exp * 1000; // Convert to milliseconds
-      if (Date.now() >= exp) {
-        // Token expired, logout
+      if (Date.now() >= exp - TOKEN_EXPIRY_BUFFER_MS) {
+        // Token expired or expiring soon, logout
         logout();
         return false;
       }
       return true;
-    } catch {
+    } catch (e) {
+      console.error('Failed to parse token payload:', e);
       logout();
       return false;
     }

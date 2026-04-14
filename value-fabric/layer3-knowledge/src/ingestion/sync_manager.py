@@ -55,6 +55,7 @@ class SyncManager:
         extraction_job_id: str,
         content_hash: str | None = None,
         force_full_sync: bool = False,
+        tenant_id: str | None = None,
     ) -> dict:
         """Synchronize an extraction result from Layer 2.
 
@@ -64,6 +65,7 @@ class SyncManager:
             extraction_job_id: ID of the extraction job
             content_hash: Hash of the content for change detection
             force_full_sync: If True, performs full reload regardless of hash
+            tenant_id: Tenant ID for data isolation (defaults to "system")
 
         Returns:
             Dictionary with sync statistics
@@ -103,11 +105,12 @@ class SyncManager:
                 delete_stats = await self.loader.delete_by_source(source_id)
                 stats["deleted"] = delete_stats
 
-            # Load new data
+            # Load new data with tenant isolation
             load_stats = await self.loader.load_turtle_string(
                 rdf_data,
                 source_id=source_id,
                 extraction_job_id=extraction_job_id,
+                tenant_id=tenant_id,
             )
             stats.update(load_stats)
 
