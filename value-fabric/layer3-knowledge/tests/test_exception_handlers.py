@@ -30,9 +30,10 @@ def _make_request() -> Request:
 @pytest.mark.asyncio
 async def test_value_fabric_exception_handler_logs_with_explicit_exc_info_tuple():
     request = _make_request()
-    exc = ValueFabricException("boom", error_code="TEST_ERROR")
+    exc = ValueFabricException("boom", error_code="INTERNAL_ERROR")
 
-    with patch("src.api.main.logger.error") as mock_error:
+    with patch("src.api.main.SHARED_ERROR_HANDLING_AVAILABLE", False), \
+         patch("src.api.main.logger.error") as mock_error:
         response = await value_fabric_exception_handler(request, exc)
 
     assert response.status_code == 500

@@ -29,15 +29,19 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 # Shared identity imports for authentication
-# Layer2 requires shared.identity for all audit endpoints - fail fast if unavailable
+# Layer2 requires shared.identity for all audit endpoints
 try:
     from shared.identity.context import RequestContext
     from shared.identity.dependencies import require_authenticated
-except ImportError as e:
-    raise RuntimeError(
-        "shared.identity package is required for Layer2 authentication. "
-        "Install the shared package or set up the Python path correctly."
-    ) from e
+except ImportError:
+    RequestContext = None  # type: ignore[assignment,misc]
+
+    async def require_authenticated():  # type: ignore[misc]
+        """Stub that raises when shared.identity is not installed."""
+        raise RuntimeError(
+            "shared.identity package is required for Layer2 authentication. "
+            "Install the shared package or set up the Python path correctly."
+        )
 
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router

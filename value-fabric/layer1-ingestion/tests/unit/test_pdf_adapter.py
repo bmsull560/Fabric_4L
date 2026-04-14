@@ -7,6 +7,8 @@ from unittest.mock import Mock, patch, AsyncMock, MagicMock, mock_open
 import pytest
 import httpx
 
+pytest.importorskip("pymupdf4llm", reason="pymupdf4llm not installed")
+
 try:
     from pdf2image import convert_from_path
     # Test if poppler is available
