@@ -7,7 +7,6 @@ Follows the same style as Layer 3's src/api/models.py:
   - Enum imports from models (single source of truth)
 """
 
-import uuid
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -275,13 +274,7 @@ class TruthObjectResponse(BaseModel):
     validation_events: list[ValidationEventResponse] = Field(default_factory=list)
     maturity_history: list[MaturityHistoryResponse] = Field(default_factory=list)
 
-    model_config = {
-        "from_attributes": True,
-        "json_encoders": {
-            uuid.UUID: str,
-            datetime: lambda v: v.isoformat() if v else None,
-        },
-    }
+    model_config = {"from_attributes": True}
 
 
 class TruthObjectSummary(BaseModel):

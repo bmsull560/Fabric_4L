@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 
 import redis.asyncio as redis
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -193,10 +193,7 @@ class SecurityConfig(BaseModel):
         default=False, description="Enable automatic blocking"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class AnomalyDetector:

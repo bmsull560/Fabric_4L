@@ -1,6 +1,6 @@
 """Configuration management for Layer 1 Ingestion Service."""
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 from pydantic_settings import BaseSettings
 
 
@@ -103,9 +103,7 @@ class Settings(BaseSettings):
     )
     max_pipeline_retries: int = Field(default=3, description="Max retries per pipeline stage")
 
-    class Config:
-        env_prefix = "LAYER1_"
-        case_sensitive = False
+    model_config = ConfigDict(env_prefix="LAYER1_", case_sensitive=False)
 
 
 # Global settings instance
