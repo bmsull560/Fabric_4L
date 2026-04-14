@@ -1,6 +1,6 @@
 .PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate evals clean sdk \
-        check-env check-env-backend check-env-frontend validate-env-contract \
+        check-env check-env-backend check-env-frontend validate-env-contract check-deprecations \
         preflight up down logs
 
 PYTHON := python3
@@ -13,8 +13,11 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test ## Run all checks (lint + typecheck + tests) — required before PR
+verify: check-deprecations lint typecheck test ## Run all checks (lint + typecheck + tests) — required before PR
 	@echo "✅  All checks passed"
+
+check-deprecations: ## CI gate — fail on overdue deprecations unless explicitly overridden
+	$(PYTHON) scripts/ci/check_deprecations.py
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
 

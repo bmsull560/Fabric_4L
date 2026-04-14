@@ -1,12 +1,14 @@
 """FastAPI application for Layer 3: Knowledge Graph & Semantic Layer."""
 
+import json
 import logging
 import os
 import platform
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Literal
 
@@ -132,6 +134,52 @@ logger = get_logger(__name__)
 
 # Track application startup time for uptime calculation
 _app_start_time = time.time()
+DEPRECATION_REGISTER_FILE = "docs/deprecation_register.json"
+DEPRECATION_OVERRIDE_ENV = "DEPRECATION_ALLOW_OVERDUE"
+
+
+def _find_deprecation_register(start: Path) -> Path | None:
+    for candidate in [start, *start.parents]:
+        register_path = candidate / DEPRECATION_REGISTER_FILE
+        if register_path.exists():
+            return register_path
+    return None
+
+
+def _load_deprecations(owner: str | None = None) -> list[dict[str, str]]:
+    register_path = _find_deprecation_register(Path(__file__).resolve())
+    if register_path is None:
+        return []
+    try:
+        payload = json.loads(register_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    items = payload.get("items", [])
+    if owner is None:
+        return items
+    return [item for item in items if item.get("owner") == owner]
+
+
+def _overdue_deprecations(owner: str) -> list[dict[str, str]]:
+    today = datetime.utcnow().date()
+    overdue: list[dict[str, str]] = []
+    for item in _load_deprecations(owner=owner):
+        removal = item.get("target_removal")
+        if not removal:
+            continue
+        try:
+            if date.fromisoformat(removal) < today:
+                overdue.append(item)
+        except ValueError:
+            logger.warning("Invalid deprecation target_removal date", extra={"feature": item.get("feature")})
+    return overdue
+
+
+def _deprecation_schedule(feature: str) -> dict[str, str] | None:
+    for item in _load_deprecations():
+        if item.get("feature") == feature:
+            return item
+    return None
 
 
 def _register_migration_handler_with_policy(
@@ -256,6 +304,16 @@ async def lifespan(app: FastAPI):
     )
 
     logger.info("API versioning system initialized")
+    for overdue_item in _overdue_deprecations("layer3-knowledge"):
+        logger.warning(
+            "Overdue deprecation detected at startup",
+            extra={
+                "feature": overdue_item.get("feature"),
+                "target_removal": overdue_item.get("target_removal"),
+                "owner": overdue_item.get("owner"),
+                "override_env": DEPRECATION_OVERRIDE_ENV,
+            },
+        )
 
     # Store managers in app state
     app.state.cache_manager = cache_manager
@@ -1369,6 +1427,8 @@ async def _execute_graph_rag_query(
 @app.post("/v1/query/graph", response_model=GraphRAGResponse)
 @app.post("/v1/query", response_model=GraphRAGResponse)
 async def graph_rag_query(
+    request: Request,
+    response: Response,
     query: GraphRAGQuery,
     graph_rag=Depends(get_graph_rag),
 ):
@@ -1379,8 +1439,16 @@ async def graph_rag_query(
 
     Notes:
     - Preferred route: `/v1/query/graph`
-    - Legacy route retained: `/v1/query` (deprecate later)
+    - Legacy route retained: `/v1/query` (scheduled removal: 2026-08-01)
     """
+    if request.url.path == "/v1/query":
+        schedule = _deprecation_schedule("l3.api.query_legacy_route")
+        if schedule:
+            response.headers["Warning"] = '299 - "Deprecated endpoint; use /v1/query/graph"'
+            response.headers["X-Deprecated-Since"] = schedule["deprecated_since"]
+            response.headers["X-Target-Removal-Date"] = schedule["target_removal"]
+            response.headers["X-Deprecation-Owner"] = schedule["owner"]
+
     try:
         deduplicator = get_request_deduplicator()
 
@@ -1520,7 +1588,9 @@ async def _execute_hybrid_search(
 @app.post("/v1/search/hybrid", response_model=SearchResponse)
 @app.post("/v1/search", response_model=SearchResponse)
 async def hybrid_search(
-    request: SearchRequest,
+    request: Request,
+    response: Response,
+    search_request: SearchRequest,
     hybrid_search=Depends(get_hybrid_search),
 ):
     """Execute hybrid search combining BM25, vector, and graph signals.
@@ -1530,19 +1600,27 @@ async def hybrid_search(
 
     Notes:
     - Preferred route: `/v1/search/hybrid`
-    - Legacy route retained: `/v1/search` (deprecate later)
+    - Legacy route retained: `/v1/search` (scheduled removal: 2026-08-01)
     """
+    if request.url.path == "/v1/search":
+        schedule = _deprecation_schedule("l3.api.search_legacy_route")
+        if schedule:
+            response.headers["Warning"] = '299 - "Deprecated endpoint; use /v1/search/hybrid"'
+            response.headers["X-Deprecated-Since"] = schedule["deprecated_since"]
+            response.headers["X-Target-Removal-Date"] = schedule["target_removal"]
+            response.headers["X-Deprecation-Owner"] = schedule["owner"]
+
     try:
         deduplicator = get_request_deduplicator()
 
         if deduplicator:
             # Use request deduplication for identical concurrent searches
             params = {
-                "query": request.query,
-                "entity_type": request.entity_type,
-                "search_type": request.search_type,
-                "top_k": request.top_k,
-                "weights": request.weights,
+                "query": search_request.query,
+                "entity_type": search_request.entity_type,
+                "search_type": search_request.search_type,
+                "top_k": search_request.top_k,
+                "weights": search_request.weights,
             }
             return await deduplicator.execute(
                 operation="hybrid_search",
@@ -1550,21 +1628,21 @@ async def hybrid_search(
                 executor=_execute_hybrid_search,
                 ttl=30,  # 30 second deduplication window
                 hybrid_search=hybrid_search,
-                query=request.query,
-                entity_type=request.entity_type,
-                search_type=request.search_type,
-                top_k=request.top_k,
-                weights=request.weights,
+                query=search_request.query,
+                entity_type=search_request.entity_type,
+                search_type=search_request.search_type,
+                top_k=search_request.top_k,
+                weights=search_request.weights,
             )
         else:
             # Fallback to direct execution
             return await _execute_hybrid_search(
                 hybrid_search,
-                request.query,
-                request.entity_type,
-                request.search_type,
-                request.top_k,
-                request.weights,
+                search_request.query,
+                search_request.entity_type,
+                search_request.search_type,
+                search_request.top_k,
+                search_request.weights,
             )
     except Exception as e:
         logger.error(f"Search failed: {e}")

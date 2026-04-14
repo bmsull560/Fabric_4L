@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-04-14",
+  "items": [
+    {
+      "feature": "l1.api.health_legacy_route",
+      "introduced": "2025-09-10",
+      "deprecated_since": "2026-04-14",
+      "target_removal": "2026-08-01",
+      "owner": "layer1-ingestion",
+      "path": "value-fabric/layer1-ingestion/src/api/main.py:/health"
+    },
+    {
+      "feature": "l1.api.x_organization_id_header_fallback",
+      "introduced": "2025-09-10",
+      "deprecated_since": "2026-04-14",
+      "target_removal": "2026-09-01",
+      "owner": "layer1-ingestion",
+      "path": "value-fabric/layer1-ingestion/src/api/main.py:get_organization_id"
+    },
+    {
+      "feature": "l3.api.query_legacy_route",
+      "introduced": "2025-11-20",
+      "deprecated_since": "2026-04-14",
+      "target_removal": "2026-08-01",
+      "owner": "layer3-knowledge",
+      "path": "value-fabric/layer3-knowledge/src/api/main.py:/v1/query"
+    },
+    {
+      "feature": "l3.api.search_legacy_route",
+      "introduced": "2025-11-20",
+      "deprecated_since": "2026-04-14",
+      "target_removal": "2026-08-01",
+      "owner": "layer3-knowledge",
+      "path": "value-fabric/layer3-knowledge/src/api/main.py:/v1/search"
+    },
+    {
+      "feature": "l3.retrieval.hybrid_search_legacy_dict_format",
+      "introduced": "2025-11-20",
+      "deprecated_since": "2026-04-14",
+      "target_removal": "2026-10-01",
+      "owner": "layer3-knowledge",
+      "path": "value-fabric/layer3-knowledge/src/retrieval/hybrid_search.py"
+    },
+    {
+      "feature": "docs.semantic_contract.legacy_value_category_aliases",
+      "introduced": "2025-10-02",
+      "deprecated_since": "2026-04-14",
+      "target_removal": "2026-12-01",
+      "owner": "docs",
+      "path": "docs/semantic_contract.md"
+    }
+  ]
+}

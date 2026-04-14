@@ -211,3 +211,6 @@ When modifying this contract:
 6. **Documentation**: Update this file
 
 Backward compatibility: Legacy enum values are preserved but marked deprecated in documentation.
+Deprecation schedule is tracked in `docs/deprecation_register.json` under
+`docs.semantic_contract.legacy_value_category_aliases` (deprecated since `2026-04-14`,
+target removal `2026-12-01`).

@@ -10,8 +10,10 @@ Provides endpoints for:
 - Compliance auditing (/compliance)
 """
 
+import json
 import os
-from datetime import datetime
+from datetime import date, datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
@@ -73,6 +75,65 @@ structlog.configure(
 )
 
 logger = structlog.get_logger()
+
+DEPRECATION_REGISTER_FILE = "docs/deprecation_register.json"
+DEPRECATION_OVERRIDE_ENV = "DEPRECATION_ALLOW_OVERDUE"
+
+
+def _find_deprecation_register(start: Path) -> Path | None:
+    for candidate in [start, *start.parents]:
+        register_path = candidate / DEPRECATION_REGISTER_FILE
+        if register_path.exists():
+            return register_path
+    return None
+
+
+def _load_deprecations(owner: str | None = None) -> list[dict[str, str]]:
+    register_path = _find_deprecation_register(Path(__file__).resolve())
+    if register_path is None:
+        return []
+
+    try:
+        payload = json.loads(register_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+
+    items = payload.get("items", [])
+    if owner is None:
+        return items
+    return [item for item in items if item.get("owner") == owner]
+
+
+def _overdue_deprecations(owner: str) -> list[dict[str, str]]:
+    today = datetime.utcnow().date()
+    overdue: list[dict[str, str]] = []
+    for item in _load_deprecations(owner=owner):
+        removal = item.get("target_removal")
+        if not removal:
+            continue
+        try:
+            if date.fromisoformat(removal) < today:
+                overdue.append(item)
+        except ValueError:
+            logger.warning("Invalid deprecation target_removal date", feature=item.get("feature"))
+    return overdue
+
+
+def _deprecation_schedule(feature: str) -> dict[str, str] | None:
+    for item in _load_deprecations():
+        if item.get("feature") == feature:
+            return item
+    return None
+
+
+for overdue_item in _overdue_deprecations("layer1-ingestion"):
+    logger.warning(
+        "Overdue deprecation detected at startup",
+        feature=overdue_item.get("feature"),
+        target_removal=overdue_item.get("target_removal"),
+        owner=overdue_item.get("owner"),
+        override_env=DEPRECATION_OVERRIDE_ENV,
+    )
 
 # =============================================================================
 # FASTAPI APP INITIALIZATION
@@ -1991,7 +2052,21 @@ app.include_router(router)
 @app.get("/health")
 async def legacy_health_check():
     """Legacy health check - redirects to new endpoint."""
-    return {"status": "healthy", "note": "Use /api/v1/ingestion/health for spec-compliant endpoint"}
+    schedule = _deprecation_schedule("l1.api.health_legacy_route")
+    payload = {
+        "status": "healthy",
+        "note": "Use /api/v1/ingestion/health for spec-compliant endpoint",
+    }
+    response = Response(
+        content=json.dumps(payload),
+        media_type="application/json",
+    )
+    if schedule:
+        response.headers["Warning"] = '299 - "Deprecated endpoint; see /api/v1/ingestion/health"'
+        response.headers["X-Deprecated-Since"] = schedule["deprecated_since"]
+        response.headers["X-Target-Removal-Date"] = schedule["target_removal"]
+        response.headers["X-Deprecation-Owner"] = schedule["owner"]
+    return response
 
 
 if __name__ == "__main__":

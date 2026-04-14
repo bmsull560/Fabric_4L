@@ -638,3 +638,24 @@ Every layer exposes a standard health check:
 
 > **Status: Deferred.**  
 > Postman / OpenAPI-based collection exports for each layer are planned for a future milestone. In the meantime, use the OpenAPI specs in `contracts/openapi/` to generate client stubs or import into API testing tools.
+
+---
+
+## Deprecation Schedule & Headers
+
+Deprecated endpoints emit schedule headers so clients can migrate predictably:
+
+- `Warning: 299 - "<message>"`
+- `X-Deprecated-Since: YYYY-MM-DD`
+- `X-Target-Removal-Date: YYYY-MM-DD`
+- `X-Deprecation-Owner: <owner>`
+
+Current schedule source of truth: `docs/deprecation_register.json`.
+
+Highlighted routes:
+
+| Endpoint | Preferred Replacement | Deprecated Since | Target Removal |
+|---|---|---|---|
+| `POST /v1/query` | `POST /v1/query/graph` | `2026-04-14` | `2026-08-01` |
+| `POST /v1/search` | `POST /v1/search/hybrid` | `2026-04-14` | `2026-08-01` |
+| `GET /health` (Layer 1 legacy route) | `GET /api/v1/ingestion/health` | `2026-04-14` | `2026-08-01` |

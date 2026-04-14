@@ -55,8 +55,10 @@ curl http://localhost:8001/health
 |----------|--------|-------------|
 | `/health` | GET | Service health check |
 | `/v1/ingest` | POST | Ingest RDF data from Layer 2 |
-| `/v1/query` | POST | GraphRAG natural language query |
-| `/v1/search` | POST | Hybrid entity search |
+| `/v1/query/graph` | POST | GraphRAG natural language query (canonical) |
+| `/v1/query` | POST | GraphRAG natural language query (legacy; deprecated since 2026-04-14, target removal 2026-08-01) |
+| `/v1/search/hybrid` | POST | Hybrid entity search (canonical) |
+| `/v1/search` | POST | Hybrid entity search (legacy; deprecated since 2026-04-14, target removal 2026-08-01) |
 | `/v1/entity/{id}/context` | GET | Get entity neighborhood |
 | `/v1/entity/traverse` | POST | Traverse 4-layer value tree |
 | `/v1/analytics/communities` | POST | Detect communities |
@@ -79,10 +81,10 @@ curl -X POST http://localhost:8001/v1/ingest \
   }'
 ```
 
-#### GraphRAG Query
+#### GraphRAG Query (canonical)
 
 ```bash
-curl -X POST http://localhost:8001/v1/query \
+curl -X POST http://localhost:8001/v1/query/graph \
   -H "Content-Type: application/json" \
   -d '{
     "query": "How can data processing capabilities benefit finance teams?",
@@ -92,10 +94,10 @@ curl -X POST http://localhost:8001/v1/query \
   }'
 ```
 
-#### Hybrid Search
+#### Hybrid Search (canonical)
 
 ```bash
-curl -X POST http://localhost:8001/v1/search \
+curl -X POST http://localhost:8001/v1/search/hybrid \
   -H "Content-Type: application/json" \
   -d '{
     "query": "real-time analytics",
@@ -103,6 +105,9 @@ curl -X POST http://localhost:8001/v1/search \
     "top_k": 10
   }'
 ```
+
+> Legacy routes (`/v1/query`, `/v1/search`) return deprecation headers:
+> `Warning`, `X-Deprecated-Since`, `X-Target-Removal-Date`, `X-Deprecation-Owner`.
 
 #### Detect Communities
 
