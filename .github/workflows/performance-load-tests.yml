@@ -1,0 +1,112 @@
+name: Performance Load Tests
+
+on:
+  schedule:
+    - cron: '0 4 * * 1' # Weekly Monday 04:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  load-test:
+    name: L2/L3/L4 Critical Path Load Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Set up Docker Compose
+        run: docker compose version
+
+      - name: Start ephemeral stack
+        working-directory: ./value-fabric
+        run: |
+          export NEO4J_PASSWORD=valuefabric
+          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || 'sk-test-key' }}
+          docker compose up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
+
+      - name: Wait for services to become healthy
+        working-directory: ./value-fabric
+        run: |
+          echo "Waiting for service health checks..."
+          for i in {1..30}; do
+            sleep 10
+            healthy=$(docker compose ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
+            echo "Check $i/30: $healthy healthy containers"
+            if [ "$healthy" -ge "6" ]; then
+              echo "Core stack is healthy"
+              break
+            fi
+          done
+          docker compose ps
+
+      - name: Run k6 critical-path performance suite
+        run: |
+          mkdir -p artifacts/performance
+          k6 run \
+            --summary-export artifacts/performance/k6-summary.json \
+            --env L2_URL=http://localhost:8002 \
+            --env L3_URL=http://localhost:8003 \
+            --env L4_URL=http://localhost:8004 \
+            --env PERF_DURATION=2m \
+            tests/performance/k6/l2_l3_l4_critical_paths.js
+
+      - name: Evaluate SLO targets and regression threshold
+        run: |
+          python3 scripts/perf/evaluate_slo.py \
+            --summary artifacts/performance/k6-summary.json \
+            --slo docs/slo/performance-slo.v1.json \
+            --report artifacts/performance/slo-report.md \
+            --output artifacts/performance/slo-evaluation.json
+
+      - name: Publish SLO report in workflow summary
+        if: always()
+        run: |
+          {
+            echo "## Performance SLO Report"
+            echo
+            cat artifacts/performance/slo-report.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-artifacts-${{ github.run_id }}
+          path: |
+            artifacts/performance/k6-summary.json
+            artifacts/performance/slo-evaluation.json
+            artifacts/performance/slo-report.md
+          retention-days: 30
+
+      - name: Capture logs on failure
+        if: failure()
+        working-directory: ./value-fabric
+        run: |
+          mkdir -p ../artifacts/performance/logs
+          docker compose logs > ../artifacts/performance/logs/docker-compose.log
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-failure-logs-${{ github.run_id }}
+          path: artifacts/performance/logs/
+          retention-days: 14
+
+      - name: Tear down ephemeral stack
+        if: always()
+        working-directory: ./value-fabric
+        run: docker compose down -v

@@ -29,4 +29,4 @@ EXPOSE 8005
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8005/api/v1/health').raise_for_status()"
 
-CMD ["uvicorn", "layer5_ground_truth.src.api.main:app", "--host", "0.0.0.0", "--port", "8005"]
+CMD ["uvicorn", "layer5_ground_truth.api.main:app", "--host", "0.0.0.0", "--port", "8005"]

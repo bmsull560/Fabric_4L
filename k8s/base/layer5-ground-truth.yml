@@ -36,9 +36,12 @@ spec:
                   key: LAYER5_DATABASE_URL_SYNC
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false  # Alembic may need write access for cache
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: api
           image: value-fabric/layer5-ground-truth:latest
@@ -93,6 +96,12 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

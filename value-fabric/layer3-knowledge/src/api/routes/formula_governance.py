@@ -416,14 +416,16 @@ async def submit_for_review(
 
     now = datetime.now(UTC).isoformat()
 
+    # Atomic query: check status and update in single operation to prevent TOCTOU race
     query = """
     MATCH (f:Formula {id: $formula_id})
+    WHERE f.status = 'draft'
     MATCH (f)-[:HAS_VERSION]->(fv:FormulaVersion {version: $version})
     SET f.status = 'under_review',
         f.submittedAt = $submitted_at,
         f.submittedBy = $submitted_by,
         fv.status = 'under_review'
-    RETURN f
+    RETURN f.status as new_status
     """
 
     async with driver.session() as session:
@@ -437,12 +439,13 @@ async def submit_for_review(
         record = await result.single()
 
         if not record:
+            # Formula not found, not in draft status, or version doesn't exist
             return TransitionResponse(
                 success=False,
                 formula_id=formula_id,
-                old_status="draft",
-                new_status="draft",
-                error_message="Failed to submit for review",
+                old_status=current_status,
+                new_status=current_status,
+                error_message="Failed to submit for review: formula must be in draft status with matching version",
             )
 
         return TransitionResponse(

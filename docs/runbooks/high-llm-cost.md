@@ -19,6 +19,7 @@ sum(rate(vf_llm_cost_usd_total[1h])) > 50
 ## Summary
 
 This alert fires when the aggregated LLM spend across all tenants exceeds **$50/hour** for at least 15 minutes.
+When spending exceeds soft tenant budgets, automated guardrails should downgrade model usage and apply short throttling.
 
 ---
 
@@ -42,6 +43,10 @@ This alert fires when the aggregated LLM spend across all tenants exceeds **$50/
    - Unexpected traffic spike from a specific tenant?
    - A new or expensive model (e.g., `claude-3-opus`) suddenly dominating usage?
    - A runaway agent loop or workflow retry storm?
+   - Repeated guardrail events:
+     ```promql
+     sum by (tenant_id, action, reason) (increase(vf_llm_budget_guardrail_events_total[1h]))
+     ```
 
 ---
 
@@ -51,6 +56,8 @@ This alert fires when the aggregated LLM spend across all tenants exceeds **$50/
 |----------|--------|
 | Runaway workflow / retry loop | Pause the offending workflow type via the Layer 4 API and inspect trace logs. |
 | Tenant abusing API | Temporarily downgrade the tenant's rate limits or contact the tenant admin. |
+| Tenant approaching soft budget cap | Keep traffic flowing on fallback model and enforce throttle (`LLM_BUDGET_THROTTLE_SECONDS`). Notify FinOps and tenant admin. |
+| Tenant exceeds hard budget cap | Enforced block for further requests until incident commander approves override. |
 | Expensive model overuse | Update the default model routing to a cheaper alternative (e.g., `gpt-4o-mini`) in `layer4-agents/src/config/llm_config.py` or equivalent. |
 | Pricing table drift | Verify `LLM_COST_TABLE_PATH` override is up-to-date with current provider rates. |
 
@@ -63,3 +70,4 @@ This alert fires when the aggregated LLM spend across all tenants exceeds **$50/
   - Tenant/model breakdown
   - Dollars spent during the spike
 - If this recurs, consider lowering the alert threshold or adding a per-tenant cost limit.
+- Complete `incident-postmortem-template.md` and include mandatory action-item tracking.
