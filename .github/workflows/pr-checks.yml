@@ -7,6 +7,35 @@ on:
     branches: [main]
 
 jobs:
+  docs-policy-gate:
+    name: Docs Policy Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify required policy and runbook docs exist
+        run: |
+          set -euo pipefail
+          required_files=(
+            "docs/reliability/dr-policy.md"
+            "docs/api-versioning-policy.md"
+            "docs/runbooks/dr-gameday-service-failover.md"
+            "docs/runbooks/dr-gameday-region-loss.md"
+            "docs/runbooks/dr-evidence-log-template.md"
+            ".github/pull_request_template.md"
+          )
+
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required governance file: $file"
+              exit 1
+            fi
+          done
+
+          echo "Docs policy gate passed."
+
   # Layer 1 - Ingestion
   layer1-checks:
     name: Layer 1 - Ingestion

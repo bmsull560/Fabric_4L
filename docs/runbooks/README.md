@@ -18,3 +18,11 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 | HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning |
 | HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning |
 | FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning |
+
+## Disaster Recovery Game Days
+
+| Runbook | File | Cadence |
+|---|---|---|
+| Critical Service Failover | [dr-gameday-service-failover.md](dr-gameday-service-failover.md) | Monthly |
+| Region/Account Loss Simulation | [dr-gameday-region-loss.md](dr-gameday-region-loss.md) | Quarterly |
+| DR Evidence Logging Template | [dr-evidence-log-template.md](dr-evidence-log-template.md) | Every DR exercise or incident |
