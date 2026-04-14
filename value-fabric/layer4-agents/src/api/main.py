@@ -13,6 +13,13 @@ from fastapi.responses import Response
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
 
+# Task 60/61: Shared error handling and request correlation
+try:
+    from shared.error_handling import register_exception_handlers, RequestIDMiddleware
+    SHARED_ERROR_HANDLING_AVAILABLE = True
+except ImportError:
+    SHARED_ERROR_HANDLING_AVAILABLE = False
+
 # Governance middleware replaces the old TenantMiddleware
 from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.rate_limiter import RedisRateLimiter
@@ -40,6 +47,7 @@ from ..tenants import lookup_api_key_by_hash
 from ..tenants.api import api_keys_router, tenants_router, users_router
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
+from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from .routes import accounts, analysis, tools, workflows
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
@@ -58,6 +66,7 @@ state_manager: StateManager | None = None
 checkpoint_saver: AsyncPostgresSaver | None = None
 ws_manager = get_ws_manager()
 health_tracker = get_health_tracker()
+crm_sync_scheduler: CRMSyncScheduler | None = None
 
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
@@ -88,7 +97,7 @@ def init_telemetry() -> TracerProvider | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global workflow_executor, state_manager, checkpoint_saver, _tracer_provider
+    global workflow_executor, state_manager, checkpoint_saver, _tracer_provider, crm_sync_scheduler
 
     # P1-29: Initialize OpenTelemetry
     _tracer_provider = init_telemetry()
@@ -180,6 +189,10 @@ async def lifespan(app: FastAPI):
     # Start health tracker for graceful degradation badges
     await health_tracker.start()
 
+    # Start CRM sync scheduler for periodic account synchronization
+    crm_sync_scheduler = await get_crm_sync_scheduler()
+    await crm_sync_scheduler.start()
+
     yield
 
     # Shutdown
@@ -191,6 +204,10 @@ async def lifespan(app: FastAPI):
 
     # Stop health tracker
     await health_tracker.stop()
+
+    # Stop CRM sync scheduler
+    if crm_sync_scheduler:
+        await crm_sync_scheduler.stop()
 
     # Close checkpoint saver connection
     if checkpoint_saver:
@@ -249,6 +266,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Task 61: Request ID middleware for trace correlation (after CORS)
+if SHARED_ERROR_HANDLING_AVAILABLE:
+    app.add_middleware(RequestIDMiddleware)
+
+# Task 60: Register shared exception handlers for standardized error responses
+if SHARED_ERROR_HANDLING_AVAILABLE:
+    register_exception_handlers(app)
+
 # Include routers
 app.include_router(workflows.router, prefix="/v1", tags=["workflows"])
 app.include_router(tools.router, prefix="/v1", tags=["tools"])
@@ -275,7 +300,7 @@ app.include_router(c1_router, prefix="/v1", tags=["c1"])
 @app.get("/health")
 async def health_check():
     """Health check endpoint with real metrics and dependency status."""
-    from datetime import datetime
+    from datetime import datetime, UTC
 
     import psutil
 
@@ -405,7 +430,7 @@ async def health_check():
         "status": overall_status,
         "service": "layer4-agents",
         "version": "0.2.0",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "executor_ready": workflow_executor is not None,
         "uptime_seconds": uptime,
         "dependencies": dependencies,

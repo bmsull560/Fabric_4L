@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: layer5-policy
+  namespace: value-fabric
+spec:
+  podSelector:
+    matchLabels:
+      app: layer5-ground-truth
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from L4 agents
+    - from:
+        - podSelector:
+            matchLabels:
+              app: layer4-agents
+      ports:
+        - protocol: TCP
+          port: 8005
+    # Allow from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 8005
+  egress:
+    # Allow to Postgres
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow to L3
+    - to:
+        - podSelector:
+            matchLabels:
+              app: layer3-knowledge
+      ports:
+        - protocol: TCP
+          port: 8001
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53

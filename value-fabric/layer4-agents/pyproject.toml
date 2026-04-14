@@ -110,6 +110,12 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = [".", "src", ".."]
 addopts = "-v --tb=short"
+markers = [
+    "unit: Fast unit tests with no external dependencies",
+    "integration: Integration tests with real services (DB, cache)",
+    "e2e: End-to-end tests with full container orchestration",
+    "slow: Tests that take >5 seconds",
+]
 
 [tool.coverage.run]
 source = ["src"]

@@ -1,23 +1,10 @@
 """Pytest configuration for Layer 4 Agents tests.
 
-Adds layer4-agents and value-fabric directories to PYTHONPATH so that
-``from src.…`` and ``from shared.…`` imports resolve correctly.
+Requires package to be installed in editable mode:
+    pip install -e value-fabric/layer4-agents
 """
 
-import os
-import sys
-
 import pytest
-
-# ── Path setup ──────────────────────────────────────────────────────────────
-tests_dir = os.path.dirname(os.path.abspath(__file__))
-layer4_dir = os.path.dirname(tests_dir)
-value_fabric_dir = os.path.dirname(layer4_dir)
-
-if layer4_dir not in sys.path:
-    sys.path.append(layer4_dir)
-if value_fabric_dir not in sys.path:
-    sys.path.append(value_fabric_dir)
 
 
 # ── Fixtures ────────────────────────────────────────────────────────────────

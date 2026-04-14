@@ -1,49 +1,159 @@
+# Task 63: Alertmanager routing configuration
+# Routes: critical -> PagerDuty, warning -> Slack
+#
+# Secret Management:
+# - Current: Environment variables via SecretKeyRef (see k8s/base/alertmanager.yml)
+# - Future: External Secrets Operator + Vault (documented upgrade path below)
+#
+# Required environment variables:
+# - PAGERDUTY_INTEGRATION_KEY: PagerDuty integration key for critical alerts
+# - SLACK_WEBHOOK_URL: Slack webhook URL for warning/info alerts
+#
+# Upgrade to ESO+Vault:
+# 1. Install External Secrets Operator: kubectl apply -f k8s/external-secrets/
+# 2. Create Vault ClusterSecretStore: kubectl apply -f k8s/external-secrets/vault-store.yml
+# 3. Replace SecretKeyRef with ExternalSecret: see docs/runbooks/alertmanager-secret-management.md
+
 global:
   resolve_timeout: 5m
-  slack_api_url: '${SLACK_API_URL}'
+  # Slack webhook URL from environment (SecretKeyRef in K8s)
+  slack_api_url_file: '/etc/alertmanager/secrets/slack_webhook_url'
 
+# Templates for message formatting
 templates:
   - '/etc/alertmanager/templates/*.tmpl'
 
+# Routing tree: critical -> PagerDuty first, then Slack; warning -> Slack only
 route:
-  receiver: 'slack-default'
-  group_by: ['alertname', 'severity']
+  receiver: 'default-null'  # Default: no notification (prevents spam)
+  group_by: ['alertname', 'severity', 'namespace']
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
+
   routes:
+    # Critical alerts: PagerDuty + Slack (escalation)
     - match:
         severity: critical
-      receiver: 'slack-critical'
-      repeat_interval: 1h
+      receiver: 'pagerduty-critical'
+      continue: true  # Continue to next route after PagerDuty
+      repeat_interval: 15m
+
+    # Warning alerts: Slack only
+    - match:
+        severity: warning
+      receiver: 'slack-warning'
+      repeat_interval: 2h
+
+    # Info alerts: Slack with low priority channel
+    - match:
+        severity: info
+      receiver: 'slack-info'
+      repeat_interval: 24h
+
+    # Formula approvals: dedicated channel
     - match:
         alertname: FormulaApprovalRequired
       receiver: 'slack-formula-approval'
       repeat_interval: 30m
 
+    # Service down alerts: immediate PagerDuty
+    - match:
+        alertname: ServiceDown
+      receiver: 'pagerduty-critical'
+      repeat_interval: 5m
+
+    # High error rate: PagerDuty if sustained
+    - match:
+        alertname: HighErrorRate
+      receiver: 'pagerduty-critical'
+      repeat_interval: 10m
+
+# Receivers configuration
 receivers:
-  - name: 'slack-default'
-    slack_configs:
-      - channel: '#vf-alerts'
-        send_resolved: true
-        title: '{{ template "slack.title" . }}'
-        text: '{{ template "slack.text" . }}'
+  # Default null receiver (drops alerts that don't match any route)
+  - name: 'default-null'
+
+  # PagerDuty for critical alerts (SecretKeyRef for integration key)
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - service_key_file: '/etc/alertmanager/secrets/pagerduty_integration_key'
+        description: '{{ .CommonAnnotations.summary }}'
+        severity: '{{ .GroupLabels.severity }}'
+        group: '{{ .GroupLabels.alertname }}'
+        # Link back to runbook for self-service resolution
+        client_url: '{{ .CommonAnnotations.runbook_url | default "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks" }}'
+        client: 'Value Fabric Alertmanager'
+        # Include detailed info
+        details:
+          firing: '{{ template "pagerduty.instances" .Alerts.Firing }}'
+          resolved: '{{ template "pagerduty.instances" .Alerts.Resolved }}'
+          namespace: '{{ .CommonLabels.namespace }}'
+          severity: '{{ .GroupLabels.severity }}'
+
+  # Slack for critical alerts (escalation notification)
   - name: 'slack-critical'
     slack_configs:
       - channel: '#vf-alerts-critical'
         send_resolved: true
-        title: '{{ template "slack.title" . }}'
-        text: '{{ template "slack.text" . }}'
+        title: ':rotating_light: CRITICAL: {{ .CommonAnnotations.summary }}'
+        text: '{{ template "slack.critical.text" . }}'
+        actions:
+          - type: button
+            text: 'View Runbook'
+            url: '{{ .CommonAnnotations.runbook_url }}'
+
+  # Slack for warning alerts
+  - name: 'slack-warning'
+    slack_configs:
+      - channel: '#vf-alerts-warning'
+        send_resolved: true
+        title: ':warning: WARNING: {{ .CommonAnnotations.summary }}'
+        text: '{{ template "slack.warning.text" . }}'
+        actions:
+          - type: button
+            text: 'View Runbook'
+            url: '{{ .CommonAnnotations.runbook_url }}'
+
+  # Slack for info alerts
+  - name: 'slack-info'
+    slack_configs:
+      - channel: '#vf-alerts-info'
+        send_resolved: true
+        title: ':information_source: {{ .CommonAnnotations.summary }}'
+        text: '{{ template "slack.info.text" . }}'
+
+  # Slack for formula approvals (business workflow)
   - name: 'slack-formula-approval'
     slack_configs:
       - channel: '#vf-formula-approvals'
         send_resolved: true
-        title: '{{ template "slack.title" . }}'
-        text: '{{ template "slack.text" . }}'
+        title: ':clipboard: Formula Approval Required'
+        text: '{{ template "slack.formula.text" . }}'
+        actions:
+          - type: button
+            text: 'Review in App'
+            url: 'https://valuefabric.com/admin/content/approvals'
 
+# Inhibition rules: prevent notification storms
 inhibit_rules:
+  # Critical alerts silence warnings of the same type
   - source_match:
       severity: 'critical'
     target_match:
       severity: 'warning'
-    equal: ['alertname']
+    equal: ['alertname', 'namespace']
+
+  # Service down silences dependent component alerts
+  - source_match:
+      alertname: 'ServiceDown'
+    target_match_re:
+      alertname: '.+'
+    equal: ['namespace']
+
+  # High error rate silences individual error alerts
+  - source_match:
+      alertname: 'HighErrorRate'
+    target_match_re:
+      alertname: '.*Error.*'
+    equal: ['namespace']

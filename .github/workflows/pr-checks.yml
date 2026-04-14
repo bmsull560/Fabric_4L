@@ -46,6 +46,16 @@ jobs:
           path: value-fabric/layer1-ingestion/coverage.xml
           retention-days: 14
 
+      - name: Security scan with bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll -ii
+
+      - name: Dependency audit with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --severity high --exit-code 1
+
   # Layer 2 - Extraction
   layer2-checks:
     name: Layer 2 - Extraction
@@ -84,6 +94,16 @@ jobs:
           name: coverage-layer2
           path: value-fabric/layer2-extraction/coverage.xml
           retention-days: 14
+
+      - name: Security scan with bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll -ii
+
+      - name: Dependency audit with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --severity high --exit-code 1
 
   # Layer 3 - Knowledge
   layer3-checks:
@@ -124,6 +144,16 @@ jobs:
           path: value-fabric/layer3-knowledge/coverage.xml
           retention-days: 14
 
+      - name: Security scan with bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll -ii
+
+      - name: Dependency audit with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --severity high --exit-code 1
+
   # Layer 4 - Agents
   layer4-checks:
     name: Layer 4 - Agents
@@ -162,6 +192,16 @@ jobs:
           name: coverage-layer4
           path: value-fabric/layer4-agents/coverage.xml
           retention-days: 14
+
+      - name: Security scan with bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll -ii
+
+      - name: Dependency audit with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --severity high --exit-code 1
 
   # Layer 5 - Ground Truth
   layer5-checks:
@@ -202,6 +242,16 @@ jobs:
           path: value-fabric/layer5-ground-truth/coverage.xml
           retention-days: 14
 
+      - name: Security scan with bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll -ii
+
+      - name: Dependency audit with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --severity high --exit-code 1
+
   # Layer 6 - Benchmarks
   layer6-checks:
     name: Layer 6 - Benchmarks
@@ -241,6 +291,16 @@ jobs:
           path: value-fabric/layer6-benchmarks/coverage.xml
           retention-days: 14
 
+      - name: Security scan with bandit
+        run: |
+          pip install bandit
+          bandit -r src/ -ll -ii
+
+      - name: Dependency audit with pip-audit
+        run: |
+          pip install pip-audit
+          pip-audit --severity high --exit-code 1
+
   # Frontend checks
   frontend-checks:
     name: Frontend
@@ -279,6 +339,10 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Security audit
+        run: pnpm audit --audit-level high
+        continue-on-error: true
 
       - name: Upload build artifacts on failure
         if: failure()

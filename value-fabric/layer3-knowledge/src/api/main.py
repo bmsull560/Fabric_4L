@@ -45,6 +45,13 @@ from .exceptions import (
     ValueFabricException,
 )
 from .middleware import add_security_middleware
+
+# Import shared error handling (Task 60/61: Error Response Hardening + Request Correlation)
+try:
+    from shared.error_handling import register_exception_handlers, RequestIDMiddleware
+    SHARED_ERROR_HANDLING_AVAILABLE = True
+except ImportError:
+    SHARED_ERROR_HANDLING_AVAILABLE = False
 from .rate_limiter import add_rate_limiting
 
 # Import cache modules
@@ -446,6 +453,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Request ID middleware (Task 61: Request Correlation IDs)
+# Must be after CORS but before request processing
+if SHARED_ERROR_HANDLING_AVAILABLE:
+    app.add_middleware(RequestIDMiddleware)
+    logger.info("RequestIDMiddleware enabled for trace correlation")
+
 # GovernanceMiddleware — provides verified JWT + API-key auth for L3.
 # Replaces the existing AuthenticationMiddleware in auth/middleware.py.
 # api_key_resolver is None here; plug in the DB-backed resolver from L4's
@@ -490,89 +503,103 @@ def _exception_trace(exc: Exception):
 # Exception handlers
 @app.exception_handler(ValueFabricException)
 async def value_fabric_exception_handler(request: Request, exc: ValueFabricException):
-    """Handle Value Fabric custom exceptions."""
-    logger.error(
-        f"Value Fabric exception occurred: {exc.error_code} at {request.method} {request.url.path} - {exc.message}",
-        exc_info=_exception_trace(exc),
-    )
+    """Handle Value Fabric custom exceptions with shared error handling."""
+    # Use shared handler for standardized response (Task 60: Error Hardening)
+    if SHARED_ERROR_HANDLING_AVAILABLE:
+        from shared.error_handling.handlers import (
+            value_fabric_exception_handler as shared_handler,
+        )
+        response = await shared_handler(request, exc)
+    else:
+        # Fallback to legacy handler
+        status_code = 500
+        if isinstance(exc, ValidationError):
+            status_code = 400
+        elif isinstance(exc, (AuthenticationError, AuthorizationError)):
+            status_code = 401 if isinstance(exc, AuthenticationError) else 403
+        elif exc.error_code == "NOT_FOUND":
+            status_code = 404
+        elif exc.error_code == "CONFLICT":
+            status_code = 409
+        elif isinstance(exc, RateLimitError):
+            status_code = 429
+        elif isinstance(exc, ServiceUnavailableError):
+            status_code = 503
+        response = JSONResponse(status_code=status_code, content=exc.to_dict())
 
-    # Record error metrics
+    # Preserve layer-specific metrics and logging
+    logger.error(
+        f"Value Fabric exception: {exc.error_code} at {request.method} {request.url.path} - {exc.message}",
+        extra={"trace_id": getattr(request.state, "trace_id", None)},
+    )
     metrics = getattr(request.app.state, "metrics", None)
     if metrics:
         metrics.increment_errors(
             error_type=exc.error_code, component="api", namespace="layer3"
         )
 
-    # Determine appropriate status code based on exception type
-    status_code = 500  # Default to internal server error
-
-    if isinstance(exc, ValidationError):
-        status_code = 400
-    elif isinstance(exc, (AuthenticationError, AuthorizationError)):
-        status_code = 401 if isinstance(exc, AuthenticationError) else 403
-    elif exc.error_code == "NOT_FOUND":
-        status_code = 404
-    elif exc.error_code == "CONFLICT":
-        status_code = 409
-    elif isinstance(exc, RateLimitError):
-        status_code = 429
-    elif isinstance(exc, ServiceUnavailableError):
-        status_code = 503
-
-    return JSONResponse(
-        status_code=status_code,
-        content=exc.to_dict(),
-    )
+    return response
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    """Handle FastAPI HTTP exceptions with structured logging."""
+    """Handle FastAPI HTTP exceptions with shared error handling."""
+    # Use shared handler for standardized response (Task 60: Error Hardening)
+    if SHARED_ERROR_HANDLING_AVAILABLE:
+        from shared.error_handling.handlers import (
+            http_exception_handler as shared_handler,
+        )
+        response = await shared_handler(request, exc)
+    else:
+        response = JSONResponse(status_code=exc.status_code, content=exc.detail)
+
+    # Preserve layer-specific logging
     logger.warning(
-        f"HTTP exception {exc.status_code} at {request.method} {request.url.path}: {exc.detail}"
+        f"HTTP exception {exc.status_code} at {request.method} {request.url.path}: {exc.detail}",
+        extra={"trace_id": getattr(request.state, "trace_id", None)},
     )
 
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=exc.detail,
-    )
+    return response
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Handle unexpected exceptions."""
+    """Handle unexpected exceptions with shared error handling."""
+    # Use shared handler for standardized response (Task 60: Error Hardening)
+    if SHARED_ERROR_HANDLING_AVAILABLE:
+        from shared.error_handling.handlers import (
+            global_exception_handler as shared_handler,
+        )
+        response = await shared_handler(request, exc)
+    else:
+        # Legacy fallback
+        error_response = {
+            "error": "INTERNAL_SERVER_ERROR",
+            "message": "An unexpected error occurred",
+            "type": type(exc).__name__,
+            "request_id": getattr(request.state, "request_id", None),
+        }
+        settings = _get_settings_with_fallback()
+        if settings.log_level.upper() == "DEBUG":
+            error_response["debug_info"] = {
+                "exception": str(exc),
+                "traceback": str(exc.__traceback__) if exc.__traceback__ else None,
+            }
+        response = JSONResponse(status_code=500, content=error_response)
+
+    # Preserve layer-specific logging and metrics
     logger.error(
         f"Unhandled {type(exc).__name__} at {request.method} {request.url.path}: {str(exc)}",
         exc_info=_exception_trace(exc),
+        extra={"trace_id": getattr(request.state, "trace_id", None)},
     )
-
-    # Record error metrics
     metrics = getattr(request.app.state, "metrics", None)
     if metrics:
         metrics.increment_errors(
             error_type=type(exc).__name__, component="api", namespace="layer3"
         )
 
-    # Create a generic error response
-    error_response = {
-        "error": "INTERNAL_SERVER_ERROR",
-        "message": "An unexpected error occurred",
-        "type": type(exc).__name__,
-        "request_id": getattr(request.state, "request_id", None),
-    }
-
-    # In development, include more details
-    settings = _get_settings_with_fallback()
-    if settings.log_level.upper() == "DEBUG":
-        error_response["debug_info"] = {
-            "exception": str(exc),
-            "traceback": str(exc.__traceback__) if exc.__traceback__ else None,
-        }
-
-    return JSONResponse(
-        status_code=500,
-        content=error_response,
-    )
+    return response
 
 
 # Metrics endpoint

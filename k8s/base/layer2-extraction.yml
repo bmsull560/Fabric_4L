@@ -7,7 +7,7 @@ metadata:
     app: layer2-extraction
     component: layer2
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: layer2-extraction
@@ -17,16 +17,38 @@ spec:
         app: layer2-extraction
         component: layer2
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-neo4j
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z neo4j 7687; do echo waiting for neo4j; sleep 2; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
         - name: wait-redis
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 2; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: api
           image: value-fabric/layer2-extraction:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8000
               name: http
@@ -84,6 +106,8 @@ spec:
               mountPath: /app/rdf-output
       volumes:
         - name: rdf-output
+          emptyDir: {}
+        - name: init-tmp
           emptyDir: {}
 ---
 apiVersion: v1

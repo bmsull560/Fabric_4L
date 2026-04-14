@@ -1,7 +1,7 @@
 """Integration tools for notifications, tasks, meetings, and CRM exports."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import httpx
@@ -335,7 +335,7 @@ class ScheduleMeetingTool(BaseTool):
 
         # Parse duration
         duration_minutes = input_data.duration_minutes or 30
-        start_time = input_data.preferred_time or datetime.utcnow().isoformat()
+        start_time = input_data.preferred_time or datetime.now(UTC).isoformat()
 
         end_time = datetime.fromisoformat(start_time.replace("Z", "+00:00")) + timedelta(
             minutes=duration_minutes
@@ -348,7 +348,7 @@ class ScheduleMeetingTool(BaseTool):
             "end": {"dateTime": end_time.isoformat(), "timeZone": "UTC"},
             "attendees": [{"email": email} for email in input_data.attendees],
             "conferenceData": {
-                "createRequest": {"requestId": f"meet-{datetime.utcnow().timestamp()}"}
+                "createRequest": {"requestId": f"meet-{datetime.now(UTC).timestamp()}"}
             },
         }
 
@@ -379,7 +379,7 @@ class ScheduleMeetingTool(BaseTool):
         url = "https://graph.microsoft.com/v1.0/me/events"
 
         duration_minutes = input_data.duration_minutes or 30
-        start_time = input_data.preferred_time or datetime.utcnow().isoformat()
+        start_time = input_data.preferred_time or datetime.now(UTC).isoformat()
         end_time = datetime.fromisoformat(start_time.replace("Z", "+00:00")) + timedelta(
             minutes=duration_minutes
         )
@@ -515,7 +515,7 @@ class ExportToCRMTool(BaseTool):
             payload = {
                 "engagement": {
                     "type": "NOTE",
-                    "timestamp": int(datetime.utcnow().timestamp() * 1000),
+                    "timestamp": int(datetime.now(UTC).timestamp() * 1000),
                 },
                 "associations": {"companyIds": [prospect_id]},
                 "metadata": {"body": input_data.entity_data.get("content", "")},
@@ -525,7 +525,7 @@ class ExportToCRMTool(BaseTool):
             payload = {
                 "engagement": {
                     "type": "TASK",
-                    "timestamp": int(datetime.utcnow().timestamp() * 1000),
+                    "timestamp": int(datetime.now(UTC).timestamp() * 1000),
                 },
                 "associations": {"companyIds": [prospect_id]},
                 "metadata": {

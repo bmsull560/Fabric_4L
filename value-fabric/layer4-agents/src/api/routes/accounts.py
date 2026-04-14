@@ -5,7 +5,7 @@ Phase 1: Accounts-first operational surface with embedded opportunities/contacts
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -43,7 +43,7 @@ def format_source_attribution(account) -> str:
     if not account.last_synced_at:
         return f"Pending sync from {account.provider}"
 
-    time_diff = datetime.utcnow() - account.last_synced_at
+    time_diff = datetime.now(UTC) - account.last_synced_at
     if time_diff.days > 0:
         time_str = f"{time_diff.days} day{'s' if time_diff.days > 1 else ''} ago"
     elif time_diff.seconds // 3600 > 0:

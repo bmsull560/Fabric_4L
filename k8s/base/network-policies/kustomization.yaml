@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deny-all.yml
+  - allow-dns.yml
+  - infra-policy.yml
+  - layer1-policy.yml
+  - layer2-policy.yml
+  - layer3-policy.yml
+  - layer4-policy.yml
+  - layer5-policy.yml
+  - layer6-policy.yml
+  - frontend-policy.yml

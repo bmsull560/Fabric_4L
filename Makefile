@@ -47,6 +47,26 @@ typecheck: ## Type-check all Python layers with mypy
 
 test: test-layer1 test-layer2 test-layer3 test-layer4 ## Run all backend unit tests
 
+# ─── Stratified Test Targets ─────────────────────────────────────────────────
+
+test-unit: ## Run only unit tests (fast, no external deps)
+	@echo "→ Running unit tests (marked with @pytest.mark.unit)"
+	cd value-fabric/layer4-agents && $(PYTEST) -m unit tests/
+
+test-integration: ## Run integration tests (real DB, cache, no containers)
+	@echo "→ Running integration tests (marked with @pytest.mark.integration)"
+	cd value-fabric/layer4-agents && $(PYTEST) -m integration tests/
+
+test-e2e-docker: ## Run E2E tests with Docker containers
+	@echo "→ Running E2E tests (requires Docker)"
+	cd value-fabric/layer3-knowledge && $(PYTEST) -m e2e tests/ 2>/dev/null || true
+
+test-fast: ## Run only fast tests (exclude slow and e2e)
+	@echo "→ Running fast tests only"
+	cd value-fabric/layer4-agents && $(PYTEST) -m "not slow and not e2e" tests/
+
+# ─── Layer-Specific Tests ─────────────────────────────────────────────────────
+
 test-layer1: ## Run Layer 1 tests
 	cd value-fabric/layer1-ingestion && $(PYTEST) tests/
 

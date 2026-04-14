@@ -4,7 +4,7 @@ Based on the specification's agent messaging patterns.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -111,7 +111,7 @@ class AgentMessage:
 
     def is_expired(self) -> bool:
         """Check if message has expired based on TTL."""
-        elapsed = (datetime.utcnow() - self.timestamp).total_seconds()
+        elapsed = (datetime.now(UTC) - self.timestamp).total_seconds()
         return elapsed > self.ttl_seconds
 
     def is_broadcast(self) -> bool:

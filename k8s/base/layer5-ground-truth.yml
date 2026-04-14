@@ -17,6 +17,13 @@ spec:
         app: layer5-ground-truth
         component: layer5
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: migrate
           image: value-fabric/layer5-ground-truth:latest
@@ -27,9 +34,19 @@ spec:
                 configMapKeyRef:
                   name: value-fabric-config
                   key: LAYER5_DATABASE_URL_SYNC
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Alembic may need write access for cache
+            capabilities:
+              drop: ["ALL"]
       containers:
         - name: api
           image: value-fabric/layer5-ground-truth:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8005
               name: http

@@ -17,13 +17,38 @@ spec:
         app: layer1-ingestion
         component: layer1
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: init-db
           image: busybox:1.36
           command: ['sh', '-c', 'until nc -z postgres 5432; do echo waiting for postgres; sleep 2; done']
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: init-tmp
+              mountPath: /tmp
+      volumes:
+        - name: raw-content
+          emptyDir: {}
+        - name: init-tmp
+          emptyDir: {}
       containers:
         - name: api
           image: value-fabric/layer1-ingestion:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 8000
               name: http
@@ -108,9 +133,6 @@ spec:
             limits:
               memory: "512Mi"
               cpu: "500m"
-      volumes:
-        - name: raw-content
-          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

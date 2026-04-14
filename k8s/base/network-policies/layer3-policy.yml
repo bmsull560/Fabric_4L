@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: layer3-policy
+  namespace: value-fabric
+spec:
+  podSelector:
+    matchLabels:
+      app: layer3-knowledge
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from L4 agents
+    - from:
+        - podSelector:
+            matchLabels:
+              app: layer4-agents
+      ports:
+        - protocol: TCP
+          port: 8001
+    # Allow from L5 ground truth
+    - from:
+        - podSelector:
+            matchLabels:
+              app: layer5-ground-truth
+      ports:
+        - protocol: TCP
+          port: 8001
+  egress:
+    # Allow to Neo4j
+    - to:
+        - podSelector:
+            matchLabels:
+              app: neo4j
+      ports:
+        - protocol: TCP
+          port: 7687
+    # Allow to Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53

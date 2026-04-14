@@ -1,0 +1,93 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: layer4-policy
+  namespace: value-fabric
+spec:
+  podSelector:
+    matchLabels:
+      app: layer4-agents
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from frontend
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Allow initContainers to reach layer2/3 for readiness probes
+    - to:
+        - podSelector:
+            matchLabels:
+              app: layer2-extraction
+      ports:
+        - protocol: TCP
+          port: 8000
+    - to:
+        - podSelector:
+            matchLabels:
+              app: layer3-knowledge
+      ports:
+        - protocol: TCP
+          port: 8001
+    # Allow to all layers (main container traffic)
+    - to:
+        - podSelector:
+            matchLabels:
+              component: layer1
+      ports:
+        - protocol: TCP
+          port: 8000
+    - to:
+        - podSelector:
+            matchLabels:
+              component: layer2
+      ports:
+        - protocol: TCP
+          port: 8000
+    - to:
+        - podSelector:
+            matchLabels:
+              component: layer3
+      ports:
+        - protocol: TCP
+          port: 8001
+    - to:
+        - podSelector:
+            matchLabels:
+              component: layer5
+      ports:
+        - protocol: TCP
+          port: 8005
+    - to:
+        - podSelector:
+            matchLabels:
+              component: layer6
+      ports:
+        - protocol: TCP
+          port: 8006
+    # Allow to infrastructure
+    - to:
+        - podSelector:
+            matchLabels:
+              component: infrastructure
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 7687
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53

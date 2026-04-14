@@ -326,6 +326,26 @@ services:
       timeout: 10s
       retries: 3
 
+  # Task 62: Distributed Tracing - Jaeger all-in-one
+  jaeger:
+    image: jaegertracing/all-in-one:1.50
+    container_name: value-fabric-jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+      - "14268:14268"  # Jaeger thrift
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:16686/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Redis (shared across all layers)
   redis:
     image: redis:7-alpine

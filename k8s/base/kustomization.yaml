@@ -4,10 +4,9 @@ kind: Kustomization
 resources:
   - namespace.yml
   - configmap-global.yml
-  # Secrets are managed via External Secrets Operator + Vault
-  # See ../external-secrets/ for production secret configuration
-  # For local dev: kubectl create secret generic ... manually
-  - ../external-secrets/vault-integration.yml
+  # NOTE: Secrets are managed separately:
+  #   - Dev: kubectl create secret generic ... manually
+  #   - Prod: apply k8s/external-secrets/ separately (not included here due to kustomize security)
   - redis.yml
   - postgres.yml
   - neo4j.yml
@@ -20,3 +19,11 @@ resources:
   - frontend.yml
   - monitoring-prometheus.yml
   - monitoring-alertmanager.yml
+  # Network policies for zero-trust segmentation
+  - network-policies/
+  # Horizontal pod autoscaling
+  - hpa/layer2-extraction-hpa.yml
+  - hpa/layer4-agents-hpa.yml
+  - hpa/frontend-hpa.yml
+  # Pod disruption budgets for critical services
+  - pdb/layer4-agents-pdb.yml

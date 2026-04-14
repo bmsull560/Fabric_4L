@@ -10,7 +10,7 @@ Implements the workflow API as specified in value_fabric_backend_logic_specifica
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -475,7 +475,7 @@ async def pause_workflow(
         return WorkflowPauseResponse(
             workflow_instance_id=workflow_id,
             status="paused",
-            paused_at=datetime.utcnow().isoformat(),
+            paused_at=datetime.now(UTC).isoformat(),
             current_node=status.get("current_node"),
             message=f"Workflow paused at node: {status.get('current_node', 'unknown')}",
         )
@@ -546,9 +546,9 @@ async def get_workflow_events(
             # Send event if status changed
             if status != last_status:
                 event = WorkflowEvent(
-                    event_id=f"evt-{datetime.utcnow().timestamp()}",
+                    event_id=f"evt-{datetime.now(UTC).timestamp()}",
                     event_type="status_update",
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     message=f"Workflow status: {status.get('status')}",
                     payload={
                         "workflow_id": workflow_id,
@@ -566,9 +566,9 @@ async def get_workflow_events(
             if status.get("status") in TERMINAL_STATUSES:
                 # Send completion event
                 event = WorkflowEvent(
-                    event_id=f"evt-{datetime.utcnow().timestamp()}",
+                    event_id=f"evt-{datetime.now(UTC).timestamp()}",
                     event_type="workflow_complete",
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     message=f"Workflow {status.get('status')}",
                     payload={"workflow_id": workflow_id, "status": status.get("status")},
                 )

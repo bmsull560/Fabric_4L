@@ -11,6 +11,54 @@ This directory supports both:
 - Kubernetes 1.24+
 - kubectl configured
 - Container images built and available in registry
+- **metrics-server** installed (required for HorizontalPodAutoscaler)
+
+## Security Hardening
+
+This deployment includes production-grade security controls:
+
+### Pod Security Contexts
+
+All deployments run with:
+- Non-root user (UID 1000)
+- Read-only root filesystem
+- Dropped all capabilities
+- No privilege escalation
+- Runtime default seccomp profile
+
+### Network Policies
+
+Zero-trust network segmentation is enforced via `k8s/network-policies/`:
+- Default deny-all for ingress/egress
+- Explicit allow rules for required service-to-service communication
+- DNS resolution allowed cluster-wide
+- Layer-specific policies enforce least-privilege access
+
+### Horizontal Pod Autoscaler (HPA)
+
+Auto-scaling configured for:
+- **layer2-extraction**: 2-6 replicas at 70% CPU
+- **layer4-agents**: 2-10 replicas at 70% CPU / 80% memory
+- **frontend**: 2-8 replicas at 70% CPU
+
+**Scaling Behavior:**
+- Scale-up: 100% increase per minute after 60s stabilization
+- Scale-down: 50% decrease per minute after 300s stabilization (prevents flapping)
+
+Requires metrics-server: `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`
+
+### Pod Disruption Budgets
+
+Critical services maintain availability during disruptions:
+- **layer4-agents**: `minAvailable: 1`
+
+### Image Pinning
+
+Production overlay uses SHA256 digest pinning (immutable references):
+```bash
+# CI updates digests via:
+kustomize edit set image "ghcr.io/bmsull560/fabric_4l/layer4-agents@sha256:abc123..."
+```
 
 ## Recommended: Kustomize Deployment
 
@@ -33,8 +81,8 @@ kubectl apply -k k8s/overlays/prod
 
 ### Overlay Policy
 
-- `dev` overlay: pragmatic defaults for local/staging iteration.
-- `prod` overlay: pinned registry/tag images (no `:latest`), higher replica counts.
+- `dev` overlay: pragmatic defaults for local/staging iteration. Uses placeholder SHA digests (will fail without image build).
+- `prod` overlay: **SHA256 digest pinned images** (immutable), higher replica counts, production resource settings.
 
 ## Deployment Order
 

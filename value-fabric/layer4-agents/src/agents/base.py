@@ -6,7 +6,7 @@ Provides the foundation for all 8 agent types in the Value Fabric Layer 4 system
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum, auto
 from typing import Any
 from uuid import uuid4
@@ -184,7 +184,7 @@ class BaseAgent(ABC):
 
         ctx = context or {}
         self.state.context.update(ctx)
-        self.state.started_at = datetime.utcnow()
+        self.state.started_at = datetime.now(UTC)
         self.state.status = AgentStatus.RUNNING
         self.state.current_task = task.get("capability", "unknown")
 
@@ -203,7 +203,7 @@ class BaseAgent(ABC):
 
             # Mark completion
             self.state.status = AgentStatus.COMPLETED
-            self.state.completed_at = datetime.utcnow()
+            self.state.completed_at = datetime.now(UTC)
 
             # Send completion event
             if self.message_bus:
@@ -218,7 +218,7 @@ class BaseAgent(ABC):
         except Exception as e:
             self.state.status = AgentStatus.FAILED
             self.state.errors.append(str(e))
-            self.state.completed_at = datetime.utcnow()
+            self.state.completed_at = datetime.now(UTC)
 
             # Send failure event
             if self.message_bus:
@@ -243,7 +243,7 @@ class BaseAgent(ABC):
     async def cancel(self) -> None:
         """Cancel current execution."""
         self.state.status = AgentStatus.CANCELLED
-        self.state.completed_at = datetime.utcnow()
+        self.state.completed_at = datetime.now(UTC)
 
     def get_state(self) -> AgentState:
         """Get current agent state."""

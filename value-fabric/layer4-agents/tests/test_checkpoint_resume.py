@@ -7,7 +7,7 @@ Verifies state persistence across interruptions and container restarts.
 import pytest
 import pytest_asyncio
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from unittest.mock import Mock, AsyncMock, patch
 
@@ -81,7 +81,7 @@ class SimpleTestWorkflow(BaseWorkflow):
     def create_initial_state(self, input_data: Dict[str, Any]) -> AgentState:
         """Create initial state."""
         return BaseAgentState(
-            workflow_id=input_data.get("workflow_id", f"test-{datetime.utcnow().timestamp()}"),
+            workflow_id=input_data.get("workflow_id", f"test-{datetime.now(timezone.utc).timestamp()}"),
             workflow_type=TEST_WORKFLOW_TYPE,
             status=WorkflowStatus.PENDING,
             input_data=input_data,
@@ -90,6 +90,7 @@ class SimpleTestWorkflow(BaseWorkflow):
         )
 
 
+@pytest.mark.unit
 class TestCheckpointPersistence:
     """Test that workflow state persists across interruptions."""
     
@@ -129,6 +130,7 @@ class TestCheckpointPersistence:
         assert result is not None
 
 
+@pytest.mark.unit
 class TestResumeWorkflow:
     """Test OrchestrationController resume functionality."""
     
@@ -161,7 +163,7 @@ class TestResumeWorkflow:
         )
         controller._workflow_metadata[workflow_id] = {
             "workflow_type": TEST_WORKFLOW_TYPE,
-            "started_at": datetime.utcnow().isoformat()
+            "started_at": datetime.now(timezone.utc).isoformat()
         }
         
         # Mock create_workflow to return a mock workflow
@@ -293,6 +295,7 @@ class TestResumeWorkflow:
         assert "resumed_at" in result.output_data
 
 
+@pytest.mark.unit
 class TestCheckpointConfiguration:
     """Test checkpoint configuration and database connection."""
     
@@ -335,6 +338,7 @@ class TestCheckpointConfiguration:
                     pass
 
 
+@pytest.mark.integration
 class TestCheckpointIntegration:
     """End-to-end integration tests for checkpoint/resume."""
 
@@ -370,7 +374,7 @@ class TestCheckpointIntegration:
         )
         controller._workflow_metadata[workflow_id] = {
             "workflow_type": TEST_WORKFLOW_TYPE,
-            "started_at": datetime.utcnow().isoformat()
+            "started_at": datetime.now(timezone.utc).isoformat()
         }
 
         # Mock the workflow to return a completed state

@@ -25,7 +25,7 @@ except ImportError:
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 # Shared identity imports for authentication
@@ -1262,6 +1262,149 @@ async def get_entity_provenance(
         raise HTTPException(status_code=404, detail="Entity provenance not found")
 
     return chain
+
+
+async def _job_event_generator(job_id: str):
+    """Generate SSE events for a pipeline job.
+
+    Yields Server-Sent Events with progress updates, status changes,
+    and entity discovery from the extraction pipeline.
+    """
+    import asyncio
+    import json
+
+    last_status = None
+    last_progress = -1
+    sent_entities: set[str] = set()
+
+    while True:
+        job = PIPELINE_JOBS.get(job_id)
+
+        if not job:
+            # Job not found - send error and close
+            yield f"event: error\ndata: {json.dumps({'message': f'Job {job_id} not found'})}\n\n"
+            break
+
+        # Calculate progress based on status
+        status_progress_map = {
+            "pending": 0,
+            "running": 25,
+            "partial": 75,
+            "completed": 100,
+            "failed": 100,
+        }
+        progress = status_progress_map.get(job.overall_status, 0)
+
+        # Send status event on change
+        if job.overall_status != last_status:
+            last_status = job.overall_status
+            event_data = {
+                "type": "status",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "data": job.overall_status,
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+
+        # Send progress event on significant change (>= 5%) or at boundaries
+        if abs(progress - last_progress) >= 5 or progress in [0, 50, 100]:
+            last_progress = progress
+            event_data = {
+                "type": "progress",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "data": progress,
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+
+        # Send entity events for newly discovered entities
+        # Note: In a real implementation, this would come from the job's entity cache
+        # For now, we simulate based on extraction progress
+        if job.entities_extracted > 0 and job.extraction_status == "running":
+            entity_key = f"entity_{job_id}_{job.entities_extracted}"
+            if entity_key not in sent_entities:
+                sent_entities.add(entity_key)
+                event_data = {
+                    "type": "entity",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "data": {
+                        "type": "Capability",
+                        "name": f"Discovered Capability {job.entities_extracted}",
+                    },
+                }
+                yield f"data: {json.dumps(event_data)}\n\n"
+
+        # Send log events for status transitions
+        if job.overall_status in ["running", "completed", "failed"]:
+            log_levels = {"running": "info", "completed": "success", "failed": "error"}
+            log_messages = {
+                "running": f"Extraction pipeline {job_id} is running",
+                "completed": f"Extraction pipeline {job_id} completed successfully",
+                "failed": f"Extraction pipeline {job_id} failed: {job.last_error or 'Unknown error'}",
+            }
+            event_data = {
+                "type": "log",
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "data": {
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "level": log_levels.get(job.overall_status, "info"),
+                    "message": log_messages.get(job.overall_status, f"Status: {job.overall_status}"),
+                },
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+
+        # Check for completion
+        if job.overall_status in ["completed", "failed"]:
+            event_type = "complete" if job.overall_status == "completed" else "error"
+            event_data = {
+                "type": event_type,
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "data": {
+                    "job_id": job_id,
+                    "status": job.overall_status,
+                    "entities_extracted": job.entities_extracted,
+                    "relationships_extracted": job.relationships_extracted,
+                    "error": job.last_error if job.overall_status == "failed" else None,
+                },
+            }
+            yield f"data: {json.dumps(event_data)}\n\n"
+            break
+
+        # Poll interval - check every 500ms for updates
+        await asyncio.sleep(0.5)
+
+
+@app.get("/extract/jobs/{job_id}/events")
+async def stream_job_events(job_id: str):
+    """Stream real-time events for a pipeline job via SSE.
+
+    Returns a Server-Sent Events stream with progress updates,
+    status changes, entity discovery, and log messages.
+
+    Event types:
+    - `progress`: Extraction progress percentage (0-100)
+    - `status`: Job status changes (pending, running, completed, failed)
+    - `log`: Pipeline log messages with timestamp and level
+    - `entity`: Newly discovered entities during extraction
+    - `complete`: Job completion event
+    - `error`: Error event with details
+
+    Args:
+        job_id: The pipeline job ID to stream events for
+
+    Returns:
+        StreamingResponse with text/event-stream content type
+    """
+    if job_id not in PIPELINE_JOBS:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+
+    return StreamingResponse(
+        _job_event_generator(job_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering for SSE
+        },
+    )
 
 
 if __name__ == "__main__":

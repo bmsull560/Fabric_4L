@@ -1,0 +1,237 @@
+name: Security Gates
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Run weekly on Mondays at 9 AM UTC
+    - cron: '0 9 * * 1'
+
+jobs:
+  # Secret detection with gitleaks
+  gitleaks-scan:
+    name: Secret Detection (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # Container vulnerability scanning with Trivy
+  trivy-image-scan:
+    name: Container Scan (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ matrix.layer }}:scan-target value-fabric/${{ matrix.layer }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ matrix.layer }}:scan-target'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+          scanners: 'vuln,secret,config'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: trivy-${{ matrix.layer }}
+
+  # Python security linting with bandit
+  bandit-scan:
+    name: Python Security Lint (bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install bandit
+        run: pip install bandit
+
+      - name: Run bandit scan
+        working-directory: value-fabric/${{ matrix.layer }}
+        run: |
+          bandit -r src/ -ll -ii --format json --output bandit-report.json || true
+          bandit -r src/ -ll -ii --format screen
+          if [ -s bandit-report.json ]; then
+            echo "Bandit issues found - checking severity"
+            python3 << 'PYEOF'
+          import json
+          import sys
+          with open('bandit-report.json') as f:
+              data = json.load(f)
+          issues = [r for r in data.get('results', []) if r['issue_severity'] in ['MEDIUM', 'HIGH']]
+          if issues:
+              print(f"Found {len(issues)} medium/high severity issues")
+              for i in issues[:5]:
+                  print(f"  - {i['issue_text']} at {i['filename']}:{i['line_number']}")
+              sys.exit(1)
+          else:
+              print("No medium/high severity issues found")
+          PYEOF
+          fi
+
+      - name: Upload bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report-${{ matrix.layer }}
+          path: value-fabric/${{ matrix.layer }}/bandit-report.json
+          retention-days: 14
+
+  # Python dependency vulnerability scan with pip-audit
+  pip-audit-scan:
+    name: Python Dependency Audit (pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        working-directory: value-fabric/${{ matrix.layer }}
+        run: |
+          pip install -e ".[dev]" || pip install -e .
+          pip-audit --format json --output pip-audit-report.json || true
+          pip-audit --vulnerability-service pypi --severity high
+        continue-on-error: false
+
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report-${{ matrix.layer }}
+          path: value-fabric/${{ matrix.layer }}/pip-audit-report.json
+          retention-days: 14
+
+  # Frontend security audit
+  frontend-security-audit:
+    name: Frontend Security Audit (pnpm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: '9'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: 'frontend/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
+        run: |
+          pnpm audit --audit-level high --json > pnpm-audit-report.json || true
+
+      - name: Check for critical vulnerabilities
+        run: |
+          if [ -s pnpm-audit-report.json ]; then
+            node << 'NODEEOF'
+          const fs = require('fs');
+          try {
+            const data = JSON.parse(fs.readFileSync('pnpm-audit-report.json', 'utf8'));
+            const advisories = data.advisories || {};
+            const critical = Object.values(advisories).filter(a => a.severity === 'critical');
+            const high = Object.values(advisories).filter(a => a.severity === 'high');
+            console.log('Critical vulnerabilities:', critical.length);
+            console.log('High vulnerabilities:', high.length);
+            if (critical.length > 0) {
+              console.log('CRITICAL vulnerabilities found. Failing.');
+              process.exit(1);
+            }
+            if (high.length > 10) {
+              console.log('More than 10 HIGH vulnerabilities found. Failing.');
+              process.exit(1);
+            }
+            console.log('Audit passed.');
+          } catch (e) {
+            console.log('No vulnerabilities found or parse error');
+          }
+          NODEEOF
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-security-audit
+          path: frontend/pnpm-audit-report.json
+          retention-days: 14
+
+  # Dependency review for PRs
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          fail-on-scopes: runtime, development
+          comment-summary-in-pr: true

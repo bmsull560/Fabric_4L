@@ -11,7 +11,7 @@ Tests the accounts-first CRM integration API contract:
 
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 from typing import AsyncGenerator
 
@@ -94,7 +94,7 @@ async def sample_account(test_db) -> Account:
         owner_email="john@acme.com",
         stage="opportunity",
         sync_status=SyncStatus.SYNCED.value,
-        last_synced_at=datetime.utcnow(),
+        last_synced_at=datetime.now(timezone.utc),
         opportunities=[
             {
                 "provider_opportunity_id": "sf-opp-001",
@@ -103,7 +103,7 @@ async def sample_account(test_db) -> Account:
                 "value": 250000.0,
                 "probability": 0.75,
                 "close_date": "2024-12-31",
-                "last_synced_at": datetime.utcnow().isoformat(),
+                "last_synced_at": datetime.now(timezone.utc).isoformat(),
             }
         ],
         contacts=[
@@ -114,7 +114,7 @@ async def sample_account(test_db) -> Account:
                 "email": "jane@acme.com",
                 "phone": "+1-555-0123",
                 "is_primary": True,
-                "last_synced_at": datetime.utcnow().isoformat(),
+                "last_synced_at": datetime.now(timezone.utc).isoformat(),
             }
         ],
     )
@@ -138,7 +138,7 @@ async def sample_hubspot_account(test_db) -> Account:
         company_size=200,
         stage="qualified",
         sync_status=SyncStatus.SYNCED.value,
-        last_synced_at=datetime.utcnow() - timedelta(hours=2),
+        last_synced_at=datetime.now(timezone.utc) - timedelta(hours=2),
     )
     test_db.add(account)
     await test_db.commit()
@@ -152,8 +152,8 @@ async def sample_sync_status(test_db) -> AccountSyncStatus:
     sync_status = AccountSyncStatus(
         provider=CRMProvider.SALESFORCE.value,
         status="idle",
-        last_sync_at=datetime.utcnow() - timedelta(hours=1),
-        last_successful_sync_at=datetime.utcnow() - timedelta(hours=1),
+        last_sync_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        last_successful_sync_at=datetime.now(timezone.utc) - timedelta(hours=1),
         records_synced=150,
         records_updated=12,
         records_failed=0,
@@ -528,10 +528,9 @@ async def test_get_account_activity_not_found(client: AsyncClient):
 async def test_get_account_activity_success(client: AsyncClient, sample_account: Account):
     """Test getting activity for existing account."""
     response = await client.get(f"/v1/accounts/{sample_account.id}/activity")
-    # Note: Activity endpoint may return activity data or empty depending on
-    # whether the CRM tool is properly configured in test environment
-    assert response.status_code in [200, 500]  # 500 if CRM tool fails
-    
+    # Activity endpoint should return successfully
+    assert response.status_code == 200
+
     if response.status_code == 200:
         data = response.json()
         assert data["account_id"] == str(sample_account.id)
@@ -555,9 +554,9 @@ async def test_refresh_account_not_found(client: AsyncClient):
 async def test_refresh_account_success(client: AsyncClient, sample_account: Account):
     """Test refreshing existing account."""
     response = await client.post(f"/v1/accounts/{sample_account.id}/refresh")
-    # May succeed or fail depending on CRM tool configuration
-    assert response.status_code in [200, 500]
-    
+    # Refresh should succeed for existing account
+    assert response.status_code == 200
+
     if response.status_code == 200:
         data = response.json()
         assert data["id"] == str(sample_account.id)
