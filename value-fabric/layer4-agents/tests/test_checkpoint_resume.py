@@ -107,7 +107,7 @@ class TestCheckpointPersistence:
         workflow_id = initial_state.workflow_id
         
         # Execute workflow
-        result = await workflow.run(initial_state, thread_id=workflow_id)
+        await workflow.run(initial_state, thread_id=workflow_id)
         
         # Assert checkpoint was saved
         assert workflow_id in mock_saver.saved_threads
@@ -216,7 +216,7 @@ class TestResumeWorkflow:
         }
         
         # Assert resume fails
-        with pytest.raises(WorkflowExecutionError) as exc_info:
+        with pytest.raises(WorkflowExecutionError):
             await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="test-user"

@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 def create_app() -> FastAPI:
-    settings = get_settings()
+    get_settings()
 
     app = FastAPI(
         title="Value Fabric — Ground Truth Layer (L5)",

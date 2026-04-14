@@ -277,12 +277,11 @@ class MetricsMiddleware:
         start_time = time.time()
 
         # Get request size
-        request_size = 0
         if hasattr(request, "headers") and "content-length" in request.headers:
             try:
-                request_size = int(request.headers["content-length"])
+                int(request.headers["content-length"])
             except (ValueError, TypeError):
-                request_size = 0
+                pass
 
         response = await call_next(request)
         duration = time.time() - start_time

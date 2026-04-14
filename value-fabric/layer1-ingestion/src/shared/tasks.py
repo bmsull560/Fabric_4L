@@ -300,7 +300,7 @@ def content_capture_stage(self, prev_result: dict):
             config = job.configuration
             url = config.get("url", "")
             browser_config = config.get("browser_config", {})
-            extraction_config = config.get("extraction_config", {})
+            config.get("extraction_config", {})
 
             async def _capture():
                 async with PlaywrightCrawler(
@@ -588,7 +588,7 @@ def validation_stage(self, prev_result: dict):
             # Validate extracted data against schema
             config = job.configuration
             extraction_config = config.get("extraction_config", {})
-            schema = extraction_config.get("extraction_schema")
+            extraction_config.get("extraction_schema")
 
             # TODO: Implement schema validation
 

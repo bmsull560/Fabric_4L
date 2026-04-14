@@ -268,7 +268,6 @@ class AssembleDocumentTool(BaseTool):
     async def execute(self, input_data: AssembleDocumentInput) -> AssembleDocumentOutput:
         """Assemble complete document."""
         sections = input_data.sections
-        template = input_data.template
         output_format = input_data.output_format
         branding = input_data.branding or {}
 
@@ -312,7 +311,7 @@ class AssembleDocumentTool(BaseTool):
         doc = Document()
 
         # Title
-        title = doc.add_heading("Business Case", 0)
+        doc.add_heading("Business Case", 0)
 
         # Add sections
         for section in sections:

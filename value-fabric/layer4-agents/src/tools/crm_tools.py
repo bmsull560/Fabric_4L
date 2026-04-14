@@ -208,7 +208,7 @@ class GetProspectDataTool(BaseTool):
 
                 for eng in engagements_data.get("results", [])[:100]:  # Limit to 100
                     metadata = eng.get("engagement", {})
-                    assoc = eng.get("associations", {})
+                    eng.get("associations", {})
 
                     # Determine interaction type and extract relevant data
                     eng_type = metadata.get("type", "unknown").lower()

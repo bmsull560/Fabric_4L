@@ -200,7 +200,7 @@ async def test_rollout_bucketing_determinism(mock_redis):
     register_feature_flag_lookup(lookup)
 
     tenant_id = uuid4()
-    results = {
+    {
         await is_enabled("half_rollout", tenant_id, user_id="user_1"),
         await is_enabled("half_rollout", tenant_id, user_id="user_2"),
     }

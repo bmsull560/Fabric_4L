@@ -79,7 +79,7 @@ class TestPROVEntity:
         entity = PROVEntity(entity_id="urn:uuid:e1", label="Test Entity")
         triples = entity.to_triples()
         # Should have rdf:type and rdfs:label
-        subjects = [t[0] for t in triples]
+        [t[0] for t in triples]
         predicates = [t[1] for t in triples]
         assert "rdf:type" in predicates
         assert "rdfs:label" in predicates

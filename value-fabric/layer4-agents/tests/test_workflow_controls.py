@@ -103,7 +103,6 @@ class MockOrchestrationController:
         if workflow.get("status") in ["completed", "failed", "cancelled"]:
             raise ValueError(f"Cannot resume workflow in state: {workflow['status']}")
 
-        from unittest.mock import MagicMock
         result = MagicMock()
         result.status = MagicMock()
         result.status.value = "running"
@@ -151,8 +150,8 @@ def mock_executor(fake_store):
 @pytest.fixture
 def app(mock_executor):
     """Create FastAPI app with mocked executor for testing."""
-    from fastapi import FastAPI, Depends, HTTPException
-    from pydantic import BaseModel, Field
+    from fastapi import Depends, HTTPException
+    from pydantic import BaseModel, ConfigDict, Field
     from typing import Optional
     from datetime import datetime
 
@@ -240,7 +239,7 @@ def app(mock_executor):
                 detail=f"Workflow {workflow_id} is {current_status} and cannot be resumed"
             )
 
-        result = await executor.resume_workflow(
+        await executor.resume_workflow(
             workflow_id=workflow_id,
             user_id=request.user_id,
             resume_data=request.resume_data,
