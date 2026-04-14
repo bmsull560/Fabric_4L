@@ -106,14 +106,14 @@ const GRAPH_KEYS = {
 
 /**
  * Execute a GraphRAG query with multi-hop traversal.
- * POST /v1/query/graph
+ * POST /query/graph
  */
 export function useGraphQuery() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (request: GraphQueryRequest): Promise<GraphQueryResponse> => {
-      const response = await apiClient.post('l3', '/v1/query/graph', {
+      const response = await apiClient.post('l3', '/query/graph', {
         query: request.query,
         entity_type: request.entity_type,
         max_hops: request.max_hops ?? 2,
@@ -169,7 +169,7 @@ export function useEntityContext(
       const encodedId = encodeURIComponent(entityId);
       const response = await apiClient.get(
         'l3',
-        `/v1/entity/${encodedId}/context?${params.toString()}`
+        `/entity/${encodedId}/context?${params.toString()}`
       );
       return response.data as EntityContextResponse;
     },
@@ -191,7 +191,7 @@ export function useEntityContext(
 export function useEntityTraversal() {
   return useMutation({
     mutationFn: async (request: EntityTraversalRequest): Promise<EntityTraversalResponse> => {
-      const response = await apiClient.post('l3', '/v1/entity/traverse', {
+      const response = await apiClient.post('l3', '/entity/traverse', {
         entity_id: request.entity_id,
         direction: request.direction ?? 'both',
       });
@@ -215,7 +215,7 @@ export function useFullGraph() {
     queryKey: [...GRAPH_KEYS.all, 'full'],
     queryFn: async (): Promise<ContextGraph> => {
       // Use hybrid search to get all entities, then build a simple graph
-      const response = await apiClient.post('l3', '/v1/search/hybrid', {
+      const response = await apiClient.post('l3', '/search/hybrid', {
         query: '',
         search_type: 'hybrid',
         top_k: 100,

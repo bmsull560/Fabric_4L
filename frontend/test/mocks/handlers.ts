@@ -234,7 +234,7 @@ export const jobStreamMocks = [
 // ===== Graph Query Mocks (L3) =====
 
 export const graphMocks = [
-  http.post(`${API_BASE}${L3_PREFIX}/v1/query/graph`, async () => {
+  http.post(`${API_BASE}${L3_PREFIX}/query/graph`, async () => {
     await delay(150);
     return HttpResponse.json({
       query: 'test query',
@@ -262,7 +262,7 @@ export const graphMocks = [
     });
   }),
 
-  http.get(`${API_BASE}${L3_PREFIX}/v1/entity/:entityId/context`, async ({ params, request }) => {
+  http.get(`${API_BASE}${L3_PREFIX}/entity/:entityId/context`, async ({ params, request }) => {
     await delay(100);
     const entityId = decodeURIComponent(params.entityId as string);
     const url = new URL(request.url);
@@ -300,7 +300,7 @@ export const graphMocks = [
     });
   }),
 
-  http.post(`${API_BASE}${L3_PREFIX}/v1/entity/traverse`, async () => {
+  http.post(`${API_BASE}${L3_PREFIX}/entity/traverse`, async () => {
     await delay(150);
     return HttpResponse.json({
       start_entity_id: 'ent-1',
@@ -319,7 +319,7 @@ export const graphMocks = [
     });
   }),
 
-  http.post(`${API_BASE}${L3_PREFIX}/v1/search/hybrid`, async () => {
+  http.post(`${API_BASE}${L3_PREFIX}/search/hybrid`, async () => {
     await delay(100);
     return HttpResponse.json({
       results: [
