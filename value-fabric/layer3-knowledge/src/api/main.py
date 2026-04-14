@@ -535,6 +535,7 @@ async def value_fabric_exception_handler(request: Request, exc: ValueFabricExcep
     # Preserve layer-specific metrics and logging
     logger.error(
         f"Value Fabric exception: {exc.error_code} at {request.method} {request.url.path} - {exc.message}",
+        exc_info=_exception_trace(exc),
         extra={"trace_id": getattr(request.state, "trace_id", None)},
     )
     metrics = getattr(request.app.state, "metrics", None)
