@@ -200,7 +200,7 @@ logger = logging.getLogger(__name__)
 
 @app.get("/health")
 async def health_check(request: Request = None):
-    """Health check endpoint with system metrics."""
+    """Health check endpoint with dependency and system status."""
     import psutil
 
     start_time = time.time()
@@ -212,9 +212,17 @@ async def health_check(request: Request = None):
     memory_info = psutil.virtual_memory()
     cpu_percent = psutil.cpu_percent(interval=None)
 
-    # Service is healthy if data is loaded
-    overall_status = "healthy" if dataset_count > 0 else "degraded"
+    # Layer 6 uses benchmark dataset store as a runtime dependency.
+    dependencies = [
+        {
+            "name": "benchmark_dataset_store",
+            "status": "healthy" if dataset_count > 0 else "degraded",
+            "response_time_ms": 0,
+            "error": None if dataset_count > 0 else "No benchmark datasets are loaded",
+        }
+    ]
 
+    overall_status = "healthy" if all(d["status"] == "healthy" for d in dependencies) else "degraded"
     response_time_ms = round((time.time() - start_time) * 1000, 2)
 
     # Update Prometheus health metrics if available
@@ -229,6 +237,7 @@ async def health_check(request: Request = None):
         "timestamp": datetime.utcnow().isoformat(),
         "response_time_ms": response_time_ms,
         "datasets_loaded": dataset_count,
+        "dependencies": dependencies,
         "system": {
             "memory_usage_mb": round(memory_info.used / (1024 * 1024), 2),
             "memory_percent": memory_info.percent,
