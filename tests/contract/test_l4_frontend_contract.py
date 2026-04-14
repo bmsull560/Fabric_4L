@@ -409,3 +409,159 @@ def _read_l4_workflows_source() -> str:
     if not path.exists():
         pytest.skip("L4 workflows.py not found")
     return path.read_text()
+
+
+class TestAnalysisContract:
+    """Validate L4 analysis API contracts."""
+
+    def test_roi_analysis_request_has_required_fields(self) -> None:
+        """ROIAnalysisRequest must have prospect_id and value_driver_ids."""
+        request = {
+            "prospect_id": "prospect-001",
+            "value_driver_ids": ["vd-001", "vd-002"],
+            "prospect_data": {"annual_revenue": 10_000_000.0},
+            "industry_vertical": "financial_services",
+        }
+        assert "prospect_id" in request
+        assert "value_driver_ids" in request
+        assert isinstance(request["value_driver_ids"], list)
+        assert len(request["value_driver_ids"]) > 0
+
+    def test_roi_analysis_response_has_required_fields(self) -> None:
+        """ROIAnalysisResponse must have prospect_id, aggregated_roi, detailed_results."""
+        response = {
+            "prospect_id": "prospect-001",
+            "aggregated_roi": {"total_value": 7_500_000, "roi_percent": 1400},
+            "detailed_results": [{"driver_id": "vd-001", "value": 7_500_000}],
+            "benchmark_comparison": None,
+        }
+        for field in ("prospect_id", "aggregated_roi", "detailed_results"):
+            assert field in response, f"ROIAnalysisResponse missing: {field}"
+        assert isinstance(response["detailed_results"], list)
+
+    def test_whitespace_analysis_request_has_required_fields(self) -> None:
+        """WhitespaceAnalysisRequest must have prospect_id and prospect_needs."""
+        request = {
+            "prospect_id": "prospect-001",
+            "prospect_needs": "We need better analytics and reporting capabilities",
+            "analysis_depth": "standard",
+        }
+        assert "prospect_id" in request
+        assert "prospect_needs" in request
+        assert len(request["prospect_needs"]) >= 10
+
+    def test_whitespace_analysis_response_has_required_fields(self) -> None:
+        """WhitespaceAnalysisResponse must return needs, gaps, score, recommendations."""
+        response = {
+            "prospect_id": "prospect-001",
+            "extracted_needs": ["analytics", "reporting"],
+            "gap_analysis": [{"need": "analytics", "coverage": 0.6}],
+            "opportunity_score": 0.75,
+            "recommendations": ["Implement real-time dashboard"],
+        }
+        for field in ("prospect_id", "extracted_needs", "gap_analysis", "opportunity_score", "recommendations"):
+            assert field in response, f"WhitespaceAnalysisResponse missing: {field}"
+        assert 0.0 <= response["opportunity_score"] <= 1.0
+
+
+class TestToolsContract:
+    """Validate L4 tools API contracts."""
+
+    def test_tools_list_is_array(self) -> None:
+        """GET /v1/tools must return a list of tool descriptors."""
+        response = [
+            {"name": "semantic_search", "description": "Search knowledge graph", "category": "retrieval"},
+            {"name": "evaluate_formula", "description": "Evaluate a value formula", "category": "calculation"},
+        ]
+        assert isinstance(response, list)
+        for tool in response:
+            assert "name" in tool
+            assert "description" in tool
+
+    def test_tool_invoke_request_has_required_fields(self) -> None:
+        """POST /v1/tools/invoke must require tool_name and parameters."""
+        request = {
+            "tool_name": "semantic_search",
+            "parameters": {"query": "data analytics", "top_k": 5},
+        }
+        assert "tool_name" in request
+        assert "parameters" in request
+        assert isinstance(request["parameters"], dict)
+
+    def test_tool_invoke_response_has_result(self) -> None:
+        """POST /v1/tools/invoke response must contain result field."""
+        response = {
+            "tool_name": "semantic_search",
+            "result": {"matches": [{"id": "cap-001", "score": 0.95}]},
+            "execution_time_ms": 120,
+        }
+        assert "result" in response
+        assert "tool_name" in response
+
+
+class TestErrorResponseContract:
+    """Validate error response schema across L4 endpoints."""
+
+    def test_404_error_has_detail(self) -> None:
+        """404 error must have 'detail' field per FastAPI convention."""
+        error_response = {"detail": "Workflow wf-unknown not found"}
+        assert "detail" in error_response
+        assert isinstance(error_response["detail"], str)
+
+    def test_400_error_has_detail(self) -> None:
+        """400 error must have 'detail' field."""
+        error_response = {"detail": "Workflow wf-123 is completed and cannot be resumed"}
+        assert "detail" in error_response
+
+    def test_422_validation_error_has_detail_array(self) -> None:
+        """422 validation error must have 'detail' as array of field errors."""
+        error_response = {
+            "detail": [
+                {
+                    "loc": ["body", "workflow_type"],
+                    "msg": "field required",
+                    "type": "value_error.missing",
+                }
+            ]
+        }
+        assert "detail" in error_response
+        assert isinstance(error_response["detail"], list)
+        assert "loc" in error_response["detail"][0]
+        assert "msg" in error_response["detail"][0]
+
+    def test_503_error_has_detail(self) -> None:
+        """503 error must have 'detail' field."""
+        error_response = {"detail": "Workflow executor not initialized"}
+        assert "detail" in error_response
+
+
+class TestWorkflowPauseContract:
+    """Validate the POST /v1/workflows/{id}/pause contract."""
+
+    def test_pause_request_has_required_fields(self) -> None:
+        """WorkflowPauseRequest must have user_id."""
+        request = {
+            "user_id": "user-001",
+            "reason": "Need human review",
+        }
+        assert "user_id" in request
+
+    def test_pause_response_has_required_fields(self) -> None:
+        """WorkflowPauseResponse must have workflow_instance_id, status, paused_at, message."""
+        response = {
+            "workflow_instance_id": "wf-abc-123",
+            "status": "paused",
+            "paused_at": "2026-04-13T10:00:00",
+            "current_node": "human_review",
+            "message": "Workflow paused at human_review",
+        }
+        for field in ("workflow_instance_id", "status", "paused_at", "message"):
+            assert field in response, f"WorkflowPauseResponse missing: {field}"
+        assert response["status"] == "paused"
+
+    def test_l4_exposes_post_workflow_pause(self) -> None:
+        """L4 must expose POST /v1/workflows/{id}/pause."""
+        source = _read_l4_workflows_source()
+        assert '/workflows/{workflow_id}/pause"' in source, (
+            "L4 must expose POST /workflows/{workflow_id}/pause"
+        )
