@@ -33,7 +33,7 @@ class TestL3GraphQueryContracts:
             "max_hops": 2,
             "max_results": 20,
         }
-        schema = _schema_ref(l3_openapi, "GraphQueryRequest")
+        schema = _schema_ref(l3_openapi, "GraphRAGQuery")
         assert_matches_schema(sample, schema, root=l3_openapi)
 
     def test_graph_query_response_matches_openapi(self) -> None:
@@ -126,7 +126,7 @@ class TestL3EntityTraversalContracts:
             "entity_id": "cap-1",
             "direction": "up",
         }
-        schema = _schema_ref(l3_openapi, "EntityTraversalRequest")
+        schema = _schema_ref(l3_openapi, "ValueTreeTraversal")
         assert_matches_schema(sample, schema, root=l3_openapi)
 
     def test_entity_traversal_response_matches_openapi(self) -> None:
@@ -160,8 +160,8 @@ class TestL3EntityTraversalContracts:
         expected_directions = {"up", "down", "both"}
         
         components = l3_openapi.get("components", {}).get("schemas", {})
-        if "EntityTraversalRequest" in components:
-            req_schema = components["EntityTraversalRequest"]
+        if "ValueTreeTraversal" in components:
+            req_schema = components["ValueTreeTraversal"]
             direction_prop = req_schema.get("properties", {}).get("direction", {})
             if "enum" in direction_prop:
                 schema_directions = set(direction_prop["enum"])
@@ -180,7 +180,7 @@ class TestL3SearchContracts:
             "search_type": "hybrid",
             "top_k": 20,
         }
-        schema = _schema_ref(l3_openapi, "HybridSearchRequest")
+        schema = _schema_ref(l3_openapi, "SearchRequest")
         assert_matches_schema(sample, schema, root=l3_openapi)
 
     def test_hybrid_search_response_matches_openapi(self) -> None:

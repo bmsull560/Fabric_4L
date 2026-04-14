@@ -48,10 +48,11 @@ class TestL3FormulaContracts:
                 "variables": ["revenue", "cost"],
             }
         ]
-        # Formulas list is an array of Formula objects
-        schema = _schema_ref(l3_openapi, "Formula")
-        for item in sample:
-            assert_matches_schema(item, schema, root=l3_openapi)
+        # Formulas list returns FormulasRegistryResponse wrapper
+        schema = _schema_ref(l3_openapi, "FormulasRegistryResponse")
+        # Test wrapper structure
+        wrapper_sample = {"formulas": sample, "total": len(sample)}
+        assert_matches_schema(wrapper_sample, schema, root=l3_openapi)
 
     def test_formula_detail_response_matches_openapi(self) -> None:
         """GET /v1/formulas/{id} response matches OpenAPI schema."""
@@ -75,7 +76,7 @@ class TestL3FormulaContracts:
             "expression": "revenue / cost",
             "variables": ["revenue", "cost"],
         }
-        schema = _schema_ref(l3_openapi, "Formula")
+        schema = _schema_ref(l3_openapi, "FormulaMetadata")
         assert_matches_schema(sample, schema, root=l3_openapi)
 
     def test_formula_approvals_response_matches_openapi(self) -> None:
@@ -93,8 +94,8 @@ class TestL3FormulaContracts:
                 "status": "pending",
             }
         ]
-        # Approvals list is an array of ApprovalRequest objects
-        schema = _schema_ref(l3_openapi, "ApprovalRequest")
+        # Approvals list is an array of ApprovalQueueItem objects
+        schema = _schema_ref(l3_openapi, "ApprovalQueueItem")
         for item in sample:
             assert_matches_schema(item, schema, root=l3_openapi)
 
@@ -105,7 +106,8 @@ class TestL3FormulaContracts:
             "action": "approve",
             "reason": "Formula looks correct",
         }
-        schema = _schema_ref(l3_openapi, "FormulaApprovalRequest")
+        # Approval request uses ApproveRequest schema
+        schema = _schema_ref(l3_openapi, "ApproveRequest")
         assert_matches_schema(sample, schema, root=l3_openapi)
 
     def test_formula_submit_response_matches_openapi(self) -> None:
@@ -119,7 +121,8 @@ class TestL3FormulaContracts:
             "version": "1.1.0",
             "updated_at": "2024-01-15T12:00:00Z",
         }
-        schema = _schema_ref(l3_openapi, "Formula")
+        # Submit response returns FormulaMetadata
+        schema = _schema_ref(l3_openapi, "FormulaMetadata")
         assert_matches_schema(sample, schema, root=l3_openapi)
 
     def test_formula_status_enum_values(self) -> None:
@@ -129,8 +132,8 @@ class TestL3FormulaContracts:
         
         # Check schema defines all expected statuses
         components = l3_openapi.get("components", {}).get("schemas", {})
-        if "Formula" in components:
-            formula_schema = components["Formula"]
+        if "FormulaMetadata" in components:
+            formula_schema = components["FormulaMetadata"]
             status_prop = formula_schema.get("properties", {}).get("status", {})
             if "enum" in status_prop:
                 schema_statuses = set(status_prop["enum"])
@@ -143,8 +146,8 @@ class TestL3FormulaContracts:
         expected_actions = {"approve", "reject", "request_changes"}
         
         components = l3_openapi.get("components", {}).get("schemas", {})
-        if "FormulaApprovalRequest" in components:
-            req_schema = components["FormulaApprovalRequest"]
+        if "ApproveRequest" in components:
+            req_schema = components["ApproveRequest"]
             action_prop = req_schema.get("properties", {}).get("action", {})
             if "enum" in action_prop:
                 schema_actions = set(action_prop["enum"])
