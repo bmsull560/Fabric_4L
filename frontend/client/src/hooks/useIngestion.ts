@@ -107,8 +107,18 @@ export function useSubmitDomain() {
 
   return useMutation({
     mutationFn: async (domain: string) => {
-      const response = await apiClient.post('l1', '/ingest', { domain });
-      return response.data.job_id as string;
+      const url = domain.startsWith('http') ? domain : `https://${domain}`;
+
+      // Step 1: Create a scraping target with the domain URL
+      const targetResponse = await apiClient.post('l1', '/targets', {
+        name: domain,
+        url,
+      });
+      const targetId = targetResponse.data.id as string;
+
+      // Step 2: Execute the target to start the ingestion job
+      const executeResponse = await apiClient.post('l1', `/targets/${targetId}/execute`, {});
+      return executeResponse.data.job_id as string;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: INGESTION_KEYS.recent() });

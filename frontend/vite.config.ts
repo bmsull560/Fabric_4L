@@ -190,7 +190,7 @@ export default defineConfig({
       '/api/v1/ingest': {
         target: 'http://localhost:8001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/v1\/ingest/, ''),
+        rewrite: (path) => path.replace(/^\/api\/v1\/ingest/, '/api/v1/ingestion'),
       },
       '/api/v1/extract': {
         target: 'http://localhost:8002',
@@ -200,7 +200,7 @@ export default defineConfig({
       '/api/v1/graph': {
         target: 'http://localhost:8003',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/v1\/graph/, ''),
+        rewrite: (path) => path.replace(/^\/api\/v1\/graph/, '/v1'),
       },
       '/api/v1/agents': {
         target: 'http://localhost:8004',
@@ -211,6 +211,11 @@ export default defineConfig({
         target: 'http://localhost:8005',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/truths/, ''),
+      },
+      '/api/v1/benchmarks': {
+        target: 'http://localhost:8006',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1\/benchmarks/, '/v1/benchmarks'),
       },
     },
   },
