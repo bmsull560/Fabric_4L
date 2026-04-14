@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "assess_drift",
+  "description": "Multi-layer drift detection for API contracts, schemas, and behavior drift across all system boundaries",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "drift_types": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["openapi", "frontend_backend", "schema", "cross_layer", "all"]
+        },
+        "description": "Types of drift to assess",
+        "default": ["all"]
+      },
+      "layers": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["L1", "L2", "L3", "L4", "frontend", "all"]
+        },
+        "description": "System layers to include in assessment",
+        "default": ["all"]
+      },
+      "severity_threshold": {
+        "type": "string",
+        "enum": ["critical", "warning", "info"],
+        "description": "Minimum severity level to include in report",
+        "default": "warning"
+      },
+      "output_format": {
+        "type": "string",
+        "enum": ["markdown", "json", "both"],
+        "description": "Format for drift report output",
+        "default": "markdown"
+      },
+      "fail_on_critical": {
+        "type": "boolean",
+        "description": "Return failure status if critical drift detected",
+        "default": true
+      }
+    },
+    "required": []
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "drift_detected": {
+        "type": "boolean",
+        "description": "True if any drift was found"
+      },
+      "critical_count": {
+        "type": "integer",
+        "description": "Number of critical drift items"
+      },
+      "warning_count": {
+        "type": "integer"
+      },
+      "info_count": {
+        "type": "integer"
+      },
+      "findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["openapi", "frontend_backend", "schema", "cross_layer"]
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["critical", "warning", "info"]
+            },
+            "location": {
+              "type": "string",
+              "description": "File path or API route where drift was detected"
+            },
+            "description": {
+              "type": "string"
+            },
+            "expected": {
+              "type": "string",
+              "description": "Expected state from contract"
+            },
+            "actual": {
+              "type": "string",
+              "description": "Actual state found in implementation"
+            },
+            "remediation": {
+              "type": "string",
+              "description": "Suggested fix"
+            }
+          },
+          "required": ["type", "severity", "location", "description"]
+        }
+      },
+      "report_path": {
+        "type": "string",
+        "description": "Path to generated drift report"
+      }
+    },
+    "required": ["drift_detected", "critical_count", "warning_count", "info_count", "findings"]
+  }
+}

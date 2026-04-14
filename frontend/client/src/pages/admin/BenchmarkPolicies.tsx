@@ -1,22 +1,18 @@
 /**
  * BenchmarkPolicies — Admin Tier 3 Page
  * 
- * Industry benchmark management:
- * - Benchmark Library (view and manage benchmarks)
- * - Policy Configuration (set thresholds, refresh cadence, fallback policies)
+ * Industry benchmark management - Benchmark Library view.
  * 
  * Features:
  * - Confidence scoring and source tracking
  * - Industry/vertical filtering
- * - Policy rule management
  */
 
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
 import {
-  BarChart3, Plus, Search, Filter, Edit3, Trash2, Eye,
-  Clock, Globe, Database, CheckCircle2, AlertTriangle, TrendingUp,
-  Download, Settings2, Info, ChevronRight, AlertCircle, RefreshCw,
+  BarChart3, Plus, Search, Edit3, Trash2, Eye,
+  Globe, Database, CheckCircle2, AlertTriangle, TrendingUp,
+  Download, Info, AlertCircle, RefreshCw,
 } from "lucide-react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,10 +20,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
   useBenchmarks,
-  useBenchmarkPolicies,
-  useUpdateBenchmarkPolicy,
   type Benchmark,
-  type BenchmarkPolicy,
   type ConfidenceLevel,
   type BenchmarkStatus,
 } from "@/hooks/useBenchmarks";
@@ -39,10 +32,6 @@ function formatDate(dateStr?: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
-
-// ── Local Types ─────────────────────────────────────────────────────────────────
-
-type PolicyType = BenchmarkPolicy["policy_type"];
 
 // ── Styling Constants ───────────────────────────────────────────────────────────
 
@@ -56,13 +45,6 @@ const STATUS_STYLES: Record<BenchmarkStatus, string> = {
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
   draft: "bg-neutral-100 text-neutral-600 border-neutral-200",
   deprecated: "bg-red-50 text-red-500 border-red-200",
-};
-
-const POLICY_TYPE_ICONS: Record<PolicyType, React.ReactNode> = {
-  threshold: <BarChart3 size={14}/>,
-  cadence: <Clock size={14}/>,
-  fallback: <Database size={14}/>,
-  override: <Settings2 size={14}/>,
 };
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -81,36 +63,6 @@ function StatusBadge({ status }: { status: BenchmarkStatus }) {
     <span className={`inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLES[status]}`}>
       {status}
     </span>
-  );
-}
-
-function PolicyCard({ policy }: { policy: BenchmarkPolicy }) {
-  return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-4 flex items-start gap-4">
-      <div className="w-10 h-10 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
-        {POLICY_TYPE_ICONS[policy.policy_type]}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-start justify-between mb-1">
-          <h4 className="text-[13px] font-semibold text-neutral-800">{policy.name}</h4>
-          <span className={cn(
-            "text-[10px] px-2 py-0.5 rounded-full",
-            policy.is_enabled ? "bg-emerald-100 text-emerald-700" : "bg-neutral-100 text-neutral-500"
-          )}>
-            {policy.is_enabled ? "Enabled" : "Disabled"}
-          </span>
-        </div>
-        <p className="text-[11px] text-neutral-500 mb-2">{policy.description}</p>
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] font-medium text-neutral-700 bg-neutral-100 px-2 py-0.5 rounded">
-            {policy.value}
-          </span>
-          <span className="text-[10px] text-neutral-400 uppercase tracking-wider">
-            Scope: {policy.scope}
-          </span>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -151,12 +103,8 @@ function BenchmarkPoliciesSkeleton() {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-type TabType = "library" | "policies";
 
 function BenchmarkPoliciesContent() {
-  const [location] = useLocation();
-  const initialTab: TabType = location.includes("/policies") ? "policies" : "library";
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [search, setSearch] = useState("");
   const [confidenceFilter, setConfidenceFilter] = useState<"all" | ConfidenceLevel>("all");
   const [industryFilter, setIndustryFilter] = useState<"all" | string>("all");
@@ -170,13 +118,6 @@ function BenchmarkPoliciesContent() {
     confidence: confidenceFilter === "all" ? undefined : confidenceFilter,
     search: search || undefined,
   });
-  
-  const { 
-    data: policies = [], 
-    isLoading: policiesLoading,
-    error: policiesError,
-    refetch: refetchPolicies
-  } = useBenchmarkPolicies();
 
   const industries = useMemo(() => 
     Array.from(new Set(benchmarks.map((b: Benchmark) => b.industry))),
@@ -197,8 +138,8 @@ function BenchmarkPoliciesContent() {
     totalUsage: benchmarks.reduce((s: number, b: Benchmark) => s + (b.usage_count || 0), 0),
   }), [benchmarks]);
 
-  const isLoading = benchmarksLoading || policiesLoading;
-  const error = benchmarksError || policiesError;
+  const isLoading = benchmarksLoading;
+  const error = benchmarksError;
 
   if (isLoading) {
     return <BenchmarkPoliciesSkeleton />;
@@ -216,7 +157,7 @@ function BenchmarkPoliciesContent() {
                 {error instanceof Error ? error.message : "An unexpected error occurred"}
               </p>
               <button 
-                onClick={() => { refetchBenchmarks(); refetchPolicies(); }}
+                onClick={() => { refetchBenchmarks(); }}
                 className="mt-4 flex items-center gap-1.5 px-3 py-1.5 bg-red-100 text-red-700 text-[12px] font-medium rounded-lg hover:bg-red-200 transition-colors"
               >
                 <RefreshCw size={14} /> Try again
@@ -257,43 +198,7 @@ function BenchmarkPoliciesContent() {
         ))}
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-neutral-200 mb-4">
-        {[
-          { id: "library" as const, label: "Benchmark Library", count: benchmarks.length },
-          { id: "policies" as const, label: "Policy Configuration" },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "px-4 py-2.5 text-[12px] font-medium transition-colors relative",
-              activeTab === tab.id
-                ? "text-blue-700"
-                : "text-neutral-500 hover:text-neutral-700"
-            )}
-          >
-            <span className="flex items-center gap-2">
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className={cn(
-                  "px-1.5 py-0.5 rounded text-[10px]",
-                  activeTab === tab.id ? "bg-blue-100 text-blue-700" : "bg-neutral-100 text-neutral-600"
-                )}>
-                  {tab.count}
-                </span>
-              )}
-            </span>
-            {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "library" ? (
-        <>
-          {/* Filters */}
+      {/* Filters */}
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2 max-w-sm flex-1">
               <Search size={12} className="text-neutral-400 shrink-0"/>
@@ -403,51 +308,7 @@ function BenchmarkPoliciesContent() {
                 No benchmarks match your filters.
               </div>
             )}
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Policy Configuration */}
-          <div className="mb-6">
-            <h3 className="text-[14px] font-semibold text-neutral-800 mb-4">Policy Rules</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {policies.map(policy => (
-                <PolicyCard 
-                  key={policy.id} 
-                  policy={policy}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Policy Audit Log */}
-          <div className="bg-white border border-neutral-200 rounded-xl p-4">
-            <h3 className="text-[14px] font-semibold text-neutral-800 mb-4">Recent Policy Changes</h3>
-            <div className="space-y-3">
-              {[
-                { action: "Updated", target: "Default Confidence Threshold", from: "Low", to: "Medium", user: "Admin", time: "2 hours ago" },
-                { action: "Enabled", target: "Low Confidence Fallback", from: "—", to: "Active", user: "Admin", time: "1 day ago" },
-                { action: "Created", target: "Quarterly Review Cadence", from: "—", to: "Active", user: "System", time: "3 days ago" },
-              ].map((log, i) => (
-                <div key={i} className="flex items-center gap-3 text-[12px]">
-                  <span className="text-neutral-400">{log.time}</span>
-                  <span className="font-medium text-neutral-700">{log.action}</span>
-                  <span className="text-neutral-600">{log.target}</span>
-                  {log.from !== "—" && (
-                    <>
-                      <span className="text-neutral-400">from</span>
-                      <span className="bg-neutral-100 px-1.5 py-0.5 rounded text-neutral-600">{log.from}</span>
-                    </>
-                  )}
-                  <span className="text-neutral-400">to</span>
-                  <span className="bg-blue-50 px-1.5 py-0.5 rounded text-blue-700">{log.to}</span>
-                  <span className="text-neutral-400 ml-auto">by {log.user}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      </div>
     </div>
   );
 }

@@ -19,15 +19,6 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 
-# ── Path setup (mirrors conftest.py) ─────────────────────────────────────────
-import sys
-import os
-
-tests_dir = os.path.dirname(os.path.abspath(__file__))
-layer4_dir = os.path.dirname(tests_dir)
-if layer4_dir not in sys.path:
-    sys.path.insert(0, layer4_dir)
-
 from src.models.agent_state import (
     BusinessCaseAgentState,
     BusinessCaseInputData,

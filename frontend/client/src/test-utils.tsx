@@ -3,6 +3,9 @@ import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router } from "wouter";
 
+// Re-export for AuthContext tests (avoids circular dependency)
+export type { UserInfo } from "./contexts/AuthContext";
+
 export const createTestQueryClient = () =>
   new QueryClient({
     defaultOptions: {

@@ -31,17 +31,21 @@ import Login             from "./pages/Login";
  * Route Guard Component — Enforces authentication and tier-based access control
  * Requires valid authentication before checking tier permissions.
  * Uses canonical route tier mapping from userTierStore.
+ * SECURITY: Fails closed on any exception or error during permission evaluation.
  */
+// Exclude 'unknown' from RouteGuard required tier - routes must have explicit tier requirements
+ type RequiredUserTier = Exclude<UserTier, 'unknown'>;
+
 function RouteGuard({
   children,
   requiredTier = "standard"
 }: {
   children: React.ReactNode;
-  requiredTier?: UserTier;
+  requiredTier?: RequiredUserTier;
 }) {
   const [location] = useLocation();
   const { isAuthenticated, isLoading } = useAuthContext();
-  const canAccessRoute = useUserTierStore(state => state.canAccessRoute);
+  const canAccessRouteWithReason = useUserTierStore(state => state.canAccessRouteWithReason);
   const effectiveTier = useUserTierStore(state => state.effectiveTier);
 
   // Wait for auth state to be determined before rendering
@@ -55,13 +59,22 @@ function RouteGuard({
   }
 
   // Check if user can access this route based on tier
-  if (!canAccessRoute(requiredTier)) {
-    // Redirect based on user's effective tier
-    if (effectiveTier === "standard") {
-      return <Redirect to="/home" />;
-    } else if (effectiveTier === "advanced") {
-      return <Redirect to="/home" />;
-    }
+  // SECURITY: Wrap in try-catch to fail closed on any exception
+  let accessDecision;
+  try {
+    accessDecision = canAccessRouteWithReason(requiredTier);
+  } catch (error) {
+    // SECURITY: Fail closed on any permission evaluation error
+    console.error('[RouteGuard] Permission evaluation failed:', error);
+    accessDecision = { allowed: false, reason: 'PERMISSION_EVALUATION_EXCEPTION' };
+  }
+
+  if (!accessDecision.allowed) {
+    // SECURITY: Log denied access attempts for monitoring
+    console.warn(`[RouteGuard] Access denied to ${location}: ${accessDecision.reason}`);
+    
+    // SECURITY: Redirect all denied requests to safe fallback
+    // Regardless of tier, unauthorized access attempts go to /home
     return <Redirect to="/home" />;
   }
 
@@ -69,8 +82,13 @@ function RouteGuard({
 }
 
 function Router() {
-  const currentTier = useUserTierStore(state => state.currentTier);
-  const effectiveTier = useUserTierStore(state => state.effectiveTier);
+  const rawCurrentTier = useUserTierStore(state => state.currentTier);
+  const rawEffectiveTier = useUserTierStore(state => state.effectiveTier);
+  
+  // SECURITY: Sanitize tier values - 'unknown' tier should never be passed to UI
+  // This ensures AppShell only receives valid, renderable tier values
+  const currentTier: RequiredUserTier = rawCurrentTier === 'unknown' ? 'standard' : rawCurrentTier;
+  const effectiveTier: RequiredUserTier = rawEffectiveTier === 'unknown' ? 'standard' : rawEffectiveTier;
 
   return (
     <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>

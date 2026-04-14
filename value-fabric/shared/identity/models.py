@@ -23,6 +23,29 @@ from .permissions import Permission, Role, ROLE_PERMISSIONS
 
 
 # ---------------------------------------------------------------------------
+# Token Claims (JWT)
+# ---------------------------------------------------------------------------
+
+
+class TokenClaims(BaseModel):
+    """Validated JWT claims extracted from a token.
+
+    This is the canonical representation of a verified JWT's payload,
+    used after signature verification and claim validation.
+    """
+
+    sub: str = Field(..., description="Subject identifier (user ID)")
+    tenant_id: Optional[str] = Field(None, description="Tenant identifier for multi-tenant contexts")
+    roles: List[str] = Field(default_factory=list, description="User roles/permissions")
+    exp: Optional[int] = Field(None, description="Expiration timestamp (Unix epoch)")
+    iat: Optional[int] = Field(None, description="Issued at timestamp (Unix epoch)")
+    jti: Optional[str] = Field(None, description="JWT unique identifier")
+
+    # Extra claims not in the standard set
+    extra_claims: Dict[str, Any] = Field(default_factory=dict, description="Additional custom claims")
+
+
+# ---------------------------------------------------------------------------
 # Enumerations
 # ---------------------------------------------------------------------------
 

@@ -1,3 +1,18 @@
+from __future__ import annotations
+
+import logging
+import os
+from typing import Any, Dict, List, Optional
+from uuid import UUID
+
+import jwt
+from fastapi import HTTPException, status
+from jwt.exceptions import ExpiredSignatureError, PyJWTError
+
+from .models import TokenClaims
+
+logger = logging.getLogger(__name__)
+
 _DEFAULT_ALGORITHM = "HS256"
 _DEFAULT_TENANT_CLAIM = "tenant_id"
 _DEFAULT_USER_CLAIM = "sub"
@@ -49,6 +64,12 @@ def _get_jwt_secret() -> str:
         )
 
     return secret
+
+
+def _get_jwt_algorithm() -> str:
+    """Get the JWT signing algorithm from environment or default."""
+    return os.getenv("JWT_ALGORITHM", _DEFAULT_ALGORITHM).strip().upper()
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -105,12 +126,23 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
     if isinstance(roles, str):
         roles = [roles]
 
+    # Extract standard claims
+    exp = payload.get("exp")
+    iat = payload.get("iat")
+    jti = payload.get("jti")
+    
+    # Build extra_claims from remaining fields
+    standard_claims = {tenant_claim, user_claim, roles_claim, "exp", "iat", "jti", "api_key_id"}
+    extra: Dict[str, Any] = {k: v for k, v in payload.items() if k not in standard_claims}
+    
     return TokenClaims(
-        tenant_id=tenant_id,
-        user_id=payload.get(user_claim),
-        roles=roles,
-        api_key_id=payload.get("api_key_id"),
-        raw=payload,
+        sub=payload.get(user_claim, ""),
+        tenant_id=str(tenant_id) if tenant_id else None,
+        roles=roles if isinstance(roles, list) else [roles] if roles else [],
+        exp=exp if isinstance(exp, int) else None,
+        iat=iat if isinstance(iat, int) else None,
+        jti=jti if isinstance(jti, str) else None,
+        extra_claims=extra,
     )
 
 

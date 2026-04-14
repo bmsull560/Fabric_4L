@@ -316,9 +316,11 @@ def add_rate_limiting(
 
     logger.info(
         "Rate limiting middleware added",
-        requests_per_minute=requests_per_minute,
-        burst_size=burst_size,
-        enabled=enabled,
+        extra={
+            "requests_per_minute": requests_per_minute,
+            "burst_size": burst_size,
+            "enabled": enabled,
+        },
     )
 
     return middleware

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from "@testing-library/react";
-import { useUserTierStore, getRouteTier, type UserTier } from "./userTierStore";
+import { useUserTierStore, getRouteTier, validateTier, isDenied, type UserTier } from "./userTierStore";
 
 describe("useUserTierStore", () => {
   beforeEach(() => {
@@ -76,26 +76,31 @@ describe("useUserTierStore", () => {
       expect(result.current.permissions.canAccessAdvanced).toBe(false);
     });
 
-    it("should update permissions when tier changes", () => {
+    it.each([
+      { tier: "standard" as UserTier, expectAdvanced: false, expectManageUsers: false },
+      { tier: "advanced" as UserTier, expectAdvanced: true, expectManageUsers: false },
+      { tier: "admin" as UserTier, expectAdvanced: true, expectManageUsers: true },
+    ])("setting tier to $tier sets correct permissions", ({ tier, expectAdvanced, expectManageUsers }) => {
       const { result } = renderHook(() => useUserTierStore());
 
-      const tiers: UserTier[] = ["standard", "advanced", "admin", "standard"];
-      const expectedPermissions = [
-        { canAccessAdvanced: false, canManageUsers: false },
-        { canAccessAdvanced: true, canManageUsers: false },
-        { canAccessAdvanced: true, canManageUsers: true },
-        { canAccessAdvanced: false, canManageUsers: false },
-      ];
+      act(() => result.current.setTier(tier));
 
-      tiers.forEach((tier, index) => {
-        act(() => result.current.setTier(tier));
-        expect(result.current.permissions.canAccessAdvanced).toBe(
-          expectedPermissions[index].canAccessAdvanced
-        );
-        expect(result.current.permissions.canManageUsers).toBe(
-          expectedPermissions[index].canManageUsers
-        );
-      });
+      expect(result.current.permissions.canAccessAdvanced).toBe(expectAdvanced);
+      expect(result.current.permissions.canManageUsers).toBe(expectManageUsers);
+    });
+
+    it("downgrading from admin to standard removes elevated permissions", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      // Start as admin with full permissions
+      act(() => result.current.setTier("admin"));
+      expect(result.current.permissions.canManageUsers).toBe(true);
+      expect(result.current.permissions.canAccessAdvanced).toBe(true);
+
+      // Downgrade to standard
+      act(() => result.current.setTier("standard"));
+      expect(result.current.permissions.canManageUsers).toBe(false);
+      expect(result.current.permissions.canAccessAdvanced).toBe(false);
     });
   });
 
@@ -223,6 +228,91 @@ describe("useUserTierStore", () => {
       expect(result.current.canAccessRoute("advanced")).toBe(true);
       expect(result.current.canAccessRoute("admin")).toBe(false);
     });
+
+    // SECURITY: Fail-closed tests
+    it("should deny access for 'unknown' tier routes (fail-closed)", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      // All user tiers should be denied access to 'unknown' tier routes
+      // 'unknown' is not a valid tier value and should always be rejected
+      act(() => result.current.setTier("standard"));
+      expect(result.current.canAccessRoute("unknown")).toBe(false);
+
+      act(() => result.current.setTier("advanced"));
+      expect(result.current.canAccessRoute("unknown")).toBe(false);
+
+      // Admin is also denied - 'unknown' is invalid tier parameter, not a permission check
+      act(() => result.current.setTier("admin"));
+      expect(result.current.canAccessRoute("unknown")).toBe(false);
+    });
+
+    it("should deny access for invalid/malformed tier parameters", () => {
+      const { result } = renderHook(() => useUserTierStore());
+      act(() => result.current.setTier("standard"));
+
+      // Invalid tier values should be denied
+      expect(result.current.canAccessRoute("")).toBe(false);
+      expect(result.current.canAccessRoute("invalid")).toBe(false);
+      expect(result.current.canAccessRoute("hacker")).toBe(false);
+      expect(result.current.canAccessRoute("STANDARD")).toBe(true); // Case insensitive OK
+    });
+
+    it("should deny access for null/undefined tier parameters", () => {
+      const { result } = renderHook(() => useUserTierStore());
+      act(() => result.current.setTier("standard"));
+
+      expect(result.current.canAccessRoute(null as unknown as string)).toBe(false);
+      expect(result.current.canAccessRoute(undefined as unknown as string)).toBe(false);
+    });
+  });
+
+  describe("canAccessRouteWithReason (SECURITY: Observable reject reasons)", () => {
+    it("should provide reason for denied access to unknown tier", () => {
+      const { result } = renderHook(() => useUserTierStore());
+      act(() => result.current.setTier("standard"));
+
+      const decision = result.current.canAccessRouteWithReason("unknown");
+      expect(decision.allowed).toBe(false);
+      expect(isDenied(decision) && decision.reason).toBe("INVALID_TIER_PARAMETER");
+    });
+
+    it("should provide reason for denied access to invalid tier", () => {
+      const { result } = renderHook(() => useUserTierStore());
+      act(() => result.current.setTier("standard"));
+
+      const decision = result.current.canAccessRouteWithReason("malicious");
+      expect(decision.allowed).toBe(false);
+      expect(isDenied(decision) && decision.reason).toBe("INVALID_TIER_PARAMETER");
+    });
+
+    it("should provide reason when advanced route requires advanced mode", () => {
+      const { result } = renderHook(() => useUserTierStore());
+      act(() => result.current.setTier("standard"));
+      act(() => result.current.disableAdvancedMode());
+
+      const decision = result.current.canAccessRouteWithReason("advanced");
+      expect(decision.allowed).toBe(false);
+      expect(isDenied(decision) && decision.reason).toBe("ADVANCED_ROUTE_REQUIRES_ADVANCED_MODE");
+    });
+
+    it("should provide reason when admin route requires admin tier", () => {
+      const { result } = renderHook(() => useUserTierStore());
+      act(() => result.current.setTier("standard"));
+
+      const decision = result.current.canAccessRouteWithReason("admin");
+      expect(decision.allowed).toBe(false);
+      expect(isDenied(decision) && decision.reason).toBe("ADMIN_ROUTE_REQUIRES_ADMIN_TIER");
+    });
+
+    it("should allow with no reason for successful access", () => {
+      const { result } = renderHook(() => useUserTierStore());
+      act(() => result.current.setTier("standard"));
+
+      const decision = result.current.canAccessRouteWithReason("standard");
+      expect(decision.allowed).toBe(true);
+      // No 'reason' property on allowed decisions
+      expect("reason" in decision).toBe(false);
+    });
   });
 
   describe("canAccessFeature", () => {
@@ -313,6 +403,62 @@ describe("useUserTierStore", () => {
   });
 });
 
+describe("isDenied type guard", () => {
+  it("should return true for denied decisions", () => {
+    const denied = { allowed: false as const, reason: "TEST_REASON" };
+    expect(isDenied(denied)).toBe(true);
+    // Type narrowing allows access to reason
+    if (isDenied(denied)) {
+      expect(denied.reason).toBe("TEST_REASON");
+    }
+  });
+
+  it("should return false for allowed decisions", () => {
+    const allowed = { allowed: true as const };
+    expect(isDenied(allowed)).toBe(false);
+  });
+
+  it("should narrow types correctly in store context", () => {
+    const { result } = renderHook(() => useUserTierStore());
+    act(() => result.current.setTier("standard"));
+
+    const decision = result.current.canAccessRouteWithReason("admin");
+    expect(isDenied(decision)).toBe(true);
+    expect(isDenied(decision) && decision.reason).toBe("ADMIN_ROUTE_REQUIRES_ADMIN_TIER");
+  });
+});
+
+describe("validateTier helper", () => {
+  it("should validate and normalize valid tiers", () => {
+    expect(validateTier("standard")).toBe("standard");
+    expect(validateTier("advanced")).toBe("advanced");
+    expect(validateTier("admin")).toBe("admin");
+  });
+
+  it("should handle case-insensitive tier values", () => {
+    expect(validateTier("STANDARD")).toBe("standard");
+    expect(validateTier("Advanced")).toBe("advanced");
+    expect(validateTier("ADMIN")).toBe("admin");
+  });
+
+  it("should trim whitespace from tier values", () => {
+    expect(validateTier("  standard  ")).toBe("standard");
+    expect(validateTier("advanced ")).toBe("advanced");
+  });
+
+  it("should return null for invalid tier values", () => {
+    expect(validateTier("unknown")).toBeNull();
+    expect(validateTier("hacker")).toBeNull();
+    expect(validateTier("")).toBeNull();
+  });
+
+  it("should return null for non-string values", () => {
+    expect(validateTier(null as unknown as string)).toBeNull();
+    expect(validateTier(undefined as unknown as string)).toBeNull();
+    expect(validateTier(123 as unknown as string)).toBeNull();
+  });
+});
+
 describe("getRouteTier helper", () => {
   it("should return tier for exact route matches", () => {
     expect(getRouteTier("/home")).toBe("standard");
@@ -326,9 +472,11 @@ describe("getRouteTier helper", () => {
     expect(getRouteTier("/admin/content/formulas/versions")).toBe("admin");
   });
 
-  it("should default to standard for unknown routes", () => {
-    expect(getRouteTier("/unknown-route")).toBe("standard");
-    expect(getRouteTier("/new-feature")).toBe("standard");
+  // SECURITY: Fail-closed behavior - unknown routes return 'unknown' tier
+  it("should return 'unknown' tier for unregistered routes (fail-closed)", () => {
+    expect(getRouteTier("/unknown-route")).toBe("unknown");
+    expect(getRouteTier("/new-feature")).toBe("unknown");
+    expect(getRouteTier("/malicious/path")).toBe("unknown");
   });
 
   it("should handle root route", () => {

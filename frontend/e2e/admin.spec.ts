@@ -42,35 +42,26 @@ test.describe('Admin / Governance', () => {
     });
 
     test('should show formula registry tab', async () => {
-      const hasTab = await adminPage.formulaRegistryTab.isVisible().catch(() => false);
-      if (hasTab) {
-        await expect(adminPage.formulaRegistryTab).toBeVisible();
-      }
+      await expect(adminPage.formulaRegistryTab).toBeVisible();
     });
 
     test('should switch to approval queue tab', async () => {
-      const hasTab = await adminPage.approvalQueueTab.isVisible().catch(() => false);
-      if (hasTab) {
-        await adminPage.switchFormulaTab('approvals');
-        await expect(adminPage.approvalQueueTab).toHaveAttribute('aria-selected', 'true');
-      }
+      await expect(adminPage.approvalQueueTab).toBeVisible();
+      await adminPage.switchFormulaTab('approvals');
+      await expect(adminPage.approvalQueueTab).toHaveAttribute('aria-selected', 'true');
     });
 
     test('should switch to version history tab', async () => {
-      const hasTab = await adminPage.versionHistoryTab.isVisible().catch(() => false);
-      if (hasTab) {
-        await adminPage.switchFormulaTab('versions');
-        await expect(adminPage.versionHistoryTab).toHaveAttribute('aria-selected', 'true');
-      }
+      await expect(adminPage.versionHistoryTab).toBeVisible();
+      await adminPage.switchFormulaTab('versions');
+      await expect(adminPage.versionHistoryTab).toHaveAttribute('aria-selected', 'true');
     });
 
     test('should display formula table with rows', async () => {
       await adminPage.waitForDataLoad();
-      const hasTable = await adminPage.formulaTable.isVisible().catch(() => false);
-      if (hasTable) {
-        const count = await adminPage.getFormulaRowCount();
-        expect(count).toBeGreaterThanOrEqual(0);
-      }
+      await expect(adminPage.formulaTable).toBeVisible();
+      const count = await adminPage.getFormulaRowCount();
+      expect(count).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -85,19 +76,14 @@ test.describe('Admin / Governance', () => {
       await adminPage.assertBenchmarkPoliciesLoaded();
     });
 
-    test('should display benchmark list or cards', async () => {
+    test('should display benchmark list', async () => {
       await adminPage.waitForDataLoad();
-      const hasList = await adminPage.benchmarkList.isVisible().catch(() => false);
-      const hasPolicies = await adminPage.policyCards.first().isVisible().catch(() => false);
-      // Either list/table or policy cards should be visible
-      expect(hasList || hasPolicies).toBeTruthy();
+      await expect(adminPage.benchmarkList).toBeVisible();
     });
 
     test('should show confidence badges', async () => {
       await adminPage.waitForDataLoad();
-      const badgeCount = await adminPage.confidenceBadges.count();
-      // Benchmarks should have confidence indicators
-      expect(badgeCount).toBeGreaterThanOrEqual(0);
+      await expect(adminPage.confidenceBadges.first()).toBeVisible();
     });
   });
 
@@ -113,38 +99,28 @@ test.describe('Admin / Governance', () => {
     });
 
     test('should show variable catalog tab', async () => {
-      const hasTab = await adminPage.variableCatalogTab.isVisible().catch(() => false);
-      if (hasTab) {
-        await expect(adminPage.variableCatalogTab).toBeVisible();
-      }
+      await expect(adminPage.variableCatalogTab).toBeVisible();
     });
 
     test('should switch to source bindings tab', async () => {
-      const hasTab = await adminPage.sourceBindingsTab.isVisible().catch(() => false);
-      if (hasTab) {
-        await adminPage.switchVariableTab('bindings');
-        await expect(adminPage.sourceBindingsTab).toHaveAttribute('aria-selected', 'true');
-      }
+      await expect(adminPage.sourceBindingsTab).toBeVisible();
+      await adminPage.switchVariableTab('bindings');
+      await expect(adminPage.sourceBindingsTab).toHaveAttribute('aria-selected', 'true');
     });
 
     test('should display variable table with rows', async () => {
       await adminPage.waitForDataLoad();
-      const hasTable = await adminPage.variableTable.isVisible().catch(() => false);
-      if (hasTable) {
-        const count = await adminPage.getVariableRowCount();
-        expect(count).toBeGreaterThanOrEqual(0);
-      }
+      await expect(adminPage.variableTable).toBeVisible();
+      const count = await adminPage.getVariableRowCount();
+      expect(count).toBeGreaterThanOrEqual(0);
     });
 
     test('should display type and source badges', async () => {
       await adminPage.waitForDataLoad();
-      const typeCount = await adminPage.typeBadges.count();
-      const sourceCount = await adminPage.sourceBadges.count();
-      // At least some badges should be present if table has rows
-      const rowCount = await adminPage.getVariableRowCount();
-      if (rowCount > 0) {
-        expect(typeCount + sourceCount).toBeGreaterThan(0);
-      }
+      await expect(adminPage.variableTable).toBeVisible();
+      // Badges should be present when table has data
+      await expect(adminPage.typeBadges.first()).toBeVisible();
+      await expect(adminPage.sourceBadges.first()).toBeVisible();
     });
   });
 

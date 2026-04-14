@@ -11,7 +11,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type UserTier = 'standard' | 'advanced' | 'admin';
+export type UserTier = 'standard' | 'advanced' | 'admin' | 'unknown';
+
+/** Security result type distinguishing explicit deny from evaluation failure */
+export type AccessDecision = { allowed: true } | { allowed: false; reason: string };
+
+/**
+ * Type guard to check if access decision is denied.
+ * Useful for type-safe access to rejection reasons.
+ */
+export function isDenied(decision: AccessDecision): decision is { allowed: false; reason: string } {
+  return !decision.allowed;
+}
 
 export interface UserPermissions {
   canAccessAdvanced: boolean;
@@ -44,13 +55,30 @@ export interface UserTierState {
   disableAdvancedMode: () => void;
   
   // Permission checks
-  canAccessRoute: (routeTier: UserTier) => boolean;
+  canAccessRoute: (routeTier: UserTier | string) => boolean;
+  canAccessRouteWithReason: (routeTier: UserTier | string) => AccessDecision;
   canAccessFeature: (feature: keyof UserPermissions) => boolean;
   
   // Computed
   effectiveTier: UserTier;
   isPrivileged: boolean;
 }
+
+// Valid tier values for runtime validation
+const VALID_TIERS: readonly string[] = ['standard', 'advanced', 'admin'];
+
+/**
+ * Validates and normalizes a tier parameter.
+ * @returns Normalized tier string if valid, null if invalid
+ */
+export const validateTier = (tier: UserTier | string): UserTier | null => {
+  if (typeof tier !== 'string') return null;
+  const normalized = tier.toLowerCase().trim();
+  if (VALID_TIERS.includes(normalized)) {
+    return normalized as UserTier;
+  }
+  return null;
+};
 
 // Default permissions by tier
 const getDefaultPermissions = (tier: UserTier): UserPermissions => {
@@ -83,6 +111,9 @@ const getDefaultPermissions = (tier: UserTier): UserPermissions => {
         canManagePacks: true,
         canManageUsers: true,
       };
+    default:
+      // SECURITY: Unknown tier gets no permissions (fail-closed)
+      return base;
   }
 };
 
@@ -220,27 +251,54 @@ export const useUserTierStore = create<UserTierState>()(
         set({ isAdvancedModeEnabled: false });
       },
 
-      // Permission checks
-      canAccessRoute: (routeTier) => {
+      // Permission checks with explicit validation - fails closed
+      canAccessRouteWithReason: (routeTier) => {
+        const validatedTier = validateTier(routeTier);
+        if (validatedTier === null) {
+          return { allowed: false, reason: 'INVALID_TIER_PARAMETER' };
+        }
+
         const { currentTier, isAdvancedModeEnabled } = get();
         
+        // Validate current tier is valid
+        if (!VALID_TIERS.includes(currentTier)) {
+          return { allowed: false, reason: 'INVALID_USER_TIER_STATE' };
+        }
+        
         // Admin can access everything
-        if (currentTier === 'admin') return true;
+        if (currentTier === 'admin') {
+          return { allowed: true };
+        }
         
         // Advanced users can access standard and advanced routes
         if (currentTier === 'advanced') {
-          return routeTier === 'standard' || routeTier === 'advanced';
+          if (validatedTier === 'standard' || validatedTier === 'advanced') {
+            return { allowed: true };
+          }
+          return { allowed: false, reason: 'ADMIN_ROUTE_REQUIRES_ADMIN_TIER' };
         }
         
         // Standard users can access standard routes
         // And advanced routes if advanced mode is enabled
         if (currentTier === 'standard') {
-          if (routeTier === 'standard') return true;
-          if (routeTier === 'advanced' && isAdvancedModeEnabled) return true;
-          return false;
+          if (validatedTier === 'standard') {
+            return { allowed: true };
+          }
+          if (validatedTier === 'advanced' && isAdvancedModeEnabled) {
+            return { allowed: true };
+          }
+          if (validatedTier === 'advanced' && !isAdvancedModeEnabled) {
+            return { allowed: false, reason: 'ADVANCED_ROUTE_REQUIRES_ADVANCED_MODE' };
+          }
+          return { allowed: false, reason: 'ADMIN_ROUTE_REQUIRES_ADMIN_TIER' };
         }
         
-        return false;
+        // Fail closed - should never reach here but explicit deny
+        return { allowed: false, reason: 'TIER_EVALUATION_FAILED' };
+      },
+
+      canAccessRoute: (routeTier) => {
+        return get().canAccessRouteWithReason(routeTier).allowed;
       },
 
       canAccessFeature: (feature) => {
@@ -273,6 +331,7 @@ export const useUserTierStore = create<UserTierState>()(
 );
 
 // Helper function to check route access outside of components
+// SECURITY: Returns 'unknown' for unrecognized paths (fail-closed default)
 export function getRouteTier(path: string): UserTier {
   // Exact match
   if (ROUTE_TIER_MAP[path]) {
@@ -286,8 +345,9 @@ export function getRouteTier(path: string): UserTier {
     }
   }
 
-  // Default to standard for unknown routes
-  return 'standard';
+  // SECURITY: Fail closed - unknown routes get 'unknown' tier which denies access
+  // This prevents authorization bypass via unregistered routes
+  return 'unknown';
 }
 
 export default useUserTierStore;

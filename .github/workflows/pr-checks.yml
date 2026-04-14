@@ -468,6 +468,61 @@ jobs:
             .pytest_cache/
           retention-days: 7
 
+  # Schemathesis — Property-based OpenAPI contract validation
+  schemathesis-checks:
+    name: Schemathesis Property-Based Contract Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Schemathesis
+        run: pip install schemathesis
+
+      - name: Run Schemathesis on L1 OpenAPI (static validation)
+        run: |
+          st check contracts/openapi/layer1-ingestion.json \
+            --max-examples 10 \
+            --hypothesis-seed 42
+        continue-on-error: true  # L1 may not be fully implemented yet
+
+      - name: Run Schemathesis on L2 OpenAPI (static validation)
+        run: |
+          st check contracts/openapi/layer2-extraction.json \
+            --max-examples 10 \
+            --hypothesis-seed 42
+        continue-on-error: true  # L2 may not be fully implemented yet
+
+      - name: Run Schemathesis on L3 OpenAPI (strict validation)
+        run: |
+          st check contracts/openapi/layer3-knowledge.json \
+            --max-examples 50 \
+            --hypothesis-seed 42 \
+            --checks all
+
+      - name: Run Schemathesis on L4 OpenAPI (strict validation)
+        run: |
+          st check contracts/openapi/layer4-agents.json \
+            --max-examples 50 \
+            --hypothesis-seed 42 \
+            --checks all
+
+      - name: Upload Schemathesis results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schemathesis-results
+          path: |
+            .schemathesis/
+          retention-days: 7
+
   # Integration tests with Docker — PR-blocking
   integration-checks:
     name: Integration Tests (Docker)

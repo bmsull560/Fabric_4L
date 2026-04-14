@@ -1,11 +1,9 @@
 /**
  * useBenchmarks Hook Tests
  *
- * Comprehensive tests for benchmark management including:
+ * Tests for benchmark management:
  * - useBenchmarks: Filtered list fetching
  * - useBenchmark: Single benchmark details
- * - useBenchmarkPolicies: Policy configuration
- * - useUpdateBenchmarkPolicy: Policy updates
  */
 import { describe, it, expect } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
@@ -15,8 +13,6 @@ import { server } from '../../../test/mocks/server';
 import {
   useBenchmarks,
   useBenchmark,
-  useBenchmarkPolicies,
-  useUpdateBenchmarkPolicy,
 } from './useBenchmarks';
 
 describe('useBenchmarks', () => {
@@ -131,71 +127,3 @@ describe('useBenchmark', () => {
   });
 });
 
-describe('useBenchmarkPolicies', () => {
-  it('fetches policy list', async () => {
-    const wrapper = createWrapper();
-    const { result } = renderHook(() => useBenchmarkPolicies(), { wrapper });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(result.current.data).toBeInstanceOf(Array);
-    expect(result.current.data?.length).toBeGreaterThan(0);
-  });
-
-  it('handles empty policy list', async () => {
-    server.use(
-      http.get('/api/v1/graph/benchmarks/policies', () => {
-        return HttpResponse.json([]);
-      })
-    );
-
-    const wrapper = createWrapper();
-    const { result } = renderHook(() => useBenchmarkPolicies(), { wrapper });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(0);
-  });
-});
-
-describe('useUpdateBenchmarkPolicy', () => {
-  it('updates policy successfully', async () => {
-    const wrapper = createWrapper();
-    const { result } = renderHook(() => useUpdateBenchmarkPolicy(), { wrapper });
-
-    result.current.mutate({ id: 'policy-1', value: '0.8', is_enabled: true });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(result.current.data?.id).toBe('policy-1');
-    expect(result.current.data?.value).toBe('0.8');
-  });
-
-  it('handles update error', async () => {
-    server.use(
-      http.put('/api/v1/graph/benchmarks/policies/:id', () => {
-        return HttpResponse.json({ error: 'Invalid policy value' }, { status: 400 });
-      })
-    );
-
-    const wrapper = createWrapper();
-    const { result } = renderHook(() => useUpdateBenchmarkPolicy(), { wrapper });
-
-    result.current.mutate({ id: 'policy-1', value: 'invalid' });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
-  });
-
-  it('invalidates policies cache on success', async () => {
-    const wrapper = createWrapper();
-    const updateHook = renderHook(() => useUpdateBenchmarkPolicy(), { wrapper });
-    const policiesHook = renderHook(() => useBenchmarkPolicies(), { wrapper });
-
-    // Wait for initial policies to load
-    await waitFor(() => expect(policiesHook.result.current.isSuccess).toBe(true));
-
-    // Update a policy
-    updateHook.result.current.mutate({ id: 'policy-1', is_enabled: false });
-
-    await waitFor(() => expect(updateHook.result.current.isSuccess).toBe(true));
-  });
-});

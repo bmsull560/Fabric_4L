@@ -1440,7 +1440,7 @@
     "/health": {
       "get": {
         "summary": "Legacy Health Check",
-        "description": "Legacy health check - redirects to new endpoint.",
+        "description": "Legacy-compatible health check with dependency status.",
         "operationId": "legacy_health_check_health_get",
         "responses": {
           "200": {
@@ -1650,13 +1650,37 @@
           },
           "robots_txt_compliance": {
             "additionalProperties": {
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "type": "object",
             "title": "Robots Txt Compliance"
           },
           "rate_limiting": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Rate Limiting"
           },
@@ -1669,7 +1693,18 @@
           },
           "domain_policies": {
             "additionalProperties": {
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "type": "object",
             "title": "Domain Policies"
@@ -1904,15 +1939,33 @@
             "title": "Estimated Start Time"
           },
           "queue_position": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Queue Position"
+          },
+          "queue_position_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Position Metadata"
           }
         },
         "type": "object",
         "required": [
           "job_id",
-          "status",
-          "queue_position"
+          "status"
         ],
         "title": "ExecuteTargetResponse",
         "description": "Response from target execution."
@@ -2094,7 +2147,20 @@
             "title": "Components"
           },
           "metrics": {
-            "additionalProperties": true,
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "type": "object",
             "title": "Metrics"
           }

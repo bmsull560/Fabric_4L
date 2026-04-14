@@ -8,13 +8,14 @@ import functools
 import logging
 import os
 import time
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
 from .watcher import SecretWatcher
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+F = TypeVar("F", bound=Callable[..., Any])
 
 # Global registry of reload handlers
 _reload_handlers: dict[str, list[Callable[[], None]]] = {}
@@ -66,7 +67,7 @@ def reload_on_secret_change(
     secret_name: str,
     *,
     poll_interval: int = 30,
-) -> Callable[[Callable[T]], Callable[T]]:
+) -> Callable[[F], F]:
     """Decorator that reloads a function when secrets change.
 
     This decorator watches the specified secret and re-executes
@@ -85,7 +86,7 @@ def reload_on_secret_change(
             return OpenAI(api_key=load_secret("openai-api-key"))
     """
 
-    def decorator(func: Callable[T]) -> Callable[T]:
+    def decorator(func: F) -> F:
         secret_path = _get_secret_path(secret_name)
 
         if not secret_path:

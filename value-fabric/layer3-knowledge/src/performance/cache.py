@@ -8,7 +8,6 @@ import json
 import logging
 import lzma
 import pickle
-import time
 import zlib
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -548,15 +547,23 @@ class MemoryCache:
 class RedisCache:
     """Redis-based distributed cache."""
 
-    def __init__(self, redis_url: str, config: CacheConfig):
+    def __init__(
+        self,
+        redis_url: str,
+        config: CacheConfig,
+        clock: Clock | None = None,
+    ):
         """Initialize Redis cache.
 
         Args:
             redis_url: Redis connection URL
             config: Cache configuration
+            clock: Injectable clock for time operations. Defaults to
+                ``SystemClock`` when ``None``.
         """
         self.redis_url = redis_url
         self.config = config
+        self._clock: Clock = clock or SystemClock()
         self.redis_client: redis.Redis | None = None
         self.stats = CacheStats()
 
@@ -588,7 +595,7 @@ class RedisCache:
         if not self.redis_client:
             return None
 
-        start_time = time.time()
+        start_time = self._clock.monotonic()
 
         try:
             data = await self.redis_client.get(key)
@@ -606,7 +613,7 @@ class RedisCache:
                 self.stats.hits += 1
                 self.stats.update_hit_rate()
 
-                response_time = (time.time() - start_time) * 1000
+                response_time = (self._clock.monotonic() - start_time) * 1000
                 self.stats.avg_response_time_ms = (
                     self.stats.avg_response_time_ms + response_time
                 ) / 2
