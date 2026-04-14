@@ -23,25 +23,12 @@ try:
 except ImportError:
     psutil = None  # Health check will work without system metrics
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
-# Shared identity imports for authentication
-# Layer2 requires shared.identity for all audit endpoints
-try:
-    from shared.identity.context import RequestContext
-    from shared.identity.dependencies import require_authenticated
-except ImportError:
-    RequestContext = None  # type: ignore[assignment,misc]
-
-    async def require_authenticated():  # type: ignore[misc]
-        """Stub that raises when shared.identity is not installed."""
-        raise RuntimeError(
-            "shared.identity package is required for Layer2 authentication. "
-            "Install the shared package or set up the Python path correctly."
-        )
+from layer2_extraction.api.deps import RequestContext
 
 try:
     from shared.secrets import load_infisical_secrets
@@ -72,6 +59,7 @@ from layer2_extraction.output.provenance import (
 )
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+from .routes import audit, extraction, ontology, system
 
 logger = logging.getLogger(__name__)
 
@@ -983,8 +971,6 @@ async def run_extract_and_ingest(
     await _attempt_ingestion(job_id, source_url, artifacts)
 
 
-# API Endpoints
-@app.get("/health")
 async def health_check():
     """Health check endpoint with real metrics and dependency status."""
     start_time = time.time()
@@ -1081,7 +1067,6 @@ async def health_check():
     }
 
 
-@app.get("/metrics")
 async def metrics_endpoint(request: Request):
     """Prometheus metrics endpoint."""
     metrics = get_metrics()
@@ -1100,7 +1085,6 @@ async def metrics_endpoint(request: Request):
         )
 
 
-@app.post("/v1/extract", response_model=ExtractResponse)
 async def extract(request: ExtractRequest, background_tasks: BackgroundTasks):
     """Start an extraction job.
 
@@ -1137,7 +1121,6 @@ async def extract(request: ExtractRequest, background_tasks: BackgroundTasks):
     )
 
 
-@app.post("/v1/extract-and-ingest", response_model=ExtractAndIngestResponse)
 async def extract_and_ingest(
     request: ExtractRequest,
     background_tasks: BackgroundTasks,
@@ -1176,7 +1159,6 @@ async def extract_and_ingest(
     )
 
 
-@app.get("/v1/extract/status/{job_id}", response_model=ExtractionStatusResponse)
 async def get_extraction_status(job_id: str):
     """Get status of a combined extraction and ingestion job."""
     job = PIPELINE_JOBS.get(job_id)
@@ -1186,7 +1168,6 @@ async def get_extraction_status(job_id: str):
     return _pipeline_response(job)
 
 
-@app.post("/v1/extract/batch")
 async def extract_batch(requests: list[ExtractRequest], background_tasks: BackgroundTasks):
     """Start a batch extraction job."""
     batch_id = str(uuid4())
@@ -1211,7 +1192,6 @@ async def extract_batch(requests: list[ExtractRequest], background_tasks: Backgr
     }
 
 
-@app.get("/v1/ontology/entities")
 async def list_entities(
     entity_type: str | None = Query(
         None, enum=["Capability", "UseCase", "Persona", "ValueDriver", "Feature"]
@@ -1227,7 +1207,6 @@ async def list_entities(
     return EntityListResponse(entity_type=entity_type or "all", entities=[], total=0)
 
 
-@app.get("/v1/ontology/relationships/{entity_id}")
 async def get_relationships(entity_id: str):
     """Get relationships for an entity.
 
@@ -1236,10 +1215,9 @@ async def get_relationships(entity_id: str):
     return RelationshipsResponse(entity_id=entity_id, incoming=[], outgoing=[])
 
 
-@app.get("/v1/audit/trace/{job_id}", response_model=ProvenanceResponse)
 async def get_provenance(
     job_id: str,
-    ctx: RequestContext = Depends(require_authenticated),
+    ctx: RequestContext,
 ):
     """Get full provenance trace for an extraction job. Requires authentication."""
     tracker = get_provenance_tracker()
@@ -1259,10 +1237,9 @@ async def get_provenance(
     )
 
 
-@app.get("/v1/audit/entity/{entity_id}")
 async def get_entity_provenance(
     entity_id: str,
-    ctx: RequestContext = Depends(require_authenticated),
+    ctx: RequestContext,
 ):
     """Get provenance for a specific entity. Requires authentication."""
     tracker = get_provenance_tracker()
@@ -1382,7 +1359,6 @@ async def _job_event_generator(job_id: str):
         await asyncio.sleep(0.5)
 
 
-@app.get("/extract/jobs/{job_id}/events")
 async def stream_job_events(job_id: str):
     """Stream real-time events for a pipeline job via SSE.
 
@@ -1415,6 +1391,12 @@ async def stream_job_events(job_id: str):
             "X-Accel-Buffering": "no",  # Disable nginx buffering for SSE
         },
     )
+
+
+app.include_router(system.router)
+app.include_router(extraction.router)
+app.include_router(ontology.router)
+app.include_router(audit.router)
 
 
 if __name__ == "__main__":

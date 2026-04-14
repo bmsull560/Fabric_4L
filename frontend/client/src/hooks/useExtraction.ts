@@ -1,5 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { parseExtractionJob } from '@/types/api';
 
 export interface ExtractionJob {
   id: string;
@@ -76,7 +77,7 @@ export function useExtractionJob(jobId: string | null) {
 
       // Query L2 for job status
       const response = await apiClient.get('l2', `/jobs/${jobId}`);
-      const job = response.data;
+      const job = parseExtractionJob(response.data);
 
       // Map backend status to frontend status
       const statusMap: Record<string, ExtractionJob['status']> = {
@@ -95,18 +96,19 @@ export function useExtractionJob(jobId: string | null) {
       };
 
       // Build steps from job phases
-      const isDone = (statuses: string[]) => statuses.includes(job.status);
+      const backendStatus = job.status || 'PENDING';
+      const isDone = (statuses: string[]) => statuses.includes(backendStatus);
       const isTerminal = isDone(['COMPLETED', 'FAILED', 'CANCELLED']);
 
       const steps: ExtractionStep[] = [
         {
           id: 1,
           label: 'Crawling',
-          sub: `Acquired ${job.progress_pages_found || 0} nodes from domain.`,
+          sub: `Acquired ${job.progress_pages_found ?? 0} nodes from domain.`,
           done: isTerminal || isDone(['EXTRACTING', 'TRANSFORMING', 'STORING']),
           active: isDone(['NAVIGATING', 'BROWSER_ACQUIRING']),
-          pct: job.status === 'NAVIGATING'
-            ? Math.min(100, (job.progress_processed_pages / job.progress_pages_found) * 100)
+          pct: backendStatus === 'NAVIGATING' && (job.progress_pages_found ?? 0) > 0
+            ? Math.min(100, ((job.progress_processed_pages ?? 0) / (job.progress_pages_found ?? 1)) * 100)
             : undefined,
         },
         {
@@ -114,9 +116,9 @@ export function useExtractionJob(jobId: string | null) {
           label: 'NER Extraction',
           sub: 'Identifying entities, capabilities, and outcomes.',
           done: isTerminal || isDone(['TRANSFORMING', 'STORING']),
-          active: job.status === 'EXTRACTING',
-          pct: job.status === 'EXTRACTING'
-            ? Math.min(100, job.progress_percent_complete || 0)
+          active: backendStatus === 'EXTRACTING',
+          pct: backendStatus === 'EXTRACTING'
+            ? Math.min(100, job.progress_percent_complete ?? 0)
             : undefined,
         },
         {
@@ -124,43 +126,46 @@ export function useExtractionJob(jobId: string | null) {
           label: 'Semantic Mapping',
           sub: '',
           done: isTerminal || isDone(['STORING']),
-          active: job.status === 'TRANSFORMING',
+          active: backendStatus === 'TRANSFORMING',
         },
         {
           id: 4,
           label: 'Fabric Assembly',
           sub: '',
-          done: job.status === 'COMPLETED',
-          active: job.status === 'STORING',
+          done: backendStatus === 'COMPLETED',
+          active: backendStatus === 'STORING',
         },
       ];
 
       // Parse logs from job progress
-      const logs: LogLine[] = job.progress_logs?.map((log: any, index: number) => ({
+      const logs: LogLine[] = (job.progress_logs || []).map((log) => ({
         t: log.timestamp ? new Date(log.timestamp).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null,
         type: mapLogType(log.level || 'info'),
-        text: log.message,
+        text: log.message || '',
         extra: log.status,
         extraColor: log.status === 'OK' ? 'text-emerald-400' : undefined,
-      })) || [];
+      }));
 
       // Build entity chips from extracted entities
-      const entitiesFound: EntityChip[] = job.extracted_entities?.map((e: any) => ({
-        label: `${e.type}: ${e.name}`,
-        color: ENTITY_CHIP_COLORS[e.type] || ENTITY_CHIP_COLORS.default,
-      })) || [];
+      const entitiesFound: EntityChip[] = (job.extracted_entities || []).map((entity) => {
+        const entityType = entity.type || 'unknown';
+        return {
+          label: `${entityType}: ${entity.name || 'Unknown'}`,
+          color: ENTITY_CHIP_COLORS[entityType] || ENTITY_CHIP_COLORS.default,
+        };
+      });
 
       return {
-        id: job.id,
+        id: job.id || jobId,
         domain: job.configuration?.url || 'unknown',
-        status: statusMap[job.status] || 'pending',
-        progress: job.progress_percent_complete || 0,
+        status: statusMap[backendStatus] || 'pending',
+        progress: job.progress_percent_complete ?? 0,
         steps,
         logs,
         entitiesFound,
         createdAt: job.created_at,
         updatedAt: job.updated_at,
-      } as ExtractionJob;
+      };
     },
     enabled: !!jobId,
     refetchInterval: (query) => {

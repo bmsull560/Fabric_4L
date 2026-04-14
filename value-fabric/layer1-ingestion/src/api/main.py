@@ -401,7 +401,8 @@ class ExecuteTargetResponse(BaseModel):
     job_id: UUID
     status: str
     estimated_start_time: datetime | None = None
-    queue_position: int
+    queue_position: int | None = None
+    queue_position_metadata: dict[str, Any] | None = None
 
 
 # =============================================================================
@@ -593,10 +594,10 @@ class ComplianceSummaryResponse(BaseModel):
     """Compliance summary statistics."""
 
     period: dict[str, datetime]
-    robots_txt_compliance: dict[str, int]
-    rate_limiting: dict[str, Any]
+    robots_txt_compliance: dict[str, int | None | dict[str, Any]]
+    rate_limiting: dict[str, int | None | dict[str, Any]]
     pii_detection: dict[str, int]
-    domain_policies: dict[str, int]
+    domain_policies: dict[str, int | None | dict[str, Any]]
 
 
 # =============================================================================
@@ -619,7 +620,7 @@ class HealthCheckResponse(BaseModel):
     version: str
     timestamp: datetime
     components: dict[str, ComponentHealth]
-    metrics: dict[str, Any]
+    metrics: dict[str, int | None | dict[str, Any]]
 
 
 class CreateProxyPoolRequest(BaseModel):
@@ -1168,7 +1169,17 @@ async def execute_target(
     return ExecuteTargetResponse(
         job_id=job.id,
         status=JobStatus.QUEUED.value,
-        queue_position=1,  # TODO: Calculate actual position
+        queue_position=db.query(ScrapingJob)
+        .filter(
+            ScrapingJob.organization_id == org_id,
+            ScrapingJob.status == JobStatus.QUEUED.value,
+            ScrapingJob.created_at <= job.created_at,
+        )
+        .count(),
+        queue_position_metadata={
+            "calculation": "count_queued_jobs_created_before_or_at_current_job",
+            "scope": "organization",
+        },
         estimated_start_time=None,
     )
 
@@ -1225,7 +1236,8 @@ async def list_jobs(
     if has_errors is not None:
         if has_errors:
             query = query.filter(ScrapingJob.errors.any())
-        # TODO: Add else case to filter jobs without errors
+        else:
+            query = query.filter(~ScrapingJob.errors.any())
 
     # Aggregation
     total = query.count()
@@ -1785,18 +1797,47 @@ async def get_compliance_summary(
         ComplianceLog.event_type == ComplianceEventType.DOMAIN_BLOCKED.value
     ).count()
 
+    robots_logs = query.filter(
+        ComplianceLog.event_type == ComplianceEventType.ROBOTS_TXT_CHECK.value
+    ).all()
+    crawl_delays_respected = sum(
+        1
+        for log in robots_logs
+        if (log.robots_txt_check or {}).get("crawl_delay") not in (None, 0)
+    )
+
+    rate_limit_logs = query.filter(
+        ComplianceLog.event_type == ComplianceEventType.RATE_LIMIT_APPLIED.value
+    ).all()
+    delay_values = [
+        (log.rate_limit_event or {}).get("delay_ms")
+        for log in rate_limit_logs
+        if isinstance((log.rate_limit_event or {}).get("delay_ms"), int)
+    ]
+    average_delay_ms = int(sum(delay_values) / len(delay_values)) if delay_values else None
+
+    allowlisted_count = query.filter(
+        ComplianceLog.event_type == ComplianceEventType.DOMAIN_ALLOWED.value
+    ).count()
+
     return ComplianceSummaryResponse(
         period={"start": period_start, "end": period_end},
         robots_txt_compliance={
             "total_checks": robots_checks,
             "allowed": allowed,
             "blocked": robots_checks - allowed,
-            "crawl_delays_respected": 0,  # TODO: Calculate from data
+            "crawl_delays_respected": crawl_delays_respected,
         },
         rate_limiting={
             "total_requests": total_logs,
             "throttled_requests": rate_limits,
-            "average_delay_ms": 0,  # TODO: Calculate
+            "average_delay_ms": average_delay_ms,
+            "average_delay_ms_metadata": {
+                "status": "unknown" if average_delay_ms is None else "measured",
+                "reason": "No delay_ms values found in compliance rate_limit_event logs"
+                if average_delay_ms is None
+                else None,
+            },
         },
         pii_detection={
             "scans_performed": total_logs,
@@ -1806,7 +1847,7 @@ async def get_compliance_summary(
             ).count(),
         },
         domain_policies={
-            "allowlisted": 0,  # TODO: Implement
+            "allowlisted": allowlisted_count,
             "blocklisted": domain_blocks,
             "blocked_requests": domain_blocks,
         },
@@ -1861,11 +1902,29 @@ async def health_check(db: Session = Depends(get_db)):
 
     queued_jobs = db.query(ScrapingJob).filter(ScrapingJob.status == JobStatus.QUEUED.value).count()
 
+    started_jobs = db.query(ScrapingJob).all()
+    wait_times_ms = [
+        int((job.started_at - job.created_at).total_seconds() * 1000)
+        for job in started_jobs
+        if job.started_at and job.created_at
+    ]
+    average_wait_time_ms = int(sum(wait_times_ms) / len(wait_times_ms)) if wait_times_ms else None
+
     metrics = {
         "active_jobs": active_jobs,
         "queued_jobs": queued_jobs,
-        "available_browsers": 5,  # TODO: Get from pool
-        "average_wait_time_ms": 0,  # TODO: Calculate
+        "available_browsers": None,
+        "available_browsers_metadata": {
+            "status": "unknown",
+            "reason": "Browser pool telemetry is not yet wired in Layer 1",
+        },
+        "average_wait_time_ms": average_wait_time_ms,
+        "average_wait_time_ms_metadata": {
+            "status": "unknown" if average_wait_time_ms is None else "measured",
+            "reason": "No started jobs available to calculate queue wait time"
+            if average_wait_time_ms is None
+            else None,
+        },
     }
 
     # Determine overall status
@@ -1990,8 +2049,42 @@ app.include_router(router)
 # Legacy compatibility routes (redirect to new endpoints)
 @app.get("/health")
 async def legacy_health_check():
-    """Legacy health check - redirects to new endpoint."""
-    return {"status": "healthy", "note": "Use /api/v1/ingestion/health for spec-compliant endpoint"}
+    """Legacy-compatible health check with dependency status."""
+    from ..shared.database import SessionLocal, redis_client
+
+    dependencies = []
+    overall_status = "healthy"
+
+    # Database dependency
+    db = SessionLocal()
+    try:
+        db.execute("SELECT 1")
+        dependencies.append({"name": "database", "status": "healthy", "error": None})
+    except Exception as e:
+        dependencies.append({"name": "database", "status": "unhealthy", "error": str(e)})
+        overall_status = "degraded"
+    finally:
+        db.close()
+
+    # Redis dependency
+    try:
+        if redis_client is None:
+            dependencies.append(
+                {"name": "redis", "status": "degraded", "error": "Redis client not configured"}
+            )
+            overall_status = "degraded"
+        else:
+            redis_client.ping()
+            dependencies.append({"name": "redis", "status": "healthy", "error": None})
+    except Exception as e:
+        dependencies.append({"name": "redis", "status": "degraded", "error": str(e)})
+        overall_status = "degraded"
+
+    return {
+        "status": overall_status,
+        "note": "Legacy endpoint; use /api/v1/ingestion/health for full schema response",
+        "dependencies": dependencies,
+    }
 
 
 if __name__ == "__main__":
