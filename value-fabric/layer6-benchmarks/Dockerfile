@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Security: Create non-root user early
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
 WORKDIR /app
 
 # Install curl for healthcheck
@@ -13,6 +16,12 @@ RUN pip install --no-cache-dir -e "."
 
 # Copy source code
 COPY src/ ./src/
+
+# Change ownership to non-root user
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user before runtime
+USER appuser
 
 # Expose port
 EXPOSE 8006

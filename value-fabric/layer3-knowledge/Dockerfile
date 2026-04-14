@@ -1,6 +1,9 @@
 # Dockerfile for Layer 3: Knowledge Graph & Semantic Layer
 FROM python:3.11-slim
 
+# Security: Create non-root user early
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -22,6 +25,12 @@ RUN pip install -e "."
 
 # Copy project
 COPY src/ ./src/
+
+# Change ownership to non-root user
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user before runtime
+USER appuser
 
 # Expose port
 EXPOSE 8001

@@ -1,5 +1,8 @@
 # HighMemoryUsage Runbook
 
+> Policy reference: [Incident Severity Matrix and On-Call Escalation Policy](../operations/severity-escalation-policy.md).
+
+
 ## Severity: warning
 
 ## Alert Condition
