@@ -1,0 +1,330 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "slo-error-budget-burn-rate",
+    "title": "SLO Error Budget Burn Rate",
+    "description": "Error budget consumption and burn rate for critical L2/L3/L4 APIs. Aligned with docs/slo/performance-slo.v1.json.",
+    "tags": ["slo", "error-budget", "value-fabric", "reliability"],
+    "timezone": "utc",
+    "schemaVersion": 38,
+    "panels": [
+      {
+        "id": 1,
+        "title": "L2 Extraction — Error Budget Remaining (SLO: 98%)",
+        "description": "Percentage of 30-day error budget remaining for POST /v1/extract-and-ingest. SLO target: 2% error rate.",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "clamp_min(1 - (sum(increase(http_requests_total{job=\"layer2-extraction\", status=~\"5..\"}[30d])) / clamp_min(sum(increase(http_requests_total{job=\"layer2-extraction\"}[30d])), 1)) / 0.02, 0)",
+            "legendFormat": "Budget Remaining"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "orange", "value": 0.25},
+                {"color": "yellow", "value": 0.5},
+                {"color": "green", "value": 0.75}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "L3 Knowledge — Error Budget Remaining (SLO: 99%)",
+        "description": "Percentage of 30-day error budget remaining for POST /v1/search/hybrid. SLO target: 1% error rate.",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "clamp_min(1 - (sum(increase(http_requests_total{job=\"layer3-knowledge\", status=~\"5..\"}[30d])) / clamp_min(sum(increase(http_requests_total{job=\"layer3-knowledge\"}[30d])), 1)) / 0.01, 0)",
+            "legendFormat": "Budget Remaining"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "orange", "value": 0.25},
+                {"color": "yellow", "value": 0.5},
+                {"color": "green", "value": 0.75}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "L4 Agents — Error Budget Remaining (SLO: 99%)",
+        "description": "Percentage of 30-day error budget remaining for GET /workflows/active. SLO target: 1% error rate.",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "clamp_min(1 - (sum(increase(http_requests_total{job=\"layer4-agents\", status=~\"5..\"}[30d])) / clamp_min(sum(increase(http_requests_total{job=\"layer4-agents\"}[30d])), 1)) / 0.01, 0)",
+            "legendFormat": "Budget Remaining"
+          }
+        ],
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "orange", "value": 0.25},
+                {"color": "yellow", "value": 0.5},
+                {"color": "green", "value": 0.75}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "L2 Extraction — 1h Burn Rate",
+        "description": "Ratio of current 1h error rate to the 30-day error budget allowance. Values >1 indicate budget is being consumed faster than sustainable.",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(sum(rate(http_requests_total{job=\"layer2-extraction\", status=~\"5..\"}[1h])) / clamp_min(sum(rate(http_requests_total{job=\"layer2-extraction\"}[1h])), 1e-10)) / 0.02",
+            "legendFormat": "1h burn rate"
+          },
+          {
+            "expr": "(sum(rate(http_requests_total{job=\"layer2-extraction\", status=~\"5..\"}[6h])) / clamp_min(sum(rate(http_requests_total{job=\"layer2-extraction\"}[6h])), 1e-10)) / 0.02",
+            "legendFormat": "6h burn rate"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 6},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {"lineWidth": 2, "fillOpacity": 10},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 0.5},
+                {"color": "orange", "value": 1},
+                {"color": "red", "value": 2}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "L3 Knowledge — 1h Burn Rate",
+        "description": "Ratio of current 1h error rate to the 30-day error budget allowance. Values >1 indicate budget is being consumed faster than sustainable.",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(sum(rate(http_requests_total{job=\"layer3-knowledge\", status=~\"5..\"}[1h])) / clamp_min(sum(rate(http_requests_total{job=\"layer3-knowledge\"}[1h])), 1e-10)) / 0.01",
+            "legendFormat": "1h burn rate"
+          },
+          {
+            "expr": "(sum(rate(http_requests_total{job=\"layer3-knowledge\", status=~\"5..\"}[6h])) / clamp_min(sum(rate(http_requests_total{job=\"layer3-knowledge\"}[6h])), 1e-10)) / 0.01",
+            "legendFormat": "6h burn rate"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 6},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {"lineWidth": 2, "fillOpacity": 10},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 0.5},
+                {"color": "orange", "value": 1},
+                {"color": "red", "value": 2}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "L4 Agents — 1h Burn Rate",
+        "description": "Ratio of current 1h error rate to the 30-day error budget allowance. Values >1 indicate budget is being consumed faster than sustainable.",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "(sum(rate(http_requests_total{job=\"layer4-agents\", status=~\"5..\"}[1h])) / clamp_min(sum(rate(http_requests_total{job=\"layer4-agents\"}[1h])), 1e-10)) / 0.01",
+            "legendFormat": "1h burn rate"
+          },
+          {
+            "expr": "(sum(rate(http_requests_total{job=\"layer4-agents\", status=~\"5..\"}[6h])) / clamp_min(sum(rate(http_requests_total{job=\"layer4-agents\"}[6h])), 1e-10)) / 0.01",
+            "legendFormat": "6h burn rate"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 6},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "custom": {"lineWidth": 2, "fillOpacity": 10},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 0.5},
+                {"color": "orange", "value": 1},
+                {"color": "red", "value": 2}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 7,
+        "title": "L2 Extraction — p95 Latency vs SLO (5000ms)",
+        "description": "p95 request latency compared to the 5000ms SLO target.",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"layer2-extraction\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p95 latency (ms)"
+          },
+          {
+            "expr": "5000",
+            "legendFormat": "SLO target (5000ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 14},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": {"lineWidth": 2, "fillOpacity": 10}
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "SLO target (5000ms)"},
+              "properties": [
+                {"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}},
+                {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 8,
+        "title": "L3 Knowledge — p95 Latency vs SLO (1200ms)",
+        "description": "p95 request latency compared to the 1200ms SLO target.",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"layer3-knowledge\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p95 latency (ms)"
+          },
+          {
+            "expr": "1200",
+            "legendFormat": "SLO target (1200ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 14},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": {"lineWidth": 2, "fillOpacity": 10}
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "SLO target (1200ms)"},
+              "properties": [
+                {"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}},
+                {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 9,
+        "title": "L4 Agents — p95 Latency vs SLO (1000ms)",
+        "description": "p95 request latency compared to the 1000ms SLO target.",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"layer4-agents\"}[5m])) by (le)) * 1000",
+            "legendFormat": "p95 latency (ms)"
+          },
+          {
+            "expr": "1000",
+            "legendFormat": "SLO target (1000ms)"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 14},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "custom": {"lineWidth": 2, "fillOpacity": 10}
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "SLO target (1000ms)"},
+              "properties": [
+                {"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}},
+                {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 10,
+        "title": "Error Rate — All SLO Services",
+        "description": "5xx error rate across all SLO-tracked services.",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"layer2-extraction\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"layer2-extraction\"}[5m])), 1e-10)",
+            "legendFormat": "L2 Extraction"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{job=\"layer3-knowledge\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"layer3-knowledge\"}[5m])), 1e-10)",
+            "legendFormat": "L3 Knowledge"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{job=\"layer4-agents\", status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"layer4-agents\"}[5m])), 1e-10)",
+            "legendFormat": "L4 Agents"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22},
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "custom": {"lineWidth": 2, "fillOpacity": 15},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": 0},
+                {"color": "yellow", "value": 0.005},
+                {"color": "orange", "value": 0.01},
+                {"color": "red", "value": 0.02}
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "time": {"from": "now-24h", "to": "now"},
+    "refresh": "1m"
+  }
+}

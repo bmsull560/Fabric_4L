@@ -1,0 +1,5 @@
+{
+  "service_authn_paths_present": true,
+  "service_authz_controls_present": true,
+  "jwt_secret_policy_present": true
+}
