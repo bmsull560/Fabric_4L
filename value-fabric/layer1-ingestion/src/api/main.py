@@ -2049,8 +2049,42 @@ app.include_router(router)
 # Legacy compatibility routes (redirect to new endpoints)
 @app.get("/health")
 async def legacy_health_check():
-    """Legacy health check - redirects to new endpoint."""
-    return {"status": "healthy", "note": "Use /api/v1/ingestion/health for spec-compliant endpoint"}
+    """Legacy-compatible health check with dependency status."""
+    from ..shared.database import SessionLocal, redis_client
+
+    dependencies = []
+    overall_status = "healthy"
+
+    # Database dependency
+    db = SessionLocal()
+    try:
+        db.execute("SELECT 1")
+        dependencies.append({"name": "database", "status": "healthy", "error": None})
+    except Exception as e:
+        dependencies.append({"name": "database", "status": "unhealthy", "error": str(e)})
+        overall_status = "degraded"
+    finally:
+        db.close()
+
+    # Redis dependency
+    try:
+        if redis_client is None:
+            dependencies.append(
+                {"name": "redis", "status": "degraded", "error": "Redis client not configured"}
+            )
+            overall_status = "degraded"
+        else:
+            redis_client.ping()
+            dependencies.append({"name": "redis", "status": "healthy", "error": None})
+    except Exception as e:
+        dependencies.append({"name": "redis", "status": "degraded", "error": str(e)})
+        overall_status = "degraded"
+
+    return {
+        "status": overall_status,
+        "note": "Legacy endpoint; use /api/v1/ingestion/health for full schema response",
+        "dependencies": dependencies,
+    }
 
 
 if __name__ == "__main__":
