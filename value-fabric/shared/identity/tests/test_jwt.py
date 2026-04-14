@@ -209,3 +209,39 @@ class TestDecodeJwt:
         """Garbage input returns None."""
         assert decode_jwt("not.a.jwt") is None
         assert decode_jwt("") is None
+
+
+class TestJwtSecretPolicy:
+    """Tests for environment-sensitive JWT secret policy."""
+
+    def test_non_dev_raises_when_secret_unset(self):
+        with patch.dict(
+            os.environ,
+            {"ENVIRONMENT": "production"},
+            clear=True,
+        ):
+            with pytest.raises(RuntimeError, match="JWT_SECRET is required"):
+                _get_jwt_secret()
+
+    def test_non_dev_raises_when_secret_default(self):
+        with patch.dict(
+            os.environ,
+            {
+                "ENVIRONMENT": "staging",
+                "JWT_SECRET": "changeme-in-production",
+            },
+            clear=True,
+        ):
+            with pytest.raises(RuntimeError, match="must not use the default"):
+                _get_jwt_secret()
+
+    def test_test_environment_allows_default(self):
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "test",
+                "JWT_SECRET": "changeme-in-production",
+            },
+            clear=True,
+        ):
+            assert _get_jwt_secret() == "changeme-in-production"
