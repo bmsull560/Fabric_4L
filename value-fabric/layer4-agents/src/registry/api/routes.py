@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_any_permission
 from shared.identity.permissions import Permission

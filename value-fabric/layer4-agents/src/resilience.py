@@ -6,12 +6,11 @@ P1-18: Circuit breaker for external service calls
 
 import asyncio
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional
 
 from .config.settings import settings
-
 
 # ============================================================================
 # P1-15: Token Bucket Rate Limiter
@@ -121,7 +120,7 @@ class TenantRateLimiter:
                 return 0.0
             return bucket.time_until_available(1)
 
-    def get_bucket_state(self, tenant_id: str) -> Optional[dict]:
+    def get_bucket_state(self, tenant_id: str) -> dict | None:
         """Get current bucket state for monitoring."""
         bucket = self._buckets.get(tenant_id)
         if bucket is None:

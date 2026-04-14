@@ -23,7 +23,6 @@ Or programmatically:
 import asyncio
 import logging
 import os
-from collections.abc import AsyncIterator
 from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase

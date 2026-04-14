@@ -15,23 +15,22 @@ from shared.identity.feature_flags import init_feature_flags, register_feature_f
 
 # Task 60/61: Shared error handling and request correlation
 try:
-    from shared.error_handling import register_exception_handlers, RequestIDMiddleware
+    from shared.error_handling import RequestIDMiddleware, register_exception_handlers
     SHARED_ERROR_HANDLING_AVAILABLE = True
 except ImportError:
     SHARED_ERROR_HANDLING_AVAILABLE = False
 
 # Governance middleware replaces the old TenantMiddleware
-from shared.identity.middleware import GovernanceMiddleware
-from shared.identity.rate_limiter import RedisRateLimiter
-from shared.identity.vault_check import check_vault_health
-
 # P1-29: OpenTelemetry imports
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.sdk.resources import Resource, SERVICE_NAME
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from shared.identity.middleware import GovernanceMiddleware
+from shared.identity.rate_limiter import RedisRateLimiter
+from shared.identity.vault_check import check_vault_health
 
 from ..config.checkpoint import CheckpointConfig
 from ..config.settings import settings
@@ -42,12 +41,12 @@ from ..feature_flags.api import feature_flags_router
 from ..feature_flags.service import FeatureFlagService
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..registry.api.routes import router as models_router
+from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
 from ..tenants import lookup_api_key_by_hash
 from ..tenants.api import api_keys_router, tenants_router, users_router
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
-from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from .routes import accounts, analysis, tools, workflows
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
@@ -310,7 +309,7 @@ app.include_router(c1_router, prefix="/v1", tags=["c1"])
 @app.get("/health")
 async def health_check():
     """Health check endpoint with real metrics and dependency status."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     import psutil
 

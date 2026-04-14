@@ -211,7 +211,7 @@ async def oidc_callback(
 
     tenant_id: UUID = row["tenant_id"]
     nonce: str = row["nonce"]
-    code_verifier: str | None = row["code_verifier"]
+    code_verifier: str | None = row.get("code_verifier")
     redirect_uri: str = row["redirect_uri"]
 
     # Clean up session

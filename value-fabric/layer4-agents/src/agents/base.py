@@ -6,7 +6,7 @@ Provides the foundation for all 8 agent types in the Value Fabric Layer 4 system
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from enum import Enum, auto
 from typing import Any
 from uuid import uuid4

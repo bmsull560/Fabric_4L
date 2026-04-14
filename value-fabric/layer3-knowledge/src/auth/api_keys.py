@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from ..logging_config import get_logger
 
@@ -153,11 +153,12 @@ class APIKey(BaseModel):
         default_factory=dict, description="Additional metadata"
     )
 
-    @validator("permissions", pre=True, always=True)
-    def set_permissions_from_role(cls, v, values):
+    @field_validator("permissions", mode="before")
+    @classmethod
+    def set_permissions_from_role(cls, v, info):
         """Set permissions based on role if not explicitly provided."""
-        if not v and "role" in values:
-            role = values["role"]
+        if not v and "role" in info.data:
+            role = info.data["role"]
             return ROLE_PERMISSIONS[role].permissions
         return set(v) if v else set()
 

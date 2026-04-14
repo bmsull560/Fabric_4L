@@ -43,6 +43,7 @@ dependencies = [
     "opentelemetry-sdk>=1.21.0",
     "opentelemetry-instrumentation>=0.42b0",
     "pyyaml>=6.0.0",
+    "protego>=0.3.0",
     "infisical-sdk>=2.0.0",
 ]
 

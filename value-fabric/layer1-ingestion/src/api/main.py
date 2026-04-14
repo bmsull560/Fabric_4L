@@ -20,7 +20,7 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -224,7 +224,8 @@ class ScheduleInput(BaseModel):
     timezone: str = "UTC"
     max_concurrent_jobs: int = 1
 
-    @validator("cron_expression")
+    @field_validator("cron_expression")
+    @classmethod
     def validate_cron(cls, v):
         if v:
             # Basic cron validation - TODO: use cron-validator library

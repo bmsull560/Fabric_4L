@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,8 @@ class LoggingConfig(BaseModel):
     max_file_size: int = Field(default=10485760, description="Max file size in bytes")
     backup_count: int = Field(default=5, description="Number of backup files")
 
-    @validator("level")
+    @field_validator("level")
+    @classmethod
     def validate_log_level(cls, v):
         """Validate log level."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
@@ -177,7 +178,8 @@ class TracingConfig(BaseModel):
     batch_size: int = Field(default=100, description="Batch size")
     flush_interval: int = Field(default=5, description="Flush interval in seconds")
 
-    @validator("sample_rate")
+    @field_validator("sample_rate")
+    @classmethod
     def validate_sample_rate(cls, v):
         """Validate sample rate."""
         if not 0.0 <= v <= 1.0:
@@ -242,7 +244,8 @@ class APIConfig(BaseModel):
     redoc_enabled: bool = Field(default=True, description="Enable ReDoc")
     openapi_url: str = Field(default="/openapi.json", description="OpenAPI URL")
 
-    @validator("port")
+    @field_validator("port")
+    @classmethod
     def validate_port(cls, v):
         """Validate port number."""
         if not 1 <= v <= 65535:
@@ -292,13 +295,12 @@ class AppConfig(BaseModel):
         default_factory=dict, description="Custom configuration"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "allow"
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="allow",
+    )
 
 
 class ConfigurationManager:

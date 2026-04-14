@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any
 
 import redis.asyncio as redis
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -118,10 +118,7 @@ class RateLimitConfig(BaseModel):
     tracking_enabled: bool = Field(default=True, description="Enable request tracking")
     analytics_enabled: bool = Field(default=True, description="Enable analytics")
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class TokenBucket:

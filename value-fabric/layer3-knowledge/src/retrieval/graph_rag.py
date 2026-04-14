@@ -6,7 +6,8 @@ from datetime import date, datetime
 from typing import Any
 
 from neo4j import AsyncDriver
-from neo4j.time import DateTime as Neo4jDateTime, Date as Neo4jDate
+from neo4j.time import Date as Neo4jDate
+from neo4j.time import DateTime as Neo4jDateTime
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
@@ -24,13 +25,9 @@ def _serialize_neo4j_value(value: Any) -> Any:
     Returns:
         JSON-serializable value
     """
-    if isinstance(value, Neo4jDateTime):
+    if isinstance(value, Neo4jDateTime) or isinstance(value, Neo4jDate):
         return value.to_native().isoformat()
-    elif isinstance(value, Neo4jDate):
-        return value.to_native().isoformat()
-    elif isinstance(value, datetime):
-        return value.isoformat()
-    elif isinstance(value, date):
+    elif isinstance(value, datetime) or isinstance(value, date):
         return value.isoformat()
     elif isinstance(value, list):
         return [_serialize_neo4j_value(item) for item in value]

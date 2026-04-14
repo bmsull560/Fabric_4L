@@ -15,6 +15,7 @@ from .base import (
     FilingType,
     SearchResult,
 )
+
 try:
     from .pdf_adapter import PDFAdapter, PDFAdapterConfig
 except ImportError:
