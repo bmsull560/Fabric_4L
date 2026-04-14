@@ -5,6 +5,9 @@ import { setUserTier, clearUserTier } from './fixtures';
 /**
  * Command Center E2E Tests
  *
+ * Route: /home
+ * Tier: standard (all tiers)
+ *
  * Covers the primary ingestion workflow:
  * - Domain submission
  * - KPI display
@@ -56,7 +59,7 @@ test.describe('Command Center', () => {
       await expect(commandCenter.synthesizeButton).toBeDisabled();
     });
 
-    test('should submit domain on button click', async ({ page }) => {
+    test('should submit domain on button click', async () => {
       // Fill in domain and submit
       await commandCenter.submitDomain('https://example.com');
 
@@ -67,12 +70,11 @@ test.describe('Command Center', () => {
       await expect(commandCenter.domainInput).toHaveValue('');
     });
 
-    test('should handle invalid domain gracefully', async ({ page }) => {
+    test('should handle invalid domain gracefully', async () => {
       // Submit invalid input
       await commandCenter.submitDomain('not-a-valid-url');
 
       // Should show validation error or remain in form without crash
-      // The app should handle this gracefully (no unhandled error)
       await expect(commandCenter.header).toBeVisible();
     });
   });
@@ -140,13 +142,13 @@ test.describe('Command Center', () => {
   test.describe('Access Control', () => {
     test('standard tier user can access command center', async ({ page }) => {
       // Already set to standard in beforeEach
-      await expect(page).toHaveURL(/\/command-center/);
+      await expect(page).toHaveURL(/\/home/);
       await expect(commandCenter.header).toBeVisible();
     });
 
     test('advanced tier user can access command center', async ({ page }) => {
       await setUserTier(page, 'advanced');
-      await page.goto('/command-center');
+      await page.goto('/home');
       await expect(commandCenter.header).toBeVisible();
     });
   });

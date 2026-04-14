@@ -3,8 +3,8 @@ import { Page, Locator, expect } from '@playwright/test';
 /**
  * Page Object for App Shell (navigation, header, sidebar)
  *
- * Provides access to global navigation elements that appear
- * on all pages within the application.
+ * Canonical navigation taxonomy:
+ *   Home, Library, Discover, Model, Deliver, Evidence, Govern
  */
 export class AppShellPage {
   readonly page: Page;
@@ -13,25 +13,54 @@ export class AppShellPage {
   readonly sidebar: Locator;
   readonly navigation: Locator;
 
-  // Navigation links by section
-  readonly commandCenterLink: Locator;
-  readonly extractionEngineLink: Locator;
+  // Top-level navigation links (single-spine)
+  readonly homeLink: Locator;
+  readonly libraryLink: Locator;
+  readonly discoverLink: Locator;
+  readonly modelLink: Locator;
+  readonly deliverLink: Locator;
+  readonly evidenceLink: Locator;
+  readonly governLink: Locator;
+
+  // Sub-navigation links — Library
   readonly valuePacksLink: Locator;
+
+  // Sub-navigation links — Discover
+  readonly accountsLink: Locator;
+  readonly ingestionJobsLink: Locator;
+  readonly extractionEngineLink: Locator;
+  readonly knowledgeModelLink: Locator;
+  readonly entityBrowserLink: Locator;
   readonly graphExplorerLink: Locator;
-  readonly ontologyLink: Locator;
-  readonly valueTreesLink: Locator;
+  readonly ontologyEditorLink: Locator;
+
+  // Sub-navigation links — Model
+  readonly valueStudioLink: Locator;
+  readonly explorerLink: Locator;
   readonly formulaBuilderLink: Locator;
-  readonly agentWorkflowsLink: Locator;
-  readonly decisionTraceLink: Locator;
+
+  // Sub-navigation links — Deliver
+  readonly businessCasesLink: Locator;
+  readonly agentDashboardLink: Locator;
+
+  // Sub-navigation links — Evidence
+  readonly decisionTracesLink: Locator;
+
+  // Admin / Govern section
   readonly adminSection: Locator;
 
-  // User menu / tier indicator
-  readonly userMenu: Locator;
-  readonly tierBadge: Locator;
-  readonly advancedModeToggle: Locator;
+  // Legacy aliases for backward compatibility
+  readonly commandCenterLink: Locator;
+  readonly valueTreesLink: Locator;
 
-  // Theme toggle
-  readonly themeToggle: Locator;
+  // Header controls
+  readonly modePill: Locator;
+  readonly notificationButton: Locator;
+  readonly userButton: Locator;
+
+  // Tier switcher
+  readonly tierSwitcherButton: Locator;
+  readonly advancedModeToggle: Locator;
 
   // Mobile menu (hamburger)
   readonly mobileMenuButton: Locator;
@@ -40,38 +69,57 @@ export class AppShellPage {
     this.page = page;
 
     // App shell containers
-    this.sidebar = page.locator('aside, [class*="sidebar"], nav[aria-label="Main navigation"]').first();
-    this.navigation = page.getByRole('navigation');
+    this.sidebar = page.locator('aside').first();
+    this.navigation = page.locator('aside').first();
 
-    // Primary navigation links - using accessible selectors
-    this.commandCenterLink = page.getByRole('link', { name: /command center/i });
-    this.extractionEngineLink = page.getByRole('link', { name: /extraction engine/i });
+    // Top-level spine links
+    this.homeLink = page.getByRole('link', { name: /^Home$/i });
+    this.libraryLink = page.getByRole('link', { name: /^Library$/i });
+    this.discoverLink = page.getByRole('link', { name: /^Discover$/i });
+    this.modelLink = page.getByRole('link', { name: /^Model$/i });
+    this.deliverLink = page.getByRole('link', { name: /^Deliver$/i });
+    this.evidenceLink = page.getByRole('link', { name: /^Evidence$/i });
+    this.governLink = page.getByRole('link', { name: /^Govern$/i });
+
+    // Library sub-nav
     this.valuePacksLink = page.getByRole('link', { name: /value packs/i });
+
+    // Discover sub-nav
+    this.accountsLink = page.getByRole('link', { name: /^Accounts$/i });
+    this.ingestionJobsLink = page.getByRole('link', { name: /ingestion jobs/i });
+    this.extractionEngineLink = page.getByRole('link', { name: /extraction engine/i });
+    this.knowledgeModelLink = page.getByRole('link', { name: /knowledge model/i });
+    this.entityBrowserLink = page.getByRole('link', { name: /entity browser/i });
     this.graphExplorerLink = page.getByRole('link', { name: /graph explorer/i });
-    this.ontologyLink = page.getByRole('link', { name: /ontology/i });
-    this.valueTreesLink = page.getByRole('link', { name: /value trees/i });
-    this.formulaBuilderLink = page.getByRole('link', { name: /formula/i });
-    this.agentWorkflowsLink = page.getByRole('link', { name: /agents?|workflows?/i });
-    this.decisionTraceLink = page.getByRole('link', { name: /decision trace|audit/i });
+    this.ontologyEditorLink = page.getByRole('link', { name: /ontology editor/i });
 
-    // Admin section
-    this.adminSection = page.locator('[class*="admin"], [data-testid="admin-section"]').or(
-      page.getByRole('button', { name: /admin/i })
-    );
+    // Model sub-nav
+    this.valueStudioLink = page.getByRole('link', { name: /value studio/i });
+    this.explorerLink = page.getByRole('link', { name: /^Explorer$/i });
+    this.formulaBuilderLink = page.getByRole('link', { name: /formula builder/i });
 
-    // User controls
-    this.userMenu = page.getByRole('button', { name: /user|account|profile/i }).or(
-      page.locator('[data-testid="user-menu"]').first()
-    );
-    this.tierBadge = page.locator('[data-testid="tier-badge"]').or(
-      page.locator('[class*="badge"]').filter({ hasText: /standard|advanced|admin/i }).first()
-    );
-    this.advancedModeToggle = page.getByRole('switch', { name: /advanced mode/i }).or(
-      page.getByLabel(/advanced mode/i)
-    );
+    // Deliver sub-nav
+    this.businessCasesLink = page.getByRole('link', { name: /business cases/i });
+    this.agentDashboardLink = page.getByRole('link', { name: /agent dashboard/i });
 
-    // Theme
-    this.themeToggle = page.getByRole('button', { name: /theme|dark|light/i });
+    // Evidence sub-nav
+    this.decisionTracesLink = page.getByRole('link', { name: /decision traces/i });
+
+    // Admin / Govern
+    this.adminSection = page.getByRole('link', { name: /^Govern$/i });
+
+    // Legacy aliases
+    this.commandCenterLink = this.homeLink;
+    this.valueTreesLink = this.explorerLink;
+
+    // Header controls
+    this.modePill = page.locator('header').locator('span').filter({ hasText: /mode$/i }).first();
+    this.notificationButton = page.locator('header button').filter({ has: page.locator('svg') }).first();
+    this.userButton = page.locator('header button').last();
+
+    // Tier switcher (at bottom of sidebar)
+    this.tierSwitcherButton = page.locator('aside button').filter({ hasText: /Mode$/i }).first();
+    this.advancedModeToggle = page.locator('aside').getByText(/advanced mode/i).locator('..');
 
     // Mobile
     this.mobileMenuButton = page.getByRole('button', { name: /menu|navigation/i }).or(
@@ -84,32 +132,38 @@ export class AppShellPage {
    */
   async navigateTo(route: string): Promise<void> {
     switch (route.toLowerCase()) {
-      case 'command-center':
-        await this.commandCenterLink.click();
+      case 'home':
+        await this.homeLink.click();
+        break;
+      case 'library':
+      case 'value-packs':
+        await this.valuePacksLink.click();
+        break;
+      case 'discover':
+        await this.discoverLink.click();
         break;
       case 'extraction-engine':
         await this.extractionEngineLink.click();
         break;
-      case 'value-packs':
-        await this.valuePacksLink.click();
-        break;
       case 'graph-explorer':
         await this.graphExplorerLink.click();
         break;
-      case 'ontology':
-        await this.ontologyLink.click();
-        break;
-      case 'value-trees':
-        await this.valueTreesLink.click();
+      case 'model':
+        await this.modelLink.click();
         break;
       case 'formula-builder':
         await this.formulaBuilderLink.click();
         break;
-      case 'agent-workflows':
-        await this.agentWorkflowsLink.click();
+      case 'deliver':
+      case 'business-cases':
+        await this.businessCasesLink.click();
         break;
-      case 'decision-trace':
-        await this.decisionTraceLink.click();
+      case 'evidence':
+      case 'decision-traces':
+        await this.decisionTracesLink.click();
+        break;
+      case 'govern':
+        await this.governLink.click();
         break;
       default:
         throw new Error(`Unknown route: ${route}`);
@@ -128,7 +182,7 @@ export class AppShellPage {
    * Get all visible navigation items
    */
   async getVisibleNavigationItems(): Promise<string[]> {
-    const links = this.navigation.getByRole('link');
+    const links = this.sidebar.getByRole('link');
     const texts: string[] = [];
     const count = await links.count();
 
@@ -138,27 +192,6 @@ export class AppShellPage {
     }
 
     return texts;
-  }
-
-  /**
-   * Toggle advanced mode
-   */
-  async toggleAdvancedMode(): Promise<void> {
-    await this.advancedModeToggle.click();
-  }
-
-  /**
-   * Open user menu
-   */
-  async openUserMenu(): Promise<void> {
-    await this.userMenu.click();
-  }
-
-  /**
-   * Toggle theme (dark/light)
-   */
-  async toggleTheme(): Promise<void> {
-    await this.themeToggle.click();
   }
 
   /**
@@ -176,33 +209,26 @@ export class AppShellPage {
   }
 
   /**
-   * Assert specific navigation links are visible based on tier
+   * Assert specific navigation links are visible based on tier.
+   * Uses the canonical single-spine nav: Home/Library/Discover always visible,
+   * Model only for advanced+, Govern only for admin.
    */
   async assertNavigationForTier(tier: 'standard' | 'advanced' | 'admin'): Promise<void> {
-    // All tiers see these
-    await expect(this.commandCenterLink).toBeVisible();
-    await expect(this.valuePacksLink).toBeVisible();
+    // All tiers see Home, Library, Discover, Deliver, Evidence
+    await expect(this.homeLink).toBeVisible();
+    await expect(this.libraryLink).toBeVisible();
+    await expect(this.discoverLink).toBeVisible();
+    await expect(this.deliverLink).toBeVisible();
+    await expect(this.evidenceLink).toBeVisible();
 
-    // Advanced and above
+    // Advanced and above see Model
     if (tier === 'advanced' || tier === 'admin') {
-      await expect(this.extractionEngineLink).toBeVisible();
-      await expect(this.graphExplorerLink).toBeVisible();
-      await expect(this.valueTreesLink).toBeVisible();
+      await expect(this.modelLink).toBeVisible();
     }
 
-    // Admin only
+    // Admin only sees Govern
     if (tier === 'admin') {
       await expect(this.adminSection).toBeVisible();
-    }
-  }
-
-  /**
-   * Assert restricted navigation is not visible
-   */
-  async assertRestrictedLinksNotVisible(restrictedLinks: string[]): Promise<void> {
-    for (const link of restrictedLinks) {
-      const locator = this.page.getByRole('link', { name: new RegExp(link, 'i') });
-      await expect(locator).toBeHidden();
     }
   }
 }

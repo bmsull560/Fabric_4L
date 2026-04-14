@@ -1,7 +1,10 @@
 import { Page, Locator, expect } from '@playwright/test';
 
 /**
- * Page Object for Command Center screen
+ * Page Object for Command Center screen (Home dashboard)
+ *
+ * Route: /home
+ * Tier: standard (all tiers)
  *
  * Encapsulates all interactions with the ingestion command center,
  * providing a stable API for tests that survives UI refactoring.
@@ -70,10 +73,10 @@ export class CommandCenterPage {
   }
 
   /**
-   * Navigate to Command Center
+   * Navigate to Command Center (Home)
    */
   async goto(): Promise<void> {
-    await this.page.goto('/command-center');
+    await this.page.goto('/home');
     await this.waitForPageLoad();
   }
 
