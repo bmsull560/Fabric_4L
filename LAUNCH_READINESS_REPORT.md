@@ -188,10 +188,17 @@ The smoke test framework is working. All 6 stages are defined. Tests will pass o
 | **Deployment infrastructure** | ✅ **K8s manifests + Docker Compose** |
 | **Operational runbooks** | ✅ **k8s/README.md with troubleshooting** |
 | API documentation | ✅ OpenAPI export capability |
+| Compliance control traceability | ✅ [docs/compliance/control-matrix.md](docs/compliance/control-matrix.md) |
 
-**True Readiness: 6/7 criteria met** (86% → 75% was conservative; actual is higher)
+**True Readiness: 7/8 criteria met** (86% → 75% was conservative; actual is higher)
 
 ---
+
+
+### Compliance References
+
+- [Compliance Control Matrix](docs/compliance/control-matrix.md)
+- [Release Checklist](docs/runbooks/release-checklist.md)
 
 ## Next Steps
 
