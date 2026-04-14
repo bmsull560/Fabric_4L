@@ -20,7 +20,6 @@ export type UserTier = 'standard' | 'advanced' | 'admin';
  */
 export async function setUserTier(page: Page, tier: UserTier): Promise<void> {
   await page.evaluate((userTier) => {
-    type Tier = 'standard' | 'advanced' | 'admin';
     const storeKey = 'user-tier-storage';
     const storeState = {
       state: {
