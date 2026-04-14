@@ -298,3 +298,41 @@ jobs:
           fail-on-severity: high
           fail-on-scopes: runtime, development
           comment-summary-in-pr: true
+
+  sbom-generation:
+    name: SBOM Generation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image for SBOM
+        run: |
+          docker build \
+            -t ${{ matrix.layer }}:sbom-target \
+            ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
+
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ matrix.layer }}:sbom-target
+          format: cyclonedx-json
+          output-file: sbom-${{ matrix.layer }}.cdx.json
+
+      - name: Validate SBOM output exists
+        run: |
+          test -s sbom-${{ matrix.layer }}.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.layer }}
+          path: sbom-${{ matrix.layer }}.cdx.json
+          if-no-files-found: error
+          retention-days: 30

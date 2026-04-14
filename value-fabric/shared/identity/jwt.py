@@ -35,15 +35,49 @@ _DEFAULT_ALGORITHM = "HS256"
 _DEFAULT_TENANT_CLAIM = "tenant_id"
 _DEFAULT_USER_CLAIM = "sub"
 _DEFAULT_ROLES_CLAIM = "roles"
+_DEFAULT_JWT_SECRET = "changeme-in-production"
+_DEVELOPMENT_ENVIRONMENTS = {"dev", "development", "local", "test", "testing", "ci"}
+
+
+def _get_runtime_environment() -> str:
+    return (
+        os.getenv("ENVIRONMENT")
+        or os.getenv("APP_ENV")
+        or "development"
+    ).strip().lower()
+
+
+def _is_non_dev_environment() -> bool:
+    return _get_runtime_environment() not in _DEVELOPMENT_ENVIRONMENTS
 
 
 def _get_jwt_secret() -> str:
-    secret = os.getenv("JWT_SECRET", "changeme-in-production")
-    if secret == "changeme-in-production":
+    secret = os.getenv("JWT_SECRET", "").strip()
+    is_non_dev = _is_non_dev_environment()
+
+    if not secret:
+        if is_non_dev:
+            raise RuntimeError(
+                "JWT_SECRET is required in non-development environments. "
+                "Set JWT_SECRET to a strong value before startup."
+            )
         logger.warning(
-            "JWT_SECRET is using the default development value — "
-            "set a strong secret in production."
+            "JWT_SECRET is unset in %s; using local development fallback.",
+            _get_runtime_environment(),
         )
+        return _DEFAULT_JWT_SECRET
+
+    if secret == _DEFAULT_JWT_SECRET:
+        if is_non_dev:
+            raise RuntimeError(
+                "JWT_SECRET must not use the default value in non-development "
+                "environments."
+            )
+        logger.warning(
+            "JWT_SECRET is using the default development value in %s.",
+            _get_runtime_environment(),
+        )
+
     return secret
 
 
