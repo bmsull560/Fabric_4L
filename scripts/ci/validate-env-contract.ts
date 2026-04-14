@@ -47,7 +47,9 @@ function checkContract(label: string, contractFile: string): { missing: string[]
   const present: string[] = [];
 
   for (const key of keys) {
-    if (process.env[key] !== undefined && process.env[key] !== "") {
+    // Variables with empty defaults (optional integrations) are considered present
+    // even if the value is empty. Only truly undefined vars are missing.
+    if (process.env[key] !== undefined) {
       present.push(key);
     } else {
       missing.push(key);
