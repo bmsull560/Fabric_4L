@@ -7,9 +7,11 @@ import random
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 import structlog
+
+from shared.testability import Clock, SystemClock
 
 from ..shared.config import settings
 
@@ -31,15 +33,21 @@ class QueueItem:
     def __post_init__(self):
         # Ensure timestamp is set
         if not self.timestamp:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = datetime.now(timezone.utc)
 
 
 class PriorityScheduler:
     """Priority-based crawl scheduler with rate limiting."""
 
-    def __init__(self, per_domain_delay: float = None, jitter_percent: float = None):
+    def __init__(
+        self,
+        per_domain_delay: float = None,
+        jitter_percent: float = None,
+        clock: Clock | None = None,
+    ):
         self.per_domain_delay = per_domain_delay or settings.per_domain_delay_seconds
         self.jitter_percent = jitter_percent or settings.jitter_percent
+        self._clock: Clock = clock or SystemClock()
 
         # Domain rate limiting
         self._last_request_time: dict[str, float] = defaultdict(float)
@@ -81,7 +89,7 @@ class PriorityScheduler:
 
         item = QueueItem(
             priority=effective_priority,
-            timestamp=datetime.utcnow(),
+            timestamp=self._clock.now(),
             url=url,
             domain=domain,
             depth=depth,
@@ -113,7 +121,7 @@ class PriorityScheduler:
         if not self._queue:
             return None
 
-        current_time = time.time()
+        current_time = self._clock.monotonic()
 
         # Find the highest priority item that respects rate limits
         for i, item in enumerate(self._queue):
@@ -174,7 +182,7 @@ class PriorityScheduler:
     def get_estimated_wait_time(self, domain: str) -> float:
         """Estimate wait time before a domain can be crawled again."""
         last_request = self._last_request_time.get(domain, 0)
-        elapsed = time.time() - last_request
+        elapsed = self._clock.monotonic() - last_request
         delay = self.per_domain_delay
 
         if elapsed >= delay:
@@ -217,7 +225,7 @@ class RoundRobinScheduler(PriorityScheduler):
         if not self._domain_order:
             return None
 
-        current_time = time.time()
+        current_time = self._clock.monotonic()
         checked_domains = 0
 
         while checked_domains < len(self._domain_order):

@@ -11,6 +11,8 @@ from enum import Enum, auto
 from typing import Any
 from uuid import uuid4
 
+from shared.testability import Clock, IDGenerator, SystemClock, UUIDGenerator
+
 
 class AgentStatus(Enum):
     """Agent execution status."""
@@ -111,6 +113,8 @@ class BaseAgent(ABC):
         agent_id: str | None = None,
         config: dict[str, Any] | None = None,
         message_bus: Any | None = None,
+        clock: Clock | None = None,
+        id_generator: IDGenerator | None = None,
     ):
         """Initialize agent.
 
@@ -118,8 +122,13 @@ class BaseAgent(ABC):
             agent_id: Unique identifier (generated if not provided)
             config: Agent-specific configuration
             message_bus: Message bus for inter-agent communication
+            clock: Injectable clock for time operations.  Defaults to
+                ``SystemClock``.
+            id_generator: Injectable ID generator.  Defaults to ``UUIDGenerator``.
         """
-        self.agent_id = agent_id or f"{self.agent_type.lower()}-{uuid4().hex[:8]}"
+        self._clock: Clock = clock or SystemClock()
+        self._id_gen: IDGenerator = id_generator or UUIDGenerator()
+        self.agent_id = agent_id or f"{self.agent_type.lower()}-{self._id_gen.generate()[:8]}"
         self.config = config or {}
         self.message_bus = message_bus
         self.state = AgentState(
@@ -184,7 +193,7 @@ class BaseAgent(ABC):
 
         ctx = context or {}
         self.state.context.update(ctx)
-        self.state.started_at = datetime.now(UTC)
+        self.state.started_at = self._clock.now()
         self.state.status = AgentStatus.RUNNING
         self.state.current_task = task.get("capability", "unknown")
 
@@ -203,7 +212,7 @@ class BaseAgent(ABC):
 
             # Mark completion
             self.state.status = AgentStatus.COMPLETED
-            self.state.completed_at = datetime.now(UTC)
+            self.state.completed_at = self._clock.now()
 
             # Send completion event
             if self.message_bus:
@@ -218,7 +227,7 @@ class BaseAgent(ABC):
         except Exception as e:
             self.state.status = AgentStatus.FAILED
             self.state.errors.append(str(e))
-            self.state.completed_at = datetime.now(UTC)
+            self.state.completed_at = self._clock.now()
 
             # Send failure event
             if self.message_bus:
@@ -243,7 +252,7 @@ class BaseAgent(ABC):
     async def cancel(self) -> None:
         """Cancel current execution."""
         self.state.status = AgentStatus.CANCELLED
-        self.state.completed_at = datetime.now(UTC)
+        self.state.completed_at = self._clock.now()
 
     def get_state(self) -> AgentState:
         """Get current agent state."""

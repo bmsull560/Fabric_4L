@@ -12,12 +12,14 @@ import time
 import zlib
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
+
+from shared.testability import Clock, SystemClock
 
 logger = logging.getLogger(__name__)
 
@@ -64,16 +66,17 @@ class CacheEntry:
     ttl: int | None = None
     tags: set[str] = field(default_factory=set)
     metadata: dict[str, Any] = field(default_factory=dict)
+    _clock: Clock = field(default_factory=SystemClock, repr=False, compare=False)
 
     def is_expired(self) -> bool:
         """Check if cache entry is expired."""
         if self.ttl is None:
             return False
-        return (datetime.utcnow() - self.created_at).total_seconds() > self.ttl
+        return (self._clock.now() - self.created_at).total_seconds() > self.ttl
 
     def update_access(self):
         """Update access statistics."""
-        self.last_accessed = datetime.utcnow()
+        self.last_accessed = self._clock.now()
         self.access_count += 1
 
 
@@ -134,13 +137,16 @@ class CacheStats(BaseModel):
 class MemoryCache:
     """In-memory cache implementation."""
 
-    def __init__(self, config: CacheConfig):
+    def __init__(self, config: CacheConfig, clock: Clock | None = None):
         """Initialize memory cache.
 
         Args:
             config: Cache configuration
+            clock: Injectable clock for time operations.  Defaults to
+                ``SystemClock`` when ``None``.
         """
         self.config = config
+        self._clock: Clock = clock or SystemClock()
         self.cache: dict[str, CacheEntry] = {}
         self.access_order: deque = deque()  # For LRU
         self.frequency_map: dict[str, int] = defaultdict(int)  # For LFU
@@ -160,7 +166,7 @@ class MemoryCache:
         Returns:
             Cached value or None
         """
-        start_time = time.time()
+        start_time = self._clock.monotonic()
 
         if key not in self.cache:
             self.stats.misses += 1
@@ -182,7 +188,7 @@ class MemoryCache:
         self.stats.hits += 1
         self.stats.update_hit_rate()
 
-        response_time = (time.time() - start_time) * 1000
+        response_time = (self._clock.monotonic() - start_time) * 1000
         self.stats.avg_response_time_ms = (
             self.stats.avg_response_time_ms + response_time
         ) / 2
@@ -203,8 +209,6 @@ class MemoryCache:
         Returns:
             True if set successfully
         """
-        time.time()
-
         # Serialize and compress if needed
         serialized_value = self._serialize(value)
         compressed_value = self._compress(serialized_value)
@@ -223,15 +227,17 @@ class MemoryCache:
         if len(self.cache) >= self.config.max_size:
             await self._evict_entries(1)
 
+        now = self._clock.now()
         # Create cache entry
         entry = CacheEntry(
             key=key,
             value=compressed_value,
-            created_at=datetime.utcnow(),
-            last_accessed=datetime.utcnow(),
+            created_at=now,
+            last_accessed=now,
             size_bytes=entry_size,
             ttl=ttl or self.config.default_ttl,
             tags=tags or set(),
+            _clock=self._clock,
         )
 
         # Store entry

@@ -11,6 +11,7 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from ..testability import IDGenerator, UUIDGenerator
 from .exceptions import ValueFabricException
 from .models import ErrorCode, ErrorResponse
 
@@ -72,8 +73,17 @@ def sanitize_error_details(details: dict[str, Any] | None) -> dict[str, Any] | N
     return sanitized if sanitized else None
 
 
-def get_request_trace_id(request: Request) -> str:
-    """Extract or generate trace ID from request."""
+def get_request_trace_id(
+    request: Request,
+    id_generator: IDGenerator | None = None,
+) -> str:
+    """Extract or generate trace ID from request.
+
+    Args:
+        request: The incoming request.
+        id_generator: Optional injectable ID generator.  Defaults to UUID-based
+            generation when ``None``.
+    """
     # Try to get from request state (set by middleware)
     trace_id = getattr(request.state, "trace_id", None)
     if trace_id:
@@ -83,22 +93,36 @@ def get_request_trace_id(request: Request) -> str:
     trace_id = request.headers.get("X-Request-ID")
     if trace_id:
         # Validate and sanitize header-provided trace ID
-        return _sanitize_trace_id(trace_id)
+        return _sanitize_trace_id(trace_id, id_generator=id_generator)
 
     # Generate new trace ID
+    if id_generator is not None:
+        return f"req_{id_generator.generate()[:16]}"
     return f"req_{uuid.uuid4().hex[:16]}"
 
 
-def _sanitize_trace_id(trace_id: str) -> str:
+def _sanitize_trace_id(
+    trace_id: str,
+    id_generator: IDGenerator | None = None,
+) -> str:
     """Sanitize a trace ID from external sources.
     
     Prevents header injection attacks by:
     - Truncating to max length
     - Removing control characters
     - Allowing only alphanumeric, hyphen, underscore
+
+    Args:
+        trace_id: The raw trace ID string.
+        id_generator: Optional injectable ID generator for fallback IDs.
     """
-    if not trace_id:
+    def _fallback() -> str:
+        if id_generator is not None:
+            return f"req_{id_generator.generate()[:16]}"
         return f"req_{uuid.uuid4().hex[:16]}"
+
+    if not trace_id:
+        return _fallback()
     
     # Max 64 chars to prevent header size attacks
     MAX_TRACE_ID_LENGTH = 64
@@ -107,7 +131,7 @@ def _sanitize_trace_id(trace_id: str) -> str:
     # Allow only safe characters: alphanumeric, hyphen, underscore
     safe_id = re.sub(r'[^a-zA-Z0-9\-_]', '', trace_id)
     
-    return safe_id or f"req_{uuid.uuid4().hex[:16]}"
+    return safe_id or _fallback()
 
 
 async def value_fabric_exception_handler(
