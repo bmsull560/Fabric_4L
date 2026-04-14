@@ -7,7 +7,7 @@ import platform
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Literal
@@ -144,7 +144,7 @@ def _load_deprecation_register() -> dict:
         repo_root = Path(__file__).parent.parent.parent.parent.parent
         register_path = repo_root / "docs" / "deprecation_register.json"
         if register_path.exists():
-            with open(register_path, "r", encoding="utf-8") as f:
+            with open(register_path, encoding="utf-8") as f:
                 return json.load(f)
     except Exception as e:
         logger.warning("Failed to load deprecation register", error=str(e))
@@ -153,7 +153,7 @@ def _load_deprecation_register() -> dict:
 
 def _check_deprecation_warnings(register: dict) -> None:
     """Log warnings for overdue or upcoming deprecations."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for item in register.get("deprecations", []):
         target_removal = item.get("target_removal")
         if not target_removal:

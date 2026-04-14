@@ -59,6 +59,7 @@ from layer2_extraction.output.provenance import (
 )
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+
 from .routes import audit, extraction, ontology, system
 
 logger = logging.getLogger(__name__)
