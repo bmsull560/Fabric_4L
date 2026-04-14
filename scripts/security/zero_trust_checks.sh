@@ -16,7 +16,7 @@ fail_count=0
 check_file_contains() {
   local file="$1"
   local pattern="$2"
-  if [[ -f "$file" ]] && rg -q "$pattern" "$file"; then
+  if [[ -f "$file" ]] && grep -qE "$pattern" "$file"; then
     return 0
   fi
   return 1
