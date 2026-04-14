@@ -16,14 +16,16 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Security: Run as non-root user (node is built-in to node:alpine images)
-USER node
-
+# corepack enable requires root to create symlinks in /usr/local/bin
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 RUN pnpm install --frozen-lockfile --prod
+
+# Security: Run as non-root user (node is built-in to node:alpine images)
+# Set USER after all root-requiring operations (corepack, pnpm install)
+USER node
 
 COPY --from=builder /app/dist ./dist
 

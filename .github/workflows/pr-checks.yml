@@ -6,9 +6,11 @@ on:
   push:
     branches: [main]
 
+env:
+  # Opt into Node.js 24 for GitHub Actions
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  docs-policy-gate:
-    name: Docs Policy Gate
   governance-docs-check:
     name: Governance Docs Guard
     runs-on: ubuntu-latest
@@ -16,6 +18,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Verify required policy and runbook docs exist
         run: |
@@ -37,8 +41,6 @@ jobs:
           done
 
           echo "Docs policy gate passed."
-        with:
-          fetch-depth: 0
 
       - name: Enforce control matrix update policy
         run: .github/scripts/check-control-matrix.sh

@@ -5,6 +5,10 @@ on:
   schedule:
     - cron: '0 2 * * *'  # Run nightly at 2 AM UTC
 
+env:
+  # Opt into Node.js 24 for GitHub Actions
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # Extended validation tier — runs nightly, not required for PR merge
   # This workflow requires secrets and Docker orchestration

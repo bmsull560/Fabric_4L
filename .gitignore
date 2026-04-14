@@ -40,6 +40,9 @@ htmlcov/
 .tox/
 .mypy_cache/
 
+# CI runtime artifacts
+artifacts/
+
 # Node.js (if used at root)
 node_modules/
 .pnpm-store/

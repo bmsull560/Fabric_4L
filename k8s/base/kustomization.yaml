@@ -27,3 +27,6 @@ resources:
   - hpa/frontend-hpa.yml
   # Pod disruption budgets for critical services
   - pdb/layer4-agents-pdb.yml
+  - pdb/layer2-extraction-pdb.yml
+  - pdb/layer3-knowledge-pdb.yml
+  - pdb/frontend-pdb.yml
