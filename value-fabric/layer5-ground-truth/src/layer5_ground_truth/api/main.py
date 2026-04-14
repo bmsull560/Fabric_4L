@@ -9,6 +9,7 @@ Or via Docker:
 """
 
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -103,10 +104,14 @@ def create_app() -> FastAPI:
     )
 
     # CORS — restrict in production via environment variable
+    # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
+    _cors_raw = os.getenv("CORS_ORIGINS", "")
+    _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] if _cors_raw else (["*"] if settings.debug else [])
+    _cors_credentials = "*" not in _cors_origins  # Must be False when using wildcard origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.debug else [],
-        allow_credentials=True,
+        allow_origins=_cors_origins,
+        allow_credentials=_cors_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

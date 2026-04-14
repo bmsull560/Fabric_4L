@@ -3,6 +3,7 @@
 Standalone service on port 8006 for comparative intelligence.
 """
 
+import logging
 import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
@@ -185,7 +186,6 @@ class ValidationResponse(BaseModel):
 
 # API Routes
 
-import logging
 import time
 from datetime import datetime
 
