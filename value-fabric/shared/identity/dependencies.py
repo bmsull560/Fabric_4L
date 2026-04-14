@@ -17,7 +17,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 
-from .context import RequestContext, get_request_context
+from .context import RequestContext
 from .permissions import Permission, Role
 
 

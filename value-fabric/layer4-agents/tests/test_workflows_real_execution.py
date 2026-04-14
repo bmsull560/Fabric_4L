@@ -11,11 +11,11 @@ Key scenarios:
 - Thread-based checkpoint isolation
 """
 
-import pytest
 from typing import Annotated, Any, TypedDict
 
-from langgraph.graph import StateGraph, END
+import pytest
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.graph import END, StateGraph
 
 from src.workflows.base import DEFAULT_RECURSION_LIMIT
 

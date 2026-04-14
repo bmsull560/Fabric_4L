@@ -15,7 +15,7 @@ Coverage:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -34,7 +34,6 @@ from layer5_ground_truth.services.state_machine import (
 )
 from tests.conftest import TEST_ORG_ID
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -52,9 +51,9 @@ def make_truth(
         confidence=confidence,
         status=status.value,
         maturity_level=maturity,
-        freshness=datetime.now(timezone.utc),
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        freshness=datetime.now(UTC),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
 
@@ -68,7 +67,7 @@ def make_source(
         organization_id=TEST_ORG_ID,
         source_type=source_type,
         confidence_contribution=0.8,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
 
 

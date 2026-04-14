@@ -5,8 +5,8 @@ Revises: 001
 Create Date: 2024-01-20
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers

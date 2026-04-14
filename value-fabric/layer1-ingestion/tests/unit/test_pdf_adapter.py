@@ -1,16 +1,17 @@
 """Unit tests for PDF adapter."""
 
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-from unittest.mock import Mock, patch, AsyncMock, MagicMock, mock_open
-import pytest
+from unittest.mock import AsyncMock, Mock, patch
+
 import httpx
+import pytest
 
 pytest.importorskip("pymupdf4llm", reason="pymupdf4llm not installed")
 
 try:
-    from pdf2image import convert_from_path
+    import pdf2image  # noqa: F401
     # Test if poppler is available
     POPPLER_AVAILABLE = True
 except ImportError:
@@ -24,8 +25,8 @@ try:
 except Exception:
     TESSERACT_AVAILABLE = False
 
-from src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
 from src.adapters.base import AdapterType, FilingDocument
+from src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
 
 
 class TestPDFAdapter:
@@ -109,7 +110,7 @@ class TestPDFAdapter:
         # Create expected result
         expected_doc = FilingDocument(
             filing_type="PDF_DOCUMENT",
-            filing_date=datetime.now(timezone.utc),
+            filing_date=datetime.now(UTC),
             accession_number="test.pdf",
             primary_document="test.pdf",
             markdown_content="# Extracted content\n\nTest paragraph.",
@@ -381,7 +382,7 @@ class TestPDFAdapter:
         # Create expected result
         expected_doc = FilingDocument(
             filing_type="PDF_DOCUMENT",
-            filing_date=datetime.now(timezone.utc),
+            filing_date=datetime.now(UTC),
             accession_number=tmp_path.name,
             primary_document=tmp_path.name,
             markdown_content="Content",
@@ -415,7 +416,7 @@ class TestPDFAdapter:
         # Create expected result
         expected_doc = FilingDocument(
             filing_type="PDF_DOCUMENT",
-            filing_date=datetime.now(timezone.utc),
+            filing_date=datetime.now(UTC),
             accession_number=tmp_path.name,
             primary_document=tmp_path.name,
             markdown_content="Downloaded content",

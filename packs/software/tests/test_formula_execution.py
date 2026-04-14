@@ -3,10 +3,8 @@
 Validates formula calculations with test cases and boundary values.
 """
 
-import json
 import pytest
 from pathlib import Path
-from typing import Tuple
 
 PACK_DIR = Path(__file__).parent.parent
 

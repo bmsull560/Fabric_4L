@@ -30,7 +30,7 @@ async def async_client():
 @pytest.mark.asyncio
 async def test_sse_endpoint_returns_404_for_unknown_job(async_client):
     """SSE endpoint should return 404 for non-existent job."""
-    response = await async_client.get("/extract/jobs/unknown-job/events")
+    response = await async_client.get("/v1/extract/jobs/unknown-job/events")
     assert response.status_code == 404
 
 
@@ -53,7 +53,7 @@ async def test_sse_endpoint_returns_streaming_response(async_client):
         completed_at=datetime.utcnow(),
     )
 
-    response = await async_client.get("/extract/jobs/test-job-123/events")
+    response = await async_client.get("/v1/extract/jobs/test-job-123/events")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
     assert response.headers["cache-control"] == "no-cache"
@@ -80,7 +80,7 @@ async def test_sse_events_format(async_client):
     # Collect events from the stream — completed jobs emit a finite event
     # sequence (status, progress, log, complete) and then the generator exits.
     events = []
-    async with async_client.stream("GET", f"/extract/jobs/{job_id}/events") as response:
+    async with async_client.stream("GET", f"/v1/extract/jobs/{job_id}/events") as response:
         async for line in response.aiter_lines():
             if line.startswith("data: "):
                 import json
@@ -101,6 +101,6 @@ async def test_sse_events_format(async_client):
 @pytest.mark.asyncio
 async def test_sse_job_not_found(async_client):
     """SSE should handle job not found gracefully."""
-    response = await async_client.get("/extract/jobs/nonexistent/events")
+    response = await async_client.get("/v1/extract/jobs/nonexistent/events")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"].lower()

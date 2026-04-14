@@ -60,8 +60,6 @@ from layer2_extraction.output.provenance import (
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 
-from .routes import audit, extraction, ontology, system
-
 logger = logging.getLogger(__name__)
 
 # App start time for uptime calculation
@@ -1393,6 +1391,8 @@ async def stream_job_events(job_id: str):
         },
     )
 
+
+from .routes import audit, extraction, ontology, system
 
 app.include_router(system.router)
 app.include_router(extraction.router)

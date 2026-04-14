@@ -3,14 +3,14 @@
 import pytest
 from rdflib import RDF, Graph, Literal, Namespace, URIRef
 
-from src.ingestion import Neo4jLoader, SyncManager
+from src.ingestion import Neo4jLoader
 
 
 @pytest.fixture
 def sample_rdf_graph():
     """Create a sample RDF graph for testing."""
     g = Graph()
-    VF = Namespace("https://valuefabric.io/ontology/")
+    VF = Namespace("https://valuefabric.io/ontology/")  # noqa: N806
 
     # Add sample capability
     cap = URIRef("https://valuefabric.io/entity/cap-1")

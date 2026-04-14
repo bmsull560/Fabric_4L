@@ -1,13 +1,11 @@
 """Tests for error handling exceptions, models, handlers and middleware."""
 
 import os
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.exceptions import RequestValidationError
 from fastapi.testclient import TestClient
-from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..exceptions import (
     AuthenticationError,
@@ -20,14 +18,9 @@ from ..exceptions import (
 )
 from ..handlers import (
     _sanitize_trace_id,
-    get_request_trace_id,
-    global_exception_handler,
-    http_exception_handler,
     is_production,
     register_exception_handlers,
     sanitize_error_details,
-    validation_exception_handler,
-    value_fabric_exception_handler,
 )
 from ..middleware import MAX_REQUEST_ID_LENGTH, RequestIDMiddleware, get_request_id
 from ..models import ErrorCode, ErrorResponse

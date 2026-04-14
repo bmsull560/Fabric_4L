@@ -4,22 +4,19 @@ Tests the pub/sub-style event broadcasting system with connection resilience,
 event replay, and workflow-scoped channels.
 """
 
-import asyncio
-import pytest
-import pytest_asyncio
-from datetime import datetime
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+import pytest_asyncio
 from fastapi import WebSocket
 
 from src.api.websocket.manager import (
-    WorkflowWebSocketManager,
-    WorkflowConnection,
     EventStore,
+    WorkflowConnection,
+    WorkflowWebSocketManager,
     get_ws_manager,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -393,8 +390,8 @@ class TestBroadcasting:
         
         # Assert
         assert delivered == 0
-        # Connection should be cleaned up
-        assert len(started_manager._workflow_connections["wf-1"]) == 0
+        # Connection should be cleaned up (empty workflow entry removed entirely)
+        assert "wf-1" not in started_manager._workflow_connections
     
     @pytest.mark.asyncio
     async def test_broadcast_state_update_sends_formatted_event(

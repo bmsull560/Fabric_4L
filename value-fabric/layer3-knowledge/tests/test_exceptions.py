@@ -1,26 +1,25 @@
 """Unit tests for exception classes."""
 
-import pytest
 from src.api.exceptions import (
-    ValueFabricException,
-    ValidationError,
-    DatabaseError,
-    Neo4jError,
-    VectorStoreError,
-    IngestionError,
-    SearchError,
     AnalyticsError,
-    ConfigurationError,
     AuthenticationError,
     AuthorizationError,
+    ConfigurationError,
+    DatabaseError,
+    IngestionError,
+    Neo4jError,
     RateLimitError,
+    SearchError,
     ServiceUnavailableError,
-    create_http_exception,
-    create_validation_http_exception,
-    create_not_found_http_exception,
+    ValidationError,
+    ValueFabricException,
+    VectorStoreError,
     create_conflict_http_exception,
+    create_http_exception,
+    create_not_found_http_exception,
     create_rate_limit_http_exception,
     create_service_unavailable_http_exception,
+    create_validation_http_exception,
 )
 
 

@@ -106,7 +106,7 @@ class FeatureFlagService:
             },
         )
         if background_tasks is not None:
-            from ...database import db_session
+            from ..database import db_session
 
             background_tasks.add_task(AuditEmitter.write_to_db, event, db_session)
 
@@ -137,7 +137,7 @@ class FeatureFlagService:
             details={"tenant_id": str(tenant_id) if tenant_id else None},
         )
         if background_tasks is not None:
-            from ...database import db_session
+            from ..database import db_session
 
             background_tasks.add_task(AuditEmitter.write_to_db, event, db_session)
 
@@ -173,7 +173,7 @@ class FeatureFlagService:
 
 async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] | None:
     """DB lookup callback registered with ``shared.identity.feature_flags``."""
-    from ...database import db_session
+    from ..database import db_session
 
     async with db_session() as db:
         # Try tenant-specific first

@@ -3,7 +3,6 @@
 import os
 from unittest.mock import patch
 
-import pytest
 
 from ..hashing import (
     _get_hmac_secret,
@@ -96,7 +95,7 @@ class TestVerifyApiKey:
     def test_tampered_hash_returns_false(self):
         """A tampered hash fails verification."""
         raw = generate_api_key()
-        stored = hash_api_key(raw)
+        hash_api_key(raw)
         tampered = "a" * 64
         assert verify_api_key(raw, tampered) is False
 

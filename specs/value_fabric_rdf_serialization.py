@@ -13,18 +13,15 @@ Serialization Components:
 5. Import/Export: Turtle, RDF/XML, JSON-LD formats
 """
 
-from typing import Dict, List, Optional, Set, Tuple, Any, Union
-from dataclasses import dataclass, field
-from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass
 from enum import Enum
 import json
-import re
-from abc import ABC, abstractmethod
 
 # Import from ontology schema module
 from value_fabric_ontology_schema import (
-    EntityType, RelationshipType, ClassDefinition, PropertyDefinition,
-    RelationshipConstraint, OntologySchema, ONTOLOGY_SCHEMA,
+    EntityType, RelationshipType, PropertyDefinition,
+    OntologySchema, ONTOLOGY_SCHEMA,
     OntologyNamespace, create_entity_uri, create_relationship_uri
 )
 

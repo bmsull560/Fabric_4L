@@ -4,9 +4,9 @@ Validates YAML loading, validation, and config-driven behavior,
 following the skill framework's config validation patterns.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import patch, mock_open
+
+import pytest
 
 from src.crawler.crawler_config import CrawlerConfig, load_config
 
@@ -93,7 +93,6 @@ enable_tracing: false
             
     def test_unknown_fields_logged_and_ignored(self, tmp_path: Path, caplog):
         """Test that unknown fields are logged and ignored."""
-        import structlog
         
         config_file = tmp_path / "config.yml"
         config_file.write_text("""

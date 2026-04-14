@@ -359,6 +359,7 @@ class CRMSyncService:
 
         return {
             "crm_type": provider.value,
+            "api_key": os.getenv("CRM_API_KEY"),
             "crm_api_key": os.getenv("CRM_API_KEY"),
             "crm_api_secret": os.getenv("CRM_API_SECRET"),
             "crm_instance_url": os.getenv("CRM_INSTANCE_URL"),

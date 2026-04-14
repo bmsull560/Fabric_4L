@@ -2,8 +2,8 @@
 
 import json
 import logging
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
 import pytest
@@ -139,7 +139,7 @@ class TestEmitAuditEvent:
 
     def test_logs_json(self, caplog):
         with caplog.at_level(logging.INFO, logger="vf.audit"):
-            event = emit_audit_event(
+            emit_audit_event(
                 AuditAction.TENANT_CREATED,
                 tenant_id=uuid4(),
                 user_id="admin-1",

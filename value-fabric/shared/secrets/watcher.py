@@ -6,11 +6,10 @@ callbacks when secrets are updated (rotation detection).
 
 import hashlib
 import logging
-import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 logger = logging.getLogger(__name__)
 

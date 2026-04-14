@@ -3,7 +3,6 @@
 import ast
 import operator as op
 import pytest
-import re
 from typing import Any
 from . import load_pack_file
 

@@ -12,7 +12,7 @@ Fixture hierarchy:
 
 import os
 import uuid
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -33,9 +33,9 @@ os.environ["MIN_CONFIDENCE_FOR_SUPPORTED"] = "0.5"
 os.environ["MIN_SOURCES_FOR_CORROBORATED"] = "2"
 os.environ["JWT_FALLBACK_TO_QUERY_PARAM"] = "true"
 
+from layer5_ground_truth import database as db_module  # noqa: E402
 from layer5_ground_truth.api.main import create_app  # noqa: E402
 from layer5_ground_truth.models import Base  # noqa: E402
-from layer5_ground_truth import database as db_module  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Shared test organization ID

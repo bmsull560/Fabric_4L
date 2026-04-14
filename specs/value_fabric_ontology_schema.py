@@ -12,11 +12,9 @@ The ontology is designed to support:
 - RDF/OWL serialization for knowledge graph construction
 """
 
-from enum import Enum, auto
-from typing import Dict, List, Optional, Set, Any, Union
+from enum import Enum
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime
-import uuid
 
 
 # =============================================================================

@@ -27,31 +27,23 @@ class TestL3FormulaContracts:
     def test_formula_list_response_matches_openapi(self) -> None:
         """GET /v1/formulas response matches OpenAPI schema."""
         l3_openapi = _load_json(OPENAPI_L3_PATH)
-        sample = [
-            {
-                "id": "formula-1",
-                "formula_id": "formula-1",
-                "name": "ROI Calculation",
-                "description": "Calculate return on investment",
-                "pack_id": "pack-1",
-                "pack_name": "Financial Pack",
-                "version": "1.0.0",
-                "status": "active",
-                "owner": "user-1",
-                "updated_at": "2024-01-15T10:00:00Z",
-                "created_at": "2024-01-01T00:00:00Z",
-                "used_in_count": 3,
-                "governance_score": 0.95,
-                "last_reviewed": "2024-01-10T00:00:00Z",
-                "reviewers": ["user-1", "user-2"],
-                "expression": "revenue / cost",
-                "variables": ["revenue", "cost"],
-            }
-        ]
         # Formulas list returns FormulasRegistryResponse wrapper
         schema = _schema_ref(l3_openapi, "FormulasRegistryResponse")
-        # Test wrapper structure
-        wrapper_sample = {"formulas": sample, "total": len(sample)}
+        # Test wrapper structure with minimal valid FormulaMetadata items
+        wrapper_sample = {
+            "formulas": [
+                {
+                    "id": "formula-1",
+                    "name": "ROI Calculation",
+                    "description": "Calculate return on investment",
+                    "category": "ROI",
+                    "expression": "revenue / cost",
+                    "variables": [],
+                    "output_unit": "%",
+                }
+            ],
+            "total": 1
+        }
         assert_matches_schema(wrapper_sample, schema, root=l3_openapi)
 
     def test_formula_detail_response_matches_openapi(self) -> None:
@@ -73,8 +65,10 @@ class TestL3FormulaContracts:
             "governance_score": 0.95,
             "last_reviewed": "2024-01-10T00:00:00Z",
             "reviewers": ["user-1", "user-2"],
+            "category": "ROI",
             "expression": "revenue / cost",
-            "variables": ["revenue", "cost"],
+            "variables": [],
+            "output_unit": "%",
         }
         schema = _schema_ref(l3_openapi, "FormulaMetadata")
         assert_matches_schema(sample, schema, root=l3_openapi)
@@ -103,8 +97,9 @@ class TestL3FormulaContracts:
         """POST /v1/formulas/{id}/approve request payload matches OpenAPI schema."""
         l3_openapi = _load_json(OPENAPI_L3_PATH)
         sample = {
-            "action": "approve",
-            "reason": "Formula looks correct",
+            "version": "1.0.0",
+            "approved_by": "admin-1",
+            "comments": "Formula looks correct",
         }
         # Approval request uses ApproveRequest schema
         schema = _schema_ref(l3_openapi, "ApproveRequest")
@@ -115,11 +110,12 @@ class TestL3FormulaContracts:
         l3_openapi = _load_json(OPENAPI_L3_PATH)
         sample = {
             "id": "formula-2",
-            "formula_id": "formula-2",
             "name": "Cost Analysis",
-            "status": "pending",
-            "version": "1.1.0",
-            "updated_at": "2024-01-15T12:00:00Z",
+            "description": "Calculate cost analysis",
+            "category": "Cost",
+            "expression": "cost * 1.1",
+            "variables": [],
+            "output_unit": "$",
         }
         # Submit response returns FormulaMetadata
         schema = _schema_ref(l3_openapi, "FormulaMetadata")

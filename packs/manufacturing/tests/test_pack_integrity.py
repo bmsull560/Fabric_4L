@@ -1,6 +1,5 @@
 """Pack integrity tests - validate JSON structure and cross-references."""
 
-import pytest
 from . import load_pack_file
 
 
@@ -96,7 +95,7 @@ class TestFormulasIntegrity:
         formulas_data = load_pack_file("formulas.json")
         variables_data = load_pack_file("variables.json")
         
-        var_ids = {v["variable_id"] for v in variables_data["variables"]}
+        {v["variable_id"] for v in variables_data["variables"]}
         var_names = {v["variable_name"] for v in variables_data["variables"]}
         
         for formula in formulas_data["formulas"]:

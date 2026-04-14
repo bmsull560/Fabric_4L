@@ -1,16 +1,18 @@
 """Test configuration and fixtures for Value Fabric Layer 3 API."""
 
+import json
+from collections.abc import AsyncGenerator
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 import pytest_asyncio
-import json
-from typing import AsyncGenerator, Dict, Any, Optional
-from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
-from src.config import Settings, get_settings
-from src.api.main import app
 from src.api.dependencies import AppState
+from src.api.main import app
+from src.config import Settings, get_settings
 
 
 class TestSettings(Settings):
@@ -88,9 +90,16 @@ def test_client(test_settings: TestSettings, mock_app_state: AppState) -> TestCl
     app.dependency_overrides[get_settings] = lambda: test_settings
     
     # Override app state dependencies
-    from src.api.dependencies import get_app_state, get_schema_initializer
-    from src.api.dependencies import get_graph_rag, get_hybrid_search, get_centrality_analyzer
-    from src.api.dependencies import get_community_detector, get_similarity_analyzer, get_sync_manager
+    from src.api.dependencies import (
+        get_app_state,
+        get_centrality_analyzer,
+        get_community_detector,
+        get_graph_rag,
+        get_hybrid_search,
+        get_schema_initializer,
+        get_similarity_analyzer,
+        get_sync_manager,
+    )
     
     app.dependency_overrides[get_app_state] = lambda: mock_app_state
     app.dependency_overrides[get_schema_initializer] = lambda: mock_app_state.schema_initializer
@@ -115,9 +124,16 @@ async def async_client(test_settings: TestSettings, mock_app_state: AppState) ->
     app.dependency_overrides[get_settings] = lambda: test_settings
     
     # Override app state dependencies
-    from src.api.dependencies import get_app_state, get_schema_initializer
-    from src.api.dependencies import get_graph_rag, get_hybrid_search, get_centrality_analyzer
-    from src.api.dependencies import get_community_detector, get_similarity_analyzer, get_sync_manager
+    from src.api.dependencies import (
+        get_app_state,
+        get_centrality_analyzer,
+        get_community_detector,
+        get_graph_rag,
+        get_hybrid_search,
+        get_schema_initializer,
+        get_similarity_analyzer,
+        get_sync_manager,
+    )
     
     app.dependency_overrides[get_app_state] = lambda: mock_app_state
     app.dependency_overrides[get_schema_initializer] = lambda: mock_app_state.schema_initializer
@@ -155,7 +171,7 @@ def sample_rdf_data() -> str:
 
 
 @pytest.fixture
-def sample_search_request() -> Dict[str, Any]:
+def sample_search_request() -> dict[str, Any]:
     """Sample search request for testing."""
     return {
         "query": "automated invoice processing",
@@ -166,7 +182,7 @@ def sample_search_request() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_graphrag_query() -> Dict[str, Any]:
+def sample_graphrag_query() -> dict[str, Any]:
     """Sample GraphRAG query for testing."""
     return {
         "query": "What capabilities enable automated invoice processing?",
@@ -177,7 +193,7 @@ def sample_graphrag_query() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_search_results() -> Dict[str, Any]:
+def sample_search_results() -> dict[str, Any]:
     """Sample search results for testing."""
     return {
         "query": "automated invoice processing",
@@ -201,7 +217,7 @@ def sample_search_results() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_graphrag_response() -> Dict[str, Any]:
+def sample_graphrag_response() -> dict[str, Any]:
     """Sample GraphRAG response for testing."""
     return {
         "query": "What capabilities enable automated invoice processing?",
@@ -233,7 +249,7 @@ def sample_graphrag_response() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_ingestion_request() -> Dict[str, Any]:
+def sample_ingestion_request() -> dict[str, Any]:
     """Sample ingestion request for testing."""
     return {
         "rdf_data": """
@@ -250,7 +266,7 @@ def sample_ingestion_request() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def sample_ingestion_response() -> Dict[str, Any]:
+def sample_ingestion_response() -> dict[str, Any]:
     """Sample ingestion response for testing."""
     return {
         "status": "success",
@@ -264,7 +280,7 @@ def sample_ingestion_response() -> Dict[str, Any]:
 
 
 # Mock response helpers
-def create_mock_response(data: Dict[str, Any], status_code: int = 200) -> MagicMock:
+def create_mock_response(data: dict[str, Any], status_code: int = 200) -> MagicMock:
     """Create a mock HTTP response."""
     response = MagicMock()
     response.status_code = status_code
@@ -317,7 +333,7 @@ class TestUtils:
     """Utility functions for testing."""
     
     @staticmethod
-    def assert_valid_health_response(response_data: Dict[str, Any]) -> None:
+    def assert_valid_health_response(response_data: dict[str, Any]) -> None:
         """Assert health response has required fields."""
         assert "status" in response_data
         assert "version" in response_data
@@ -334,7 +350,7 @@ class TestUtils:
         assert response_data["uptime_seconds"] >= 0
     
     @staticmethod
-    def assert_valid_search_response(response_data: Dict[str, Any]) -> None:
+    def assert_valid_search_response(response_data: dict[str, Any]) -> None:
         """Assert search response has required fields."""
         assert "query" in response_data
         assert "results" in response_data
@@ -355,7 +371,7 @@ class TestUtils:
             assert "confidence" in result
     
     @staticmethod
-    def assert_valid_graphrag_response(response_data: Dict[str, Any]) -> None:
+    def assert_valid_graphrag_response(response_data: dict[str, Any]) -> None:
         """Assert GraphRAG response has required fields."""
         assert "query" in response_data
         assert "entities" in response_data
@@ -371,7 +387,7 @@ class TestUtils:
         assert 0 <= response_data["confidence_score"] <= 1
     
     @staticmethod
-    def assert_valid_ingestion_response(response_data: Dict[str, Any]) -> None:
+    def assert_valid_ingestion_response(response_data: dict[str, Any]) -> None:
         """Assert ingestion response has required fields."""
         assert "status" in response_data
         assert "source_id" in response_data

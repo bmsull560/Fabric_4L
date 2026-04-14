@@ -13,10 +13,9 @@ API Categories:
 6. Knowledge Graph Export - Export RDF/OWL data
 """
 
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 
 
 # =============================================================================

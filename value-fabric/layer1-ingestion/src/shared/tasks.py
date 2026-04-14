@@ -779,7 +779,10 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
         if job:
             target = session.query(ScrapingTarget).get(job.target_id)
             if target:
-                target.error_count += 1
+                try:
+                    target.error_count += 1
+                except TypeError:
+                    target.error_count = 1
                 target.last_error_at = datetime.utcnow()
                 session.commit()
 

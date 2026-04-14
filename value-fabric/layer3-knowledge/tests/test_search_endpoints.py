@@ -1,7 +1,7 @@
 """Integration tests for search endpoints."""
 
+
 import pytest
-from unittest.mock import AsyncMock
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 

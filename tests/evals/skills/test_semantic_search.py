@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import pytest
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 

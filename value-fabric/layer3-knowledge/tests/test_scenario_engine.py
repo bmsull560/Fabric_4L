@@ -2,9 +2,7 @@
 Tests for the Scenario Engine what-if analysis functionality.
 """
 
-import pytest
 from src.agents.scenario_engine import (
-    ScenarioEngine,
     VariableAdjustment,
     scenario_engine,
 )

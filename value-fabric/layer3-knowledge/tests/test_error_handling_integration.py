@@ -6,13 +6,11 @@ Validates:
 - Request ID flow: incoming X-Request-ID → request.state.trace_id → response header
 """
 
-import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
-from starlette.responses import JSONResponse
 
 # Shared error handling imports
 from shared.error_handling.exceptions import (
@@ -22,7 +20,6 @@ from shared.error_handling.exceptions import (
 )
 from shared.error_handling.middleware import RequestIDMiddleware
 from shared.error_handling.models import ErrorCode
-
 
 # ---------------------------------------------------------------------------
 # Helpers: minimal FastAPI app with middleware + handlers for isolated testing

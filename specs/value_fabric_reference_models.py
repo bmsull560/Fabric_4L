@@ -14,7 +14,7 @@ Integration Patterns:
 4. Import/Export: Load reference model data and export aligned ontologies
 """
 
-from typing import Dict, List, Optional, Set, Tuple, Any, Union
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
@@ -22,8 +22,7 @@ import json
 
 # Import from ontology schema module
 from value_fabric_ontology_schema import (
-    EntityType, RelationshipType, ClassDefinition, PropertyDefinition,
-    OntologySchema, ONTOLOGY_SCHEMA, OntologyNamespace
+    EntityType, OntologyNamespace
 )
 
 
@@ -797,7 +796,7 @@ class ReferenceModelMappingManager:
             ])
         
         # Get unmapped entities
-        integration = self.integrations[reference_model]
+        self.integrations[reference_model]
         unmapped_vf = await self._get_unmapped_vf_entities(reference_model, vf_entity_filter)
         unmapped_ref = await self._get_unmapped_reference_concepts(reference_model)
         
@@ -859,7 +858,7 @@ class ReferenceModelMappingManager:
     ) -> MappingEntry:
         """Create a manual mapping between VF entity and reference concept."""
         # Get reference concept details
-        integration = self.integrations[reference_model]
+        self.integrations[reference_model]
         concept = await self._get_reference_concept(reference_model, reference_concept_id)
         
         vf_entity = await self._get_vf_entity(vf_entity_type, vf_entity_id)

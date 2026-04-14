@@ -165,6 +165,7 @@ class StateManager:
         """Deserialize state dict to appropriate state type."""
         from ..models.agent_state import (
             BusinessCaseAgentState,
+            OrchestratorAgentState,
             ROIAgentState,
             WhitespaceAgentState,
         )
@@ -176,9 +177,12 @@ class StateManager:
             "roi_calculator": ROIAgentState,
             "whitespace_analysis": WhitespaceAgentState,
             "business_case": BusinessCaseAgentState,
+            "orchestrator": OrchestratorAgentState,
         }
 
-        state_class = type_map.get(workflow_type, AgentState)
+        state_class = type_map.get(workflow_type)
+        if state_class is None:
+            raise ValueError(f"Unknown workflow_type for state deserialization: {workflow_type}")
 
         # Parse datetime fields
         for field in ["started_at", "completed_at", "extracted_at"]:

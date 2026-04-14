@@ -1,12 +1,9 @@
 """Tests for secret watcher and hot-reload functionality."""
 
-import os
-import tempfile
 from pathlib import Path
 
-import pytest
 
-from .watcher import SecretWatcher, SecretFile, watch_secret_file
+from .watcher import SecretWatcher, watch_secret_file
 
 
 class TestSecretWatcher:

@@ -8,8 +8,9 @@ This ensures that extraction logic changes for one tier don't affect the other,
 and provides clear trust boundaries for security-sensitive operations.
 """
 
+from collections.abc import Callable
 from enum import Enum
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fastapi import Request
@@ -91,7 +92,7 @@ def require_tier(operation: ExtractionOperation) -> Callable:
     SECURITY: Fails closed - if tier cannot be determined, access is denied.
     """
     # Lazy import to avoid circular dependencies
-    from fastapi import HTTPException, Request, status
+    from fastapi import HTTPException, status
 
     async def _enforce_tier(request: "Request") -> None:
         # Extract tier from request context (set by auth middleware)

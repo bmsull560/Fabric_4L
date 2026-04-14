@@ -9,19 +9,19 @@ Tests the accounts-first CRM integration API contract:
 - GET /v1/accounts/sync-status (provider sync status)
 """
 
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone
-from uuid import UUID, uuid4
-from typing import AsyncGenerator
-
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
 
 from src.api.main import app
-from src.database import get_db, Base
+from src.database import Base, get_db
 from src.models.account import Account, AccountSyncStatus, CRMProvider, SyncStatus
 
 
@@ -42,9 +42,9 @@ async def test_db(postgres_container) -> AsyncGenerator[AsyncSession, None]:
     password = postgres_container.password
     dbname = postgres_container.dbname
     
-    TEST_DATABASE_URL = f"postgresql+asyncpg://{username}:{password}@{host}:{port}/{dbname}"
+    test_database_url = f"postgresql+asyncpg://{username}:{password}@{host}:{port}/{dbname}"
     
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    engine = create_async_engine(test_database_url, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     
@@ -94,7 +94,7 @@ async def sample_account(test_db) -> Account:
         owner_email="john@acme.com",
         stage="opportunity",
         sync_status=SyncStatus.SYNCED.value,
-        last_synced_at=datetime.now(timezone.utc),
+        last_synced_at=datetime.now(UTC),
         opportunities=[
             {
                 "provider_opportunity_id": "sf-opp-001",
@@ -103,7 +103,7 @@ async def sample_account(test_db) -> Account:
                 "value": 250000.0,
                 "probability": 0.75,
                 "close_date": "2024-12-31",
-                "last_synced_at": datetime.now(timezone.utc).isoformat(),
+                "last_synced_at": datetime.now(UTC).isoformat(),
             }
         ],
         contacts=[
@@ -114,7 +114,7 @@ async def sample_account(test_db) -> Account:
                 "email": "jane@acme.com",
                 "phone": "+1-555-0123",
                 "is_primary": True,
-                "last_synced_at": datetime.now(timezone.utc).isoformat(),
+                "last_synced_at": datetime.now(UTC).isoformat(),
             }
         ],
     )
@@ -138,7 +138,7 @@ async def sample_hubspot_account(test_db) -> Account:
         company_size=200,
         stage="qualified",
         sync_status=SyncStatus.SYNCED.value,
-        last_synced_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        last_synced_at=datetime.now(UTC) - timedelta(hours=2),
     )
     test_db.add(account)
     await test_db.commit()
@@ -152,8 +152,8 @@ async def sample_sync_status(test_db) -> AccountSyncStatus:
     sync_status = AccountSyncStatus(
         provider=CRMProvider.SALESFORCE.value,
         status="idle",
-        last_sync_at=datetime.now(timezone.utc) - timedelta(hours=1),
-        last_successful_sync_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        last_sync_at=datetime.now(UTC) - timedelta(hours=1),
+        last_successful_sync_at=datetime.now(UTC) - timedelta(hours=1),
         records_synced=150,
         records_updated=12,
         records_failed=0,
@@ -178,7 +178,7 @@ async def test_list_accounts_empty(client: AsyncClient):
     assert data["items"] == []
     assert data["total"] == 0
     assert data["page"] == 1
-    assert data["has_more"] == False
+    assert not data["has_more"]
 
 
 @pytest.mark.asyncio
@@ -257,7 +257,7 @@ async def test_list_accounts_pagination(client: AsyncClient, test_db: AsyncSessi
     assert len(data["items"]) == 2
     assert data["page"] == 1
     assert data["page_size"] == 2
-    assert data["has_more"] == True
+    assert data["has_more"]
 
 
 @pytest.mark.asyncio
@@ -414,7 +414,7 @@ async def test_get_account_detail(client: AsyncClient, sample_account: Account):
     contact = data["contacts"][0]
     assert contact["name"] == "Jane Doe"
     assert contact["title"] == "CTO"
-    assert contact["is_primary"] == True
+    assert contact["is_primary"]
 
 
 @pytest.mark.asyncio

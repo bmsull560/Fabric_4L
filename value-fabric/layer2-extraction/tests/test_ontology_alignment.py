@@ -9,6 +9,7 @@ Validates that:
 import uuid
 
 import pytest
+
 from layer2_extraction.models import (
     BenefitType,
     Capability,

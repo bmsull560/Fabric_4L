@@ -16,7 +16,7 @@ from enum import Enum
 from typing import Any, Dict, FrozenSet, List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..testability import Clock, SystemClock
 from .permissions import Permission, Role, ROLE_PERMISSIONS

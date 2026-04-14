@@ -16,7 +16,6 @@ import hmac
 import hashlib
 import os
 import secrets
-from typing import Optional
 
 _KEY_PREFIX = "vf_"
 _KEY_BYTE_LENGTH = 32  # 256 bits of entropy → 43 base64url chars

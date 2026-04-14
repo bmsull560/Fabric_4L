@@ -29,15 +29,11 @@ class TestL4WorkflowCreateContracts:
         l4_openapi = _load_json(OPENAPI_L4_PATH)
         sample = {
             "workflow_type": "business_case",
-            "name": "Q1 ROI Analysis",
-            "description": "Calculate ROI for automation project",
-            "input_data": {
+            "tenant_id": "tenant-1",
+            "user_id": "user-1",
+            "inputs": {
                 "entity_id": "cap-1",
                 "formula_id": "formula-1",
-            },
-            "config": {
-                "max_steps": 10,
-                "timeout_seconds": 300,
             },
         }
         schema = _schema_ref(l4_openapi, "WorkflowCreateRequest")
@@ -152,6 +148,7 @@ class TestL4WorkflowResumeContracts:
         """POST /workflows/{id}/resume request payload matches OpenAPI schema."""
         l4_openapi = _load_json(OPENAPI_L4_PATH)
         sample = {
+            "user_id": "user-1",
             "checkpoint_id": "chk-456",
             "input_data": {
                 "override_value": 1000,

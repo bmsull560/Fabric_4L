@@ -4,15 +4,13 @@ Tests health status tracking, badge generation, and callback mechanisms.
 """
 
 import asyncio
+
 import pytest
-from datetime import datetime, timedelta
-from typing import List, Tuple
 
 from src.services.health_tracker import (
-    HealthTracker,
-    HealthStatus,
-    ComponentHealth,
     HealthBadge,
+    HealthStatus,
+    HealthTracker,
     get_health_tracker,
 )
 
@@ -54,7 +52,7 @@ class TestHealthTracker:
     @pytest.fixture
     def badge_collector(self):
         """Create a badge collector callback fixture."""
-        badges: List[HealthBadge] = []
+        badges: list[HealthBadge] = []
 
         def collect(badge: HealthBadge):
             badges.append(badge)
@@ -64,7 +62,7 @@ class TestHealthTracker:
     @pytest.fixture
     def status_collector(self):
         """Create a status change collector callback fixture."""
-        changes: List[Tuple[str, HealthStatus, HealthStatus]] = []
+        changes: list[tuple[str, HealthStatus, HealthStatus]] = []
 
         def collect(component: str, old: HealthStatus, new: HealthStatus):
             changes.append((component, old, new))

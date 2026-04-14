@@ -10,8 +10,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ...database import Base
@@ -75,7 +75,7 @@ class APIKey(Base):
 
     # Optional per-key permission overrides (stored as list of permission strings)
     permissions: Mapped[list[str] | None] = mapped_column(
-        JSONB,
+        JSON,
         nullable=True,
         comment="Explicit permission overrides (null → inherit from role)",
     )
@@ -110,7 +110,7 @@ class APIKey(Base):
 
     metadata_: Mapped[dict[str, Any] | None] = mapped_column(
         "metadata",
-        JSONB,
+        JSON,
         nullable=True,
         default=dict,
     )

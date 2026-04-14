@@ -1,16 +1,15 @@
 """Tests for the C1 streaming proxy route."""
 
-import json
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from src.api.routes.c1 import router, C1StreamRequest, C1Message
 
 # We build a minimal FastAPI app that only includes the C1 router so that
 # test setup does not require the full L4 application (DB, LangGraph, etc.).
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from src.api.routes.c1 import C1Message, C1StreamRequest, router
 
 _app = FastAPI()
 _app.include_router(router, prefix="/v1")
@@ -36,11 +35,11 @@ class TestC1StreamRequest:
         assert req.business_case_data is None
 
     def test_rejects_empty_messages(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             C1StreamRequest(messages=[], business_case_id="bc-1")
 
     def test_rejects_empty_business_case_id(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             C1StreamRequest(
                 messages=[C1Message(role="user", content="hello")],
                 business_case_id="",

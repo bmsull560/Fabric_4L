@@ -6,8 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Index, String, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, DateTime, Index, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ...database import Base
@@ -50,7 +50,7 @@ class Tenant(Base):
     )
 
     settings: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
+        JSON,
         nullable=False,
         default=dict,
         comment="Tenant-level configuration blob (rate limits, feature flags, etc.)",

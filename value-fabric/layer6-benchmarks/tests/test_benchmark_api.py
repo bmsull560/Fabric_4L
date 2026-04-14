@@ -1,10 +1,10 @@
 """Tests for Layer 6 Benchmark Service API."""
 
-import pytest
-from decimal import Decimal
-from httpx import AsyncClient, ASGITransport
 
-from src.api.main import app, _benchmark_store, _init_seed_data
+import pytest
+from httpx import ASGITransport, AsyncClient
+
+from src.api.main import _benchmark_store, _init_seed_data, app
 
 
 @pytest.fixture(autouse=True)

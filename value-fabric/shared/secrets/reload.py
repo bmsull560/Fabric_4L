@@ -106,7 +106,7 @@ def reload_on_secret_change(
         def on_secret_change(new_content: str) -> None:
             now = time.time()
             if now - last_reload[0] < min_reload_interval:
-                logger.debug(f"Ignoring secret change - too soon after last reload")
+                logger.debug("Ignoring secret change - too soon after last reload")
                 return
 
             last_reload[0] = now

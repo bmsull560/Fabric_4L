@@ -10,9 +10,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import pytest
-from unittest.mock import MagicMock
-
 # Load tier_policy module directly from file to avoid circular imports
 tier_policy_path = Path(__file__).parent.parent / "src" / "layer2_extraction" / "api" / "tier_policy.py"
 spec = importlib.util.spec_from_file_location("tier_policy", tier_policy_path)

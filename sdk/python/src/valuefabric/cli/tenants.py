@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import typer
 
-from ..models import Tenant
 from ._utils import get_client, print_object, print_table
 
 app = typer.Typer(help="Tenant management")

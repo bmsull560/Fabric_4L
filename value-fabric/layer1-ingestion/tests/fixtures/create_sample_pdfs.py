@@ -3,15 +3,14 @@
 Run this script to regenerate the sample PDFs if needed.
 """
 
-import os
 from pathlib import Path
 
 try:
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.pagesizes import letter
-    from reportlab.platypus import Table, TableStyle, SimpleDocTemplate, Paragraph, Spacer
     from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.pdfgen import canvas
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     HAS_REPORTLAB = True
 except ImportError:
     HAS_REPORTLAB = False

@@ -3,27 +3,27 @@
 from __future__ import annotations
 
 import json
-import pytest
-from datetime import datetime, timezone
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 from uuid import UUID, uuid4
 
-from fastapi import BackgroundTasks
-from httpx import AsyncClient, ASGITransport
+import pytest
+from httpx import ASGITransport, AsyncClient
+from shared.audit.models import AuditAction
+from shared.identity.context import RequestContext
+from shared.identity.dependencies import require_tenant_admin
+from shared.identity.feature_flags import (
+    init_feature_flags,
+    is_enabled,
+    register_feature_flag_lookup,
+)
+from shared.identity.permissions import Role
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from src.api.main import app
-from src.database import get_db, Base
-from src.feature_flags.models import FeatureFlag
-from src.tenants.models import Tenant, User
-from src.feature_flags.service import FeatureFlagService, init_feature_flag_lookup, _lookup_flag
-from shared.identity.context import RequestContext
-from shared.identity.dependencies import require_tenant_admin
-from shared.identity.feature_flags import is_enabled, init_feature_flags, register_feature_flag_lookup
-from shared.identity.permissions import Role
-from shared.audit.models import AuditAction
+from src.database import Base, get_db
+from src.feature_flags.service import FeatureFlagService
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -373,7 +373,7 @@ async def test_audit_event_emitted_on_create(test_db: AsyncSession, monkeypatch)
     captured = {}
 
     def fake_emit(*args, **kwargs):
-        captured["action"] = kwargs.get("action")
+        captured["action"] = args[0] if args else kwargs.get("action")
         captured["resource_id"] = kwargs.get("resource_id")
         return MagicMock()
 
@@ -410,7 +410,7 @@ async def test_audit_event_emitted_on_delete(test_db: AsyncSession, monkeypatch)
     captured = {}
 
     def fake_emit(*args, **kwargs):
-        captured["action"] = kwargs.get("action")
+        captured["action"] = args[0] if args else kwargs.get("action")
         captured["resource_id"] = kwargs.get("resource_id")
         return MagicMock()
 

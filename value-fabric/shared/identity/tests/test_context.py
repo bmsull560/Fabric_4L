@@ -111,7 +111,6 @@ class TestContextVarHelpers:
         token = set_request_context(ctx2)
         assert get_request_context() is ctx2
         # Reset using the token (low-level ContextVar API)
-        from contextvars import copy_context
         # Just verify token was returned
         assert token is not None
 

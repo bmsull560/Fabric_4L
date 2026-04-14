@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 from rich.console import Console
 from rich.table import Table
 
 from ..client import ValueFabricClient
 from .config import get_profile_config
-
 
 console = Console()
 
@@ -33,10 +32,10 @@ def print_json(data: Any) -> None:
 
 
 def print_table(
-    rows: List[Dict[str, Any]],
+    rows: list[dict[str, Any]],
     *,
-    columns: List[str],
-    headers: Dict[str, str] | None = None,
+    columns: list[str],
+    headers: dict[str, str] | None = None,
     json_output: bool = False,
 ) -> None:
     """Print rows as a Rich table or JSON."""
@@ -59,7 +58,7 @@ def print_table(
     console.print(table)
 
 
-def print_object(data: Dict[str, Any], *, json_output: bool = False) -> None:
+def print_object(data: dict[str, Any], *, json_output: bool = False) -> None:
     """Print a single object as a key/value table or JSON."""
     if json_output:
         print_json(data)

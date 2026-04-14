@@ -1,7 +1,7 @@
 """Tests for L4 provenance models and in-memory store."""
 
 import sys
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -12,8 +12,8 @@ if _l4_src not in sys.path:
     sys.path.insert(0, _l4_src)
 
 from provenance.models import (
-    PROVAgent,
     PROVActivity,
+    PROVAgent,
     PROVEntity,
     PROVGraph,
     PROVNamespace,
@@ -22,7 +22,6 @@ from provenance.models import (
     create_prov_graph,
 )
 from provenance.store import InMemoryTripleStore, create_triple_store
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # PROVNamespace

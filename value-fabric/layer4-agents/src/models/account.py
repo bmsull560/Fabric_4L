@@ -16,6 +16,7 @@ from enum import Enum as PyEnum
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     DateTime,
     Float,
     Index,
@@ -24,7 +25,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..database import Base
@@ -218,7 +219,7 @@ class Account(Base):
     # -----------------------------------------------------------------------
 
     raw_crm_data: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB, nullable=True, comment="Full provider payload for debugging and re-sync"
+        JSON, nullable=True, comment="Full provider payload for debugging and re-sync"
     )
 
     # -----------------------------------------------------------------------
@@ -226,11 +227,11 @@ class Account(Base):
     # -----------------------------------------------------------------------
 
     opportunities: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, nullable=False, default=list, comment="Embedded opportunities from CRM provider"
+        JSON, nullable=False, default=list, comment="Embedded opportunities from CRM provider"
     )
 
     contacts: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSONB, nullable=False, default=list, comment="Embedded contacts from CRM provider"
+        JSON, nullable=False, default=list, comment="Embedded contacts from CRM provider"
     )
 
     # -----------------------------------------------------------------------

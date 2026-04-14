@@ -12,7 +12,6 @@ import httpx
 import jwt
 from jwt import PyJWKClient
 
-from .oidc_config import OIDCProviderConfig
 from .permissions import Role
 
 logger = logging.getLogger(__name__)
@@ -142,7 +141,7 @@ class OIDCClient:
             _JWKS_CACHE[cache_key] = {"jwks": jwks_data, "fetched_at": now}
 
         # Use PyJWKClient to select the right key
-        jwk_client = PyJWKClient(uri="", cache_keys=False)
+        PyJWKClient(uri="", cache_keys=False)
         # PyJWKClient expects a URI it can fetch; we bypass by feeding the keys directly
         # but the public API is limited. Instead, parse manually.
         keys = jwks_data.get("keys", [])

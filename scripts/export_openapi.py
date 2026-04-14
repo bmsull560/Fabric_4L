@@ -42,14 +42,23 @@ def _setup_package_hierarchy(module_key: str, src_path: Path) -> list[str]:
     """
     created_modules: list[str] = []
 
+    # Detect nested package root (e.g., src/layer2_extraction/__init__.py)
+    nested_root = src_path / module_key / "__init__.py"
+    if nested_root.exists():
+        root_path = src_path / module_key
+        root_init = nested_root
+    else:
+        root_path = src_path
+        root_init = src_path / "__init__.py"
+
     # Create the root package (e.g., layer3_knowledge)
-    if module_key not in sys.modules:
+    if module_key not in sys.modules and root_init.exists():
         root_spec = importlib.util.spec_from_file_location(
-            module_key, src_path / "__init__.py", submodule_search_locations=[str(src_path)]
+            module_key, root_init, submodule_search_locations=[str(root_path)]
         )
         if root_spec:
             root_module = importlib.util.module_from_spec(root_spec)
-            root_module.__path__ = [str(src_path)]  # type: ignore
+            root_module.__path__ = [str(root_path)]  # type: ignore
             sys.modules[module_key] = root_module
             created_modules.append(module_key)
 
@@ -60,7 +69,7 @@ def _setup_package_hierarchy(module_key: str, src_path: Path) -> list[str]:
     # Create the api subpackage (e.g., layer3_knowledge.api)
     api_key = f"{module_key}.api"
     if api_key not in sys.modules:
-        api_path = src_path / "api"
+        api_path = root_path / "api"
         api_init = api_path / "__init__.py"
         if api_init.exists():
             api_spec = importlib.util.spec_from_file_location(
@@ -73,7 +82,7 @@ def _setup_package_hierarchy(module_key: str, src_path: Path) -> list[str]:
                 created_modules.append(api_key)
 
                 # Set parent reference
-                api_module.__package__ = module_key  # type: ignore
+                api_module.__package__ = api_key  # type: ignore
 
                 if api_spec.loader:
                     api_spec.loader.exec_module(api_module)
@@ -138,20 +147,21 @@ def _atomic_write_json(data: dict[str, Any], output_path: Path) -> None:
         raise
 
 
-def _export_layer(layer_name: str, layer_dir: str, output_filename: str) -> bool:
+def _export_layer(layer_name: str, layer_dir: str, output_filename: str, main_path: str | None = None) -> bool:
     """Export OpenAPI spec for a single layer with full isolation.
 
     Args:
         layer_name: Human-readable layer name (for logging)
         layer_dir: Directory name under value-fabric/
         output_filename: Output JSON filename
+        main_path: Optional relative path from src/ to main.py (e.g., "api/main.py")
 
     Returns:
         True if export succeeded, False otherwise
     """
     base_path = SHARED_ROOT / layer_dir
     src_path = base_path / "src"
-    module_path = src_path / "api" / "main.py"
+    module_path = src_path / (main_path or "api/main.py")
     output_path = EXPORT_DIR / output_filename
 
     # Pre-flight checks
@@ -226,7 +236,7 @@ def export_layer1():
 
 def export_layer2():
     """Export Layer 2 Extraction OpenAPI spec."""
-    return _export_layer("Layer 2", "layer2-extraction", "layer2-extraction.json")
+    return _export_layer("Layer 2", "layer2-extraction", "layer2-extraction.json", main_path="layer2_extraction/api/main.py")
 
 
 def export_layer3():

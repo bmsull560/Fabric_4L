@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -45,7 +45,7 @@ class ValueFabricClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
-        auth: Optional[Auth] = None
+        auth: Auth | None = None
         if api_key:
             auth = APIKeyAuth(api_key)
         elif jwt_token:
@@ -74,9 +74,9 @@ class ValueFabricClient:
         method: str,
         path: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         response = self._sync_client.request(method, path, params=params, json=json)
         response.raise_for_status()
         return response.json()
@@ -86,9 +86,9 @@ class ValueFabricClient:
         method: str,
         path: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         response = await self._async_client.request(method, path, params=params, json=json)
         response.raise_for_status()
         return response.json()
@@ -100,10 +100,10 @@ class ValueFabricClient:
     def list_tenants(
         self,
         *,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Tenant]:
+    ) -> list[Tenant]:
         payload = self._request(
             "GET",
             "/v1/tenants",
@@ -114,10 +114,10 @@ class ValueFabricClient:
     async def alist_tenants(
         self,
         *,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Tenant]:
+    ) -> list[Tenant]:
         payload = await self._arequest(
             "GET",
             "/v1/tenants",
@@ -137,17 +137,17 @@ class ValueFabricClient:
     # Users
     # ------------------------------------------------------------------
 
-    def list_users(self, *, limit: int = 100, offset: int = 0) -> List[User]:
+    def list_users(self, *, limit: int = 100, offset: int = 0) -> list[User]:
         payload = self._request("GET", "/v1/users", params={"limit": limit, "offset": offset})
         return [User.model_validate(item) for item in payload]
 
-    async def alist_users(self, *, limit: int = 100, offset: int = 0) -> List[User]:
+    async def alist_users(self, *, limit: int = 100, offset: int = 0) -> list[User]:
         payload = await self._arequest(
             "GET", "/v1/users", params={"limit": limit, "offset": offset}
         )
         return [User.model_validate(item) for item in payload]
 
-    def invite_user(self, email: str, role: str, *, display_name: Optional[str] = None) -> User:
+    def invite_user(self, email: str, role: str, *, display_name: str | None = None) -> User:
         payload = self._request(
             "POST",
             "/v1/users/invite",
@@ -156,7 +156,7 @@ class ValueFabricClient:
         return User.model_validate(payload)
 
     async def ainvite_user(
-        self, email: str, role: str, *, display_name: Optional[str] = None
+        self, email: str, role: str, *, display_name: str | None = None
     ) -> User:
         payload = await self._arequest(
             "POST",
@@ -169,11 +169,11 @@ class ValueFabricClient:
     # API Keys
     # ------------------------------------------------------------------
 
-    def list_api_keys(self, *, enabled_only: bool = True) -> List[APIKey]:
+    def list_api_keys(self, *, enabled_only: bool = True) -> list[APIKey]:
         payload = self._request("GET", "/v1/api-keys", params={"enabled_only": enabled_only})
         return [APIKey.model_validate(item) for item in payload]
 
-    async def alist_api_keys(self, *, enabled_only: bool = True) -> List[APIKey]:
+    async def alist_api_keys(self, *, enabled_only: bool = True) -> list[APIKey]:
         payload = await self._arequest(
             "GET", "/v1/api-keys", params={"enabled_only": enabled_only}
         )
@@ -184,10 +184,10 @@ class ValueFabricClient:
         name: str,
         role: str,
         *,
-        expires_at: Optional[str] = None,
-        rate_limit_per_minute: Optional[int] = None,
+        expires_at: str | None = None,
+        rate_limit_per_minute: int | None = None,
     ) -> APIKeyCreateResult:
-        json_body: Dict[str, Any] = {"name": name, "role": role}
+        json_body: dict[str, Any] = {"name": name, "role": role}
         if expires_at is not None:
             json_body["expires_at"] = expires_at
         if rate_limit_per_minute is not None:
@@ -200,10 +200,10 @@ class ValueFabricClient:
         name: str,
         role: str,
         *,
-        expires_at: Optional[str] = None,
-        rate_limit_per_minute: Optional[int] = None,
+        expires_at: str | None = None,
+        rate_limit_per_minute: int | None = None,
     ) -> APIKeyCreateResult:
-        json_body: Dict[str, Any] = {"name": name, "role": role}
+        json_body: dict[str, Any] = {"name": name, "role": role}
         if expires_at is not None:
             json_body["expires_at"] = expires_at
         if rate_limit_per_minute is not None:
@@ -215,20 +215,20 @@ class ValueFabricClient:
     # Workflows
     # ------------------------------------------------------------------
 
-    def list_workflows(self) -> List[WorkflowTypeInfo]:
+    def list_workflows(self) -> list[WorkflowTypeInfo]:
         payload = self._request("GET", "/v1/workflows/types")
         return [WorkflowTypeInfo.model_validate(item) for item in payload.get("workflows", [])]
 
-    async def alist_workflows(self) -> List[WorkflowTypeInfo]:
+    async def alist_workflows(self) -> list[WorkflowTypeInfo]:
         payload = await self._arequest("GET", "/v1/workflows/types")
         return [WorkflowTypeInfo.model_validate(item) for item in payload.get("workflows", [])]
 
-    def list_active_workflows(self) -> List[Workflow]:
+    def list_active_workflows(self) -> list[Workflow]:
         payload = self._request("GET", "/v1/workflows/active")
         # The API returns a list of dicts directly.
         return [Workflow.model_validate(item) for item in payload]
 
-    async def alist_active_workflows(self) -> List[Workflow]:
+    async def alist_active_workflows(self) -> list[Workflow]:
         payload = await self._arequest("GET", "/v1/workflows/active")
         return [Workflow.model_validate(item) for item in payload]
 
@@ -238,11 +238,11 @@ class ValueFabricClient:
         tenant_id: str,
         user_id: str,
         *,
-        inputs: Optional[Dict[str, Any]] = None,
+        inputs: dict[str, Any] | None = None,
         priority: str = "NORMAL",
-        workflow_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        json_body: Dict[str, Any] = {
+        workflow_id: str | None = None,
+    ) -> dict[str, Any]:
+        json_body: dict[str, Any] = {
             "workflow_type": workflow_type,
             "tenant_id": tenant_id,
             "user_id": user_id,
@@ -259,11 +259,11 @@ class ValueFabricClient:
         tenant_id: str,
         user_id: str,
         *,
-        inputs: Optional[Dict[str, Any]] = None,
+        inputs: dict[str, Any] | None = None,
         priority: str = "NORMAL",
-        workflow_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        json_body: Dict[str, Any] = {
+        workflow_id: str | None = None,
+    ) -> dict[str, Any]:
+        json_body: dict[str, Any] = {
             "workflow_type": workflow_type,
             "tenant_id": tenant_id,
             "user_id": user_id,
@@ -286,18 +286,18 @@ class ValueFabricClient:
     # Models (Registry)
     # ------------------------------------------------------------------
 
-    def list_models(self, *, stage: Optional[str] = None) -> List[ModelVersion]:
+    def list_models(self, *, stage: str | None = None) -> list[ModelVersion]:
         params = {"stage": stage} if stage else None
         payload = self._request("GET", "/v1/models", params=params)
         return [ModelVersion.model_validate(item) for item in payload]
 
-    async def alist_models(self, *, stage: Optional[str] = None) -> List[ModelVersion]:
+    async def alist_models(self, *, stage: str | None = None) -> list[ModelVersion]:
         params = {"stage": stage} if stage else None
         payload = await self._arequest("GET", "/v1/models", params=params)
         return [ModelVersion.model_validate(item) for item in payload]
 
     def promote_model(
-        self, model_id: str, to_stage: str, *, reason: Optional[str] = None
+        self, model_id: str, to_stage: str, *, reason: str | None = None
     ) -> ModelVersion:
         payload = self._request(
             "POST",
@@ -307,7 +307,7 @@ class ValueFabricClient:
         return ModelVersion.model_validate(payload)
 
     async def apromote_model(
-        self, model_id: str, to_stage: str, *, reason: Optional[str] = None
+        self, model_id: str, to_stage: str, *, reason: str | None = None
     ) -> ModelVersion:
         payload = await self._arequest(
             "POST",
@@ -322,7 +322,7 @@ class ValueFabricClient:
 
     def list_feature_flags(
         self, *, limit: int = 100, offset: int = 0
-    ) -> List[FeatureFlag]:
+    ) -> list[FeatureFlag]:
         payload = self._request(
             "GET",
             "/v1/feature-flags",
@@ -332,7 +332,7 @@ class ValueFabricClient:
 
     async def alist_feature_flags(
         self, *, limit: int = 100, offset: int = 0
-    ) -> List[FeatureFlag]:
+    ) -> list[FeatureFlag]:
         payload = await self._arequest(
             "GET",
             "/v1/feature-flags",
@@ -346,9 +346,9 @@ class ValueFabricClient:
         enabled: bool,
         *,
         rollout_percentage: int = 100,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> FeatureFlag:
-        json_body: Dict[str, Any] = {
+        json_body: dict[str, Any] = {
             "enabled": enabled,
             "rollout_percentage": rollout_percentage,
         }
@@ -363,9 +363,9 @@ class ValueFabricClient:
         enabled: bool,
         *,
         rollout_percentage: int = 100,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> FeatureFlag:
-        json_body: Dict[str, Any] = {
+        json_body: dict[str, Any] = {
             "enabled": enabled,
             "rollout_percentage": rollout_percentage,
         }
@@ -396,13 +396,13 @@ class ValueFabricClient:
     async def aclose(self) -> None:
         await self._async_client.aclose()
 
-    def __enter__(self) -> "ValueFabricClient":
+    def __enter__(self) -> ValueFabricClient:
         return self
 
     def __exit__(self, *exc: object) -> None:
         self.close()
 
-    async def __aenter__(self) -> "ValueFabricClient":
+    async def __aenter__(self) -> ValueFabricClient:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

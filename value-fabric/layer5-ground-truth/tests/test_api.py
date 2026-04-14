@@ -23,7 +23,6 @@ import pytest
 
 from tests.conftest import TEST_ORG_ID, make_source_payload, make_truth_payload
 
-
 ORG_PARAM = f"?organization_id={TEST_ORG_ID}"
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime as real_datetime, timedelta
-from typing import Optional
+from datetime import datetime as real_datetime
+from datetime import timedelta
 
 import httpx
 import pytest
@@ -37,7 +37,7 @@ class FakePendingIngestionStore:
         retry_count: int,
         next_retry_at: real_datetime,
         max_retries: int,
-        last_error: Optional[str],
+        last_error: str | None,
     ) -> None:
         self.records[job_id] = PendingIngestionRecord(
             job_id=job_id,
@@ -81,7 +81,7 @@ class FakePendingIngestionStore:
             next_retry_at=next_retry_at,
         )
 
-    async def get_retry_metadata(self, job_id: str) -> Optional[dict]:
+    async def get_retry_metadata(self, job_id: str) -> dict | None:
         record = self.records.get(job_id)
         if not record:
             return None
@@ -487,8 +487,8 @@ async def test_cross_layer_extract_ingest_status_flow(
     monkeypatch.setattr(api_main, "datetime", clock.datetime_class())
 
     # Build Layer3 double that tracks all calls
-    DoubleClass = build_layer3_full_double_class()
-    double_instance = DoubleClass()
+    double_class = build_layer3_full_double_class()
+    double_instance = double_class()
 
     # Monkeypatch the client class constructor to return our double
     def make_double(*args, **kwargs):

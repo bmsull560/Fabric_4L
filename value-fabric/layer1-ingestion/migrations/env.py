@@ -4,17 +4,15 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 # Import models
-from shared.models import Base
 from shared.config import settings
+from shared.models import Base
 
 # this is the Alembic Config object
 config = context.config

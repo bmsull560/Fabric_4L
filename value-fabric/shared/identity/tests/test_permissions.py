@@ -1,11 +1,9 @@
 """Tests for Role/Permission definitions (shared/identity/permissions.py)."""
 
-import pytest
 
 from ..permissions import (
     Permission,
     Role,
-    RolePermissions,
     ROLE_PERMISSIONS,
     get_role_permissions,
     role_has_permission,

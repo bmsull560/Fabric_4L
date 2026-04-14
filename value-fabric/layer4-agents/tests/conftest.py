@@ -5,7 +5,6 @@ Requires package to be installed in editable mode:
 """
 
 import sys
-import os
 from pathlib import Path
 
 # ── Path Setup ─────────────────────────────────────────────────────────────
@@ -46,7 +45,7 @@ def redis_container():
 # These fixtures reduce boilerplate in workflow tests by providing
 # pre-configured mocks for common dependencies.
 
-from unittest.mock import Mock, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 
 @pytest.fixture

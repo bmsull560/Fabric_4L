@@ -3,7 +3,6 @@
 Validates formula calculations with test cases and boundary values.
 """
 
-import json
 import pytest
 from pathlib import Path
 
@@ -125,7 +124,6 @@ class TestFormulaRDPortfolioROI:
 
     def test_break_even(self):
         """Calculate break-even improvement."""
-        baseline_rate = 20
         pipeline_npv = 500_000_000
         investment = 50_000_000
 
@@ -254,8 +252,6 @@ class TestFormulaQualityRiskReduction:
         target_rate = 3
         annual_batches = 150
         investigation_cost = 60_000
-        avoided_recall_prob = 0
-        recall_cost = 100_000_000
         investment = 2_000_000
 
         deviation_savings = annual_batches * (current_rate - target_rate) / 100 * investigation_cost

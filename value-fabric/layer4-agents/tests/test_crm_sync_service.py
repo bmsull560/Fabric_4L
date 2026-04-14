@@ -9,27 +9,21 @@ Covers:
 - Webhook handlers for Salesforce and HubSpot
 """
 
-import json
 import os
-import pytest
-from datetime import datetime, timezone
-from typing import Dict, Any, List
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-import httpx
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.main import app
 from src.models.account import (
     Account,
-    AccountSyncStatus,
     CRMProvider,
     SyncStatus,
 )
 from src.services.crm_sync_service import CRMSyncService
-from src.api.main import app
-
 
 # =============================================================================
 # Fixtures
@@ -43,7 +37,22 @@ def mock_db():
     session.commit = AsyncMock()
     session.add = MagicMock()
     session.refresh = AsyncMock()
+    # Default return value so scalar_one_or_none() works in _update_sync_status
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    session.execute.return_value = mock_result
     return session
+
+
+@pytest.fixture(autouse=True)
+def override_app_db_dependency(mock_db):
+    """Override FastAPI get_db dependency to use the mock session."""
+    from src.database import get_db
+    async def _override():
+        yield mock_db
+    app.dependency_overrides[get_db] = _override
+    yield
+    app.dependency_overrides.pop(get_db, None)
 
 
 @pytest.fixture
@@ -51,6 +60,7 @@ def mock_crm_config():
     """Mock CRM environment configuration."""
     return {
         "crm_type": "salesforce",
+        "api_key": "test_token",
         "crm_api_key": "test_token",
         "crm_api_secret": "test_secret",
         "crm_instance_url": "https://test.salesforce.com",
@@ -104,7 +114,7 @@ class MockProspectDataTool:
         self._mock_interactions = interactions or []
     
     async def execute(self, input_data):
-        from ..src.models.tool_schemas import GetProspectDataOutput
+        from src.models.tool_schemas import GetProspectDataOutput
         
         return GetProspectDataOutput(
             profile=self._mock_profile or {
@@ -225,6 +235,7 @@ class TestCRMSyncService:
         
         hubspot_config = {
             "crm_type": "hubspot",
+            "api_key": "test_hubspot_key",
             "crm_api_key": "test_hubspot_key",
         }
         
@@ -585,7 +596,7 @@ class TestAccountServiceIntegration:
     @pytest.mark.asyncio
     async def test_trigger_sync_delegates_to_sync_service(self, mock_db):
         """Test that AccountService.trigger_sync delegates to CRMSyncService."""
-        from ..src.services.account_service import AccountService
+        from src.services.account_service import AccountService
         
         account_service = AccountService(mock_db)
         
@@ -614,7 +625,7 @@ class TestAccountServiceIntegration:
     @pytest.mark.asyncio
     async def test_refresh_account_delegates_to_sync_service(self, mock_db):
         """Test that AccountService.refresh_account delegates to CRMSyncService."""
-        from ..src.services.account_service import AccountService
+        from src.services.account_service import AccountService
         
         account_service = AccountService(mock_db)
         account_id = uuid4()

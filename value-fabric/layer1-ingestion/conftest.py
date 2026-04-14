@@ -1,7 +1,7 @@
 """Pytest configuration for Layer 1 Ingestion tests."""
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Add src directory to Python path for imports (at the very beginning)

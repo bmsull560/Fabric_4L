@@ -184,7 +184,6 @@ SECRET_SCHEMA: dict[str, str] = {
 
     # ── Auth — additional fields ───────────────────────────────────────────
     "DEFAULT_TENANT_ID":           "/auth",
-    "ALLOW_TENANT_QUERY_PARAM":    "/auth",
 
     # ── Vault (legacy) ─────────────────────────────────────────────────────
     "VAULT_ADDR":  "/app",
@@ -199,10 +198,6 @@ SECRET_SCHEMA: dict[str, str] = {
     "LOG_LEVEL":    "/app",
     "ENVIRONMENT":  "/app",
     "CORS_ORIGINS": "/app",
-
-    # ── LLM per-layer model overrides ─────────────────────────────────────
-    "THESYS_BASE_URL":     "/llm",
-    "LLM_COST_TABLE_PATH": "/llm",
 }
 
 # Variables that are Infisical config themselves — never push these
@@ -556,7 +551,7 @@ def main() -> None:
 
     # ── Print plan ─────────────────────────────────────────────────────────
     print(f"\n{'='*60}")
-    print(f"  Value Fabric → Infisical Secret Push")
+    print("  Value Fabric → Infisical Secret Push")
     print(f"{'='*60}")
     print(f"  Host:        {host}")
     print(f"  Project ID:  {project_id}")

@@ -270,7 +270,7 @@ class SmokeTestRunner:
             response.raise_for_status()
             data = response.json()
 
-            has_entities = len(data.get("entities", [])) >= 0  # Empty is ok, just needs to work
+            len(data.get("entities", [])) >= 0  # Empty is ok, just needs to work
             has_response = "response" in data or "entities" in data
 
             return has_response, {

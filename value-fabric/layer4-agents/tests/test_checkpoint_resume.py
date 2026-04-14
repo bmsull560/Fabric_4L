@@ -4,21 +4,21 @@ Tests the pause/resume lifecycle for human-in-the-loop workflows.
 Verifies state persistence across interruptions and container restarts.
 """
 
+from datetime import UTC, datetime
+from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
 import pytest_asyncio
-import asyncio
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional
-from unittest.mock import Mock, AsyncMock, patch
+from langgraph.checkpoint.memory import InMemorySaver
 
-from src.workflows.base import BaseWorkflow, WorkflowBuilder, WorkflowConfig
+from src.config.checkpoint import CheckpointConfig
 from src.engine.executor import OrchestrationController, WorkflowExecutionError
 from src.engine.state_manager import StateManager
-from src.config.checkpoint import CheckpointConfig
-from src.models.agent_state import AgentState, BaseAgentState, WorkflowStatus, WorkflowType
-from src.models.workflow_config import NodeConfig, NodeType, EdgeConfig
+from src.models.agent_state import AgentState, BaseAgentState, WorkflowStatus
+from src.models.workflow_config import EdgeConfig, NodeConfig, NodeType
 from src.tools.registry import ToolRegistry
-from langgraph.checkpoint.memory import InMemorySaver
+from src.workflows.base import BaseWorkflow, WorkflowConfig
 
 # Test constants
 TEST_WORKFLOW_TYPE = "roi_calculator"
@@ -32,7 +32,7 @@ class MockCheckpointSaver(InMemorySaver):
     """
     
     @property
-    def checkpoints(self) -> Dict[str, Any]:
+    def checkpoints(self) -> dict[str, Any]:
         """Expose underlying storage for test assertions."""
         return getattr(self, 'storage', {})
     
@@ -45,7 +45,7 @@ class MockCheckpointSaver(InMemorySaver):
 class SimpleTestWorkflow(BaseWorkflow):
     """Simple workflow for testing checkpoint/resume."""
     
-    def __init__(self, tool_registry, checkpoint_saver=None, pause_after_node: Optional[str] = None):
+    def __init__(self, tool_registry, checkpoint_saver=None, pause_after_node: str | None = None):
         """Initialize with optional pause point."""
         config = WorkflowConfig(
             workflow_type=TEST_WORKFLOW_TYPE,
@@ -66,7 +66,7 @@ class SimpleTestWorkflow(BaseWorkflow):
         self.pause_after_node = pause_after_node
         self.executed_nodes: list = []
     
-    async def _execute_tool(self, tool_name: str, state: AgentState, config: Dict) -> Dict[str, Any]:
+    async def _execute_tool(self, tool_name: str, state: AgentState, config: dict) -> dict[str, Any]:
         """Track node execution."""
         current_node = state.current_node
         self.executed_nodes.append(current_node)
@@ -78,10 +78,10 @@ class SimpleTestWorkflow(BaseWorkflow):
         
         return {"status": "completed", "node": current_node, "tool": tool_name}
     
-    def create_initial_state(self, input_data: Dict[str, Any]) -> AgentState:
+    def create_initial_state(self, input_data: dict[str, Any]) -> AgentState:
         """Create initial state."""
         return BaseAgentState(
-            workflow_id=input_data.get("workflow_id", f"test-{datetime.now(timezone.utc).timestamp()}"),
+            workflow_id=input_data.get("workflow_id", f"test-{datetime.now(UTC).timestamp()}"),
             workflow_type=TEST_WORKFLOW_TYPE,
             status=WorkflowStatus.PENDING,
             input_data=input_data,
@@ -163,7 +163,7 @@ class TestResumeWorkflow:
         )
         controller._workflow_metadata[workflow_id] = {
             "workflow_type": TEST_WORKFLOW_TYPE,
-            "started_at": datetime.now(timezone.utc).isoformat()
+            "started_at": datetime.now(UTC).isoformat()
         }
         
         # Mock create_workflow to return a mock workflow
@@ -333,7 +333,7 @@ class TestCheckpointConfiguration:
         with patch("src.config.checkpoint.asyncpg.connect") as mock_connect:
             mock_connect.side_effect = Exception("Database unavailable")
             
-            with pytest.raises(Exception):
+            with pytest.raises(RuntimeError):
                 async with CheckpointConfig.get_saver() as _:
                     pass
 
@@ -374,7 +374,7 @@ class TestCheckpointIntegration:
         )
         controller._workflow_metadata[workflow_id] = {
             "workflow_type": TEST_WORKFLOW_TYPE,
-            "started_at": datetime.now(timezone.utc).isoformat()
+            "started_at": datetime.now(UTC).isoformat()
         }
 
         # Mock the workflow to return a completed state

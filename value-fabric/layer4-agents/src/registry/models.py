@@ -6,8 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Index, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..database import Base
@@ -73,7 +73,7 @@ class ModelVersion(Base):
     )
 
     config: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
+        JSON,
         nullable=False,
         default=dict,
         comment="Model-specific configuration blob",

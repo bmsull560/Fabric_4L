@@ -81,7 +81,7 @@ class TestOntologyRelationships:
                        "production", "downtime", "energy", "throughput"]
         
         matches = sum(1 for keyword in mfg_keywords if any(keyword in name for name in entity_names))
-        assert matches >= 3, f"Ontology should have manufacturing-specific entities"
+        assert matches >= 3, "Ontology should have manufacturing-specific entities"
 
 
 class TestEntityCompleteness:

@@ -4,13 +4,13 @@ Comprehensive test coverage for crawling, rate limiting, error handling,
 and metrics collection - following the skill framework's pytest patterns.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, MagicMock, patch
-from typing import List
+from unittest.mock import AsyncMock, Mock, patch
 
-from src.crawler.playwright_crawler import PlaywrightCrawler, CrawlResult
+import pytest
+
 from src.crawler.crawler_config import CrawlerConfig
+from src.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
 
 
 # Fixtures

@@ -4,15 +4,14 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock
+from typing import Any
+from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from shared.identity.permissions import Permission
 from src.registry.eval_gate import _DEFAULT_PROMOTION_THRESHOLD, check_eval_gate
 from src.registry.models import ModelPromotionLog, ModelVersion
 from src.registry.service import ModelRegistryService, PromotionError, resolve_llm_model

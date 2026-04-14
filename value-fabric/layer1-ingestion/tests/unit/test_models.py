@@ -1,13 +1,14 @@
 """Unit tests for shared models."""
 
-import pytest
-from datetime import datetime
 from uuid import UUID, uuid4
 
 from src.shared.models import (
-    ScrapingJob, ScrapingTarget, CrawlQueueItem, RawContent, ExtractedData,
-    JobStatus, PipelineStage, TargetType, TargetStatus,
-    create_scraping_target, create_scraping_job
+    CrawlQueueItem,
+    JobStatus,
+    RawContent,
+    TargetType,
+    create_scraping_job,
+    create_scraping_target,
 )
 
 

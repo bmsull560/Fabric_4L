@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -15,7 +15,7 @@ def test_precheck_blocks_when_hard_cap_exceeded():
     guardrails.hourly_cap_usd = 1.0
     guardrails.daily_cap_usd = 10.0
     tenant_id = "tenant-a"
-    guardrails._usage_events[tenant_id] = [(datetime.now(timezone.utc), 1.1)]
+    guardrails._usage_events[tenant_id] = [(datetime.now(UTC), 1.1)]
 
     with pytest.raises(LLMBudgetExceededError):
         asyncio.run(guardrails.precheck_or_raise(tenant_id=tenant_id, model="gpt-4o"))
@@ -29,7 +29,7 @@ def test_precheck_returns_throttle_near_soft_cap():
     guardrails.throttle_seconds = 3
     guardrails.fallback_model = "gpt-4o-mini"
     tenant_id = "tenant-b"
-    guardrails._usage_events[tenant_id] = [(datetime.now(timezone.utc), 85.0)]
+    guardrails._usage_events[tenant_id] = [(datetime.now(UTC), 85.0)]
 
     decision = asyncio.run(guardrails.precheck_or_raise(tenant_id=tenant_id, model="gpt-4o"))
 
@@ -42,7 +42,7 @@ def test_record_usage_and_prune_old_events():
     guardrails = LLMBudgetGuardrails()
     tenant_id = "tenant-c"
     guardrails._usage_events[tenant_id] = [
-        (datetime.now(timezone.utc) - timedelta(days=2), 5.0),
+        (datetime.now(UTC) - timedelta(days=2), 5.0),
     ]
 
     asyncio.run(guardrails.record_usage(tenant_id=tenant_id, cost_usd=2.5))

@@ -17,7 +17,6 @@ from valuefabric.models import (
     ModelVersion,
     Tenant,
     User,
-    Workflow,
     WorkflowTypeInfo,
 )
 

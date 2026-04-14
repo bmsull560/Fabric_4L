@@ -23,12 +23,12 @@ def _last_value(left: Any, right: Any) -> Any:
     return right
 
 
-def _merge_dicts(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+def _merge_dicts(left: dict[str, Any] | None, right: dict[str, Any] | None) -> dict[str, Any]:
     """Reducer that merges two dicts, with right values taking precedence.
 
     Used with Annotated for output_data to accumulate node results.
     """
-    return {**left, **right}
+    return {**(left or {}), **(right or {})}
 
 
 class WorkflowStatus(str, Enum):
@@ -117,7 +117,7 @@ class BaseAgentState(BaseModel):
     status: Annotated[WorkflowStatus, _last_value] = WorkflowStatus.PENDING
     current_node: Annotated[str | None, _last_value] = None
     input_data: Annotated[dict[str, Any], _merge_dicts] = Field(default_factory=dict)
-    output_data: Annotated[dict[str, Any], _merge_dicts] = Field(default_factory=dict)
+    output_data: Annotated[dict[str, Any] | None, _merge_dicts] = Field(default_factory=dict)
     errors: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     started_at: datetime | None = None

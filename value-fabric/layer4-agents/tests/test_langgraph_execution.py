@@ -11,19 +11,14 @@ Tests verify:
 """
 from __future__ import annotations
 
-import asyncio
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
-from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 from src.models.agent_state import (
     BusinessCaseAgentState,
-    BusinessCaseInputData,
     ROIAgentState,
-    ROIInputData,
     WorkflowStatus,
 )
 from src.tools.registry import ToolRegistry
@@ -45,6 +40,9 @@ def _make_mock_openai_response(content: str = "Mock LLM content") -> MagicMock:
     mock_choice.message.content = content
     mock_response = MagicMock()
     mock_response.choices = [mock_choice]
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 10
+    mock_response.usage.completion_tokens = 20
     return mock_response
 
 
@@ -124,46 +122,43 @@ class TestROICalculatorWorkflow:
         registry = _make_mock_tool_registry()
 
         # Mock all tool responses
-        async def mock_execute(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
-            if tool_name == "get_prospect_data":
-                return {
-                    "profile": {
-                        "name": "Acme Corp",
-                        "industry": "financial_services",
-                        "annual_revenue": 50_000_000,
-                    },
-                    "custom_fields": {},
+        _tool_responses = {
+            "get_prospect_data": {
+                "profile": {
+                    "name": "Acme Corp",
+                    "industry": "financial_services",
+                    "annual_revenue": 50_000_000,
+                },
+                "custom_fields": {},
+            },
+            "fetch_benchmarks": {
+                "benchmarks": {
+                    "vd-001": {"industry_avg": 0.15, "top_quartile": 0.25},
                 }
-            elif tool_name == "fetch_benchmarks":
-                return {
-                    "benchmarks": {
-                        "vd-001": {"industry_avg": 0.15, "top_quartile": 0.25},
-                    }
+            },
+            "substitute_variables": {
+                "substituted_formula": "50000000 * 0.15",
+                "variables_used": {"annual_revenue": 50_000_000},
+                "missing_variables": [],
+            },
+            "evaluate_formula": {
+                "result": 7_500_000.0,
+                "unit": "USD",
+                "confidence": 0.85,
+            },
+            "aggregate_roi": {
+                "roi_results": {
+                    "total_annual_value": 7_500_000.0,
+                    "investment_required": 500_000.0,
+                    "simple_roi_percent": 1400.0,
+                    "payback_period_months": 0.8,
+                    "three_year_npv": 20_000_000.0,
                 }
-            elif tool_name == "substitute_variables":
-                return {
-                    "substituted_formula": "50000000 * 0.15",
-                    "variables_used": {"annual_revenue": 50_000_000},
-                    "missing_variables": [],
-                }
-            elif tool_name == "evaluate_formula":
-                return {
-                    "result": 7_500_000.0,
-                    "unit": "USD",
-                    "confidence": 0.85,
-                }
-            elif tool_name == "aggregate_roi":
-                return {
-                    "roi_results": {
-                        "total_annual_value": 7_500_000.0,
-                        "investment_required": 500_000.0,
-                        "simple_roi_percent": 1400.0,
-                        "payback_period_months": 0.8,
-                        "three_year_npv": 20_000_000.0,
-                    }
-                }
-            else:
-                return {"status": "ok"}
+            },
+        }
+
+        async def mock_execute(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
+            return _tool_responses.get(tool_name, {"status": "ok"})
 
         registry.execute = AsyncMock(side_effect=mock_execute)
         workflow = ROICalculatorWorkflow(tool_registry=registry)
@@ -243,7 +238,7 @@ class TestBusinessCaseGeneratorWorkflow:
         registry = _make_mock_tool_registry()
 
         # Mock generate_section tool to return content
-        async def mock_execute(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        async def mock_execute(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
                 return {
                     "content": f"Mock content for {params.get('section_type', 'unknown')}",
@@ -305,7 +300,7 @@ class TestBusinessCaseGeneratorWorkflow:
         registry = _make_mock_tool_registry()
 
         # Mock generate_section to raise an exception
-        async def mock_execute_error(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        async def mock_execute_error(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
                 raise RuntimeError("LLM API unavailable")
             return {"status": "ok"}
@@ -374,8 +369,8 @@ class TestGenerateSectionToolLLMMock:
     @pytest.mark.asyncio
     async def test_generate_section_tool_with_mocked_openai(self) -> None:
         """GenerateSectionTool must use AsyncOpenAI and be mockable."""
-        from src.tools.generation_tools import GenerateSectionTool
         from src.models.tool_schemas import GenerateSectionInput
+        from src.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
 
@@ -403,8 +398,8 @@ class TestGenerateSectionToolLLMMock:
     @pytest.mark.asyncio
     async def test_generate_section_tool_uses_gpt4o(self) -> None:
         """GenerateSectionTool must call gpt-4o model."""
-        from src.tools.generation_tools import GenerateSectionTool
         from src.models.tool_schemas import GenerateSectionInput
+        from src.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
         mock_response = _make_mock_openai_response("Mock content")
@@ -435,8 +430,8 @@ class TestGenerateSectionToolLLMMock:
     @pytest.mark.asyncio
     async def test_generate_section_tool_raises_on_llm_failure(self) -> None:
         """GenerateSectionTool must raise RuntimeError when LLM call fails."""
-        from src.tools.generation_tools import GenerateSectionTool
         from src.models.tool_schemas import GenerateSectionInput
+        from src.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
 
@@ -694,7 +689,7 @@ class TestWorkflowToolFailureHandling:
         """ROI workflow must handle tool execution timeouts."""
         registry = _make_mock_tool_registry()
 
-        async def mock_execute_timeout(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        async def mock_execute_timeout(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             raise TimeoutError(f"Tool {tool_name} execution timed out after 30s")
 
         registry.execute = AsyncMock(side_effect=mock_execute_timeout)
@@ -724,7 +719,7 @@ class TestWorkflowToolFailureHandling:
         """Business case must handle all section generation failures gracefully."""
         registry = _make_mock_tool_registry()
 
-        async def mock_execute_all_fail(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        async def mock_execute_all_fail(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
                 raise RuntimeError("LLM API is down for all calls")
             return {"status": "ok"}

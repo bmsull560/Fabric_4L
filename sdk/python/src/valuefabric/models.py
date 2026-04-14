@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, FrozenSet, List, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -14,7 +14,7 @@ class Tenant(BaseModel):
     name: str
     slug: str
     status: str
-    settings: Dict[str, Any] = Field(default_factory=dict)
+    settings: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 
@@ -23,11 +23,11 @@ class User(BaseModel):
     id: UUID
     tenant_id: UUID
     email: str
-    display_name: Optional[str] = None
+    display_name: str | None = None
     role: str
     status: str
-    last_login_at: Optional[datetime] = None
-    invited_by: Optional[UUID] = None
+    last_login_at: datetime | None = None
+    invited_by: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -35,17 +35,17 @@ class User(BaseModel):
 class APIKey(BaseModel):
     key_id: str
     tenant_id: UUID
-    user_id: Optional[UUID] = None
+    user_id: UUID | None = None
     name: str
     prefix: str
     role: str
-    permissions: FrozenSet[str] = Field(default_factory=frozenset)
+    permissions: frozenset[str] = Field(default_factory=frozenset)
     enabled: bool = True
     created_at: datetime
-    expires_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
-    rate_limit_per_minute: Optional[int] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    expires_at: datetime | None = None
+    last_used_at: datetime | None = None
+    rate_limit_per_minute: int | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class APIKeyCreateResult(BaseModel):
@@ -55,9 +55,9 @@ class APIKeyCreateResult(BaseModel):
     api_key: str
     prefix: str
     role: str
-    permissions: FrozenSet[str] = Field(default_factory=frozenset)
-    expires_at: Optional[datetime] = None
-    rate_limit_per_minute: Optional[int] = None
+    permissions: frozenset[str] = Field(default_factory=frozenset)
+    expires_at: datetime | None = None
+    rate_limit_per_minute: int | None = None
     created_at: datetime
 
 
@@ -65,18 +65,18 @@ class Workflow(BaseModel):
     workflow_instance_id: str
     workflow_type: str
     status: str
-    current_state: Optional[str] = None
-    current_node: Optional[str] = None
+    current_state: str | None = None
+    current_node: str | None = None
     progress_percentage: float = 0.0
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
+    started_at: str | None = None
+    completed_at: str | None = None
     error_count: int = 0
     has_output: bool = False
-    results: Optional[Dict[str, Any]] = None
-    tenant_id: Optional[str] = None
-    user_id: Optional[str] = None
-    priority: Optional[int] = None
-    scheduler_status: Optional[str] = None
+    results: dict[str, Any] | None = None
+    tenant_id: str | None = None
+    user_id: str | None = None
+    priority: int | None = None
+    scheduler_status: str | None = None
 
 
 class WorkflowTypeInfo(BaseModel):
@@ -92,24 +92,24 @@ class ModelVersion(BaseModel):
     model_name: str
     model_version: str
     stage: str
-    promoted_by: Optional[UUID] = None
-    eval_score: Optional[float] = None
-    eval_run_id: Optional[str] = None
-    config: Dict[str, Any] = Field(default_factory=dict)
+    promoted_by: UUID | None = None
+    eval_score: float | None = None
+    eval_run_id: str | None = None
+    config: dict[str, Any] = Field(default_factory=dict)
     created_at: str
 
 
 class FeatureFlag(BaseModel):
     id: UUID
-    tenant_id: Optional[UUID] = None
+    tenant_id: UUID | None = None
     flag_key: str
     enabled: bool
     rollout_percentage: int = 0
-    description: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    description: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: str
     updated_at: str
-    updated_by: Optional[UUID] = None
+    updated_by: UUID | None = None
 
 
 class HealthResponse(BaseModel):
@@ -119,5 +119,5 @@ class HealthResponse(BaseModel):
     timestamp: str
     executor_ready: bool
     uptime_seconds: float
-    dependencies: List[Dict[str, Any]] = Field(default_factory=list)
-    metrics: Dict[str, Any] = Field(default_factory=dict)
+    dependencies: list[dict[str, Any]] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)

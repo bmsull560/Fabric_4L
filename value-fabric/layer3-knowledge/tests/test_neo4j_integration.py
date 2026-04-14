@@ -20,9 +20,6 @@ Requirements (in addition to the project's dev extras)::
 The ``NEO4J_PASSWORD`` used inside the container is ``testpassword``.
 """
 
-import asyncio
-import os
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -111,8 +108,9 @@ async def test_driver_connects(driver):
 @pytest.mark.asyncio
 async def test_driver_verify_connectivity(settings):
     """get_driver should raise on bad credentials, not hang."""
-    from src.db.driver import get_driver, reset_driver
     from neo4j.exceptions import AuthError, ServiceUnavailable
+
+    from src.db.driver import get_driver, reset_driver
 
     bad_settings = settings.model_copy(update={"neo4j_password": "wrongpassword"})
     with pytest.raises((AuthError, ServiceUnavailable, Exception)):
@@ -226,8 +224,8 @@ async def test_neo4j_loader_merge_relationship(driver, settings):
 @pytest.mark.asyncio
 async def test_vector_store_index_exists_after_schema_init(driver, settings):
     """VectorStore should confirm the index exists after schema initialisation."""
-    from src.schema import SchemaInitializer
     from src.retrieval.vector_store import VectorStore
+    from src.schema import SchemaInitializer
 
     await SchemaInitializer(driver=driver, settings=settings).initialize_schema()
     vs = VectorStore(driver=driver, settings=settings)
@@ -240,8 +238,8 @@ async def test_vector_store_index_exists_after_schema_init(driver, settings):
 @pytest.mark.asyncio
 async def test_vector_store_search_returns_list(driver, settings):
     """VectorStore.search() should return a list (possibly empty) without raising."""
-    from src.schema import SchemaInitializer
     from src.retrieval.vector_store import VectorStore
+    from src.schema import SchemaInitializer
 
     await SchemaInitializer(driver=driver, settings=settings).initialize_schema()
     vs = VectorStore(driver=driver, settings=settings)
@@ -260,9 +258,9 @@ async def test_vector_store_search_returns_list(driver, settings):
 @pytest.mark.asyncio
 async def test_hybrid_search_no_attribute_error(driver, settings):
     """HybridSearch should initialise and run without raising AttributeError."""
-    from src.schema import SchemaInitializer
-    from src.retrieval.vector_store import VectorStore
     from src.retrieval.hybrid_search import HybridSearch
+    from src.retrieval.vector_store import VectorStore
+    from src.schema import SchemaInitializer
 
     await SchemaInitializer(driver=driver, settings=settings).initialize_schema()
     vs = VectorStore(driver=driver, settings=settings)
@@ -282,9 +280,9 @@ async def test_hybrid_search_no_attribute_error(driver, settings):
 @pytest.mark.asyncio
 async def test_graph_rag_returns_dict(driver, settings):
     """GraphRAGEngine.query() should return a dict with a 'results' key."""
-    from src.schema import SchemaInitializer
-    from src.retrieval.vector_store import VectorStore
     from src.retrieval.graph_rag import GraphRAGEngine
+    from src.retrieval.vector_store import VectorStore
+    from src.schema import SchemaInitializer
 
     await SchemaInitializer(driver=driver, settings=settings).initialize_schema()
     vs = VectorStore(driver=driver, settings=settings)

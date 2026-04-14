@@ -6,8 +6,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..database import Base
@@ -56,7 +56,7 @@ class FeatureFlag(Base):
 
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata",
-        JSONB,
+        JSON,
         nullable=False,
         default=dict,
     )

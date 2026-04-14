@@ -11,8 +11,7 @@ Provides:
 from __future__ import annotations
 
 import logging
-import uuid
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Tuple
 from uuid import UUID
 
 logger = logging.getLogger(__name__)

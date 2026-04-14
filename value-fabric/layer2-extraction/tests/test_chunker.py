@@ -1,7 +1,6 @@
 """Tests for semantic chunker (layer2-extraction/src/.../extraction/chunker.py)."""
 
 import importlib
-import sys
 from pathlib import Path
 
 import pytest
@@ -67,7 +66,7 @@ class TestPreprocess:
     def test_normalizes_crlf(self):
         result = self.chunker._preprocess("Hello\r\nWorld")
         assert "\r" not in result
-        assert "Hello\nWorld" == result
+        assert result == "Hello\nWorld"
 
     def test_collapses_excessive_blank_lines(self):
         text = "Para 1\n\n\n\n\n\nPara 2"

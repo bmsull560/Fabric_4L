@@ -163,7 +163,7 @@ class TestGraphConnectivity:
 
     def test_capabilities_enable_usecases(self, ontology):
         """Each Capability should ENABLE at least one UseCase."""
-        capability_ids = {e["id"] for e in ontology["entities"] if e["type"] == "Capability"}
+        {e["id"] for e in ontology["entities"] if e["type"] == "Capability"}
         enabled_by = set()
 
         for rel in ontology["relationships"]:
@@ -175,7 +175,7 @@ class TestGraphConnectivity:
 
     def test_usecases_benefit_personas(self, ontology):
         """Each UseCase should BENEFIT at least one Persona."""
-        usecase_ids = {e["id"] for e in ontology["entities"] if e["type"] == "UseCase"}
+        {e["id"] for e in ontology["entities"] if e["type"] == "UseCase"}
         benefiting = set()
 
         for rel in ontology["relationships"]:
@@ -186,7 +186,7 @@ class TestGraphConnectivity:
 
     def test_personas_drive_valuedrivers(self, ontology):
         """Each Persona should DRIVE at least one ValueDriver."""
-        persona_ids = {e["id"] for e in ontology["entities"] if e["type"] == "Persona"}
+        {e["id"] for e in ontology["entities"] if e["type"] == "Persona"}
         driving = set()
 
         for rel in ontology["relationships"]:

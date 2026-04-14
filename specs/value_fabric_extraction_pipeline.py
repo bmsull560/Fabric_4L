@@ -13,19 +13,15 @@ Pipeline Stages:
 5. Entailment Validation - Verify logical consistency
 """
 
-from typing import Dict, List, Optional, Set, Tuple, Any, Union
+from typing import Dict, List, Optional, Set, Tuple, Any
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
 import json
 import hashlib
-from abc import ABC, abstractmethod
 
 # Import from ontology schema module
 from value_fabric_ontology_schema import (
-    EntityType, RelationshipType, ClassDefinition, PropertyDefinition,
-    RelationshipConstraint, OntologySchema, ONTOLOGY_SCHEMA,
-    OntologyNamespace, create_entity_uri, create_relationship_uri
+    EntityType, RelationshipType, ClassDefinition, OntologySchema
 )
 
 
@@ -859,7 +855,7 @@ class EntailmentValidator:
                             f"{rel.relationship_type.value}",
                     affected_entities=[rel.source_entity_id],
                     affected_relationships=[rel.relationship_id],
-                    suggestion=f"Change relationship type or source entity type"
+                    suggestion="Change relationship type or source entity type"
                 ))
             
             if target and target.entity_type not in constraint.range:
@@ -871,7 +867,7 @@ class EntailmentValidator:
                             f"{rel.relationship_type.value}",
                     affected_entities=[rel.target_entity_id],
                     affected_relationships=[rel.relationship_id],
-                    suggestion=f"Change relationship type or target entity type"
+                    suggestion="Change relationship type or target entity type"
                 ))
         
         return results
@@ -1308,6 +1304,6 @@ class ExtractionPipeline:
         return filtered_entities, relationships
 
 
-# Import uuid for cluster generation
-import uuid as uuid_module
+import uuid as uuid_module  # noqa: E402
+
 uuid = uuid_module

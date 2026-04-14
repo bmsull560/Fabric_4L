@@ -2,9 +2,8 @@
 
 import asyncio
 import sys
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -13,6 +12,8 @@ _l4_src = str(Path(__file__).resolve().parents[1] / "src")
 if _l4_src not in sys.path:
     sys.path.insert(0, _l4_src)
 
+from messaging.bus import InMemoryMessageBus, create_message_bus
+from messaging.router import MessageRouter
 from messaging.types import (
     AgentMessage,
     ErrorNotification,
@@ -23,9 +24,6 @@ from messaging.types import (
     TaskAssignment,
     TaskResult,
 )
-from messaging.bus import InMemoryMessageBus, create_message_bus
-from messaging.router import MessageRouter
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Message types

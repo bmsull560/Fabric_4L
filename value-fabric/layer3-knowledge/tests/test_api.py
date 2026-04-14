@@ -3,7 +3,6 @@
 from http import HTTPStatus
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 

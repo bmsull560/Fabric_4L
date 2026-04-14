@@ -1,11 +1,8 @@
 """Unit tests for priority queue scheduler."""
 
-import pytest
-import time
-from datetime import datetime
 from uuid import uuid4
 
-from src.scheduler.priority_queue import PriorityScheduler, RoundRobinScheduler, QueueItem
+from src.scheduler.priority_queue import PriorityScheduler, RoundRobinScheduler
 
 
 class TestPriorityScheduler:

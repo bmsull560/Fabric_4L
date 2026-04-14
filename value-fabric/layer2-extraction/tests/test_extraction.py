@@ -4,12 +4,22 @@ Tests the 6-stage extraction pipeline with sample documents.
 """
 
 import os
-import pytest
-from datetime import datetime
 
-from layer2_extraction.models import Capability, UseCase, Persona, ValueDriver, Feature, RoleType, ValueCategory
-from layer2_extraction.models import Relationship, PredicateType, ExtractionResult
-from layer2_extraction.extraction import chunk_markdown, SemanticChunker
+import pytest
+
+from layer2_extraction.extraction import chunk_markdown
+from layer2_extraction.models import (
+    Capability,
+    ExtractionResult,
+    Feature,
+    Persona,
+    PredicateType,
+    Relationship,
+    RoleType,
+    UseCase,
+    ValueCategory,
+    ValueDriver,
+)
 
 
 class TestOntologyModels:
@@ -379,6 +389,7 @@ class TestExtractionPipeline:
     async def test_entity_extraction(self):
         """Test entity extraction with real LLM."""
         import os
+
         from layer2_extraction.extraction import EntityExtractor
         
         extractor = EntityExtractor(api_key=os.getenv("OPENAI_API_KEY"))
@@ -405,8 +416,8 @@ class TestEntailmentValidator:
     
     def test_validation_required_properties(self):
         """Test VAL-001: Required properties validation."""
+        from layer2_extraction.models import ExtractionResult, ValueCategory, ValueDriver
         from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
-        from layer2_extraction.models import ExtractionResult, ValueDriver, ValueCategory
         
         validator = EntailmentValidator()
         
@@ -431,8 +442,8 @@ class TestEntailmentValidator:
     
     def test_validation_confidence_scores(self):
         """Test VAL-006: Confidence score bounds validation."""
-        from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
         from layer2_extraction.models import ExtractionResult
+        from layer2_extraction.validation import EntailmentValidator
         
         validator = EntailmentValidator()
         
@@ -452,8 +463,8 @@ class TestEntailmentValidator:
     
     def test_validation_domain_range(self):
         """Test VAL-002: Domain/range constraints."""
-        from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
         from layer2_extraction.models import ExtractionResult
+        from layer2_extraction.validation import EntailmentValidator
         
         validator = EntailmentValidator()
         

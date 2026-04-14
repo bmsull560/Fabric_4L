@@ -4,16 +4,16 @@ Validates tracing setup, span creation, and metrics collection,
 following the Layer 4 agent tracing patterns mentioned in AGENTS.md.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from contextlib import nullcontext
 
 from src.crawler.telemetry import (
-    init_telemetry,
-    get_tracer,
-    start_crawl_span,
-    start_batch_span,
     CrawlMetrics,
+    get_tracer,
+    init_telemetry,
+    start_batch_span,
+    start_crawl_span,
     trace_method,
 )
 

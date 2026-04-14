@@ -3,9 +3,8 @@
 TDD approach: tests define expected behavior for fixes.
 """
 
-import pytest
-from datetime import datetime, timezone
-from typing import Dict, Any, List
+from datetime import UTC, datetime
+from typing import Any
 
 
 class TestDatetimeDeprecationFixes:
@@ -14,13 +13,13 @@ class TestDatetimeDeprecationFixes:
     def test_all_datetime_creation_uses_timezone_aware(self):
         """All datetime creation should use timezone-aware objects."""
         # This test documents the expected pattern
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         assert now.tzinfo is not None
-        assert now.tzinfo is timezone.utc
+        assert now.tzinfo is UTC
 
     def test_isoformat_produces_correct_timezone_format(self):
         """ISO format should include timezone info."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         iso_str = now.isoformat()
         # Should contain +00:00 or Z suffix indicating UTC
         assert "+00:00" in iso_str or iso_str.endswith("Z") or "UTC" in str(now.tzinfo)
@@ -32,7 +31,7 @@ class TestValidationRuleReconstruction:
     def test_variable_validation_rule_handles_missing_keys(self):
         """Variable registry should handle validation rules with missing keys."""
         # Simulates malformed data from Neo4j
-        malformed_rule: Dict[str, Any] = {"ruleType": "range"}  # Missing parameters, errorMessage
+        malformed_rule: dict[str, Any] = {"ruleType": "range"}  # Missing parameters, errorMessage
 
         # Should not raise KeyError - should use .get() with defaults
         rule_type = malformed_rule.get("ruleType", "unknown")
@@ -45,12 +44,12 @@ class TestValidationRuleReconstruction:
 
     def test_variable_validation_rule_handles_empty_list(self):
         """Empty validation rules list should be handled."""
-        empty_rules: List[Dict[str, Any]] = []
+        empty_rules: list[dict[str, Any]] = []
         assert len(empty_rules) == 0
 
     def test_variable_validation_rule_handles_none_values(self):
         """None values in rule data should be handled gracefully."""
-        rule_with_none: Dict[str, Any] = {
+        rule_with_none: dict[str, Any] = {
             "ruleType": None,
             "parameters": None,
             "errorMessage": None,
@@ -78,8 +77,8 @@ class TestImportPathConvention:
         The import convention is documented in test_interfaces_exports.py header.
         """
         # Verify pyproject.toml has the required configuration
-        import tomllib
         import os
+        import tomllib
 
         pyproject_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "pyproject.toml"

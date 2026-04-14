@@ -3,23 +3,20 @@
 from __future__ import annotations
 
 import os
-import time
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import UUID, uuid4
-
-import httpx
-import jwt
-import pytest
 
 # Ensure layer4-agents src is importable
 import sys
+import time
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import jwt
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from shared.identity.oidc import OIDCClient, _JWKS_CACHE, map_role_from_claims
-from shared.identity.oidc_config import OIDCProviderConfig
-from shared.identity.permissions import Role
+from shared.identity.oidc import _JWKS_CACHE, OIDCClient, map_role_from_claims
 
 
 class TestClaimMapping:
@@ -104,9 +101,8 @@ class TestOIDCClient:
     @pytest.mark.asyncio
     async def test_verify_id_token_with_mocked_jwks(self) -> None:
         # Generate a temporary RSA key pair
-        from cryptography.hazmat.primitives import serialization
-        from cryptography.hazmat.primitives.asymmetric import rsa
         from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives.asymmetric import rsa
 
         private_key = rsa.generate_private_key(
             public_exponent=65537, key_size=2048, backend=default_backend()
@@ -203,8 +199,8 @@ class TestOIDCRoutes:
 
     @pytest.mark.asyncio
     async def test_oidc_login_returns_auth_url(self, dummy_tenant: MagicMock) -> None:
+
         from src.tenants.api.routes.oidc import oidc_login
-        from fastapi import HTTPException
 
         db = AsyncMock()
         db.execute = AsyncMock()
@@ -217,7 +213,7 @@ class TestOIDCRoutes:
 
         db.execute.side_effect = [tenant_result, session_result]
 
-        with patch("src.tenants.api.routes.oidc.OIDCClient") as MockClient:
+        with patch("src.tenants.api.routes.oidc.OIDCClient") as mock_client_cls:
             mock_client = MagicMock()
             mock_client.discover = AsyncMock(
                 return_value={"authorization_endpoint": "https://idp.example.com/auth"}
@@ -225,7 +221,7 @@ class TestOIDCRoutes:
             mock_client.build_authorize_url = MagicMock(
                 return_value="https://idp.example.com/auth?client_id=client-123"
             )
-            MockClient.return_value = mock_client
+            mock_client_cls.return_value = mock_client
 
             result = await oidc_login("acme", db=db)
             assert "authorization_url" in result
@@ -233,8 +229,9 @@ class TestOIDCRoutes:
 
     @pytest.mark.asyncio
     async def test_oidc_callback_auto_provisions_user(self, dummy_tenant: MagicMock) -> None:
-        from src.tenants.api.routes.oidc import oidc_callback
         from fastapi import Request
+
+        from src.tenants.api.routes.oidc import oidc_callback
 
         tenant_id = dummy_tenant.id
         state = "state-123"
@@ -250,7 +247,7 @@ class TestOIDCRoutes:
             "tenant_id": tenant_id,
             "nonce": "nonce-123",
             "redirect_uri": "https://localhost/callback",
-            "expires_at": datetime.now(timezone.utc) + timedelta(minutes=10),
+            "expires_at": datetime.now(UTC) + timedelta(minutes=10),
         }
 
         tenant_result = MagicMock()
@@ -275,7 +272,7 @@ class TestOIDCRoutes:
         db.execute.side_effect = [r1, r2, r3, r4]
 
         # Mock token verification
-        with patch("src.tenants.api.routes.oidc.OIDCClient") as MockClient:
+        with patch("src.tenants.api.routes.oidc.OIDCClient") as mock_client_cls:
             mock_client = MagicMock()
             mock_client.discover = AsyncMock(
                 return_value={"token_endpoint": "https://idp.example.com/token"}
@@ -291,7 +288,7 @@ class TestOIDCRoutes:
                     "nonce": "nonce-123",
                 }
             )
-            MockClient.return_value = mock_client
+            mock_client_cls.return_value = mock_client
 
             result = await oidc_callback(
                 request=request,
@@ -305,8 +302,9 @@ class TestOIDCRoutes:
 
     @pytest.mark.asyncio
     async def test_oidc_callback_rejects_disabled_oidc(self, dummy_tenant: MagicMock) -> None:
-        from src.tenants.api.routes.oidc import oidc_login
         from fastapi import HTTPException
+
+        from src.tenants.api.routes.oidc import oidc_login
 
         dummy_tenant.settings["oidc"]["enabled"] = False
         db = AsyncMock()

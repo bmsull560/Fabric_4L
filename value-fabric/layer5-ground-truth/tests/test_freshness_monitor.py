@@ -2,7 +2,7 @@
 Tests for the Freshness Monitoring service.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
@@ -46,7 +46,7 @@ class TestFreshnessMonitor:
 
     async def test_calculate_expires_at(self, monitor: FreshnessMonitor) -> None:
         """Test expires_at calculation."""
-        freshness = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        freshness = datetime(2024, 1, 1, tzinfo=UTC)
         
         # COST_SAVINGS_BASELINE has 90 day TTL
         expires = monitor.calculate_expires_at(
@@ -79,8 +79,8 @@ class TestFreshnessMonitor:
             confidence=0.8,
             status=TruthStatus.SUPPORTED.value,
             maturity_level=2,
-            freshness=datetime.now(timezone.utc) - timedelta(days=100),
-            expires_at=datetime.now(timezone.utc) - timedelta(days=1),  # Expired!
+            freshness=datetime.now(UTC) - timedelta(days=100),
+            expires_at=datetime.now(UTC) - timedelta(days=1),  # Expired!
             is_stale=False,
         )
         db.add(expired_truth)
@@ -128,8 +128,8 @@ class TestFreshnessMonitor:
             confidence=0.8,
             status=TruthStatus.SUPPORTED.value,
             maturity_level=2,
-            freshness=datetime.now(timezone.utc) - timedelta(days=100),
-            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+            freshness=datetime.now(UTC) - timedelta(days=100),
+            expires_at=datetime.now(UTC) - timedelta(days=1),
             is_stale=False,
         )
         db.add(expired_truth)
@@ -163,8 +163,8 @@ class TestFreshnessMonitor:
             confidence=0.8,
             status=TruthStatus.SUPPORTED.value,
             maturity_level=2,
-            freshness=datetime.now(timezone.utc) - timedelta(days=100),
-            expires_at=datetime.now(timezone.utc) - timedelta(days=30),
+            freshness=datetime.now(UTC) - timedelta(days=100),
+            expires_at=datetime.now(UTC) - timedelta(days=30),
             is_stale=True,  # Already stale
         )
         db.add(already_stale)
@@ -194,7 +194,7 @@ class TestFreshnessMonitor:
             confidence=0.8,
             status=TruthStatus.SUPPORTED.value,
             maturity_level=2,
-            freshness=datetime.now(timezone.utc),
+            freshness=datetime.now(UTC),
             expires_at=None,  # No expiry
             is_stale=False,
         )
@@ -225,8 +225,8 @@ class TestFreshnessMonitor:
                 confidence=0.8,
                 status=TruthStatus.SUPPORTED.value,
                 maturity_level=2,
-                freshness=datetime.now(timezone.utc),
-                expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+                freshness=datetime.now(UTC),
+                expires_at=datetime.now(UTC) - timedelta(days=1),
                 is_stale=True,
             )
             db.add(truth)
@@ -240,8 +240,8 @@ class TestFreshnessMonitor:
             confidence=0.8,
             status=TruthStatus.SUPPORTED.value,
             maturity_level=2,
-            freshness=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            freshness=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(days=30),
             is_stale=False,
         )
         db.add(fresh_truth)
@@ -272,8 +272,8 @@ class TestFreshnessMonitor:
                 confidence=0.8,
                 status=TruthStatus.SUPPORTED.value,
                 maturity_level=2,
-                freshness=datetime.now(timezone.utc),
-                expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+                freshness=datetime.now(UTC),
+                expires_at=datetime.now(UTC) - timedelta(days=1),
                 is_stale=True,
             )
             db.add(truth)
@@ -288,8 +288,8 @@ class TestFreshnessMonitor:
                 confidence=0.8,
                 status=TruthStatus.SUPPORTED.value,
                 maturity_level=2,
-                freshness=datetime.now(timezone.utc),
-                expires_at=datetime.now(timezone.utc) + timedelta(days=100),
+                freshness=datetime.now(UTC),
+                expires_at=datetime.now(UTC) + timedelta(days=100),
                 is_stale=False,
             )
             db.add(truth)
@@ -303,8 +303,8 @@ class TestFreshnessMonitor:
             confidence=0.8,
             status=TruthStatus.SUPPORTED.value,
             maturity_level=2,
-            freshness=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=5),  # Within warning period
+            freshness=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(days=5),  # Within warning period
             is_stale=False,
         )
         db.add(expiring_soon)
@@ -335,8 +335,8 @@ class TestFreshnessMonitor:
             confidence=0.8,
             status=TruthStatus.SUPPORTED.value,
             maturity_level=2,
-            freshness=datetime.now(timezone.utc) - timedelta(days=100),
-            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+            freshness=datetime.now(UTC) - timedelta(days=100),
+            expires_at=datetime.now(UTC) - timedelta(days=1),
             is_stale=False,
         )
         db.add(expired)

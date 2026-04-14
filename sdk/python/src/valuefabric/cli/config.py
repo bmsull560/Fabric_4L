@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import toml
 import typer
@@ -34,7 +33,7 @@ def get_active_profile() -> str:
     return config.get("active_profile", DEFAULT_PROFILE)
 
 
-def get_profile_config(profile: Optional[str] = None) -> dict:
+def get_profile_config(profile: str | None = None) -> dict:
     config = _load_config()
     profile = profile or config.get("active_profile", DEFAULT_PROFILE)
     return config.get("profiles", {}).get(profile, {})

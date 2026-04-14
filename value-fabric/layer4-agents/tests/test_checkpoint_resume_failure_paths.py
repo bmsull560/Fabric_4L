@@ -4,19 +4,17 @@ Tests corrupted state recovery, partial resume, missing dependencies,
 failed agent calls, and inconsistent state scenarios.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-import pytest_asyncio
-from datetime import datetime
-from typing import Dict, Any
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from langgraph.checkpoint.memory import InMemorySaver
 
 from src.engine.executor import OrchestrationController, WorkflowExecutionError
 from src.engine.state_manager import StateManager
 from src.models.agent_state import BaseAgentState, WorkflowStatus
 from src.tools.registry import ToolRegistry
-from langgraph.checkpoint.memory import InMemorySaver
 
-TEST_WORKFLOW_TYPE = "orchestrator"
+TEST_WORKFLOW_TYPE = "roi_calculator"
 
 
 class CorruptedCheckpointSaver(InMemorySaver):
@@ -214,7 +212,7 @@ class TestFailedAgentCalls:
         controller._workflow_metadata[workflow_id] = {"workflow_type": TEST_WORKFLOW_TYPE}
 
         # Verify state preserves error history
-        loaded_state = await state_manager.get_state(workflow_id)
+        loaded_state = await state_manager.load_state(workflow_id)
         assert len(loaded_state.errors) == 2
 
 

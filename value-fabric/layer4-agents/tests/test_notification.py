@@ -4,18 +4,18 @@ Tests quiet hours enforcement, event generation, and channel selection.
 """
 
 import asyncio
-import pytest
-from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from src.services.notification import (
-    NotificationService,
-    NotificationChannel,
-    NotificationPreference,
-    NotificationEvent,
-    NotificationPriority,
-)
+import pytest
+
 from src.models.pause_point import PauseSeverity
+from src.services.notification import (
+    NotificationChannel,
+    NotificationEvent,
+    NotificationPreference,
+    NotificationPriority,
+    NotificationService,
+)
 
 
 class TestQuietHoursEnforcement:

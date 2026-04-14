@@ -3,16 +3,13 @@
 API-level async tests via httpx.AsyncClient that validate public contract/status behavior.
 """
 
-import pytest
-import pytest_asyncio
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
-from unittest.mock import AsyncMock, MagicMock
+from datetime import UTC, datetime
+from typing import Any
+from unittest.mock import MagicMock
 
-import httpx
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
 
 # ============================================================================
 # Local Helpers & Fixtures (no global shared test utility module)
@@ -22,19 +19,19 @@ class FakeStateStore:
     """Fake state store for testing workflow state management."""
 
     def __init__(self):
-        self.workflows: Dict[str, Dict[str, Any]] = {}
+        self.workflows: dict[str, dict[str, Any]] = {}
         self.clock = 0  # Deterministic clock
 
     def tick(self, seconds: int = 1):
         self.clock += seconds
 
-    def get_workflow(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+    def get_workflow(self, workflow_id: str) -> dict[str, Any] | None:
         return self.workflows.get(workflow_id)
 
-    def set_workflow(self, workflow_id: str, data: Dict[str, Any]):
+    def set_workflow(self, workflow_id: str, data: dict[str, Any]):
         self.workflows[workflow_id] = data
 
-    def update_workflow(self, workflow_id: str, updates: Dict[str, Any]):
+    def update_workflow(self, workflow_id: str, updates: dict[str, Any]):
         if workflow_id in self.workflows:
             self.workflows[workflow_id].update(updates)
 
@@ -46,7 +43,7 @@ class DeterministicClock:
         self.timestamp = start
 
     def now(self) -> datetime:
-        return datetime.fromtimestamp(self.timestamp, tz=timezone.utc)
+        return datetime.fromtimestamp(self.timestamp, tz=UTC)
 
     def isoformat(self) -> str:
         return self.now().isoformat()
@@ -62,7 +59,7 @@ class MockOrchestrationController:
         self.state = state_store
         self.checkpoint_saver = None
 
-    async def get_workflow_status(self, workflow_id: str) -> Optional[Dict[str, Any]]:
+    async def get_workflow_status(self, workflow_id: str) -> dict[str, Any] | None:
         workflow = self.state.get_workflow(workflow_id)
         if not workflow:
             return None
@@ -76,7 +73,7 @@ class MockOrchestrationController:
             "user_id": workflow.get("user_id"),
         }
 
-    async def pause_workflow(self, workflow_id: str, user_id: str, reason: Optional[str] = None) -> bool:
+    async def pause_workflow(self, workflow_id: str, user_id: str, reason: str | None = None) -> bool:
         workflow = self.state.get_workflow(workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {workflow_id} not found")
@@ -89,13 +86,13 @@ class MockOrchestrationController:
 
         self.state.update_workflow(workflow_id, {
             "status": "paused",
-            "paused_at": datetime.now(timezone.utc).isoformat(),
+            "paused_at": datetime.now(UTC).isoformat(),
             "paused_by": user_id,
             "pause_reason": reason,
         })
         return True
 
-    async def resume_workflow(self, workflow_id: str, user_id: str, resume_data: Optional[Dict] = None):
+    async def resume_workflow(self, workflow_id: str, user_id: str, resume_data: dict | None = None):
         workflow = self.state.get_workflow(workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {workflow_id} not found")
@@ -116,7 +113,7 @@ class MockOrchestrationController:
         self.state.update_workflow(workflow_id, {"status": "cancelled"})
         return True
 
-    async def list_active_workflows(self, tenant_id: Optional[str] = None) -> list:
+    async def list_active_workflows(self, tenant_id: str | None = None) -> list:
         active = []
         for wf_id, wf in self.state.workflows.items():
             if wf.get("status") in ["running", "paused"]:
@@ -150,36 +147,36 @@ def mock_executor(fake_store):
 @pytest.fixture
 def app(mock_executor):
     """Create FastAPI app with mocked executor for testing."""
+    from datetime import datetime
+
     from fastapi import Depends, HTTPException
     from pydantic import BaseModel, ConfigDict, Field
-    from typing import Optional
-    from datetime import datetime
 
     app = FastAPI()
 
     class WorkflowPauseRequest(BaseModel):
         user_id: str = Field(..., description="User pausing the workflow")
-        reason: Optional[str] = Field(None, description="Reason for pausing")
-        tenant_id: Optional[str] = None
+        reason: str | None = Field(None, description="Reason for pausing")
+        tenant_id: str | None = None
 
     class WorkflowPauseResponse(BaseModel):
         workflow_instance_id: str = Field(..., alias="workflow_instance_id")
         status: str = Field(..., description="paused")
         paused_at: str = Field(..., description="ISO timestamp when paused")
-        current_node: Optional[str] = Field(None, description="Current node when paused")
+        current_node: str | None = Field(None, description="Current node when paused")
         message: str
 
         model_config = ConfigDict(populate_by_name=True)
 
     class WorkflowResumeRequest(BaseModel):
         user_id: str = Field(..., description="User resuming the workflow")
-        resume_data: Optional[dict] = Field(default_factory=dict)
-        tenant_id: Optional[str] = None
+        resume_data: dict | None = Field(default_factory=dict)
+        tenant_id: str | None = None
 
     class WorkflowResumeResponse(BaseModel):
         workflow_instance_id: str = Field(..., alias="workflow_instance_id")
         status: str = Field(..., description="resumed, completed, or failed")
-        resumed_from_node: Optional[str] = Field(None, description="Node from which execution resumed")
+        resumed_from_node: str | None = Field(None, description="Node from which execution resumed")
         message: str
         estimated_completion_seconds: int = Field(default=60)
 
@@ -220,7 +217,7 @@ def app(mock_executor):
         return WorkflowPauseResponse(
             workflow_instance_id=workflow_id,
             status="paused",
-            paused_at=datetime.now(timezone.utc).isoformat(),
+            paused_at=datetime.now(UTC).isoformat(),
             current_node=status.get("current_node"),
             message=f"Workflow paused at node: {status.get('current_node', 'unknown')}",
         )
@@ -288,7 +285,7 @@ class TestWorkflowPause:
         fake_store.set_workflow("wf-running", {
             "status": "running",
             "current_node": "extract_entities",
-            "started_at": datetime.now(timezone.utc).isoformat(),
+            "started_at": datetime.now(UTC).isoformat(),
         })
 
         # Act: Pause the workflow

@@ -547,6 +547,8 @@ class OrchestrationController:
         # Merge resume data into state if provided
         # Store in output_data to avoid mutating original input_data
         if resume_data:
+            if state.output_data is None:
+                state.output_data = {}
             state.output_data["resume_decision"] = resume_data
             state.output_data["resumed_by"] = user_id
             state.output_data["resumed_at"] = datetime.now(UTC).isoformat()
@@ -567,7 +569,14 @@ class OrchestrationController:
 
         # Resume execution - LangGraph will load from checkpoint via thread_id
         # The workflow continues from where it left off
-        result = await workflow.run(state, thread_id=workflow_id)
+        try:
+            result = await workflow.run(state, thread_id=workflow_id)
+        except WorkflowExecutionError:
+            raise
+        except Exception as e:
+            raise WorkflowExecutionError(
+                f"Failed to resume workflow {workflow_id}: {e}"
+            ) from e
 
         return result
 

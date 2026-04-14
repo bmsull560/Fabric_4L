@@ -17,9 +17,7 @@ Requirements:
 """
 
 import asyncio
-import os
-from typing import AsyncGenerator, List
-from unittest.mock import AsyncMock
+from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -33,19 +31,17 @@ try:
 except ImportError:
     HAS_TESTCONTAINERS = False
 
-from src.api.main import app
 from src.api.dependencies import (
-    get_graph_rag,
-    get_hybrid_search,
     get_schema_initializer,
     get_sync_manager,
 )
-from src.config import Settings, get_settings
+from src.api.main import app
+from src.config import Settings
 from src.ingestion.neo4j_loader import Neo4jLoader
 from src.ingestion.sync_manager import SyncManager
-from src.schema.initializer import SchemaInitializer
 from src.retrieval.hybrid_search import HybridSearch
 from src.retrieval.vector_store import VectorStore
+from src.schema.initializer import SchemaInitializer
 
 # Skip entire module if testcontainers not installed
 pytestmark = pytest.mark.skipif(
@@ -254,7 +250,7 @@ class TestIngestionWithEmbeddings:
         from rdflib import Graph, Literal, Namespace, URIRef
         from rdflib.namespace import RDF
         
-        VF = Namespace("http://valuefabric.io/ontology/")
+        VF = Namespace("http://valuefabric.io/ontology/")  # noqa: N806
         
         # Create test RDF graph with Capability
         g = Graph()
@@ -310,7 +306,7 @@ class TestHybridSearch:
         from rdflib import Graph, Literal, Namespace, URIRef
         from rdflib.namespace import RDF
         
-        VF = Namespace("http://valuefabric.io/ontology/")
+        VF = Namespace("http://valuefabric.io/ontology/")  # noqa: N806
         
         # Create test entities with different descriptions
         g = Graph()
@@ -523,7 +519,7 @@ class TestSchemaIdempotency:
         # Insert a test entity
         from rdflib import Graph, Literal, Namespace, URIRef
         from rdflib.namespace import RDF
-        VF = Namespace("http://valuefabric.io/ontology/")
+        VF = Namespace("http://valuefabric.io/ontology/")  # noqa: N806
         g = Graph()
         cap_uri = URIRef("http://valuefabric.io/cap/persist-test")
         g.add((cap_uri, RDF.type, VF.Capability))
@@ -626,7 +622,7 @@ class TestVectorCleanup:
         """Deleting a node must remove its embedding from the index."""
         from rdflib import Graph, Literal, Namespace, URIRef
         from rdflib.namespace import RDF
-        VF = Namespace("http://valuefabric.io/ontology/")
+        VF = Namespace("http://valuefabric.io/ontology/")  # noqa: N806
 
         g = Graph()
         cap_uri = URIRef("http://valuefabric.io/cap/cleanup-test")

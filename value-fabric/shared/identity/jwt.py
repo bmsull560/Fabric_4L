@@ -7,7 +7,6 @@ from uuid import UUID
 
 import jwt
 from fastapi import HTTPException, status
-from jwt.exceptions import ExpiredSignatureError, PyJWTError
 
 from .models import TokenClaims
 

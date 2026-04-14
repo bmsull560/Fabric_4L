@@ -11,7 +11,7 @@ Validates:
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -48,7 +48,7 @@ def _make_job(
     relationships_extracted: int = 3,
     last_error: str | None = None,
 ) -> api_main.PipelineJob:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return api_main.PipelineJob(
         job_id=job_id,
         extraction_status=extraction_status,
@@ -74,7 +74,7 @@ class TestSSEErrorPaths:
     @pytest.mark.asyncio
     async def test_returns_404_for_unknown_job(self, async_client):
         """Unknown job_id must yield 404 with descriptive detail."""
-        resp = await async_client.get("/extract/jobs/no-such-job/events")
+        resp = await async_client.get("/v1/extract/jobs/no-such-job/events")
         assert resp.status_code == 404
         body = resp.json()
         assert "not found" in body["detail"].lower()
@@ -82,7 +82,7 @@ class TestSSEErrorPaths:
     @pytest.mark.asyncio
     async def test_returns_404_with_job_id_in_detail(self, async_client):
         """404 detail should mention the requested job_id."""
-        resp = await async_client.get("/extract/jobs/missing-123/events")
+        resp = await async_client.get("/v1/extract/jobs/missing-123/events")
         assert resp.status_code == 404
         assert "missing-123" in resp.json()["detail"]
 
@@ -98,28 +98,28 @@ class TestSSEHeaders:
     async def test_content_type_is_event_stream(self, async_client):
         """Content-Type must be text/event-stream."""
         api_main.PIPELINE_JOBS["h-1"] = _make_job(job_id="h-1")
-        resp = await async_client.get("/extract/jobs/h-1/events")
+        resp = await async_client.get("/v1/extract/jobs/h-1/events")
         assert "text/event-stream" in resp.headers["content-type"]
 
     @pytest.mark.asyncio
     async def test_cache_control_no_cache(self, async_client):
         """Cache-Control must be no-cache for real-time streams."""
         api_main.PIPELINE_JOBS["h-2"] = _make_job(job_id="h-2")
-        resp = await async_client.get("/extract/jobs/h-2/events")
+        resp = await async_client.get("/v1/extract/jobs/h-2/events")
         assert resp.headers["cache-control"] == "no-cache"
 
     @pytest.mark.asyncio
     async def test_connection_keep_alive(self, async_client):
         """Connection header must be keep-alive."""
         api_main.PIPELINE_JOBS["h-3"] = _make_job(job_id="h-3")
-        resp = await async_client.get("/extract/jobs/h-3/events")
+        resp = await async_client.get("/v1/extract/jobs/h-3/events")
         assert resp.headers.get("connection") == "keep-alive"
 
     @pytest.mark.asyncio
     async def test_nginx_buffering_disabled(self, async_client):
         """X-Accel-Buffering must be 'no' to prevent nginx buffering."""
         api_main.PIPELINE_JOBS["h-4"] = _make_job(job_id="h-4")
-        resp = await async_client.get("/extract/jobs/h-4/events")
+        resp = await async_client.get("/v1/extract/jobs/h-4/events")
         assert resp.headers.get("x-accel-buffering") == "no"
 
 
@@ -134,7 +134,7 @@ class TestSSECompletedJob:
     async def test_completed_job_emits_complete_event(self, async_client):
         """A completed job's stream must include a 'complete' event type."""
         api_main.PIPELINE_JOBS["c-1"] = _make_job(job_id="c-1")
-        resp = await async_client.get("/extract/jobs/c-1/events")
+        resp = await async_client.get("/v1/extract/jobs/c-1/events")
         events = _parse_sse_events(resp.text)
         types = {e["type"] for e in events}
         assert "complete" in types
@@ -143,7 +143,7 @@ class TestSSECompletedJob:
     async def test_completed_job_has_status_event(self, async_client):
         """A completed job must include a 'status' event."""
         api_main.PIPELINE_JOBS["c-2"] = _make_job(job_id="c-2")
-        resp = await async_client.get("/extract/jobs/c-2/events")
+        resp = await async_client.get("/v1/extract/jobs/c-2/events")
         events = _parse_sse_events(resp.text)
         status_events = [e for e in events if e["type"] == "status"]
         assert len(status_events) >= 1
@@ -153,7 +153,7 @@ class TestSSECompletedJob:
     async def test_completed_job_progress_is_100(self, async_client):
         """A completed job must emit progress 100."""
         api_main.PIPELINE_JOBS["c-3"] = _make_job(job_id="c-3")
-        resp = await async_client.get("/extract/jobs/c-3/events")
+        resp = await async_client.get("/v1/extract/jobs/c-3/events")
         events = _parse_sse_events(resp.text)
         progress_events = [e for e in events if e["type"] == "progress"]
         assert any(e["data"] == 100 for e in progress_events)
@@ -164,7 +164,7 @@ class TestSSECompletedJob:
         api_main.PIPELINE_JOBS["c-4"] = _make_job(
             job_id="c-4", entities_extracted=7, relationships_extracted=4
         )
-        resp = await async_client.get("/extract/jobs/c-4/events")
+        resp = await async_client.get("/v1/extract/jobs/c-4/events")
         events = _parse_sse_events(resp.text)
         complete_events = [e for e in events if e["type"] == "complete"]
         assert len(complete_events) == 1
@@ -179,7 +179,7 @@ class TestSSECompletedJob:
     async def test_completed_job_has_log_event(self, async_client):
         """Completed jobs should emit a log event with 'success' level."""
         api_main.PIPELINE_JOBS["c-5"] = _make_job(job_id="c-5")
-        resp = await async_client.get("/extract/jobs/c-5/events")
+        resp = await async_client.get("/v1/extract/jobs/c-5/events")
         events = _parse_sse_events(resp.text)
         log_events = [e for e in events if e["type"] == "log"]
         assert len(log_events) >= 1
@@ -189,7 +189,7 @@ class TestSSECompletedJob:
     async def test_stream_terminates_for_completed_job(self, async_client):
         """Stream must terminate (not hang) after complete event."""
         api_main.PIPELINE_JOBS["c-6"] = _make_job(job_id="c-6")
-        resp = await async_client.get("/extract/jobs/c-6/events")
+        resp = await async_client.get("/v1/extract/jobs/c-6/events")
         # If we got a response, the stream terminated
         assert resp.status_code == 200
 
@@ -210,7 +210,7 @@ class TestSSEFailedJob:
             extraction_status="failed",
             last_error="LLM timeout",
         )
-        resp = await async_client.get("/extract/jobs/f-1/events")
+        resp = await async_client.get("/v1/extract/jobs/f-1/events")
         events = _parse_sse_events(resp.text)
         types = {e["type"] for e in events}
         assert "error" in types
@@ -224,7 +224,7 @@ class TestSSEFailedJob:
             extraction_status="failed",
             last_error="Connection refused",
         )
-        resp = await async_client.get("/extract/jobs/f-2/events")
+        resp = await async_client.get("/v1/extract/jobs/f-2/events")
         events = _parse_sse_events(resp.text)
         error_events = [e for e in events if e["type"] == "error"]
         assert len(error_events) == 1
@@ -239,7 +239,7 @@ class TestSSEFailedJob:
             extraction_status="failed",
             last_error="boom",
         )
-        resp = await async_client.get("/extract/jobs/f-3/events")
+        resp = await async_client.get("/v1/extract/jobs/f-3/events")
         events = _parse_sse_events(resp.text)
         log_events = [e for e in events if e["type"] == "log"]
         assert any(le["data"]["level"] == "error" for le in log_events)
@@ -253,7 +253,7 @@ class TestSSEFailedJob:
             extraction_status="failed",
             last_error="timeout",
         )
-        resp = await async_client.get("/extract/jobs/f-4/events")
+        resp = await async_client.get("/v1/extract/jobs/f-4/events")
         events = _parse_sse_events(resp.text)
         progress_events = [e for e in events if e["type"] == "progress"]
         assert any(e["data"] == 100 for e in progress_events)
@@ -270,7 +270,7 @@ class TestSSEEventStructure:
     async def test_all_events_have_required_fields(self, async_client):
         """Every event must have type, timestamp, and data fields."""
         api_main.PIPELINE_JOBS["s-1"] = _make_job(job_id="s-1")
-        resp = await async_client.get("/extract/jobs/s-1/events")
+        resp = await async_client.get("/v1/extract/jobs/s-1/events")
         events = _parse_sse_events(resp.text)
         assert len(events) > 0
         for event in events:
@@ -282,7 +282,7 @@ class TestSSEEventStructure:
     async def test_timestamps_are_iso_format(self, async_client):
         """Timestamps must be ISO 8601 strings ending with Z."""
         api_main.PIPELINE_JOBS["s-2"] = _make_job(job_id="s-2")
-        resp = await async_client.get("/extract/jobs/s-2/events")
+        resp = await async_client.get("/v1/extract/jobs/s-2/events")
         events = _parse_sse_events(resp.text)
         for event in events:
             ts = event["timestamp"]
@@ -295,7 +295,7 @@ class TestSSEEventStructure:
         """Event types must be from the defined set."""
         valid_types = {"status", "progress", "log", "entity", "complete", "error"}
         api_main.PIPELINE_JOBS["s-3"] = _make_job(job_id="s-3")
-        resp = await async_client.get("/extract/jobs/s-3/events")
+        resp = await async_client.get("/v1/extract/jobs/s-3/events")
         events = _parse_sse_events(resp.text)
         for event in events:
             assert event["type"] in valid_types, f"Invalid type: {event['type']}"
@@ -304,9 +304,9 @@ class TestSSEEventStructure:
     async def test_sse_lines_use_data_prefix(self, async_client):
         """Raw SSE lines must be prefixed with 'data: '."""
         api_main.PIPELINE_JOBS["s-4"] = _make_job(job_id="s-4")
-        resp = await async_client.get("/extract/jobs/s-4/events")
+        resp = await async_client.get("/v1/extract/jobs/s-4/events")
         lines = [line for line in resp.text.strip().split("\n") if line.strip()]
-        data_lines = [l for l in lines if l.startswith("data: ")]
+        data_lines = [line for line in lines if line.startswith("data: ")]
         assert len(data_lines) > 0, "No data: prefixed lines found in SSE stream"
 
 
@@ -332,11 +332,11 @@ class TestSSEPendingJob:
             await asyncio.sleep(0.6)
             job.overall_status = "completed"
             job.extraction_status = "completed"
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
 
         task = asyncio.create_task(_complete_job())
         try:
-            async with async_client.stream("GET", "/extract/jobs/p-1/events") as response:
+            async with async_client.stream("GET", "/v1/extract/jobs/p-1/events") as response:
                 events = []
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):

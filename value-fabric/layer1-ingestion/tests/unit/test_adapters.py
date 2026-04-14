@@ -1,11 +1,12 @@
 """Unit tests for SEC EDGAR adapter."""
 
-import pytest
-from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch, AsyncMock
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
+from src.adapters.base import AdapterType
 from src.adapters.sec_edgar import SECEdgarAdapter
-from src.adapters.base import AdapterType, FilingType
 
 
 class TestSECEdgarAdapter:
@@ -63,14 +64,14 @@ class TestSECEdgarAdapter:
     async def test_search_filings(self, adapter):
         """Test filing search filters by form type and date range."""
         # Constants for test data
-        TEST_CIK = "0000320193"
-        TEST_TICKER = "AAPL"
-        DATE_RANGE_DAYS = 365
+        test_cik = "0000320193"
+        test_ticker = "AAPL"
+        date_range_days = 365
 
         # First call is for CIK lookup (company_tickers.json format)
         mock_cik_response = Mock()
         mock_cik_response.json.return_value = {
-            "0": {"cik_str": 320193, "ticker": TEST_TICKER, "title": "Apple Inc."}
+            "0": {"cik_str": 320193, "ticker": test_ticker, "title": "Apple Inc."}
         }
         mock_cik_response.status_code = 200
 
@@ -78,12 +79,12 @@ class TestSECEdgarAdapter:
         # Use fixed dates for deterministic tests
         # Date within range: 2024-01-15 (between Jan 1 and Dec 31, 2024)
         # Date outside range: 2022-06-01 (before Jan 1, 2024)
-        fixed_end_date = datetime(2024, 12, 31, tzinfo=timezone.utc)
-        fixed_start_date = fixed_end_date - timedelta(days=DATE_RANGE_DAYS)
+        fixed_end_date = datetime(2024, 12, 31, tzinfo=UTC)
+        fixed_start_date = fixed_end_date - timedelta(days=date_range_days)
 
         mock_submissions_response = Mock()
         mock_submissions_response.json.return_value = {
-            "cik": TEST_CIK,
+            "cik": test_cik,
             "entityName": "Apple Inc.",
             "filings": {
                 "recent": {
@@ -102,7 +103,7 @@ class TestSECEdgarAdapter:
             mock_request.side_effect = [mock_cik_response, mock_submissions_response]
 
             results = await adapter.search(
-                query=TEST_TICKER,
+                query=test_ticker,
                 start_date=fixed_start_date,
                 end_date=fixed_end_date,
                 form_types=["10-K", "10-Q"]
@@ -218,7 +219,7 @@ class TestAdapterRegistry:
     
     def test_register_adapter(self, registry):
         """Test registering a new adapter."""
-        from src.adapters.base import DataSourceAdapter, AdapterConfig
+        from src.adapters.base import DataSourceAdapter
         
         class TestAdapter(DataSourceAdapter):
             @property

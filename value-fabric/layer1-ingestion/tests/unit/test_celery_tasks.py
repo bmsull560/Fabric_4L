@@ -11,12 +11,12 @@ Tests verify:
 """
 from __future__ import annotations
 
-import sys
 import os
-from datetime import datetime, timedelta
+import sys
+from datetime import datetime
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, call
-from uuid import UUID, uuid4
+from unittest.mock import MagicMock, Mock, patch
+from uuid import uuid4
 
 import pytest
 
@@ -71,7 +71,7 @@ class TestExecutePipelineStage:
 
     def test_execute_pipeline_stage_compliance_check(self) -> None:
         """execute_pipeline_stage must dispatch compliance_check_stage for COMPLIANCE_CHECK."""
-        from src.shared.tasks import execute_pipeline_stage, compliance_check_stage
+        from src.shared.tasks import compliance_check_stage, execute_pipeline_stage
 
         job_id = str(uuid4())
         with patch.object(compliance_check_stage, "delay") as mock_delay:
@@ -93,15 +93,15 @@ class TestProcessScrapingJob:
     def test_process_scraping_job_chains_all_stages(self) -> None:
         """process_scraping_job must chain all 9 pipeline stages."""
         from src.shared.tasks import (
-            compliance_check_stage,
-            browser_launch_stage,
-            navigation_stage,
-            content_capture_stage,
             ai_extraction_stage,
-            post_processing_stage,
-            validation_stage,
-            storage_stage,
+            browser_launch_stage,
+            compliance_check_stage,
+            content_capture_stage,
+            navigation_stage,
             notification_stage,
+            post_processing_stage,
+            storage_stage,
+            validation_stage,
         )
 
         # Verify all 9 stage tasks exist and are callable
@@ -218,9 +218,9 @@ class TestCleanupOldContent:
 
     def test_cleanup_default_days_is_30(self) -> None:
         """cleanup_old_content default retention period must be 30 days."""
-        from src.shared.tasks import cleanup_old_content
-
         import inspect
+
+        from src.shared.tasks import cleanup_old_content
         sig = inspect.signature(cleanup_old_content)
         days_param = sig.parameters.get("days")
         assert days_param is not None, "cleanup_old_content must have a 'days' parameter"
@@ -383,15 +383,15 @@ class TestPipelineStageErrorPaths:
     def test_all_pipeline_stages_are_registered_as_celery_tasks(self) -> None:
         """All 9 pipeline stages must be registered as Celery tasks."""
         from src.shared.tasks import (
-            compliance_check_stage,
-            browser_launch_stage,
-            navigation_stage,
-            content_capture_stage,
             ai_extraction_stage,
-            post_processing_stage,
-            validation_stage,
-            storage_stage,
+            browser_launch_stage,
+            compliance_check_stage,
+            content_capture_stage,
+            navigation_stage,
             notification_stage,
+            post_processing_stage,
+            storage_stage,
+            validation_stage,
         )
         stage_tasks = [
             compliance_check_stage,
