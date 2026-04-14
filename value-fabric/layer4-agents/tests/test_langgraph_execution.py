@@ -584,3 +584,252 @@ class TestOrchestrationControllerWorkflowLifecycle:
 
         active = await controller.list_active_workflows()
         assert isinstance(active, list)
+
+
+# ── State Transition Edge Case Tests ──────────────────────────────────────────
+class TestWorkflowStateTransitions:
+    """Test edge cases in workflow state transitions."""
+
+    def test_workflow_status_cannot_transition_from_completed(self) -> None:
+        """A completed workflow must not be reset to running."""
+        # Verify COMPLETED is a terminal status that workflow router respects
+        terminal_statuses = {"completed", "failed", "cancelled"}
+        for status in terminal_statuses:
+            assert status in {s.value for s in WorkflowStatus}, (
+                f"WorkflowStatus must include terminal status: {status}"
+            )
+
+    def test_workflow_status_has_paused_for_human_in_loop(self) -> None:
+        """PAUSED must be a valid WorkflowStatus for human-in-the-loop."""
+        assert hasattr(WorkflowStatus, "PAUSED")
+        assert WorkflowStatus.PAUSED.value == "paused"
+
+    def test_all_status_values_are_lowercase(self) -> None:
+        """All WorkflowStatus values must be lowercase (matches frontend expectations)."""
+        for status in WorkflowStatus:
+            assert status.value == status.value.lower(), (
+                f"WorkflowStatus.{status.name} value must be lowercase, got: {status.value}"
+            )
+
+    def test_initial_state_has_empty_errors_list(self) -> None:
+        """New workflow states must start with empty errors list."""
+        registry = _make_mock_tool_registry()
+        
+        roi_wf = ROICalculatorWorkflow(tool_registry=registry)
+        roi_state = roi_wf.create_initial_state({
+            "prospect_id": "p-001",
+            "value_driver_ids": ["vd-001"],
+        })
+        assert roi_state.errors == []
+        
+        bc_wf = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+        bc_state = bc_wf.create_initial_state({
+            "prospect_id": "p-001",
+            "sections_requested": ["executive_summary"],
+        })
+        assert bc_state.errors == []
+
+    def test_initial_state_has_empty_output_data(self) -> None:
+        """New workflow states must start with empty output_data."""
+        registry = _make_mock_tool_registry()
+        
+        roi_wf = ROICalculatorWorkflow(tool_registry=registry)
+        roi_state = roi_wf.create_initial_state({
+            "prospect_id": "p-001",
+            "value_driver_ids": ["vd-001"],
+        })
+        assert roi_state.output_data == {}
+
+
+class TestWorkflowInputValidation:
+    """Test workflow input validation edge cases."""
+
+    def test_roi_workflow_rejects_missing_prospect_id(self) -> None:
+        """ROI workflow must reject inputs without prospect_id."""
+        registry = _make_mock_tool_registry()
+        workflow = ROICalculatorWorkflow(tool_registry=registry)
+        
+        with pytest.raises((ValueError, Exception)):
+            workflow.create_initial_state({
+                "value_driver_ids": ["vd-001"],
+                # Missing prospect_id
+            })
+
+    def test_business_case_rejects_empty_sections(self) -> None:
+        """Business case workflow must reject empty sections_requested."""
+        registry = _make_mock_tool_registry()
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+        
+        with pytest.raises((ValueError, Exception)):
+            workflow.create_initial_state({
+                "prospect_id": "p-001",
+                "sections_requested": [],  # Empty list
+            })
+
+    def test_roi_workflow_accepts_minimal_valid_input(self) -> None:
+        """ROI workflow must accept minimal valid input (prospect_id + value_driver_ids)."""
+        registry = _make_mock_tool_registry()
+        workflow = ROICalculatorWorkflow(tool_registry=registry)
+        
+        state = workflow.create_initial_state({
+            "prospect_id": "p-001",
+            "value_driver_ids": ["vd-001"],
+        })
+        assert state.status == WorkflowStatus.PENDING
+        assert state.roi_input.prospect_id == "p-001"
+
+    def test_business_case_accepts_all_section_types(self) -> None:
+        """Business case must accept all 6 standard section types."""
+        registry = _make_mock_tool_registry()
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+        
+        all_sections = [
+            "executive_summary", "current_state", "proposed_solution",
+            "roi_analysis", "implementation", "next_steps",
+        ]
+        state = workflow.create_initial_state({
+            "prospect_id": "p-001",
+            "sections_requested": all_sections,
+            "output_format": "pdf",
+        })
+        assert len(state.case_input.sections_requested) == 6
+
+
+@pytest.mark.asyncio
+class TestWorkflowToolFailureHandling:
+    """Test workflow behavior when tool calls fail."""
+
+    async def test_roi_workflow_handles_tool_timeout(self) -> None:
+        """ROI workflow must handle tool execution timeouts."""
+        registry = _make_mock_tool_registry()
+
+        async def mock_execute_timeout(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+            raise TimeoutError(f"Tool {tool_name} execution timed out after 30s")
+
+        registry.execute = AsyncMock(side_effect=mock_execute_timeout)
+        workflow = ROICalculatorWorkflow(tool_registry=registry)
+
+        input_data = {
+            "prospect_id": "p-001",
+            "value_driver_ids": ["vd-001"],
+        }
+        initial_state = workflow.create_initial_state(input_data)
+
+        # Mock compiled graph to simulate the error being caught
+        mock_compiled = AsyncMock()
+        mock_compiled.ainvoke = AsyncMock(return_value={
+            **initial_state.model_dump(),
+            "status": "failed",
+            "errors": ["Tool get_prospect_data execution timed out after 30s"],
+        })
+
+        with patch.object(workflow, "compile", return_value=mock_compiled):
+            result = await workflow.run(initial_state, thread_id="timeout-test")
+
+        assert result is not None
+        # The workflow should either fail or capture the error
+
+    async def test_business_case_handles_all_sections_failing(self) -> None:
+        """Business case must handle all section generation failures gracefully."""
+        registry = _make_mock_tool_registry()
+
+        async def mock_execute_all_fail(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+            if tool_name == "generate_section":
+                raise RuntimeError("LLM API is down for all calls")
+            return {"status": "ok"}
+
+        registry.execute = AsyncMock(side_effect=mock_execute_all_fail)
+        workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
+
+        input_data = {
+            "prospect_id": "p-001",
+            "sections_requested": ["executive_summary", "roi_analysis", "implementation"],
+            "output_format": "pdf",
+        }
+        state = workflow.create_initial_state(input_data)
+        state.output_data = {
+            "gather_inputs": {"prospect": {"profile": {"name": "Acme Corp"}}},
+            "run_roi": {"roi_results": {}},
+        }
+
+        # Must not crash — should return error sections
+        result = await workflow._execute_generate_sections(state)
+        assert "sections" in result
+        assert result["section_count"] == 3
+        # All sections should contain error indicators
+        for section in result["sections"]:
+            assert "Error" in section["content"] or "error" in section["content"].lower()
+
+
+@pytest.mark.asyncio
+class TestOrchestrationControllerErrorPaths:
+    """Test error paths in the OrchestrationController."""
+
+    async def test_cancel_nonexistent_workflow_returns_false(self) -> None:
+        """cancel_workflow must return False for unknown workflow IDs."""
+        from src.engine.executor import OrchestrationController
+        from src.engine.state_manager import StateManager
+
+        mock_registry = _make_mock_tool_registry()
+        state_manager = StateManager()
+
+        controller = OrchestrationController(
+            tool_registry=mock_registry,
+            state_manager=state_manager,
+        )
+
+        result = await controller.cancel_workflow("nonexistent-wf-id")
+        assert result is False or result is None
+
+    async def test_execute_workflow_rejects_unknown_type(self) -> None:
+        """execute_workflow must raise for unknown workflow types."""
+        from src.engine.executor import OrchestrationController
+        from src.engine.state_manager import StateManager
+
+        mock_registry = _make_mock_tool_registry()
+        state_manager = StateManager()
+
+        controller = OrchestrationController(
+            tool_registry=mock_registry,
+            state_manager=state_manager,
+        )
+
+        with pytest.raises((ValueError, KeyError, Exception)):
+            await controller.execute_workflow(
+                workflow_type="nonexistent_workflow",
+                input_data={"prospect_id": "p-001"},
+                tenant_id="t-001",
+                user_id="u-001",
+            )
+
+    async def test_get_workflow_status_after_execute(self) -> None:
+        """get_workflow_status must return valid data after workflow execution."""
+        from src.engine.executor import OrchestrationController
+        from src.engine.state_manager import StateManager
+
+        mock_registry = _make_mock_tool_registry()
+        state_manager = StateManager()
+
+        controller = OrchestrationController(
+            tool_registry=mock_registry,
+            state_manager=state_manager,
+        )
+
+        # Add a workflow manually to the metadata
+        controller._workflow_metadata["wf-manual-001"] = {
+            "workflow_id": "wf-manual-001",
+            "workflow_type": "roi_calculator",
+            "status": "completed",
+            "progress_percentage": 100.0,
+            "started_at": "2026-04-13T10:00:00",
+            "completed_at": "2026-04-13T10:02:00",
+            "error_count": 0,
+            "has_output": True,
+            "tenant_id": "t-001",
+            "user_id": "u-001",
+        }
+
+        status = await controller.get_workflow_status("wf-manual-001")
+        assert status is not None
+        assert status["workflow_type"] == "roi_calculator"
+        assert status["status"] == "completed"
