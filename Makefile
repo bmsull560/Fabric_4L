@@ -86,6 +86,7 @@ test-layer4: ## Run Layer 4 tests
 	cd value-fabric/layer4-agents && $(PYTEST) tests/
 
 test-layer5: ## Run Layer 5 tests
+	cd value-fabric/layer5-ground-truth && python scripts/check_no_duplicate_modules.py
 	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/
 
 test-frontend: ## Run frontend unit tests
