@@ -1,170 +1,71 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Value Fabric - Layer 1: Intelligent Data Ingestion",
-    "description": "Production-grade web data ingestion service with spec-compliant API",
-    "version": "1.0.0"
+    "title": "Value Fabric \u2014 Layer 4: Agents",
+    "description": "Agentic engine with LangGraph orchestration, workflow management, ROI/whitespace analysis, business case generation, and tool invocation.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Value Fabric Team"
+    }
   },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Layer 4 Agents API"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": [],
+      "TenantHeader": []
+    }
+  ],
   "paths": {
-    "/api/v1/ingestion/targets": {
-      "get": {
-        "summary": "List Targets",
-        "description": "List all scraping targets for the organization.",
-        "operationId": "list_targets_api_v1_ingestion_targets_get",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 20,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "$ref": "#/components/schemas/TargetStatus"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Status"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Search in name, description, url",
-              "title": "Search"
-            },
-            "description": "Search in name, description, url"
-          },
-          {
-            "name": "tags",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Tags"
-            }
-          },
-          {
-            "name": "sort_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^(created_at|updated_at|last_success_at|name)$",
-              "default": "created_at",
-              "title": "Sort By"
-            }
-          },
-          {
-            "name": "sort_order",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^(asc|desc)$",
-              "default": "desc",
-              "title": "Sort Order"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TargetListResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/workflows": {
       "post": {
-        "summary": "Create Target",
-        "description": "Create a new scraping target.",
-        "operationId": "create_target_api_v1_ingestion_targets_post",
+        "operationId": "create_workflow",
+        "summary": "Create Workflow",
+        "description": "Create and start a new workflow instance.",
+        "tags": [
+          "Workflows"
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateTargetRequest"
+                "$ref": "#/components/schemas/WorkflowCreateRequest"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Successful Response",
+            "description": "Workflow created successfully.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScrapingTargetDetail"
+                  "$ref": "#/components/schemas/WorkflowCreateResponse"
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "400": {
+            "description": "Invalid request.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -172,449 +73,34 @@
         }
       }
     },
-    "/api/v1/ingestion/targets/{target_id}": {
+    "/workflows/active": {
       "get": {
-        "summary": "Get Target",
-        "description": "Get detailed information about a specific target.",
-        "operationId": "get_target_api_v1_ingestion_targets__target_id__get",
-        "parameters": [
-          {
-            "name": "target_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Target Id"
-            }
-          }
+        "operationId": "list_active_workflows",
+        "summary": "List Active Workflows",
+        "description": "Retrieve all currently active workflow instances.",
+        "tags": [
+          "Workflows"
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "List of active workflows.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScrapingTargetDetail"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "Update Target",
-        "description": "Update a scraping target.",
-        "operationId": "update_target_api_v1_ingestion_targets__target_id__put",
-        "parameters": [
-          {
-            "name": "target_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Target Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTargetRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScrapingTargetDetail"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "Delete Target",
-        "description": "Archive a scraping target (soft delete).",
-        "operationId": "delete_target_api_v1_ingestion_targets__target_id__delete",
-        "parameters": [
-          {
-            "name": "target_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Target Id"
-            }
-          },
-          {
-            "name": "force",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Hard delete if no jobs exist",
-              "default": false,
-              "title": "Force"
-            },
-            "description": "Hard delete if no jobs exist"
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/targets/{target_id}/validate": {
-      "post": {
-        "summary": "Validate Target",
-        "description": "Validate target configuration without executing.",
-        "operationId": "validate_target_api_v1_ingestion_targets__target_id__validate_post",
-        "parameters": [
-          {
-            "name": "target_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Target Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ValidateTargetRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidateTargetResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/targets/{target_id}/execute": {
-      "post": {
-        "summary": "Execute Target",
-        "description": "Trigger immediate execution of a target.",
-        "operationId": "execute_target_api_v1_ingestion_targets__target_id__execute_post",
-        "parameters": [
-          {
-            "name": "target_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Target Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExecuteTargetRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExecuteTargetResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/jobs": {
-      "get": {
-        "summary": "List Jobs",
-        "description": "List all scraping jobs with filtering and pagination.",
-        "operationId": "list_jobs_api_v1_ingestion_jobs_get",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 20,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "target_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Target Id"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/JobStatus"
+                    "$ref": "#/components/schemas/WorkflowStatusResponse"
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Status"
-            }
-          },
-          {
-            "name": "triggered_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Triggered By"
-            }
-          },
-          {
-            "name": "date_from",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Date From"
-            }
-          },
-          {
-            "name": "date_to",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Date To"
-            }
-          },
-          {
-            "name": "priority_min",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer",
-                  "maximum": 10,
-                  "minimum": 1
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Priority Min"
-            }
-          },
-          {
-            "name": "priority_max",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer",
-                  "maximum": 10,
-                  "minimum": 1
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Priority Max"
-            }
-          },
-          {
-            "name": "has_errors",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "boolean"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Has Errors"
-            }
-          },
-          {
-            "name": "sort_by",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^(created_at|started_at|completed_at|priority)$",
-              "default": "created_at",
-              "title": "Sort By"
-            }
-          },
-          {
-            "name": "sort_order",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^(asc|desc)$",
-              "default": "desc",
-              "title": "Sort Order"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/JobListResponse"
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "401": {
+            "description": "Unauthorized.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -622,40 +108,43 @@
         }
       }
     },
-    "/api/v1/ingestion/jobs/{job_id}": {
+    "/workflows/{workflow_id}": {
       "get": {
-        "summary": "Get Job",
-        "description": "Get detailed job information including execution stages.",
-        "operationId": "get_job_api_v1_ingestion_jobs__job_id__get",
+        "operationId": "get_workflow_status",
+        "summary": "Get Workflow Status",
+        "description": "Retrieve the current status and details of a workflow instance.",
+        "tags": [
+          "Workflows"
+        ],
         "parameters": [
           {
-            "name": "job_id",
+            "name": "workflow_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Job Id"
-            }
+              "format": "uuid"
+            },
+            "description": "Unique identifier of the workflow instance."
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Workflow status retrieved.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScrapingJobDetail"
+                  "$ref": "#/components/schemas/WorkflowStatusResponse"
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "404": {
+            "description": "Workflow not found.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -663,77 +152,46 @@
         }
       },
       "delete": {
-        "summary": "Cancel Job",
-        "description": "Cancel a running or queued job.",
-        "operationId": "cancel_job_api_v1_ingestion_jobs__job_id__delete",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Job Id"
-            }
-          }
+        "operationId": "delete_workflow",
+        "summary": "Delete Workflow",
+        "description": "Cancel and delete a workflow instance.",
+        "tags": [
+          "Workflows"
         ],
-        "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/jobs/{job_id}/progress": {
-      "get": {
-        "summary": "Get Job Progress",
-        "description": "Get real-time job progress.",
-        "operationId": "get_job_progress_api_v1_ingestion_jobs__job_id__progress_get",
         "parameters": [
           {
-            "name": "job_id",
+            "name": "workflow_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Job Id"
-            }
+              "format": "uuid"
+            },
+            "description": "Unique identifier of the workflow instance."
           }
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Workflow deleted.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobProgressResponse"
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "404": {
+            "description": "Workflow not found.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -741,101 +199,383 @@
         }
       }
     },
-    "/api/v1/ingestion/jobs/{job_id}/results": {
+    "/workflows/{workflow_id}/events": {
       "get": {
-        "summary": "Get Job Results",
-        "description": "Get extracted data results for a job.",
-        "operationId": "get_job_results_api_v1_ingestion_jobs__job_id__results_get",
+        "operationId": "get_workflow_events",
+        "summary": "Stream Workflow Events (SSE)",
+        "description": "Stream real-time workflow events via Server-Sent Events.",
+        "tags": [
+          "Workflows"
+        ],
         "parameters": [
           {
-            "name": "job_id",
+            "name": "workflow_id",
             "in": "path",
             "required": true,
             "schema": {
               "type": "string",
-              "format": "uuid",
-              "title": "Job Id"
+              "format": "uuid"
+            },
+            "description": "Unique identifier of the workflow instance."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE event stream.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowEvent"
+                }
+              }
             }
           },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
+          "404": {
+            "description": "Workflow not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
-          },
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_id}/result": {
+      "get": {
+        "operationId": "get_workflow_result",
+        "summary": "Get Workflow Result",
+        "description": "Retrieve the output / result of a completed workflow.",
+        "tags": [
+          "Workflows"
+        ],
+        "parameters": [
           {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 20,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "format",
-            "in": "query",
-            "required": false,
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "string",
-              "pattern": "^(json|csv|ndjson)$",
-              "default": "json",
-              "title": "Format"
+              "format": "uuid"
+            },
+            "description": "Unique identifier of the workflow instance."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workflow_instance_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "results": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
             }
           },
+          "404": {
+            "description": "Workflow not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_id}/resume": {
+      "post": {
+        "operationId": "resume_workflow",
+        "summary": "Resume Workflow",
+        "description": "Resume a paused workflow instance.",
+        "tags": [
+          "Workflows"
+        ],
+        "parameters": [
           {
-            "name": "include_raw",
-            "in": "query",
-            "required": false,
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
             "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Include Raw"
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Unique identifier of the workflow instance."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowResumeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow resumed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowResumeResponse"
+                }
+              }
             }
           },
+          "404": {
+            "description": "Workflow not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{workflow_id}/pause": {
+      "post": {
+        "operationId": "pause_workflow",
+        "summary": "Pause Workflow",
+        "description": "Pause a running workflow instance.",
+        "tags": [
+          "Workflows"
+        ],
+        "parameters": [
           {
-            "name": "fields",
-            "in": "query",
-            "required": false,
+            "name": "workflow_id",
+            "in": "path",
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Unique identifier of the workflow instance."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowPauseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workflow paused.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowPauseResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workflow not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analysis/roi": {
+      "post": {
+        "operationId": "run_roi_analysis",
+        "summary": "ROI Analysis",
+        "description": "Run an ROI analysis for a prospect using specified value drivers.",
+        "tags": [
+          "Analysis"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ROIAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ROI analysis result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ROIAnalysisResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analysis/whitespace": {
+      "post": {
+        "operationId": "run_whitespace_analysis",
+        "summary": "Whitespace Analysis",
+        "description": "Run a whitespace / gap analysis for a prospect.",
+        "tags": [
+          "Analysis"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhitespaceAnalysisRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Whitespace analysis result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhitespaceAnalysisResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/cases": {
+      "post": {
+        "operationId": "create_business_case",
+        "summary": "Generate Business Case",
+        "description": "Generate a business case document for a prospect.",
+        "tags": [
+          "Analysis"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BusinessCaseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Business case generated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BusinessCaseResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools": {
+      "get": {
+        "operationId": "list_tools",
+        "summary": "List Tools",
+        "description": "List all available agent tools.",
+        "tags": [
+          "Tools"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tools.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ToolSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tools/categories": {
+      "get": {
+        "operationId": "list_tool_categories",
+        "summary": "List Tool Categories",
+        "description": "List all tool categories.",
+        "tags": [
+          "Tools"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tool categories.",
+            "content": {
+              "application/json": {
+                "schema": {
                   "type": "array",
                   "items": {
                     "type": "string"
                   }
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Fields"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -843,119 +583,94 @@
         }
       }
     },
-    "/api/v1/ingestion/jobs/{job_id}/retry": {
-      "post": {
-        "summary": "Retry Job",
-        "description": "Retry a failed or partially successful job.",
-        "operationId": "retry_job_api_v1_ingestion_jobs__job_id__retry_post",
+    "/tools/{tool_name}": {
+      "get": {
+        "operationId": "get_tool",
+        "summary": "Get Tool Details",
+        "description": "Get the schema and metadata for a specific tool.",
+        "tags": [
+          "Tools"
+        ],
         "parameters": [
           {
-            "name": "job_id",
+            "name": "tool_name",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Job Id"
+              "type": "string"
+            },
+            "description": "Name of the tool."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tool details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
             }
           }
+        }
+      }
+    },
+    "/tools/invoke": {
+      "post": {
+        "operationId": "invoke_tool",
+        "summary": "Invoke Tool",
+        "description": "Invoke a tool by name with the given parameters.",
+        "tags": [
+          "Tools"
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RetryJobRequest"
+                "$ref": "#/components/schemas/ToolInvokeRequest"
               }
             }
           }
         },
         "responses": {
-          "202": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/content/raw/{content_id}": {
-      "get": {
-        "summary": "Get Raw Content",
-        "description": "Retrieve raw content by ID.",
-        "operationId": "get_raw_content_api_v1_ingestion_content_raw__content_id__get",
-        "parameters": [
-          {
-            "name": "content_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Content Id"
-            }
-          },
-          {
-            "name": "include_html",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": true,
-              "title": "Include Html"
-            }
-          },
-          {
-            "name": "include_screenshot",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Include Screenshot"
-            }
-          },
-          {
-            "name": "include_har",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Include Har"
-            }
-          }
-        ],
-        "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Tool invocation result.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RawContentResponse"
+                  "$ref": "#/components/schemas/ToolInvokeResponse"
                 }
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "400": {
+            "description": "Invalid request.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tool not found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -963,491 +678,53 @@
         }
       }
     },
-    "/api/v1/ingestion/content/extracted/{extracted_data_id}": {
-      "get": {
-        "summary": "Get Extracted Data",
-        "description": "Retrieve extracted data by ID.",
-        "operationId": "get_extracted_data_api_v1_ingestion_content_extracted__extracted_data_id__get",
-        "parameters": [
-          {
-            "name": "extracted_data_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "title": "Extracted Data Id"
-            }
-          },
-          {
-            "name": "format",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "pattern": "^(json|markdown|flattened)$",
-              "default": "json",
-              "title": "Format"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExtractedDataResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/content": {
-      "get": {
-        "summary": "List Content",
-        "description": "List raw content with filtering.",
-        "operationId": "list_content_api_v1_ingestion_content_get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Job Id"
-            }
-          },
-          {
-            "name": "domain",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Domain"
-            }
-          },
-          {
-            "name": "processing_status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Processing Status"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 20,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/compliance/logs": {
-      "get": {
-        "summary": "List Compliance Logs",
-        "description": "Query compliance logs.",
-        "operationId": "list_compliance_logs_api_v1_ingestion_compliance_logs_get",
-        "parameters": [
-          {
-            "name": "event_type",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ComplianceEventType"
-                  }
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Event Type"
-            }
-          },
-          {
-            "name": "severity",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Severity"
-            }
-          },
-          {
-            "name": "domain",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Domain"
-            }
-          },
-          {
-            "name": "date_from",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Date From"
-            }
-          },
-          {
-            "name": "date_to",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "date-time"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Date To"
-            }
-          },
-          {
-            "name": "job_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Job Id"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 1,
-              "title": "Page"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 100,
-              "minimum": 1,
-              "default": 20,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/compliance/summary": {
-      "get": {
-        "summary": "Get Compliance Summary",
-        "description": "Get compliance summary for organization.",
-        "operationId": "get_compliance_summary_api_v1_ingestion_compliance_summary_get",
-        "parameters": [
-          {
-            "name": "period_start",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "title": "Period Start"
-            }
-          },
-          {
-            "name": "period_end",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "date-time",
-              "title": "Period End"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ComplianceSummaryResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/health": {
-      "get": {
-        "summary": "Health Check",
-        "description": "Enhanced health check endpoint.",
-        "operationId": "health_check_api_v1_ingestion_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthCheckResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/metrics": {
-      "get": {
-        "summary": "Metrics Endpoint",
-        "description": "Prometheus-compatible metrics endpoint.",
-        "operationId": "metrics_endpoint_api_v1_ingestion_metrics_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/admin/cleanup": {
+    "/c1/stream": {
       "post": {
-        "summary": "Trigger Cleanup",
-        "description": "Trigger content cleanup for old data.",
-        "operationId": "trigger_cleanup_api_v1_ingestion_admin_cleanup_post",
-        "parameters": [
-          {
-            "name": "days",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 365,
-              "minimum": 1,
-              "default": 30,
-              "title": "Days"
-            }
-          }
+        "operationId": "c1_stream",
+        "summary": "C1 Proxy Stream",
+        "description": "Stream agent responses via the C1 proxy (Server-Sent Events).",
+        "tags": [
+          "Integration"
         ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/ingestion/proxy-pools": {
-      "post": {
-        "summary": "Create Proxy Pool Endpoint",
-        "description": "Create a proxy pool.",
-        "operationId": "create_proxy_pool_endpoint_api_v1_ingestion_proxy_pools_post",
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateProxyPoolRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProxyPoolResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
+                "type": "object",
+                "properties": {
+                  "prompt": {
+                    "type": "string",
+                    "description": "User prompt to stream."
+                  },
+                  "context": {
+                    "type": "object",
+                    "description": "Additional context for the agent."
+                  }
+                },
+                "required": [
+                  "prompt"
+                ]
               }
             }
           }
-        }
-      }
-    },
-    "/health": {
-      "get": {
-        "summary": "Legacy Health Check",
-        "description": "Legacy health check - redirects to new endpoint.",
-        "operationId": "legacy_health_check_health_get",
+        },
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "SSE stream of agent responses.",
             "content": {
-              "application/json": {
-                "schema": {}
+              "text/event-stream": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "string"
+                    }
+                  }
+                }
               }
             }
           }
@@ -1456,2129 +733,666 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token issued by the shared identity service."
+      },
+      "TenantHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Tenant-ID",
+        "description": "UUID of the tenant. Required for data isolation and RBAC."
+      }
+    },
     "schemas": {
-      "AuthenticationInput": {
-        "properties": {
-          "type": {
-            "$ref": "#/components/schemas/AuthenticationType",
-            "default": "NONE"
-          },
-          "credentials_ref": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Credentials Ref"
-          }
-        },
+      "ErrorResponse": {
         "type": "object",
-        "title": "AuthenticationInput",
-        "description": "Authentication configuration."
-      },
-      "AuthenticationType": {
-        "type": "string",
-        "enum": [
-          "NONE",
-          "BEARER",
-          "API_KEY",
-          "BASIC",
-          "OAUTH2"
-        ],
-        "title": "AuthenticationType",
-        "description": "Authentication types for targets."
-      },
-      "BrowserConfigInput": {
         "properties": {
-          "engine": {
-            "$ref": "#/components/schemas/BrowserEngine",
-            "default": "chromium"
-          },
-          "headless": {
-            "type": "boolean",
-            "title": "Headless",
-            "default": true
-          },
-          "viewport_width": {
-            "type": "integer",
-            "title": "Viewport Width",
-            "default": 1920
-          },
-          "viewport_height": {
-            "type": "integer",
-            "title": "Viewport Height",
-            "default": 1080
-          },
-          "user_agent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Agent"
-          },
-          "javascript_enabled": {
-            "type": "boolean",
-            "title": "Javascript Enabled",
-            "default": true
-          },
-          "wait_for_selector": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wait For Selector"
-          },
-          "wait_timeout": {
-            "type": "integer",
-            "title": "Wait Timeout",
-            "default": 30000
-          },
-          "stealth_mode": {
-            "type": "boolean",
-            "title": "Stealth Mode",
-            "default": true
-          }
-        },
-        "type": "object",
-        "title": "BrowserConfigInput",
-        "description": "Browser configuration for a target."
-      },
-      "BrowserEngine": {
-        "type": "string",
-        "enum": [
-          "chromium",
-          "firefox",
-          "webkit"
-        ],
-        "title": "BrowserEngine",
-        "description": "Browser engines."
-      },
-      "ComplianceEventType": {
-        "type": "string",
-        "enum": [
-          "ROBOTS_TXT_CHECK",
-          "RATE_LIMIT_APPLIED",
-          "PII_DETECTED",
-          "PII_REDACTED",
-          "DOMAIN_BLOCKED",
-          "DOMAIN_ALLOWED",
-          "CAPTCHA_ENCOUNTERED",
-          "BLOCKED_BY_TARGET",
-          "TERMS_VIOLATION",
-          "DATA_RETENTION_DELETION"
-        ],
-        "title": "ComplianceEventType",
-        "description": "Compliance event types."
-      },
-      "ComplianceInput": {
-        "properties": {
-          "respect_robots_txt": {
-            "type": "boolean",
-            "title": "Respect Robots Txt",
-            "default": true
-          },
-          "user_agent_string": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "User Agent String"
-          },
-          "crawl_delay_seconds": {
-            "type": "number",
-            "title": "Crawl Delay Seconds",
-            "default": 1.0
-          },
-          "domain_allowlist": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Domain Allowlist",
-            "default": []
-          },
-          "domain_blocklist": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Domain Blocklist",
-            "default": []
-          },
-          "pii_redaction_enabled": {
-            "type": "boolean",
-            "title": "Pii Redaction Enabled",
-            "default": true
-          },
-          "sensitive_field_patterns": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sensitive Field Patterns",
-            "default": []
-          }
-        },
-        "type": "object",
-        "title": "ComplianceInput",
-        "description": "Compliance settings."
-      },
-      "ComplianceSummaryResponse": {
-        "properties": {
-          "period": {
-            "additionalProperties": {
-              "type": "string",
-              "format": "date-time"
-            },
+          "error": {
             "type": "object",
-            "title": "Period"
-          },
-          "robots_txt_compliance": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "type": "object",
-            "title": "Robots Txt Compliance"
-          },
-          "rate_limiting": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Rate Limiting"
-          },
-          "pii_detection": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "type": "object",
-            "title": "Pii Detection"
-          },
-          "domain_policies": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "type": "object",
-            "title": "Domain Policies"
-          }
-        },
-        "type": "object",
-        "required": [
-          "period",
-          "robots_txt_compliance",
-          "rate_limiting",
-          "pii_detection",
-          "domain_policies"
-        ],
-        "title": "ComplianceSummaryResponse",
-        "description": "Compliance summary statistics."
-      },
-      "ComponentHealth": {
-        "properties": {
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "latency_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latency Ms"
-          },
-          "message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "status"
-        ],
-        "title": "ComponentHealth",
-        "description": "Component health status."
-      },
-      "CreateProxyPoolRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "proxies": {
-            "items": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "type": "array",
-            "title": "Proxies"
-          },
-          "rotation_strategy": {
-            "$ref": "#/components/schemas/ProxyRotationStrategy",
-            "default": "ROUND_ROBIN"
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "proxies"
-        ],
-        "title": "CreateProxyPoolRequest",
-        "description": "Request to create a proxy pool."
-      },
-      "CreateTargetRequest": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "maxLength": 255,
-            "minLength": 1,
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "url": {
-            "type": "string",
-            "title": "Url",
-            "description": "Target URL"
-          },
-          "target_type": {
-            "$ref": "#/components/schemas/TargetType",
-            "default": "SINGLE_PAGE"
-          },
-          "extraction_config": {
-            "$ref": "#/components/schemas/ExtractionConfigInput"
-          },
-          "browser_config": {
-            "$ref": "#/components/schemas/BrowserConfigInput"
-          },
-          "schedule": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ScheduleInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "rate_limit": {
-            "$ref": "#/components/schemas/RateLimitInput"
-          },
-          "compliance": {
-            "$ref": "#/components/schemas/ComplianceInput"
-          },
-          "proxy_config": {
-            "$ref": "#/components/schemas/ProxyConfigInput"
-          },
-          "authentication": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AuthenticationInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Tags",
-            "default": []
-          }
-        },
-        "type": "object",
-        "required": [
-          "name",
-          "url"
-        ],
-        "title": "CreateTargetRequest",
-        "description": "Request to create a scraping target."
-      },
-      "ExecuteTargetRequest": {
-        "properties": {
-          "priority": {
-            "type": "integer",
-            "maximum": 10.0,
-            "minimum": 1.0,
-            "title": "Priority",
-            "default": 5
-          },
-          "override_config": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Override Config"
-          },
-          "callback_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Callback Url"
-          },
-          "webhook_events": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Webhook Events"
-          }
-        },
-        "type": "object",
-        "title": "ExecuteTargetRequest",
-        "description": "Request to execute a target."
-      },
-      "ExecuteTargetResponse": {
-        "properties": {
-          "job_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Job Id"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "estimated_start_time": {
-            "anyOf": [
-              {
+            "properties": {
+              "code": {
                 "type": "string",
-                "format": "date-time"
+                "description": "Machine-readable error code."
               },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estimated Start Time"
-          },
-          "queue_position": {
-            "type": "integer",
-            "title": "Queue Position"
-          }
-        },
-        "type": "object",
-        "required": [
-          "job_id",
-          "status",
-          "queue_position"
-        ],
-        "title": "ExecuteTargetResponse",
-        "description": "Response from target execution."
-      },
-      "ExtractedDataResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "job_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Job Id"
-          },
-          "raw_content_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Raw Content Id"
-          },
-          "extraction_method": {
-            "type": "string",
-            "title": "Extraction Method"
-          },
-          "extraction_confidence_score": {
-            "type": "number",
-            "title": "Extraction Confidence Score"
-          },
-          "data": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Data"
-          },
-          "validation": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Validation"
-          },
-          "post_processing": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Post Processing"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "job_id",
-          "raw_content_id",
-          "extraction_method",
-          "extraction_confidence_score",
-          "data",
-          "validation",
-          "post_processing",
-          "created_at"
-        ],
-        "title": "ExtractedDataResponse",
-        "description": "Extracted data response."
-      },
-      "ExtractionConfigInput": {
-        "properties": {
-          "method": {
-            "$ref": "#/components/schemas/ExtractionMethod",
-            "default": "DETERMINISTIC"
-          },
-          "llm_provider": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LLMProvider"
+              "message": {
+                "type": "string",
+                "description": "Human-readable error description."
               },
-              {
-                "type": "null"
+              "details": {
+                "type": "object",
+                "description": "Optional additional context."
               }
-            ]
-          },
-          "extraction_schema": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Extraction Schema"
-          },
-          "visual_hints": {
-            "type": "boolean",
-            "title": "Visual Hints",
-            "default": false
-          },
-          "max_depth": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 10.0,
-                "minimum": 0.0
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Depth"
-          },
-          "follow_links": {
-            "type": "boolean",
-            "title": "Follow Links",
-            "default": true
-          },
-          "link_selectors": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Link Selectors"
-          }
-        },
-        "type": "object",
-        "title": "ExtractionConfigInput",
-        "description": "Extraction configuration for a target."
-      },
-      "ExtractionMethod": {
-        "type": "string",
-        "enum": [
-          "AI_LLM",
-          "DETERMINISTIC",
-          "HYBRID"
-        ],
-        "title": "ExtractionMethod",
-        "description": "Content extraction methods."
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
             },
-            "type": "array",
-            "title": "Detail"
+            "required": [
+              "code",
+              "message"
+            ]
           }
         },
-        "type": "object",
-        "title": "HTTPValidationError"
+        "required": [
+          "error"
+        ]
       },
-      "HealthCheckResponse": {
+      "WorkflowCreateRequest": {
+        "type": "object",
         "properties": {
+          "workflow_type": {
+            "type": "string",
+            "enum": [
+              "roi_calculator",
+              "whitespace_analysis",
+              "business_case",
+              "orchestrator"
+            ],
+            "description": "Type of workflow to execute."
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Tenant identifier."
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User who initiated the workflow."
+          },
+          "inputs": {
+            "type": "object",
+            "description": "Workflow-specific input parameters."
+          },
+          "priority": {
+            "type": "string",
+            "default": "NORMAL",
+            "description": "Execution priority."
+          }
+        },
+        "required": [
+          "workflow_type",
+          "tenant_id",
+          "user_id",
+          "inputs"
+        ]
+      },
+      "WorkflowCreateResponse": {
+        "type": "object",
+        "properties": {
+          "workflow_instance_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the created workflow instance."
+          },
           "status": {
             "type": "string",
-            "title": "Status"
+            "description": "Current workflow status."
           },
-          "version": {
+          "estimated_duration_seconds": {
+            "type": "integer",
+            "description": "Estimated time to completion in seconds."
+          }
+        },
+        "required": [
+          "workflow_instance_id",
+          "status",
+          "estimated_duration_seconds"
+        ]
+      },
+      "WorkflowStatusResponse": {
+        "type": "object",
+        "properties": {
+          "workflow_instance_id": {
             "type": "string",
-            "title": "Version"
+            "format": "uuid"
+          },
+          "workflow_type": {
+            "type": "string",
+            "enum": [
+              "roi_calculator",
+              "whitespace_analysis",
+              "business_case",
+              "orchestrator"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "current_state": {
+            "type": "string"
+          },
+          "current_node": {
+            "type": "string"
+          },
+          "progress_percentage": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Completion percentage (0-100)."
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "error_count": {
+            "type": "integer"
+          },
+          "has_output": {
+            "type": "boolean"
+          },
+          "results": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "scheduler_status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflow_instance_id",
+          "workflow_type",
+          "status"
+        ]
+      },
+      "WorkflowEvent": {
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "event_type": {
+            "type": "string",
+            "description": "Type of workflow event (e.g. state_change, error, completed)."
           },
           "timestamp": {
             "type": "string",
-            "format": "date-time",
-            "title": "Timestamp"
-          },
-          "components": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/ComponentHealth"
-            },
-            "type": "object",
-            "title": "Components"
-          },
-          "metrics": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Metrics"
-          }
-        },
-        "type": "object",
-        "required": [
-          "status",
-          "version",
-          "timestamp",
-          "components",
-          "metrics"
-        ],
-        "title": "HealthCheckResponse",
-        "description": "Health check response."
-      },
-      "JobErrorResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "stage": {
-            "type": "string",
-            "title": "Stage"
-          },
-          "error_code": {
-            "type": "string",
-            "title": "Error Code"
-          },
-          "error_message": {
-            "type": "string",
-            "title": "Error Message"
-          },
-          "url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Url"
-          },
-          "retryable": {
-            "type": "boolean",
-            "title": "Retryable"
-          },
-          "retry_count": {
-            "type": "integer",
-            "title": "Retry Count"
-          },
-          "occurred_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Occurred At"
-          },
-          "resolved_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resolved At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "stage",
-          "error_code",
-          "error_message",
-          "retryable",
-          "retry_count",
-          "occurred_at"
-        ],
-        "title": "JobErrorResponse",
-        "description": "Job error detail."
-      },
-      "JobListResponse": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/JobSummary"
-            },
-            "type": "array",
-            "title": "Data"
-          },
-          "aggregation": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Aggregation"
-          },
-          "pagination": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Pagination"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data",
-          "aggregation",
-          "pagination"
-        ],
-        "title": "JobListResponse",
-        "description": "List of jobs response."
-      },
-      "JobProgressDetail": {
-        "properties": {
-          "total_pages": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Total Pages"
-          },
-          "processed_pages": {
-            "type": "integer",
-            "title": "Processed Pages"
-          },
-          "failed_pages": {
-            "type": "integer",
-            "title": "Failed Pages"
-          },
-          "current_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Url"
-          },
-          "current_stage": {
-            "type": "string",
-            "title": "Current Stage"
-          },
-          "percent_complete": {
-            "type": "integer",
-            "title": "Percent Complete"
-          }
-        },
-        "type": "object",
-        "required": [
-          "processed_pages",
-          "failed_pages",
-          "current_stage",
-          "percent_complete"
-        ],
-        "title": "JobProgressDetail",
-        "description": "Job progress information."
-      },
-      "JobProgressResponse": {
-        "properties": {
-          "job_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Job Id"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "progress": {
-            "$ref": "#/components/schemas/JobProgressDetail"
-          },
-          "last_update": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Last Update"
-          }
-        },
-        "type": "object",
-        "required": [
-          "job_id",
-          "status",
-          "progress",
-          "last_update"
-        ],
-        "title": "JobProgressResponse",
-        "description": "Real-time job progress."
-      },
-      "JobResultsDetail": {
-        "properties": {
-          "raw_content_count": {
-            "type": "integer",
-            "title": "Raw Content Count"
-          },
-          "extracted_record_count": {
-            "type": "integer",
-            "title": "Extracted Record Count"
-          },
-          "storage_bytes_used": {
-            "type": "integer",
-            "title": "Storage Bytes Used"
-          },
-          "output_location": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Output Location"
-          }
-        },
-        "type": "object",
-        "required": [
-          "raw_content_count",
-          "extracted_record_count",
-          "storage_bytes_used"
-        ],
-        "title": "JobResultsDetail",
-        "description": "Job results summary."
-      },
-      "JobStageDetailResponse": {
-        "properties": {
-          "stage": {
-            "type": "string",
-            "title": "Stage"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "duration_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Duration Ms"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          }
-        },
-        "type": "object",
-        "required": [
-          "stage",
-          "status"
-        ],
-        "title": "JobStageDetailResponse",
-        "description": "Pipeline stage detail."
-      },
-      "JobStatus": {
-        "type": "string",
-        "enum": [
-          "PENDING",
-          "QUEUED",
-          "VALIDATING",
-          "BROWSER_ACQUIRING",
-          "NAVIGATING",
-          "EXTRACTING",
-          "TRANSFORMING",
-          "STORING",
-          "COMPLETED",
-          "FAILED",
-          "CANCELLED",
-          "PARTIAL_SUCCESS"
-        ],
-        "title": "JobStatus",
-        "description": "Job lifecycle states - 11 states as per spec."
-      },
-      "JobSummary": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "target_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Target Id"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "priority": {
-            "type": "integer",
-            "title": "Priority"
-          },
-          "progress_percent_complete": {
-            "type": "integer",
-            "title": "Progress Percent Complete"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "target_id",
-          "status",
-          "priority",
-          "progress_percent_complete",
-          "created_at"
-        ],
-        "title": "JobSummary",
-        "description": "Summary of a scraping job."
-      },
-      "LLMProvider": {
-        "type": "string",
-        "enum": [
-          "openai",
-          "anthropic",
-          "azure_openai"
-        ],
-        "title": "LLMProvider",
-        "description": "LLM providers for AI extraction."
-      },
-      "ProxyConfigInput": {
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "default": false
-          },
-          "rotation_strategy": {
-            "$ref": "#/components/schemas/ProxyRotationStrategy",
-            "default": "ROUND_ROBIN"
-          },
-          "proxy_pool_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Proxy Pool Id"
-          },
-          "sticky_sessions": {
-            "type": "boolean",
-            "title": "Sticky Sessions",
-            "default": false
-          },
-          "session_duration_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Session Duration Minutes"
-          }
-        },
-        "type": "object",
-        "title": "ProxyConfigInput",
-        "description": "Proxy configuration."
-      },
-      "ProxyPoolResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "proxy_count": {
-            "type": "integer",
-            "title": "Proxy Count"
-          },
-          "rotation_strategy": {
-            "type": "string",
-            "title": "Rotation Strategy"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "proxy_count",
-          "rotation_strategy",
-          "created_at"
-        ],
-        "title": "ProxyPoolResponse",
-        "description": "Proxy pool response."
-      },
-      "ProxyRotationStrategy": {
-        "type": "string",
-        "enum": [
-          "ROUND_ROBIN",
-          "RANDOM",
-          "GEO_BASED",
-          "SESSION_BASED",
-          "LEAST_USED"
-        ],
-        "title": "ProxyRotationStrategy",
-        "description": "Proxy rotation strategies."
-      },
-      "RateLimitInput": {
-        "properties": {
-          "requests_per_second": {
-            "type": "number",
-            "title": "Requests Per Second",
-            "default": 1.0
-          },
-          "requests_per_minute": {
-            "type": "integer",
-            "title": "Requests Per Minute",
-            "default": 30
-          },
-          "requests_per_hour": {
-            "type": "integer",
-            "title": "Requests Per Hour",
-            "default": 500
-          },
-          "burst_limit": {
-            "type": "integer",
-            "title": "Burst Limit",
-            "default": 5
-          },
-          "retry_attempts": {
-            "type": "integer",
-            "title": "Retry Attempts",
-            "default": 3
-          },
-          "retry_backoff": {
-            "$ref": "#/components/schemas/RetryBackoff",
-            "default": "exponential"
-          },
-          "retry_delay_ms": {
-            "type": "integer",
-            "title": "Retry Delay Ms",
-            "default": 1000
-          }
-        },
-        "type": "object",
-        "title": "RateLimitInput",
-        "description": "Rate limiting configuration."
-      },
-      "RawContentResponse": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "job_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Job Id"
-          },
-          "source_url": {
-            "type": "string",
-            "title": "Source Url"
-          },
-          "source_final_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Final Url"
-          },
-          "source_domain": {
-            "type": "string",
-            "title": "Source Domain"
-          },
-          "source_http_status": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Http Status"
-          },
-          "storage": {
-            "additionalProperties": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "type": "object",
-            "title": "Storage"
-          },
-          "metadata": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Metadata"
-          },
-          "capture": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Capture"
-          },
-          "content_hash": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content Hash"
-          },
-          "is_duplicate": {
-            "type": "boolean",
-            "title": "Is Duplicate"
-          },
-          "processing_status": {
-            "type": "string",
-            "title": "Processing Status"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "job_id",
-          "source_url",
-          "source_final_url",
-          "source_domain",
-          "source_http_status",
-          "storage",
-          "metadata",
-          "capture",
-          "content_hash",
-          "is_duplicate",
-          "processing_status",
-          "created_at"
-        ],
-        "title": "RawContentResponse",
-        "description": "Raw content response."
-      },
-      "ResourceUsageDetail": {
-        "properties": {
-          "browser_sessions_used": {
-            "type": "integer",
-            "title": "Browser Sessions Used"
-          },
-          "proxy_requests_made": {
-            "type": "integer",
-            "title": "Proxy Requests Made"
-          },
-          "llm_tokens_consumed": {
-            "type": "integer",
-            "title": "Llm Tokens Consumed"
-          },
-          "compute_time_ms": {
-            "type": "integer",
-            "title": "Compute Time Ms"
-          }
-        },
-        "type": "object",
-        "required": [
-          "browser_sessions_used",
-          "proxy_requests_made",
-          "llm_tokens_consumed",
-          "compute_time_ms"
-        ],
-        "title": "ResourceUsageDetail",
-        "description": "Resource usage metrics."
-      },
-      "RetryBackoff": {
-        "type": "string",
-        "enum": [
-          "fixed",
-          "exponential"
-        ],
-        "title": "RetryBackoff",
-        "description": "Retry backoff strategies."
-      },
-      "RetryJobRequest": {
-        "properties": {
-          "retry_strategy": {
-            "type": "string",
-            "title": "Retry Strategy",
-            "default": "FULL"
-          },
-          "from_stage": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "From Stage"
-          },
-          "max_retries": {
-            "type": "integer",
-            "title": "Max Retries",
-            "default": 3
-          }
-        },
-        "type": "object",
-        "title": "RetryJobRequest",
-        "description": "Request to retry a job."
-      },
-      "ScheduleInput": {
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "default": false
-          },
-          "cron_expression": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cron Expression"
-          },
-          "timezone": {
-            "type": "string",
-            "title": "Timezone",
-            "default": "UTC"
-          },
-          "max_concurrent_jobs": {
-            "type": "integer",
-            "title": "Max Concurrent Jobs",
-            "default": 1
-          }
-        },
-        "type": "object",
-        "title": "ScheduleInput",
-        "description": "Schedule configuration for a target."
-      },
-      "ScrapingJobDetail": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "organization_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Organization Id"
-          },
-          "target_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Target Id"
-          },
-          "configuration": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Configuration"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "priority": {
-            "type": "integer",
-            "title": "Priority"
-          },
-          "scheduled_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scheduled At"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "estimated_duration_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Estimated Duration Ms"
-          },
-          "progress": {
-            "$ref": "#/components/schemas/JobProgressDetail"
-          },
-          "results": {
-            "$ref": "#/components/schemas/JobResultsDetail"
-          },
-          "resources": {
-            "$ref": "#/components/schemas/ResourceUsageDetail"
-          },
-          "triggered_by": {
-            "type": "string",
-            "title": "Triggered By"
-          },
-          "correlation_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Correlation Id"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "created_by": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Created By"
-          },
-          "stages": {
-            "items": {
-              "$ref": "#/components/schemas/JobStageDetailResponse"
-            },
-            "type": "array",
-            "title": "Stages"
-          },
-          "errors": {
-            "items": {
-              "$ref": "#/components/schemas/JobErrorResponse"
-            },
-            "type": "array",
-            "title": "Errors"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "organization_id",
-          "target_id",
-          "configuration",
-          "status",
-          "priority",
-          "progress",
-          "results",
-          "resources",
-          "triggered_by",
-          "created_at",
-          "created_by",
-          "stages",
-          "errors"
-        ],
-        "title": "ScrapingJobDetail",
-        "description": "Detailed job response."
-      },
-      "ScrapingTargetDetail": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "url": {
-            "type": "string",
-            "title": "Url"
-          },
-          "target_type": {
-            "type": "string",
-            "title": "Target Type"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          },
-          "last_success_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Success At"
-          },
-          "success_count": {
-            "type": "integer",
-            "title": "Success Count"
-          },
-          "error_count": {
-            "type": "integer",
-            "title": "Error Count"
-          },
-          "average_execution_time_ms": {
-            "type": "integer",
-            "title": "Average Execution Time Ms"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Tags"
-          },
-          "organization_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Organization Id"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "url_pattern": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Url Pattern"
-          },
-          "extraction_config": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Extraction Config"
-          },
-          "browser_config": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Browser Config"
-          },
-          "schedule": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Schedule"
-          },
-          "rate_limit": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Rate Limit"
-          },
-          "compliance": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Compliance"
-          },
-          "proxy_config": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Proxy Config"
-          },
-          "authentication": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Authentication"
-          },
-          "created_by": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Created By"
-          },
-          "last_error_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Error At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "url",
-          "target_type",
-          "status",
-          "created_at",
-          "updated_at",
-          "success_count",
-          "error_count",
-          "average_execution_time_ms",
-          "tags",
-          "organization_id",
-          "description",
-          "url_pattern",
-          "extraction_config",
-          "browser_config",
-          "schedule",
-          "rate_limit",
-          "compliance",
-          "proxy_config",
-          "authentication",
-          "created_by",
-          "last_error_at"
-        ],
-        "title": "ScrapingTargetDetail",
-        "description": "Detailed scraping target response."
-      },
-      "ScrapingTargetSummary": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "name": {
-            "type": "string",
-            "title": "Name"
-          },
-          "url": {
-            "type": "string",
-            "title": "Url"
-          },
-          "target_type": {
-            "type": "string",
-            "title": "Target Type"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Updated At"
-          },
-          "last_success_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Success At"
-          },
-          "success_count": {
-            "type": "integer",
-            "title": "Success Count"
-          },
-          "error_count": {
-            "type": "integer",
-            "title": "Error Count"
-          },
-          "average_execution_time_ms": {
-            "type": "integer",
-            "title": "Average Execution Time Ms"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Tags"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "url",
-          "target_type",
-          "status",
-          "created_at",
-          "updated_at",
-          "success_count",
-          "error_count",
-          "average_execution_time_ms",
-          "tags"
-        ],
-        "title": "ScrapingTargetSummary",
-        "description": "Summary of a scraping target."
-      },
-      "TargetListResponse": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/ScrapingTargetSummary"
-            },
-            "type": "array",
-            "title": "Data"
-          },
-          "pagination": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Pagination"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data",
-          "pagination"
-        ],
-        "title": "TargetListResponse",
-        "description": "List of scraping targets."
-      },
-      "TargetStatus": {
-        "type": "string",
-        "enum": [
-          "ACTIVE",
-          "PAUSED",
-          "ARCHIVED",
-          "ERROR"
-        ],
-        "title": "TargetStatus",
-        "description": "Scraping target lifecycle status."
-      },
-      "TargetType": {
-        "type": "string",
-        "enum": [
-          "SINGLE_PAGE",
-          "PAGINATED",
-          "SPIDER",
-          "API_ENDPOINT"
-        ],
-        "title": "TargetType",
-        "description": "Scraping target types."
-      },
-      "UpdateTargetRequest": {
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string",
-                "maxLength": 255,
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "target_type": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TargetType"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "extraction_config": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ExtractionConfigInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "browser_config": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BrowserConfigInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "schedule": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ScheduleInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "rate_limit": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RateLimitInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "compliance": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ComplianceInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "proxy_config": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProxyConfigInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "authentication": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/AuthenticationInput"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "tags": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tags"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/TargetStatus"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "type": "object",
-        "title": "UpdateTargetRequest",
-        "description": "Request to update a scraping target."
-      },
-      "ValidateTargetRequest": {
-        "properties": {
-          "test_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Test Url"
-          },
-          "validate_robots_txt": {
-            "type": "boolean",
-            "title": "Validate Robots Txt",
-            "default": true
-          },
-          "validate_schema": {
-            "type": "boolean",
-            "title": "Validate Schema",
-            "default": true
-          },
-          "test_browser_connection": {
-            "type": "boolean",
-            "title": "Test Browser Connection",
-            "default": false
-          }
-        },
-        "type": "object",
-        "title": "ValidateTargetRequest",
-        "description": "Request to validate a target configuration."
-      },
-      "ValidateTargetResponse": {
-        "properties": {
-          "valid": {
-            "type": "boolean",
-            "title": "Valid"
-          },
-          "errors": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "type": "array",
-            "title": "Errors"
-          },
-          "warnings": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationWarning"
-            },
-            "type": "array",
-            "title": "Warnings"
-          },
-          "robots_txt_check": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Robots Txt Check"
-          },
-          "schema_validation": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Schema Validation"
-          },
-          "browser_test": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Browser Test"
-          }
-        },
-        "type": "object",
-        "required": [
-          "valid",
-          "errors",
-          "warnings"
-        ],
-        "title": "ValidateTargetResponse",
-        "description": "Response from target validation."
-      },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "type": "array",
-            "title": "Location"
-          },
-          "msg": {
-            "type": "string",
-            "title": "Message"
-          },
-          "type": {
-            "type": "string",
-            "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
-          }
-        },
-        "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError"
-      },
-      "ValidationWarning": {
-        "properties": {
-          "field": {
-            "type": "string",
-            "title": "Field"
+            "format": "date-time"
           },
           "message": {
-            "type": "string",
-            "title": "Message"
+            "type": "string"
+          },
+          "payload": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional event-specific data."
           }
         },
-        "type": "object",
         "required": [
-          "field",
+          "event_id",
+          "event_type",
+          "timestamp",
           "message"
-        ],
-        "title": "ValidationWarning",
-        "description": "Validation warning detail."
+        ]
+      },
+      "WorkflowResumeRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User requesting the resume."
+          },
+          "resume_data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional data to provide to the workflow on resume."
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "WorkflowResumeResponse": {
+        "type": "object",
+        "properties": {
+          "workflow_instance_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "resumed_from_node": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "estimated_completion_seconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "workflow_instance_id",
+          "status",
+          "resumed_from_node",
+          "message"
+        ]
+      },
+      "WorkflowPauseRequest": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "User requesting the pause."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Optional reason for pausing."
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "user_id"
+        ]
+      },
+      "WorkflowPauseResponse": {
+        "type": "object",
+        "properties": {
+          "workflow_instance_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "paused_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "current_node": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "workflow_instance_id",
+          "status",
+          "paused_at",
+          "current_node",
+          "message"
+        ]
+      },
+      "ROIAnalysisRequest": {
+        "type": "object",
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifier of the prospect."
+          },
+          "value_driver_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "List of value driver IDs to include in the analysis."
+          },
+          "prospect_data": {
+            "type": "object",
+            "description": "Prospect-specific data for the ROI calculation."
+          },
+          "industry_vertical": {
+            "type": "string",
+            "description": "Industry vertical (optional)."
+          },
+          "company_size": {
+            "type": "string",
+            "description": "Company size category (optional)."
+          }
+        },
+        "required": [
+          "prospect_id",
+          "value_driver_ids",
+          "prospect_data"
+        ]
+      },
+      "ROIAnalysisResponse": {
+        "type": "object",
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "aggregated_roi": {
+            "type": "object",
+            "description": "Aggregated ROI metrics."
+          },
+          "detailed_results": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Per-driver detailed results."
+          },
+          "benchmark_comparison": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Optional benchmark comparison data."
+          }
+        },
+        "required": [
+          "prospect_id",
+          "aggregated_roi",
+          "detailed_results"
+        ]
+      },
+      "WhitespaceAnalysisRequest": {
+        "type": "object",
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifier of the prospect."
+          },
+          "prospect_needs": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Free-text description of prospect needs (minimum 10 characters)."
+          },
+          "analysis_depth": {
+            "type": "string",
+            "enum": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "description": "Depth of the whitespace analysis."
+          }
+        },
+        "required": [
+          "prospect_id",
+          "prospect_needs",
+          "analysis_depth"
+        ]
+      },
+      "WhitespaceAnalysisResponse": {
+        "type": "object",
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "extracted_needs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Needs extracted from the input text."
+          },
+          "gap_analysis": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Identified gaps and opportunities."
+          },
+          "opportunity_score": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Overall opportunity score (0.0-1.0)."
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Actionable recommendations."
+          }
+        },
+        "required": [
+          "prospect_id",
+          "extracted_needs",
+          "gap_analysis",
+          "opportunity_score",
+          "recommendations"
+        ]
+      },
+      "BusinessCaseRequest": {
+        "type": "object",
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Identifier of the prospect."
+          },
+          "opportunity_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Optional opportunity identifier."
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Sections to include in the business case."
+          },
+          "output_format": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "docx",
+              "html"
+            ],
+            "description": "Desired output format."
+          }
+        },
+        "required": [
+          "prospect_id",
+          "sections",
+          "output_format"
+        ]
+      },
+      "BusinessCaseResponse": {
+        "type": "object",
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "total_value": {
+            "type": "number"
+          },
+          "implementation_cost": {
+            "type": "number"
+          },
+          "roi_ratio": {
+            "type": "number",
+            "format": "float"
+          },
+          "payback_months": {
+            "type": "integer"
+          },
+          "confidence_score": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "document_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "page_count": {
+            "type": "integer"
+          },
+          "file_size_bytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "case_id",
+          "title",
+          "summary",
+          "total_value",
+          "implementation_cost",
+          "roi_ratio",
+          "payback_months",
+          "confidence_score",
+          "status",
+          "created_at"
+        ]
+      },
+      "ToolSummary": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Tool name."
+          },
+          "description": {
+            "type": "string",
+            "description": "Short description of the tool."
+          },
+          "category": {
+            "type": "string",
+            "description": "Tool category."
+          }
+        },
+        "required": [
+          "name",
+          "description"
+        ]
+      },
+      "ToolDetail": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object",
+            "description": "JSON Schema describing the tool input parameters."
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "parameters"
+        ]
+      },
+      "ToolInvokeRequest": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string",
+            "description": "Name of the tool to invoke."
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Tool input parameters."
+          }
+        },
+        "required": [
+          "tool_name",
+          "parameters"
+        ]
+      },
+      "ToolInvokeResponse": {
+        "type": "object",
+        "properties": {
+          "tool_name": {
+            "type": "string"
+          },
+          "result": {
+            "type": "object",
+            "description": "Tool execution result."
+          },
+          "execution_time_ms": {
+            "type": "integer",
+            "description": "Execution time in milliseconds."
+          }
+        },
+        "required": [
+          "tool_name",
+          "result"
+        ]
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Workflows",
+      "description": "Workflow lifecycle management \u2014 create, monitor, pause, resume, and delete workflows."
+    },
+    {
+      "name": "Analysis",
+      "description": "ROI analysis, whitespace analysis, and business case generation."
+    },
+    {
+      "name": "Tools",
+      "description": "Agent tool discovery and invocation."
+    },
+    {
+      "name": "Integration",
+      "description": "External integrations \u2014 C1 proxy and CRM webhooks."
+    }
+  ]
 }
