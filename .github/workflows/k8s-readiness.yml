@@ -43,6 +43,82 @@ jobs:
           sudo mv kubeconform /usr/local/bin/kubeconform
           kubeconform -v
 
+      - name: Secret defaults guardrail
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          root = pathlib.Path("k8s")
+          files = sorted(
+              [
+                  p
+                  for p in root.rglob("*")
+                  if p.is_file()
+                  and re.search(r"secret", p.name, re.IGNORECASE)
+                  and p.suffix in {".yml", ".yaml", ".template"}
+              ]
+          )
+
+          weak_tokens = ("changeme", "postgres", "valuefabric")
+          placeholder_token = "replace_with_"
+          assignment = re.compile(r'^\s*([A-Za-z0-9_.-]+):\s*(.*?)\s*(?:#.*)?$')
+          quote_strip = re.compile(r'^(["\'])(.*)\1$')
+
+          def normalize(value: str) -> str:
+              v = value.strip()
+              m = quote_strip.match(v)
+              if m:
+                  return m.group(2).strip()
+              return v
+
+          violations: list[str] = []
+
+          for path in files:
+              text = path.read_text(encoding="utf-8")
+              is_template = path.as_posix() == "k8s/secrets.yml.template"
+              for lineno, line in enumerate(text.splitlines(), start=1):
+                  match = assignment.match(line)
+                  if not match:
+                      continue
+                  key, raw_value = match.group(1).lower(), match.group(2)
+                  value = normalize(raw_value)
+                  value_l = value.lower()
+
+                  if key == "api-key" and value in {"", "''", '""'}:
+                      violations.append(f"{path}:{lineno} empty api-key is not allowed")
+
+                  if key in {"password", "auth", "secret", "api-key"}:
+                      for token in weak_tokens:
+                          if token in value_l:
+                              violations.append(
+                                  f"{path}:{lineno} contains weak token '{token}' in {key}"
+                              )
+
+                  if placeholder_token in value_l and not is_template:
+                      violations.append(
+                          f"{path}:{lineno} placeholder values are only allowed in k8s/secrets.yml.template"
+                      )
+
+              if is_template:
+                  if placeholder_token not in text.lower():
+                      violations.append(
+                          f"{path}: expected REPLACE_WITH_ placeholders in template"
+                      )
+
+          if violations:
+              print("❌ Kubernetes secret guardrail violations detected:")
+              for item in violations:
+                  print(f" - {item}")
+              print(
+                  "\nRemediation: replace weak defaults in non-template manifests and keep placeholders only in k8s/secrets.yml.template."
+              )
+              sys.exit(1)
+
+          print("✅ Secret defaults guardrail passed.")
+          PY
+
       - name: Render overlays
         run: |
           kustomize build k8s/overlays/dev > /tmp/dev.yaml
