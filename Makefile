@@ -1,5 +1,5 @@
 .PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
-        test-frontend build migrate evals clean sdk \
+        test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs
 
@@ -101,6 +101,17 @@ evals: ## Run agent golden-trace evaluations (requires OPENAI_API_KEY)
 
 evals-full: ## Run full eval suite including slow/expensive traces
 	$(PYTEST) tests/evals/ -v --tb=short
+
+
+perf-test: ## Run k6 L2/L3/L4 critical-path load suite
+	k6 run --summary-export artifacts/performance/k6-summary.json tests/performance/k6/l2_l3_l4_critical_paths.js
+
+perf-eval: ## Evaluate k6 results against versioned SLO thresholds
+	$(PYTHON) scripts/perf/evaluate_slo.py \
+		--summary artifacts/performance/k6-summary.json \
+		--slo docs/slo/performance-slo.v1.json \
+		--report artifacts/performance/slo-report.md \
+		--output artifacts/performance/slo-evaluation.json
 
 # ─── Build ────────────────────────────────────────────────────────────────────
 

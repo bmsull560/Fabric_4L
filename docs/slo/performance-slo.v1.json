@@ -1,0 +1,63 @@
+{
+  "version": "v1",
+  "last_updated": "2026-04-14",
+  "description": "Baseline SLO targets for critical L2/L3/L4 APIs exercised by the k6 performance suite.",
+  "regression_policy": {
+    "latency_regression_pct": 0.2,
+    "error_rate_regression_abs": 0.005,
+    "notes": "A run fails if measured latency/error exceeds target by more than the configured regression threshold."
+  },
+  "targets": [
+    {
+      "service": "layer2-extraction",
+      "api": "POST /v1/extract-and-ingest",
+      "metric": "l2_extract_ingest_duration_ms",
+      "objective": {
+        "stat": "p95",
+        "max": 5000
+      },
+      "error_metric": "l2_extract_ingest_error_rate",
+      "error_objective": {
+        "max": 0.02
+      },
+      "breach_response": {
+        "runbook": "docs/runbooks/slo-breach-response.md",
+        "incident_template": "docs/runbooks/high-error-rate.md"
+      }
+    },
+    {
+      "service": "layer3-knowledge",
+      "api": "POST /v1/search/hybrid",
+      "metric": "l3_hybrid_search_duration_ms",
+      "objective": {
+        "stat": "p95",
+        "max": 1200
+      },
+      "error_metric": "l3_hybrid_search_error_rate",
+      "error_objective": {
+        "max": 0.01
+      },
+      "breach_response": {
+        "runbook": "docs/runbooks/slo-breach-response.md",
+        "incident_template": "docs/runbooks/slow-queries.md"
+      }
+    },
+    {
+      "service": "layer4-agents",
+      "api": "GET /workflows/active",
+      "metric": "l4_workflows_active_duration_ms",
+      "objective": {
+        "stat": "p95",
+        "max": 1000
+      },
+      "error_metric": "l4_workflows_active_error_rate",
+      "error_objective": {
+        "max": 0.01
+      },
+      "breach_response": {
+        "runbook": "docs/runbooks/slo-breach-response.md",
+        "incident_template": "docs/runbooks/workflow-stalled.md"
+      }
+    }
+  ]
+}
