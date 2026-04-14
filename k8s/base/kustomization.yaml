@@ -4,7 +4,10 @@ kind: Kustomization
 resources:
   - namespace.yml
   - configmap-global.yml
-  - secrets.yml
+  # Secrets are managed via External Secrets Operator + Vault
+  # See ../external-secrets/ for production secret configuration
+  # For local dev: kubectl create secret generic ... manually
+  - ../external-secrets/vault-integration.yml
   - redis.yml
   - postgres.yml
   - neo4j.yml
