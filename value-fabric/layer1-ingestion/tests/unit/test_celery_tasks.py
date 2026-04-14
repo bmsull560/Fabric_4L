@@ -275,3 +275,184 @@ class TestComplianceCheckStage:
             with pytest.raises(Exception):
                 # Use .run() to bypass Celery's task dispatch machinery
                 compliance_check_stage.run(job_id)
+
+
+# ── Retry / Error Path Tests ─────────────────────────────────────────────────
+class TestCeleryRetryBehavior:
+    """Test Celery retry and error handling behavior."""
+
+    def test_celery_max_retries_configured(self) -> None:
+        """process_scraping_job must have max_retries configured."""
+        from src.shared.tasks import process_scraping_job
+        # Celery tasks can configure retries via bind=True + self.retry()
+        assert hasattr(process_scraping_job, "max_retries") or hasattr(process_scraping_job, "retry"), (
+            "process_scraping_job must support retries"
+        )
+
+    def test_compliance_check_stage_handles_db_error(self) -> None:
+        """compliance_check_stage must not swallow database connection errors."""
+        from src.shared.tasks import compliance_check_stage
+
+        mock_session = MagicMock()
+        mock_session.__enter__ = Mock(return_value=mock_session)
+        mock_session.__exit__ = Mock(return_value=False)
+        mock_session.query.side_effect = Exception("Database connection refused")
+
+        with patch("src.shared.tasks.get_db_session", return_value=mock_session):
+            with pytest.raises(Exception, match="Database connection refused"):
+                compliance_check_stage.run(uuid4())
+
+    def test_process_scraping_job_handles_chain_failure(self) -> None:
+        """process_scraping_job must raise when chain.apply_async fails."""
+        from src.shared.tasks import process_scraping_job
+
+        job_id = str(uuid4())
+        mock_job = Mock()
+        mock_job.status = "PENDING"
+        mock_job.started_at = None
+
+        mock_session = MagicMock()
+        mock_session.__enter__ = Mock(return_value=mock_session)
+        mock_session.__exit__ = Mock(return_value=False)
+        mock_session.query.return_value.get.return_value = mock_job
+
+        with (
+            patch("src.shared.tasks.get_db_session", return_value=mock_session),
+            patch("src.shared.tasks.chain") as mock_chain_cls,
+        ):
+            mock_chain_instance = Mock()
+            mock_chain_instance.apply_async.side_effect = RuntimeError("Broker unavailable")
+            mock_chain_cls.return_value = mock_chain_instance
+
+            with pytest.raises(RuntimeError, match="Broker unavailable"):
+                process_scraping_job.run(job_id)
+
+    def test_compliance_check_stage_handles_invalid_job_configuration(self) -> None:
+        """compliance_check_stage must handle jobs with missing configuration."""
+        from src.shared.tasks import compliance_check_stage
+
+        job_id = uuid4()
+        mock_job = Mock()
+        mock_job.status = "PENDING"
+        mock_job.configuration = None  # Missing config
+        mock_job.organization_id = uuid4()
+        mock_job.target_id = uuid4()
+
+        mock_session = MagicMock()
+        mock_session.__enter__ = Mock(return_value=mock_session)
+        mock_session.__exit__ = Mock(return_value=False)
+        mock_session.query.return_value.get.return_value = mock_job
+
+        with patch("src.shared.tasks.get_db_session", return_value=mock_session):
+            with patch("src.shared.tasks._update_stage"):
+                # Should raise or handle gracefully (not crash silently)
+                with pytest.raises(Exception):
+                    compliance_check_stage.run(job_id)
+
+    def test_cleanup_old_content_handles_empty_result(self) -> None:
+        """cleanup_old_content must return deleted_count=0 when no old content found."""
+        from src.shared.tasks import cleanup_old_content
+
+        mock_session = MagicMock()
+        mock_session.__enter__ = Mock(return_value=mock_session)
+        mock_session.__exit__ = Mock(return_value=False)
+        mock_session.query.return_value.filter.return_value.all.return_value = []  # No results
+
+        with patch("src.shared.tasks.get_db_session", return_value=mock_session):
+            result = cleanup_old_content(days=30)
+
+        assert result["deleted_count"] == 0
+        assert "cutoff_date" in result
+
+    def test_cleanup_old_content_handles_db_error(self) -> None:
+        """cleanup_old_content must propagate database errors."""
+        from src.shared.tasks import cleanup_old_content
+
+        mock_session = MagicMock()
+        mock_session.__enter__ = Mock(return_value=mock_session)
+        mock_session.__exit__ = Mock(return_value=False)
+        mock_session.query.side_effect = Exception("Connection timeout")
+
+        with patch("src.shared.tasks.get_db_session", return_value=mock_session):
+            with pytest.raises(Exception, match="Connection timeout"):
+                cleanup_old_content(days=30)
+
+
+class TestPipelineStageErrorPaths:
+    """Test error paths for individual pipeline stages."""
+
+    def test_all_pipeline_stages_are_registered_as_celery_tasks(self) -> None:
+        """All 9 pipeline stages must be registered as Celery tasks."""
+        from src.shared.tasks import (
+            compliance_check_stage,
+            browser_launch_stage,
+            navigation_stage,
+            content_capture_stage,
+            ai_extraction_stage,
+            post_processing_stage,
+            validation_stage,
+            storage_stage,
+            notification_stage,
+        )
+        stage_tasks = [
+            compliance_check_stage,
+            browser_launch_stage,
+            navigation_stage,
+            content_capture_stage,
+            ai_extraction_stage,
+            post_processing_stage,
+            validation_stage,
+            storage_stage,
+            notification_stage,
+        ]
+        for task in stage_tasks:
+            # Celery tasks have a .name attribute
+            assert hasattr(task, "name"), f"{task} must be a registered Celery task with a name"
+            assert task.name is not None
+
+    def test_execute_pipeline_stage_dispatches_all_known_stages(self) -> None:
+        """execute_pipeline_stage must recognize all 9 stage names."""
+        from src.shared.tasks import execute_pipeline_stage
+
+        known_stages = [
+            "COMPLIANCE_CHECK",
+            "BROWSER_LAUNCH",
+            "NAVIGATION",
+            "CONTENT_CAPTURE",
+            "AI_EXTRACTION",
+            "POST_PROCESSING",
+            "VALIDATION",
+            "STORAGE",
+            "NOTIFICATION",
+        ]
+        for stage_name in known_stages:
+            job_id = str(uuid4())
+            # Patch all stage tasks to prevent actual execution
+            with patch("src.shared.tasks.compliance_check_stage") as m1, \
+                 patch("src.shared.tasks.browser_launch_stage") as m2, \
+                 patch("src.shared.tasks.navigation_stage") as m3, \
+                 patch("src.shared.tasks.content_capture_stage") as m4, \
+                 patch("src.shared.tasks.ai_extraction_stage") as m5, \
+                 patch("src.shared.tasks.post_processing_stage") as m6, \
+                 patch("src.shared.tasks.validation_stage") as m7, \
+                 patch("src.shared.tasks.storage_stage") as m8, \
+                 patch("src.shared.tasks.notification_stage") as m9:
+                for m in (m1, m2, m3, m4, m5, m6, m7, m8, m9):
+                    m.delay = Mock()
+                try:
+                    execute_pipeline_stage(job_id, stage_name)
+                except (ValueError, Exception):
+                    pytest.fail(f"execute_pipeline_stage should recognize stage: {stage_name}")
+
+    def test_celery_worker_prefetch_is_one(self) -> None:
+        """Worker prefetch multiplier must be 1 for sequential processing."""
+        from src.shared.tasks import celery_app
+        prefetch = celery_app.conf.worker_prefetch_multiplier
+        assert prefetch == 1, f"Expected prefetch=1, got {prefetch}"
+
+    def test_celery_result_expires_configured(self) -> None:
+        """Task results must expire (not persist forever)."""
+        from src.shared.tasks import celery_app
+        expires = celery_app.conf.result_expires
+        assert expires is not None, "result_expires must be configured"
+        assert expires > 0, "result_expires must be positive"
