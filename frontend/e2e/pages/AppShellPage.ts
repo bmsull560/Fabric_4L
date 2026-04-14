@@ -172,9 +172,12 @@ export class AppShellPage {
 
   /**
    * Check if a navigation link is visible (indicating tier access)
+   * Uses RegExp with escaped input to prevent ReDoS from malicious linkName.
    */
   async isNavigationLinkVisible(linkName: string): Promise<boolean> {
-    const link = this.page.getByRole('link', { name: new RegExp(linkName, 'i') });
+    // Escape regex special characters to prevent ReDoS attacks
+    const escaped = linkName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const link = this.page.getByRole('link', { name: new RegExp(escaped, 'i') });
     return link.isVisible();
   }
 

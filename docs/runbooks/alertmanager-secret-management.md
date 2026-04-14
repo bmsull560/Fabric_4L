@@ -1,5 +1,8 @@
 # Alertmanager Secret Management Runbook
 
+> Policy reference: [Incident Severity Matrix and On-Call Escalation Policy](../operations/severity-escalation-policy.md).
+
+
 **Task 63: Alert Rules & Routing**  
 **Purpose:** Document secret management approaches for Alertmanager notifications (PagerDuty + Slack)
 

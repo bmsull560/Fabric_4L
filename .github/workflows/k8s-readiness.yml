@@ -43,6 +43,14 @@ jobs:
           sudo mv kubeconform /usr/local/bin/kubeconform
           kubeconform -v
 
+      - name: Install conftest
+        run: |
+          curl -sSL https://github.com/open-policy-agent/conftest/releases/download/v0.61.0/conftest_0.61.0_Linux_x86_64.tar.gz -o conftest.tar.gz
+          echo "6f63fd232db3350c8108aa8a79486a46f4e4db005885f46e8ebf6f0cbf2bb977  conftest.tar.gz" | sha256sum -c
+          tar -xzf conftest.tar.gz
+          sudo mv conftest /usr/local/bin/conftest
+          conftest --version
+
       - name: Render overlays
         run: |
           kustomize build k8s/overlays/dev > /tmp/dev.yaml
@@ -53,11 +61,27 @@ jobs:
           kubeconform -summary -strict /tmp/dev.yaml
           kubeconform -summary -strict /tmp/prod.yaml
 
+      - name: Policy validate hardening controls (conftest)
+        run: |
+          conftest test /tmp/dev.yaml -p k8s/policy
+          conftest test /tmp/prod.yaml -p k8s/policy
+
+      - name: Policy validate prod secret sourcing
+        run: |
+          if rg -n '^kind: Secret$' /tmp/prod.yaml; then
+            echo "Found raw Secret resources in prod overlay output. Use ExternalSecret only."
+            exit 1
+          fi
+          if ! rg -n '^kind: ExternalSecret$' /tmp/prod.yaml; then
+            echo "Prod overlay must include ExternalSecret resources."
+            exit 1
+          fi
+
       - name: Client dry-run precheck
         run: |
           kubectl apply --dry-run=client -f /tmp/dev.yaml > /dev/null
           kubectl apply --dry-run=client -f /tmp/prod.yaml > /dev/null
-
+          
   k8s-server-dry-run:
     name: K8s Server Dry Run (Required)
     runs-on: ubuntu-latest

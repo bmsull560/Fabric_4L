@@ -2,6 +2,12 @@
 
 This directory contains runbooks for every alert defined in `monitoring/alerting/rules.yml`.
 
+## Policy links
+
+- Severity matrix and escalation policy: [docs/operations/severity-escalation-policy.md](../operations/severity-escalation-policy.md)
+- MTTA/MTTR reporting process: [docs/operations/mtta-mttr-reporting.md](../operations/mtta-mttr-reporting.md)
+- Postmortem template and corrective actions: [docs/operations/postmortem-template.md](../operations/postmortem-template.md)
+
 ## Runbook Index
 
 | Alert | File | Severity |
@@ -18,9 +24,13 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 | HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning |
 | HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning |
 | FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning |
+| DeploymentSignatureVerification | [deployment-signature-verification.md](deployment-signature-verification.md) | critical |
+| ZeroTrustValidation | [zero-trust-validation.md](zero-trust-validation.md) | critical |
+| DeploymentSignatureVerification | [deployment-signature-verification.md](deployment-signature-verification.md) | critical |
 
 ## Incident Management Templates
 
 | Template | File | Purpose |
 |---|---|---|
 | Incident Postmortem Template | [incident-postmortem-template.md](incident-postmortem-template.md) | Mandatory post-incident write-up with action-item tracking |
+| SLOBreach | [slo-breach-response.md](slo-breach-response.md) | critical |

@@ -136,6 +136,69 @@ spec:
         property: anthropic-api-key
 
 ---
+# External Secret: Pinecone API Key
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: pinecone-api-key
+  namespace: value-fabric
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: pinecone-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: api-key
+      remoteRef:
+        key: value-fabric/search
+        property: pinecone-api-key
+
+---
+# External Secret: Browserbase API Key
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: browserbase-api-key
+  namespace: value-fabric
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: browserbase-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: api-key
+      remoteRef:
+        key: value-fabric/providers
+        property: browserbase-api-key
+
+---
+# External Secret: Firecrawl API Key
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: firecrawl-api-key
+  namespace: value-fabric
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: firecrawl-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: api-key
+      remoteRef:
+        key: value-fabric/providers
+        property: firecrawl-api-key
+
+---
 # ClusterSecretStore: Vault Backend Configuration
 # This must be adapted to your specific Vault setup
 apiVersion: external-secrets.io/v1beta1

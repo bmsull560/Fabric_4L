@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { parseEntityResults, type ApiEntityResultDto } from '@/types/api';
 
 export interface Entity {
   id: string;
@@ -18,6 +19,17 @@ const ENTITY_KEYS = {
   detail: (id: string) => [...ENTITY_KEYS.all, 'detail', id] as const,
 };
 
+function mapEntityResult(result: ApiEntityResultDto): Entity {
+  return {
+    id: result.id || result.entity_id || 'unknown',
+    name: result.name || result.title || 'Unknown',
+    type: mapEntityType(result.entity_type || result.type || ''),
+    confidence: result.confidence_score ?? result.confidence ?? 0.8,
+    description: result.description,
+    properties: result.properties || result.data,
+  };
+}
+
 /**
  * Search entities using hybrid search (BM25 + vector + graph)
  * Layer 3 API: POST /v1/search/hybrid
@@ -32,16 +44,8 @@ export function useEntities() {
         search_type: 'hybrid',
         top_k: 50,
       });
-      // Map search results to Entity format
-      const results = response.data?.results || [];
-      return results.map((r: any) => ({
-        id: r.id || r.entity_id,
-        name: r.name || r.title || 'Unknown',
-        type: mapEntityType(r.entity_type || r.type),
-        confidence: r.confidence_score || r.confidence || 0.8,
-        description: r.description,
-        properties: r.properties || r.data,
-      })) as Entity[];
+      const results = parseEntityResults(response.data?.results);
+      return results.map(mapEntityResult);
     },
     staleTime: 60 * 1000,
   });
@@ -56,15 +60,8 @@ export function useEntitySearch(query: string) {
         search_type: 'hybrid',
         top_k: 20,
       });
-      const results = response.data?.results || [];
-      return results.map((r: any) => ({
-        id: r.id || r.entity_id,
-        name: r.name || r.title || 'Unknown',
-        type: mapEntityType(r.entity_type || r.type),
-        confidence: r.confidence_score || r.confidence || 0.8,
-        description: r.description,
-        properties: r.properties || r.data,
-      })) as Entity[];
+      const results = parseEntityResults(response.data?.results);
+      return results.map(mapEntityResult);
     },
     enabled: query.trim().length > 0,
     staleTime: 30 * 1000,
@@ -104,17 +101,17 @@ export function useEntity(id: string | null) {
         max_hops: 1,
         max_results: 1,
       });
-      const entities = response.data?.entities || [];
+      const entities = parseEntityResults(response.data?.entities);
       if (entities.length === 0) throw new Error('Entity not found');
       const e = entities[0];
       return {
-        id: e.id || id,
+        id: e.id || e.entity_id || id,
         name: e.name || e.title || 'Unknown',
-        type: mapEntityType(e.entity_type || e.type),
-        confidence: e.confidence_score || e.confidence || 0.8,
+        type: mapEntityType(e.entity_type || e.type || ''),
+        confidence: e.confidence_score ?? e.confidence ?? 0.8,
         description: e.description,
         properties: e.properties || e.data,
-      } as Entity;
+      };
     },
     enabled: !!id,
   });
