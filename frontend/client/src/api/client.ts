@@ -35,7 +35,7 @@ class ApiClient {
           const tenantId = localStorage.getItem('tenantId') || 'default';
           config.headers['X-Tenant-ID'] = tenantId;
 
-          const token = localStorage.getItem('authToken');
+          const token = localStorage.getItem('accessToken');
           if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
           }
@@ -49,6 +49,10 @@ class ApiClient {
         (response) => response,
         (error) => {
           if (error.response?.status === 401) {
+            // Clear auth state and redirect to login
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('userInfo');
+            localStorage.removeItem('tenantId');
             window.location.href = '/login';
           }
           return Promise.reject(error);

@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import AppShell from "./components/AppShell";
 import { useUserTierStore, type UserTier } from "./stores/userTierStore";
 
@@ -24,6 +25,7 @@ import Accounts          from "./pages/Accounts";          // Discover/accounts
 import Integrations      from "./pages/Integrations";      // Discover/integrations
 import { FormulaGovernance, BenchmarkPolicies, VariableRegistry, PackManagement, PermissionsAdmin } from "./pages/admin";
 import NotFound          from "./pages/NotFound";
+import Login             from "./pages/Login";
 
 /**
  * Route Guard Component — Enforces tier-based access control
@@ -337,6 +339,14 @@ function Router() {
           </RouteGuard>
         </Route>
 
+        {/* Authentication */}
+        <Route path="/login">
+          <Login />
+        </Route>
+        <Route path="/login/callback">
+          <Login /> {/* Handles OIDC callback with code+state */}
+        </Route>
+
         {/* Catch-all */}
         <Route>
           <ErrorBoundary><NotFound /></ErrorBoundary>
@@ -350,10 +360,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster/>
-          <Router/>
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster/>
+            <Router/>
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
