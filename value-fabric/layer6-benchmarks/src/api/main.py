@@ -15,7 +15,7 @@ try:
 except ImportError:
     pass  # shared package not available; env vars used directly
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
@@ -27,6 +27,7 @@ from ..models.benchmark_dataset import (
     BenchmarkMetric,
     StatisticalProfile,
 )
+from .routes import benchmarks, system
 
 # In-memory storage (replace with Neo4j in production)
 _benchmark_store: Dict[str, BenchmarkDataset] = {}
@@ -198,7 +199,6 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
-@app.get("/health")
 async def health_check(request: Request = None):
     """Health check endpoint with system metrics."""
     import psutil
@@ -237,10 +237,9 @@ async def health_check(request: Request = None):
     }
 
 
-@app.get("/v1/benchmarks/datasets", response_model=List[DatasetSummary])
 async def list_datasets(
-    industry: Optional[str] = Query(None, description="Filter by industry"),
-    segment: Optional[str] = Query(None, description="Filter by segment"),
+    industry: Optional[str] = None,
+    segment: Optional[str] = None,
 ):
     """List available benchmark datasets."""
     datasets = []
@@ -262,7 +261,6 @@ async def list_datasets(
     return datasets
 
 
-@app.get("/v1/benchmarks/datasets/{dataset_id}", response_model=DatasetDetail)
 async def get_dataset(dataset_id: str):
     """Get benchmark dataset by ID."""
     dataset = _benchmark_store.get(dataset_id)
@@ -290,7 +288,6 @@ async def get_dataset(dataset_id: str):
     )
 
 
-@app.post("/v1/benchmarks/compare", response_model=ComparisonResponse)
 async def compare(payload: ComparisonRequestPayload):
     """Execute peer comparison."""
     dataset = _benchmark_store.get(payload.dataset_id)
@@ -352,7 +349,6 @@ async def compare(payload: ComparisonRequestPayload):
     )
 
 
-@app.post("/v1/benchmarks/validate", response_model=ValidationResponse)
 async def validate(payload: ValidationRequestPayload):
     """Validate value against benchmark range."""
     dataset = _benchmark_store.get(payload.dataset_id)
@@ -411,7 +407,6 @@ async def validate(payload: ValidationRequestPayload):
     )
 
 
-@app.get("/v1/benchmarks/industries")
 async def list_industries():
     """List available industries."""
     industries = set()
@@ -419,6 +414,8 @@ async def list_industries():
         industries.add(dataset.industry)
     return {"industries": sorted(industries)}
 
+app.include_router(system.router)
+app.include_router(benchmarks.router)
 
 if __name__ == "__main__":
     import uvicorn
