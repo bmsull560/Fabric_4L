@@ -13,7 +13,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test ## Run all checks (lint + typecheck + tests) — required before PR
+verify: lint typecheck test contract-tests ## Run all checks (lint + typecheck + tests + contracts) — required before PR
 	@echo "✅  All checks passed"
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
