@@ -7,6 +7,19 @@ on:
     branches: [main]
 
 jobs:
+  governance-docs-check:
+    name: Governance Docs Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enforce control matrix update policy
+        run: .github/scripts/check-control-matrix.sh
+
   # Layer 1 - Ingestion
   layer1-checks:
     name: Layer 1 - Ingestion
