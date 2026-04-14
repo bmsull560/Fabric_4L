@@ -202,8 +202,21 @@ def get_db_with_tenant(
             detail=str(e),
         ) from e
     
-    with get_db_session(tenant_id=x_tenant_id, require_tenant=True) as session:
+    # SECURITY: Use session directly since we already validated tenant_id
+    # Avoid double validation in get_db_session
+    session = SessionLocal()
+    try:
+        session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": x_tenant_id}
+        )
         yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def get_db_with_tenant_from_context(
