@@ -113,7 +113,7 @@ export LAYER3_BASE_URL="http://localhost:8001"
 alembic upgrade head
 
 # Start the service
-uvicorn layer5_ground_truth.src.api.main:app --host 0.0.0.0 --port 8005 --reload
+uvicorn layer5_ground_truth.api.main:app --host 0.0.0.0 --port 8005 --reload
 ```
 
 ### Docker Compose

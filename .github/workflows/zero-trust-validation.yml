@@ -1,0 +1,31 @@
+name: Zero Trust Validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * *' # Nightly at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  zero-trust-gate:
+    name: zero-trust-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run zero-trust checks
+        run: bash scripts/security/zero_trust_checks.sh
+
+      - name: Upload zero-trust evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zero-trust-evidence
+          path: artifacts/zero-trust/
+          retention-days: 30

@@ -12,16 +12,11 @@ import { Link } from "wouter";
 import { TieredNav, type UserTier } from "./navigation/TieredNav";
 import { Search, Bell, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/i18n";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type UserMode = "standard" | "advanced" | "admin";
-
-const MODE_LABELS: Record<UserMode, string> = {
-  standard: "Standard",
-  advanced: "Advanced",
-  admin:    "Admin",
-};
 
 const MODE_PILL: Record<UserMode, string> = {
   standard: "bg-blue-50 text-blue-700 border-blue-200",
@@ -42,6 +37,7 @@ export default function AppShell({
   currentTier: externalCurrentTier,
   effectiveTier: externalEffectiveTier 
 }: AppShellProps) {
+  const { t } = useI18n();
   // Use internal state if external props not provided (backward compatibility)
   const [internalMode, setInternalMode] = useState<UserTier>("standard");
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
@@ -65,14 +61,14 @@ export default function AppShell({
       <header className="h-[52px] shrink-0 bg-white border-b border-neutral-200 flex items-center px-4 gap-4 z-30">
         <Link href="/command-center">
           <div className="flex flex-col leading-none cursor-pointer select-none">
-            <span className="text-[14px] font-extrabold text-neutral-900 tracking-tight">Value Fabric</span>
-            <span className="text-[10px] text-neutral-400 font-normal">Intelligence Platform</span>
+            <span className="text-[14px] font-extrabold text-neutral-900 tracking-tight">{t("appShell.platformName")}</span>
+            <span className="text-[10px] text-neutral-400 font-normal">{t("appShell.platformTagline")}</span>
           </div>
         </Link>
         <div className="flex-1 max-w-xs">
           <div className="flex items-center gap-2 h-7 px-3 bg-neutral-100 rounded-full text-[11px] text-neutral-400 border border-neutral-200">
             <Search size={11} className="shrink-0"/>
-            <span>Search entities, domains, cases…</span>
+            <span>{t("appShell.searchPlaceholder")}</span>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -81,7 +77,7 @@ export default function AppShell({
             "text-[10px] font-semibold px-2.5 py-0.5 rounded-full border",
             MODE_PILL[currentTier as UserMode]
           )}>
-            {MODE_LABELS[currentTier as UserMode]} mode
+            {`${t(`appShell.modes.${currentTier as UserMode}`)} ${t("appShell.modeSuffix")}`}
           </span>
           <button className="w-7 h-7 rounded-full border border-neutral-200 bg-neutral-50 flex items-center justify-center text-neutral-500 hover:bg-neutral-100 transition-colors">
             <Bell size={12}/>

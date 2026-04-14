@@ -1,5 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import {
+  parseBusinessCaseNarrativeOutput,
+  parseBusinessCaseRoiOutput,
+  parseWorkflowResult,
+  type ApiWorkflowStepDto,
+} from '@/types/api';
 
 export interface UseCase {
   name: string;
@@ -38,30 +44,32 @@ export function useBusinessCase(caseId: string | null) {
 
       // Query L4 for workflow result
       const response = await apiClient.get('l4', `/workflows/${caseId}/result`);
-      const result = response.data;
+      const result = parseWorkflowResult(response.data);
 
       // Parse workflow output into business case format
       const output = result.output || {};
       const steps = result.steps || [];
 
       // Extract data from workflow steps
-      const roiResult = steps.find((s: any) => s.agent === 'ROICalculationAgent')?.result?.output || {};
-      const narrativeResult = steps.find((s: any) => s.agent === 'NarrativeSynthesisAgent')?.result?.output || {};
+      const findAgentStep = (agentName: string): ApiWorkflowStepDto | undefined =>
+        steps.find((step) => step.agent === agentName);
+      const roiResult = parseBusinessCaseRoiOutput(findAgentStep('ROICalculationAgent')?.result?.output);
+      const narrativeResult = parseBusinessCaseNarrativeOutput(findAgentStep('NarrativeSynthesisAgent')?.result?.output);
 
       // Map use cases
-      const useCases: UseCase[] = roiResult.use_cases?.map((uc: any) => ({
+      const useCases: UseCase[] = (roiResult.use_cases || []).map((uc) => ({
         name: uc.name || 'Unknown Use Case',
         persona: uc.persona || 'Unknown',
         driver: uc.value_driver || 'Unknown',
-        roi: formatCurrency(uc.roi_value),
-        payback: `${uc.payback_months || 12} mo`,
-        confidence: Math.round((uc.confidence || 0.8) * 100),
-      })) || [];
+        roi: formatCurrency(uc.roi_value ?? 0),
+        payback: `${uc.payback_months ?? 12} mo`,
+        confidence: Math.round((uc.confidence ?? 0.8) * 100),
+      }));
 
       // Calculate totals
-      const totalValue = roiResult.total_value || 0;
-      const avgPayback = roiResult.avg_payback_months || 12;
-      const confidence = Math.round((roiResult.confidence || 0.85) * 100);
+      const totalValue = roiResult.total_value ?? 0;
+      const avgPayback = roiResult.avg_payback_months ?? 12;
+      const confidence = Math.round((roiResult.confidence ?? 0.85) * 100);
 
       return {
         id: caseId,
@@ -72,7 +80,7 @@ export function useBusinessCase(caseId: string | null) {
         confidence,
         executiveSummary: narrativeResult.executive_summary || generateSummary(useCases, totalValue),
         generatedAt: result.completed_at || new Date().toISOString(),
-      } as BusinessCaseData;
+      };
     },
     enabled: !!caseId,
     staleTime: 60 * 1000,
