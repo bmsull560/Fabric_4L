@@ -503,3 +503,47 @@ jobs:
           name: integration-logs
           path: artifacts/logs/
           retention-days: 7
+
+  # Billing + entitlement regression pack and release evidence artifact
+  billing-entitlements-regression:
+    name: Billing/Entitlements Regression + Evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest
+
+      - name: Run billing/entitlement regression pack
+        run: |
+          mkdir -p artifacts/release-evidence
+          pytest tests/integration/billing_entitlements/ -v --tb=short \
+            --junitxml artifacts/release-evidence/billing-entitlements-junit.xml
+
+      - name: Generate launch-checklist evidence
+        if: always()
+        run: |
+          python scripts/ci/generate_billing_evidence.py \
+            --junit artifacts/release-evidence/billing-entitlements-junit.xml \
+            --out-dir artifacts/release-evidence \
+            --test-command "pytest tests/integration/billing_entitlements/ -v --tb=short"
+
+      - name: Upload billing regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-checklist-billing-entitlements-evidence
+          path: |
+            artifacts/release-evidence/billing-entitlements-junit.xml
+            artifacts/release-evidence/billing-entitlements-summary.json
+            artifacts/release-evidence/billing-entitlements-summary.md
+          retention-days: 14
