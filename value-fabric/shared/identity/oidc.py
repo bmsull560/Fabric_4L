@@ -167,6 +167,10 @@ class OIDCClient:
         Returns the decoded token claims as a dict.
         Raises jwt.InvalidTokenError or jwt.ExpiredSignatureError on failure.
         """
+        # SECURITY: Two-step OIDC token verification per RFC 7517/7519
+        # Step 1: Unverified decode to extract key ID (kid) for key lookup
+        # Step 2: Verified decode with fetched signing key validates signature and claims
+        # nosec B105 - unverified decode is immediately followed by verified decode
         unverified = jwt.decode(
             id_token,
             options={"verify_signature": False, "verify_exp": False},
@@ -174,6 +178,7 @@ class OIDCClient:
         kid = unverified.get("kid")
         signing_key = await self.get_signing_key(issuer_url, kid=kid)
 
+        # Step 2: Verified decode with proper signature and claim validation
         payload = jwt.decode(
             id_token,
             key=signing_key.key,

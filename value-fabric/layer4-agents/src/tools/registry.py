@@ -223,9 +223,13 @@ class ToolRegistry:
     async def execute(self, tool_name: str, input_dict: dict[str, Any]) -> dict[str, Any]:
         """Execute a tool by name.
 
+        SECURITY: This is an orchestration method that dispatches to tool implementations.
+        It does NOT execute SQL. The tool_name is validated against registered tools,
+        and input_dict is validated via Pydantic schemas before reaching tool logic.
+
         Args:
-            tool_name: Tool identifier
-            input_dict: Raw input parameters
+            tool_name: Tool identifier (validated against registry)
+            input_dict: Raw input parameters (validated via Pydantic schemas)
 
         Returns:
             Tool output as dictionary

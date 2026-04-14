@@ -36,6 +36,10 @@ Please include:
 ## Security design principles
 
 - **No secrets in code.** All credentials use environment variables. See `value-fabric/.env.example`.
+- **JWT secret policy is environment-aware.** `JWT_SECRET` may use a local fallback only in
+  development/test-like environments (`ENVIRONMENT`/`APP_ENV` of `dev`, `development`,
+  `local`, `test`, `testing`, or `ci`). In non-dev environments, startup hard-fails if
+  `JWT_SECRET` is unset/empty or left as `changeme-in-production`.
 - **API keys use HMAC-SHA256** (not bcrypt) for throughput; bcrypt is reserved for user passwords.
 - **JWT tokens** are short-lived and signed with `JWT_SECRET`.
 - **Audit logs** are append-only and protected by a database trigger that prevents UPDATE/DELETE.
@@ -47,3 +51,10 @@ Please include:
 Dependabot is configured (`.github/dependabot.yml`) to automatically open PRs for
 dependency updates across Python, Node, and GitHub Actions ecosystems. All dependency
 updates go through the standard PR review and CI gate process.
+
+## SBOM policy
+
+- CI generates a **CycloneDX SBOM** for every service/frontend container build in
+  `.github/workflows/security-gates.yml`.
+- SBOM files are uploaded as GitHub Actions artifacts (`sbom-<layer>`).
+- The pipeline is gated to fail if SBOM generation or artifact upload fails.

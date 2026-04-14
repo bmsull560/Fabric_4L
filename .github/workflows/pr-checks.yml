@@ -9,6 +9,8 @@ on:
 jobs:
   docs-policy-gate:
     name: Docs Policy Gate
+  governance-docs-check:
+    name: Governance Docs Guard
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -35,6 +37,11 @@ jobs:
           done
 
           echo "Docs policy gate passed."
+        with:
+          fetch-depth: 0
+
+      - name: Enforce control matrix update policy
+        run: .github/scripts/check-control-matrix.sh
 
   # Layer 1 - Ingestion
   layer1-checks:
@@ -345,7 +352,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: '9'
+          version: '10.18.1'
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -368,6 +375,22 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Accessibility scan (axe critical)
+        run: |
+          pnpm preview --host 127.0.0.1 --port 4173 &
+          PREVIEW_PID=$!
+          trap "kill $PREVIEW_PID" EXIT
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:4173 >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          node scripts/a11y/axe-critical-scan.mjs
 
       - name: Security audit
         run: pnpm audit --audit-level high
@@ -430,9 +453,9 @@ jobs:
         run: |
           pip install pytest
 
-      - name: Run contract tests
+      - name: Run contract and architecture tests
         run: |
-          pytest tests/contract/ -v --tb=short
+          pytest tests/contract/ tests/arch/ -v --tb=short
 
       - name: Upload test results
         if: always()
@@ -532,3 +555,47 @@ jobs:
           name: integration-logs
           path: artifacts/logs/
           retention-days: 7
+
+  # Billing + entitlement regression pack and release evidence artifact
+  billing-entitlements-regression:
+    name: Billing/Entitlements Regression + Evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest
+
+      - name: Run billing/entitlement regression pack
+        run: |
+          mkdir -p artifacts/release-evidence
+          pytest tests/integration/billing_entitlements/ -v --tb=short \
+            --junitxml artifacts/release-evidence/billing-entitlements-junit.xml
+
+      - name: Generate launch-checklist evidence
+        if: always()
+        run: |
+          python scripts/ci/generate_billing_evidence.py \
+            --junit artifacts/release-evidence/billing-entitlements-junit.xml \
+            --out-dir artifacts/release-evidence \
+            --test-command "pytest tests/integration/billing_entitlements/ -v --tb=short"
+
+      - name: Upload billing regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launch-checklist-billing-entitlements-evidence
+          path: |
+            artifacts/release-evidence/billing-entitlements-junit.xml
+            artifacts/release-evidence/billing-entitlements-summary.json
+            artifacts/release-evidence/billing-entitlements-summary.md
+          retention-days: 14

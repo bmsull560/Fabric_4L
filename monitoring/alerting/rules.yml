@@ -23,6 +23,7 @@ groups:
         annotations:
           summary: "High error rate detected in Value Fabric"
           description: "Error rate is above 5% for more than 5 minutes"
+          escalation_policy: "pagerduty-immediate"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-error-rate.md"
 
       # Disk space alerts (using node-exporter host-level metrics)
@@ -187,6 +188,18 @@ groups:
         annotations:
           summary: "High LLM cost rate detected"
           description: "Aggregated LLM spend is above $50/hr for more than 15 minutes"
+          escalation_policy: "slack-warning-finops"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
+
+      - alert: HighLLMCostCritical
+        expr: sum(rate(vf_llm_cost_usd_total[1h])) > 100
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical LLM cost rate detected"
+          description: "Aggregated LLM spend is above $100/hr for more than 10 minutes"
+          escalation_policy: "pagerduty-immediate-finops"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
 
       # Formula approval alert
@@ -233,4 +246,5 @@ groups:
         annotations:
           summary: "Service is down: {{ $labels.job }}"
           description: "The API health check for {{ $labels.job }} has been reporting unhealthy for more than 2 minutes"
+          escalation_policy: "pagerduty-immediate"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/service-down.md"
