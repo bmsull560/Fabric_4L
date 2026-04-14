@@ -119,6 +119,8 @@ async def invoke_tool(
         raise HTTPException(status_code=404, detail=f"Tool '{request.tool_name}' not found")
 
     try:
+        # SECURITY: registry.execute() is an orchestration method, not SQL execution.
+        # Tool name is validated above; input_data is validated via Pydantic schemas.
         result = await registry.execute(request.tool_name, request.input_data)
 
         return ToolInvokeResponse(
@@ -212,6 +214,8 @@ async def export_document_tool(
         }
 
         # Execute DocumentExportTool
+        # SECURITY: registry.execute() is an orchestration method, not SQL execution.
+        # Tool name is hardcoded; tool_input is constructed from validated request data.
         tool_result = await registry.execute("export_document", tool_input)
 
         if not tool_result.get("success"):

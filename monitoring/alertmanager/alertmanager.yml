@@ -32,6 +32,20 @@ route:
   repeat_interval: 4h
 
   routes:
+    # LLM cost warning: FinOps visibility + warning channel
+    - match:
+        alertname: HighLLMCostRate
+      receiver: 'slack-finops'
+      continue: true
+      repeat_interval: 1h
+
+    # LLM cost critical: immediate escalation
+    - match:
+        alertname: HighLLMCostCritical
+      receiver: 'pagerduty-critical'
+      continue: true
+      repeat_interval: 10m
+
     # Critical alerts: PagerDuty + Slack (escalation)
     - match:
         severity: critical
@@ -109,6 +123,18 @@ receivers:
       - channel: '#vf-alerts-warning'
         send_resolved: true
         title: ':warning: WARNING: {{ .CommonAnnotations.summary }}'
+        text: '{{ template "slack.warning.text" . }}'
+        actions:
+          - type: button
+            text: 'View Runbook'
+            url: '{{ .CommonAnnotations.runbook_url }}'
+
+  # Slack for FinOps cost alerts
+  - name: 'slack-finops'
+    slack_configs:
+      - channel: '#vf-finops-alerts'
+        send_resolved: true
+        title: ':money_with_wings: LLM COST: {{ .CommonAnnotations.summary }}'
         text: '{{ template "slack.warning.text" . }}'
         actions:
           - type: button

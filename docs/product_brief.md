@@ -69,6 +69,35 @@ Value Fabric provides a **4-layer architecture** that ingests unstructured data,
 - **Effectiveness**: Win rate improvement for Value Fabric-assisted deals
 - **Confidence**: Average confidence score on generated claims (target: > 0.8)
 
+## Onboarding Success Metrics
+
+- **Time to first value (TTFV)**: Median time from first login to first generated business case (target: < 30 minutes).
+- **Checklist completion rate**: % of new users who complete the guided setup checklist in first 7 days (target: > 80%).
+- **Activation rate**: % of new tenants that connect at least one data source and run one extraction job in first 14 days (target: > 70%).
+- **Week-2 retention**: % of onboarded users returning to the platform in days 8–14 (target: > 65%).
+- **Support deflection**: % of onboarding questions resolved through in-product guidance/docs without support ticket escalation (target: > 50%).
+
+## Guided Setup Checklist
+
+Use this checklist for customer onboarding and implementation workshops:
+
+1. **Tenant access confirmed**
+   - Validate SSO login and role assignment for initial admin users.
+2. **Initial data connections configured**
+   - Add first source systems (CRM, product docs, benchmark feed) with least-privilege credentials.
+3. **Extraction pipeline validated**
+   - Run a test extraction and verify job status, trace visibility, and entity creation.
+4. **Knowledge model sanity check**
+   - Confirm ontology mappings and inspect at least one account path in graph views.
+5. **Value model baseline created**
+   - Build one starter value tree/formula model and save it as reusable template.
+6. **First deliverable generated**
+   - Produce one business case narrative with provenance evidence and stakeholder framing.
+7. **Governance controls enabled**
+   - Configure approval workflow, audit review cadence, and benchmark policy defaults.
+8. **Enablement handoff completed**
+   - Share operating runbook, support channels, and named owners for admin, data, and value consulting workflows.
+
 ## Roadmap Highlights
 
 ### Phase 1: Foundation (Complete)

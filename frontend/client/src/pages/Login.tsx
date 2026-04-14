@@ -20,8 +20,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, LogIn, AlertCircle } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { useI18n } from "@/i18n";
 
 export default function Login() {
+  const { t } = useI18n();
   const [, navigate] = useLocation();
   const search = useSearch();
   const { isAuthenticated, isLoading, initiateLogin, handleCallback } = useAuthContext();
@@ -58,10 +60,10 @@ export default function Login() {
       if (success) {
         navigate('/home');
       } else {
-        setError('Authentication failed. Please try again.');
+        setError(t("login.errors.authFailed"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      setError(err instanceof Error ? err.message : t("login.errors.authFailedGeneric"));
     } finally {
       setIsLoggingIn(false);
     }
@@ -71,7 +73,7 @@ export default function Login() {
     e.preventDefault();
     
     if (!tenantSlug.trim()) {
-      setError('Please enter a tenant identifier');
+      setError(t("login.errors.tenantRequired"));
       return;
     }
 
@@ -83,7 +85,7 @@ export default function Login() {
       // Page will redirect to IdP, no need to handle success here
     } catch (err) {
       setIsLoggingIn(false);
-      setError(err instanceof Error ? err.message : 'Failed to initiate login');
+      setError(err instanceof Error ? err.message : t("login.errors.initiateFailed"));
     }
   };
 
@@ -95,7 +97,7 @@ export default function Login() {
           <CardContent className="pt-6 flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-muted-foreground">
-              {isLoggingIn ? 'Authenticating...' : 'Loading...'}
+              {isLoggingIn ? t("login.authenticating") : t("login.loading")}
             </p>
           </CardContent>
         </Card>
@@ -107,9 +109,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
+          <CardTitle className="text-2xl font-bold">{t("login.signIn")}</CardTitle>
           <CardDescription>
-            Enter your tenant identifier to sign in with your organization's SSO
+            {t("login.cardDescription")}
           </CardDescription>
         </CardHeader>
         
@@ -123,18 +125,18 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="tenant">Tenant Identifier</Label>
+              <Label htmlFor="tenant">{t("login.tenantLabel")}</Label>
               <Input
                 id="tenant"
                 type="text"
-                placeholder="e.g., acme-corp"
+                placeholder={t("login.tenantPlaceholder")}
                 value={tenantSlug}
                 onChange={(e) => setTenantSlug(e.target.value)}
                 disabled={isLoggingIn}
                 autoFocus
               />
               <p className="text-sm text-muted-foreground">
-                This is your organization's unique identifier in Value Fabric
+                {t("login.tenantHelp")}
               </p>
             </div>
 
@@ -146,21 +148,19 @@ export default function Login() {
               {isLoggingIn ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing In...
+                  {t("login.submitting")}
                 </>
               ) : (
                 <>
                   <LogIn className="mr-2 h-4 w-4" />
-                  Sign In with SSO
+                  {t("login.submit")}
                 </>
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>
-              Contact your administrator if you don't know your tenant identifier
-            </p>
+            <p>{t("login.footer")}</p>
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,5 @@
 .PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
-        test-frontend build migrate evals clean sdk \
+        test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs
 
@@ -13,7 +13,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test ## Run all checks (lint + typecheck + tests) — required before PR
+verify: lint typecheck test contract-tests ## Run all checks (lint + typecheck + tests + contracts) — required before PR
 	@echo "✅  All checks passed"
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
@@ -48,10 +48,12 @@ typecheck: ## Type-check all Python layers with mypy
 
 test: test-layer1 test-layer2 test-layer3 test-layer4 ## Run all backend unit tests
 
-contract-tests: ## Run cross-layer contract tests (fast, no secrets required)
+contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
 	$(PYTEST) tests/contract/ -v --tb=short
-	@echo "✅  Contract tests passed"
+	@echo "→ Running architecture tests (tenant isolation guards)..."
+	$(PYTEST) tests/arch/ -v --tb=short
+	@echo "✅  Contract and architecture tests passed"
 
 # ─── Stratified Test Targets ─────────────────────────────────────────────────
 
@@ -86,10 +88,11 @@ test-layer4: ## Run Layer 4 tests
 	cd value-fabric/layer4-agents && $(PYTEST) tests/
 
 test-layer5: ## Run Layer 5 tests
+	cd value-fabric/layer5-ground-truth && python scripts/check_no_duplicate_modules.py
 	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/
 
 test-frontend: ## Run frontend unit tests
-	cd frontend/client && pnpm run test
+	cd frontend && pnpm run test
 
 test-e2e: ## Run Playwright end-to-end tests (requires running stack)
 	cd frontend && pnpm exec playwright test
@@ -102,10 +105,21 @@ evals: ## Run agent golden-trace evaluations (requires OPENAI_API_KEY)
 evals-full: ## Run full eval suite including slow/expensive traces
 	$(PYTEST) tests/evals/ -v --tb=short
 
+
+perf-test: ## Run k6 L2/L3/L4 critical-path load suite
+	k6 run --summary-export artifacts/performance/k6-summary.json tests/performance/k6/l2_l3_l4_critical_paths.js
+
+perf-eval: ## Evaluate k6 results against versioned SLO thresholds
+	$(PYTHON) scripts/perf/evaluate_slo.py \
+		--summary artifacts/performance/k6-summary.json \
+		--slo docs/slo/performance-slo.v1.json \
+		--report artifacts/performance/slo-report.md \
+		--output artifacts/performance/slo-evaluation.json
+
 # ─── Build ────────────────────────────────────────────────────────────────────
 
 build: ## Build frontend production bundle
-	cd frontend/client && pnpm run build
+	cd frontend && pnpm run build
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 

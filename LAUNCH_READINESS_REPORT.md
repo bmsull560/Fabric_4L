@@ -40,9 +40,9 @@ The system has undergone comprehensive Phase 1-5 implementation to address launc
 - `value-fabric/layer6-benchmarks/src/metrics/prometheus_metrics.py`
 
 **Modified:**
-- `value-fabric/layer5-ground-truth/src/api/main.py` — Metrics initialization, /metrics endpoint
-- `value-fabric/layer5-ground-truth/src/api/router.py` — Enhanced health with response times
-- `value-fabric/layer5-ground-truth/src/api/schemas.py` — HealthResponse with timing fields
+- `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/main.py` — Metrics initialization, /metrics endpoint
+- `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/router.py` — Enhanced health with response times
+- `value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/schemas.py` — HealthResponse with timing fields
 - `value-fabric/layer2-extraction/src/layer2_extraction/api/main.py` — Layer 3 dependency check
 - `monitoring/prometheus/prometheus.yml` — Added L5 and L6 scrape configs
 
@@ -133,7 +133,7 @@ L1 Ingestion has:
 python -c "from value_fabric.layer3_knowledge.src.api.main import app; print('OK')"
 
 # L5 OpenAPI export: PASS (with SQLAlchemy warning, non-blocking)
-python -c "from value_fabric.layer5_ground_truth.src.api.main import app; print('OK')"
+python -c "from value_fabric.layer5_ground_truth.api.main import app; print('OK')"
 ```
 
 ---

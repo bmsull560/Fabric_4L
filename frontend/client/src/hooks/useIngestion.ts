@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { parseIngestionAggregation, parseIngestionJobs, type ApiIngestionJobDto } from '@/types/api';
 
 export interface IngestionJob {
   id: string;
@@ -27,22 +28,25 @@ const INGESTION_KEYS = {
   stats: () => [...INGESTION_KEYS.all, 'stats'] as const,
 };
 
+function mapIngestionJob(job: ApiIngestionJobDto): IngestionJob {
+  return {
+    id: job.id || 'unknown',
+    domain: job.configuration?.url || 'unknown',
+    status: mapJobStatus(job.status || ''),
+    progress: job.progress_percent_complete ?? 0,
+    pagesProcessed: job.progress_processed_pages ?? 0,
+    createdAt: job.created_at || new Date(0).toISOString(),
+    updatedAt: job.started_at || job.updated_at || job.created_at || new Date(0).toISOString(),
+  };
+}
+
 export function useIngestionJobs() {
   return useQuery({
     queryKey: INGESTION_KEYS.jobs(),
     queryFn: async () => {
       const response = await apiClient.get('l1', '/jobs');
-      // Backend returns { data: [...], aggregation: {...}, pagination: {...} }
-      const jobs = response.data?.data || [];
-      return jobs.map((j: any) => ({
-        id: j.id,
-        domain: j.configuration?.url || 'unknown',
-        status: mapJobStatus(j.status),
-        progress: j.progress_percent_complete || 0,
-        pagesProcessed: j.progress_processed_pages || 0,
-        createdAt: j.created_at,
-        updatedAt: j.started_at || j.created_at,
-      })) as IngestionJob[];
+      const jobs = parseIngestionJobs(response.data?.data);
+      return jobs.map(mapIngestionJob);
     },
     staleTime: 30 * 1000,
   });
@@ -53,16 +57,8 @@ export function useRecentIngestionJobs(limit = 5) {
     queryKey: INGESTION_KEYS.recent(),
     queryFn: async () => {
       const response = await apiClient.get('l1', `/jobs?limit=${limit}&sort_by=created_at&sort_order=desc`);
-      const jobs = response.data?.data || [];
-      return jobs.map((j: any) => ({
-        id: j.id,
-        domain: j.configuration?.url || 'unknown',
-        status: mapJobStatus(j.status),
-        progress: j.progress_percent_complete || 0,
-        pagesProcessed: j.progress_processed_pages || 0,
-        createdAt: j.created_at,
-        updatedAt: j.started_at || j.created_at,
-      })) as IngestionJob[];
+      const jobs = parseIngestionJobs(response.data?.data);
+      return jobs.map(mapIngestionJob);
     },
     staleTime: 30 * 1000,
     refetchInterval: 5000,
@@ -93,14 +89,14 @@ export function useIngestionStats() {
     queryKey: INGESTION_KEYS.stats(),
     queryFn: async () => {
       const response = await apiClient.get('l1', '/jobs?limit=1');
-      const agg = response.data?.aggregation || {};
+      const agg = parseIngestionAggregation(response.data?.aggregation);
       const byStatus = agg.by_status || {};
       return {
-        totalDomains: Object.values(byStatus).reduce((a: number, b: unknown) => a + (b as number), 0),
-        pagesSynthesized: agg.total_records_extracted || 0,
+        totalDomains: Object.values(byStatus).reduce((a, b) => a + b, 0),
+        pagesSynthesized: agg.total_records_extracted ?? 0,
         sourcesAnalyzed: Object.keys(byStatus).length,
-        avgProcessingTime: agg.total_execution_time_ms || 0,
-      } as IngestionStats;
+        avgProcessingTime: agg.total_execution_time_ms ?? 0,
+      };
     },
     staleTime: 60 * 1000,
   });
