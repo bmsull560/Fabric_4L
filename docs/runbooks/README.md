@@ -24,6 +24,7 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 | HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning |
 | HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning |
 | FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning |
+| ZeroTrustValidation | [zero-trust-validation.md](zero-trust-validation.md) | critical |
 | DeploymentSignatureVerification | [deployment-signature-verification.md](deployment-signature-verification.md) | critical |
 
 ## Incident Management Templates
