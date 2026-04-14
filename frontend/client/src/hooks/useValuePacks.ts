@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
 export type PackStatus = 'active' | 'draft' | 'archived' | 'published';
@@ -31,19 +32,6 @@ export interface ValuePack {
   owner?: string;
 }
 
-// ValuePack-specific stale time overrides
-const VALUE_PACK_STALE_TIME = {
-  ...STALE_TIME,
-  list: 60 * 1000,      // 1 minute for pack lists
-  detail: 5 * 60 * 1000, // 5 minutes for single pack
-} as const;
-
-const VALUE_PACK_KEYS = {
-  all: ['value-packs'] as const,
-  list: (filters: ValuePackFilters) => [...VALUE_PACK_KEYS.all, 'list', filters] as const,
-  detail: (id: string) => [...VALUE_PACK_KEYS.all, 'detail', id] as const,
-  stats: ['value-packs', 'stats'] as const,
-};
 
 export interface ValuePackFilters {
   industry?: string | 'all';
@@ -65,9 +53,9 @@ async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> 
 
 export function useValuePacks(filters: ValuePackFilters = {}) {
   return useQuery<ValuePack[], ValuePackApiError>({
-    queryKey: VALUE_PACK_KEYS.list(filters),
+    queryKey: QK.valuePacks.list(filters),
     queryFn: () => withApiError(fetchValuePacks(filters), ValuePackApiError),
-    staleTime: VALUE_PACK_STALE_TIME.list,
+    staleTime: STALE_TIME.stats,      // 1 minute for pack lists
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -80,10 +68,10 @@ async function fetchValuePack(packId: string): Promise<ValuePack> {
 
 export function useValuePack(packId: string | null) {
   return useQuery<ValuePack, ValuePackApiError>({
-    queryKey: VALUE_PACK_KEYS.detail(packId || ''),
+    queryKey: QK.valuePacks.detail(packId || ''),
     queryFn: () => withApiError(fetchValuePack(packId!), ValuePackApiError),
     enabled: !!packId,
-    staleTime: VALUE_PACK_STALE_TIME.detail,
+    staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -99,7 +87,7 @@ export function useApplyValuePack() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: VALUE_PACK_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: QK.valuePacks.all });
     },
   });
 }

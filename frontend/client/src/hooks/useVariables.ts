@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
 import { withApiError, VariableApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
 export type VariableType = 'rate' | 'currency' | 'integer' | 'float' | 'boolean' | 'string';
@@ -39,13 +40,6 @@ export interface SourceBinding {
   error_message?: string;
 }
 
-const VARIABLE_KEYS = {
-  all: ['variables'] as const,
-  list: (filters: VariableFilters) => [...VARIABLE_KEYS.all, 'list', filters] as const,
-  detail: (id: string) => [...VARIABLE_KEYS.all, 'detail', id] as const,
-  bindings: ['variables', 'bindings'] as const,
-  stats: ['variables', 'stats'] as const,
-};
 
 export interface VariableFilters {
   type?: VariableType | 'all';
@@ -79,7 +73,7 @@ async function fetchVariables(filters: VariableFilters): Promise<Variable[]> {
 
 export function useVariables(filters: VariableFilters = {}) {
   return useQuery<Variable[], VariableApiError>({
-    queryKey: VARIABLE_KEYS.list(filters),
+    queryKey: QK.variables.list(filters),
     queryFn: () => withApiError(fetchVariables(filters), VariableApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
@@ -94,7 +88,7 @@ async function fetchVariable(variableId: string): Promise<Variable> {
 
 export function useVariable(variableId: string | null) {
   return useQuery<Variable, VariableApiError>({
-    queryKey: VARIABLE_KEYS.detail(variableId || ''),
+    queryKey: QK.variables.detail(variableId || ''),
     queryFn: async () => {
       if (!variableId) throw new VariableApiError('No variable ID provided');
       return withApiError(fetchVariable(variableId), VariableApiError);
@@ -113,7 +107,7 @@ async function fetchVariableStats(): Promise<VariableStats> {
 
 export function useVariableStats() {
   return useQuery<VariableStats, VariableApiError>({
-    queryKey: VARIABLE_KEYS.stats,
+    queryKey: QK.variables.stats,
     queryFn: () => withApiError(fetchVariableStats(), VariableApiError),
     staleTime: STALE_TIME.stats,
     retry: RETRY_CONFIG.maxRetries,
@@ -128,7 +122,7 @@ async function fetchSourceBindings(): Promise<SourceBinding[]> {
 
 export function useSourceBindings() {
   return useQuery<SourceBinding[], VariableApiError>({
-    queryKey: VARIABLE_KEYS.bindings,
+    queryKey: QK.variables.bindings,
     queryFn: () => withApiError(fetchSourceBindings(), VariableApiError),
     staleTime: STALE_TIME.bindings,
     retry: RETRY_CONFIG.maxRetries,
@@ -146,7 +140,7 @@ export function useValidateVariable() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: VARIABLE_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: QK.variables.all });
     },
   });
 }

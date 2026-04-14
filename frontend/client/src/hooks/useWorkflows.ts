@@ -1,10 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
+import { API_BASE, L4_PREFIX } from '@/lib/apiConfig';
+import { POLL_INTERVALS } from './usePolling';
 
-// Constants for workflow polling and SSE
-const POLL_INTERVAL_MS = 5000;
-const STALE_TIME_MS = 30 * 1000;
+// Constants for workflow SSE
+// POLL_INTERVAL_MS removed — use POLL_INTERVALS.workflows from usePolling
 const SSE_TIMEOUT_MS = 30 * 1000;
 const CANCEL_DELAY_MS = 500;
 
@@ -17,12 +20,6 @@ export interface Workflow {
   updatedAt?: string;
 }
 
-const WORKFLOW_KEYS = {
-  all: ['workflows'] as const,
-  active: () => [...WORKFLOW_KEYS.all, 'active'] as const,
-  history: () => [...WORKFLOW_KEYS.all, 'history'] as const,
-  detail: (id: string) => [...WORKFLOW_KEYS.all, 'detail', id] as const,
-};
 
 function normalizeWorkflowStatus(status: unknown): Workflow['status'] {
   const value = typeof status === 'string' ? status.toLowerCase() : '';
@@ -111,20 +108,20 @@ function extractWorkflowList(data: unknown): RawWorkflow[] {
  */
 export function useActiveWorkflows() {
   return useQuery({
-    queryKey: WORKFLOW_KEYS.active(),
+    queryKey: QK.workflows.active(),
     queryFn: async () => {
       const response = await apiClient.get('l4', '/workflows/active');
       return normalizeWorkflowList(response.data);
     },
-    staleTime: STALE_TIME_MS,
-    refetchInterval: POLL_INTERVAL_MS,
+    staleTime: STALE_TIME.poll,
+    refetchInterval: POLL_INTERVALS.workflows,
     refetchOnWindowFocus: false, // Already polling, avoid duplicate fetches
   });
 }
 
 export function useWorkflowHistory() {
   return useQuery({
-    queryKey: WORKFLOW_KEYS.history(),
+    queryKey: QK.workflows.history(),
     queryFn: async () => {
       // NOTE: Currently using /workflows/active as a proxy for history.
       // When Layer 4 adds GET /workflows with pagination, update this to use
@@ -132,7 +129,7 @@ export function useWorkflowHistory() {
       const response = await apiClient.get('l4', '/workflows/active');
       return normalizeWorkflowList(response.data);
     },
-    staleTime: 60 * 1000,
+    staleTime: STALE_TIME.stats,
   });
 }
 
@@ -153,8 +150,8 @@ export function useCreateWorkflow() {
       return String(workflowId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.active() });
-      queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.history() });
+      queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
+      queryClient.invalidateQueries({ queryKey: QK.workflows.history() });
     },
   });
 }
@@ -174,8 +171,8 @@ export function useCancelWorkflow() {
       // Brief delay to allow backend to process cancellation
       // before refetching to avoid stale "running" state
       await new Promise((resolve) => setTimeout(resolve, CANCEL_DELAY_MS));
-      await queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.active() });
-      await queryClient.invalidateQueries({ queryKey: WORKFLOW_KEYS.history() });
+      await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
+      await queryClient.invalidateQueries({ queryKey: QK.workflows.history() });
     },
   });
 }
@@ -199,9 +196,7 @@ export function useWorkflowSSE(workflowId: string | null) {
       return;
     }
 
-    const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1';
-    const l4Prefix = import.meta.env.VITE_L4_PREFIX || '/agents';
-    const url = `${baseUrl}${l4Prefix}/workflows/${workflowId}/events`;
+    const url = `${API_BASE}${L4_PREFIX}/workflows/${workflowId}/events`;
 
     // Close any existing connection
     if (eventSourceRef.current) {

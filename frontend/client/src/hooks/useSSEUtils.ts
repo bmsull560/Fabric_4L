@@ -3,30 +3,27 @@
  *
  * Provides consistent URL building for SSE connections across hooks,
  * ensuring environment variables are handled uniformly.
+ *
+ * Layer prefix defaults are sourced from the centralized apiConfig module
+ * so that a single env-var change propagates to all SSE connections.
  */
+import { API_BASE, L2_PREFIX, L3_PREFIX, L4_PREFIX } from '@/lib/apiConfig';
 
 /**
  * Build SSE URL with consistent environment variable handling
  */
-function buildSSEUrl(
-  prefix: string,
-  endpointPath: string
-): string {
-  const baseUrl = import.meta.env.VITE_API_BASE || '/api/v1';
-  return `${baseUrl}${prefix}${endpointPath}`;
+function buildSSEUrl(prefix: string, endpointPath: string): string {
+  return `${API_BASE}${prefix}${endpointPath}`;
 }
 
 /**
- * Pre-configured builders for each service layer
- * Uses explicit env var access for Vite compatibility
+ * Pre-configured builders for each service layer.
+ * Prefix defaults are sourced from the centralized apiConfig module.
  */
 export const SSEBuilders = {
-  l2: (endpointPath: string) =>
-    buildSSEUrl(import.meta.env.VITE_L2_PREFIX || '/extract', endpointPath),
-  l3: (endpointPath: string) =>
-    buildSSEUrl(import.meta.env.VITE_L3_PREFIX || '/v1', endpointPath),
-  l4: (endpointPath: string) =>
-    buildSSEUrl(import.meta.env.VITE_L4_PREFIX || '/agents', endpointPath),
+  l2: (endpointPath: string) => buildSSEUrl(L2_PREFIX, endpointPath),
+  l3: (endpointPath: string) => buildSSEUrl(L3_PREFIX, endpointPath),
+  l4: (endpointPath: string) => buildSSEUrl(L4_PREFIX, endpointPath),
 };
 
 /**

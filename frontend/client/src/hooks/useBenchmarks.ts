@@ -1,12 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
 import { withApiError, BenchmarkApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
-// Benchmark-specific stale time overrides
-const BENCHMARK_STALE_TIME = {
-  ...STALE_TIME,
-  list: 60 * 1000,      // 1 minute for benchmark lists (longer than default)
-} as const;
 
 export type ConfidenceLevel = 'High' | 'Medium' | 'Low';
 export type BenchmarkStatus = 'active' | 'draft' | 'deprecated';
@@ -32,11 +28,7 @@ export interface Benchmark {
 // Re-export for backward compatibility
 export { BenchmarkApiError } from './useApiShared';
 
-const BENCHMARK_KEYS = {
-  all: ['benchmarks'] as const,
-  list: (filters: BenchmarkFilters) => [...BENCHMARK_KEYS.all, 'list', filters] as const,
-  detail: (id: string) => [...BENCHMARK_KEYS.all, 'detail', id] as const,
-};
+
 
 export interface BenchmarkFilters {
   industry?: string;
@@ -64,9 +56,9 @@ async function fetchBenchmarks(filters: BenchmarkFilters): Promise<Benchmark[]> 
  */
 export function useBenchmarks(filters: BenchmarkFilters = {}) {
   return useQuery<Benchmark[], BenchmarkApiError>({
-    queryKey: BENCHMARK_KEYS.list(filters),
+    queryKey: QK.benchmarks.list(filters),
     queryFn: () => withApiError(fetchBenchmarks(filters), BenchmarkApiError),
-    staleTime: BENCHMARK_STALE_TIME.list,
+    staleTime: STALE_TIME.stats,      // 1 minute for benchmark lists
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -85,14 +77,62 @@ async function fetchBenchmark(benchmarkId: string): Promise<Benchmark> {
  */
 export function useBenchmark(benchmarkId: string | null) {
   return useQuery<Benchmark, BenchmarkApiError>({
-    queryKey: BENCHMARK_KEYS.detail(benchmarkId || ''),
+    queryKey: QK.benchmarks.detail(benchmarkId || ''),
     queryFn: async () => {
       if (!benchmarkId) throw new BenchmarkApiError('No benchmark ID provided');
       return withApiError(fetchBenchmark(benchmarkId), BenchmarkApiError);
     },
     enabled: !!benchmarkId,
-    staleTime: BENCHMARK_STALE_TIME.detail,
+    staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
+  });
+}
+
+async function fetchBenchmarkPolicies(): Promise<BenchmarkPolicy[]> {
+  const response = await apiClient.get('l3', '/benchmarks/policies');
+  return response.data as BenchmarkPolicy[];
+}
+
+/**
+ * Hook to fetch benchmark policy configuration.
+ *
+ * @returns Query result with policy array and loading/error states
+ */
+export function useBenchmarkPolicies() {
+  return useQuery<BenchmarkPolicy[], BenchmarkApiError>({
+    queryKey: QK.benchmarks.policies,
+    queryFn: () => withApiError(fetchBenchmarkPolicies(), BenchmarkApiError),
+    staleTime: STALE_TIME.policies,
+    retry: RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
+  });
+}
+
+/** Parameters for updating a benchmark policy */
+export interface UpdateBenchmarkPolicyParams extends Partial<BenchmarkPolicy> {
+  id: string;
+}
+
+/**
+ * Hook to update a benchmark policy.
+ *
+ * @returns Mutation result with execute function and loading/error states
+ */
+export function useUpdateBenchmarkPolicy() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BenchmarkPolicy, BenchmarkApiError, UpdateBenchmarkPolicyParams>({
+    mutationFn: async (policy) => {
+      if (!policy.id) throw new BenchmarkApiError('Policy ID is required');
+      const response = await apiClient.put('l3', `/benchmarks/policies/${policy.id}`, policy);
+      return response.data as BenchmarkPolicy;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.benchmarks.policies });
+    },
+    onError: (error) => {
+      console.error('Benchmark policy update failed:', error.message);
+    },
   });
 }
