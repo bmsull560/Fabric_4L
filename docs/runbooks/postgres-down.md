@@ -1,5 +1,8 @@
 # PostgresDown Runbook
 
+> Policy reference: [Incident Severity Matrix and On-Call Escalation Policy](../operations/severity-escalation-policy.md).
+
+
 ## Severity: critical
 
 ## Alert Condition
