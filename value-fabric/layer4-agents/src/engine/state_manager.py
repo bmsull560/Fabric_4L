@@ -254,3 +254,51 @@ class StateManager:
             history_key = f"{workflow_id}:history"
             history = self._memory_store.get(history_key, [])
             return history[:limit]
+
+    async def list_active_workflows(self) -> list[str]:
+        """List workflow IDs with RUNNING or PENDING status.
+        
+        Used on startup to identify workflows that may have been
+        orphaned by a pod restart.
+        
+        Note: This scans all workflow keys in Redis. For large deployments,
+        consider using a Redis set to track active workflows.
+        """
+        active_ids = []
+        active_statuses = {WorkflowStatus.RUNNING.value, WorkflowStatus.PENDING.value, WorkflowStatus.PAUSED.value}
+        
+        if self.redis:
+            # Scan for workflow keys (layer4:workflow:* without :history suffix)
+            # This is a simple scan; production may want to use a secondary index
+            pattern = "layer4:workflow:*"
+            cursor = 0
+            while True:
+                cursor, keys = await self.redis.scan(cursor, match=pattern, count=100)
+                for key in keys:
+                    # Skip history keys
+                    if b":history" in key:
+                        continue
+                    
+                    workflow_id = key.decode().replace("layer4:workflow:", "")
+                    try:
+                        state = await self.load_state(workflow_id)
+                        if state and state.status.value in active_statuses:
+                            active_ids.append(workflow_id)
+                    except Exception as e:
+                        logger.warning(f"Failed to check state for {workflow_id}: {e}")
+                
+                if cursor == 0:
+                    break
+        else:
+            # In-memory fallback: scan _memory_store
+            for key in self._memory_store:
+                if key.startswith("layer4:workflow:") and ":history" not in key:
+                    workflow_id = key.replace("layer4:workflow:", "")
+                    try:
+                        state = await self.load_state(workflow_id)
+                        if state and state.status.value in active_statuses:
+                            active_ids.append(workflow_id)
+                    except Exception as e:
+                        logger.warning(f"Failed to check state for {workflow_id}: {e}")
+        
+        return active_ids

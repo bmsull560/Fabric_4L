@@ -164,6 +164,16 @@ async def lifespan(app: FastAPI):
     # Start the orchestration controller
     await workflow_executor.start()
 
+    # Recover orphaned workflows from previous pod (P0-26)
+    try:
+        recovered = await workflow_executor.recover_workflows()
+        if recovered:
+            logging.getLogger(__name__).info(
+                f"Recovery complete: {len(recovered)} workflows marked as INTERRUPTED"
+            )
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Workflow recovery failed: {e}")
+
     # Start WebSocket manager for real-time streaming
     await ws_manager.start()
 

@@ -1733,7 +1733,300 @@ Requirements:
 5. **Enterprise-ready:** Phase 2 adds governance, benchmarking, tiered UX for enterprise sales
 
 **Next Action:**
-🚀 **Start Task 40 (L3 API Versioning Bug)** — Fix `register_migration_handler()` signature to unblock 53 tests. Then proceed to Tasks 41-42 for CI stability.
+🚀 **Start Task 53 (Neo4j Tenant Scoping)** — Add tenant isolation to all Cypher queries for production security.
+
+---
+
+## Sprint Plan — 12 Weeks to Launch (from AI Assessment 2026-04-13)
+
+**Source:** `AI (3).md` — Unified Launch Readiness Assessment & Sprint Plan  
+**Current Readiness Level:** ~65% → Target: 98% Production Ready
+
+### Top 10 Risks Blocking Launch
+
+| Rank | Risk | Layer | Status |
+|------|------|-------|--------|
+| **1** | **Neo4j graph has no tenant isolation** — Cypher queries operate against full graph without `tenant_id` filtering | L3 | 🔴 NOT STARTED → Task 53 |
+| **2** | **No database-level tenant isolation (RLS)** — Application-only filtering, no PostgreSQL RLS safety net | L1/L4/L5 | 🔴 NOT STARTED → Task 54 |
+| **3** | **L1 AI extraction stage is a no-op stub** — `# TODO: Implement LLM extraction` blocks core data flow | L1/L2 | ✅ COMPLETE (Task 2) |
+| **4** | **Frontend has no authentication flow** — 401 redirects to non-existent `/login` page | Frontend | 🟡 PARTIAL (Task 9 ~40%) → Task 55 |
+| **5** | **No SSO/OIDC** — Enterprise customers cannot federate identity | Shared | 🔴 NOT STARTED → Task 55 |
+| **6** | **L4 workflow state is in-memory and ephemeral** — Pod restart loses workflow state | L4 | ✅ COMPLETE (Task 8) |
+| **7** | **Vault placeholder / secrets in git** — Plaintext credentials in `k8s/secrets.yml` | Infra | 🔴 NOT STARTED → Task 65 |
+| **8** | **Alertmanager unconfigured** — Prometheus alerts fire nowhere | Monitoring | 🟡 PARTIAL (Task 46) → Task 63 |
+| **9** | **Unbounded in-memory state causes OOM** — `_memory_store`, `_task_history` grow without bounds | L4 | 🔴 NOT STARTED → Task 66 |
+| **10** | **No Model Registry** — LLM updates are unversioned config strings | L5 | 🔴 NOT STARTED → Task 67 |
+
+---
+
+### Sprint 1 — Tenant Isolation & Auth Foundation (Weeks 1–2)
+
+**Goal:** Eliminate all cross-tenant data leakage vectors, establish working frontend auth flow, harden secrets management.
+
+#### Task 53: Neo4j Tenant Scoping (P0)
+- **Layer:** L3
+- **Effort:** 2 days
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Multi-tenant production deployment
+- **Acceptance Criteria:**
+  - [ ] Add `tenant_id` property to all node `MERGE`/`CREATE` statements
+  - [ ] Add `WHERE n.tenant_id = $tenant_id` to every `MATCH` clause
+  - [ ] Add Neo4j schema constraint: `REQUIRE n.tenant_id IS NOT NULL`
+  - [ ] Extract `tenant_id` from `X-Tenant-ID` header into `IngestRequest`
+  - [ ] Add tenant filter to all graph search endpoints
+  - [ ] Write data migration script for existing nodes
+- **Implementation:**
+  - Modify: `value-fabric/layer3-knowledge/src/ingestion/neo4j_loader.py`
+  - Modify: `value-fabric/layer3-knowledge/src/agents/*.py`
+
+#### Task 54: PostgreSQL Row-Level Security (P0)
+- **Layer:** L1/L4/L5
+- **Effort:** 2 days
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Database-level tenant isolation
+- **Acceptance Criteria:**
+  - [ ] Create Alembic migration with RLS policies for tenant-scoped tables
+  - [ ] Add `SET LOCAL app.tenant_id` in `get_db()` session hook
+  - [ ] Audit all L4 route handlers for tenant scoping
+- **Implementation:**
+  - Create: Alembic migrations per layer
+  - Modify: `value-fabric/layer4-agents/src/database.py`
+
+#### Task 55: Frontend Auth & OIDC (P0)
+- **Layer:** Frontend/Shared
+- **Effort:** 3 days
+- **Status:** 🟡 PARTIAL (Task 9 ~40% complete)
+- **Unblocks:** Enterprise SSO, working auth flow
+- **Acceptance Criteria:**
+  - [ ] Implement OIDC client in `shared/identity/oidc.py` with PKCE flow
+  - [ ] Add `/oauth2/callback` and `/oauth2/login` endpoints
+  - [ ] Add `/login` page with JWT/OIDC redirect
+  - [ ] Add `AuthProvider` context (memory-only token storage)
+  - [ ] Wire `apiClient` interceptors to read from `AuthProvider`
+  - [ ] Fix 401 infinite redirect loop
+- **Implementation:**
+  - Create: `value-fabric/shared/identity/oidc.py`
+  - Modify: `frontend/client/src/api/client.ts`
+
+#### Task 56: CORS Hardening (P0)
+- **Layer:** L1/L2/L3
+- **Effort:** 1 day
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Production security compliance
+- **Acceptance Criteria:**
+  - [ ] Replace `allow_origins=["*"]` with `allow_origins=settings.cors_origins`
+  - [ ] Fail startup if `CORS_ORIGINS` unset in production
+- **Implementation:**
+  - Modify: All layer `main.py` files
+
+#### Task 66: Memory Safety (P0)
+- **Layer:** L4
+- **Effort:** 1 day
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Production stability (prevent OOM crashes)
+- **Acceptance Criteria:**
+  - [ ] Fix `StateManager._memory_store` unbounded growth (add `maxlen` LRU eviction)
+  - [ ] Fix `TaskScheduler._task_history` — add configurable `max_history` with pruning
+  - [ ] Fix `NotificationService._event_queue` — add `maxsize` to `asyncio.Queue`
+- **Implementation:**
+  - Modify: `value-fabric/layer4-agents/src/engine/executor.py`
+
+---
+
+### Sprint 2 — Core Data Pipeline Repair (Weeks 3–4)
+
+**Goal:** Make L1→L2→L3 data pipeline work end-to-end. Core value delivery path.
+
+#### Task 57: L1 AI Extraction Wiring (P0)
+- **Layer:** L1/L2
+- **Effort:** 2 days
+- **Status:** ✅ COMPLETE (Task 2, 2026-04-09)
+- **Unblocks:** Core product value delivery
+- **Acceptance Criteria:**
+  - [x] Replace `# TODO: Implement LLM extraction` stub with `Layer2ExtractionClient` call
+  - [x] Pass `raw_content_id`, `job_id`, `tenant_id`
+  - [x] Handle async response via Celery `chord` or polling
+  - [x] Track `resources_llm_tokens_consumed`
+
+#### Task 58: L4 Workflow State Persistence (P0)
+- **Layer:** L4
+- **Effort:** 2 days
+- **Status:** ✅ COMPLETE (Task 8, 2026-04-10)
+- **Unblocks:** Fault-tolerant workflow engine
+- **Acceptance Criteria:**
+  - [x] Persist `_workflow_metadata` to Redis on write
+  - [x] Reload on startup
+  - [x] State survives container restart
+
+---
+
+### Sprint 3 — Security Scanning & Resilience (Weeks 5–6)
+
+**Goal:** Make CI a reliable quality gate, harden error responses, make agent engine production-resilient.
+
+#### Task 59: CI Security Gates (P0)
+- **Layer:** CI/DEVOPS
+- **Effort:** 1 day
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Automated security enforcement
+- **Acceptance Criteria:**
+  - [ ] Add `bandit -r src/ -ll` step to `pr-checks.yml`
+  - [ ] Add `pip-audit --requirement requirements.txt` (block on CVSS ≥ 7)
+  - [ ] Add `trivy image --exit-code 1 --severity HIGH,CRITICAL`
+  - [ ] Add `gitleaks detect` step
+  - [ ] Add `npm audit` / `pnpm audit`
+  - [ ] Add `.github/dependabot.yml`
+
+#### Task 60: Error Response Hardening (P0)
+- **Layer:** All
+- **Effort:** 1 day
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Production security (no stack trace leakage)
+- **Acceptance Criteria:**
+  - [ ] Add global FastAPI exception handler returning sanitized errors
+  - [ ] Remove stack traces from frontend `ErrorBoundary` in production
+  - [ ] Add structured error codes (`code`, `message`, `trace_id`)
+
+#### Task 61: Request Correlation IDs (P1)
+- **Layer:** All
+- **Effort:** 1 day
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Distributed tracing, debugging
+- **Acceptance Criteria:**
+  - [ ] Add `X-Request-ID` middleware to all layers
+  - [ ] Include `request_id` in `AuditEvent` model
+  - [ ] Propagate through all response headers
+
+---
+
+### Sprint 4 — Observability & Alerting (Weeks 7–8)
+
+**Goal:** Achieve production-grade observability with distributed tracing, actionable alerts, structured logging.
+
+#### Task 62: Distributed Tracing (P1)
+- **Layer:** L2/L4
+- **Effort:** 2 days
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Production debugging, performance analysis
+- **Acceptance Criteria:**
+  - [ ] Add `opentelemetry-instrumentation-fastapi` to L2 and L4
+  - [ ] Initialize OTel tracer in startup
+  - [ ] Propagate `trace_id` into `workflow_metadata`
+  - [ ] Add Jaeger to `docker-compose.yml`
+
+#### Task 63: Alert Rules & Routing (P0)
+- **Layer:** Monitoring
+- **Effort:** 1 day
+- **Status:** 🟡 PARTIAL (Task 46 exists, no alerting rules)
+- **Unblocks:** Operational awareness
+- **Acceptance Criteria:**
+  - [ ] Define Prometheus alert rules: `HighErrorRate`, `HighLatency`, `ServiceDown`, `DLQBacklog`
+  - [ ] Configure Alertmanager routes: `critical` → PagerDuty, `warning` → Slack
+  - [ ] Add `PAGERDUTY_INTEGRATION_KEY` and `SLACK_WEBHOOK_URL` to External Secrets
+
+---
+
+### Sprint 5 — Performance, K8s Hardening & Model Governance (Weeks 9–10)
+
+#### Task 64: Kubernetes Hardening (P1)
+- **Layer:** Infra
+- **Effort:** 2 days
+- **Status:** 🟡 PARTIAL (Task 47 exists, needs verification)
+- **Unblocks:** Production deployment
+- **Acceptance Criteria:**
+  - [ ] Create `k8s/network-policies/` with NetworkPolicy per layer
+  - [ ] Add `securityContext` to all deployments (non-root, read-only root FS)
+  - [ ] Add HPA manifests for L4, L2, Frontend
+  - [ ] Add `PodDisruptionBudget` for L4
+  - [ ] Pin all K8s image tags to SHA digests in prod overlay
+
+#### Task 65: Production Secrets Management (P0)
+- **Layer:** Infra
+- **Effort:** 1 day
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Secure secret handling
+- **Acceptance Criteria:**
+  - [ ] Remove plaintext credentials from `k8s/secrets.yml`
+  - [ ] Replace with `secretKeyRef` pointing to External Secrets Operator
+  - [ ] Configure Vault ClusterSecretStore
+  - [ ] Add `k8s/secrets.yml` to `.gitignore`
+  - [ ] Implement secret rotation detection and hot-reload
+
+#### Task 67: Model Registry (P1)
+- **Layer:** L5
+- **Effort:** 2 days
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** LLM versioning, compliance, drift prevention
+- **Acceptance Criteria:**
+  - [ ] Create `model_registry.py` with SQLAlchemy models for `ModelVersion`, `ModelDeployment`, `ModelEvaluation`
+  - [ ] Add `POST /v1/models` — register new model version
+  - [ ] Add `POST /v1/models/{id}/promote` — promote to production
+  - [ ] Migrate L2 `llm_client.py` to use registry
+
+---
+
+### Sprint 6 — Launch Validation & Go-Live (Weeks 11–12)
+
+#### Task 68: Penetration Testing (P0)
+- **Layer:** All
+- **Effort:** 2 days
+- **Status:** 🔴 NOT STARTED
+- **Unblocks:** Launch sign-off
+- **Acceptance Criteria:**
+  - [ ] `tests/security/test_tenant_isolation.py`: two tenants, verify zero cross-tenant visibility
+  - [ ] `tests/security/test_rbac.py`: verify all role/endpoint combinations
+  - [ ] OWASP Top 10 verification
+  - [ ] Verify no sensitive data in error responses
+
+---
+
+## Summary: New Tasks from Launch Assessment
+
+| Task | Layer | Priority | Status | Maps To Existing |
+|------|-------|----------|--------|------------------|
+| 53 | L3 | P0 | 🔴 New | — |
+| 54 | L1/L4/L5 | P0 | 🔴 New | — |
+| 55 | Frontend/Shared | P0 | 🟡 Partial | Task 9 |
+| 56 | L1/L2/L3 | P0 | 🔴 New | — |
+| 57 | L1/L2 | P0 | ✅ Complete | Task 2 |
+| 58 | L4 | P0 | ✅ Complete | Task 8 |
+| 59 | CI | P0 | 🔴 New | — |
+| 60 | All | P0 | 🔴 New | — |
+| 61 | All | P1 | 🔴 New | — |
+| 62 | L2/L4 | P1 | 🔴 New | — |
+| 63 | Monitoring | P0 | 🟡 Partial | Task 46 |
+| 64 | Infra | P1 | 🟡 Partial | Task 47 |
+| 65 | Infra | P0 | 🔴 New | — |
+| 66 | L4 | P0 | 🔴 New | — |
+| 67 | L5 | P1 | 🔴 New | — |
+| 68 | All | P0 | 🔴 New | — |
+
+**Net New P0 Tasks:** 9 (53, 54, 55, 56, 59, 60, 63, 65, 66, 68)  
+**Already Complete:** 2 (57, 58)  
+**Enhanced Existing:** 4 (55, 63, 64)
+
+---
+
+**Critical Path for Launch:**
+```
+1. Neo4j tenant isolation + PostgreSQL RLS + Frontend auth (Sprint 1)
+   ↓
+2. CI security scanning + CORS restriction + Error hardening (Sprint 3)
+   ↓
+3. Alertmanager routing + Audit trail wiring (Sprint 4)
+   ↓
+4. K8s hardening + Secrets management (Sprint 5)
+   ↓
+5. Tenant isolation pen test + Staged rollout (Sprint 6)
+```
+
+**Total to Launch:** 12 weeks (6 two-week sprints) following critical path.
+
+---
+
+**End of Roadmap Additions from AI Assessment**
+
+---
 
 **Critical Path (Phase 1):**
 ```

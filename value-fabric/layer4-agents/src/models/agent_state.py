@@ -37,6 +37,7 @@ class WorkflowStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
+    INTERRUPTED = "interrupted"  # Pod restart, recoverable
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
@@ -145,6 +146,7 @@ class BaseAgentState(BaseModel):
             WorkflowStatus.PAUSED,
             WorkflowStatus.RUNNING,
             WorkflowStatus.PENDING,
+            WorkflowStatus.INTERRUPTED,  # Can resume after pod restart
         ]
 
     def get_pause_summary(self) -> dict[str, Any] | None:

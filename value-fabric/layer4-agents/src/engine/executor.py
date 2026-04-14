@@ -526,15 +526,16 @@ class OrchestrationController:
             raise WorkflowExecutionError(f"No state found for workflow {workflow_id}")
 
         # Check if workflow is in a resumable state
-        # Only PAUSED or RUNNING workflows can be resumed
+        # PAUSED, RUNNING, PENDING, and INTERRUPTED workflows can be resumed
         if state.status not in [
             WorkflowStatus.PAUSED,
             WorkflowStatus.RUNNING,
             WorkflowStatus.PENDING,
+            WorkflowStatus.INTERRUPTED,
         ]:
             raise WorkflowExecutionError(
                 f"Workflow {workflow_id} is {state.status.value} and cannot be resumed. "
-                f"Only PAUSED, RUNNING, or PENDING workflows can be resumed."
+                f"Only PAUSED, RUNNING, PENDING, or INTERRUPTED workflows can be resumed."
             )
 
         # Validate workflow_id matches state
@@ -612,6 +613,74 @@ class OrchestrationController:
             "avg_load": router_health.get("avg_load", 0),
             "utilization": scheduler_stats.get("utilization", 0),
         }
+
+    async def recover_workflows(self) -> list[dict[str, Any]]:
+        """On startup, identify and handle orphaned workflows from previous pod.
+        
+        Called during application startup to find workflows that were RUNNING/PENDING
+        in Redis but not in this pod's memory. Marks them as INTERRUPTED for
+        manual review or auto-resume.
+        
+        Returns:
+            List of recovered workflow IDs with status
+        """
+        logger.info("Scanning for orphaned workflows to recover...")
+        
+        # Get active workflows from Redis that aren't in our memory
+        orphaned_ids = await self.state_manager.list_active_workflows()
+        recovered = []
+        
+        for workflow_id in orphaned_ids:
+            # Skip if this workflow is already in our active workflows
+            if workflow_id in self._active_workflows:
+                continue
+            
+            try:
+                state = await self.state_manager.load_state(workflow_id)
+                if not state:
+                    continue
+                
+                # Mark as INTERRUPTED with recovery information
+                state.status = WorkflowStatus.INTERRUPTED
+                state.errors.append(
+                    f"Workflow interrupted by pod restart at {datetime.now(UTC).isoformat()}. "
+                    "Resume manually or via API."
+                )
+                await self.state_manager.save_state(workflow_id, state)
+                
+                # Try to restore metadata if available
+                if workflow_id in self._workflow_metadata:
+                    self._workflow_metadata[workflow_id]["interrupted_at"] = datetime.now(UTC).isoformat()
+                    self._workflow_metadata[workflow_id]["recovery_available"] = True
+                
+                recovered.append({
+                    "workflow_id": workflow_id,
+                    "workflow_type": state.workflow_type.value if hasattr(state.workflow_type, "value") else str(state.workflow_type),
+                    "status": state.status.value,
+                    "previous_status": "RUNNING",
+                    "current_node": state.current_node,
+                    "recovery_available": True,
+                })
+                
+                logger.warning(
+                    f"Marked orphaned workflow {workflow_id} as INTERRUPTED "
+                    f"(was at node: {state.current_node})"
+                )
+                
+            except Exception as e:
+                logger.error(f"Failed to recover workflow {workflow_id}: {e}")
+                recovered.append({
+                    "workflow_id": workflow_id,
+                    "status": "ERROR",
+                    "error": str(e),
+                })
+        
+        if recovered:
+            logger.info(f"Recovery complete: {len(recovered)} workflows marked as INTERRUPTED")
+        else:
+            logger.info("No orphaned workflows found")
+        
+        return recovered
 
     def _create_agent_handler(
         self,
