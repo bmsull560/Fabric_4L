@@ -14,6 +14,9 @@ Thumbs.db
 ehthumbs.db
 
 # Environment variables
+# Real .env files with secrets are never committed.
+# Committed files: .env.example, .env.test, .env.staging, .env.production,
+#                  .env.development, .env.production.example
 .env
 .env.local
 .env.*.local

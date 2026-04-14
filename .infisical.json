@@ -1,0 +1,19 @@
+{
+  "workspaceId": "",
+  "defaultEnvironment": "dev",
+  "gitBranchToEnvironmentMapping": null,
+  "secretPaths": {
+    "value-fabric": {
+      "dev": "/fabric-4l/value-fabric/dev",
+      "test": "/fabric-4l/value-fabric/test",
+      "staging": "/fabric-4l/value-fabric/staging",
+      "prod": "/fabric-4l/value-fabric/prod"
+    },
+    "frontend": {
+      "dev": "/fabric-4l/frontend/dev",
+      "test": "/fabric-4l/frontend/test",
+      "staging": "/fabric-4l/frontend/staging",
+      "prod": "/fabric-4l/frontend/prod"
+    }
+  }
+}

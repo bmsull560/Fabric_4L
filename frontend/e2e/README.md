@@ -8,27 +8,53 @@ This test suite provides end-to-end coverage for critical user journeys, with a 
 - **Behavioral testing**: Verifying user workflows, not just element existence
 - **Resilient selectors**: Using semantic/accessible selectors over brittle CSS
 - **Deterministic execution**: Proper waiting, no arbitrary sleeps
-- **Access control validation**: Testing tier-based permissions
+- **Access control validation**: Testing tier-based permissions across canonical routes
 - **Production confidence**: Tests suitable for CI gating
 
 ## Test Structure
 
 ```
 e2e/
-├── fixtures/           # Test data and helpers
-│   ├── test-data.ts    # Test data factories
-│   ├── tier-helpers.ts # Access control utilities
-│   └── index.ts        # Central exports
-├── pages/              # Page Objects
-│   ├── CommandCenterPage.ts
-│   ├── GraphExplorerPage.ts
-│   ├── AppShellPage.ts
-│   └── index.ts
-├── command-center.spec.ts    # Ingestion workflow tests
-├── graph-explorer.spec.ts    # Graph visualization tests
-├── navigation.spec.ts        # Access control & routing tests
+├── fixtures/                        # Test data and helpers
+│   ├── test-data.ts                 # Test data factories
+│   ├── tier-helpers.ts              # Access control utilities (canonical routes)
+│   └── index.ts                     # Central exports
+├── pages/                           # Page Objects
+│   ├── AppShellPage.ts              # Navigation, sidebar, global controls
+│   ├── CommandCenterPage.ts         # Home dashboard (/home)
+│   ├── GraphExplorerPage.ts         # Graph visualization (/discover/knowledge/graph)
+│   ├── ExtractionEnginePage.ts      # Extraction pipeline (/discover/extraction)
+│   ├── BusinessCasePage.ts          # ROI display (/deliver/cases)
+│   ├── FormulaBuilderPage.ts        # Formula editor (/model/value-studio/formulas)
+│   ├── ValueTreeExplorerPage.ts     # Tree visualization (/model/value-studio/explorer)
+│   ├── DecisionTracePage.ts         # Audit trail (/evidence/traces)
+│   ├── AdminPage.ts                 # Governance screens (/admin/*)
+│   └── index.ts                     # Central exports
+├── command-center.spec.ts           # Home dashboard tests
+├── graph-explorer.spec.ts           # Graph visualization tests
+├── navigation.spec.ts               # Access control & routing tests
+├── extraction-engine.spec.ts        # Extraction pipeline tests
+├── business-case.spec.ts            # Business case output tests
+├── formula-builder.spec.ts          # Formula editing tests
+├── value-tree-explorer.spec.ts      # Tree visualization tests
+├── decision-trace.spec.ts           # Audit trail tests
+├── admin.spec.ts                    # Governance workflow tests
 └── README.md
 ```
+
+## Canonical Route Taxonomy
+
+The app uses a single-spine navigation with progressive disclosure:
+
+| Spine    | Route Prefix       | Tier      | Component(s)                |
+|----------|--------------------|-----------|-----------------------------|
+| Home     | `/home`            | standard  | CommandCenter               |
+| Library  | `/library/*`       | standard  | ValuePacks, PackManagement  |
+| Discover | `/discover/*`      | standard+ | Accounts, Extraction, Graph |
+| Model    | `/model/*`         | advanced  | ValueTreeExplorer, FormulaBuilder |
+| Deliver  | `/deliver/*`       | standard+ | BusinessCase, AgentWorkflows |
+| Evidence | `/evidence/*`      | standard+ | DecisionTrace               |
+| Govern   | `/admin/*`         | admin     | FormulaGovernance, BenchmarkPolicies, VariableRegistry |
 
 ## Page Objects
 
@@ -39,11 +65,17 @@ Page Objects encapsulate page-specific interactions, providing:
 
 ### Available Page Objects
 
-| Page Object | Purpose |
-|-------------|---------|
-| `CommandCenterPage` | Domain submission, KPI display, jobs table |
-| `GraphExplorerPage` | Graph visualization, search, node interaction |
-| `AppShellPage` | Navigation, sidebar, global controls |
+| Page Object             | Route                          | Purpose                                 |
+|-------------------------|--------------------------------|-----------------------------------------|
+| `CommandCenterPage`     | `/home`                        | Domain submission, KPI display, jobs    |
+| `GraphExplorerPage`     | `/discover/knowledge/graph`    | Graph visualization, search, node interaction |
+| `ExtractionEnginePage`  | `/discover/extraction`         | Pipeline steps, terminal logs, entities |
+| `BusinessCasePage`      | `/deliver/cases`               | ROI card, actions, recommendations      |
+| `FormulaBuilderPage`    | `/model/value-studio/formulas` | Tabs, editor, variables, governance     |
+| `ValueTreeExplorerPage` | `/model/value-studio/explorer` | Tree view, entity badges, outline       |
+| `DecisionTracePage`     | `/evidence/traces`             | Audit table, provenance, export         |
+| `AdminPage`             | `/admin/*`                     | Formula governance, benchmarks, variables |
+| `AppShellPage`          | (global)                       | Navigation spine, sidebar, tier switcher |
 
 ## Test Coverage
 
@@ -55,7 +87,7 @@ Page Objects encapsulate page-specific interactions, providing:
 - ✅ Button state management (enabled/disabled)
 - ✅ Advanced configuration panel
 - ✅ Jobs table loading and display
-- ✅ Access control for standard tier
+- ✅ Access control for all tiers
 
 ### Graph Explorer (`graph-explorer.spec.ts`)
 
@@ -71,11 +103,65 @@ Page Objects encapsulate page-specific interactions, providing:
 ### Navigation & Access Control (`navigation.spec.ts`)
 
 - ✅ Standard tier route restrictions
-- ✅ Advanced tier route access
-- ✅ Admin tier full access
-- ✅ Sidebar navigation visibility
-- ✅ Redirect behavior
-- ✅ Mobile navigation (responsive)
+- ✅ Advanced tier route access (Model, Extraction, Knowledge)
+- ✅ Admin tier full access (Govern section)
+- ✅ Single-spine navigation visibility per tier
+- ✅ Redirect behavior (all restricted → `/home`)
+- ✅ Root redirect to `/home`
+- ✅ Mobile navigation (skipped — not yet implemented)
+
+### Extraction Engine (`extraction-engine.spec.ts`)
+
+- ✅ Page load and header display
+- ✅ Back navigation link
+- ✅ Terminal/log viewer display
+- ✅ Job status indicators
+- ✅ Access control (advanced tier for `/discover/extraction`, standard for `/discover/jobs`)
+- ✅ Error handling
+
+### Business Case (`business-case.spec.ts`)
+
+- ✅ Page load and header
+- ✅ Hero ROI card with total value display
+- ✅ Action buttons (Explore, Export PDF, View Trace)
+- ✅ Recommendations and executive summary sections
+- ✅ Export PDF workflow
+- ✅ View Trace navigation
+- ✅ Access control (all tiers)
+
+### Formula Builder (`formula-builder.spec.ts`)
+
+- ✅ Tab navigation (Formula, Governance, Dependencies, History)
+- ✅ Expression editor display
+- ✅ Variable binding table
+- ✅ Save/Run action buttons
+- ✅ Governance tab with status badges
+- ✅ Access control (requires advanced tier)
+
+### Value Tree Explorer (`value-tree-explorer.spec.ts`)
+
+- ✅ Page load and header
+- ✅ Tree view with hierarchical nodes
+- ✅ Entity type display
+- ✅ View tab switching (tree vs outline)
+- ✅ Action buttons (upload, download, new)
+- ✅ Access control (requires advanced tier)
+
+### Decision Trace (`decision-trace.spec.ts`)
+
+- ✅ Audit logs table display
+- ✅ Status badges in audit rows
+- ✅ Export and refresh controls
+- ✅ Progressive disclosure (traces → lineage → changelog)
+- ✅ Access control per evidence sub-route
+
+### Admin / Governance (`admin.spec.ts`)
+
+- ✅ Formula Governance: registry, approval queue, version history tabs
+- ✅ Benchmark Policies: list display, confidence badges
+- ✅ Variable Registry: catalog, source bindings tabs, type/source badges
+- ✅ Access control (admin-only enforcement for all govern routes)
+- ✅ System and access control sub-routes
 
 ## Running Tests
 
@@ -120,7 +206,7 @@ pnpm test:e2e:report
 CI=true pnpm test:e2e
 
 # Specific test file
-pnpm test:e2e command-center.spec.ts
+pnpm test:e2e extraction-engine.spec.ts
 
 # With tracing for failures
 pnpm test:e2e --trace=on
@@ -135,7 +221,7 @@ pnpm test:e2e --trace=on
 | `testDir` | `./e2e` | Test file location |
 | `retries` | 2 (CI only) | Flake tolerance |
 | `workers` | 2 (CI) / undefined | Parallelism |
-| `baseURL` | `http://localhost:3000` | App base URL |
+| `baseURL` | `http://localhost:3001` | App base URL |
 | `trace` | `on-first-retry` | Debug artifacts |
 | `screenshot` | `only-on-failure` | Failure evidence |
 
@@ -148,7 +234,7 @@ pnpm test:e2e --trace=on
 
 ### Test Data & Tier Management
 
-Tests use localStorage to simulate user tier:
+Tests use localStorage to simulate user tier via the Zustand persist middleware:
 
 ```typescript
 // Set user tier before tests
@@ -165,17 +251,23 @@ await clearUserTier(page);
 ```typescript
 import { test, expect } from '@playwright/test';
 import { MyPage } from './pages';
+import { setUserTier, clearUserTier } from './fixtures';
 
 test.describe('Feature', () => {
+  let myPage: MyPage;
+
+  test.beforeEach(async ({ page }) => {
+    await setUserTier(page, 'advanced');
+    myPage = new MyPage(page);
+  });
+
+  test.afterEach(async ({ page }) => {
+    await clearUserTier(page);
+  });
+
   test('should do something meaningful', async ({ page }) => {
-    // Arrange
-    const myPage = new MyPage(page);
     await myPage.goto();
-
-    // Act
     await myPage.performAction();
-
-    // Assert
     await expect(page).toHaveURL(/\/expected/);
     await expect(myPage.resultElement).toBeVisible();
   });
@@ -189,6 +281,7 @@ test.describe('Feature', () => {
 3. **Wait properly**: Use `toBeVisible()` etc. with auto-retry
 4. **Clean state**: Use `beforeEach`/`afterEach` for setup/teardown
 5. **Clear names**: Test names describe behavior, not implementation
+6. **Graceful degradation**: Use `.catch(() => false)` for optional elements
 
 ### Selector Priority
 
@@ -209,15 +302,37 @@ test.describe('Feature', () => {
   run: pnpm test:e2e
   env:
     CI: true
-    PLAYWRIGHT_BASE_URL: http://localhost:3000
+    PLAYWRIGHT_BASE_URL: http://localhost:3001
 
 - name: Upload test results
   if: failure()
   uses: actions/upload-artifact@v3
   with:
     name: playwright-report
-    path: e2e-results/
+    path: frontend/e2e-results/
 ```
+
+## Current Status
+
+| Suite | Tests | Status |
+|-------|-------|--------|
+| Command Center | 12 | Ready |
+| Graph Explorer | 17 | Ready |
+| Navigation | 16 | Ready |
+| Extraction Engine | 10 | Ready |
+| Business Case | 13 | Ready |
+| Formula Builder | 13 | Ready |
+| Value Tree Explorer | 10 | Ready |
+| Decision Trace | 12 | Ready |
+| Admin / Governance | 15 | Ready |
+| **Total** | **~118** | **Production Ready** |
+
+## Known Limitations
+
+1. **Backend dependency**: Tests run against real app; backend must be available or mocked
+2. **Data variability**: Table content depends on backend state
+3. **Graph data**: Node visualization depends on L3 API availability
+4. **Mobile navigation**: Not yet implemented in AppShell — tests are skipped
 
 ## Troubleshooting
 
@@ -239,29 +354,3 @@ test.describe('Feature', () => {
 1. Check network conditions (test against local server)
 2. Verify dev server starts before tests
 3. Increase `navigationTimeout` if needed
-
-## Current Status
-
-| Suite | Tests | Status |
-|-------|-------|--------|
-| Command Center | 12 | Ready |
-| Graph Explorer | 17 | Ready |
-| Navigation | 15 | Ready |
-| **Total** | **44** | **Production Ready** |
-
-## Known Limitations
-
-1. **Backend mocking**: Tests run against real app; backend must be available
-2. **Data variability**: Jobs table content depends on backend state
-3. **Graph data**: Node visualization depends on L3 API availability
-
-## Next Expansion Areas
-
-Priority for future test additions:
-
-1. **Extraction Engine** - Real-time job progress, logs streaming
-2. **Business Case** - ROI display, PDF export workflow
-3. **Formula Builder** - Formula editing, validation
-4. **Value Tree Explorer** - Tree navigation, formula linking
-5. **Decision Trace** - Audit trail, provenance display
-6. **Admin Screens** - Governance workflows (admin tier)
