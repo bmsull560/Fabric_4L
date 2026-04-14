@@ -57,6 +57,40 @@ class TestTokenClaims:
         assert exc_info.value.status_code == 403
 
 
+class TestJwtSecretValidation:
+    """Tests for strict JWT_SECRET validation behavior."""
+
+    def test_non_local_env_missing_secret_raises(self):
+        with patch.dict(os.environ, {"ENV": "production"}, clear=True):
+            with pytest.raises(RuntimeError, match="JWT_SECRET must be set"):
+                _get_jwt_secret()
+
+    def test_non_local_env_default_secret_raises(self):
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "staging", "JWT_SECRET": "changeme-in-production"},
+            clear=True,
+        ):
+            with pytest.raises(RuntimeError, match="JWT_SECRET must be set"):
+                _get_jwt_secret()
+
+    def test_local_env_missing_secret_warns_and_uses_default(self, caplog):
+        with patch.dict(os.environ, {"ENV": "local"}, clear=True):
+            secret = _get_jwt_secret()
+        assert secret == "changeme-in-production"
+        assert "default development value in local/dev mode" in caplog.text
+
+    def test_dev_env_default_secret_warns_and_uses_default(self, caplog):
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "dev", "JWT_SECRET": "changeme-in-production"},
+            clear=True,
+        ):
+            secret = _get_jwt_secret()
+        assert secret == "changeme-in-production"
+        assert "default development value in local/dev mode" in caplog.text
+
+
 # ---------------------------------------------------------------------------
 # encode_jwt
 # ---------------------------------------------------------------------------
