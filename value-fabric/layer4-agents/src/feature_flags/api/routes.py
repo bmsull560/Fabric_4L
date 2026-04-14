@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
 from sqlalchemy.ext.asyncio import AsyncSession
