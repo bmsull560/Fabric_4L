@@ -15,7 +15,11 @@ from .base import (
     FilingType,
     SearchResult,
 )
-from .pdf_adapter import PDFAdapter, PDFAdapterConfig
+try:
+    from .pdf_adapter import PDFAdapter, PDFAdapterConfig
+except ImportError:
+    PDFAdapter = None  # type: ignore[assignment,misc]
+    PDFAdapterConfig = None  # type: ignore[assignment,misc]
 from .registry import AdapterRegistry, get_registry
 from .sec_edgar import SECEdgarAdapter
 from .xbrl_parser import FinancialFact, FinancialStatement, ParsedXBRL, XBRLParser

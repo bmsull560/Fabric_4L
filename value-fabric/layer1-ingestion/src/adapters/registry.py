@@ -3,7 +3,10 @@
 import structlog
 
 from .base import AdapterType, DataSourceAdapter
-from .pdf_adapter import PDFAdapter
+try:
+    from .pdf_adapter import PDFAdapter
+except ImportError:
+    PDFAdapter = None  # type: ignore[assignment,misc]
 from .sec_edgar import SECEdgarAdapter
 
 logger = structlog.get_logger()
@@ -27,7 +30,8 @@ class AdapterRegistry:
     def _register_builtin_adapters(self):
         """Register all built-in adapters."""
         self.register(AdapterType.SEC_EDGAR, SECEdgarAdapter)
-        self.register(AdapterType.PDF, PDFAdapter)
+        if PDFAdapter is not None:
+            self.register(AdapterType.PDF, PDFAdapter)
         self.logger.info("Built-in adapters registered")
 
     def register(self, adapter_type: AdapterType, adapter_class: type[DataSourceAdapter]):

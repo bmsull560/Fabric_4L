@@ -33,11 +33,17 @@ from pydantic import BaseModel, Field
 try:
     from shared.identity.context import RequestContext
     from shared.identity.dependencies import require_authenticated
-except ImportError as e:
-    raise RuntimeError(
-        "shared.identity package is required for Layer2 authentication. "
-        "Install the shared package or set up the Python path correctly."
-    ) from e
+    _SHARED_IDENTITY_AVAILABLE = True
+except ImportError:
+    _SHARED_IDENTITY_AVAILABLE = False
+    RequestContext = None  # type: ignore[assignment,misc]
+
+    async def require_authenticated():  # type: ignore[misc]
+        """Stub that raises when shared.identity is not installed."""
+        raise RuntimeError(
+            "shared.identity package is required for Layer2 authentication. "
+            "Install the shared package or set up the Python path correctly."
+        )
 
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
