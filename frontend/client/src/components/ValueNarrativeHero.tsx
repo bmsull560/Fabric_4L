@@ -12,7 +12,7 @@
 
 import { useState, useCallback } from "react";
 import { ArrowRight, Loader2, Upload, Database, FileText, PenLine, BarChart3, LayoutTemplate } from "lucide-react";
-import { useNarrativeStore, type OutputType, type InputMethod } from "@/stores/narrativeStore";
+import { useNarrativeStore, type OutputType, type InputMethod, FALLBACK_INDUSTRIES, looksLikeUrl } from "@/stores/narrativeStore";
 import { useGenerateNarrative, useIndustries } from "@/hooks/useNarrativeGeneration";
 import { useSubmitDomain } from "@/hooks/useIngestion";
 import { cn } from "@/lib/utils";
@@ -33,13 +33,6 @@ const INPUT_METHODS: { id: InputMethod; label: string; icon: typeof Upload }[] =
   { id: "crm",    label: "CRM",          icon: Database },
 ];
 
-// ── Fallback industries when L6 is unavailable ────────────────────────────────
-
-const FALLBACK_INDUSTRIES = [
-  "Auto", "Software", "Manufacturing", "Financial Services",
-  "Healthcare", "Life Sciences", "Retail", "Energy",
-];
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function ValueNarrativeHero() {
@@ -57,9 +50,8 @@ export default function ValueNarrativeHero() {
 
     // If the input looks like a URL, run ingestion first
     const trimmed = prompt.trim();
-    const isUrl = /^https?:\/\//i.test(trimmed) || /^[a-z0-9-]+\.[a-z]{2,}/i.test(trimmed);
 
-    if (isUrl) {
+    if (looksLikeUrl(trimmed)) {
       submitDomain.mutate(trimmed, {
         onSuccess: () => {
           // After ingestion starts, also kick off the narrative workflow

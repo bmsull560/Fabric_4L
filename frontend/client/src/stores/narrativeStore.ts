@@ -13,6 +13,21 @@ import { create } from 'zustand';
 export type OutputType = 'narrative' | 'roi_model' | 'value_template';
 export type InputMethod = 'text' | 'import' | 'file' | 'crm';
 
+/** Default industry when L6 industries are unavailable */
+export const DEFAULT_INDUSTRY = 'Auto';
+
+/** Fallback industries when L6 benchmark service is unreachable */
+export const FALLBACK_INDUSTRIES = [
+  'Auto', 'Software', 'Manufacturing', 'Financial Services',
+  'Healthcare', 'Life Sciences', 'Retail', 'Energy',
+];
+
+/** Returns true if the input looks like a URL (http(s) or bare domain) */
+export function looksLikeUrl(input: string): boolean {
+  const trimmed = input.trim();
+  return /^https?:\/\//i.test(trimmed) || /^[a-z0-9-]+\.[a-z]{2,}/i.test(trimmed);
+}
+
 export interface NarrativeStore {
   /** Free-text input from the hero textarea */
   prompt: string;
@@ -37,7 +52,7 @@ export interface NarrativeStore {
 const DEFAULTS = {
   prompt: '',
   outputType: 'narrative' as OutputType,
-  industry: 'Auto',
+  industry: DEFAULT_INDUSTRY,
   inputMethod: 'text' as InputMethod,
 };
 

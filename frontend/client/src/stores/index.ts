@@ -3,7 +3,7 @@ export { useUserTierStore, getRouteTier } from './userTierStore';
 export type { UserTier, UserPermissions } from './userTierStore';
 
 // Narrative Creation Store (Value Narrative Hero)
-export { useNarrativeStore } from './narrativeStore';
+export { useNarrativeStore, DEFAULT_INDUSTRY, FALLBACK_INDUSTRIES, looksLikeUrl } from './narrativeStore';
 export type { OutputType, InputMethod } from './narrativeStore';
 
 // Server State Hooks (React Query) - Data fetching, caching, mutations
