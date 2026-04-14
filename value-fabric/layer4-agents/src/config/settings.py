@@ -6,6 +6,12 @@ Fails fast on startup if required configuration is missing or invalid.
 
 import secrets
 
+try:
+    from shared.secrets import load_infisical_secrets
+    load_infisical_secrets()
+except ImportError:
+    pass  # shared package not available; env vars used directly
+
 from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

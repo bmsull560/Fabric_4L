@@ -9,6 +9,12 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import Dict, List, Optional
 
+try:
+    from shared.secrets import load_infisical_secrets
+    load_infisical_secrets()
+except ImportError:
+    pass  # shared package not available; env vars used directly
+
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app

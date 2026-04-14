@@ -43,6 +43,12 @@ except ImportError:
             "Install the shared package or set up the Python path correctly."
         )
 
+try:
+    from shared.secrets import load_infisical_secrets
+    load_infisical_secrets()
+except ImportError:
+    pass  # shared package not available; env vars used directly
+
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
 from layer2_extraction.extraction.chunker import chunk_markdown

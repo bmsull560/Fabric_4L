@@ -24,6 +24,7 @@ dependencies = [
     "python-multipart>=0.0.6",
     "httpx>=0.26",            # Layer 3 integration client
     "python-dateutil>=2.9",
+    "infisical-sdk>=2.0.0",
     "structlog>=24.1",
 ]
 
