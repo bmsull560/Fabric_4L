@@ -401,9 +401,9 @@ jobs:
         run: |
           pip install pytest
 
-      - name: Run contract tests
+      - name: Run contract and architecture tests
         run: |
-          pytest tests/contract/ -v --tb=short
+          pytest tests/contract/ tests/arch/ -v --tb=short
 
       - name: Upload test results
         if: always()
