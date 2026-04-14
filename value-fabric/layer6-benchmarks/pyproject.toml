@@ -48,3 +48,7 @@ ignore = [
     "E402",   # Module level import not at top of file
     "F841",   # Local variable assigned but never used
 ]
+
+[tool.mypy]
+python_version = "3.11"
+# Note: Minimal config - additional flags passed via Makefile

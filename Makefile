@@ -33,17 +33,33 @@ lint: ## Lint all Python layers with ruff
 	@echo "→ Linting Layer 6..."
 	cd value-fabric/layer6-benchmarks && ruff check src/
 
+# Per-layer mypy flags - stricter layers enforce more type safety
+# Layer 1: Relaxed - gradual typing migration in progress
+MYPY_LAYER1_FLAGS = --ignore-missing-imports --disable-error-code no-untyped-def
+# Layer 2: Strict - fully typed codebase
+MYPY_LAYER2_FLAGS = --ignore-missing-imports --strict
+# Layer 3: Strict - fully typed codebase
+MYPY_LAYER3_FLAGS = --ignore-missing-imports --strict
+# Layer 4: Moderate - typed with some flexibility for agent patterns
+MYPY_LAYER4_FLAGS = --ignore-missing-imports --warn-return-any --warn-unused-ignores
+# Layer 5: Strict - fully typed codebase
+MYPY_LAYER5_FLAGS = --ignore-missing-imports --strict
+# Layer 6: Minimal - no mypy config in pyproject.toml yet
+MYPY_LAYER6_FLAGS = --ignore-missing-imports
+
 typecheck: ## Type-check all Python layers with mypy
 	@echo "→ Type-checking Layer 1..."
-	cd value-fabric/layer1-ingestion && mypy src/ --ignore-missing-imports
+	cd value-fabric/layer1-ingestion && mypy src/ $(MYPY_LAYER1_FLAGS)
 	@echo "→ Type-checking Layer 2..."
-	cd value-fabric/layer2-extraction && mypy src/ --ignore-missing-imports
+	cd value-fabric/layer2-extraction && mypy src/ $(MYPY_LAYER2_FLAGS)
 	@echo "→ Type-checking Layer 3..."
-	cd value-fabric/layer3-knowledge && mypy src/ --ignore-missing-imports
+	cd value-fabric/layer3-knowledge && mypy src/ $(MYPY_LAYER3_FLAGS)
 	@echo "→ Type-checking Layer 4..."
-	cd value-fabric/layer4-agents && mypy src/ --ignore-missing-imports
+	cd value-fabric/layer4-agents && mypy src/ $(MYPY_LAYER4_FLAGS)
 	@echo "→ Type-checking Layer 5..."
-	cd value-fabric/layer5-ground-truth && mypy src/ --ignore-missing-imports
+	cd value-fabric/layer5-ground-truth && mypy src/ $(MYPY_LAYER5_FLAGS)
+	@echo "→ Type-checking Layer 6..."
+	cd value-fabric/layer6-benchmarks && mypy src/ $(MYPY_LAYER6_FLAGS)
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 

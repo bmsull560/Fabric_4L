@@ -80,10 +80,8 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.11"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
 plugins = ["sqlalchemy.ext.mypy.plugin"]
+# Note: Strict mode is enabled via Makefile CLI flags for CI consistency
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

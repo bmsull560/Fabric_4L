@@ -83,6 +83,14 @@ export const QK = {
     stats:  ['value-packs', 'stats'] as const,
   },
 
+  valueTrees: {
+    all:    ['value-trees'] as const,
+    tree:   (entityId: string, direction: string, maxDepth: number) => 
+              ['value-trees', 'tree', entityId, direction, maxDepth] as const,
+    paths:  (entityId: string, direction: string, maxDepth: number) =>
+              ['value-trees', 'paths', entityId, direction, maxDepth] as const,
+  },
+
   provenance: {
     all:   ['provenance'] as const,
     trail: (entityId: string) => ['provenance', 'trail', entityId] as const,

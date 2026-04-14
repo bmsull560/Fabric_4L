@@ -91,10 +91,17 @@ function normalizeWorkflowList(data: unknown): Workflow[] {
 }
 
 function extractWorkflowList(data: unknown): RawWorkflow[] {
+  // Handle new paginated response format: { items: [...], total, limit, offset, has_more }
+  if (data && typeof data === 'object' && Array.isArray((data as { items?: unknown[] }).items)) {
+    return (data as { items: RawWorkflow[] }).items;
+  }
+  
+  // Handle legacy array format
   if (Array.isArray(data)) {
     return data as RawWorkflow[];
   }
 
+  // Handle legacy { workflows: [...] } format
   if (data && typeof data === 'object' && Array.isArray((data as { workflows?: unknown[] }).workflows)) {
     return (data as { workflows: RawWorkflow[] }).workflows;
   }
@@ -102,16 +109,59 @@ function extractWorkflowList(data: unknown): RawWorkflow[] {
   return [];
 }
 
+// Pagination types for new API
+export interface PaginatedWorkflows {
+  items: Workflow[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
+
 /**
- * Fetch and poll active workflows from Layer 4.
+ * Fetch and poll active workflows from Layer 4 with pagination support.
  * Polls every 5 seconds, stops on window focus (already polling).
+ * 
+ * @param limit - Maximum number of workflows to fetch (default: 50, max: 100)
+ * @param offset - Number of workflows to skip for pagination (default: 0)
+ * @param status - Optional status filter ('pending' | 'running' | 'completed' | 'failed' | 'cancelled')
  */
-export function useActiveWorkflows() {
-  return useQuery({
-    queryKey: QK.workflows.active(),
+export function useActiveWorkflows(options: { limit?: number; offset?: number; status?: string } = {}) {
+  const { limit = 50, offset = 0, status } = options;
+
+  return useQuery<PaginatedWorkflows, Error>({
+    queryKey: [...QK.workflows.active(), { limit, offset, status }],
     queryFn: async () => {
-      const response = await apiClient.get('l4', '/workflows/active');
-      return normalizeWorkflowList(response.data);
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+      if (status) params.set('status', status);
+      
+      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`);
+      
+      // Extract items and wrap in paginated structure
+      const items = normalizeWorkflowList(response.data);
+      
+      // Check if response is already paginated
+      const data = response.data;
+      if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
+        return {
+          items,
+          total: (data as PaginatedWorkflows).total,
+          limit: (data as PaginatedWorkflows).limit,
+          offset: (data as PaginatedWorkflows).offset,
+          has_more: (data as PaginatedWorkflows).has_more,
+        };
+      }
+      
+      // Legacy fallback: treat all as single page
+      return {
+        items,
+        total: items.length,
+        limit: items.length,
+        offset: 0,
+        has_more: false,
+      };
     },
     staleTime: STALE_TIME.poll,
     refetchInterval: POLL_INTERVALS.workflows,
@@ -119,15 +169,42 @@ export function useActiveWorkflows() {
   });
 }
 
-export function useWorkflowHistory() {
-  return useQuery({
-    queryKey: QK.workflows.history(),
+export function useWorkflowHistory(options: { limit?: number; offset?: number } = {}) {
+  const { limit = 50, offset = 0 } = options;
+
+  return useQuery<PaginatedWorkflows, Error>({
+    queryKey: [...QK.workflows.history(), { limit, offset }],
     queryFn: async () => {
-      // NOTE: Currently using /workflows/active as a proxy for history.
-      // When Layer 4 adds GET /workflows with pagination, update this to use
-      // the paginated endpoint with proper limit/offset parameters.
-      const response = await apiClient.get('l4', '/workflows/active');
-      return normalizeWorkflowList(response.data);
+      // NOTE: Using /workflows/active with pagination params.
+      // Backend now supports limit/offset for paginated workflow lists.
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+      
+      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`);
+      
+      const items = normalizeWorkflowList(response.data);
+      
+      // Check if response is already paginated
+      const data = response.data;
+      if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
+        return {
+          items,
+          total: (data as PaginatedWorkflows).total,
+          limit: (data as PaginatedWorkflows).limit,
+          offset: (data as PaginatedWorkflows).offset,
+          has_more: (data as PaginatedWorkflows).has_more,
+        };
+      }
+      
+      // Legacy fallback
+      return {
+        items,
+        total: items.length,
+        limit: items.length,
+        offset: 0,
+        has_more: false,
+      };
     },
     staleTime: STALE_TIME.stats,
   });

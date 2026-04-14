@@ -13,7 +13,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from shared.identity.context import RequestContext
@@ -498,16 +498,40 @@ async def list_available_workflows() -> dict[str, Any]:
 @router.get("/workflows/active")
 async def list_active_workflows(
     request: Request,
+    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of workflows to return"),
+    offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
+    status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
     _ctx: RequestContext = Depends(require_authenticated),
     executor: OrchestrationController = Depends(get_executor),
-) -> list[dict[str, Any]]:
-    """List currently active workflows for the authenticated tenant."""
+) -> dict[str, Any]:
+    """List currently active workflows for the authenticated tenant with pagination.
+    
+    Returns a paginated list of workflows with metadata for efficient client-side rendering.
+    """
     tenant = get_current_tenant()
     if not tenant or not tenant.tenant_id:
         raise HTTPException(status_code=403, detail="Tenant context required")
 
-    active = await executor.list_active_workflows(tenant_id=tenant.tenant_id)
-    return active
+    # Get all active workflows for tenant
+    all_active = await executor.list_active_workflows(tenant_id=tenant.tenant_id)
+    
+    # Apply status filter if specified
+    if status:
+        status_lower = status.lower()
+        all_active = [w for w in all_active if w.get("status", "").lower() == status_lower]
+    
+    # Calculate pagination
+    total = len(all_active)
+    paginated = all_active[offset:offset + limit]
+    has_more = (offset + limit) < total
+    
+    return {
+        "items": paginated,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": has_more,
+    }
 
 
 @router.get("/workflows/{workflow_id}/events")
