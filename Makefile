@@ -1,6 +1,7 @@
 .PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate evals clean sdk \
-        check-env check-env-backend check-env-frontend validate-env-contract
+        check-env check-env-backend check-env-frontend validate-env-contract \
+        preflight up down logs
 
 PYTHON := python3
 PIP    := pip install -e
@@ -126,7 +127,10 @@ sdk: ## Generate the Python SDK (manual typed client)
 
 # ─── Dev Infrastructure ───────────────────────────────────────────────────────
 
-up: ## Start all services with Docker Compose
+preflight: ## Run pre-flight checks (Docker, env, ports)
+	@bash scripts/dev-preflight.sh
+
+up: preflight ## Start all services with Docker Compose (runs preflight first)
 	cd value-fabric && docker compose up -d
 
 down: ## Stop all services
