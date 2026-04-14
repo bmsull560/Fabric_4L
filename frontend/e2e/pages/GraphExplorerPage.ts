@@ -99,7 +99,7 @@ export class GraphExplorerPage {
    * Navigate to Graph Explorer
    */
   async goto(): Promise<void> {
-    await this.page.goto('/graph/explorer');
+    await this.page.goto('/discover/knowledge/graph');
     await this.waitForPageLoad();
   }
 

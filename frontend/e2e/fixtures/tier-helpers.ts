@@ -3,6 +3,9 @@
  *
  * Provides utilities to set user tier and verify route access
  * in a way that respects the application's actual access control logic.
+ *
+ * Route taxonomy follows the canonical single-spine navigation:
+ *   Home, Library, Discover, Model, Deliver, Evidence, Govern
  */
 
 import { Page } from '@playwright/test';
@@ -13,18 +16,17 @@ export type UserTier = 'standard' | 'advanced' | 'admin';
  * Set the user tier in localStorage (simulating login/role assignment)
  *
  * This works because the app uses Zustand with persist middleware
- * to store tier state in localStorage.
+ * to store tier state in localStorage under the key 'user-tier-storage'.
  */
 export async function setUserTier(page: Page, tier: UserTier): Promise<void> {
   await page.evaluate((userTier) => {
-    // Set the Zustand store state directly via localStorage
+    type Tier = 'standard' | 'advanced' | 'admin';
     const storeKey = 'user-tier-storage';
     const storeState = {
       state: {
         currentTier: userTier,
         isAdvancedModeEnabled: userTier !== 'standard',
         userRole: userTier,
-        permissions: getPermissionsForTier(userTier),
       },
       version: 0,
     };
@@ -32,19 +34,6 @@ export async function setUserTier(page: Page, tier: UserTier): Promise<void> {
 
     // Also set a flag for tests to detect
     localStorage.setItem('test-user-tier', userTier);
-
-    function getPermissionsForTier(t: UserTier) {
-      const base = {
-        canAccessAdvanced: t !== 'standard',
-        canAccessAdmin: t === 'admin',
-        canEditFormulas: t !== 'standard',
-        canManageBenchmarks: t === 'admin',
-        canManageVariables: t === 'admin',
-        canManagePacks: t === 'admin',
-        canManageUsers: t === 'admin',
-      };
-      return base;
-    }
   }, tier);
 
   // Reload to pick up the new tier state
@@ -79,31 +68,74 @@ export async function getCurrentTier(page: Page): Promise<UserTier | null> {
 }
 
 /**
- * Routes accessible by tier
+ * Routes accessible by tier — canonical navigation taxonomy
  */
 export const ROUTES_BY_TIER: Record<UserTier, { accessible: string[]; restricted: string[] }> = {
   standard: {
-    accessible: ['/command-center', '/value-packs'],
-    restricted: ['/extraction-engine', '/graph/explorer', '/ontology/entities', '/admin/formulas'],
+    accessible: [
+      '/home',
+      '/library/packs',
+      '/discover/accounts',
+      '/discover/jobs',
+      '/deliver/cases',
+      '/evidence/traces',
+    ],
+    restricted: [
+      '/discover/extraction',
+      '/discover/knowledge/graph',
+      '/discover/knowledge/ontology',
+      '/model/value-studio/explorer',
+      '/model/value-studio/formulas',
+      '/admin/content/formulas',
+    ],
   },
   advanced: {
-    accessible: ['/command-center', '/value-packs', '/extraction-engine', '/graph/explorer', '/ontology/entities'],
-    restricted: ['/admin/formulas', '/admin/benchmarks', '/admin/variables'],
+    accessible: [
+      '/home',
+      '/library/packs',
+      '/discover/accounts',
+      '/discover/jobs',
+      '/discover/extraction',
+      '/discover/knowledge/graph',
+      '/discover/knowledge/ontology',
+      '/model/value-studio/explorer',
+      '/model/value-studio/formulas',
+      '/deliver/cases',
+      '/deliver/agents',
+      '/evidence/traces',
+    ],
+    restricted: [
+      '/admin/content/formulas',
+      '/admin/content/benchmarks',
+      '/admin/data/variables',
+    ],
   },
   admin: {
     accessible: [
-      '/command-center', '/value-packs', '/extraction-engine', '/graph/explorer',
-      '/ontology/entities', '/admin/formulas', '/admin/benchmarks', '/admin/variables',
+      '/home',
+      '/library/packs',
+      '/discover/accounts',
+      '/discover/extraction',
+      '/discover/knowledge/graph',
+      '/model/value-studio/explorer',
+      '/model/value-studio/formulas',
+      '/deliver/cases',
+      '/deliver/agents',
+      '/evidence/traces',
+      '/admin/content/formulas',
+      '/admin/content/benchmarks',
+      '/admin/data/variables',
     ],
     restricted: [],
   },
 };
 
 /**
- * Expected redirect destinations when accessing restricted routes
+ * Expected redirect destination when accessing restricted routes.
+ * The RouteGuard in App.tsx redirects all restricted access to /home.
  */
 export const TIER_REDIRECTS: Record<UserTier, string> = {
-  standard: '/command-center',
-  advanced: '/extraction-engine',
-  admin: '/command-center', // Admin can access everything
+  standard: '/home',
+  advanced: '/home',
+  admin: '/home',
 };

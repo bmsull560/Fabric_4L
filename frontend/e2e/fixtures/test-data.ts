@@ -102,19 +102,19 @@ export const SAFE_TEST_DOMAINS = [
 ] as const;
 
 /**
- * Tier configuration for access control tests
+ * Tier configuration for access control tests — canonical navigation taxonomy
  */
 export const TIER_CONFIG = {
   standard: {
-    canAccess: ['/command-center', '/value-packs', '/settings'],
-    cannotAccess: ['/extraction-engine', '/graph/explorer', '/admin'],
+    canAccess: ['/home', '/library/packs', '/discover/accounts', '/deliver/cases', '/evidence/traces'],
+    cannotAccess: ['/discover/extraction', '/discover/knowledge/graph', '/admin/content/formulas'],
   },
   advanced: {
-    canAccess: ['/command-center', '/value-packs', '/extraction-engine', '/graph/explorer', '/value-trees'],
-    cannotAccess: ['/admin'],
+    canAccess: ['/home', '/library/packs', '/discover/extraction', '/discover/knowledge/graph', '/model/value-studio/explorer'],
+    cannotAccess: ['/admin/content/formulas'],
   },
   admin: {
-    canAccess: ['/command-center', '/value-packs', '/extraction-engine', '/graph/explorer', '/value-trees', '/admin'],
+    canAccess: ['/home', '/library/packs', '/discover/extraction', '/discover/knowledge/graph', '/model/value-studio/explorer', '/admin/content/formulas'],
     cannotAccess: [],
   },
 } as const;

@@ -5,6 +5,9 @@ import { setUserTier, clearUserTier } from './fixtures';
 /**
  * Graph Explorer E2E Tests
  *
+ * Route: /discover/knowledge/graph
+ * Tier: advanced (Tier 2+)
+ *
  * Covers knowledge graph visualization:
  * - Graph loading and display
  * - Node interaction
@@ -80,13 +83,11 @@ test.describe('Graph Explorer', () => {
     });
 
     test('should select node and show context panel', async () => {
-      // Try to click first node
       const nodeCount = await graphExplorer.getNodeCount();
 
       if (nodeCount > 0) {
         await graphExplorer.clickNodeByIndex(0);
 
-        // Context panel should appear
         const contextVisible = await graphExplorer.isContextPanelOpen();
         if (contextVisible) {
           const entityName = await graphExplorer.getSelectedEntityName();
@@ -101,7 +102,6 @@ test.describe('Graph Explorer', () => {
       if (nodeCount > 0) {
         await graphExplorer.clickNodeByIndex(0);
 
-        // If context panel opens, verify content
         const contextVisible = await graphExplorer.isContextPanelOpen();
         if (contextVisible) {
           await expect(graphExplorer.entityTypeBadge).toBeVisible();
@@ -118,7 +118,6 @@ test.describe('Graph Explorer', () => {
 
         const contextVisible = await graphExplorer.isContextPanelOpen();
         if (contextVisible) {
-          // Related entities list should be visible
           await expect(graphExplorer.relatedEntitiesList).toBeVisible();
         }
       }
@@ -139,9 +138,6 @@ test.describe('Graph Explorer', () => {
     });
 
     test('should filter graph based on search', async () => {
-      // Get initial node count
-      const initialCount = await graphExplorer.getNodeCount();
-
       // Search for specific term
       await graphExplorer.searchEntities('capability');
 
@@ -164,7 +160,6 @@ test.describe('Graph Explorer', () => {
 
       if (hasQueryTab) {
         await graphExplorer.switchToQueryTab();
-        // Tab should become active
         await expect(graphExplorer.queryTab).toHaveAttribute('aria-selected', 'true');
       }
     });
@@ -183,10 +178,10 @@ test.describe('Graph Explorer', () => {
     test('requires advanced tier to access', async ({ page }) => {
       // Try to access as standard user
       await setUserTier(page, 'standard');
-      await page.goto('/graph/explorer');
+      await page.goto('/discover/knowledge/graph');
 
-      // Should be redirected to command center
-      await expect(page).toHaveURL(/\/command-center/);
+      // Should be redirected to /home
+      await expect(page).toHaveURL(/\/home/);
     });
 
     test('advanced tier user can access graph explorer', async () => {
@@ -196,7 +191,7 @@ test.describe('Graph Explorer', () => {
 
     test('admin tier user can access graph explorer', async ({ page }) => {
       await setUserTier(page, 'admin');
-      await page.goto('/graph/explorer');
+      await page.goto('/discover/knowledge/graph');
       await expect(graphExplorer.header).toBeVisible();
     });
   });
@@ -204,7 +199,7 @@ test.describe('Graph Explorer', () => {
   test.describe('Error Handling', () => {
     test('should handle graph load errors gracefully', async ({ page }) => {
       // Simulate error by navigating with invalid parameters
-      await page.goto('/graph/explorer?error=true');
+      await page.goto('/discover/knowledge/graph?error=true');
 
       // Page should not crash
       await expect(graphExplorer.header).toBeVisible();
