@@ -182,7 +182,7 @@ test.describe('Admin / Governance', () => {
         '/admin/data/variables',
       ]) {
         await page.goto(route);
-        await expect(page).toHaveURL(new RegExp(route.replace(/\//g, '\\/')));
+        await expect(page).toHaveURL(route);
       }
     });
 

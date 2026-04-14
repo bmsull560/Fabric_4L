@@ -130,14 +130,14 @@ test.describe('Navigation & Access Control', () => {
     test('can access all standard and advanced routes', async ({ page }) => {
       for (const route of ['/home', '/library/packs', '/discover/extraction', '/discover/knowledge/graph']) {
         await page.goto(route);
-        await expect(page).toHaveURL(new RegExp(route.replace(/\//g, '\\/')));
+        await expect(page).toHaveURL(route);
       }
     });
 
     test('can access admin routes', async ({ page }) => {
       for (const route of ['/admin/content/formulas', '/admin/content/benchmarks', '/admin/data/variables']) {
         await page.goto(route);
-        await expect(page).toHaveURL(new RegExp(route.replace(/\//g, '\\/')));
+        await expect(page).toHaveURL(route);
       }
     });
 

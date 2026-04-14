@@ -127,7 +127,7 @@ test.describe('Decision Trace', () => {
 
       for (const route of ['/evidence/traces', '/evidence/lineage', '/evidence/changelog']) {
         await page.goto(route);
-        await expect(page).toHaveURL(new RegExp(route.replace(/\//g, '\\/')));
+        await expect(page).toHaveURL(route);
       }
     });
   });
