@@ -16,6 +16,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
+# Security: Run as non-root user (node is built-in to node:alpine images)
+USER node
+
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml ./

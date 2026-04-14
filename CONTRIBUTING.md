@@ -10,7 +10,7 @@ repo structure, change safety rules, and how to add agents, skills, and provider
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+ and pnpm 9+
+- Node.js 20+ and pnpm 10+
 - Docker + Docker Compose
 - `make`
 
@@ -31,7 +31,7 @@ cd value-fabric && docker compose up -d
 cd layer4-agents && pip install -e ".[dev]"
 
 # 5. Install frontend dependencies
-cd frontend/client && pnpm install
+cd frontend && pnpm install
 
 # 6. Run migrations
 make migrate

@@ -172,7 +172,7 @@ Page Objects encapsulate page-specific interactions, providing:
 pnpm install
 
 # Install Playwright browsers
-npx playwright install
+pnpm exec playwright install
 ```
 
 ### Local Development
