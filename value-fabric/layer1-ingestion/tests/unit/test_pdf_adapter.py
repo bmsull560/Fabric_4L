@@ -7,11 +7,7 @@ from unittest.mock import Mock, patch, AsyncMock, MagicMock, mock_open
 import pytest
 import httpx
 
-try:
-    import pymupdf4llm  # noqa: F401
-    _PYMUPDF4LLM_AVAILABLE = True
-except ImportError:
-    _PYMUPDF4LLM_AVAILABLE = False
+pytest.importorskip("pymupdf4llm", reason="pymupdf4llm not installed")
 
 try:
     from pdf2image import convert_from_path
@@ -27,8 +23,6 @@ try:
     TESSERACT_AVAILABLE = True
 except Exception:
     TESSERACT_AVAILABLE = False
-
-pytest.importorskip("pymupdf4llm", reason="pymupdf4llm not installed")
 
 from src.adapters.pdf_adapter import PDFAdapter, PDFAdapterConfig
 from src.adapters.base import AdapterType, FilingDocument

@@ -29,13 +29,11 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 # Shared identity imports for authentication
-# Layer2 requires shared.identity for all audit endpoints - fail fast if unavailable
+# Layer2 requires shared.identity for all audit endpoints
 try:
     from shared.identity.context import RequestContext
     from shared.identity.dependencies import require_authenticated
-    _SHARED_IDENTITY_AVAILABLE = True
 except ImportError:
-    _SHARED_IDENTITY_AVAILABLE = False
     RequestContext = None  # type: ignore[assignment,misc]
 
     async def require_authenticated():  # type: ignore[misc]
