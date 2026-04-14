@@ -99,7 +99,10 @@ class ApiClient {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('userInfo');
             localStorage.removeItem('tenantId');
-            window.location.href = '/login';
+            // Avoid infinite redirect loop: only redirect if not already on /login
+            if (window.location.pathname !== '/login') {
+              window.location.replace('/login');
+            }
           }
 
           // Transform to ApiError with trace ID for ErrorBoundary

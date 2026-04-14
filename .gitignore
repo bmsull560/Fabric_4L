@@ -75,6 +75,12 @@ neo4j_data/
 *.sqlite
 *.sqlite3
 
+# Kubernetes secrets (never commit real credentials)
+k8s/secrets.yml
+k8s/secrets.yaml
+k8s/*-secret.yml
+k8s/*-secret.yaml
+
 # Build artifacts
 build/
 dist/
