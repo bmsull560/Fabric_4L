@@ -206,6 +206,23 @@ curl -X POST http://localhost:9093/api/v2/alerts \
 
 **WARNING**: Default secrets are provided for development only.
 
+CI enforces a **secret default guardrail** in `.github/workflows/k8s-readiness.yml`:
+- Scans `k8s/secrets.yml` and secret-related manifests for weak defaults (`changeme`, `postgres`, `valuefabric`, empty `api-key`).
+- Fails pull requests when weak defaults are present in non-template manifests.
+- Allows placeholder values (for example `REPLACE_WITH_*`) **only** in `k8s/secrets.yml.template`.
+
+### Secret Guardrail Remediation
+
+If CI fails with a secret guardrail error:
+1. Open the file and line reported by the workflow log.
+2. Replace weak defaults with strong local-development values or wire the value from your secrets manager.
+3. Do **not** keep placeholder values in non-template manifests (`k8s/secrets.yml`, overlays, or base manifests).
+4. Keep placeholder tokens only in `k8s/secrets.yml.template`.
+5. Re-run checks locally before pushing:
+   ```bash
+   make verify
+   ```
+
 For production:
 1. Use external secrets management (Vault, AWS Secrets Manager, etc.)
 2. Or use Sealed Secrets / External Secrets Operator

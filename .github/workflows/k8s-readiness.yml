@@ -81,7 +81,7 @@ jobs:
         run: |
           kubectl apply --dry-run=client -f /tmp/dev.yaml > /dev/null
           kubectl apply --dry-run=client -f /tmp/prod.yaml > /dev/null
-
+          
   k8s-server-dry-run:
     name: K8s Server Dry Run (Required)
     runs-on: ubuntu-latest
