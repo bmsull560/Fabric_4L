@@ -2,15 +2,53 @@
 
 import logging
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Any
 
 from neo4j import AsyncDriver
+from neo4j.time import DateTime as Neo4jDateTime, Date as Neo4jDate
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from .vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+
+
+def _serialize_neo4j_value(value: Any) -> Any:
+    """Serialize Neo4j temporal types and other non-JSON types to JSON-serializable formats.
+
+    Args:
+        value: Any value from Neo4j node properties
+
+    Returns:
+        JSON-serializable value
+    """
+    if isinstance(value, Neo4jDateTime):
+        return value.to_native().isoformat()
+    elif isinstance(value, Neo4jDate):
+        return value.to_native().isoformat()
+    elif isinstance(value, datetime):
+        return value.isoformat()
+    elif isinstance(value, date):
+        return value.isoformat()
+    elif isinstance(value, list):
+        return [_serialize_neo4j_value(item) for item in value]
+    elif isinstance(value, dict):
+        return {k: _serialize_neo4j_value(v) for k, v in value.items()}
+    return value
+
+
+def _serialize_entity(entity: dict[str, Any]) -> dict[str, Any]:
+    """Serialize an entity dict, converting Neo4j temporal types to strings.
+
+    Args:
+        entity: Entity dictionary from Neo4j
+
+    Returns:
+        JSON-serializable entity dictionary
+    """
+    return {k: _serialize_neo4j_value(v) for k, v in entity.items()}
 
 
 @dataclass
@@ -161,8 +199,8 @@ class GraphRAGEngine:
             if not record:
                 return {"center": None, "neighbors": [], "relationships": []}
 
-            center = dict(record["center"])
-            neighbors = [dict(n) for n in record["neighbors"]]
+            center = _serialize_entity(dict(record["center"]))
+            neighbors = [_serialize_entity(dict(n)) for n in record["neighbors"]]
 
             # Extract relationships from paths
             relationships = []
@@ -175,7 +213,7 @@ class GraphRAGEngine:
                                 "type": rel.type,
                                 "source": rel.start_node["id"],
                                 "target": rel.end_node["id"],
-                                "properties": dict(rel),
+                                "properties": _serialize_entity(dict(rel)),
                             }
                         )
 
@@ -239,7 +277,7 @@ class GraphRAGEngine:
 
             paths = []
             async for record in result:
-                nodes = [dict(n) for n in record["nodes"]]
+                nodes = [_serialize_entity(dict(n)) for n in record["nodes"]]
                 rels = record["rels"]
 
                 # Convert relationships
@@ -304,7 +342,7 @@ class GraphRAGEngine:
                 record = await entity_result.single()
 
                 if record:
-                    entity_data = dict(record["n"])
+                    entity_data = _serialize_entity(dict(record["n"]))
                     entity_data["vector_score"] = result.get("score", 0.0)
                     enriched_results.append(entity_data)
         return enriched_results
@@ -355,7 +393,7 @@ class GraphRAGEngine:
 
             entities = []
             async for record in result:
-                entity_data = dict(record["node"])
+                entity_data = _serialize_entity(dict(record["node"]))
                 entity_data["text_score"] = record["score"]
                 entities.append(entity_data)
 
@@ -402,7 +440,7 @@ class GraphRAGEngine:
                 for node in record["path_nodes"]:
                     node_id = node["id"]
                     if node_id not in all_entities:
-                        all_entities[node_id] = dict(node)
+                        all_entities[node_id] = _serialize_entity(dict(node))
                         all_entities[node_id]["hops_from_seed"] = record["hops"]
 
                 # Add relationships
@@ -411,7 +449,7 @@ class GraphRAGEngine:
                         "type": rel.type,
                         "source": rel.start_node["id"],
                         "target": rel.end_node["id"],
-                        "properties": dict(rel),
+                        "properties": _serialize_entity(dict(rel)),
                         "hops": record["hops"],
                     }
                     if rel_data not in all_relationships:
@@ -596,7 +634,7 @@ class GraphRAGEngine:
                     for node in record["path_nodes"]:
                         node_id = node["id"]
                         if node_id not in all_entities:
-                            entity_data = dict(node)
+                            entity_data = _serialize_entity(dict(node))
                             entity_data["hops_from_seed"] = record["hops"]
                             all_entities[node_id] = entity_data
                             hop_entities.append(entity_data)

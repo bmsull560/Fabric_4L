@@ -75,7 +75,7 @@ class AgentMessage:
     payload: dict[str, Any]
     recipient_id: str | None = None
     message_id: str = field(default_factory=lambda: str(uuid4()))
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     correlation_id: str | None = None
     priority: MessagePriority = MessagePriority.NORMAL
     ttl_seconds: int = 300
@@ -248,7 +248,7 @@ class ProvenanceEvent:
     activity_id: str
     entity_id: str
     agent_id: str
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     attributes: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

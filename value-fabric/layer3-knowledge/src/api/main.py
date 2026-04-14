@@ -54,6 +54,9 @@ except ImportError:
     SHARED_ERROR_HANDLING_AVAILABLE = False
 from .rate_limiter import add_rate_limiting
 
+# Import dataclass utilities
+from dataclasses import asdict
+
 # Import cache modules
 try:
     from ..cache import (
@@ -1498,10 +1501,15 @@ async def _execute_hybrid_search(
             weights,
         )
 
+    # Convert HybridSearchResult dataclass objects to SearchResult Pydantic models
+    search_results = [
+        SearchResult(**asdict(result)) for result in results
+    ]
+
     return SearchResponse(
         query=query,
-        results=results,
-        total_results=len(results),
+        results=search_results,
+        total_results=len(search_results),
         search_type=search_type,
     )
 

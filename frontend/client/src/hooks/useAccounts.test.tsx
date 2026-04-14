@@ -1,3 +1,4 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -234,14 +235,18 @@ describe('useAccounts', () => {
       expect(apiClient.get).not.toHaveBeenCalled();
     });
 
-    it('should handle missing accountId in hook call', async () => {
-      (apiClient.get as Mock).mockRejectedValueOnce(new Error('No account ID provided'));
-
+    it('should be disabled when accountId is empty string', async () => {
       const { result } = renderHook(() => useAccount(''), {
         wrapper: createWrapper(),
       });
 
-      await waitFor(() => expect(result.current.isError).toBe(true));
+      // Hook should be disabled (no fetch, no loading, no error)
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.isFetching).toBe(false);
+      expect(result.current.isError).toBe(false);
+      expect(result.current.data).toBeUndefined();
+      // No API call should be made
+      expect(apiClient.get).not.toHaveBeenCalled();
     });
   });
 

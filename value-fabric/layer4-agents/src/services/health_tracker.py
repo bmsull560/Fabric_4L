@@ -56,7 +56,7 @@ class HealthBadge:
     priority: int  # Display priority (lower = more important)
     dismissible: bool
     auto_hide_after_seconds: int | None = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     action_required: str | None = None  # Action user can take
 
 

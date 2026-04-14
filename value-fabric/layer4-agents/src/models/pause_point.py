@@ -4,7 +4,7 @@ Defines typed pause point schemas that enable contextual user interactions
 when workflows require human input or approval.
 """
 
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -107,7 +107,7 @@ class PausePoint(BaseModel):
         None, description="Conditions for auto-resumption"
     )
     expires_at: datetime | None = Field(None, description="Pause expiration time")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @model_validator(mode="after")
     def validate_pause_point(self) -> "PausePoint":

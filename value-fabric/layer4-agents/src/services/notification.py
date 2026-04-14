@@ -59,7 +59,7 @@ class NotificationEvent:
     priority: NotificationPriority
     channels: list[NotificationChannel]
     payload: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     expires_at: datetime | None = None
     delivered: dict[NotificationChannel, bool] = field(default_factory=dict)
 
