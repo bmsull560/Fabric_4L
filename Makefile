@@ -48,10 +48,12 @@ typecheck: ## Type-check all Python layers with mypy
 
 test: test-layer1 test-layer2 test-layer3 test-layer4 ## Run all backend unit tests
 
-contract-tests: ## Run cross-layer contract tests (fast, no secrets required)
+contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
 	$(PYTEST) tests/contract/ -v --tb=short
-	@echo "✅  Contract tests passed"
+	@echo "→ Running architecture tests (tenant isolation guards)..."
+	$(PYTEST) tests/arch/ -v --tb=short
+	@echo "✅  Contract and architecture tests passed"
 
 # ─── Stratified Test Targets ─────────────────────────────────────────────────
 
