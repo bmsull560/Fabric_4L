@@ -89,7 +89,7 @@ test-layer5: ## Run Layer 5 tests
 	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/
 
 test-frontend: ## Run frontend unit tests
-	cd frontend/client && pnpm run test
+	cd frontend && pnpm run test
 
 test-e2e: ## Run Playwright end-to-end tests (requires running stack)
 	cd frontend && pnpm exec playwright test
@@ -105,7 +105,7 @@ evals-full: ## Run full eval suite including slow/expensive traces
 # ─── Build ────────────────────────────────────────────────────────────────────
 
 build: ## Build frontend production bundle
-	cd frontend/client && pnpm run build
+	cd frontend && pnpm run build
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 
