@@ -65,19 +65,20 @@ async def test_sse_events_format(async_client):
     job_id = "test-job-events"
     api_main.PIPELINE_JOBS[job_id] = api_main.PipelineJob(
         job_id=job_id,
-        extraction_status="running",
+        extraction_status="completed",
         ingestion_status="skipped",
-        overall_status="running",
+        overall_status="completed",
         entities_extracted=2,
         relationships_extracted=1,
         retry_count=0,
         last_error=None,
         next_retry_at=None,
         started_at=datetime.utcnow(),
-        completed_at=None,
+        completed_at=datetime.utcnow(),
     )
 
-    # Collect events from the stream
+    # Collect events from the stream — completed jobs emit a finite event
+    # sequence (status, progress, log, complete) and then the generator exits.
     events = []
     async with async_client.stream("GET", f"/extract/jobs/{job_id}/events") as response:
         async for line in response.aiter_lines():
@@ -85,8 +86,7 @@ async def test_sse_events_format(async_client):
                 import json
                 event_data = json.loads(line[6:])  # Strip "data: " prefix
                 events.append(event_data)
-                # Stop after getting a few events
-                if len(events) >= 3:
+                if event_data.get("type") in ("complete", "error"):
                     break
 
     # Verify event structure
