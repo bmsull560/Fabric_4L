@@ -10,6 +10,7 @@
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useUserTierStore } from '../stores/userTierStore';
 
 export interface UserInfo {
   id: string;
@@ -76,6 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAccessToken(storedToken);
           setUser(userInfo);
           setIsAuthenticated(true);
+          
+          // Synchronize restored role with userTierStore
+          useUserTierStore.getState().setUserRole(userInfo.role);
         } catch (e) {
           // Invalid stored data, clear it
           localStorage.removeItem('accessToken');
@@ -165,6 +169,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('accessToken', access_token);
       localStorage.setItem('userInfo', JSON.stringify(userInfo));
       localStorage.setItem('tenantId', tenantSlug);
+
+      // Synchronize role with userTierStore so tier/permissions reflect the OIDC role
+      useUserTierStore.getState().setUserRole(role);
       
       // Clean up session storage
       sessionStorage.removeItem('oidcState');
@@ -193,6 +200,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('tenantId');
     sessionStorage.removeItem('oidcState');
     sessionStorage.removeItem('oidcTenantSlug');
+
+    // Reset userTierStore to default state
+    const tierStore = useUserTierStore.getState();
+    tierStore.setTier('standard');
+    tierStore.disableAdvancedMode();
     
     // Redirect to login
     window.location.href = '/login';
