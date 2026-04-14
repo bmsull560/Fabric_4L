@@ -131,6 +131,119 @@ async def invoke_tool(
         )
 
 
+# Document Export Models
+class DocumentExportRequest(BaseModel):
+    """Request for document export via DocumentExportTool."""
+
+    document_type: str = Field("business_case", description="Type of document to export")
+    business_case_id: str = Field(..., description="Business case ID to export")
+    format: str = Field("pdf", description="Export format: pdf, html")
+    include_provenance: bool = Field(True, description="Include provenance information")
+
+
+class DocumentExportResponse(BaseModel):
+    """Response from document export."""
+
+    success: bool
+    download_url: str | None = None
+    filename: str | None = None
+    file_size_bytes: int | None = None
+    format: str = "pdf"
+    error: str | None = None
+
+
+@router.post("/tools/export-document", response_model=DocumentExportResponse)
+async def export_document_tool(
+    request: DocumentExportRequest,
+    registry: ToolRegistry = Depends(get_tool_registry),
+) -> DocumentExportResponse:
+    """Export a business case to PDF using DocumentExportTool.
+
+    This endpoint triggers PDF generation from business case data.
+    Returns the generated PDF for download.
+
+    Example:
+        POST /v1/tools/export-document
+        {
+            "document_type": "business_case",
+            "business_case_id": "bc-123",
+            "format": "pdf",
+            "include_provenance": true
+        }
+    """
+    try:
+        # Get business case data from workflow executor
+        from .main import workflow_executor
+
+        if not workflow_executor:
+            raise HTTPException(status_code=503, detail="Workflow executor not available")
+
+        result = await workflow_executor.get_result(request.business_case_id)
+
+        if not result:
+            raise HTTPException(
+                status_code=404, detail=f"Business case {request.business_case_id} not found"
+            )
+
+        # Extract business case data
+        output = result.get("output", {})
+        assemble_data = output.get("assemble_document", {})
+        narrative_data = output.get("synthesize_narrative", {})
+
+        business_case_data = {
+            "title": assemble_data.get("title", "Business Case"),
+            "organization": assemble_data.get("organization", "Acme Corp"),
+            "use_cases": assemble_data.get("use_cases", []),
+            "executive_summary": assemble_data.get(
+                "executive_summary", narrative_data.get("narrative", "")
+            ),
+            "methodology": assemble_data.get(
+                "methodology",
+                "Value estimation based on industry benchmarks and organizational data.",
+            ),
+        }
+
+        # Prepare tool input
+        tool_input = {
+            "document_type": request.document_type,
+            "business_case_data": business_case_data,
+            "format": request.format,
+            "include_provenance": request.include_provenance,
+        }
+
+        # Execute DocumentExportTool
+        tool_result = await registry.execute("export_document", tool_input)
+
+        if not tool_result.get("success"):
+            return DocumentExportResponse(
+                success=False,
+                error=tool_result.get("error", "PDF generation failed"),
+            )
+
+        # For now, return the PDF bytes as base64 in download_url (simplified)
+        # In production, this would upload to S3/MinIO and return a presigned URL
+        import base64
+
+        pdf_bytes = tool_result.get("pdf_bytes", b"")
+        filename = tool_result.get("filename", f"business_case_{request.business_case_id}.pdf")
+
+        # Create data URL for inline download
+        download_url = f"data:application/pdf;base64,{base64.b64encode(pdf_bytes).decode()}"
+
+        return DocumentExportResponse(
+            success=True,
+            download_url=download_url,
+            filename=filename,
+            file_size_bytes=tool_result.get("file_size_bytes"),
+            format=request.format,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return DocumentExportResponse(success=False, error=str(e))
+
+
 @router.get("/tools/categories")
 async def list_tool_categories() -> dict[str, Any]:
     """List available tool categories."""

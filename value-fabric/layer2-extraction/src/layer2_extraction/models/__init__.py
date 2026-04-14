@@ -7,11 +7,20 @@ from .ontology import (
     Feature,
     Persona,
     RoleType,
+    SeniorityLevel,
     UseCase,
     ValueCategory,
     ValueDriver,
 )
-from .relationships import ImpactLevel, PredicateType, Relationship, RelationshipGraph
+from .relationships import (
+    BenefitType,
+    DriverType,
+    EnablementType,
+    ImpactLevel,
+    PredicateType,
+    Relationship,
+    RelationshipGraph,
+)
 
 __all__ = [
     "Capability",
@@ -20,12 +29,16 @@ __all__ = [
     "ValueDriver",
     "Feature",
     "RoleType",
+    "SeniorityLevel",
     "ValueCategory",
     "ExtractionResult",
     "Relationship",
     "RelationshipGraph",
     "PredicateType",
     "ImpactLevel",
+    "EnablementType",
+    "BenefitType",
+    "DriverType",
     "ExtractionCost",
     "JobCostSummary",
 ]

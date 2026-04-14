@@ -1,4 +1,4 @@
-.PHONY: help verify lint typecheck test test-layer1 test-layer2 test-layer3 test-layer4 \
+.PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate evals clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract
 
@@ -46,6 +46,11 @@ typecheck: ## Type-check all Python layers with mypy
 # ─── Testing ──────────────────────────────────────────────────────────────────
 
 test: test-layer1 test-layer2 test-layer3 test-layer4 ## Run all backend unit tests
+
+contract-tests: ## Run cross-layer contract tests (fast, no secrets required)
+	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
+	$(PYTEST) tests/contract/ -v --tb=short
+	@echo "✅  Contract tests passed"
 
 # ─── Stratified Test Targets ─────────────────────────────────────────────────
 

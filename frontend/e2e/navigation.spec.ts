@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { AppShellPage } from './pages';
-import { setUserTier, clearUserTier, ROUTES_BY_TIER } from './fixtures';
+import { setUserTier, clearUserTier, enableAdvancedMode, disableAdvancedMode, ROUTES_BY_TIER } from './fixtures';
 
 /**
  * Navigation and Access Control E2E Tests
@@ -172,6 +172,70 @@ test.describe('Navigation & Access Control', () => {
       // Navigate to evidence
       await appShell.decisionTracesLink.click();
       await expect(page).toHaveURL(/\/evidence\/traces/);
+    });
+  });
+
+  test.describe('Advanced Mode Toggle (Progressive Disclosure)', () => {
+    test.beforeEach(async ({ page }) => {
+      await setUserTier(page, 'standard');
+    });
+
+    test('standard user cannot see Model section without advanced mode', async ({ page }) => {
+      await page.goto('/home');
+      // Model section should be hidden for standard users
+      await expect(page.getByRole('link', { name: /^Model$/i })).toBeHidden();
+    });
+
+    test('enabling advanced mode reveals Model section', async ({ page }) => {
+      await page.goto('/home');
+
+      // Initially Model is hidden
+      await expect(page.getByRole('link', { name: /^Model$/i })).toBeHidden();
+
+      // Enable advanced mode
+      await enableAdvancedMode(page);
+
+      // Model section should now be visible
+      await expect(page.getByRole('link', { name: /^Model$/i })).toBeVisible();
+    });
+
+    test('enabling advanced mode allows access to advanced routes', async ({ page }) => {
+      await page.goto('/home');
+
+      // Enable advanced mode
+      await enableAdvancedMode(page);
+
+      // Should be able to access extraction engine
+      await page.goto('/discover/extraction');
+      await expect(page).toHaveURL(/\/discover\/extraction/);
+
+      // Should be able to access graph explorer
+      await page.goto('/discover/knowledge/graph');
+      await expect(page).toHaveURL(/\/discover\/knowledge\/graph/);
+    });
+
+    test('disabling advanced mode hides advanced navigation', async ({ page }) => {
+      await page.goto('/home');
+
+      // Enable then disable advanced mode
+      await enableAdvancedMode(page);
+      await expect(page.getByRole('link', { name: /^Model$/i })).toBeVisible();
+
+      await disableAdvancedMode(page);
+
+      // Model section should be hidden again
+      await expect(page.getByRole('link', { name: /^Model$/i })).toBeHidden();
+    });
+
+    test('advanced mode does not grant admin access', async ({ page }) => {
+      await page.goto('/home');
+
+      // Enable advanced mode
+      await enableAdvancedMode(page);
+
+      // Still should not be able to access admin routes
+      await page.goto('/admin/content/formulas');
+      await expect(page).not.toHaveURL(/\/admin\/content\/formulas/);
     });
   });
 

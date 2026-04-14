@@ -13,8 +13,8 @@ import pytest
 # Repo root is 3 levels up from tests/contract/test_tool_manifests.py
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 MANIFESTS_DIR = REPO_ROOT / "contracts" / "tool-manifests"
-SKILLS_DIR = REPO_ROOT / "layer4-agents" / "skills"
-WORKFLOWS_DIR = REPO_ROOT / "layer4-agents" / "workflows"
+SKILLS_DIR = REPO_ROOT / "value-fabric" / "layer4-agents" / "skills"
+WORKFLOWS_DIR = REPO_ROOT / "value-fabric" / "layer4-agents" / "workflows"
 
 
 def load_manifest(name: str) -> dict:
@@ -66,5 +66,5 @@ class TestToolManifestStructure:
         workflow_path = WORKFLOWS_DIR / f"{name}.md"
         assert skill_path.exists() or workflow_path.exists(), (
             f"contracts/tool-manifests/{name}.json has no corresponding "
-            f"layer4-agents/skills/{name}.md or layer4-agents/workflows/{name}.md"
+            f"value-fabric/layer4-agents/skills/{name}.md or value-fabric/layer4-agents/workflows/{name}.md"
         )

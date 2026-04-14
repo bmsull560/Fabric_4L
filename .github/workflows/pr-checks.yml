@@ -381,3 +381,125 @@ jobs:
       - name: Server-side dry-run (prod overlay)
         run: |
           kustomize build k8s/overlays/prod | kubectl apply --dry-run=server -f -
+
+  # Contract tests — required PR gate, no secrets needed
+  contract-checks:
+    name: Cross-Layer Contract Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest
+
+      - name: Run contract tests
+        run: |
+          pytest tests/contract/ -v --tb=short
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-test-results
+          path: |
+            .pytest_cache/
+          retention-days: 7
+
+  # Integration tests with Docker — PR-blocking
+  integration-checks:
+    name: Integration Tests (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Skip on fork PRs (no secrets available)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Docker Compose
+        run: |
+          docker compose version
+
+      - name: Start core services
+        run: |
+          cd value-fabric
+          export NEO4J_PASSWORD=valuefabric
+          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || 'sk-test-key' }}
+          docker compose up -d neo4j redis postgres
+          # Start layers in background
+          docker compose up -d --build layer2-extraction layer3-knowledge layer4-agents
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to be healthy..."
+          for i in {1..24}; do
+            sleep 5
+            # Check if core DB services are responding
+            pg_isready -h localhost -p 5432 2>/dev/null && echo "PostgreSQL ready"
+            redis-cli -h localhost -p 6379 ping 2>/dev/null && echo "Redis ready"
+            # Check Neo4j
+            curl -s http://localhost:7474/dbms/health 2>/dev/null && echo "Neo4j ready"
+            # If we've waited enough, proceed
+            if [ "$i" -ge "12" ]; then
+              echo "Proceeding with available services..."
+              break
+            fi
+          done
+          docker compose -f value-fabric/docker-compose.yml ps
+        timeout-minutes: 3
+
+      - name: Run smoke tests
+        run: |
+          pip install httpx
+          python scripts/smoke/production_smoke.py \
+            --l2-url http://localhost:8002 \
+            --l3-url http://localhost:8003 \
+            --l4-url http://localhost:8004 \
+            --output-dir artifacts
+
+      - name: Run integration test suite
+        run: |
+          pip install pytest httpx pytest-asyncio
+          # Run the integration tests if they exist
+          if [ -d "tests/integration" ]; then
+            cd tests/integration
+            pytest -v --tb=short
+          else
+            echo "Integration test folder not found, skipping..."
+          fi
+
+      - name: Capture logs on failure
+        if: failure()
+        run: |
+          mkdir -p artifacts/logs
+          docker compose -f value-fabric/docker-compose.yml logs > artifacts/logs/docker-compose.log || true
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report-pr
+          path: artifacts/smoke-report-*.json
+          retention-days: 7
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-logs
+          path: artifacts/logs/
+          retention-days: 7

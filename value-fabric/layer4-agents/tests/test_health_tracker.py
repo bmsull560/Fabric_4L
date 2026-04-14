@@ -17,6 +17,30 @@ from src.services.health_tracker import (
 )
 
 
+class TestHealthTrackerValidation:
+    """Test suite for HealthTracker input validation."""
+
+    def test_check_interval_seconds_zero_raises_value_error(self):
+        """Test that check_interval_seconds=0 raises ValueError."""
+        with pytest.raises(ValueError, match="check_interval_seconds must be >= 1"):
+            HealthTracker(check_interval_seconds=0)
+
+    def test_check_interval_seconds_negative_raises_value_error(self):
+        """Test that negative check_interval_seconds raises ValueError."""
+        with pytest.raises(ValueError, match="check_interval_seconds must be >= 1"):
+            HealthTracker(check_interval_seconds=-1)
+
+    def test_check_interval_seconds_one_is_valid(self):
+        """Test that check_interval_seconds=1 is accepted."""
+        tracker = HealthTracker(check_interval_seconds=1)
+        assert tracker.check_interval == 1
+
+    def test_check_interval_seconds_default_is_valid(self):
+        """Test that default check_interval_seconds is valid."""
+        tracker = HealthTracker()  # Uses default
+        assert tracker.check_interval >= 1
+
+
 class TestHealthTracker:
     """Test suite for HealthTracker."""
 

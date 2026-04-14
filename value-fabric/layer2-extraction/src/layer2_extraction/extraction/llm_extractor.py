@@ -11,12 +11,17 @@ from typing import Any
 from pydantic import BaseModel
 
 from layer2_extraction.models import (
+    BenefitType,
     Capability,
+    DriverType,
+    EnablementType,
     Feature,
+    ImpactLevel,
     Persona,
     PredicateType,
     Relationship,
     RoleType,
+    SeniorityLevel,
     UseCase,
     ValueCategory,
     ValueDriver,
@@ -170,8 +175,13 @@ class EntityExtractor:
         "properties": {
             "role_type": {
                 "type": "string",
-                "enum": ["economic_buyer", "operational_user", "stakeholder"],
-                "description": "Role in buying process",
+                "enum": ["economic_buyer", "champion", "operational_user", "technical_buyer", "stakeholder"],
+                "description": "Role in buying process (buying-process function)",
+            },
+            "seniority_level": {
+                "type": "string",
+                "enum": ["executive_sponsor", "c_suite", "vp", "director", "manager", "individual_contributor", "unknown"],
+                "description": "Organizational seniority level (default: unknown if not clear)",
             },
             "title": {"type": "string", "description": "Job title"},
             "department": {"type": "string", "description": "Department/organization"},
@@ -196,8 +206,18 @@ class EntityExtractor:
         "properties": {
             "category": {
                 "type": "string",
-                "enum": ["revenue", "cost", "risk", "capital"],
-                "description": "Type of value driver",
+                "enum": [
+                    "capital_efficiency",
+                    "cost_reduction",
+                    "risk_mitigation",
+                    "revenue_enhancement",
+                    # Legacy values (mapped to new categories)
+                    "revenue",
+                    "cost",
+                    "risk",
+                    "capital",
+                ],
+                "description": "Type of value driver. Use granular categories (capital_efficiency, cost_reduction, risk_mitigation, revenue_enhancement) when clear.",
             },
             "name": {"type": "string", "description": "Value driver name"},
             "description": {"type": "string", "description": "Detailed description"},
@@ -477,8 +497,10 @@ class EntityExtractor:
                     logprob_confidence,
                 )
                 if calibrated_confidence >= confidence_threshold:
+                    seniority = p_data.get("seniority_level", "unknown")
                     p = Persona(
                         role_type=RoleType(p_data["role_type"]),
+                        seniority_level=SeniorityLevel(seniority),
                         title=p_data["title"],
                         department=p_data["department"],
                         pain_points=p_data.get("pain_points", []),
@@ -669,7 +691,11 @@ class RelationshipExtractor:
             "type": "object",
             "properties": {
                 "source_id": {"type": "string", "description": "Source entity ID"},
-                "predicate": {
+                "raw_predicate": {
+                    "type": "string",
+                    "description": "Original predicate as extracted from text (e.g., 'requires', 'depends on', 'supports')",
+                },
+                "canonical_predicate": {
                     "type": "string",
                     "enum": [
                         "enables",
@@ -686,7 +712,7 @@ class RelationshipExtractor:
                         "delivers",
                         "involves",
                     ],
-                    "description": "Relationship type",
+                    "description": "Normalized relationship type aligned with ontology",
                 },
                 "target_id": {"type": "string", "description": "Target entity ID"},
                 "evidence_text": {
@@ -694,9 +720,32 @@ class RelationshipExtractor:
                     "description": "Direct quote from text supporting this relationship",
                 },
                 "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-                "impact_level": {"type": "string", "enum": ["high", "medium", "low"]},
+                "impact_level": {
+                    "type": "string",
+                    "enum": ["transformational", "significant", "moderate", "minor", "high", "medium", "low"],
+                    "description": "Business impact level (use transformational/significant/moderate/minor when clear)",
+                },
+                "strength": {"type": "number", "minimum": 0, "maximum": 1, "description": "Relationship strength 0.0-1.0"},
+                # Relationship properties (extract when evidence exists)
+                "enablement_type": {
+                    "type": "string",
+                    "enum": ["required", "enhances", "optional"],
+                    "description": "For ENABLES relationships: REQUIRED/ENHANCES/OPTIONAL",
+                },
+                "benefit_type": {
+                    "type": "string",
+                    "enum": ["time_savings", "error_reduction", "visibility", "efficiency"],
+                    "description": "For BENEFITS relationships: type of benefit",
+                },
+                "driver_type": {
+                    "type": "string",
+                    "enum": ["primary", "secondary", "tertiary"],
+                    "description": "For DRIVES relationships: PRIMARY/SECONDARY/TERTIARY",
+                },
+                "contribution_weight": {"type": "number", "minimum": 0, "maximum": 1, "description": "For CONTRIBUTES_TO: weight 0.0-1.0"},
+                "influence_weight": {"type": "number", "minimum": 0, "maximum": 1, "description": "For DRIVES: influence weight 0.0-1.0"},
             },
-            "required": ["source_id", "predicate", "target_id", "evidence_text", "confidence"],
+            "required": ["source_id", "raw_predicate", "canonical_predicate", "target_id", "evidence_text", "confidence"],
             "additionalProperties": False,
         }
 
@@ -737,16 +786,35 @@ class RelationshipExtractor:
                     logprob_confidence,
                 )
                 if calibrated_confidence >= confidence_threshold:
-                    rel = Relationship(
-                        source_id=rel_data["source_id"],
-                        predicate=PredicateType(rel_data["predicate"]),
-                        target_id=rel_data["target_id"],
-                        confidence=calibrated_confidence,
-                        evidence_text=rel_data["evidence_text"],
-                        source_url=source_url,
-                        impact_level=rel_data.get("impact_level"),
-                        extraction_job_id=extraction_job_id,
-                    )
+                    # Build relationship with optional properties (best-effort extraction)
+                    rel_kwargs = {
+                        "source_id": rel_data["source_id"],
+                        "raw_predicate": rel_data["raw_predicate"],
+                        "canonical_predicate": PredicateType(rel_data["canonical_predicate"]),
+                        "target_id": rel_data["target_id"],
+                        "confidence": calibrated_confidence,
+                        "evidence_text": rel_data["evidence_text"],
+                        "source_url": source_url,
+                        "extraction_job_id": extraction_job_id,
+                    }
+
+                    # Add optional relationship properties when present
+                    if "impact_level" in rel_data:
+                        rel_kwargs["impact_level"] = ImpactLevel(rel_data["impact_level"])
+                    if "strength" in rel_data:
+                        rel_kwargs["strength"] = rel_data["strength"]
+                    if "enablement_type" in rel_data:
+                        rel_kwargs["enablement_type"] = EnablementType(rel_data["enablement_type"])
+                    if "benefit_type" in rel_data:
+                        rel_kwargs["benefit_type"] = BenefitType(rel_data["benefit_type"])
+                    if "driver_type" in rel_data:
+                        rel_kwargs["driver_type"] = DriverType(rel_data["driver_type"])
+                    if "contribution_weight" in rel_data:
+                        rel_kwargs["contribution_weight"] = rel_data["contribution_weight"]
+                    if "influence_weight" in rel_data:
+                        rel_kwargs["influence_weight"] = rel_data["influence_weight"]
+
+                    rel = Relationship(**rel_kwargs)
                     relationships.append(rel)
 
             return relationships

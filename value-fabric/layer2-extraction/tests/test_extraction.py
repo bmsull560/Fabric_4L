@@ -190,14 +190,15 @@ class TestRelationships:
         
         rel = Relationship(
             source_id=cap.id,
-            predicate=PredicateType.ENABLES,
+            raw_predicate="enables",
+            canonical_predicate=PredicateType.ENABLES,
             target_id=uc.id,
             confidence=0.88,
             evidence_text="The capability enables the use case as stated in the text.",
             source_url="https://example.com"
         )
-        
-        assert rel.predicate == PredicateType.ENABLES
+
+        assert rel.canonical_predicate == PredicateType.ENABLES
         assert rel.confidence == 0.88
         assert len(rel.evidence_text) > 0
     
@@ -206,7 +207,8 @@ class TestRelationships:
         with pytest.raises(ValueError):
             Relationship(
                 source_id="not-a-uuid",
-                predicate=PredicateType.ENABLES,
+                raw_predicate="enables",
+                canonical_predicate=PredicateType.ENABLES,
                 target_id="valid-uuid-here",
                 confidence=0.5,
                 evidence_text="Evidence",
@@ -222,13 +224,14 @@ class TestRelationships:
         
         rel = Relationship(
             source_id=cap.id,
-            predicate=PredicateType.ENABLES,
+            raw_predicate="enables",
+            canonical_predicate=PredicateType.ENABLES,
             target_id=uc.id,
             confidence=0.9,
             evidence_text="Evidence",
             source_url="https://example.com"
         )
-        
+
         graph = RelationshipGraph()
         graph.add_relationship(rel)
         
@@ -252,24 +255,26 @@ class TestRelationships:
         # Test CAPABILITY_SUBTYPE_OF
         rel = Relationship(
             source_id=cap2.id,
-            predicate=PredicateType.CAPABILITY_SUBTYPE_OF,
+            raw_predicate="is subtype of",
+            canonical_predicate=PredicateType.CAPABILITY_SUBTYPE_OF,
             target_id=cap1.id,
             confidence=0.9,
             evidence_text="Child is a subtype of parent",
             source_url="https://example.com"
         )
-        assert rel.predicate == PredicateType.CAPABILITY_SUBTYPE_OF
+        assert rel.canonical_predicate == PredicateType.CAPABILITY_SUBTYPE_OF
         
         # Test SEMANTICALLY_EQUIVALENT
         rel2 = Relationship(
             source_id=cap1.id,
-            predicate=PredicateType.SEMANTICALLY_EQUIVALENT,
+            raw_predicate="is equivalent to",
+            canonical_predicate=PredicateType.SEMANTICALLY_EQUIVALENT,
             target_id=cap2.id,
             confidence=0.85,
             evidence_text="These are equivalent",
             source_url="https://example.com"
         )
-        assert rel2.predicate == PredicateType.SEMANTICALLY_EQUIVALENT
+        assert rel2.canonical_predicate == PredicateType.SEMANTICALLY_EQUIVALENT
     
     def test_relationship_inverse(self):
         """Test relationship inverse generation."""
@@ -279,16 +284,17 @@ class TestRelationships:
         # ENABLES should have inverse REQUIRES
         rel = Relationship(
             source_id=cap.id,
-            predicate=PredicateType.ENABLES,
+            raw_predicate="enables",
+            canonical_predicate=PredicateType.ENABLES,
             target_id=uc.id,
             confidence=0.9,
             evidence_text="Evidence",
             source_url="https://example.com"
         )
-        
+
         inverse = rel.get_inverse()
         assert inverse is not None
-        assert inverse.predicate == PredicateType.REQUIRES
+        assert inverse.canonical_predicate == PredicateType.REQUIRES
         assert inverse.source_id == uc.id
         assert inverse.target_id == cap.id
     
@@ -301,14 +307,15 @@ class TestRelationships:
         
         rel = Relationship(
             source_id=feature.id,
-            predicate=PredicateType.IMPLEMENTS,
+            raw_predicate="implements",
+            canonical_predicate=PredicateType.IMPLEMENTS,
             target_id=cap.id,
             confidence=0.9,
             evidence_text="Feature implements capability",
             source_url="https://example.com"
         )
-        
-        assert rel.predicate == PredicateType.IMPLEMENTS
+
+        assert rel.canonical_predicate == PredicateType.IMPLEMENTS
 
 
 class TestExtractionResult:
@@ -467,7 +474,8 @@ class TestEntailmentValidator:
         from layer2_extraction.models.relationships import Relationship
         rel = Relationship(
             source_id=persona.id,
-            predicate=PredicateType.ENABLES,
+            raw_predicate="enables",
+            canonical_predicate=PredicateType.ENABLES,
             target_id=cap.id,
             confidence=0.8,
             evidence_text="Test evidence for validation",
@@ -512,7 +520,8 @@ class TestCoreferenceResolver:
         # Create semantically equivalent relationship
         rel = Relationship(
             source_id=cap1.id,
-            predicate=PredicateType.SEMANTICALLY_EQUIVALENT,
+            raw_predicate="is equivalent to",
+            canonical_predicate=PredicateType.SEMANTICALLY_EQUIVALENT,
             target_id=cap2.id,
             confidence=0.9,
             evidence_text="These are the same",

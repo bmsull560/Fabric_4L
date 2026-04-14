@@ -6,10 +6,11 @@ import platform
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, Literal
 
+import httpx
 import psutil
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -112,6 +113,7 @@ from .models import (
     SchemaStatus,
     SearchRequest,
     SearchResponse,
+    SearchResult,
     ServiceMetrics,
     SimilarityRequest,
     SimilarityResponse,
@@ -2522,37 +2524,99 @@ async def list_audit_logs(
     response_model=DocumentExportResponse,
     tags=["Documents"],
     summary="Export Document",
-    description="Generate PDF from business case via L4 workflow",
+    description="Generate PDF from business case via L4 DocumentExportTool",
 )
 async def export_document(
     request: DocumentExportRequest,
     app_state: AppState = Depends(get_app_state),
 ):
-    """Export business case to PDF via L4 workflow."""
+    """Export business case to PDF via L4 DocumentExportTool.
+
+    Calls Layer 4 analysis export endpoint to generate PDF from business case data.
+    Returns export status and download URL.
+    """
+    export_id = f"exp-{uuid.uuid4().hex[:8]}"
+
     try:
-        # Trigger L4 workflow for document generation
-        export_id = f"exp-{uuid.uuid4().hex[:8]}"
+        # Get L4 API URL from environment
+        l4_api_url = os.getenv("LAYER4_API_URL", "http://layer4-agents:8004")
 
-        # NOTE: L4 workflow integration pending. Endpoint returns explicit placeholder.
-        # When L4 is available, replace this block with actual workflow call.
-        logger.warning(
-            f"Document export requested but L4 workflow not integrated. "
-            f"Returning placeholder for export_id={export_id}"
-        )
-        return DocumentExportResponse(
-            export_id=export_id,
-            status="not_implemented",
-            download_url=None,
-            format=request.format,
-            expires_at=None,
-            message="Document export via L4 workflow is not yet implemented",
-        )
+        # Call L4 analysis export endpoint
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            l4_response = await client.get(
+                f"{l4_api_url}/v1/analysis/cases/{request.business_case_id}/export",
+                params={"format": request.format},
+                headers={"Content-Type": "application/json"},
+            )
 
+            if l4_response.status_code == 404:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Business case {request.business_case_id} not found"
+                )
+            elif l4_response.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"L4 export service error: {l4_response.text}"
+                )
+
+            l4_data = l4_response.json()
+
+            # Check if export is ready or if we need to trigger generation
+            if not l4_data.get("download_ready"):
+                # Export not ready - trigger PDF generation via L4
+                logger.info(f"Triggering PDF generation for case {request.business_case_id}")
+
+                # Call L4 document generation endpoint
+                gen_response = await client.post(
+                    f"{l4_api_url}/v1/tools/export-document",
+                    json={
+                        "document_type": request.document_type,
+                        "business_case_id": request.business_case_id,
+                        "format": request.format,
+                        "include_provenance": request.include_provenance,
+                    },
+                    timeout=120.0,  # Longer timeout for PDF generation
+                )
+
+                if gen_response.status_code != 200:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"Document generation failed: {gen_response.text}"
+                    )
+
+                gen_data = gen_response.json()
+
+                return DocumentExportResponse(
+                    export_id=export_id,
+                    status="completed" if gen_data.get("success") else "failed",
+                    download_url=gen_data.get("download_url"),
+                    format=request.format,
+                    expires_at=datetime.utcnow() + timedelta(hours=24) if gen_data.get("success") else None,
+                    message="PDF generated successfully" if gen_data.get("success") else gen_data.get("error"),
+                )
+
+            # Export already ready
+            return DocumentExportResponse(
+                export_id=export_id,
+                status="completed",
+                download_url=l4_data.get("document_url"),
+                format=request.format,
+                expires_at=datetime.utcnow() + timedelta(hours=24),
+                message="Document ready for download",
+            )
+
+    except httpx.TimeoutException:
+        logger.error(f"Document export timed out for case {request.business_case_id}")
+        raise HTTPException(status_code=504, detail="Document generation timed out")
+    except httpx.ConnectError as e:
+        logger.error(f"Cannot connect to L4 service: {e}")
+        raise HTTPException(status_code=503, detail="Document generation service unavailable")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Document export failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Document export failed: {str(e)}")
 
 
 # =============================================================================

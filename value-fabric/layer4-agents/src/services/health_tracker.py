@@ -60,6 +60,19 @@ class HealthBadge:
     action_required: str | None = None  # Action user can take
 
 
+# Default configuration constants
+DEFAULT_CHECK_INTERVAL_SECONDS = 30
+DEFAULT_STALE_THRESHOLD_MINUTES = 5
+
+# Badge auto-hide timeouts (seconds)
+AUTO_HIDE_AFTER_SECONDS = {
+    "database_degraded": 300,
+    "rate_limit_approaching": 60,
+    "rate_limit_exceeded": 60,
+    "high_load": 120,
+}
+
+
 class HealthTracker:
     """Tracks health status of all system components.
 
@@ -82,12 +95,17 @@ class HealthTracker:
         )
     """
 
-    def __init__(self, check_interval_seconds: int = 30):
+    def __init__(self, check_interval_seconds: int = DEFAULT_CHECK_INTERVAL_SECONDS):
         """Initialize health tracker.
 
         Args:
-            check_interval_seconds: How often to run health checks
+            check_interval_seconds: How often to run health checks (must be >= 1)
+
+        Raises:
+            ValueError: If check_interval_seconds is less than 1
         """
+        if check_interval_seconds < 1:
+            raise ValueError(f"check_interval_seconds must be >= 1, got {check_interval_seconds}")
         self.check_interval = check_interval_seconds
         self._components: dict[str, ComponentHealth] = {}
         self._badges: dict[str, HealthBadge] = {}
@@ -113,7 +131,7 @@ class HealthTracker:
                 "icon": "database-warning",
                 "priority": 3,
                 "dismissible": True,
-                "auto_hide_after_seconds": 300,
+                "auto_hide_after_seconds": AUTO_HIDE_AFTER_SECONDS["database_degraded"],
             },
             "database_unhealthy": {
                 "title": "Database Unavailable",
@@ -137,7 +155,7 @@ class HealthTracker:
                 "icon": "speed-slow",
                 "priority": 4,
                 "dismissible": True,
-                "auto_hide_after_seconds": 60,
+                "auto_hide_after_seconds": AUTO_HIDE_AFTER_SECONDS["rate_limit_approaching"],
             },
             "rate_limit_exceeded": {
                 "title": "Rate Limit Exceeded",
@@ -145,7 +163,7 @@ class HealthTracker:
                 "icon": "blocked",
                 "priority": 2,
                 "dismissible": False,
-                "auto_hide_after_seconds": 60,
+                "auto_hide_after_seconds": AUTO_HIDE_AFTER_SECONDS["rate_limit_exceeded"],
             },
             "high_load": {
                 "title": "High System Load",
@@ -153,7 +171,7 @@ class HealthTracker:
                 "icon": "load-high",
                 "priority": 6,
                 "dismissible": True,
-                "auto_hide_after_seconds": 120,
+                "auto_hide_after_seconds": AUTO_HIDE_AFTER_SECONDS["high_load"],
             },
         }
 
@@ -203,51 +221,7 @@ class HealthTracker:
         Automatically generates/deletes badges based on status changes.
         """
         async with self._lock:
-            old_health = self._components.get(name)
-
-            # Update component health
-            # Calculate counters: increment only on status transitions, preserve otherwise
-            old_status = old_health.status if old_health else HealthStatus.UNKNOWN
-            failure_count = old_health.failure_count if old_health else 0
-            recovery_count = old_health.recovery_count if old_health else 0
-
-            if old_status != status:
-                # Status changed - update transition counters
-                if status == HealthStatus.UNHEALTHY:
-                    failure_count += 1
-                elif status == HealthStatus.HEALTHY and old_status in (
-                    HealthStatus.UNHEALTHY,
-                    HealthStatus.DEGRADED,
-                ):
-                    recovery_count += 1
-
-            health = ComponentHealth(
-                name=name,
-                status=status,
-                last_checked=datetime.now(UTC),
-                response_time_ms=response_time_ms,
-                error_message=error_message,
-                failure_count=failure_count,
-                recovery_count=recovery_count,
-                metadata=metadata or {},
-            )
-
-            self._components[name] = health
-
-            # Notify on status change
-            if old_status != status:
-                # Notify status callbacks
-                for callback in self._status_callbacks:
-                    try:
-                        if asyncio.iscoroutinefunction(callback):
-                            await callback(name, old_status, status)
-                        else:
-                            callback(name, old_status, status)
-                    except Exception as e:
-                        logger.error(f"Status callback error: {e}")
-
-                # Update badges
-                await self._update_badges_for_component(name, status, error_message)
+            await self._do_component_update(name, status, response_time_ms, error_message, metadata)
 
     async def _update_badges_for_component(
         self, component: str, status: HealthStatus, error_message: str | None
@@ -380,7 +354,14 @@ class HealthTracker:
         return HealthStatus.UNKNOWN
 
     def dismiss_badge(self, badge_id: str) -> bool:
-        """Dismiss a badge by ID."""
+        """Dismiss a badge by ID.
+
+        Args:
+            badge_id: The unique identifier of the badge to dismiss
+
+        Returns:
+            True if the badge was dismissed, False if not found or not dismissible
+        """
         if badge_id in self._badges and self._badges[badge_id].dismissible:
             del self._badges[badge_id]
             return True
@@ -401,7 +382,7 @@ class HealthTracker:
         """Run health checks on all components."""
         # Check for stale health data
         now = datetime.now(UTC)
-        stale_threshold = timedelta(minutes=5)
+        stale_threshold = timedelta(minutes=DEFAULT_STALE_THRESHOLD_MINUTES)
 
         # Collect stale components first (under lock)
         stale_components: list[str] = []
@@ -411,12 +392,81 @@ class HealthTracker:
                     if health.status == HealthStatus.HEALTHY:
                         stale_components.append(name)
 
-        # Update stale components outside lock to avoid contention
-        # and potential deadlock (update_component also acquires the lock)
+        # Update stale components - use internal method that doesn't re-acquire lock
+        # to avoid deadlock (update_component also acquires the lock)
         for name in stale_components:
-            await self.update_component(
+            await self._update_component_internal(
                 name, HealthStatus.UNKNOWN, error_message="Health check stale - no recent updates"
             )
+
+    async def _update_component_internal(
+        self,
+        name: str,
+        status: HealthStatus,
+        response_time_ms: float | None = None,
+        error_message: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Internal version of update_component that assumes lock is NOT held.
+
+        Used by health check loop to avoid deadlock when called from _run_health_checks.
+        """
+        async with self._lock:
+            await self._do_component_update(name, status, response_time_ms, error_message, metadata)
+
+    async def _do_component_update(
+        self,
+        name: str,
+        status: HealthStatus,
+        response_time_ms: float | None = None,
+        error_message: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        """Actual update logic - assumes caller holds the lock."""
+        old_health = self._components.get(name)
+
+        # Calculate counters: increment only on status transitions, preserve otherwise
+        old_status = old_health.status if old_health else HealthStatus.UNKNOWN
+        failure_count = old_health.failure_count if old_health else 0
+        recovery_count = old_health.recovery_count if old_health else 0
+
+        if old_status != status:
+            # Status changed - update transition counters
+            if status == HealthStatus.UNHEALTHY:
+                failure_count += 1
+            elif status == HealthStatus.HEALTHY and old_status in (
+                HealthStatus.UNHEALTHY,
+                HealthStatus.DEGRADED,
+            ):
+                recovery_count += 1
+
+        health = ComponentHealth(
+            name=name,
+            status=status,
+            last_checked=datetime.now(UTC),
+            response_time_ms=response_time_ms,
+            error_message=error_message,
+            failure_count=failure_count,
+            recovery_count=recovery_count,
+            metadata=metadata or {},
+        )
+
+        self._components[name] = health
+
+        # Notify on status change
+        if old_status != status:
+            # Notify status callbacks
+            for callback in self._status_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(name, old_status, status)
+                    else:
+                        callback(name, old_status, status)
+                except Exception as e:
+                    logger.error(f"Status callback error: {e}")
+
+            # Update badges
+            await self._update_badges_for_component(name, status, error_message)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert health status to dictionary for API response."""

@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import logging
+import secrets
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -23,6 +24,9 @@ import aiohttp
 from ..models.pause_point import PauseSeverity
 
 logger = logging.getLogger(__name__)
+
+# Maximum quiet hours duration to prevent configuration errors
+MAX_QUIET_HOURS_DURATION_HOURS = 16
 
 
 class NotificationChannel(str, Enum):
@@ -166,7 +170,23 @@ class NotificationService:
         self._in_app_callbacks.append(callback)
 
     def set_user_preferences(self, preference: NotificationPreference) -> None:
-        """Set notification preferences for a user."""
+        """Set notification preferences for a user.
+
+        Args:
+            preference: The notification preference to set
+
+        Raises:
+            ValueError: If quiet hours configuration is invalid
+        """
+        # Validate quiet hours if configured
+        if preference.quiet_hours_start is not None and preference.quiet_hours_end is not None:
+            # Ensure both are set if either is set
+            if not (0 <= preference.quiet_hours_start <= 23 and 0 <= preference.quiet_hours_end <= 23):
+                raise ValueError(
+                    f"Quiet hours must be between 0-23, got "
+                    f"start={preference.quiet_hours_start}, end={preference.quiet_hours_end}"
+                )
+
         self._preferences[preference.user_id] = preference
 
     def get_user_preferences(self, user_id: str) -> NotificationPreference:
@@ -203,8 +223,11 @@ class NotificationService:
         }
         priority = priority_map.get(severity, NotificationPriority.HIGH)
 
+        # Generate unique event ID using timestamp + random component (not id())
+        event_id = f"notif-{datetime.now(UTC).timestamp():.6f}-{workflow_id}-{secrets.token_hex(4)}"
+
         event = NotificationEvent(
-            event_id=f"notif-{datetime.now(UTC).timestamp()}-{workflow_id}-{id(pause_point) % 10000:04d}",
+            event_id=event_id,
             workflow_id=workflow_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -234,7 +257,7 @@ class NotificationService:
     ) -> NotificationEvent:
         """Send notification when workflow completes."""
         event = NotificationEvent(
-            event_id=f"notif-{datetime.now(UTC).timestamp()}-{workflow_id}-{hash(str(status)) % 10000:04d}",
+            event_id=f"notif-{datetime.now(UTC).timestamp():.6f}-{workflow_id}-{secrets.token_hex(4)}",
             workflow_id=workflow_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -260,7 +283,7 @@ class NotificationService:
     ) -> NotificationEvent:
         """Send notification when workflow reaches a checkpoint."""
         event = NotificationEvent(
-            event_id=f"notif-{datetime.now(UTC).timestamp()}-{workflow_id}-{hash(checkpoint_id) % 10000:04d}",
+            event_id=f"notif-{datetime.now(UTC).timestamp():.6f}-{workflow_id}-{secrets.token_hex(4)}",
             workflow_id=workflow_id,
             tenant_id=tenant_id,
             user_id=user_id,
@@ -284,12 +307,40 @@ class NotificationService:
 
         prefs = self.get_user_preferences(user_id)
 
+        # Check quiet hours - if in quiet hours, only allow in-app notifications
+        # (in-app is considered non-intrusive compared to email/webhook)
+        if self._is_quiet_hours_active(user_id):
+            return [NotificationChannel.IN_APP]
+
         # Filter channels based on severity threshold
         if severity.value < prefs.pause_severity_threshold.value:
             # Below threshold - only in-app
             return [NotificationChannel.IN_APP]
 
         return prefs.channels
+
+    def _is_quiet_hours_active(self, user_id: str) -> bool:
+        """Check if current time is in user's quiet hours.
+
+        Quiet hours suppress non-urgent notifications (email, webhook, etc.)
+        while still allowing in-app notifications.
+
+        Returns:
+            True if quiet hours are active for this user
+        """
+        prefs = self.get_user_preferences(user_id)
+
+        if prefs.quiet_hours_start is None or prefs.quiet_hours_end is None:
+            return False
+
+        current_hour = datetime.now(UTC).hour
+
+        if prefs.quiet_hours_start <= prefs.quiet_hours_end:
+            # Simple range (e.g., 09:00 - 17:00)
+            return prefs.quiet_hours_start <= current_hour < prefs.quiet_hours_end
+        else:
+            # Wrapped range (e.g., 22:00 - 08:00)
+            return current_hour >= prefs.quiet_hours_start or current_hour < prefs.quiet_hours_end
 
     async def _enqueue_event(self, event: NotificationEvent) -> bool:
         """Add event to queue with bounded size handling.
@@ -555,22 +606,6 @@ class NotificationService:
         ).hexdigest()
 
         return f"sha256={signature}"
-
-    def is_quiet_hours(self, user_id: str) -> bool:
-        """Check if current time is in user's quiet hours."""
-        prefs = self.get_user_preferences(user_id)
-
-        if prefs.quiet_hours_start is None or prefs.quiet_hours_end is None:
-            return False
-
-        current_hour = datetime.now(UTC).hour
-
-        if prefs.quiet_hours_start <= prefs.quiet_hours_end:
-            # Simple range (e.g., 22:00 - 08:00 doesn't work here)
-            return prefs.quiet_hours_start <= current_hour < prefs.quiet_hours_end
-        else:
-            # Wrapped range (e.g., 22:00 - 08:00)
-            return current_hour >= prefs.quiet_hours_start or current_hour < prefs.quiet_hours_end
 
 
 # Global singleton

@@ -3,12 +3,24 @@ Extract all stakeholder personas mentioned in this text.
 Text:
 {text}
 
-Role Types:
-- economic_buyer: Makes purchasing decisions (CFO, VP, Director)
+Role Types (buying-process function):
+- economic_buyer: Makes purchasing decisions (CFO, Procurement)
+- champion: Internal advocate driving adoption
 - operational_user: Uses the product day-to-day (analyst, specialist)
+- technical_buyer: Evaluates technical fit (CTO, architect)
 - stakeholder: Influenced by outcomes but not direct user (auditor, customer)
 
+Seniority Levels (organizational hierarchy):
+- executive_sponsor: Executive sponsor with budget authority
+- c_suite: C-level executive (CEO, CFO, CTO, CMO, etc.)
+- vp: Vice President level
+- director: Director level
+- manager: Manager level
+- individual_contributor: Individual contributor / specialist
+- unknown: Not clear from text (default if uncertain)
+
 Instructions:
+- Extract seniority_level from job titles and context (default to "unknown" if unclear)
 - Include pain points and success metrics if mentioned
 - Return only data that can be justified by explicit evidence in the text
 - Use calibrated confidence values and avoid inflated scores

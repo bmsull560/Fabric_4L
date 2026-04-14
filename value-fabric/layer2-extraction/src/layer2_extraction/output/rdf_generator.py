@@ -10,14 +10,20 @@ from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import PROV, XSD
 
 from layer2_extraction.models import (
+    BenefitType,
     Capability,
+    DriverType,
+    EnablementType,
     ExtractionResult,
     Feature,
+    ImpactLevel,
     Persona,
     PredicateType,
     Relationship,
+    SeniorityLevel,
     UseCase,
     ValueDriver,
+    ValueCategory,
 )
 
 # Namespaces
@@ -219,6 +225,11 @@ class RDFGenerator:
         self.graph.add((uri, RDF.type, VF.Persona))
         role_type_value = getattr(persona.role_type, "value", persona.role_type)
         self.graph.add((uri, VF.roleType, Literal(role_type_value)))
+
+        # Seniority level (new field)
+        seniority_value = getattr(persona.seniority_level, "value", persona.seniority_level)
+        self.graph.add((uri, VF.seniorityLevel, Literal(seniority_value)))
+
         self.graph.add((uri, VF.title, Literal(persona.title)))
         self.graph.add((uri, VF.department, Literal(persona.department)))
         self.graph.add((uri, VF.confidence, Literal(persona.confidence, datatype=XSD.float)))
@@ -282,7 +293,7 @@ class RDFGenerator:
             PredicateType.INVOLVES: VF.involves,
         }
 
-        predicate = predicate_map.get(relationship.predicate)
+        predicate = predicate_map.get(relationship.canonical_predicate)
         if predicate:
             # Add the relationship
             self.graph.add((source_uri, predicate, target_uri))
@@ -293,6 +304,9 @@ class RDFGenerator:
             self.graph.add((statement, RDF.subject, source_uri))
             self.graph.add((statement, RDF.predicate, predicate))
             self.graph.add((statement, RDF.object, target_uri))
+
+            # Store raw predicate (preserves extraction richness)
+            self.graph.add((statement, VF.rawPredicate, Literal(relationship.raw_predicate)))
 
             # Relationship properties
             self.graph.add(
@@ -309,6 +323,32 @@ class RDFGenerator:
             if relationship.strength:
                 self.graph.add(
                     (statement, VF.strength, Literal(relationship.strength, datatype=XSD.float))
+                )
+
+            # New relationship properties (best-effort extraction)
+            if relationship.enablement_type:
+                self.graph.add(
+                    (statement, VF.enablementType, Literal(relationship.enablement_type.value))
+                )
+
+            if relationship.benefit_type:
+                self.graph.add(
+                    (statement, VF.benefitType, Literal(relationship.benefit_type.value))
+                )
+
+            if relationship.driver_type:
+                self.graph.add(
+                    (statement, VF.driverType, Literal(relationship.driver_type.value))
+                )
+
+            if relationship.contribution_weight is not None:
+                self.graph.add(
+                    (statement, VF.contributionWeight, Literal(relationship.contribution_weight, datatype=XSD.float))
+                )
+
+            if relationship.influence_weight is not None:
+                self.graph.add(
+                    (statement, VF.influenceWeight, Literal(relationship.influence_weight, datatype=XSD.float))
                 )
 
             # Provenance

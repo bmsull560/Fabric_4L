@@ -6,93 +6,104 @@ on:
     - cron: '0 2 * * *'  # Run nightly at 2 AM UTC
 
 jobs:
-  integration-test:
-    name: Full Stack Integration Test
+  # Extended validation tier — runs nightly, not required for PR merge
+  # This workflow requires secrets and Docker orchestration
+  extended-integration:
+    name: Extended Stack Integration Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Skip on fork PRs (no secrets available)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Set up Docker Compose
         run: |
           docker compose version
 
-      - name: Start full stack
+      - name: Start core services
         run: |
-          cd value-fabric && docker compose -f docker-compose.yml up -d
+          cd value-fabric
+          # Export minimal required env vars
+          export NEO4J_PASSWORD=valuefabric
+          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || 'sk-test-key' }}
+          docker compose up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents
 
-      - name: Wait for services
+      - name: Wait for services to be healthy
         run: |
-          chmod +x scripts/wait-for-services.sh
-          bash scripts/wait-for-services.sh
-        timeout-minutes: 5
+          echo "Waiting for services to be healthy..."
+          for i in {1..30}; do
+            sleep 10
+            healthy=$(docker compose -f value-fabric/docker-compose.yml ps --format json 2>/dev/null | grep -c '"Health":"healthy"' || echo "0")
+            echo "Check $i/30: $healthy services healthy"
+            if [ "$healthy" -ge "6" ]; then
+              echo "All services healthy!"
+              break
+            fi
+          done
+          docker compose -f value-fabric/docker-compose.yml ps
+        timeout-minutes: 6
 
       - name: Run smoke tests
         run: |
-          chmod +x scripts/smoke-test.sh
-          bash scripts/smoke-test.sh
+          pip install httpx
+          python scripts/smoke/production_smoke.py \
+            --l2-url http://localhost:8002 \
+            --l3-url http://localhost:8003 \
+            --l4-url http://localhost:8004 \
+            --output-dir artifacts
 
       - name: Run L2 extraction pipeline tests
         run: |
           cd value-fabric/layer2-extraction
+          pip install -e ".[dev]"
           pip install pytest httpx pytest-asyncio
           pytest tests/test_extract_and_ingest_pipeline.py -v --tb=short
 
       - name: Run L3 E2E pipeline tests
         run: |
           cd value-fabric/layer3-knowledge
+          pip install -e ".[dev]"
           pip install pytest httpx pytest-asyncio
           pytest tests/test_e2e_pipeline.py -v --tb=short
 
-      - name: Run integration tests
-        run: |
-          cd tests/integration
-          pip install pytest httpx pytest-cov
-          pytest -v --cov=. --cov-report=xml
-
-      - name: Upload integration coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: integration-coverage
-          path: tests/integration/coverage.xml
-          retention-days: 14
+      # TODO: Enable when tests/integration/ folder is created
+      # See: https://github.com/bmsull560/Fabric_4L/issues/TODO-integration-tests
+      # - name: Run integration tests
+      #   run: |
+      #     cd tests/integration
+      #     pip install pytest httpx pytest-cov
+      #     pytest -v --cov=. --cov-report=xml
 
       - name: Capture logs on failure
         if: failure()
         run: |
-          mkdir -p artifacts
-          cd value-fabric && docker compose -f docker-compose.yml logs > ../artifacts/docker-compose-logs.txt
+          mkdir -p artifacts/logs
+          docker compose -f value-fabric/docker-compose.yml logs > artifacts/logs/docker-compose.log
 
-      - name: Upload artifacts
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: artifacts/smoke-report-*.json
+          retention-days: 14
+
+      - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-test-artifacts
-          path: artifacts/
-
-      - name: Collect coverage artifacts from all layers
-        if: always()
-        run: |
-          mkdir -p artifacts/coverage
-          for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents; do
-            if [ -f "value-fabric/$layer/coverage.xml" ]; then
-              cp "value-fabric/$layer/coverage.xml" "artifacts/coverage/$layer-coverage.xml"
-            fi
-          done
-          if [ -f "tests/integration/coverage.xml" ]; then
-            cp "tests/integration/coverage.xml" "artifacts/coverage/integration-coverage.xml"
-          fi
-
-      - name: Upload all coverage artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-coverage-reports
-          path: artifacts/coverage/
-          retention-days: 14
+          name: integration-failure-logs
+          path: artifacts/logs/
+          retention-days: 7
 
       - name: Tear down
         if: always()
         run: |
-          cd value-fabric && docker compose -f docker-compose.yml down -v
+          cd value-fabric && docker compose down -v

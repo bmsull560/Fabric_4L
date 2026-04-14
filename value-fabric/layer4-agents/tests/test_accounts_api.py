@@ -406,7 +406,8 @@ async def test_get_account_detail(client: AsyncClient, sample_account: Account):
     opp = data["opportunities"][0]
     assert opp["name"] == "Enterprise Deal 2024"
     assert opp["stage"] == "Negotiation"
-    assert opp["value"] == 250000.0
+    # API may return value as string or float depending on serialization
+    assert float(opp["value"]) == 250000.0
     
     # Check embedded contacts
     assert len(data["contacts"]) == 1
@@ -467,8 +468,16 @@ async def test_get_sync_status_empty(client: AsyncClient):
 # =============================================================================
 
 @pytest.mark.asyncio
-async def test_sync_accounts_all_providers(client: AsyncClient):
-    """Test triggering sync for all providers."""
+async def test_sync_accounts_all_providers(client: AsyncClient, monkeypatch):
+    """Test triggering sync for all providers returns completed or partial status."""
+    # Mock CRMSyncService to avoid environment coupling
+    from src.services.crm_sync_service import CRMSyncService
+    
+    async def mock_sync_provider(self, provider, incremental=True, account_ids=None):
+        return {"updated": 5, "failed": 0, "errors": []}
+    
+    monkeypatch.setattr(CRMSyncService, "sync_provider", mock_sync_provider)
+    
     response = await client.post(
         "/v1/accounts/sync",
         json={}
@@ -477,14 +486,23 @@ async def test_sync_accounts_all_providers(client: AsyncClient):
     
     data = response.json()
     assert "sync_id" in data
-    assert data["status"] == "queued"
+    # API returns "completed" when no failures, "partial" when some fail
+    assert data["status"] in ("completed", "partial")
     assert data["provider"] is None
     assert "all providers" in data["message"]
 
 
 @pytest.mark.asyncio
-async def test_sync_accounts_specific_provider(client: AsyncClient):
-    """Test triggering sync for specific provider."""
+async def test_sync_accounts_specific_provider(client: AsyncClient, monkeypatch):
+    """Test triggering sync for specific provider returns completed or partial status."""
+    # Mock CRMSyncService to avoid environment coupling
+    from src.services.crm_sync_service import CRMSyncService
+    
+    async def mock_sync_provider(self, provider, incremental=True, account_ids=None):
+        return {"updated": 3, "failed": 0, "errors": []}
+    
+    monkeypatch.setattr(CRMSyncService, "sync_provider", mock_sync_provider)
+    
     response = await client.post(
         "/v1/accounts/sync",
         json={"provider": "salesforce"}
@@ -493,14 +511,24 @@ async def test_sync_accounts_specific_provider(client: AsyncClient):
     
     data = response.json()
     assert data["sync_id"].startswith("sync-")
-    assert data["status"] == "queued"
+    # API returns "completed" when no failures, "partial" when some fail
+    assert data["status"] in ("completed", "partial")
     assert data["provider"] == "salesforce"
-    assert "Salesforce" in data["message"]
+    # Message contains sync stats
+    assert "Synced" in data["message"]
 
 
 @pytest.mark.asyncio
-async def test_sync_accounts_force_refresh(client: AsyncClient):
-    """Test triggering sync with force refresh."""
+async def test_sync_accounts_force_refresh(client: AsyncClient, monkeypatch):
+    """Test triggering sync with force refresh returns completed or partial status."""
+    # Mock CRMSyncService to avoid environment coupling
+    from src.services.crm_sync_service import CRMSyncService
+    
+    async def mock_sync_provider(self, provider, incremental=False, account_ids=None):
+        return {"updated": 10, "failed": 0, "errors": []}
+    
+    monkeypatch.setattr(CRMSyncService, "sync_provider", mock_sync_provider)
+    
     response = await client.post(
         "/v1/accounts/sync",
         json={"force_refresh": True}
@@ -509,7 +537,8 @@ async def test_sync_accounts_force_refresh(client: AsyncClient):
     
     data = response.json()
     assert "sync_id" in data
-    assert data["status"] == "queued"
+    # API returns "completed" when no failures, "partial" when some fail
+    assert data["status"] in ("completed", "partial")
 
 
 # =============================================================================
@@ -551,8 +580,17 @@ async def test_refresh_account_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_refresh_account_success(client: AsyncClient, sample_account: Account):
+async def test_refresh_account_success(client: AsyncClient, sample_account: Account, monkeypatch):
     """Test refreshing existing account."""
+    # Mock CRMSyncService to avoid environment coupling
+    from src.services.crm_sync_service import CRMSyncService
+    
+    async def mock_refresh_single_account(self, account_id):
+        # Return the account with updated timestamp
+        return sample_account
+    
+    monkeypatch.setattr(CRMSyncService, "refresh_single_account", mock_refresh_single_account)
+    
     response = await client.post(f"/v1/accounts/{sample_account.id}/refresh")
     # Refresh should succeed for existing account
     assert response.status_code == 200

@@ -199,7 +199,7 @@ class Neo4jLoader:
         source_id: str | None,
         extraction_job_id: str | None,
     ) -> dict[str, list[dict[str, Any]]]:
-        """Extract relationships from RDF graph by type."""
+        """Extract relationships from RDF graph by type with all properties."""
         relationships: dict[str, list[dict[str, Any]]] = {
             rel_type: [] for rel_type in RELATIONSHIP_TYPES
         }
@@ -207,22 +207,78 @@ class Neo4jLoader:
         # Build a lookup of known relationship predicates using VF namespace
         known_predicates = {VF[rt]: rt for rt in RELATIONSHIP_TYPES}
 
-        # Iterate over all triples in the graph
-        for s, p, o in graph:
-            # Check if this predicate is a known relationship type
-            predicate_name = known_predicates.get(p)
-            if predicate_name:
-                relationships[predicate_name].append(
-                    {
-                        "source_id": self._resolve_entity_id(graph, s),
-                        "target_id": self._resolve_entity_id(graph, o),
-                        "predicate": predicate_name,
-                        "confidence": 1.0,
-                        "source": source_id,
-                        "extraction_job_id": extraction_job_id,
-                        "provenance": {},
-                    }
-                )
+        # Find all reified relationship statements for properties
+        # Reified statements use RDF.Statement type
+        for statement in graph.subjects(RDF.type, RDF.Statement):
+            subject_uri = graph.value(statement, RDF.subject)
+            predicate_uri = graph.value(statement, RDF.predicate)
+            object_uri = graph.value(statement, RDF.object)
+
+            if not all([subject_uri, predicate_uri, object_uri]):
+                continue
+
+            # Map predicate URI to relationship type name
+            predicate_name = known_predicates.get(predicate_uri)
+            if not predicate_name:
+                continue
+
+            # Extract relationship properties from reified statement
+            rel_data: dict[str, Any] = {
+                "source_id": self._resolve_entity_id(graph, subject_uri),
+                "target_id": self._resolve_entity_id(graph, object_uri),
+                "predicate": predicate_name,
+                "confidence": 1.0,
+                "source": source_id,
+                "extraction_job_id": extraction_job_id,
+                "provenance": {},
+            }
+
+            # Extract raw_predicate
+            raw_pred = graph.value(statement, VF.rawPredicate)
+            if raw_pred:
+                rel_data["raw_predicate"] = str(raw_pred)
+
+            # Extract confidence
+            conf = graph.value(statement, VF.confidence)
+            if conf:
+                rel_data["confidence"] = float(conf)
+
+            # Extract impact_level
+            impact = graph.value(statement, VF.impactLevel)
+            if impact:
+                rel_data["impact_level"] = str(impact)
+
+            # Extract strength
+            strength = graph.value(statement, VF.strength)
+            if strength:
+                rel_data["strength"] = float(strength)
+
+            # Extract enablement_type
+            enablement = graph.value(statement, VF.enablementType)
+            if enablement:
+                rel_data["enablement_type"] = str(enablement)
+
+            # Extract benefit_type
+            benefit = graph.value(statement, VF.benefitType)
+            if benefit:
+                rel_data["benefit_type"] = str(benefit)
+
+            # Extract driver_type
+            driver = graph.value(statement, VF.driverType)
+            if driver:
+                rel_data["driver_type"] = str(driver)
+
+            # Extract contribution_weight
+            contrib = graph.value(statement, VF.contributionWeight)
+            if contrib:
+                rel_data["contribution_weight"] = float(contrib)
+
+            # Extract influence_weight
+            influence = graph.value(statement, VF.influenceWeight)
+            if influence:
+                rel_data["influence_weight"] = float(influence)
+
+            relationships[predicate_name].append(rel_data)
 
         return relationships
 
@@ -519,12 +575,28 @@ class Neo4jLoader:
                 r.extraction_job_id = $extraction_job_id,
                 r.loaded_at = datetime($loaded_at),
                 r.confidence = rel.confidence,
+                r.raw_predicate = rel.raw_predicate,
+                r.impact_level = rel.impact_level,
+                r.strength = rel.strength,
+                r.enablement_type = rel.enablement_type,
+                r.benefit_type = rel.benefit_type,
+                r.driver_type = rel.driver_type,
+                r.contribution_weight = rel.contribution_weight,
+                r.influence_weight = rel.influence_weight,
                 r.created_at = datetime()
             ON MATCH SET
                 r.source_id = $source_id,
                 r.extraction_job_id = $extraction_job_id,
                 r.loaded_at = datetime($loaded_at),
                 r.confidence = rel.confidence,
+                r.raw_predicate = rel.raw_predicate,
+                r.impact_level = rel.impact_level,
+                r.strength = rel.strength,
+                r.enablement_type = rel.enablement_type,
+                r.benefit_type = rel.benefit_type,
+                r.driver_type = rel.driver_type,
+                r.contribution_weight = rel.contribution_weight,
+                r.influence_weight = rel.influence_weight,
                 r.updated_at = datetime()
             RETURN count(r) AS loaded
             """

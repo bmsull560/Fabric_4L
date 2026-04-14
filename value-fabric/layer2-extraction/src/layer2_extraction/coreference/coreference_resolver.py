@@ -150,7 +150,7 @@ class CoreferenceResolver:
         """Extract semantically equivalent pairs from relationships."""
         pairs = set()
         for rel in relationships:
-            if rel.predicate == PredicateType.SEMANTICALLY_EQUIVALENT:
+            if rel.canonical_predicate == PredicateType.SEMANTICALLY_EQUIVALENT:
                 pair = tuple(sorted([rel.source_id, rel.target_id]))
                 pairs.add(pair)
         return pairs

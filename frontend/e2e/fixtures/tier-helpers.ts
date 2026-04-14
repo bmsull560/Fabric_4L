@@ -40,6 +40,41 @@ export async function setUserTier(page: Page, tier: UserTier): Promise<void> {
 }
 
 /**
+ * Enable advanced mode for a standard user (progressive disclosure toggle)
+ */
+export async function enableAdvancedMode(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const storeKey = 'user-tier-storage';
+    const existing = localStorage.getItem(storeKey);
+    const storeState = existing
+      ? JSON.parse(existing)
+      : { state: { currentTier: 'standard', isAdvancedModeEnabled: false, userRole: null }, version: 0 };
+
+    storeState.state.isAdvancedModeEnabled = true;
+    localStorage.setItem(storeKey, JSON.stringify(storeState));
+  });
+
+  await page.reload();
+}
+
+/**
+ * Disable advanced mode
+ */
+export async function disableAdvancedMode(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const storeKey = 'user-tier-storage';
+    const existing = localStorage.getItem(storeKey);
+    if (!existing) return;
+
+    const storeState = JSON.parse(existing);
+    storeState.state.isAdvancedModeEnabled = false;
+    localStorage.setItem(storeKey, JSON.stringify(storeState));
+  });
+
+  await page.reload();
+}
+
+/**
  * Clear user tier (logout/reset)
  */
 export async function clearUserTier(page: Page): Promise<void> {

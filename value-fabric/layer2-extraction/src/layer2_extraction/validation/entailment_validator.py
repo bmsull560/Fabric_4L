@@ -275,7 +275,7 @@ class EntailmentValidator:
         results = []
 
         for rel in relationships:
-            constraint = DOMAIN_RANGE_CONSTRAINTS.get(rel.predicate)
+            constraint = DOMAIN_RANGE_CONSTRAINTS.get(rel.canonical_predicate)
             if not constraint:
                 continue
 
@@ -293,7 +293,7 @@ class EntailmentValidator:
                             rule_id="VAL-002",
                             passed=False,
                             severity=ValidationSeverity.ERROR,
-                            message=f"Entity type {source_type.__name__} not in domain of {rel.predicate.value}",
+                            message=f"Entity type {source_type.__name__} not in domain of {rel.canonical_predicate.value}",
                             affected_entities=[rel.source_id],
                             affected_relationships=[rel.id],
                             suggestion=f"Source must be one of: {[t.__name__ for t in expected_domain]}",
@@ -308,7 +308,7 @@ class EntailmentValidator:
                             rule_id="VAL-002",
                             passed=False,
                             severity=ValidationSeverity.ERROR,
-                            message=f"Entity type {target_type.__name__} not in range of {rel.predicate.value}",
+                            message=f"Entity type {target_type.__name__} not in range of {rel.canonical_predicate.value}",
                             affected_entities=[rel.target_id],
                             affected_relationships=[rel.id],
                             suggestion=f"Target must be one of: {[t.__name__ for t in expected_range]}",
@@ -328,9 +328,9 @@ class EntailmentValidator:
         for rel in relationships:
             if rel.source_id not in rel_count:
                 rel_count[rel.source_id] = {}
-            if rel.predicate not in rel_count[rel.source_id]:
-                rel_count[rel.source_id][rel.predicate] = 0
-            rel_count[rel.source_id][rel.predicate] += 1
+            if rel.canonical_predicate not in rel_count[rel.source_id]:
+                rel_count[rel.source_id][rel.canonical_predicate] = 0
+            rel_count[rel.source_id][rel.canonical_predicate] += 1
 
         # Check against constraints
         for entity_id, type_counts in rel_count.items():
@@ -378,7 +378,7 @@ class EntailmentValidator:
         # Build hierarchy graph for subtype relationships
         hierarchy_edges: dict[str, str] = {}
         for rel in relationships:
-            if rel.predicate == PredicateType.CAPABILITY_SUBTYPE_OF:
+            if rel.canonical_predicate == PredicateType.CAPABILITY_SUBTYPE_OF:
                 hierarchy_edges[rel.source_id] = rel.target_id
 
         # Check for cycles using DFS
@@ -423,7 +423,7 @@ class EntailmentValidator:
             pair = tuple(sorted([rel.source_id, rel.target_id]))
             if pair not in rel_pairs:
                 rel_pairs[pair] = set()
-            rel_pairs[pair].add(rel.predicate)
+            rel_pairs[pair].add(rel.canonical_predicate)
 
         # Check for contradictory pairs
         for pair, predicates in rel_pairs.items():

@@ -4,28 +4,69 @@ Defines the 4 core entity types: Capability, UseCase, Persona, ValueDriver
 using Pydantic v2 with strict validation.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RoleType(str, Enum):
-    """Valid persona role types in the enterprise buying process."""
+    """Valid persona role types in the enterprise buying process.
+
+    Describes the buying-process function, distinct from organizational seniority.
+    """
 
     ECONOMIC_BUYER = "economic_buyer"
+    CHAMPION = "champion"
     OPERATIONAL_USER = "operational_user"
+    TECHNICAL_BUYER = "technical_buyer"
     STAKEHOLDER = "stakeholder"
 
 
-class ValueCategory(str, Enum):
-    """Categories of value drivers in enterprise software."""
+class SeniorityLevel(str, Enum):
+    """Organizational seniority level for personas.
 
-    REVENUE = "revenue"
-    COST = "cost"
-    RISK = "risk"
-    CAPITAL = "capital"
+    Aligned with pack ontology role_type values:
+    - EXECUTIVE_SPONSOR: Executive sponsor with budget authority
+    - C_SUITE: C-level executive (CEO, CFO, CTO, etc.)
+    - VP: Vice President level
+    - DIRECTOR: Director level
+    - MANAGER: Manager level
+    - INDIVIDUAL_CONTRIBUTOR: Individual contributor / specialist
+    - UNKNOWN: Seniority level not specified
+    """
+
+    EXECUTIVE_SPONSOR = "executive_sponsor"
+    C_SUITE = "c_suite"
+    VP = "vp"
+    DIRECTOR = "director"
+    MANAGER = "manager"
+    INDIVIDUAL_CONTRIBUTOR = "individual_contributor"
+    UNKNOWN = "unknown"
+
+
+class ValueCategory(str, Enum):
+    """Categories of value drivers in enterprise software.
+
+    Aligned with pack ontology values:
+    - CAPITAL_EFFICIENCY: Optimizes capital deployment (cash flow, inventory)
+    - COST_REDUCTION: Reduces operational costs (automation, efficiency)
+    - RISK_MITIGATION: Reduces business risk (compliance, security)
+    - REVENUE_ENHANCEMENT: Increases revenue (up-sell, cross-sell, retention)
+    """
+
+    # Pack-aligned granular categories
+    CAPITAL_EFFICIENCY = "capital_efficiency"
+    COST_REDUCTION = "cost_reduction"
+    RISK_MITIGATION = "risk_mitigation"
+    REVENUE_ENHANCEMENT = "revenue_enhancement"
+
+    # Legacy values (maintained for backward compatibility, map to new values)
+    REVENUE = "revenue"  # Maps to REVENUE_ENHANCEMENT
+    COST = "cost"  # Maps to COST_REDUCTION
+    RISK = "risk"  # Maps to RISK_MITIGATION
+    CAPITAL = "capital"  # Maps to CAPITAL_EFFICIENCY
 
 
 class Capability(BaseModel):
@@ -57,7 +98,7 @@ class Capability(BaseModel):
     apqc_mapping: str | None = None
     source_refs: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    extracted_at: datetime = Field(default_factory=datetime.utcnow)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     extraction_job_id: str | None = None
 
     @field_validator("name")
@@ -66,8 +107,8 @@ class Capability(BaseModel):
         """Normalize name for matching while preserving original in display."""
         return v.strip()
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "Real-Time Data Ingestion",
                 "description": "Stream data from multiple sources with sub-second latency",
@@ -75,6 +116,7 @@ class Capability(BaseModel):
                 "confidence": 0.92,
             }
         }
+    )
 
 
 class UseCase(BaseModel):
@@ -103,7 +145,7 @@ class UseCase(BaseModel):
     workflow_steps: list[str] = Field(default_factory=list)
     kpis: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    extracted_at: datetime = Field(default_factory=datetime.utcnow)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     extraction_job_id: str | None = None
 
     @field_validator("required_capabilities")
@@ -127,6 +169,7 @@ class Persona(BaseModel):
     Attributes:
         id: Unique identifier (UUID)
         role_type: Type of role in buying process
+        seniority_level: Organizational seniority level
         title: Job title
         department: Department/organization
         pain_points: List of problems this persona faces
@@ -138,13 +181,14 @@ class Persona(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     role_type: RoleType
+    seniority_level: SeniorityLevel = Field(default=SeniorityLevel.UNKNOWN)
     title: str = Field(..., min_length=1, max_length=255)
     department: str = Field(..., min_length=1, max_length=255)
     pain_points: list[str] = Field(default_factory=list)
     success_metrics: list[str] = Field(default_factory=list)
     influenced_by: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    extracted_at: datetime = Field(default_factory=datetime.utcnow)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     extraction_job_id: str | None = None
 
     @field_validator("influenced_by")
@@ -187,7 +231,7 @@ class ValueDriver(BaseModel):
     unit: str = Field(..., min_length=1, max_length=50)
     time_to_value: str | None = None
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
-    extracted_at: datetime = Field(default_factory=datetime.utcnow)
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     extraction_job_id: str | None = None
 
     @field_validator("formula_string")
