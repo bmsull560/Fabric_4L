@@ -262,7 +262,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
                 )
 
             old_status = FormulaStatus(record["status"] or "draft")
-            current_version = record["current_version"]
+            record["current_version"]
 
             # Validate transition
             if old_status == FormulaStatus.ACTIVE:
@@ -331,7 +331,7 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
         request: DeprecationRequest,
     ) -> GovernanceTransitionResult:
         """Deprecate a formula in Neo4j."""
-        now = datetime.now(UTC).isoformat()
+        datetime.now(UTC).isoformat()
 
         # Get current status
         check_query = """

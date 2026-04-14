@@ -158,7 +158,7 @@ async def api_client_with_neo4j(
     """Provide API client with real Neo4j dependencies injected."""
     loader = Neo4jLoader(driver=neo4j_driver, settings=settings)
     sync_manager = SyncManager(loader=loader, driver=neo4j_driver, settings=settings)
-    vector_store = VectorStore(driver=neo4j_driver, settings=settings)
+    VectorStore(driver=neo4j_driver, settings=settings)
     
     # Override dependencies
     app.dependency_overrides[get_sync_manager] = lambda: sync_manager

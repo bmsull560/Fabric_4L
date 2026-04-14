@@ -47,6 +47,9 @@ make verify
 ### Python
 
 - Formatter and linter: **ruff** (configured in each `pyproject.toml`)
+- Do **not** add new global Ruff ignores in `[tool.ruff.lint].ignore` for correctness rules
+  (especially `F821`, `F811`, `F841`); suppressions must be scoped to the exact line with
+  `# noqa: <rule>` and include a short justification.
 - Type checker: **mypy** — type hints required on all public functions
 - Test runner: **pytest** — 80%+ coverage required on all layers
 - No bare `except:` — always catch specific exception types

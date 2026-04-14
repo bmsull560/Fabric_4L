@@ -73,7 +73,7 @@ async def test_load_turtle_string():
         vf:confidence "0.9"^^xsd:float .
     '''
 
-    loader = Neo4jLoader()
+    Neo4jLoader()
 
     # This would require a real Neo4j instance
     # For unit tests, we just verify parsing works

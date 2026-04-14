@@ -666,6 +666,12 @@ def get_current_span() -> Span | None:
     return tracer.get_current_span()
 
 
+def get_current_trace_context() -> TraceContext | None:
+    """Get current active trace context."""
+    tracer = get_tracer()
+    return tracer.get_current_trace_context()
+
+
 def get_trace_headers() -> dict[str, str]:
     """Get trace context headers for propagation.
 

@@ -89,6 +89,7 @@ from .models import (
     BatchEntityResponse,
     CentralityRequest,
     CentralityResponse,
+    Community,
     CommunityDetectionRequest,
     CommunityDetectionResponse,
     DependencyStatus,
@@ -1108,7 +1109,7 @@ async def detailed_health_check(
     app_state: AppState = Depends(get_app_state),
 ):
     """Get detailed health information with system info and configuration."""
-    start_time = time.time()
+    time.time()
 
     # Basic health check
     dependencies = await check_dependencies()

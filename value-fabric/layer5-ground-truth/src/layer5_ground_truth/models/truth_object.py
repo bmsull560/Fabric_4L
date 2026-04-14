@@ -31,7 +31,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
-from sqlalchemy.types import JSON, String, TypeDecorator
+from sqlalchemy.types import JSON, TypeDecorator
 
 # ---------------------------------------------------------------------------
 # Declarative Base

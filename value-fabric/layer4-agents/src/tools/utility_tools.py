@@ -24,7 +24,6 @@ class ValidateInputTool(BaseTool):
         """Validate input against schema."""
         data = input_data.data
         schema_name = input_data.schema_name
-        strict = input_data.strict
 
         errors = []
         normalized = {}
@@ -97,7 +96,6 @@ class FormatCurrencyTool(BaseTool):
         """Format as currency."""
         amount = input_data.amount
         currency = input_data.currency.upper()
-        locale = input_data.locale
         decimals = input_data.decimals
 
         symbol = self.CURRENCY_SYMBOLS.get(currency, currency)

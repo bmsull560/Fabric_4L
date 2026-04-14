@@ -7,7 +7,7 @@ to Turtle format with PROV-O provenance annotations.
 from datetime import datetime
 
 from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace, URIRef
-from rdflib.namespace import PROV, XSD
+from rdflib.namespace import XSD
 
 from layer2_extraction.models import (
     Capability,

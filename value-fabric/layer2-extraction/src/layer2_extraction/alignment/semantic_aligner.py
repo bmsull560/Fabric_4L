@@ -151,7 +151,7 @@ class SemanticAligner:
             return [], []
 
         # Get entity type
-        entity_type = type(entities[0])
+        type(entities[0])
 
         # Generate embeddings for all entities
         texts = [self._entity_to_text(e) for e in entities]

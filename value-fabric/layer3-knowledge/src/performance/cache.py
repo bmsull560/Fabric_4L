@@ -1,6 +1,7 @@
 """Comprehensive API performance optimization and caching strategies."""
 
 import asyncio
+import builtins
 import gzip
 import hashlib
 import json
@@ -61,7 +62,7 @@ class CacheEntry:
     access_count: int = 0
     size_bytes: int = 0
     ttl: int | None = None
-    tags: Set[str] = field(default_factory=set)
+    tags: set[str] = field(default_factory=set)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def is_expired(self) -> bool:
@@ -189,7 +190,7 @@ class MemoryCache:
         return entry.value
 
     async def set(
-        self, key: str, value: Any, ttl: int | None = None, tags: Set[str] | None = None
+        self, key: str, value: Any, ttl: int | None = None, tags: set[str] | None = None
     ) -> bool:
         """Set value in cache.
 
@@ -202,7 +203,7 @@ class MemoryCache:
         Returns:
             True if set successfully
         """
-        start_time = time.time()
+        time.time()
 
         # Serialize and compress if needed
         serialized_value = self._serialize(value)
@@ -256,7 +257,7 @@ class MemoryCache:
         """
         return await self._remove_entry(key)
 
-    async def clear(self, pattern: str | None = None, tags: Set[str] | None = None):
+    async def clear(self, pattern: str | None = None, tags: builtins.set[str] | None = None):
         """Clear cache entries.
 
         Args:
@@ -476,7 +477,7 @@ class MemoryCache:
             return None
 
     async def set_with_serialization(
-        self, key: str, value: Any, ttl: int | None = None, tags: Set[str] | None = None
+        self, key: str, value: Any, ttl: int | None = None, tags: builtins.set[str] | None = None
     ) -> bool:
         """Set value with automatic serialization.
 
@@ -619,7 +620,7 @@ class RedisCache:
             return None
 
     async def set(
-        self, key: str, value: Any, ttl: int | None = None, tags: Set[str] | None = None
+        self, key: str, value: Any, ttl: int | None = None, tags: set[str] | None = None
     ) -> bool:
         """Set value in Redis cache.
 
@@ -679,7 +680,7 @@ class RedisCache:
             logger.error(f"Redis delete error for key {key}: {e}")
             return False
 
-    async def clear(self, pattern: str | None = None, tags: Set[str] | None = None):
+    async def clear(self, pattern: str | None = None, tags: builtins.set[str] | None = None):
         """Clear cache entries.
 
         Args:
@@ -841,7 +842,7 @@ class CacheManager:
         key: str,
         value: Any,
         ttl: int | None = None,
-        tags: Set[str] | None = None,
+        tags: set[str] | None = None,
         cache_type: str = "auto",
     ) -> bool:
         """Set value in cache.
@@ -906,7 +907,7 @@ class CacheManager:
     async def clear(
         self,
         pattern: str | None = None,
-        tags: Set[str] | None = None,
+        tags: builtins.set[str] | None = None,
         cache_type: str = "auto",
     ):
         """Clear cache entries.
@@ -1038,7 +1039,7 @@ class PerformanceOptimizer:
         self,
         items: dict[str, Any],
         ttl: int | None = None,
-        tags: Set[str] | None = None,
+        tags: set[str] | None = None,
         cache_type: str = "auto",
     ) -> dict[str, bool]:
         """Batch set in cache.

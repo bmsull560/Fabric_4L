@@ -13,7 +13,9 @@ from .tracer import (
     SpanContext,
     SpanKind,
     SpanStatus,
+    TraceContext,
     Tracer,
+    get_current_span,
     get_tracer,
 )
 
