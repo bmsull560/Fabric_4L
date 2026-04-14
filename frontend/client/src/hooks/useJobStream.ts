@@ -7,10 +7,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { apiClient } from '@/api/client';
 import { SSEBuilders, SSE_TIMEOUT_MS as SHARED_SSE_TIMEOUT_MS } from './useSSEUtils';
+import { parseExtractionJob } from '@/types/api';
 
 export interface JobStreamEvent {
   type: 'progress' | 'status' | 'log' | 'entity' | 'complete' | 'error';
-  timestamp: string;
+  timestamp?: string;
   data: unknown;
 }
 
@@ -29,6 +30,20 @@ export interface JobStreamState {
 }
 
 const POLL_INTERVAL_MS = 2000;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseJobStreamEvent(eventPayload: unknown): JobStreamEvent | null {
+  if (!isRecord(eventPayload)) return null;
+  if (typeof eventPayload.type !== 'string') return null;
+  return {
+    type: eventPayload.type as JobStreamEvent['type'],
+    timestamp: typeof eventPayload.timestamp === 'string' ? eventPayload.timestamp : undefined,
+    data: eventPayload.data,
+  };
+}
 
 /**
  * Subscribe to real-time job updates via SSE or polling fallback.
@@ -59,26 +74,26 @@ export function useJobStream(jobId: string | null) {
 
     try {
       const response = await apiClient.get('l2', `/jobs/${currentJobId}`);
-      const job = response.data;
+      const job = parseExtractionJob(response.data);
       
       setState(prev => ({
-        progress: job?.progress_percent_complete ?? prev.progress,
-        status: mapJobStatus(job?.status),
-        logs: job?.progress_logs?.map((log: any) => ({
-          timestamp: log.timestamp,
-          level: log.level,
-          message: log.message,
-        })) ?? prev.logs,
-        entities: job?.extracted_entities?.map((e: any) => ({
-          type: e.type,
-          name: e.name,
-        })) ?? prev.entities,
+        progress: job.progress_percent_complete ?? prev.progress,
+        status: mapJobStatus(job.status || ''),
+        logs: (job.progress_logs || []).map((log) => ({
+          timestamp: log.timestamp || '',
+          level: log.level || 'INFO',
+          message: log.message || '',
+        })),
+        entities: (job.extracted_entities || []).map((entity) => ({
+          type: entity.type || 'unknown',
+          name: entity.name || 'Unknown',
+        })),
       }));
       
       setError(null);
       
       // Stop polling if job is complete
-      if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job?.status)) {
+      if (['COMPLETED', 'FAILED', 'CANCELLED'].includes(job.status || '')) {
         if (pollIntervalRef.current) {
           clearInterval(pollIntervalRef.current);
           pollIntervalRef.current = null;
@@ -131,18 +146,40 @@ export function useJobStream(jobId: string | null) {
             timeoutRef.current = null;
           }
 
-          const data = JSON.parse(event.data) as JobStreamEvent;
+          const parsed = parseJobStreamEvent(JSON.parse(event.data));
+          if (!parsed) return;
 
           setState(prev => {
-            switch (data.type) {
+            switch (parsed.type) {
               case 'progress':
-                return { ...prev, progress: data.data as number };
+                return { ...prev, progress: typeof parsed.data === 'number' ? parsed.data : prev.progress };
               case 'status':
-                return { ...prev, status: mapJobStatus(data.data as string) };
+                return { ...prev, status: mapJobStatus(typeof parsed.data === 'string' ? parsed.data : '') };
               case 'log':
-                return { ...prev, logs: [...prev.logs, data.data as JobStreamState['logs'][0]] };
+                if (!isRecord(parsed.data)) return prev;
+                return {
+                  ...prev,
+                  logs: [
+                    ...prev.logs,
+                    {
+                      timestamp: typeof parsed.data.timestamp === 'string' ? parsed.data.timestamp : '',
+                      level: typeof parsed.data.level === 'string' ? parsed.data.level : 'INFO',
+                      message: typeof parsed.data.message === 'string' ? parsed.data.message : '',
+                    },
+                  ],
+                };
               case 'entity':
-                return { ...prev, entities: [...prev.entities, data.data as JobStreamState['entities'][0]] };
+                if (!isRecord(parsed.data)) return prev;
+                return {
+                  ...prev,
+                  entities: [
+                    ...prev.entities,
+                    {
+                      type: typeof parsed.data.type === 'string' ? parsed.data.type : 'unknown',
+                      name: typeof parsed.data.name === 'string' ? parsed.data.name : 'Unknown',
+                    },
+                  ],
+                };
               case 'complete':
               case 'error':
                 // Stop on completion or error
