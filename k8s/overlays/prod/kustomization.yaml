@@ -5,6 +5,8 @@ namespace: value-fabric
 
 resources:
   - ../../base
+  - ../../external-secrets/vault-integration.yml
+  - ../../external-secrets/vault-database-dynamic.yml
 
 labels:
   - pairs:
