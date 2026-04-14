@@ -6,7 +6,6 @@ contracts and can be used as drop-in replacements for hard-coded time/ID calls.
 
 from __future__ import annotations
 
-import ast
 import sys
 from pathlib import Path
 
@@ -14,10 +13,10 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-# Directories that should prefer injectable Clock over bare datetime.now/utcnow
-CHECKED_DIRS = [
-    REPO_ROOT / "value-fabric" / "shared",
-]
+# Ensure shared module is importable
+_vf_path = str(REPO_ROOT / "value-fabric")
+if _vf_path not in sys.path:
+    sys.path.insert(0, _vf_path)
 
 
 class TestClockProtocolCompliance:

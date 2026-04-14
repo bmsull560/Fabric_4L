@@ -11,7 +11,7 @@ from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from ..testability import IDGenerator, UUIDGenerator
+from ..testability import IDGenerator
 from .exceptions import ValueFabricException
 from .models import ErrorCode, ErrorResponse
 

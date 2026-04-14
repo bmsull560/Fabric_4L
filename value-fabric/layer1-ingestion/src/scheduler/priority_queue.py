@@ -4,13 +4,11 @@ Manages URL queue with priority-based ordering and rate limiting.
 """
 
 import random
-import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
-
 from shared.testability import Clock, SystemClock
 
 from ..shared.config import settings
@@ -33,7 +31,7 @@ class QueueItem:
     def __post_init__(self):
         # Ensure timestamp is set
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc)
+            self.timestamp = datetime.now(UTC)
 
 
 class PriorityScheduler:

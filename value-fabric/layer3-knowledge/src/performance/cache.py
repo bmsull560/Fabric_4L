@@ -12,13 +12,12 @@ import time
 import zlib
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
-
 from shared.testability import Clock, SystemClock
 
 logger = logging.getLogger(__name__)
