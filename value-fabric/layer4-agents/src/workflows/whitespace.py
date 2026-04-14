@@ -1,8 +1,11 @@
 """Whitespace Analysis workflow implementation."""
 
+import asyncio
 import logging
 from typing import Any
 
+from ..metrics import get_metrics
+from ..metrics.llm_cost_calculator import LLMCostCalculator
 from ..models.agent_state import (
     GapAnalysis,
     WhitespaceAgentState,
@@ -10,6 +13,7 @@ from ..models.agent_state import (
     WorkflowStatus,
 )
 from ..models.workflow_config import WHITESPACE_WORKFLOW_CONFIG
+from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
 
@@ -99,6 +103,11 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
         from openai import AsyncOpenAI
 
         api_key = self.config.get("openai_api_key") if self.config else None
+        tenant_id = str(state.metadata.get("tenant_id", "unknown"))
+        initial_model = "gpt-4o-mini"
+        decision = await get_llm_budget_guardrails().precheck_or_raise(tenant_id, initial_model)
+        if decision.throttle_seconds > 0:
+            await asyncio.sleep(decision.throttle_seconds)
         client = AsyncOpenAI(api_key=api_key)
 
         prompt = f"""Extract structured business needs from the following prospect description.
@@ -114,7 +123,9 @@ Return ONLY the JSON array, no other text."""
 
         try:
             response = await client.chat.completions.create(
-                model="gpt-4o-mini", messages=[{"role": "user", "content": prompt}], temperature=0.3
+                model=decision.model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
             )
             import json
 
@@ -125,6 +136,29 @@ Return ONLY the JSON array, no other text."""
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
             extracted_needs = json.loads(content)
+            prompt_tokens = response.usage.prompt_tokens if response.usage else 0
+            completion_tokens = response.usage.completion_tokens if response.usage else 0
+            cost = LLMCostCalculator().calculate_cost(
+                provider="openai",
+                model=decision.model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+            await get_llm_budget_guardrails().record_usage(tenant_id=tenant_id, cost_usd=cost)
+            metrics = get_metrics()
+            if metrics:
+                metrics.record_llm_cost(
+                    provider="openai",
+                    model=decision.model,
+                    tenant_id=tenant_id,
+                    cost=cost,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    status="throttled" if decision.escalation_required else "success",
+                )
+        except LLMBudgetExceededError as e:
+            logger.error("LLM need extraction blocked by budget guardrail: %s", e)
+            extracted_needs = self._extract_needs_basic(needs_text)
         except Exception as e:
             logger.error(f"LLM need extraction failed: {e}")
             # Fallback to basic extraction
