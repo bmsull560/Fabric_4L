@@ -7,8 +7,6 @@ data:
   alertmanager.yml: |
     global:
       resolve_timeout: 5m
-      # smtp_smarthost: 'localhost:587'  # Configure for email alerts
-      # slack_api_url: ''  # Configure for Slack notifications
 
     route:
       receiver: default
@@ -25,11 +23,11 @@ data:
     receivers:
       - name: default
         webhook_configs:
-          - url: 'http://localhost:5001/webhook'  # TODO: Replace with actual webhook endpoint
+          - url_file: '/etc/alertmanager/secrets/default_webhook_url'
             send_resolved: true
       - name: critical
         webhook_configs:
-          - url: 'http://localhost:5001/webhook'  # TODO: Replace with critical alerting endpoint
+          - url_file: '/etc/alertmanager/secrets/critical_webhook_url'
             send_resolved: true
 
     inhibit_rules:
@@ -70,9 +68,21 @@ spec:
         app: alertmanager
         component: monitoring
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: alertmanager
           image: prom/alertmanager:v0.28.1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           args:
             - --config.file=/etc/alertmanager/alertmanager.yml
             - --storage.path=/alertmanager
@@ -83,6 +93,9 @@ spec:
             - name: config
               mountPath: /etc/alertmanager/alertmanager.yml
               subPath: alertmanager.yml
+            - name: alerting-secrets
+              mountPath: /etc/alertmanager/secrets
+              readOnly: true
             - name: data
               mountPath: /alertmanager
           resources:
@@ -110,6 +123,14 @@ spec:
         - name: config
           configMap:
             name: alertmanager-config
+        - name: alerting-secrets
+          secret:
+            secretName: alertmanager-secrets
+            items:
+              - key: default_webhook_url
+                path: default_webhook_url
+              - key: critical_webhook_url
+                path: critical_webhook_url
         - name: data
           persistentVolumeClaim:
             claimName: alertmanager-data

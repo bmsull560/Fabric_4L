@@ -124,16 +124,23 @@ def get_db_session(
         TenantContextError: If tenant_id is missing/invalid and require_tenant=True
     """
     # SECURITY: Enforce mandatory tenant context by default
-    if require_tenant and tenant_id is None:
-        raise TenantContextError(
-            "Database session requires explicit tenant context. "
-            "Pass tenant_id or use require_tenant=False for admin operations."
-        )
+    if require_tenant:
+        # This will raise TenantContextError in fail-safe mode if tenant_id is invalid
+        tenant_id = validate_tenant_id(tenant_id)
+    elif tenant_id is not None:
+        # Validate even when require_tenant=False, if a tenant_id was provided
+        tenant_id = validate_tenant_id(tenant_id)
+    # If require_tenant=False and tenant_id is None, we skip validation (admin bypass)
     
     session = SessionLocal()
     try:
-        # P0-08: Set tenant context for RLS (fail-safe validation)
-        set_tenant_context(session, tenant_id)
+        # P0-08: Set tenant context for RLS
+        # Empty string for admin bypass, validated tenant_id otherwise
+        normalized = str(tenant_id) if tenant_id is not None else ""
+        session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": normalized}
+        )
         yield session
         session.commit()
     except Exception:
@@ -146,13 +153,21 @@ def get_db_session(
 def get_db() -> Generator[Session, None, None]:
     """FastAPI dependency for database sessions (without RLS).
     
-    SECURITY: Deprecated - use get_db_with_tenant for production code.
-    This bypasses tenant isolation and should only be used for:
-    - Health checks
-    - Admin operations with proper role authentication
+    SECURITY: Use only for health checks or admin operations with proper
+    role authentication. All production endpoints should use get_db_with_tenant.
     """
-    with get_db_session(require_tenant=False) as session:
+    # SECURITY: Bypass tenant validation for health checks (admin role required in DB)
+    session = SessionLocal()
+    try:
+        # Clear tenant context - RLS bypass only works for admin/system roles
+        session.execute(text("SET LOCAL app.tenant_id = ''"))
         yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def get_db_with_tenant(
@@ -176,37 +191,40 @@ def get_db_with_tenant(
     Raises:
         HTTPException: 400 if X-Tenant-ID header is missing or invalid
     """
-    # SECURITY: Fail-fast on missing tenant header
-    if not x_tenant_id or not x_tenant_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="X-Tenant-ID header is required for tenant isolation",
-        )
-    
     try:
-        # Validate UUID format for strict tenant isolation
-        UUID(x_tenant_id.strip())
-    except ValueError:
+        # SECURITY: Fail-safe validation via validate_tenant_id
+        # This checks for empty values and validates UUID format
+        validate_tenant_id(x_tenant_id)
+    except TenantContextError as e:
+        # Convert TenantContextError to HTTP 400 for FastAPI
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="X-Tenant-ID must be a valid UUID",
-        )
+            detail=str(e),
+        ) from e
     
     with get_db_session(tenant_id=x_tenant_id, require_tenant=True) as session:
         yield session
 
 
 def get_db_with_tenant_from_context(
-    tenant_id: UUID | str | None = None
+    tenant_id: UUID | str
 ) -> Generator[Session, None, None]:
     """
     Context manager for database sessions with RLS tenant context.
     For use outside FastAPI request lifecycle (e.g., background tasks).
+    
+    SECURITY: Requires explicit tenant_id - fail-safe by default.
 
     Usage::
 
         with get_db_with_tenant_from_context(tenant_id=tenant_uuid) as db:
             ...
+    
+    Args:
+        tenant_id: Required tenant UUID (cannot be None)
+    
+    Raises:
+        TenantContextError: If tenant_id is missing or invalid
     """
-    with get_db_session(tenant_id=tenant_id) as session:
+    with get_db_session(tenant_id=tenant_id, require_tenant=True) as session:
         yield session

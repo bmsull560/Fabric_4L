@@ -172,17 +172,16 @@ async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency for database sessions (without RLS).
+    
+    SECURITY: Use only for health checks or admin operations with proper
+    role authentication. All production endpoints should use get_db_with_tenant.
     """
-    FastAPI dependency that yields an async database session.
-
-    Usage::
-
-        @router.get("/accounts/{id}")
-        async def get_account(id: UUID, db: AsyncSession = Depends(get_db)):
-            ...
-    """
+    # SECURITY: Bypass tenant validation for health checks (admin role required in DB)
     factory = get_session_factory()
     async with factory() as session:
+        # Clear tenant context - RLS bypass only works for admin/system roles
+        await session.execute(text("SET LOCAL app.tenant_id = ''"))
         try:
             yield session
             await session.commit()
@@ -212,26 +211,24 @@ async def get_db_with_tenant(
     Raises:
         HTTPException: 400 if X-Tenant-ID header is missing or invalid
     """
-    # SECURITY: Fail-fast on missing tenant header
-    if not x_tenant_id or not x_tenant_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="X-Tenant-ID header is required for tenant isolation",
-        )
-    
     try:
-        # Validate UUID format for strict tenant isolation
-        UUID(x_tenant_id.strip())
-    except ValueError:
+        # SECURITY: Fail-safe validation via validate_tenant_id
+        # This checks for empty values and validates UUID format
+        validate_tenant_id(x_tenant_id)
+    except TenantContextError as e:
+        # Convert TenantContextError to HTTP 400 for FastAPI
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="X-Tenant-ID must be a valid UUID",
-        )
+            detail=str(e),
+        ) from e
     
     factory = get_session_factory()
     async with factory() as session:
-        # P0-08: Set tenant context for RLS (fail-safe validation)
-        await set_tenant_context(session, x_tenant_id)
+        # P0-08: Set tenant context for RLS (already validated above)
+        await session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": x_tenant_id}
+        )
         try:
             yield session
             await session.commit()
@@ -265,17 +262,23 @@ async def db_session(
         TenantContextError: If tenant_id is missing/invalid and require_tenant=True
     """
     # SECURITY: Enforce mandatory tenant context by default
-    if require_tenant and tenant_id is None:
-        raise TenantContextError(
-            "Database session requires explicit tenant context. "
-            "Pass tenant_id or use require_tenant=False for admin operations."
-        )
+    if require_tenant:
+        # This will raise TenantContextError in fail-safe mode if tenant_id is invalid
+        tenant_id = validate_tenant_id(tenant_id)
+    elif tenant_id is not None:
+        # Validate even when require_tenant=False, if a tenant_id was provided
+        tenant_id = validate_tenant_id(tenant_id)
+    # If require_tenant=False and tenant_id is None, we skip validation (admin bypass)
     
     factory = get_session_factory()
     async with factory() as session:
-        # P0-08: Set tenant context for RLS (fail-safe validation)
-        if tenant_id:
-            await set_tenant_context(session, tenant_id)
+        # P0-08: Set tenant context for RLS
+        # Empty string for admin bypass, validated tenant_id otherwise
+        normalized = str(tenant_id) if tenant_id is not None else ""
+        await session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": normalized}
+        )
         try:
             yield session
             await session.commit()

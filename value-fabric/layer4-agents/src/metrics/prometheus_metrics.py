@@ -166,6 +166,12 @@ class PrometheusMetrics:
             ["provider", "model", "tenant_id", "status"],
             registry=self.config.registry,
         )
+        self._metrics["llm_budget_guardrail_events_total"] = Counter(
+            "vf_llm_budget_guardrail_events_total",
+            "Total budget guardrail events for LLM usage",
+            ["tenant_id", "action", "reason"],
+            registry=self.config.registry,
+        )
 
         # Formula approval pending gauge
         self._metrics["formula_approval_pending"] = Gauge(
@@ -251,6 +257,19 @@ class PrometheusMetrics:
     def set_formula_approval_pending(self, tenant_id: str, value: int) -> None:
         if self.config.enabled:
             self._metrics["formula_approval_pending"].labels(tenant_id=tenant_id).set(value)
+
+    def increment_llm_budget_guardrail_event(
+        self,
+        tenant_id: str,
+        action: str,
+        reason: str,
+    ) -> None:
+        if self.config.enabled:
+            self._metrics["llm_budget_guardrail_events_total"].labels(
+                tenant_id=tenant_id,
+                action=action,
+                reason=reason,
+            ).inc()
 
     def inc_formula_approval_pending(self, tenant_id: str) -> None:
         if self.config.enabled:

@@ -218,6 +218,8 @@ All Phase 1-5 implementation work complete. Remaining:
 - **Launch Readiness Assessment:** `.windsurf/plans/launch-readiness-2026-04-11.md` - Detailed sprint plan and production checklist
 - **Execution Status:** `.windsurf/plans/execution-status-sync-20250410-1204.md` - Task-level evidence
 - **Final Report:** `LAUNCH_READINESS_REPORT.md` - Comprehensive execution summary
+- **Release Checklist:** `docs/runbooks/release-checklist.md` - Standard pre-release approval checklist
+- **Compliance Control Matrix:** `docs/compliance/control-matrix.md` - SOC2/FedRAMP control-to-evidence mapping
 - **Task 25 Plan:** `.windsurf/plans/task-25-vector-e2e-320af0.md` - Detailed implementation plan
 - **Critical Path:** Deploy → Validate → Production
 

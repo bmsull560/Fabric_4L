@@ -1,0 +1,2550 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Value Fabric - Layer 5: Ground Truth",
+    "description": "Evidence-backed, CFO-defensible facts with validation state machine",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/truths": {
+      "post": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Create a new TruthObject",
+        "description": "Create a new evidence-backed factual claim in EXTRACTED state. If sources are provided and confidence meets the threshold, the object will automatically advance to SUPPORTED or CORROBORATED.",
+        "operationId": "create_truth_api_v1_truths_post",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TruthObjectCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "TruthObject created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TruthObjectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error in request body"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "List TruthObjects",
+        "description": "Paginated, filterable list of TruthObjects for the organization.",
+        "operationId": "list_truths_api_v1_truths_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TruthStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by validation status",
+              "title": "Status"
+            },
+            "description": "Filter by validation status"
+          },
+          {
+            "name": "claim_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ClaimType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by claim type",
+              "title": "Claim Type"
+            },
+            "description": "Filter by claim type"
+          },
+          {
+            "name": "min_maturity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 5,
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum maturity level (0\u20135)",
+              "title": "Min Maturity"
+            },
+            "description": "Minimum maturity level (0\u20135)"
+          },
+          {
+            "name": "min_confidence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum confidence score",
+              "title": "Min Confidence"
+            },
+            "description": "Minimum confidence score"
+          },
+          {
+            "name": "is_stale",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by staleness",
+              "title": "Is Stale"
+            },
+            "description": "Filter by staleness"
+          },
+          {
+            "name": "applies_to_opportunity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by opportunity_id in applies_to",
+              "title": "Applies To Opportunity"
+            },
+            "description": "Filter by opportunity_id in applies_to"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TruthObjectListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/{truth_id}": {
+      "get": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Get a TruthObject",
+        "description": "Retrieve a single TruthObject with full detail, sources, and audit trail.",
+        "operationId": "get_truth_api_v1_truths__truth_id__get",
+        "parameters": [
+          {
+            "name": "truth_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Truth Id"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "TruthObject found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TruthObjectResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "TruthObject not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Soft-delete a TruthObject",
+        "description": "Marks a TruthObject as deleted. Records are never hard-deleted.",
+        "operationId": "delete_truth_api_v1_truths__truth_id__delete",
+        "parameters": [
+          {
+            "name": "truth_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Truth Id"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/{truth_id}/validate": {
+      "post": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Apply a validation state transition",
+        "description": "Trigger a named validation action on a TruthObject. Actions: advance_supported | advance_corroborated | approve | dispute | resolve_dispute | operationalize",
+        "operationId": "validate_truth_api_v1_truths__truth_id__validate_post",
+        "parameters": [
+          {
+            "name": "truth_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Truth Id"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transition applied successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid transition or insufficient evidence"
+          },
+          "404": {
+            "description": "TruthObject not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/{truth_id}/sources": {
+      "post": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Add an evidence source",
+        "description": "Attach a new evidence source to an existing TruthObject. Adding a source may trigger automatic status advancement.",
+        "operationId": "add_truth_source_api_v1_truths__truth_id__sources_post",
+        "parameters": [
+          {
+            "name": "truth_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Truth Id"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddSourceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Source added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TruthSourceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "TruthObject not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/{truth_id}/audit": {
+      "get": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Get validation audit trail",
+        "description": "Returns the full immutable audit log of all state transitions for a TruthObject.",
+        "operationId": "get_audit_trail_api_v1_truths__truth_id__audit_get",
+        "parameters": [
+          {
+            "name": "truth_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Truth Id"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ValidationEventResponse"
+                  },
+                  "title": "Response Get Audit Trail Api V1 Truths  Truth Id  Audit Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/sync-kg": {
+      "post": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Sync approved TruthObjects to Layer 3 Knowledge Graph",
+        "description": "Triggers a bulk sync of all APPROVED TruthObjects that have not yet been synced to the Layer 3 Knowledge Graph.",
+        "operationId": "sync_to_kg_api_v1_truths_sync_kg_post",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sync To Kg Api V1 Truths Sync Kg Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/maturity-ladder": {
+      "get": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Get maturity ladder definition",
+        "description": "Returns the full 0\u20135 maturity ladder with descriptions and advancement criteria.",
+        "operationId": "get_maturity_ladder_api_v1_maturity_ladder_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaturityLadderResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/check-stale": {
+      "post": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Trigger freshness check for stale truths",
+        "description": "Manually trigger the freshness monitor to check for and mark expired TruthObjects as stale. Can be run in dry-run mode to preview.",
+        "operationId": "check_stale_api_v1_truths_check_stale_post",
+        "parameters": [
+          {
+            "name": "dry_run",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Preview only, don't mark stale",
+              "default": false,
+              "title": "Dry Run"
+            },
+            "description": "Preview only, don't mark stale"
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Freshness check completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Stale Api V1 Truths Check Stale Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/stale": {
+      "get": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "List stale TruthObjects",
+        "description": "Returns all TruthObjects marked as stale for the organization.",
+        "operationId": "list_stale_api_v1_truths_stale_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Stale Api V1 Truths Stale Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/truths/freshness-summary": {
+      "get": {
+        "tags": [
+          "ground-truth"
+        ],
+        "summary": "Get freshness status summary",
+        "description": "Returns counts of stale, fresh, and expiring-soon TruthObjects.",
+        "operationId": "freshness_summary_api_v1_truths_freshness_summary_get",
+        "parameters": [
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent",
+              "title": "Organization Id"
+            },
+            "description": "Tenant UUID \u2014 dev/test fallback when JWT is absent"
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "X-Tenant-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Tenant-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Freshness Summary Api V1 Truths Freshness Summary Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "ground-truth",
+          "system"
+        ],
+        "summary": "Health check",
+        "operationId": "health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddSourceRequest": {
+        "properties": {
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType",
+            "description": "Category of evidence",
+            "default": "other"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url",
+            "description": "URL or URI of the source document"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "Internal document / asset ID"
+          },
+          "source_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Title",
+            "description": "Human-readable title of the source"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt",
+            "description": "Verbatim excerpt supporting the claim"
+          },
+          "excerpt_location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt Location",
+            "description": "Location within source, e.g. \"page 3, paragraph 2\""
+          },
+          "confidence_contribution": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence Contribution",
+            "description": "Contribution to overall confidence (0.0\u20131.0)",
+            "default": 0.0
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date",
+            "description": "Date the source was published or captured"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "AddSourceRequest",
+        "description": "Schema for POST /truths/{id}/sources."
+      },
+      "ClaimType": {
+        "type": "string",
+        "enum": [
+          "cost_savings_baseline",
+          "revenue_impact",
+          "efficiency_gain",
+          "risk_reduction",
+          "compliance_requirement",
+          "customer_outcome",
+          "technical_capability",
+          "market_benchmark",
+          "persona_pain_point",
+          "value_driver_metric",
+          "other"
+        ],
+        "title": "ClaimType",
+        "description": "Semantic category of the claim being recorded."
+      },
+      "DisputeReason": {
+        "type": "string",
+        "enum": [
+          "conflicting_sources",
+          "stale_data",
+          "methodology_flaw",
+          "out_of_scope",
+          "superseded",
+          "other"
+        ],
+        "title": "DisputeReason",
+        "description": "Reason a truth object was marked as disputed."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          },
+          "layer3_connected": {
+            "type": "boolean",
+            "title": "Layer3 Connected"
+          },
+          "layer3_url": {
+            "type": "string",
+            "title": "Layer3 Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "version",
+          "timestamp",
+          "database",
+          "layer3_connected",
+          "layer3_url"
+        ],
+        "title": "HealthResponse",
+        "description": "Health check response."
+      },
+      "MaturityHistoryResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "from_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Level"
+          },
+          "to_level": {
+            "type": "integer",
+            "title": "To Level"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          },
+          "triggered_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triggered By"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "recorded_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recorded At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "to_level",
+          "recorded_at"
+        ],
+        "title": "MaturityHistoryResponse",
+        "description": "Schema for a MaturityHistory entry in API responses."
+      },
+      "MaturityLadderResponse": {
+        "properties": {
+          "levels": {
+            "items": {
+              "$ref": "#/components/schemas/MaturityLevelDetail"
+            },
+            "type": "array",
+            "title": "Levels"
+          }
+        },
+        "type": "object",
+        "required": [
+          "levels"
+        ],
+        "title": "MaturityLadderResponse",
+        "description": "Reference endpoint \u2014 returns the full maturity ladder definition."
+      },
+      "MaturityLevelDetail": {
+        "properties": {
+          "level": {
+            "type": "integer",
+            "title": "Level"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "required_status": {
+            "type": "string",
+            "title": "Required Status"
+          },
+          "advancement_trigger": {
+            "type": "string",
+            "title": "Advancement Trigger"
+          }
+        },
+        "type": "object",
+        "required": [
+          "level",
+          "name",
+          "description",
+          "required_status",
+          "advancement_trigger"
+        ],
+        "title": "MaturityLevelDetail"
+      },
+      "SourceType": {
+        "type": "string",
+        "enum": [
+          "call_transcript",
+          "crm_field",
+          "email",
+          "website_content",
+          "product_docs",
+          "usage_data",
+          "sec_filing",
+          "analyst_report",
+          "customer_survey",
+          "internal_document",
+          "benchmark_study",
+          "other"
+        ],
+        "title": "SourceType",
+        "description": "Type of evidence source."
+      },
+      "TruthObjectCreate": {
+        "properties": {
+          "claim": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 5,
+            "title": "Claim",
+            "description": "Natural-language claim, e.g. \"20 hrs/month reconciling invoices\"",
+            "examples": [
+              "Manual reporting costs 12 hours/week per analyst"
+            ]
+          },
+          "claim_type": {
+            "$ref": "#/components/schemas/ClaimType",
+            "description": "Semantic category of the claim",
+            "default": "other"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Extraction model confidence score",
+            "examples": [
+              0.82
+            ]
+          },
+          "value": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value",
+            "description": "Structured value: {amount, unit, currency, period} e.g. {amount: 20, unit: 'hours', period: 'month'}",
+            "examples": [
+              {
+                "amount": 20,
+                "period": "month",
+                "unit": "hours"
+              }
+            ]
+          },
+          "applies_to": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applies To",
+            "description": "Scope: {opportunity_id, account_id, industry, product_line, geography}",
+            "examples": [
+              {
+                "account_id": "acct-456",
+                "opportunity_id": "opp-123"
+              }
+            ]
+          },
+          "extraction_job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Job Id",
+            "description": "Layer 2 extraction job that produced this claim"
+          },
+          "extraction_model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Model",
+            "description": "LLM / model version used for extraction"
+          },
+          "raw_extraction_data": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Extraction Data",
+            "description": "Original extraction payload for reproducibility"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/TruthSourceCreate"
+            },
+            "type": "array",
+            "title": "Sources",
+            "description": "Initial evidence sources (optional \u2014 can be added later via POST /truths/{id}/sources)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "claim",
+          "confidence"
+        ],
+        "title": "TruthObjectCreate",
+        "description": "Schema for POST /truths \u2014 create a new TruthObject.\n\nThe organization_id is injected from the auth context in the router;\nit is not accepted from the request body."
+      },
+      "TruthObjectListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TruthObjectSummary"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "TruthObjectListResponse",
+        "description": "Paginated list of TruthObjects."
+      },
+      "TruthObjectResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id"
+          },
+          "claim": {
+            "type": "string",
+            "title": "Claim"
+          },
+          "claim_type": {
+            "type": "string",
+            "title": "Claim Type"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "maturity_level": {
+            "type": "integer",
+            "title": "Maturity Level"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "approved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approval_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approval Notes"
+          },
+          "freshness": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Freshness"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "is_stale": {
+            "type": "boolean",
+            "title": "Is Stale"
+          },
+          "applies_to": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applies To"
+          },
+          "dispute_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispute Reason"
+          },
+          "dispute_notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispute Notes"
+          },
+          "disputed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed By"
+          },
+          "disputed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disputed At"
+          },
+          "kg_node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kg Node Id"
+          },
+          "kg_synced_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kg Synced At"
+          },
+          "extraction_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Job Id"
+          },
+          "extraction_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Model"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/TruthSourceResponse"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "validation_events": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationEventResponse"
+            },
+            "type": "array",
+            "title": "Validation Events"
+          },
+          "maturity_history": {
+            "items": {
+              "$ref": "#/components/schemas/MaturityHistoryResponse"
+            },
+            "type": "array",
+            "title": "Maturity History"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "organization_id",
+          "claim",
+          "claim_type",
+          "confidence",
+          "status",
+          "maturity_level",
+          "freshness",
+          "is_stale",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TruthObjectResponse",
+        "description": "Full TruthObject response including related sources and audit trail."
+      },
+      "TruthObjectSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "claim": {
+            "type": "string",
+            "title": "Claim"
+          },
+          "claim_type": {
+            "type": "string",
+            "title": "Claim Type"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "maturity_level": {
+            "type": "integer",
+            "title": "Maturity Level"
+          },
+          "is_stale": {
+            "type": "boolean",
+            "title": "Is Stale"
+          },
+          "source_count": {
+            "type": "integer",
+            "title": "Source Count",
+            "default": 0
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved By"
+          },
+          "freshness": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Freshness"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "claim",
+          "claim_type",
+          "confidence",
+          "status",
+          "maturity_level",
+          "is_stale",
+          "freshness",
+          "created_at"
+        ],
+        "title": "TruthObjectSummary",
+        "description": "Lightweight summary for list responses."
+      },
+      "TruthSourceCreate": {
+        "properties": {
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType",
+            "description": "Category of evidence",
+            "default": "other"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url",
+            "description": "URL or URI of the source document"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "Internal document / asset ID"
+          },
+          "source_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Title",
+            "description": "Human-readable title of the source"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt",
+            "description": "Verbatim excerpt supporting the claim"
+          },
+          "excerpt_location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt Location",
+            "description": "Location within source, e.g. \"page 3, paragraph 2\""
+          },
+          "confidence_contribution": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence Contribution",
+            "description": "Contribution to overall confidence (0.0\u20131.0)",
+            "default": 0.0
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date",
+            "description": "Date the source was published or captured"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "title": "TruthSourceCreate",
+        "description": "Schema for creating a new TruthSource."
+      },
+      "TruthSourceResponse": {
+        "properties": {
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType",
+            "description": "Category of evidence",
+            "default": "other"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url",
+            "description": "URL or URI of the source document"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id",
+            "description": "Internal document / asset ID"
+          },
+          "source_title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Title",
+            "description": "Human-readable title of the source"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt",
+            "description": "Verbatim excerpt supporting the claim"
+          },
+          "excerpt_location": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Excerpt Location",
+            "description": "Location within source, e.g. \"page 3, paragraph 2\""
+          },
+          "confidence_contribution": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence Contribution",
+            "description": "Contribution to overall confidence (0.0\u20131.0)",
+            "default": 0.0
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date",
+            "description": "Date the source was published or captured"
+          },
+          "extra_metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Extra Metadata"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "truth_object_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Truth Object Id"
+          },
+          "organization_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Organization Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "truth_object_id",
+          "organization_id",
+          "created_at"
+        ],
+        "title": "TruthSourceResponse",
+        "description": "Schema for a TruthSource in API responses."
+      },
+      "TruthStatus": {
+        "type": "string",
+        "enum": [
+          "extracted",
+          "supported",
+          "corroborated",
+          "approved",
+          "disputed"
+        ],
+        "title": "TruthStatus",
+        "description": "Validation state machine \u2014 four ordered states.\n\nTransitions (forward only, except DISPUTED which can revert):\n  extracted \u2192 supported \u2192 corroborated \u2192 approved\n                                       \u2198 disputed (can revert to corroborated)"
+      },
+      "ValidateRequest": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "title": "Action",
+            "description": "Transition to apply: advance_supported | advance_corroborated | approve | dispute | resolve_dispute | operationalize",
+            "examples": [
+              "approve"
+            ]
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Actor",
+            "description": "User ID or service name triggering the transition",
+            "examples": [
+              "john.doe@company.com"
+            ]
+          },
+          "actor_type": {
+            "type": "string",
+            "title": "Actor Type",
+            "description": "'human' | 'system' | 'agent'",
+            "default": "human"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes",
+            "description": "Optional notes for the audit trail"
+          },
+          "dispute_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DisputeReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required when action == 'dispute'"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action",
+          "actor"
+        ],
+        "title": "ValidateRequest",
+        "description": "Schema for POST /truths/{id}/validate \u2014 trigger a state transition.\n\naction values:\n  advance_supported     \u2014 EXTRACTED \u2192 SUPPORTED\n  advance_corroborated  \u2014 SUPPORTED \u2192 CORROBORATED\n  approve               \u2014 CORROBORATED \u2192 APPROVED (requires actor)\n  dispute               \u2014 ANY \u2192 DISPUTED (requires dispute_reason)\n  resolve_dispute       \u2014 DISPUTED \u2192 CORROBORATED\n  operationalize        \u2014 APPROVED \u2192 maturity 5 (status stays APPROVED)"
+      },
+      "ValidateResponse": {
+        "properties": {
+          "truth_object_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Truth Object Id"
+          },
+          "previous_status": {
+            "type": "string",
+            "title": "Previous Status"
+          },
+          "new_status": {
+            "type": "string",
+            "title": "New Status"
+          },
+          "previous_maturity": {
+            "type": "integer",
+            "title": "Previous Maturity"
+          },
+          "new_maturity": {
+            "type": "integer",
+            "title": "New Maturity"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "transition_allowed": {
+            "type": "boolean",
+            "title": "Transition Allowed",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "truth_object_id",
+          "previous_status",
+          "new_status",
+          "previous_maturity",
+          "new_maturity",
+          "actor",
+          "message"
+        ],
+        "title": "ValidateResponse",
+        "description": "Response after a validation action."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValidationEventResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "from_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Status"
+          },
+          "to_status": {
+            "type": "string",
+            "title": "To Status"
+          },
+          "from_maturity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Maturity"
+          },
+          "to_maturity": {
+            "type": "integer",
+            "title": "To Maturity"
+          },
+          "actor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor"
+          },
+          "actor_type": {
+            "type": "string",
+            "title": "Actor Type"
+          },
+          "confidence_at_transition": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence At Transition"
+          },
+          "source_count_at_transition": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Count At Transition"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "to_status",
+          "to_maturity",
+          "actor_type",
+          "created_at"
+        ],
+        "title": "ValidationEventResponse",
+        "description": "Schema for a ValidationEvent in API responses."
+      }
+    }
+  }
+}

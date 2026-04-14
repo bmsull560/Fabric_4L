@@ -1,0 +1,10 @@
+{
+  "$schema": "./deprecation_register_schema.json",
+  "version": "1.0.0",
+  "last_updated": "2026-04-14",
+  "deprecations": [],
+  "metadata": {
+    "description": "Machine-readable deprecation register for Value Fabric API and features",
+    "contact": "platform-team@valuefabric.io"
+  }
+}

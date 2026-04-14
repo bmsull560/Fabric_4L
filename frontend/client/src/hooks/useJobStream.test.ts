@@ -12,6 +12,20 @@ import { server } from '../../../test/mocks/server';
 import { getLastEventSource } from '../../../test/setup';
 import { useJobStream } from './useJobStream';
 
+async function getEventSourceOrThrow() {
+  let eventSource: ReturnType<typeof getLastEventSource> | undefined;
+  await waitFor(() => {
+    eventSource = getLastEventSource();
+    expect(eventSource).toBeDefined();
+  }, { timeout: 1000 });
+
+  if (!eventSource) {
+    throw new Error('Expected EventSource mock to be initialized');
+  }
+
+  return eventSource;
+}
+
 describe('useJobStream', () => {
   beforeEach(() => {
     vi.useRealTimers();
@@ -42,22 +56,18 @@ describe('useJobStream', () => {
 
     // Simulate SSE events to drive state changes
     // Use waitFor to handle race condition where EventSource may not be created yet
-    let es: ReturnType<typeof getLastEventSource>;
-    await waitFor(() => {
-      es = getLastEventSource();
-      expect(es).toBeDefined();
-    }, { timeout: 1000 });
+    const es = await getEventSourceOrThrow();
     
     // Simulate status update to running
     act(() => {
-      es!._emitMessage({ type: 'status', data: 'EXTRACTING' });
+      es._emitMessage({ type: 'status', data: 'EXTRACTING' });
     });
 
     await waitFor(() => expect(result.current.status).toBe('running'));
 
     // Simulate progress update
     act(() => {
-      es!._simulateProgress(25);
+      es._simulateProgress(25);
     });
 
     await waitFor(() => expect(result.current.progress).toBe(25));
@@ -71,14 +81,10 @@ describe('useJobStream', () => {
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 1000 });
 
     // Simulate SSE error - use waitFor to handle race condition
-    let es: ReturnType<typeof getLastEventSource>;
-    await waitFor(() => {
-      es = getLastEventSource();
-      expect(es).toBeDefined();
-    }, { timeout: 1000 });
+    const es = await getEventSourceOrThrow();
     
     act(() => {
-      es!._emitError();
+      es._emitError();
     });
 
     // After error, should fall back to polling and eventually get 404
@@ -92,8 +98,20 @@ describe('useJobStream', () => {
 
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 2000 });
 
-    // Logs array should be initialized
-    await waitFor(() => expect(Array.isArray(result.current.logs)).toBe(true));
+    const es = await getEventSourceOrThrow();
+    act(() => {
+      es._emitMessage({
+        type: 'log',
+        timestamp: new Date().toISOString(),
+        data: { timestamp: '2026-04-14T12:00:00Z', level: 'INFO', message: 'parsed log' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.logs[0]?.timestamp).toBe('2026-04-14T12:00:00Z');
+      expect(result.current.logs[0]?.level).toBe('INFO');
+      expect(result.current.logs[0]?.message).toBe('parsed log');
+    });
   });
 
   it('processes extracted entities', async () => {
@@ -102,8 +120,19 @@ describe('useJobStream', () => {
 
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 2000 });
 
-    // Entities array should be initialized
-    await waitFor(() => expect(Array.isArray(result.current.entities)).toBe(true));
+    const es = await getEventSourceOrThrow();
+    act(() => {
+      es._emitMessage({
+        type: 'entity',
+        timestamp: new Date().toISOString(),
+        data: { type: 'capability', name: 'Demand Forecasting' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.entities[0]?.type).toBe('capability');
+      expect(result.current.entities[0]?.name).toBe('Demand Forecasting');
+    });
   });
 
   it('processes SSE progress events', async () => {
@@ -114,14 +143,10 @@ describe('useJobStream', () => {
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 1000 });
 
     // Simulate progress via SSE - use waitFor to handle race condition
-    let es: ReturnType<typeof getLastEventSource>;
-    await waitFor(() => {
-      es = getLastEventSource();
-      expect(es).toBeDefined();
-    }, { timeout: 1000 });
+    const es = await getEventSourceOrThrow();
     
     act(() => {
-      es!._simulateProgress(75);
+      es._simulateProgress(75);
     });
 
     // Progress should update via SSE
@@ -136,14 +161,10 @@ describe('useJobStream', () => {
     await waitFor(() => expect(result.current.isConnected).toBe(true), { timeout: 1000 });
 
     // Trigger SSE error to fall back to polling - use waitFor to handle race condition
-    let es: ReturnType<typeof getLastEventSource>;
-    await waitFor(() => {
-      es = getLastEventSource();
-      expect(es).toBeDefined();
-    }, { timeout: 1000 });
+    const es = await getEventSourceOrThrow();
     
     act(() => {
-      es!._emitError();
+      es._emitError();
     });
 
     // After SSE error, connection should be closed

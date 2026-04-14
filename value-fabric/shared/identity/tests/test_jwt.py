@@ -9,7 +9,7 @@ import jwt as pyjwt
 import pytest
 from fastapi import HTTPException
 
-from ..jwt import TokenClaims, decode_jwt, encode_jwt
+from ..jwt import TokenClaims, _get_jwt_secret, decode_jwt, encode_jwt
 
 
 # Use a fixed secret across all tests to avoid env-var interference
@@ -55,6 +55,40 @@ class TestTokenClaims:
         with pytest.raises(HTTPException) as exc_info:
             tc.require_role("super_admin")
         assert exc_info.value.status_code == 403
+
+
+class TestJwtSecretValidation:
+    """Tests for strict JWT_SECRET validation behavior."""
+
+    def test_non_local_env_missing_secret_raises(self):
+        with patch.dict(os.environ, {"ENV": "production"}, clear=True):
+            with pytest.raises(RuntimeError, match="JWT_SECRET must be set"):
+                _get_jwt_secret()
+
+    def test_non_local_env_default_secret_raises(self):
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "staging", "JWT_SECRET": "changeme-in-production"},
+            clear=True,
+        ):
+            with pytest.raises(RuntimeError, match="JWT_SECRET must be set"):
+                _get_jwt_secret()
+
+    def test_local_env_missing_secret_warns_and_uses_default(self, caplog):
+        with patch.dict(os.environ, {"ENV": "local"}, clear=True):
+            secret = _get_jwt_secret()
+        assert secret == "changeme-in-production"
+        assert "default development value in local/dev mode" in caplog.text
+
+    def test_dev_env_default_secret_warns_and_uses_default(self, caplog):
+        with patch.dict(
+            os.environ,
+            {"APP_ENV": "dev", "JWT_SECRET": "changeme-in-production"},
+            clear=True,
+        ):
+            secret = _get_jwt_secret()
+        assert secret == "changeme-in-production"
+        assert "default development value in local/dev mode" in caplog.text
 
 
 # ---------------------------------------------------------------------------
@@ -175,3 +209,39 @@ class TestDecodeJwt:
         """Garbage input returns None."""
         assert decode_jwt("not.a.jwt") is None
         assert decode_jwt("") is None
+
+
+class TestJwtSecretPolicy:
+    """Tests for environment-sensitive JWT secret policy."""
+
+    def test_non_dev_raises_when_secret_unset(self):
+        with patch.dict(
+            os.environ,
+            {"ENVIRONMENT": "production"},
+            clear=True,
+        ):
+            with pytest.raises(RuntimeError, match="JWT_SECRET is required"):
+                _get_jwt_secret()
+
+    def test_non_dev_raises_when_secret_default(self):
+        with patch.dict(
+            os.environ,
+            {
+                "ENVIRONMENT": "staging",
+                "JWT_SECRET": "changeme-in-production",
+            },
+            clear=True,
+        ):
+            with pytest.raises(RuntimeError, match="must not use the default"):
+                _get_jwt_secret()
+
+    def test_test_environment_allows_default(self):
+        with patch.dict(
+            os.environ,
+            {
+                "APP_ENV": "test",
+                "JWT_SECRET": "changeme-in-production",
+            },
+            clear=True,
+        ):
+            assert _get_jwt_secret() == "changeme-in-production"

@@ -1,5 +1,6 @@
 """Generation tools for documents, sections, charts, and tables."""
 
+import asyncio
 import logging
 from io import BytesIO
 from typing import Any
@@ -17,6 +18,8 @@ except (ImportError, OSError):
     HTML = None  # type: ignore
     CSS = None  # type: ignore
 
+from ..metrics import get_metrics
+from ..metrics.llm_cost_calculator import LLMCostCalculator
 from ..models.tool_schemas import (
     AssembleDocumentInput,
     AssembleDocumentOutput,
@@ -28,6 +31,7 @@ from ..models.tool_schemas import (
     GenerateSectionOutput,
     ToolCategory,
 )
+from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
 from .registry import BaseTool
 
 logger = logging.getLogger(__name__)
@@ -80,10 +84,16 @@ Maximum {max_length} words.""",
     async def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
         """Call LLM to generate content."""
         api_key = self.config.get("openai_api_key") if self.config else None
+        tenant_id = str(self.config.get("tenant_id", "unknown")) if self.config else "unknown"
+        initial_model = "gpt-4o"
+        decision = await get_llm_budget_guardrails().precheck_or_raise(tenant_id, initial_model)
+        if decision.throttle_seconds > 0:
+            await asyncio.sleep(decision.throttle_seconds)
+
         client = AsyncOpenAI(api_key=api_key)
 
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model=decision.model,
             messages=[
                 {
                     "role": "system",
@@ -94,6 +104,35 @@ Maximum {max_length} words.""",
             temperature=0.3,
             max_tokens=max_tokens,
         )
+
+        prompt_tokens = response.usage.prompt_tokens if response.usage else 0
+        completion_tokens = response.usage.completion_tokens if response.usage else 0
+        cost = LLMCostCalculator().calculate_cost(
+            provider="openai",
+            model=decision.model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+        await get_llm_budget_guardrails().record_usage(tenant_id=tenant_id, cost_usd=cost)
+
+        metrics = get_metrics()
+        if metrics:
+            metrics.record_llm_cost(
+                provider="openai",
+                model=decision.model,
+                tenant_id=tenant_id,
+                cost=cost,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                status="throttled" if decision.escalation_required else "success",
+            )
+
+        if decision.escalation_required:
+            logger.warning(
+                "Tenant approaching LLM budget soft cap; escalation required",
+                extra={"tenant_id": tenant_id, "model": decision.model},
+            )
+
         return response.choices[0].message.content.strip()
 
     async def execute(self, input_data: GenerateSectionInput) -> GenerateSectionOutput:
@@ -110,6 +149,9 @@ Maximum {max_length} words.""",
 
         try:
             content = await self._call_llm(prompt, max_tokens=input_data.max_length * 2)
+        except LLMBudgetExceededError as e:
+            logger.error("LLM budget cap exceeded during section generation: %s", e)
+            raise RuntimeError(f"Section generation blocked by tenant budget guardrail: {e}")
         except Exception as e:
             logger.error(f"LLM generation failed: {e}")
             raise RuntimeError(f"Failed to generate section: {e}")

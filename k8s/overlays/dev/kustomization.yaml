@@ -5,6 +5,7 @@ namespace: value-fabric
 
 resources:
   - ../../base
+  - secrets.yml
 
 labels:
   - pairs:
