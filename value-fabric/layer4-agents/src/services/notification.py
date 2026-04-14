@@ -124,9 +124,12 @@ class NotificationService:
         # User preferences storage (in production, use database)
         self._preferences: dict[str, NotificationPreference] = {}
 
-        # Event queue for batched processing
-        self._event_queue: asyncio.Queue = asyncio.Queue()
+        # Event queue for batched processing — bounded to prevent OOM (P0-26)
+        self._max_queue_size = 10_000
+        self._max_event_age_seconds = 3600  # 1 hour
+        self._event_queue: asyncio.Queue = asyncio.Queue(maxsize=self._max_queue_size)
         self._batch_task: asyncio.Task | None = None
+        self._dropped_count = 0
 
         # Webhook session (reused for efficiency)
         self._webhook_session: aiohttp.ClientSession | None = None
@@ -217,7 +220,7 @@ class NotificationService:
             },
         )
 
-        await self._event_queue.put(event)
+        await self._enqueue_event(event)
         return event
 
     async def notify_workflow_completed(
@@ -243,7 +246,7 @@ class NotificationService:
             payload={"status": status, "result_summary": result_summary or {}},
         )
 
-        await self._event_queue.put(event)
+        await self._enqueue_event(event)
         return event
 
     async def notify_checkpoint_reached(
@@ -269,7 +272,7 @@ class NotificationService:
             payload={"checkpoint_id": checkpoint_id, "node_name": node_name},
         )
 
-        await self._event_queue.put(event)
+        await self._enqueue_event(event)
         return event
 
     def _get_channels_for_user(
@@ -288,12 +291,99 @@ class NotificationService:
 
         return prefs.channels
 
+    async def _enqueue_event(self, event: NotificationEvent) -> bool:
+        """Add event to queue with bounded size handling.
+        
+        Returns True if event was queued, False if dropped.
+        Implements priority-aware dropping: URGENT can evict LOW priority.
+        """
+        try:
+            self._event_queue.put_nowait(event)
+            return True
+        except asyncio.QueueFull:
+            # Queue is full — apply drop policy based on priority
+            if event.priority == NotificationPriority.URGENT:
+                # Try to drop oldest LOW priority event to make room
+                dropped = await self._drop_oldest_by_priority(NotificationPriority.LOW)
+                if dropped:
+                    try:
+                        self._event_queue.put_nowait(event)
+                        return True
+                    except asyncio.QueueFull:
+                        logger.warning(
+                            f"Dropped URGENT notification {event.event_id}: queue full after eviction"
+                        )
+                else:
+                    logger.warning(
+                        f"Dropped URGENT notification {event.event_id}: queue full, no LOW priority to evict"
+                    )
+            else:
+                logger.warning(
+                    f"Dropped {event.priority.value} notification {event.event_id}: queue full"
+                )
+            
+            self._dropped_count += 1
+            return False
+
+    async def _drop_oldest_by_priority(self, priority: NotificationPriority) -> bool:
+        """Drop oldest event of specified priority from queue.
+        
+        Returns True if an event was dropped.
+        """
+        # asyncio.Queue doesn't support peek/remove, so we drain and re-add
+        # This is a best-effort approach for high-water scenarios
+        temp_events = []
+        dropped = False
+        
+        try:
+            # Drain queue (non-blocking)
+            while not self._event_queue.empty():
+                try:
+                    event = self._event_queue.get_nowait()
+                    if not dropped and event.priority == priority:
+                        # Drop this one (don't re-add)
+                        dropped = True
+                        logger.debug(f"Evicted {priority.value} event {event.event_id} to make room")
+                    else:
+                        temp_events.append(event)
+                except asyncio.QueueEmpty:
+                    break
+            
+            # Re-add non-dropped events
+            for event in temp_events:
+                try:
+                    self._event_queue.put_nowait(event)
+                except asyncio.QueueFull:
+                    # Shouldn't happen since we dropped one, but handle gracefully
+                    self._dropped_count += 1
+            
+            return dropped
+        except Exception as e:
+            logger.error(f"Error during priority drop: {e}")
+            return False
+
     async def _batch_processor(self) -> None:
         """Background task to process notification queue."""
         while True:
             try:
-                event = await self._event_queue.get()
+                # Use timeout to allow periodic checks for cancellation
+                event = await asyncio.wait_for(
+                    self._event_queue.get(),
+                    timeout=1.0
+                )
+                
+                # Check event age (drop stale events)
+                age = (datetime.now(UTC) - event.created_at).total_seconds()
+                if age > self._max_event_age_seconds:
+                    logger.debug(
+                        f"Dropped stale notification {event.event_id} (age={age:.0f}s)"
+                    )
+                    continue
+                
                 await self._process_notification(event)
+            except asyncio.TimeoutError:
+                # No events in queue, continue loop
+                continue
             except asyncio.CancelledError:
                 break
             except Exception as e:
