@@ -1,7 +1,8 @@
 .PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
-        preflight up down logs
+        preflight up down logs \
+        check-deprecations test-backup-drills
 
 PYTHON := python3
 PIP    := pip install -e
@@ -13,7 +14,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests ## Run all checks (lint + typecheck + tests + contracts) — required before PR
+verify: lint typecheck test contract-tests check-deprecations ## Run all checks (lint + typecheck + tests + contracts + deprecations) — required before PR
 	@echo "✅  All checks passed"
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
@@ -168,6 +169,17 @@ check-env-frontend: ## Validate frontend env vars only
 
 validate-env-contract: ## CI gate — validate env contract + schema
 	npx tsx scripts/ci/validate-env-contract.ts all
+
+# ─── Deprecation Checks ─────────────────────────────────────────────────────
+
+check-deprecations: ## CI gate — check for overdue deprecations
+	$(PYTHON) scripts/ci/check_deprecations.py
+
+# ─── Backup/DR Tests ─────────────────────────────────────────────────────────
+
+test-backup-drills: ## Run backup/DR drill tests (requires pytest-asyncio)
+	@echo "→ Running backup manager tests..."
+	cd value-fabric/layer3-knowledge && $(PYTEST) tests/test_backup_manager.py -v --tb=short
 
 # ─── Cleanup ─────────────────────────────────────────────────────────────────
 

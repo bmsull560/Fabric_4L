@@ -164,3 +164,19 @@ layer3-knowledge/
 
 - **Input**: RDF/Turtle from Layer 2 extraction pipeline
 - **Output**: GraphRAG results to Layer 4 agent workflows
+
+---
+
+## Scheduled Removals & Deprecations
+
+Layer 3 follows the Value Fabric deprecation policy:
+
+- **Machine-readable register**: `docs/deprecation_register.json`
+- **Human-readable inventory**: `docs/deprecation_inventory.md`
+- **CI gate**: `make check-deprecations` (fails on overdue items)
+
+Deprecated API endpoints emit warning headers:
+- `Warning: 299 - "Deprecated since {date}"`
+- `X-Deprecated-Since`, `X-Target-Removal-Date`, `X-Deprecation-Owner`
+
+See [API Reference - Deprecation Policy](../../docs/API_REFERENCE.md#deprecation-policy) for full details.

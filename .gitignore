@@ -88,3 +88,8 @@ downloads/
 eggs/
 lib/
 lib64/
+
+# CI/Security evidence artifacts (generated during runs)
+artifacts/zero-trust/
+artifacts/backup-drill/
+artifacts/performance/

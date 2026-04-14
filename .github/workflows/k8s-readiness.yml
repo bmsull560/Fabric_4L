@@ -81,7 +81,12 @@ jobs:
         run: |
           kubectl apply --dry-run=client -f /tmp/dev.yaml > /dev/null
           kubectl apply --dry-run=client -f /tmp/prod.yaml > /dev/null
-          
+
+      - name: Preflight checks
+        run: |
+          pip install pyyaml
+          python3 scripts/ci/k8s_preflight.py --verbose
+
   k8s-server-dry-run:
     name: K8s Server Dry Run (Required)
     runs-on: ubuntu-latest

@@ -294,3 +294,57 @@ jobs:
           echo "✓ Metrics endpoint check passed"
           docker stop ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
           docker rm ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
+
+  deploy-ephemeral-and-smoke:
+    name: Ephemeral Deploy and Smoke Test
+    needs: test-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      - name: Install kind
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: ephemeral-smoke
+          wait: 120s
+
+      - name: Verify kind cluster
+        run: |
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Run preflight checks
+        run: |
+          pip install pyyaml
+          python3 scripts/ci/k8s_preflight.py --verbose
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Load images into kind
+        run: |
+          for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+            echo "Loading ${layer}..."
+            docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:sha-${{ steps.sha.outputs.short }}
+            kind load docker-image ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${layer}:sha-${{ steps.sha.outputs.short }} --name ephemeral-smoke
+          done
+
+      - name: Apply dev overlay manifests
+        run: |
+          kustomize build k8s/overlays/dev | kubectl apply -f -
+
+      - name: Run post-deploy smoke tests
+        run: |
+          bash scripts/ci/k8s_postdeploy_smoke.sh
+
+      - name: Cleanup kind cluster (always)
+        if: always()
+        run: |
+          kind delete cluster --name ephemeral-smoke || true

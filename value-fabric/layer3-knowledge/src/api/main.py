@@ -1,12 +1,14 @@
 """FastAPI application for Layer 3: Knowledge Graph & Semantic Layer."""
 
+import json
 import logging
 import os
 import platform
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Literal
 
@@ -129,6 +131,78 @@ from .versioning import (
 )
 
 logger = get_logger(__name__)
+
+# =============================================================================
+# DEPRECATION REGISTER
+# =============================================================================
+
+
+def _load_deprecation_register() -> dict:
+    """Load deprecation register from docs/deprecation_register.json."""
+    try:
+        repo_root = Path(__file__).parent.parent.parent.parent.parent
+        register_path = repo_root / "docs" / "deprecation_register.json"
+        if register_path.exists():
+            with open(register_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning("Failed to load deprecation register", error=str(e))
+    return {"deprecations": []}
+
+
+def _check_deprecation_warnings(register: dict) -> None:
+    """Log warnings for overdue or upcoming deprecations."""
+    now = datetime.now(timezone.utc)
+    for item in register.get("deprecations", []):
+        target_removal = item.get("target_removal")
+        if not target_removal:
+            continue
+        try:
+            removal_date = datetime.fromisoformat(target_removal.replace("Z", "+00:00"))
+            if removal_date <= now:
+                logger.warning(
+                    "Deprecation overdue",
+                    feature=item.get("feature"),
+                    target_removal=target_removal,
+                    owner=item.get("owner"),
+                    path=item.get("path"),
+                )
+            else:
+                days_until = (removal_date - now).days
+                if days_until <= 7:
+                    logger.warning(
+                        "Deprecation expiring soon",
+                        feature=item.get("feature"),
+                        days_until=days_until,
+                        target_removal=target_removal,
+                    )
+        except ValueError:
+            continue
+
+
+# Load deprecation register at startup
+_deprecation_register = _load_deprecation_register()
+_check_deprecation_warnings(_deprecation_register)
+
+
+def _add_deprecation_headers(response: Response, endpoint_path: str) -> None:
+    """Add deprecation headers if endpoint matches a deprecated feature."""
+    for item in _deprecation_register.get("deprecations", []):
+        if endpoint_path in item.get("path", ""):
+            deprecated_since = item.get("deprecated_since", "")
+            target_removal = item.get("target_removal", "")
+            owner = item.get("owner", "")
+
+            if deprecated_since:
+                response.headers["X-Deprecated-Since"] = deprecated_since
+            if target_removal:
+                response.headers["X-Target-Removal-Date"] = target_removal
+            if owner:
+                response.headers["X-Deprecation-Owner"] = owner
+            # RFC 7234 Warning header
+            response.headers["Warning"] = f'299 - "Deprecated since {deprecated_since}"'
+            break
+
 
 # Track application startup time for uptime calculation
 _app_start_time = time.time()

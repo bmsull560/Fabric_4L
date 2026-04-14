@@ -26,7 +26,15 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 | FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning |
 | DeploymentSignatureVerification | [deployment-signature-verification.md](deployment-signature-verification.md) | critical |
 | ZeroTrustValidation | [zero-trust-validation.md](zero-trust-validation.md) | critical |
-| DeploymentSignatureVerification | [deployment-signature-verification.md](deployment-signature-verification.md) | critical |
+| BackupDRDrill | [backup-disaster-recovery.md](backup-disaster-recovery.md) | critical |
+| DeploymentRollout | [deployment-rollout-and-rollback.md](deployment-rollout-and-rollback.md) | warning |
+
+## Operations Runbooks
+
+| Runbook | File | Purpose |
+|---------|------|---------|
+| Backup and Disaster Recovery | [backup-disaster-recovery.md](backup-disaster-recovery.md) | RTO/RPO targets, backup verification, PITR restore procedures |
+| Deployment Rollout and Rollback | [deployment-rollout-and-rollback.md](deployment-rollout-and-rollback.md) | Rollout strategies, rollback procedures, canary/blue-green criteria |
 
 ## Incident Management Templates
 

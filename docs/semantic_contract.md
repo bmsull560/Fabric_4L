@@ -2,6 +2,8 @@
 
 This document defines the semantic contract between pack ontologies, Layer 2 extraction, and Layer 3 storage. It ensures consistent vocabulary and data flow across the Value Fabric pipeline.
 
+> **Deprecation Policy**: See [API Reference - Deprecation Policy](API_REFERENCE.md#deprecation-policy) for breaking change management and scheduled removals. Deprecation register: `docs/deprecation_register.json`.
+
 ## Overview
 
 | Layer | Purpose | Key Components |

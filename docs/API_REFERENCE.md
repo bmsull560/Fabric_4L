@@ -10,6 +10,7 @@
 
 - [Authentication](#authentication)
 - [Error Response Format](#error-response-format)
+- [Deprecation Policy](#deprecation-policy)
 - [Layer 1 — Ingestion](#layer-1--ingestion)
 - [Layer 2 — Extraction](#layer-2--extraction)
 - [Layer 3 — Knowledge Graph](#layer-3--knowledge-graph)
@@ -49,11 +50,43 @@ All layers return errors in a consistent JSON envelope:
 }
 ```
 
-| Field              | Type   | Description                                |
-| ------------------ | ------ | ------------------------------------------ |
-| `error.code`       | string | Machine-readable error code.               |
-| `error.message`    | string | Human-readable explanation.                |
-| `error.details`    | object | Optional additional context (field errors, trace IDs, etc.). |
+---
+
+## Deprecation Policy
+
+Value Fabric uses a structured deprecation process to manage API evolution.
+
+### Deprecation Headers
+
+Deprecated endpoints return the following headers:
+
+| Header | Description |
+|--------|-------------|
+| `Warning` | RFC 7234 warning: `299 - "Deprecated since {date}"` |
+| `X-Deprecated-Since` | ISO 8601 date when deprecation started |
+| `X-Target-Removal-Date` | Scheduled removal date |
+| `X-Deprecation-Owner` | Team responsible for the feature |
+
+### Deprecation Register
+
+- Machine-readable: `docs/deprecation_register.json`
+- Human-readable: `docs/deprecation_inventory.md`
+
+### Timeline
+
+- **Announcement**: 90 days notice minimum
+- **Migration**: 60-90 days for updates
+- **Removal**: On target date, CI gate enforces
+
+### CI Gate
+
+```bash
+make check-deprecations  # Fails on overdue items
+```
+
+Override with `DEPRECATION_ALLOW_OVERDUE=true` (not recommended for production).
+
+---
 
 ### Common HTTP Status Codes
 
