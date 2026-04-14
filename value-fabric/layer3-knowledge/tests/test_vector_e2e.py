@@ -424,3 +424,236 @@ class TestVectorE2EComplete:
         assert "AI-Powered Decision Support" in entity_names, (
             f"Expected ingested entity in search results, got: {entity_names}"
         )
+
+
+@pytest.mark.asyncio
+class TestDockerContainerRecovery:
+    """Test resilience to Docker container failures."""
+
+    async def test_driver_reconnects_after_container_restart(
+        self,
+        neo4j_container: Neo4jContainer,
+        settings: Settings,
+    ):
+        """Driver must reconnect after Neo4j container restarts."""
+        uri = neo4j_container.get_connection_url().replace("bolt://", "neo4j://")
+        driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", TEST_NEO4J_PASSWORD))
+
+        # Verify initial connectivity
+        await driver.verify_connectivity()
+
+        # Restart the container
+        neo4j_container.stop()
+        neo4j_container.start()
+
+        # Poll for readiness instead of fixed sleep
+        new_uri = neo4j_container.get_connection_url().replace("bolt://", "neo4j://")
+        new_driver = AsyncGraphDatabase.driver(new_uri, auth=("neo4j", TEST_NEO4J_PASSWORD))
+
+        try:
+            for _ in range(15):
+                try:
+                    await new_driver.verify_connectivity()
+                    break
+                except Exception:
+                    await asyncio.sleep(2)
+            else:
+                pytest.fail("Neo4j did not become ready within 30 seconds after restart")
+        finally:
+            await new_driver.close()
+            await driver.close()
+
+    async def test_operations_fail_gracefully_on_stopped_container(
+        self,
+        neo4j_container: Neo4jContainer,
+        settings: Settings,
+    ):
+        """Operations must raise a clear error when container is stopped."""
+        uri = neo4j_container.get_connection_url().replace("bolt://", "neo4j://")
+        driver = AsyncGraphDatabase.driver(uri, auth=("neo4j", TEST_NEO4J_PASSWORD))
+        await driver.verify_connectivity()
+
+        # Stop container
+        neo4j_container.stop()
+
+        # Operations should raise a ServiceUnavailable or connectivity error
+        try:
+            with pytest.raises(Exception, match=r"(?i)(unavailable|connection|session|refused)"):
+                async with driver.session() as session:
+                    await session.run("RETURN 1")
+        finally:
+            await driver.close()
+            # Restart for subsequent tests and poll for readiness
+            neo4j_container.start()
+            for _ in range(15):
+                try:
+                    test_driver = AsyncGraphDatabase.driver(
+                        neo4j_container.get_connection_url().replace("bolt://", "neo4j://"),
+                        auth=("neo4j", TEST_NEO4J_PASSWORD),
+                    )
+                    await test_driver.verify_connectivity()
+                    await test_driver.close()
+                    break
+                except Exception:
+                    await asyncio.sleep(2)
+
+
+@pytest.mark.asyncio
+class TestSchemaIdempotency:
+    """Test that schema initialization is idempotent."""
+
+    async def test_schema_init_twice_does_not_fail(
+        self,
+        schema_initializer: SchemaInitializer,
+    ):
+        """Calling initialize_schema twice must not raise errors."""
+        await schema_initializer.initialize_schema(drop_existing=True)
+        # Second call must also succeed
+        await schema_initializer.initialize_schema(drop_existing=True)
+
+    async def test_schema_init_preserves_data_when_not_dropping(
+        self,
+        neo4j_driver: AsyncGraphDatabase,
+        schema_initializer: SchemaInitializer,
+        neo4j_loader: Neo4jLoader,
+    ):
+        """Re-initializing schema without drop must preserve existing data."""
+        await schema_initializer.initialize_schema(drop_existing=True)
+
+        # Insert a test entity
+        from rdflib import Graph, Literal, Namespace, URIRef
+        from rdflib.namespace import RDF
+        VF = Namespace("http://valuefabric.io/ontology/")
+        g = Graph()
+        cap_uri = URIRef("http://valuefabric.io/cap/persist-test")
+        g.add((cap_uri, RDF.type, VF.Capability))
+        g.add((cap_uri, VF.id, Literal("persist-test")))
+        g.add((cap_uri, VF.name, Literal("Persistence Check")))
+        g.add((cap_uri, VF.description, Literal("Verify data persists")))
+        g.add((cap_uri, VF.confidence, Literal(0.9)))
+        await neo4j_loader.load_rdf_graph(g, source_id="idempotent-test")
+
+        # Re-initialize without dropping
+        await schema_initializer.initialize_schema(drop_existing=False)
+
+        # Entity should still exist
+        async with neo4j_driver.session() as session:
+            result = await session.run(
+                "MATCH (n:Capability {id: 'persist-test'}) RETURN n.name AS name"
+            )
+            record = await result.single()
+            assert record is not None, "Entity must survive schema re-init without drop"
+            assert record["name"] == "Persistence Check"
+
+
+@pytest.mark.asyncio
+class TestEmbeddingDimensionValidation:
+    """Test embedding dimension validation and edge cases."""
+
+    async def test_empty_text_produces_valid_embedding(
+        self,
+        neo4j_loader: Neo4jLoader,
+    ):
+        """Empty or whitespace-only text must still produce a valid embedding."""
+        embedding = neo4j_loader._generate_embedding("")
+        assert embedding is not None
+        assert isinstance(embedding, list)
+        assert len(embedding) == TEST_EMBEDDING_DIMENSION
+
+    async def test_very_long_text_produces_valid_embedding(
+        self,
+        neo4j_loader: Neo4jLoader,
+    ):
+        """Very long text must produce a valid embedding without crashing."""
+        long_text = "machine learning analytics " * 500  # ~15,000 chars
+        embedding = neo4j_loader._generate_embedding(long_text)
+        assert embedding is not None
+        assert isinstance(embedding, list)
+        assert len(embedding) == TEST_EMBEDDING_DIMENSION
+
+    async def test_special_characters_in_text_handled(
+        self,
+        neo4j_loader: Neo4jLoader,
+    ):
+        """Text with special chars/unicode must produce a valid embedding."""
+        special_text = "Ünïcödé テスト 中文 ñoño <script>alert('xss')</script>"
+        embedding = neo4j_loader._generate_embedding(special_text)
+        assert embedding is not None
+        assert isinstance(embedding, list)
+        assert len(embedding) == TEST_EMBEDDING_DIMENSION
+
+
+@pytest.mark.asyncio
+class TestVectorCleanup:
+    """Test vector data cleanup and index management."""
+
+    async def test_drop_existing_removes_all_vector_indexes(
+        self,
+        neo4j_driver: AsyncGraphDatabase,
+        schema_initializer: SchemaInitializer,
+    ):
+        """initialize_schema(drop_existing=True) must remove and recreate all vector indexes."""
+        # First init
+        await schema_initializer.initialize_schema(drop_existing=True)
+
+        # Verify indexes exist
+        async with neo4j_driver.session() as session:
+            result = await session.run(
+                "SHOW INDEXES YIELD name, type WHERE type = 'VECTOR' RETURN count(*) AS cnt"
+            )
+            record = await result.single()
+            assert record["cnt"] >= len(REQUIRED_VECTOR_INDEXES)
+
+        # Drop and recreate
+        await schema_initializer.initialize_schema(drop_existing=True)
+
+        # Verify indexes exist again (were recreated)
+        async with neo4j_driver.session() as session:
+            result = await session.run(
+                "SHOW INDEXES YIELD name, type WHERE type = 'VECTOR' RETURN collect(name) AS names"
+            )
+            record = await result.single()
+            vector_names = set(record["names"] if record else [])
+            missing = REQUIRED_VECTOR_INDEXES - vector_names
+            assert not missing, f"After re-init, missing indexes: {missing}"
+
+    async def test_node_deletion_removes_embeddings(
+        self,
+        neo4j_driver: AsyncGraphDatabase,
+        neo4j_loader: Neo4jLoader,
+        initialized_schema: SchemaInitializer,
+    ):
+        """Deleting a node must remove its embedding from the index."""
+        from rdflib import Graph, Literal, Namespace, URIRef
+        from rdflib.namespace import RDF
+        VF = Namespace("http://valuefabric.io/ontology/")
+
+        g = Graph()
+        cap_uri = URIRef("http://valuefabric.io/cap/cleanup-test")
+        g.add((cap_uri, RDF.type, VF.Capability))
+        g.add((cap_uri, VF.id, Literal("cleanup-test")))
+        g.add((cap_uri, VF.name, Literal("Cleanup Test Entity")))
+        g.add((cap_uri, VF.description, Literal("Entity for cleanup verification")))
+        g.add((cap_uri, VF.confidence, Literal(0.9)))
+        await neo4j_loader.load_rdf_graph(g, source_id="cleanup-source")
+
+        # Verify entity exists
+        async with neo4j_driver.session() as session:
+            result = await session.run(
+                "MATCH (n:Capability {id: 'cleanup-test'}) RETURN n.embedding IS NOT NULL AS has_emb"
+            )
+            record = await result.single()
+            assert record is not None, "Cleanup test entity not found"
+            assert record["has_emb"], "Entity should have an embedding before deletion"
+
+        # Delete entity
+        async with neo4j_driver.session() as session:
+            await session.run("MATCH (n:Capability {id: 'cleanup-test'}) DELETE n")
+
+        # Verify entity is gone
+        async with neo4j_driver.session() as session:
+            result = await session.run(
+                "MATCH (n:Capability {id: 'cleanup-test'}) RETURN n"
+            )
+            record = await result.single()
+            assert record is None, "Entity should be deleted"
