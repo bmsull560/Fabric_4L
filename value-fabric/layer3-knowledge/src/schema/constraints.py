@@ -17,32 +17,41 @@ class Constraint:
 
     name: str
     entity_type: str
-    property_name: str
+    property_name: str | list[str]  # Single property or list for composite
     constraint_type: str = "unique"  # unique (Community+Enterprise), exists (Enterprise only), node_key (Enterprise only)
 
     @property
     def cypher(self) -> str:
         """Generate Cypher constraint creation statement."""
+        # Handle composite properties
+        if isinstance(self.property_name, list):
+            if len(self.property_name) == 1:
+                prop_str = f"n.{self.property_name[0]}"
+            else:
+                prop_str = ", ".join(f"n.{p}" for p in self.property_name)
+        else:
+            prop_str = f"n.{self.property_name}"
+
         if self.constraint_type == "unique":
             return (
                 f"CREATE CONSTRAINT {self.name} "
                 f"IF NOT EXISTS "
                 f"FOR (n:{self.entity_type}) "
-                f"REQUIRE n.{self.property_name} IS UNIQUE"
+                f"REQUIRE {prop_str} IS UNIQUE"
             )
         elif self.constraint_type == "exists":
             return (
                 f"CREATE CONSTRAINT {self.name} "
                 f"IF NOT EXISTS "
                 f"FOR (n:{self.entity_type}) "
-                f"REQUIRE n.{self.property_name} IS NOT NULL"
+                f"REQUIRE {prop_str} IS NOT NULL"
             )
         elif self.constraint_type == "node_key":
             return (
                 f"CREATE CONSTRAINT {self.name} "
                 f"IF NOT EXISTS "
                 f"FOR (n:{self.entity_type}) "
-                f"REQUIRE n.{self.property_name} IS NODE KEY"
+                f"REQUIRE {prop_str} IS NODE KEY"
             )
         return ""
 
@@ -196,41 +205,42 @@ VECTOR_INDEX_ENTITY_TYPES = [
 ]
 
 # Constraints for data integrity
+# NOTE: All entity constraints are composite (id, tenant_id) for tenant isolation.
+# This allows the same id to exist in different tenants while preventing duplicates
+# within a tenant. Composite unique constraints work on Neo4j Community Edition.
 CONSTRAINTS: list[Constraint] = [
-    # Unique constraints on entity IDs
-    Constraint("capability_id", "Capability", "id", "unique"),
-    Constraint("usecase_id", "UseCase", "id", "unique"),
-    Constraint("persona_id", "Persona", "id", "unique"),
-    Constraint("valuedriver_id", "ValueDriver", "id", "unique"),
-    Constraint("valuemetric_id", "ValueMetric", "id", "unique"),
-    Constraint("product_id", "Product", "id", "unique"),
-    Constraint("feature_id", "Feature", "id", "unique"),
-    Constraint("service_id", "Service", "id", "unique"),
-    Constraint("solution_id", "Solution", "id", "unique"),
-    Constraint("technology_id", "Technology", "id", "unique"),
-    Constraint("organization_id", "Organization", "id", "unique"),
-    Constraint("businessunit_id", "BusinessUnit", "id", "unique"),
-    Constraint("process_id", "Process", "id", "unique"),
-    Constraint("activity_id", "Activity", "id", "unique"),
-    Constraint("apqcprocess_id", "APQCProcess", "id", "unique"),
-    Constraint("bianservicedomain_id", "BIANServiceDomain", "id", "unique"),
-    Constraint("fiboentity_id", "FIBOEntity", "id", "unique"),
-    Constraint("industry_id", "Industry", "id", "unique"),
-    Constraint("marketsegment_id", "MarketSegment", "id", "unique"),
-    Constraint("geography_id", "Geography", "id", "unique"),
-    Constraint("regulation_id", "Regulation", "id", "unique"),
-    Constraint("datasource_id", "DataSource", "id", "unique"),
-    Constraint("extractionevent_id", "ExtractionEvent", "id", "unique"),
-    Constraint("confidencescore_id", "ConfidenceScore", "id", "unique"),
+    # Composite unique constraints on (id, tenant_id) for tenant isolation
+    Constraint("capability_id_tenant", "Capability", ["id", "tenant_id"], "unique"),
+    Constraint("usecase_id_tenant", "UseCase", ["id", "tenant_id"], "unique"),
+    Constraint("persona_id_tenant", "Persona", ["id", "tenant_id"], "unique"),
+    Constraint("valuedriver_id_tenant", "ValueDriver", ["id", "tenant_id"], "unique"),
+    Constraint("valuemetric_id_tenant", "ValueMetric", ["id", "tenant_id"], "unique"),
+    Constraint("product_id_tenant", "Product", ["id", "tenant_id"], "unique"),
+    Constraint("feature_id_tenant", "Feature", ["id", "tenant_id"], "unique"),
+    Constraint("service_id_tenant", "Service", ["id", "tenant_id"], "unique"),
+    Constraint("solution_id_tenant", "Solution", ["id", "tenant_id"], "unique"),
+    Constraint("technology_id_tenant", "Technology", ["id", "tenant_id"], "unique"),
+    Constraint("organization_id_tenant", "Organization", ["id", "tenant_id"], "unique"),
+    Constraint("businessunit_id_tenant", "BusinessUnit", ["id", "tenant_id"], "unique"),
+    Constraint("process_id_tenant", "Process", ["id", "tenant_id"], "unique"),
+    Constraint("activity_id_tenant", "Activity", ["id", "tenant_id"], "unique"),
+    Constraint("apqcprocess_id_tenant", "APQCProcess", ["id", "tenant_id"], "unique"),
+    Constraint("bianservicedomain_id_tenant", "BIANServiceDomain", ["id", "tenant_id"], "unique"),
+    Constraint("fiboentity_id_tenant", "FIBOEntity", ["id", "tenant_id"], "unique"),
+    Constraint("industry_id_tenant", "Industry", ["id", "tenant_id"], "unique"),
+    Constraint("marketsegment_id_tenant", "MarketSegment", ["id", "tenant_id"], "unique"),
+    Constraint("geography_id_tenant", "Geography", ["id", "tenant_id"], "unique"),
+    Constraint("regulation_id_tenant", "Regulation", ["id", "tenant_id"], "unique"),
+    Constraint("datasource_id_tenant", "DataSource", ["id", "tenant_id"], "unique"),
+    Constraint("extractionevent_id_tenant", "ExtractionEvent", ["id", "tenant_id"], "unique"),
+    Constraint("confidencescore_id_tenant", "ConfidenceScore", ["id", "tenant_id"], "unique"),
     # Phase 2: Value Pack and Variable constraints
-    Constraint("valuepack_id", "ValuePack", "id", "unique"),
-    Constraint("variable_id", "Variable", "id", "unique"),
-    Constraint("benchmarkdataset_id", "BenchmarkDataset", "id", "unique"),
+    Constraint("valuepack_id_tenant", "ValuePack", ["id", "tenant_id"], "unique"),
+    Constraint("variable_id_tenant", "Variable", ["id", "tenant_id"], "unique"),
+    Constraint("benchmarkdataset_id_tenant", "BenchmarkDataset", ["id", "tenant_id"], "unique"),
     # NOTE: Property existence constraints require Neo4j Enterprise Edition.
-    # For Community Edition compatibility, we skip these and rely on:
-    # 1. Application-level validation
-    # 2. Full-text indexes for name search (not null enforcement)
-    # 3. Required field validation in API models
+    # For Community Edition compatibility, we use composite unique constraints
+    # and rely on application-level validation for tenant_id presence.
 ]
 
 # P0-03: Tenant isolation constraints (requires Neo4j Enterprise Edition)
@@ -258,6 +268,29 @@ TENANT_CONSTRAINTS: list[Constraint] = [
 
 # Indexes for query performance
 INDEXES: list[Index] = [
+    # Tenant isolation indexes (P0-03) - for efficient tenant filtering
+    Index("capability_tenant_idx", "Capability", ["tenant_id"], "btree"),
+    Index("usecase_tenant_idx", "UseCase", ["tenant_id"], "btree"),
+    Index("persona_tenant_idx", "Persona", ["tenant_id"], "btree"),
+    Index("valuedriver_tenant_idx", "ValueDriver", ["tenant_id"], "btree"),
+    Index("valuemetric_tenant_idx", "ValueMetric", ["tenant_id"], "btree"),
+    Index("product_tenant_idx", "Product", ["tenant_id"], "btree"),
+    Index("feature_tenant_idx", "Feature", ["tenant_id"], "btree"),
+    Index("service_tenant_idx", "Service", ["tenant_id"], "btree"),
+    Index("solution_tenant_idx", "Solution", ["tenant_id"], "btree"),
+    Index("technology_tenant_idx", "Technology", ["tenant_id"], "btree"),
+    Index("organization_tenant_idx", "Organization", ["tenant_id"], "btree"),
+    Index("businessunit_tenant_idx", "BusinessUnit", ["tenant_id"], "btree"),
+    Index("process_tenant_idx", "Process", ["tenant_id"], "btree"),
+    Index("activity_tenant_idx", "Activity", ["tenant_id"], "btree"),
+    Index("valuepack_tenant_idx", "ValuePack", ["tenant_id"], "btree"),
+    Index("variable_tenant_idx", "Variable", ["tenant_id"], "btree"),
+    Index("benchmarkdataset_tenant_idx", "BenchmarkDataset", ["tenant_id"], "btree"),
+    # Composite index for common query pattern: tenant_id + id lookup
+    Index("capability_tenant_id_idx", "Capability", ["tenant_id", "id"], "btree"),
+    Index("usecase_tenant_id_idx", "UseCase", ["tenant_id", "id"], "btree"),
+    Index("persona_tenant_id_idx", "Persona", ["tenant_id", "id"], "btree"),
+    Index("valuedriver_tenant_id_idx", "ValueDriver", ["tenant_id", "id"], "btree"),
     # B-tree indexes for filtering
     Index("capability_name_idx", "Capability", ["name"], "btree"),
     Index("capability_confidence_idx", "Capability", ["confidence"], "btree"),

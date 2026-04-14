@@ -7,6 +7,7 @@ triggering immediate sync to keep Account records fresh.
 
 import hashlib
 import hmac
+import json
 import logging
 from typing import Any
 
@@ -45,6 +46,7 @@ async def salesforce_webhook(
     Request Body:
         Salesforce platform event or outbound message payload
     """
+    # Read body once and cache for both signature verification and JSON parsing
     body = await request.body()
 
     # Verify signature if configured
@@ -56,9 +58,10 @@ async def salesforce_webhook(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
             )
 
+    # Parse JSON from cached body bytes (don't call request.json() - body already consumed)
     try:
-        data = await request.json()
-    except Exception:
+        data = json.loads(body.decode())
+    except json.JSONDecodeError:
         logger.warning("Salesforce webhook received non-JSON payload")
         data = {"raw_body": body.decode()}
 
@@ -94,27 +97,9 @@ async def salesforce_webhook(
         }
 
     except Exception as e:
-        logger.error(f"Failed to process Salesforce webhook: {e}")
-        # Emit audit event for tracking (fire-and-forget via background task)
-        event = emit_audit_event(
-            AuditAction.WEBHOOK_PROCESSING_FAILED,
-            resource_type="CRM_Webhook",
-            resource_id=record_id,
-            outcome=AuditOutcome.FAILURE,
-            details={
-                "provider": "salesforce",
-                "event_type": event_type,
-                "error": str(e),
-                "record_id": record_id,
-            },
+        return _handle_webhook_error(
+            logger, e, "salesforce", record_id=record_id, event_type=event_type
         )
-        # Return 202 to acknowledge receipt while preventing retry storms
-        return {
-            "status": "error",
-            "provider": "salesforce",
-            "error": str(e),
-            "audit_event_id": str(event.id),
-        }
 
 
 def _extract_salesforce_record_id(data: dict) -> str | None:
@@ -155,6 +140,56 @@ def _extract_salesforce_event_type(data: dict) -> str:
     return "unknown"
 
 
+def _handle_webhook_error(
+    logger: logging.Logger,
+    error: Exception,
+    provider: str,
+    *,
+    record_id: str | None = None,
+    event_type: str = "unknown",
+    event_count: int = 0,
+    companies_to_sync: int = 0,
+) -> dict[str, Any]:
+    """Handle webhook processing error with audit logging.
+
+    Returns a 202 Accepted response to prevent CRM retry storms,
+    while emitting an audit event for observability.
+    """
+    logger.error(f"Failed to process {provider} webhook: {error}")
+
+    # Build resource_id based on provider and available context
+    resource_id = record_id or f"{provider}_{event_count}_events"
+
+    # Build details dict with only relevant fields
+    details: dict[str, Any] = {
+        "provider": provider,
+        "error": str(error),
+    }
+    if event_type != "unknown":
+        details["event_type"] = event_type
+    if record_id:
+        details["record_id"] = record_id
+    if event_count:
+        details["event_count"] = event_count
+    if companies_to_sync:
+        details["companies_to_sync"] = companies_to_sync
+
+    event = emit_audit_event(
+        AuditAction.WEBHOOK_PROCESSING_FAILED,
+        resource_type="CRM_Webhook",
+        resource_id=resource_id,
+        outcome=AuditOutcome.FAILURE,
+        details=details,
+    )
+
+    return {
+        "status": "error",
+        "provider": provider,
+        "error": str(error),
+        "audit_event_id": str(event.id),
+    }
+
+
 # ============================================================================
 # HubSpot Webhooks
 # ============================================================================
@@ -192,24 +227,26 @@ async def hubspot_webhook(
             }
         ]
     """
+    # Read body once and cache for both signature verification and JSON parsing
     body = await request.body()
 
-    # Verify signature if configured
+    # Verify signature if configured (v3 or legacy)
     webhook_secret = getattr(request.app.state, "hubspot_webhook_secret", None)
     if webhook_secret:
-        if x_hubspot_signature_v3:
-            # V3 signature verification
+        sig_to_verify = x_hubspot_signature_v3 or x_hubspot_signature
+        if sig_to_verify:
             expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-            if not hmac.compare_digest(expected, x_hubspot_signature_v3):
+            if not hmac.compare_digest(expected, sig_to_verify):
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
                 )
 
+    # Parse JSON from cached body bytes
     try:
-        events = await request.json()
+        events = json.loads(body.decode())
         if not isinstance(events, list):
             events = [events]
-    except Exception as e:
+    except json.JSONDecodeError as e:
         logger.warning(f"HubSpot webhook received invalid payload: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload")
 
@@ -257,27 +294,13 @@ async def hubspot_webhook(
         }
 
     except Exception as e:
-        logger.error(f"Failed to process HubSpot webhook: {e}")
-        # Emit audit event for tracking
-        event = emit_audit_event(
-            AuditAction.WEBHOOK_PROCESSING_FAILED,
-            resource_type="CRM_Webhook",
-            resource_id=f"hubspot_{event_count}_events",
-            outcome=AuditOutcome.FAILURE,
-            details={
-                "provider": "hubspot",
-                "event_count": event_count,
-                "companies_to_sync": len(company_ids),
-                "error": str(e),
-            },
+        return _handle_webhook_error(
+            logger,
+            e,
+            "hubspot",
+            event_count=event_count,
+            companies_to_sync=len(company_ids),
         )
-        # Return 202 to acknowledge receipt while preventing retry storms
-        return {
-            "status": "error",
-            "provider": "hubspot",
-            "error": str(e),
-            "audit_event_id": str(event.id),
-        }
 
 
 # ============================================================================

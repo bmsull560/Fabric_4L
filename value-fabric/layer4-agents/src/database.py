@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from uuid import UUID
 
+from fastapi import Depends, Header, Request
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -123,6 +124,33 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     factory = get_session_factory()
     async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_db_with_tenant(
+    x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID")
+) -> AsyncGenerator[AsyncSession, None]:
+    """
+    FastAPI dependency that yields an async database session with RLS tenant context.
+
+    Automatically extracts X-Tenant-ID header and sets PostgreSQL app.tenant_id
+    for Row-Level Security policies.
+
+    Usage::
+
+        @router.get("/accounts/{id}")
+        async def get_account(id: UUID, db: AsyncSession = Depends(get_db_with_tenant)):
+            ...
+    """
+    factory = get_session_factory()
+    async with factory() as session:
+        # P0-08: Set tenant context for RLS
+        await set_tenant_context(session, x_tenant_id)
         try:
             yield session
             await session.commit()

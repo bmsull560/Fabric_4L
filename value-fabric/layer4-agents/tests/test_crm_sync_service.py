@@ -145,7 +145,7 @@ class TestCRMSyncService:
         # Mock the CRM config
         with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
             with patch(
-                'value_fabric.layer4_agents.src.services.crm_sync_service.GetProspectDataTool',
+                'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
             ):
                 # Act
@@ -183,7 +183,7 @@ class TestCRMSyncService:
         # Mock the CRM config
         with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
             with patch(
-                'value_fabric.layer4_agents.src.services.crm_sync_service.GetProspectDataTool',
+                'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
             ):
                 # Act
@@ -234,7 +234,7 @@ class TestCRMSyncService:
         
         with patch.object(sync_service, '_get_crm_config', return_value=hubspot_config):
             with patch(
-                'value_fabric.layer4_agents.src.services.crm_sync_service.GetProspectDataTool',
+                'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
             ):
                 # Act
@@ -267,7 +267,7 @@ class TestCRMSyncService:
         
         with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
             with patch(
-                'value_fabric.layer4_agents.src.services.crm_sync_service.GetProspectDataTool',
+                'src.services.crm_sync_service.GetProspectDataTool',
                 FailingTool
             ):
                 # Act
@@ -301,7 +301,7 @@ class TestCRMSyncService:
         
         with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
             with patch(
-                'value_fabric.layer4_agents.src.services.crm_sync_service.GetProspectDataTool',
+                'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
             ):
                 # Act
@@ -425,7 +425,7 @@ class TestCRMWebhooks:
             }
         }
         
-        with patch('value_fabric.layer4_agents.src.api.routes.crm_webhooks.CRMSyncService') as mock_sync_class:
+        with patch('src.api.routes.crm_webhooks.CRMSyncService') as mock_sync_class:
             mock_sync = AsyncMock()
             mock_sync_class.return_value = mock_sync
             mock_sync.sync_provider.return_value = {
@@ -438,8 +438,8 @@ class TestCRMWebhooks:
                 "/v1/webhooks/crm/salesforce",
                 json=payload
             )
-            
-            assert response.status_code == 200
+
+            assert response.status_code == 202
             data = response.json()
             assert data["status"] == "accepted"
             assert data["provider"] == "salesforce"
@@ -462,7 +462,7 @@ class TestCRMWebhooks:
             }
         ]
         
-        with patch('value_fabric.layer4_agents.src.api.routes.crm_webhooks.CRMSyncService') as mock_sync_class:
+        with patch('src.api.routes.crm_webhooks.CRMSyncService') as mock_sync_class:
             mock_sync = AsyncMock()
             mock_sync_class.return_value = mock_sync
             mock_sync.sync_provider.return_value = {
@@ -475,8 +475,8 @@ class TestCRMWebhooks:
                 "/v1/webhooks/crm/hubspot",
                 json=events
             )
-            
-            assert response.status_code == 200
+
+            assert response.status_code == 202
             data = response.json()
             assert data["status"] == "accepted"
             assert data["provider"] == "hubspot"
@@ -505,7 +505,7 @@ class TestCRMWebhooks:
             }
         ]
         
-        with patch('value_fabric.layer4_agents.src.api.routes.crm_webhooks.CRMSyncService') as mock_sync_class:
+        with patch('src.api.routes.crm_webhooks.CRMSyncService') as mock_sync_class:
             mock_sync = AsyncMock()
             mock_sync_class.return_value = mock_sync
             mock_sync.sync_provider.return_value = {
@@ -518,8 +518,8 @@ class TestCRMWebhooks:
                 "/v1/webhooks/crm/hubspot",
                 json=events
             )
-            
-            assert response.status_code == 200
+
+            assert response.status_code == 202
             data = response.json()
             assert data["status"] == "accepted"
             # Should have 2 unique company IDs (deal event ignored for company sync)
@@ -560,7 +560,7 @@ class TestSyncFlow:
         
         with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
             with patch(
-                'value_fabric.layer4_agents.src.services.crm_sync_service.GetProspectDataTool',
+                'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
             ):
                 # Act
@@ -589,7 +589,7 @@ class TestAccountServiceIntegration:
         
         account_service = AccountService(mock_db)
         
-        with patch('value_fabric.layer4_agents.src.services.account_service.CRMSyncService') as mock_sync_class:
+        with patch('src.services.account_service.CRMSyncService') as mock_sync_class:
             mock_sync = AsyncMock()
             mock_sync.sync_provider.return_value = {
                 "synced": 5,
@@ -631,7 +631,7 @@ class TestAccountServiceIntegration:
         mock_result.scalar_one_or_none.return_value = existing_account
         mock_db.execute.return_value = mock_result
         
-        with patch('value_fabric.layer4_agents.src.services.account_service.CRMSyncService') as mock_sync_class:
+        with patch('src.services.account_service.CRMSyncService') as mock_sync_class:
             mock_sync = AsyncMock()
             mock_sync.refresh_single_account.return_value = existing_account
             mock_sync_class.return_value = mock_sync
