@@ -105,7 +105,8 @@ class TestStreamC1Endpoint:
 
         # The body should contain the forwarded SSE lines plus a done sentinel
         body = resp.text
-        assert "component" in body or "done" in body
+        assert "component" in body, "Expected 'component' in SSE stream"
+        assert "done" in body, "Expected 'done' sentinel in SSE stream"
 
     def test_handles_thesys_error_status(self, client: TestClient):
         """Non-200 from Thesys should yield an error SSE chunk."""

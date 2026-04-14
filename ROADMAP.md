@@ -893,7 +893,7 @@ run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
 ---
 
 ### **Task 39: Accounts CRM Integration (L4/Frontend)** ⭐ P1
-**Priority:** P1 | **Effort:** 3 days | **Status:** Backend: 50% Complete, Frontend: 0% Complete | **Queue:** After Task 36 (Frontend Reality Pass)
+**Priority:** P1 | **Effort:** 3 days | **Status:** ✅ COMPLETE (2026-04-13) | **Queue:** Completed
 
 **Gap:** "Research → Accounts" menu routes to placeholder. Accounts need to be a real product surface for CRM account management.
 
@@ -1250,7 +1250,7 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 ---
 
 ### **Task 52: Salesforce & HubSpot CRM Integration (L4 + Frontend)** ⭐ P1
-**Priority:** P1 | **Effort:** 3-4 days | **Status:** Backend ~65%, Frontend 0% | **Unblocks:** Accounts product surface, Task 39 completion
+**Priority:** P1 | **Effort:** 3-4 days | **Status:** ✅ COMPLETE (2026-04-13) | **Unblocks:** Accounts product surface, Task 39 completion
 
 **Gap:** The CRM integrations exist as agent tools but there is no admin UI for connecting credentials, no background sync pipeline, and no live accounts surface in the frontend. Everything visible in the UI is hardcoded mock data.
 
