@@ -1275,8 +1275,21 @@ pytest tests/unit/test_playwright_crawler.py -v
 5. ✅ **NEW**: Implemented Layer 1 Crawler with OpenTelemetry + Config system
 6. ✅ **NEW**: Created 63 high-quality crawler tests (all score 29+/35)
 
+### Completed (2026-04-13 Stabilization Pass)
+7. ✅ Fixed `shared.identity` import path in L4 conftest.py (P0)
+8. ✅ Fixed `Depends` missing import in `crm_webhooks.py` (P0)
+9. ✅ Fixed redundant `global _tracer_provider` in L4 `main.py` (P0)
+10. ✅ Fixed relative imports in `test_crm_sync_service.py` (P0)
+11. ✅ Created 6 real LangGraph orchestration tests (recursion limit, checkpointing, state accumulation, thread isolation)
+12. ✅ Exported OpenAPI specs for L1-L4 to `contracts/openapi/` (4 files)
+13. ✅ L4 test collection: 0 → 217 tests collected
+14. ✅ L4 checkpoint + orchestration: 17 passing (11 mock + 6 real LangGraph)
+15. ✅ Frontend: 310/310 tests passing (100%)
+16. ✅ WfPrimitives.test.tsx rewritten: CSS assertions → behavior assertions
+17. ✅ Tabs component: added ARIA accessibility attributes
+
 ### Remaining
 1. Address P1 quality improvements (weak assertions, deprecated patterns)
-2. Create foundational tests for frontend
-3. Re-run full audit when Docker is available for integration tests
+2. Redis integration tests (requires Docker in CI)
+3. MSW handler alignment with generated OpenAPI specs
 4. Run new crawler tests and verify 63/63 passing
