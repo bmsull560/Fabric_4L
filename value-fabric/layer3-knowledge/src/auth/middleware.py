@@ -1,7 +1,6 @@
 """FastAPI authentication middleware and dependencies."""
 
 from collections.abc import Callable
-from typing import Optional
 
 from fastapi import Depends, HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -10,6 +9,7 @@ from starlette.responses import Response
 
 from ..logging_config import get_logger
 from .api_keys import (
+    APIKey,
     APIKeyManager,
     AuthorizationChecker,
     Permission,
@@ -105,7 +105,7 @@ async def get_current_api_key(
     credentials: HTTPAuthorizationCredentials | None = Security(security),
     request: Request = None,
     api_key_manager: APIKeyManager = Depends(get_api_key_manager),
-) -> Optional["APIKey"]:
+) -> APIKey | None:
     """Get current authenticated API key.
 
     Args:
@@ -166,7 +166,7 @@ async def get_optional_api_key(
     credentials: HTTPAuthorizationCredentials | None = Security(security),
     request: Request = None,
     api_key_manager: APIKeyManager = Depends(get_api_key_manager),
-) -> Optional["APIKey"]:
+) -> APIKey | None:
     """Get current API key (optional, doesn't raise exception).
 
     Args:
@@ -194,9 +194,9 @@ def require_permission(permission: Permission):
     """
 
     async def permission_dependency(
-        api_key: "APIKey" = Depends(get_current_api_key),
+        api_key: APIKey = Depends(get_current_api_key),
         auth_checker: AuthorizationChecker = Depends(get_authorization_checker),
-    ) -> "APIKey":
+    ) -> APIKey:
         """Check if API key has required permission."""
         if not api_key.has_permission(permission):
             raise HTTPException(
@@ -225,8 +225,8 @@ def require_role(role: "Role"):
     """
 
     async def role_dependency(
-        api_key: "APIKey" = Depends(get_current_api_key),
-    ) -> "APIKey":
+        api_key: APIKey = Depends(get_current_api_key),
+    ) -> APIKey:
         """Check if API key has required role."""
         if api_key.role != role:
             raise HTTPException(
@@ -255,8 +255,8 @@ def require_any_permission(*permissions: Permission):
     """
 
     async def any_permission_dependency(
-        api_key: "APIKey" = Depends(get_current_api_key),
-    ) -> "APIKey":
+        api_key: APIKey = Depends(get_current_api_key),
+    ) -> APIKey:
         """Check if API key has any of the required permissions."""
         if not any(api_key.has_permission(perm) for perm in permissions):
             raise HTTPException(
@@ -285,8 +285,8 @@ def require_all_permissions(*permissions: Permission):
     """
 
     async def all_permissions_dependency(
-        api_key: "APIKey" = Depends(get_current_api_key),
-    ) -> "APIKey":
+        api_key: APIKey = Depends(get_current_api_key),
+    ) -> APIKey:
         """Check if API key has all required permissions."""
         missing_permissions = [
             perm for perm in permissions if not api_key.has_permission(perm)
@@ -373,7 +373,7 @@ def create_authorization_error_detail(
 
 
 # Rate limiting integration
-def get_api_key_rate_limit(api_key: "APIKey") -> int | None:
+def get_api_key_rate_limit(api_key: APIKey) -> int | None:
     """Get rate limit for API key.
 
     Args:
@@ -387,7 +387,7 @@ def get_api_key_rate_limit(api_key: "APIKey") -> int | None:
 
 # Audit logging
 def log_api_usage(
-    request: Request, api_key: "APIKey", endpoint: str, method: str, status_code: int
+    request: Request, api_key: APIKey, endpoint: str, method: str, status_code: int
 ) -> None:
     """Log API usage for audit purposes.
 

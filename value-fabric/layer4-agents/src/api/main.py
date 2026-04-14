@@ -3,6 +3,7 @@
 P1-29: OpenTelemetry tracing integration for observability.
 """
 
+import logging
 import os
 import time
 from contextlib import asynccontextmanager

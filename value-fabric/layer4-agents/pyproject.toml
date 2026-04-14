@@ -82,9 +82,6 @@ ignore = [
     "N818",   # Exception name should end with `Error`
     "UP042",  # Use `StrEnum` instead of `(str, enum.Enum)` – pre-existing pattern
     "UP007",  # Use `X | Y` for union types
-    "F841",   # Local variable assigned but never used
-    "F811",   # Redefinition of unused name from import
-    "F821",   # Undefined name (often forward references)
     "SIM101", # Multiple `isinstance()` calls, merge into a single call
     "SIM102", # Use a single `if` statement instead of nested `if` statements
     "SIM103", # Return the condition directly

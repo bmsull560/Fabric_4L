@@ -169,7 +169,7 @@ class GraphRAGEngine:
         # Build relationship type filter
         rel_filter = ""
         if relationship_types:
-            rel_list = "|".join(f"`{r}`" for r in relationship_types)
+            "|".join(f"`{r}`" for r in relationship_types)
             rel_types_str = ", ".join(f"'{r}'" for r in relationship_types)
             rel_filter = f"AND type(r) IN [{rel_types_str}]"
 

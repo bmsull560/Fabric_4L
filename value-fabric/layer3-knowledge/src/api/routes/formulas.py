@@ -697,17 +697,9 @@ def evaluate_expression(expression: str, variables: dict[str, float]) -> float:
     # Simple expression evaluation with basic operators
     # In production, use a proper math parser like numexpr or asteval
 
-    import operator
     import re
 
     # Supported operators
-    ops = {
-        "+": operator.add,
-        "-": operator.sub,
-        "*": operator.mul,
-        "/": operator.truediv,
-        "**": operator.pow,
-    }
 
     # Replace variable names with values
     expr = expression
@@ -735,15 +727,7 @@ def evaluate_expression(expression: str, variables: dict[str, float]) -> float:
 
 def evaluate_simple(expr: str) -> float:
     """Evaluate simple expression without parentheses."""
-    import operator
 
-    ops = {
-        "+": operator.add,
-        "-": operator.sub,
-        "*": operator.mul,
-        "/": operator.truediv,
-        "**": operator.pow,
-    }
 
     # Tokenize by operators (respecting operator precedence)
     tokens = []

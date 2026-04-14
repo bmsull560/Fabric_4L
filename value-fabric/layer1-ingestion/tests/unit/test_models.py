@@ -66,7 +66,6 @@ class TestCrawlQueueItem:
     
     def test_create_queue_item(self):
         """Test creating a queue item."""
-        from src.shared.models import CrawlQueueItem
         
         job_id = UUID('12345678-1234-1234-1234-123456789abc')
         org_id = UUID('12345678-1234-1234-1234-123456789abc')
@@ -94,7 +93,6 @@ class TestRawContent:
     
     def test_content_creation(self):
         """Test creating raw content."""
-        from src.shared.models import RawContent
         
         job_id = UUID('12345678-1234-1234-1234-123456789abc')
         org_id = UUID('12345678-1234-1234-1234-123456789abc')

@@ -1,5 +1,6 @@
 """Comprehensive API analytics and usage reporting system with business intelligence dashboards."""
 
+import hashlib
 import json
 import logging
 import time
@@ -596,7 +597,7 @@ class AnalyticsStore:
             current_time = start_time
             while current_time <= end_time:
                 time_bucket = current_time.replace(minute=0, second=0, microsecond=0)
-                time_key = f"analytics:events:{time_bucket.isoformat()}"
+                f"analytics:events:{time_bucket.isoformat()}"
 
                 # Get endpoint data
                 pattern = "analytics:event:*"

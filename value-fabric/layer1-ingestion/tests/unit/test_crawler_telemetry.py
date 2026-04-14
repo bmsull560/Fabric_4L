@@ -160,7 +160,7 @@ class TestStartCrawlSpan:
         mock_get_tracer.return_value = mock_tracer
         
         with pytest.raises(ValueError):
-            with start_crawl_span("https://example.com", "crawl_url") as span:
+            with start_crawl_span("https://example.com", "crawl_url"):
                 raise ValueError("Test error")
                 
         # Verify span recorded exception
@@ -179,7 +179,7 @@ class TestStartBatchSpan:
         mock_tracer.start_as_current_span.return_value.__exit__ = MagicMock(return_value=False)
         mock_get_tracer.return_value = mock_tracer
         
-        with start_batch_span(10, "crawl_urls") as span:
+        with start_batch_span(10, "crawl_urls"):
             pass
             
         # Verify batch size was set

@@ -196,7 +196,6 @@ class TestCleanupOldContent:
         assert result["deleted_count"] == 2
         assert "cutoff_date" in result
         # cutoff_date must be a valid ISO datetime string
-        from datetime import datetime
         cutoff = datetime.fromisoformat(result["cutoff_date"])
         assert cutoff < datetime.utcnow()
 

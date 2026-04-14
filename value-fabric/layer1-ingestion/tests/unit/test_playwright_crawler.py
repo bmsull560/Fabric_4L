@@ -170,7 +170,7 @@ class TestCrawlUrl:
             mock_async_pw.return_value.start = AsyncMock(return_value=mock_playwright["playwright"])
             await crawler.start()
             
-            result = await crawler.crawl_url("https://example.com")
+            await crawler.crawl_url("https://example.com")
             
             # Verify route was set up for resource blocking
             mock_playwright["page"].route.assert_called()
