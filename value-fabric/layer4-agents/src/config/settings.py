@@ -4,11 +4,15 @@ P0-29: Pydantic-settings with validation for required secrets.
 Fails fast on startup if required configuration is missing or invalid.
 """
 
-import os
 import secrets
-from typing import List, Optional
 
-from pydantic import Field, field_validator, ValidationInfo
+try:
+    from shared.secrets import load_infisical_secrets
+    load_infisical_secrets()
+except ImportError:
+    pass  # shared package not available; env vars used directly
+
+from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -70,14 +74,14 @@ class Settings(BaseSettings):
     # ==========================================================================
     # External Services
     # ==========================================================================
-    openai_api_key: Optional[str] = Field(
+    openai_api_key: str | None = Field(
         default=None,
         description="OpenAI API key for LLM operations"
     )
     openai_model: str = Field(default="gpt-4", description="Default OpenAI model")
     openai_timeout_seconds: int = Field(default=60, description="OpenAI API timeout")
 
-    anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key")
+    anthropic_api_key: str | None = Field(default=None, description="Anthropic API key")
     anthropic_model: str = Field(default="claude-3-sonnet-20240229", description="Default Anthropic model")
     anthropic_timeout_seconds: int = Field(default=60, description="Anthropic API timeout")
 
@@ -158,7 +162,7 @@ class Settings(BaseSettings):
     # ==========================================================================
     log_level: str = Field(default="INFO", description="Logging level")
     log_format: str = Field(default="json", description="Log format: json or text")
-    otel_exporter_endpoint: Optional[str] = Field(
+    otel_exporter_endpoint: str | None = Field(
         default=None,
         description="OpenTelemetry exporter endpoint (P1-29)"
     )
@@ -212,6 +216,7 @@ class Settings(BaseSettings):
                 warnings.warn(
                     "JWT_SECRET not set in development. Using random secret (sessions will not persist across restarts).",
                     RuntimeWarning,
+                    stacklevel=2,
                 )
                 return secrets.token_urlsafe(32)
             else:
@@ -247,6 +252,7 @@ class Settings(BaseSettings):
                 warnings.warn(
                     "API_KEY_HMAC_SECRET not set in development. Using random secret (API keys will not persist across restarts).",
                     RuntimeWarning,
+                    stacklevel=2,
                 )
                 return secrets.token_urlsafe(32)
             else:
@@ -311,7 +317,7 @@ class Settings(BaseSettings):
 
     @field_validator("openai_api_key")
     @classmethod
-    def validate_openai_key(cls, v: Optional[str], info: ValidationInfo) -> Optional[str]:
+    def validate_openai_key(cls, v: str | None, info: ValidationInfo) -> str | None:
         """Validate OpenAI API key format if provided."""
         if v and not v.startswith(("sk-", "sk-proj-")):
             raise ValueError(
@@ -334,7 +340,7 @@ class Settings(BaseSettings):
         return self.environment == "development"
 
     @property
-    def cors_origins_list(self) -> List[str]:
+    def cors_origins_list(self) -> list[str]:
         """Get CORS origins as a list."""
         if not self.cors_origins:
             return ["*"] if self.is_development else []

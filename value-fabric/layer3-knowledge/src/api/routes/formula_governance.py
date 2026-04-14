@@ -12,7 +12,7 @@ from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
 from ...auth.api_keys import APIKey
-from ...auth.middleware import require_admin_role, get_current_api_key
+from ...auth.middleware import get_current_api_key, require_admin_role
 from ...db.driver import get_driver
 from ...logging_config import get_logger
 from ._utils import semver_key

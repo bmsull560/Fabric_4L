@@ -7,7 +7,7 @@ Delegates calculation logic to the ROI calculation agent.
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from ...agents.scenario_engine import VariableAdjustment, scenario_engine
 
@@ -36,9 +36,10 @@ class FormulaEvaluateRequest(BaseModel):
     )
     output_unit: str | None = Field(None, description="Desired output unit")
 
-    @validator("expression")
-    def validate_expression_or_formula_id(cls, v, values):
-        if not v and not values.get("formula_id"):
+    @field_validator("expression")
+    @classmethod
+    def validate_expression_or_formula_id(cls, v, info):
+        if not v and not info.data.get("formula_id"):
             raise ValueError("Either formula_id or expression must be provided")
         return v
 

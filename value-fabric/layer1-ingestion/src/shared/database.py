@@ -5,7 +5,6 @@ P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Optional
 from uuid import UUID
 
 from fastapi import Header
@@ -23,7 +22,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def set_tenant_context(session: Session, tenant_id: Optional[UUID | str]) -> None:
+def set_tenant_context(session: Session, tenant_id: UUID | str | None) -> None:
     """P0-08: Set PostgreSQL app.tenant_id for RLS policies.
 
     Executes SET LOCAL app.tenant_id = '...' which applies for the
@@ -49,7 +48,7 @@ def set_tenant_context(session: Session, tenant_id: Optional[UUID | str]) -> Non
 
 
 @contextmanager
-def get_db_session(tenant_id: Optional[UUID | str] = None) -> Generator[Session, None, None]:
+def get_db_session(tenant_id: UUID | str | None = None) -> Generator[Session, None, None]:
     """Get a database session as a context manager.
 
     Args:
@@ -75,7 +74,7 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def get_db_with_tenant(
-    x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID")
+    x_tenant_id: str | None = Header(None, alias="X-Tenant-ID")
 ) -> Generator[Session, None, None]:
     """
     FastAPI dependency that yields a database session with RLS tenant context.
@@ -94,7 +93,7 @@ def get_db_with_tenant(
 
 
 def get_db_with_tenant_from_context(
-    tenant_id: Optional[UUID | str] = None
+    tenant_id: UUID | str | None = None
 ) -> Generator[Session, None, None]:
     """
     Context manager for database sessions with RLS tenant context.

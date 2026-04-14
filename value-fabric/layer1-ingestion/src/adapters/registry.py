@@ -3,6 +3,7 @@
 import structlog
 
 from .base import AdapterType, DataSourceAdapter
+
 try:
     from .pdf_adapter import PDFAdapter
 except ImportError:

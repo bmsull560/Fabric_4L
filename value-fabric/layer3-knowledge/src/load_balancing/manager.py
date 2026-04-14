@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -148,10 +148,7 @@ class LoadBalancerConfig(BaseModel):
         default=3600, description="Session affinity timeout in seconds"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class AutoScalingConfig(BaseModel):
@@ -191,10 +188,7 @@ class AutoScalingConfig(BaseModel):
         default=1000, description="Target request rate per minute"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class LoadBalancerStats(BaseModel):

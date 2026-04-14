@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, confloat, conint, constr, validator
+from pydantic import BaseModel, Field, confloat, conint, constr, field_validator
 
 
 # Health Check
@@ -107,7 +107,8 @@ class IngestRequest(BaseModel):
         None, description="Tenant ID for data isolation (extracted from X-Tenant-ID header if not provided)", example="tenant-abc123"
     )
 
-    @validator("content_hash")
+    @field_validator("content_hash")
+    @classmethod
     def validate_content_hash(cls, v):
         """Validate content hash format."""
         if v and not all(c in "0123456789abcdefABCDEF" for c in v):
@@ -269,7 +270,8 @@ class SearchRequest(BaseModel):
         None, description="Additional search filters"
     )
 
-    @validator("weights")
+    @field_validator("weights")
+    @classmethod
     def validate_weights(cls, v):
         """Validate search weights sum to 1.0."""
         if v:

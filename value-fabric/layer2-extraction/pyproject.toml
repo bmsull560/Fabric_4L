@@ -19,6 +19,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "prometheus-client>=0.21.0",
     "psutil>=6.0.0",
+    "infisical-sdk>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +27,7 @@ dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",
     "pytest-cov>=6.0.0",
+    "pytest-timeout>=2.3.0",
     "mypy>=1.13.0",
     "ruff>=0.8.0",
     "black>=24.10.0",
@@ -109,6 +111,7 @@ addopts = "-ra -q --strict-markers --tb=short"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 pythonpath = ["src", ".."]
+timeout = 30
 
 [tool.coverage.run]
 source = ["src"]

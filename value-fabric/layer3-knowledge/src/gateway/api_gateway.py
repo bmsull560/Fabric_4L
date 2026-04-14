@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 import redis.asyncio as redis
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger(__name__)
 
@@ -141,10 +141,7 @@ class GatewayConfig(BaseModel):
         default=10485760, description="Max response size in bytes"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class ServiceMeshConfig(BaseModel):
@@ -172,10 +169,7 @@ class ServiceMeshConfig(BaseModel):
         default=True, description="Enable distributed tracing"
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class GatewayStats(BaseModel):

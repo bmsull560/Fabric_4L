@@ -9,9 +9,9 @@ import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from ..database import db_session
 from ..engine.scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from ..models.account import CRMProvider
-from ..database import db_session
 from .crm_sync_service import CRMSyncService
 
 logger = logging.getLogger(__name__)

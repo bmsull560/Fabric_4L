@@ -8,7 +8,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Any
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 if TYPE_CHECKING:
     pass
@@ -133,7 +133,11 @@ class BaseAgentState(BaseModel):
     resumed_at: datetime | None = Field(None, description="When workflow was resumed")
     pause_count: int = Field(default=0, description="Number of times workflow has been paused")
 
-    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})
+    model_config = ConfigDict()
+
+    @field_serializer("started_at", "completed_at", "paused_at", "resumed_at")
+    def serialize_datetime(self, v: datetime | None, _info) -> str | None:
+        return v.isoformat() if v else None
 
     def is_paused(self) -> bool:
         """Check if workflow is currently paused."""

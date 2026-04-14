@@ -10,8 +10,8 @@ Implements the workflow API as specified in value_fabric_backend_logic_specifica
 import asyncio
 import json
 import logging
-from datetime import datetime, UTC
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ============================================================================
 
-PRIORITY_MAP: Dict[str, TaskPriority] = {
+PRIORITY_MAP: dict[str, TaskPriority] = {
     "CRITICAL": TaskPriority.CRITICAL,
     "HIGH": TaskPriority.HIGH,
     "NORMAL": TaskPriority.NORMAL,
@@ -39,7 +39,7 @@ PRIORITY_MAP: Dict[str, TaskPriority] = {
     "BACKGROUND": TaskPriority.BACKGROUND,
 }
 
-ESTIMATED_DURATION_SECONDS: Dict[str, int] = {
+ESTIMATED_DURATION_SECONDS: dict[str, int] = {
     "roi_calculator": 120,
     "whitespace_analysis": 300,
     "business_case": 400,

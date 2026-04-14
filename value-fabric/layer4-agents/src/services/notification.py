@@ -406,13 +406,13 @@ class NotificationService:
                     break
             
             # Sort by priority (URGENT first, LOW last) to ensure important events stay
-            PRIORITY_ORDER = {
+            priority_order = {
                 NotificationPriority.URGENT: 0,
                 NotificationPriority.HIGH: 1,
                 NotificationPriority.NORMAL: 2,
                 NotificationPriority.LOW: 3,
             }
-            temp_events.sort(key=lambda e: PRIORITY_ORDER.get(e.priority, 2))
+            temp_events.sort(key=lambda e: priority_order.get(e.priority, 2))
             
             # Re-add events, respecting max size
             for event in temp_events:
@@ -454,7 +454,7 @@ class NotificationService:
                     continue
                 
                 await self._process_notification(event)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # No events in queue, continue loop
                 continue
             except asyncio.CancelledError:

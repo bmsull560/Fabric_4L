@@ -49,14 +49,14 @@ from .middleware import add_security_middleware
 
 # Import shared error handling (Task 60/61: Error Response Hardening + Request Correlation)
 try:
-    from shared.error_handling import register_exception_handlers, RequestIDMiddleware
+    from shared.error_handling import RequestIDMiddleware
     SHARED_ERROR_HANDLING_AVAILABLE = True
 except ImportError:
     SHARED_ERROR_HANDLING_AVAILABLE = False
-from .rate_limiter import add_rate_limiting
-
 # Import dataclass utilities
 from dataclasses import asdict
+
+from .rate_limiter import add_rate_limiting
 
 # Import cache modules
 try:

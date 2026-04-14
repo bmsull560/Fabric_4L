@@ -10,20 +10,14 @@ from rdflib import OWL, RDF, RDFS, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import PROV, XSD
 
 from layer2_extraction.models import (
-    BenefitType,
     Capability,
-    DriverType,
-    EnablementType,
     ExtractionResult,
     Feature,
-    ImpactLevel,
     Persona,
     PredicateType,
     Relationship,
-    SeniorityLevel,
     UseCase,
     ValueDriver,
-    ValueCategory,
 )
 
 # Namespaces

@@ -12,12 +12,12 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
+from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db
 from ...models.account import CRMProvider
 from ...services.crm_sync_service import CRMSyncService
-from shared.audit import emit_audit_event, AuditAction, AuditOutcome
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/crm", tags=["CRM Webhooks"])
