@@ -35,16 +35,39 @@ _DEFAULT_ALGORITHM = "HS256"
 _DEFAULT_TENANT_CLAIM = "tenant_id"
 _DEFAULT_USER_CLAIM = "sub"
 _DEFAULT_ROLES_CLAIM = "roles"
+_DEFAULT_JWT_SECRET = "changeme-in-production"
+_LOCAL_ENV_NAMES = {"local", "dev", "development"}
+_ENV_KEYS = ("ENV", "APP_ENV", "VF_ENV", "VALUE_FABRIC_ENV", "PYTHON_ENV")
+
+
+def _detect_environment() -> str | None:
+    for key in _ENV_KEYS:
+        value = os.getenv(key)
+        if value:
+            return value
+    return None
 
 
 def _get_jwt_secret() -> str:
-    secret = os.getenv("JWT_SECRET", "changeme-in-production")
-    if secret == "changeme-in-production":
-        logger.warning(
-            "JWT_SECRET is using the default development value — "
-            "set a strong secret in production."
+    env = _detect_environment()
+    is_local_dev = bool(env and env.lower() in _LOCAL_ENV_NAMES)
+    configured_secret = os.getenv("JWT_SECRET")
+    using_default_secret = configured_secret in (None, "", _DEFAULT_JWT_SECRET)
+
+    if using_default_secret and not is_local_dev:
+        raise RuntimeError(
+            "JWT_SECRET must be set to a non-default value when "
+            f"running outside local development (detected env: {env or 'unset'})."
         )
-    return secret
+
+    if using_default_secret:
+        logger.warning(
+            "JWT_SECRET is using the default development value in local/dev mode; "
+            "set a strong secret in non-local environments."
+        )
+        return _DEFAULT_JWT_SECRET
+
+    return configured_secret
 
 
 def _get_jwt_algorithm() -> str:
