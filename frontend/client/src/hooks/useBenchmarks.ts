@@ -64,7 +64,7 @@ async function fetchBenchmarks(filters: BenchmarkFilters): Promise<Benchmark[]> 
   if (filters.confidence && filters.confidence !== 'all') params.set('confidence', filters.confidence);
   if (filters.search) params.set('search', filters.search);
 
-  const response = await apiClient.get('l3', `/benchmarks?${params.toString()}`);
+  const response = await apiClient.get('l6', `/datasets?${params.toString()}`);
   return response.data as Benchmark[];
 }
 
@@ -85,7 +85,7 @@ export function useBenchmarks(filters: BenchmarkFilters = {}) {
 }
 
 async function fetchBenchmark(benchmarkId: string): Promise<Benchmark> {
-  const response = await apiClient.get('l3', `/benchmarks/${benchmarkId}`);
+  const response = await apiClient.get('l6', `/datasets/${benchmarkId}`);
   return response.data as Benchmark;
 }
 
@@ -110,7 +110,7 @@ export function useBenchmark(benchmarkId: string | null) {
 }
 
 async function fetchBenchmarkPolicies(): Promise<BenchmarkPolicy[]> {
-  const response = await apiClient.get('l3', '/benchmarks/policies');
+  const response = await apiClient.get('l6', '/policies');
   return response.data as BenchmarkPolicy[];
 }
 
@@ -145,7 +145,7 @@ export function useUpdateBenchmarkPolicy() {
   return useMutation<BenchmarkPolicy, BenchmarkApiError, UpdateBenchmarkPolicyParams>({
     mutationFn: async (policy) => {
       if (!policy.id) throw new BenchmarkApiError('Policy ID is required');
-      const response = await apiClient.put('l3', `/benchmarks/policies/${policy.id}`, policy);
+      const response = await apiClient.put('l6', `/policies/${policy.id}`, policy);
       return response.data as BenchmarkPolicy;
     },
     onSuccess: () => {
