@@ -7,7 +7,8 @@ Create Date: 2026-04-13
 Note: Layer 5 uses 'organization_id' instead of 'tenant_id' for multi-tenancy.
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 from alembic import op
 

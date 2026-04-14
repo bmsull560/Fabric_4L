@@ -5,7 +5,7 @@ Phase 1: Accounts-first operational surface with embedded opportunities/contacts
 """
 
 import logging
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status

@@ -9,7 +9,6 @@ P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Optional
 from uuid import UUID
 
 from fastapi import Header
@@ -65,7 +64,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 # ---------------------------------------------------------------------------
 
 
-async def set_tenant_context(session: AsyncSession, tenant_id: Optional[UUID | str]) -> None:
+async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None) -> None:
     """P0-08: Set PostgreSQL app.tenant_id for RLS policies.
 
     Executes SET LOCAL app.tenant_id = '...' which applies for the
@@ -111,7 +110,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_db_with_tenant(
-    x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID")
+    x_tenant_id: str | None = Header(None, alias="X-Tenant-ID")
 ) -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session with RLS tenant context.
@@ -143,7 +142,7 @@ async def get_db_with_tenant(
 
 
 @asynccontextmanager
-async def db_session(tenant_id: Optional[UUID | str] = None) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(tenant_id: UUID | str | None = None) -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for use outside of FastAPI request lifecycle.
 
     Args:

@@ -262,7 +262,7 @@ class BaseWorkflow(ABC):
 
     def _now(self):
         """Get current timestamp."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
 
         return datetime.now(UTC)
 
