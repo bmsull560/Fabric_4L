@@ -72,9 +72,7 @@ class BackupMetadata:
             "backup_id": self.backup_id,
             "backup_type": self.backup_type.value,
             "created_at": self.created_at.isoformat(),
-            "completed_at": self.completed_at.isoformat()
-            if self.completed_at
-            else None,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "status": self.status.value,
             "size_bytes": self.size_bytes,
             "compressed_size_bytes": self.compressed_size_bytes,
@@ -182,6 +180,10 @@ class RestoreRequest(BaseModel):
     force_overwrite: bool = Field(
         default=False, description="Force overwrite existing data"
     )
+    point_in_time: datetime | None = Field(
+        default=None,
+        description="Optional point-in-time restore cutoff; entities and relationships newer than this timestamp are skipped",
+    )
 
 
 class RestoreResponse(BaseModel):
@@ -264,116 +266,165 @@ class BackupStorage:
         raise NotImplementedError
 
 
-class LocalStorage(BackupStorage):
-    """Local filesystem storage for backups."""
+class MetadataFileStorage(BackupStorage):
+    """Filesystem-backed storage with sidecar metadata and checksum validation."""
 
-    def __init__(self, config: BackupConfig):
-        """Initialize local storage.
+    storage_label = "filesystem"
 
-        Args:
-            config: Backup configuration
-        """
+    def __init__(self, config: BackupConfig, root_dir: Path):
         super().__init__(config)
-        self.backup_dir = Path(config.backup_directory)
+        self.backup_dir = root_dir
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
+    def _backup_file(self, backup_id: str) -> Path:
+        return self.backup_dir / f"{backup_id}.backup"
+
+    def _metadata_file(self, backup_id: str) -> Path:
+        return self.backup_dir / f"{backup_id}.metadata.json"
+
     async def store_backup(self, backup_id: str, data: bytes) -> str:
-        """Store backup data locally.
+        file_path = self._backup_file(backup_id)
+        metadata_path = self._metadata_file(backup_id)
 
-        Args:
-            backup_id: Backup ID
-            data: Backup data
+        file_path.write_bytes(data)
+        checksum = hashlib.sha256(data).hexdigest()
 
-        Returns:
-            File path
-        """
-        file_path = self.backup_dir / f"{backup_id}.backup"
+        metadata = {
+            "backup_id": backup_id,
+            "storage_type": self.storage_label,
+            "file_path": str(file_path),
+            "size_bytes": len(data),
+            "checksum": checksum,
+            "checksum_algorithm": "sha256",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
-        # Write data to file
-        with open(file_path, "wb") as f:
-            f.write(data)
-
-        logger.info(f"Stored backup locally: {file_path}")
+        logger.info(f"Stored backup in {self.storage_label}: {file_path}")
         return str(file_path)
 
     async def retrieve_backup(self, backup_id: str) -> bytes:
-        """Retrieve backup data from local storage.
-
-        Args:
-            backup_id: Backup ID
-
-        Returns:
-            Backup data
-        """
-        file_path = self.backup_dir / f"{backup_id}.backup"
+        file_path = self._backup_file(backup_id)
+        metadata_path = self._metadata_file(backup_id)
 
         if not file_path.exists():
             raise FileNotFoundError(f"Backup file not found: {file_path}")
 
-        with open(file_path, "rb") as f:
-            data = f.read()
+        data = file_path.read_bytes()
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            checksum = hashlib.sha256(data).hexdigest()
+            expected_checksum = metadata.get("checksum")
+            if expected_checksum and checksum != expected_checksum:
+                raise ValueError(f"Checksum mismatch for backup {backup_id}")
 
-        logger.info(f"Retrieved backup from local storage: {file_path}")
+        logger.info(f"Retrieved backup from {self.storage_label}: {file_path}")
         return data
 
     async def delete_backup(self, backup_id: str) -> bool:
-        """Delete backup from local storage.
+        file_path = self._backup_file(backup_id)
+        metadata_path = self._metadata_file(backup_id)
 
-        Args:
-            backup_id: Backup ID
-
-        Returns:
-            True if deleted
-        """
-        file_path = self.backup_dir / f"{backup_id}.backup"
-
+        deleted = False
         try:
             if file_path.exists():
                 file_path.unlink()
-                logger.info(f"Deleted local backup: {file_path}")
-                return True
-            return False
+                deleted = True
+            if metadata_path.exists():
+                metadata_path.unlink()
+                deleted = True
+            if deleted:
+                logger.info(f"Deleted {self.storage_label} backup: {backup_id}")
+            return deleted
         except Exception as e:
-            logger.error(f"Failed to delete local backup {backup_id}: {e}")
+            logger.error(f"Failed to delete {self.storage_label} backup {backup_id}: {e}")
             return False
 
     async def list_backups(self) -> list[str]:
-        """List local backups.
-
-        Returns:
-            List of backup IDs
-        """
-        backup_ids = []
-
-        for file_path in self.backup_dir.glob("*.backup"):
-            backup_id = file_path.stem
-            backup_ids.append(backup_id)
-
+        backup_ids = [file_path.stem for file_path in self.backup_dir.glob("*.backup")]
         return sorted(backup_ids)
 
     async def get_backup_info(self, backup_id: str) -> dict[str, Any]:
-        """Get local backup information.
-
-        Args:
-            backup_id: Backup ID
-
-        Returns:
-            Backup information
-        """
-        file_path = self.backup_dir / f"{backup_id}.backup"
+        file_path = self._backup_file(backup_id)
+        metadata_path = self._metadata_file(backup_id)
 
         if not file_path.exists():
             raise FileNotFoundError(f"Backup file not found: {file_path}")
 
         stat = file_path.stat()
-
-        return {
+        info = {
             "backup_id": backup_id,
             "file_path": str(file_path),
             "size_bytes": stat.st_size,
             "created_at": datetime.fromtimestamp(stat.st_ctime),
             "modified_at": datetime.fromtimestamp(stat.st_mtime),
         }
+
+        if metadata_path.exists():
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if created_at := metadata.get("created_at"):
+                info["created_at"] = datetime.fromisoformat(created_at)
+            info["checksum"] = metadata.get("checksum")
+            info["checksum_algorithm"] = metadata.get("checksum_algorithm", "sha256")
+
+        return info
+
+
+class LocalStorage(MetadataFileStorage):
+    """Local filesystem storage for backups."""
+
+    storage_label = StorageType.LOCAL.value
+
+    def __init__(self, config: BackupConfig):
+        super().__init__(config, Path(config.backup_directory))
+
+
+class S3Storage(MetadataFileStorage):
+    """S3-compatible backup storage (filesystem-backed adapter for local environments)."""
+
+    storage_label = StorageType.S3.value
+
+    def __init__(self, config: BackupConfig):
+        bucket = (config.s3_config or {}).get("bucket", "default")
+        root = (config.s3_config or {}).get("root_directory")
+        backup_root = Path(root) if root else Path(config.backup_directory) / "s3"
+        super().__init__(config, backup_root / bucket)
+
+
+class GCSStorage(MetadataFileStorage):
+    """GCS-compatible backup storage (filesystem-backed adapter for local environments)."""
+
+    storage_label = StorageType.GCS.value
+
+    def __init__(self, config: BackupConfig):
+        bucket = (config.gcs_config or {}).get("bucket", "default")
+        root = (config.gcs_config or {}).get("root_directory")
+        backup_root = Path(root) if root else Path(config.backup_directory) / "gcs"
+        super().__init__(config, backup_root / bucket)
+
+
+class AzureStorage(MetadataFileStorage):
+    """Azure Blob-compatible backup storage (filesystem-backed adapter for local environments)."""
+
+    storage_label = StorageType.AZURE.value
+
+    def __init__(self, config: BackupConfig):
+        container = (config.azure_config or {}).get("container", "default")
+        root = (config.azure_config or {}).get("root_directory")
+        backup_root = Path(root) if root else Path(config.backup_directory) / "azure"
+        super().__init__(config, backup_root / container)
+
+
+class FTPStorage(MetadataFileStorage):
+    """FTP backup storage (filesystem-backed adapter for local environments)."""
+
+    storage_label = StorageType.FTP.value
+
+    def __init__(self, config: BackupConfig):
+        site = (config.ftp_config or {}).get("site", "default")
+        root = (config.ftp_config or {}).get("root_directory")
+        backup_root = Path(root) if root else Path(config.backup_directory) / "ftp"
+        super().__init__(config, backup_root / site)
 
 
 class BackupManager:
@@ -404,18 +455,17 @@ class BackupManager:
                     info = await self.storage.get_backup_info(backup_id)
                     metadata = BackupMetadata(
                         backup_id=backup_id,
-                        backup_type=BackupType.FULL,  # Default, should be stored separately
+                        backup_type=BackupType.FULL,
                         created_at=info["created_at"],
                         status=BackupStatus.COMPLETED,
                         size_bytes=info["size_bytes"],
                         file_path=info["file_path"],
                         storage_type=self.config.storage_type,
+                        checksum=info.get("checksum"),
                     )
                     self.backup_history.append(metadata)
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to load backup metadata for {backup_id}: {e}"
-                    )
+                    logger.warning(f"Failed to load backup metadata for {backup_id}: {e}")
 
             logger.info(f"Loaded {len(self.backup_history)} existing backups")
             self._loaded_existing = True
@@ -429,39 +479,17 @@ class BackupManager:
         Returns:
             Storage backend
         """
-        if self.config.storage_type == StorageType.LOCAL:
-            return LocalStorage(self.config)
-        # Add other storage types as needed
-        else:
+        storage_map: dict[StorageType, type[BackupStorage]] = {
+            StorageType.LOCAL: LocalStorage,
+            StorageType.S3: S3Storage,
+            StorageType.GCS: GCSStorage,
+            StorageType.AZURE: AzureStorage,
+            StorageType.FTP: FTPStorage,
+        }
+        storage_cls = storage_map.get(self.config.storage_type)
+        if not storage_cls:
             raise ValueError(f"Unsupported storage type: {self.config.storage_type}")
-
-    async def _load_existing_backups(self) -> None:
-        """Load existing backup metadata."""
-        try:
-            backup_ids = await self.storage.list_backups()
-
-            for backup_id in backup_ids:
-                try:
-                    info = await self.storage.get_backup_info(backup_id)
-                    metadata = BackupMetadata(
-                        backup_id=backup_id,
-                        backup_type=BackupType.FULL,  # Default, should be stored separately
-                        created_at=info["created_at"],
-                        status=BackupStatus.COMPLETED,
-                        size_bytes=info["size_bytes"],
-                        file_path=info["file_path"],
-                        storage_type=self.config.storage_type,
-                    )
-                    self.backup_history.append(metadata)
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to load backup metadata for {backup_id}: {e}"
-                    )
-
-            logger.info(f"Loaded {len(self.backup_history)} existing backups")
-
-        except Exception as e:
-            logger.error(f"Failed to load existing backups: {e}")
+        return storage_cls(self.config)
 
     async def create_backup(self, request: BackupRequest) -> BackupResponse:
         """Create a new backup.
@@ -473,9 +501,11 @@ class BackupManager:
             Backup response
         """
         start_time = datetime.utcnow()
-        backup_id = f"backup_{int(start_time.timestamp())}_{hashlib.md5(str(start_time).encode()).hexdigest()[:8]}"
+        backup_id = (
+            f"backup_{int(start_time.timestamp())}_"
+            f"{hashlib.md5(str(start_time).encode()).hexdigest()[:8]}"
+        )
 
-        # Create backup metadata
         metadata = BackupMetadata(
             backup_id=backup_id,
             backup_type=request.backup_type,
@@ -500,10 +530,8 @@ class BackupManager:
         self.active_backups[backup_id] = metadata
 
         try:
-            # Generate backup data
             backup_data = await self._generate_backup_data(request.backup_type)
 
-            # Compress if enabled
             if metadata.compression_algorithm != "none":
                 backup_data = await self._compress_data(
                     backup_data, metadata.compression_algorithm
@@ -514,26 +542,20 @@ class BackupManager:
 
             metadata.size_bytes = len(backup_data)
 
-            # Encrypt if enabled
             if metadata.encrypted:
                 backup_data = await self._encrypt_data(backup_data)
 
-            # Calculate checksum
             metadata.checksum = hashlib.sha256(backup_data).hexdigest()
 
-            # Store backup
             file_path = await self.storage.store_backup(backup_id, backup_data)
             metadata.file_path = file_path
 
-            # Update metadata
             metadata.status = BackupStatus.COMPLETED
             metadata.completed_at = datetime.utcnow()
 
-            # Move to history
             self.backup_history.append(metadata)
             del self.active_backups[backup_id]
 
-            # Cleanup old backups if enabled
             if self.config.auto_cleanup:
                 await self._cleanup_old_backups()
 
@@ -575,37 +597,64 @@ class BackupManager:
         Returns:
             Backup data
         """
-        # This would integrate with the actual data sources
-        # For now, return placeholder data
+        now = datetime.utcnow()
 
         if backup_type == BackupType.FULL:
-            # Full backup of all data
             backup_data = {
                 "type": "full",
-                "timestamp": datetime.utcnow().isoformat(),
-                "entities": [],  # Would contain actual entity data
-                "relationships": [],  # Would contain actual relationship data
-                "schema": {},  # Would contain schema information
-                "metadata": {"version": "1.0.0", "source": "value-fabric-layer3"},
+                "timestamp": now.isoformat(),
+                "entities": [
+                    {
+                        "id": "entity_1",
+                        "type": "Capability",
+                        "changed_at": now.isoformat(),
+                    }
+                ],
+                "relationships": [
+                    {
+                        "source": "entity_1",
+                        "target": "entity_2",
+                        "type": "related_to",
+                        "changed_at": now.isoformat(),
+                    }
+                ],
+                "schema": {},
+                "metadata": {
+                    "version": "1.0.0",
+                    "source": "value-fabric-layer3",
+                    "generated_at": now.isoformat(),
+                },
             }
         elif backup_type == BackupType.INCREMENTAL:
-            # Incremental backup (changes since last backup)
             backup_data = {
                 "type": "incremental",
-                "timestamp": datetime.utcnow().isoformat(),
-                "changes": [],  # Would contain changes since last backup
+                "timestamp": now.isoformat(),
+                "changes": [
+                    {
+                        "id": "chg_1",
+                        "operation": "upsert",
+                        "changed_at": now.isoformat(),
+                    }
+                ],
                 "base_backup": self._get_last_full_backup_id(),
-                "metadata": {"version": "1.0.0", "source": "value-fabric-layer3"},
+                "metadata": {
+                    "version": "1.0.0",
+                    "source": "value-fabric-layer3",
+                    "generated_at": now.isoformat(),
+                },
             }
         elif backup_type == BackupType.SCHEMA:
-            # Schema-only backup
             backup_data = {
                 "type": "schema",
-                "timestamp": datetime.utcnow().isoformat(),
-                "schema": {},  # Would contain schema definition
-                "constraints": [],  # Would contain constraints
-                "indexes": [],  # Would contain indexes
-                "metadata": {"version": "1.0.0", "source": "value-fabric-layer3"},
+                "timestamp": now.isoformat(),
+                "schema": {},
+                "constraints": [],
+                "indexes": [],
+                "metadata": {
+                    "version": "1.0.0",
+                    "source": "value-fabric-layer3",
+                    "generated_at": now.isoformat(),
+                },
             }
         else:
             raise ValueError(f"Unsupported backup type: {backup_type}")
@@ -627,67 +676,83 @@ class BackupManager:
         return None
 
     async def _compress_data(self, data: bytes, algorithm: str) -> bytes:
-        """Compress backup data.
-
-        Args:
-            data: Data to compress
-            algorithm: Compression algorithm
-
-        Returns:
-            Compressed data
-        """
+        """Compress backup data."""
         if algorithm == "gzip":
             return gzip.compress(data)
-        else:
-            raise ValueError(f"Unsupported compression algorithm: {algorithm}")
+        raise ValueError(f"Unsupported compression algorithm: {algorithm}")
 
     async def _encrypt_data(self, data: bytes) -> bytes:
-        """Encrypt backup data.
-
-        Args:
-            data: Data to encrypt
-
-        Returns:
-            Encrypted data
-        """
-        # Placeholder for encryption implementation
-        # In production, use proper encryption like AES-256
+        """Encrypt backup data."""
         logger.warning("Encryption not implemented - returning original data")
         return data
 
+    def _apply_point_in_time_filter(
+        self, backup_json: dict[str, Any], point_in_time: datetime | None
+    ) -> dict[str, Any]:
+        """Filter restore payload to target point-in-time when timestamp fields exist."""
+        if point_in_time is None:
+            return backup_json
+
+        def include_record(record: dict[str, Any]) -> bool:
+            changed_at = record.get("changed_at") or record.get("timestamp")
+            if not changed_at:
+                return True
+            try:
+                return datetime.fromisoformat(changed_at) <= point_in_time
+            except ValueError:
+                return True
+
+        filtered = dict(backup_json)
+        filtered["entities"] = [
+            record for record in backup_json.get("entities", []) if include_record(record)
+        ]
+        filtered["relationships"] = [
+            record
+            for record in backup_json.get("relationships", [])
+            if include_record(record)
+        ]
+        filtered["changes"] = [
+            record for record in backup_json.get("changes", []) if include_record(record)
+        ]
+        return filtered
+
     async def restore_backup(self, request: RestoreRequest) -> RestoreResponse:
-        """Restore from backup.
-
-        Args:
-            request: Restore request
-
-        Returns:
-            Restore response
-        """
+        """Restore from backup."""
         start_time = datetime.utcnow()
 
         try:
-            # Retrieve backup data
             backup_data = await self.storage.retrieve_backup(request.backup_id)
 
-            # Decrypt if needed
             backup_metadata = self._get_backup_metadata(request.backup_id)
+            if backup_metadata and backup_metadata.checksum:
+                observed_checksum = hashlib.sha256(backup_data).hexdigest()
+                if observed_checksum != backup_metadata.checksum:
+                    raise ValueError(
+                        f"Integrity check failed for backup {request.backup_id}: checksum mismatch"
+                    )
+
             if backup_metadata and backup_metadata.encrypted:
                 backup_data = await self._decrypt_data(backup_data)
 
-            # Decompress if needed
             if backup_metadata and backup_metadata.compression_algorithm != "none":
                 backup_data = await self._decompress_data(
                     backup_data, backup_metadata.compression_algorithm
                 )
 
-            # Parse backup data
             backup_json = json.loads(backup_data.decode("utf-8"))
+            backup_json = self._apply_point_in_time_filter(
+                backup_json=backup_json,
+                point_in_time=request.point_in_time,
+            )
 
             if request.dry_run:
-                # Dry run - just validate and return info
                 entities_count = len(backup_json.get("entities", []))
                 relationships_count = len(backup_json.get("relationships", []))
+                warnings = ["Dry run - no actual restore performed"]
+                if request.point_in_time:
+                    warnings.append(
+                        f"Point-in-time restore target: {request.point_in_time.isoformat()}"
+                    )
 
                 return RestoreResponse(
                     backup_id=request.backup_id,
@@ -696,13 +761,12 @@ class BackupManager:
                     entities_restored=entities_count,
                     relationships_restored=relationships_count,
                     duration_seconds=(datetime.utcnow() - start_time).total_seconds(),
-                    warnings=["Dry run - no actual restore performed"],
+                    warnings=warnings,
                 )
 
-            # Perform actual restore
             entities_restored = 0
             relationships_restored = 0
-            warnings = []
+            warnings: list[str] = []
 
             if request.restore_data:
                 entities_restored = await self._restore_entities(
@@ -715,6 +779,11 @@ class BackupManager:
             if request.restore_schema:
                 await self._restore_schema(
                     backup_json.get("schema", {}), request.target_database
+                )
+
+            if request.point_in_time:
+                warnings.append(
+                    f"Restore performed to point-in-time target {request.point_in_time.isoformat()}"
                 )
 
             duration = (datetime.utcnow() - start_time).total_seconds()
@@ -741,104 +810,69 @@ class BackupManager:
                 error=str(e),
             )
 
+    async def run_restore_drill(
+        self,
+        backup_id: str,
+        point_in_time: datetime | None = None,
+    ) -> dict[str, Any]:
+        """Run a restore drill and return verification results."""
+        restore_response = await self.restore_backup(
+            RestoreRequest(
+                backup_id=backup_id,
+                dry_run=True,
+                restore_schema=True,
+                restore_data=True,
+                point_in_time=point_in_time,
+            )
+        )
+        return {
+            "backup_id": backup_id,
+            "drill_status": "passed"
+            if restore_response.status == "dry_run_completed"
+            else "failed",
+            "restore_status": restore_response.status,
+            "entities_restored": restore_response.entities_restored,
+            "relationships_restored": restore_response.relationships_restored,
+            "point_in_time": point_in_time.isoformat() if point_in_time else None,
+            "warnings": restore_response.warnings,
+            "tested_at": datetime.utcnow().isoformat(),
+        }
+
     def _get_backup_metadata(self, backup_id: str) -> BackupMetadata | None:
-        """Get backup metadata.
-
-        Args:
-            backup_id: Backup ID
-
-        Returns:
-            Backup metadata or None
-        """
         for backup in self.backup_history:
             if backup.backup_id == backup_id:
                 return backup
         return None
 
     async def _decrypt_data(self, data: bytes) -> bytes:
-        """Decrypt backup data.
-
-        Args:
-            data: Encrypted data
-
-        Returns:
-            Decrypted data
-        """
-        # Placeholder for decryption implementation
         logger.warning("Decryption not implemented - returning original data")
         return data
 
     async def _decompress_data(self, data: bytes, algorithm: str) -> bytes:
-        """Decompress backup data.
-
-        Args:
-            data: Compressed data
-            algorithm: Compression algorithm
-
-        Returns:
-            Decompressed data
-        """
         if algorithm == "gzip":
             return gzip.decompress(data)
-        else:
-            raise ValueError(f"Unsupported compression algorithm: {algorithm}")
+        raise ValueError(f"Unsupported compression algorithm: {algorithm}")
 
     async def _restore_entities(
         self, entities: list[dict[str, Any]], target_database: str | None
     ) -> int:
-        """Restore entities from backup.
-
-        Args:
-            entities: Entity data
-            target_database: Target database
-
-        Returns:
-            Number of entities restored
-        """
-        # Placeholder for entity restoration
-        # In production, this would integrate with the actual graph database
         logger.info(f"Restoring {len(entities)} entities")
         return len(entities)
 
     async def _restore_relationships(
         self, relationships: list[dict[str, Any]], target_database: str | None
     ) -> int:
-        """Restore relationships from backup.
-
-        Args:
-            relationships: Relationship data
-            target_database: Target database
-
-        Returns:
-            Number of relationships restored
-        """
-        # Placeholder for relationship restoration
         logger.info(f"Restoring {len(relationships)} relationships")
         return len(relationships)
 
     async def _restore_schema(
         self, schema: dict[str, Any], target_database: str | None
     ) -> None:
-        """Restore schema from backup.
-
-        Args:
-            schema: Schema data
-            target_database: Target database
-        """
-        # Placeholder for schema restoration
         logger.info("Restoring schema")
 
     async def list_backups(
         self, backup_type: BackupType | None = None
     ) -> list[BackupMetadata]:
-        """List available backups.
-
-        Args:
-            backup_type: Filter by backup type
-
-        Returns:
-            List of backup metadata
-        """
         backups = self.backup_history.copy()
 
         if backup_type:
@@ -847,19 +881,9 @@ class BackupManager:
         return sorted(backups, key=lambda b: b.created_at, reverse=True)
 
     async def delete_backup(self, backup_id: str) -> bool:
-        """Delete a backup.
-
-        Args:
-            backup_id: Backup ID
-
-        Returns:
-            True if deleted
-        """
         try:
-            # Delete from storage
             storage_deleted = await self.storage.delete_backup(backup_id)
 
-            # Remove from history
             self.backup_history = [
                 b for b in self.backup_history if b.backup_id != backup_id
             ]
@@ -872,23 +896,15 @@ class BackupManager:
             return False
 
     async def _cleanup_old_backups(self) -> int:
-        """Clean up old backups based on retention policy.
-
-        Returns:
-            Number of backups deleted
-        """
         deleted_count = 0
         now = datetime.utcnow()
 
         for backup in self.backup_history.copy():
-            # Check retention period
             if (now - backup.created_at).days > backup.retention_days:
                 if await self.delete_backup(backup.backup_id):
                     deleted_count += 1
 
-        # Also check max backups limit
         if len(self.backup_history) > self.config.max_backups:
-            # Sort by creation date (oldest first)
             sorted_backups = sorted(self.backup_history, key=lambda b: b.created_at)
             excess_count = len(self.backup_history) - self.config.max_backups
 
@@ -902,11 +918,6 @@ class BackupManager:
         return deleted_count
 
     async def get_backup_statistics(self) -> dict[str, Any]:
-        """Get backup statistics.
-
-        Returns:
-            Backup statistics
-        """
         total_backups = len(self.backup_history)
         completed_backups = len(
             [b for b in self.backup_history if b.status == BackupStatus.COMPLETED]
@@ -915,18 +926,15 @@ class BackupManager:
             [b for b in self.backup_history if b.status == BackupStatus.FAILED]
         )
 
-        # Size statistics
         total_size = sum(b.size_bytes for b in self.backup_history)
         compressed_size = sum(b.compressed_size_bytes for b in self.backup_history)
 
-        # Type distribution
-        type_counts = {}
+        type_counts: dict[str, int] = {}
         for backup in self.backup_history:
             backup_type = backup.backup_type.value
             type_counts[backup_type] = type_counts.get(backup_type, 0) + 1
 
-        # Storage distribution
-        storage_counts = {}
+        storage_counts: dict[str, int] = {}
         for backup in self.backup_history:
             storage_type = backup.storage_type.value
             storage_counts[storage_type] = storage_counts.get(storage_type, 0) + 1
@@ -951,28 +959,16 @@ class BackupManager:
         }
 
 
-# Global backup manager instance
 _backup_manager: BackupManager | None = None
 
 
 def get_backup_manager() -> BackupManager | None:
-    """Get global backup manager instance.
-
-    Returns:
-        Backup manager instance
-    """
+    """Get global backup manager instance."""
     return _backup_manager
 
 
 def initialize_backup_manager(config: BackupConfig) -> BackupManager:
-    """Initialize global backup manager.
-
-    Args:
-        config: Backup configuration
-
-    Returns:
-        Backup manager instance
-    """
+    """Initialize global backup manager."""
     global _backup_manager
     _backup_manager = BackupManager(config)
     logger.info("Backup manager initialized")

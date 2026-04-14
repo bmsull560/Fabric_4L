@@ -1,5 +1,5 @@
 .PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
-        test-frontend build migrate evals clean sdk \
+        test-backup-drills test-frontend build migrate evals clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs
 
@@ -13,7 +13,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test ## Run all checks (lint + typecheck + tests) — required before PR
+verify: lint typecheck test test-backup-drills ## Run all checks (lint + typecheck + tests) — required before PR
 	@echo "✅  All checks passed"
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
@@ -84,6 +84,10 @@ test-layer3: ## Run Layer 3 tests
 
 test-layer4: ## Run Layer 4 tests
 	cd value-fabric/layer4-agents && $(PYTEST) tests/
+
+
+test-backup-drills: ## Run Layer 3 backup and restore drill verification tests
+	cd value-fabric/layer3-knowledge && $(PYTEST) tests/test_backup_manager.py
 
 test-layer5: ## Run Layer 5 tests
 	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/

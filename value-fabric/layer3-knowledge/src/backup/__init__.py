@@ -1,6 +1,7 @@
 """Backup package initialization."""
 
 from .backup_manager import (
+    AzureStorage,
     BackupConfig,
     BackupManager,
     BackupMetadata,
@@ -9,9 +10,12 @@ from .backup_manager import (
     BackupStatus,
     BackupStorage,
     BackupType,
+    FTPStorage,
+    GCSStorage,
     LocalStorage,
     RestoreRequest,
     RestoreResponse,
+    S3Storage,
     StorageType,
     get_backup_manager,
     initialize_backup_manager,
@@ -29,6 +33,10 @@ __all__ = [
     "RestoreResponse",
     "BackupStorage",
     "LocalStorage",
+    "S3Storage",
+    "GCSStorage",
+    "AzureStorage",
+    "FTPStorage",
     "BackupManager",
     "get_backup_manager",
     "initialize_backup_manager",
