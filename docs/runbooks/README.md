@@ -2,6 +2,12 @@
 
 This directory contains runbooks for every alert defined in `monitoring/alerting/rules.yml`.
 
+## Policy links
+
+- Severity matrix and escalation policy: [docs/operations/severity-escalation-policy.md](../operations/severity-escalation-policy.md)
+- MTTA/MTTR reporting process: [docs/operations/mtta-mttr-reporting.md](../operations/mtta-mttr-reporting.md)
+- Postmortem template and corrective actions: [docs/operations/postmortem-template.md](../operations/postmortem-template.md)
+
 ## Runbook Index
 
 | Alert | File | Severity |
