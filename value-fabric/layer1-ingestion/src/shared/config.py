@@ -3,6 +3,12 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
+try:
+    from shared.secrets import load_infisical_secrets
+    load_infisical_secrets()
+except ImportError:
+    pass  # shared package not available; env vars used directly
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""

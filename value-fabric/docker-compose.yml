@@ -17,6 +17,14 @@ services:
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
       - CRAWL_RATE_LIMIT_PER_DOMAIN=1
       - LOG_LEVEL=info
+      # Infisical — leave blank to use plain env vars
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-dev}
+      - INFISICAL_HOST=${INFISICAL_HOST:-}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - INFISICAL_OVERWRITE=${INFISICAL_OVERWRITE:-false}
     volumes:
       - ./raw-content:/app/raw-content
     depends_on:
@@ -50,6 +58,14 @@ services:
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-valuefabric}
       - RDF_OUTPUT_DIR=/app/rdf-output
       - LOG_LEVEL=info
+      # Infisical — leave blank to use plain env vars
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-dev}
+      - INFISICAL_HOST=${INFISICAL_HOST:-}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - INFISICAL_OVERWRITE=${INFISICAL_OVERWRITE:-false}
     volumes:
       - rdf-output:/app/rdf-output
     depends_on:
@@ -107,6 +123,14 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - PINECONE_API_KEY=${PINECONE_API_KEY:-}
       - LOG_LEVEL=info
+      # Infisical — leave blank to use plain env vars
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-dev}
+      - INFISICAL_HOST=${INFISICAL_HOST:-}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - INFISICAL_OVERWRITE=${INFISICAL_OVERWRITE:-false}
     depends_on:
       neo4j:
         condition: service_healthy
@@ -145,6 +169,14 @@ services:
       - PINECONE_API_KEY=${PINECONE_API_KEY:-}
       - CHECKPOINT_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
       - LOG_LEVEL=info
+      # Infisical — leave blank to use plain env vars
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-dev}
+      - INFISICAL_HOST=${INFISICAL_HOST:-}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - INFISICAL_OVERWRITE=${INFISICAL_OVERWRITE:-false}
     depends_on:
       redis:
         condition: service_healthy
@@ -186,6 +218,14 @@ services:
       - AUTO_ADVANCE_TO_SUPPORTED=true
       - LOG_LEVEL=info
       - API_PORT=8005
+      # Infisical — leave blank to use plain env vars
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-dev}
+      - INFISICAL_HOST=${INFISICAL_HOST:-}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - INFISICAL_OVERWRITE=${INFISICAL_OVERWRITE:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -230,6 +270,14 @@ services:
     environment:
       - PORT=8006
       - LOG_LEVEL=info
+      # Infisical — leave blank to use plain env vars
+      - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
+      - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
+      - INFISICAL_PROJECT_ID=${INFISICAL_PROJECT_ID:-}
+      - INFISICAL_ENVIRONMENT=${INFISICAL_ENVIRONMENT:-dev}
+      - INFISICAL_HOST=${INFISICAL_HOST:-}
+      - INFISICAL_SECRET_PATH=${INFISICAL_SECRET_PATH:-/}
+      - INFISICAL_OVERWRITE=${INFISICAL_OVERWRITE:-false}
     depends_on:
       layer4-agents:
         condition: service_healthy

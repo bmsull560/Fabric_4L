@@ -19,6 +19,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "prometheus-client>=0.21.0",
     "psutil>=6.0.0",
+    "infisical-sdk>=2.0.0",
 ]
 
 [project.optional-dependencies]

@@ -8,6 +8,12 @@ import os
 import secrets
 from typing import List, Optional
 
+try:
+    from shared.secrets import load_infisical_secrets
+    load_infisical_secrets()
+except ImportError:
+    pass  # shared package not available; env vars used directly
+
 from pydantic import Field, field_validator, ValidationInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
