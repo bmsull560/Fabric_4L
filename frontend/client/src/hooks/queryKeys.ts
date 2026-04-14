@@ -122,6 +122,12 @@ export const QK = {
     syncStatus: ['accounts', 'sync-status'] as const,
     filters:    ['accounts', 'filters'] as const,
   },
+
+  // Narrative generation
+  narrative: {
+    all:        ['narrative'] as const,
+    industries: () => ['narrative', 'industries'] as const,
+  },
 } as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import { useUserTierStore, type UserTier } from "./stores/userTierStore";
 // Each page is loaded only when its route is first visited, reducing the initial
 // JS bundle by ~60–70% and improving Time-to-Interactive for all users.
 const CommandCenter          = lazy(() => import("./pages/CommandCenter"));
+const ValueNarrativeHome    = lazy(() => import("./pages/ValueNarrativeHome"));
 const ExtractionEngine       = lazy(() => import("./pages/ExtractionEngine"));
 const OntologyBrowser        = lazy(() => import("./pages/OntologyBrowser"));
 const EntityDetail           = lazy(() => import("./pages/EntityDetail"));
@@ -119,7 +120,7 @@ function Router() {
               ═══════════════════════════════════════════════════════════════ */}
           <Route path="/home">
             <RouteGuard>
-              <ErrorBoundary><CommandCenter /></ErrorBoundary>
+              <ErrorBoundary><ValueNarrativeHome /></ErrorBoundary>
             </RouteGuard>
           </Route>
 
