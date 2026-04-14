@@ -166,7 +166,8 @@ def build_artifacts(job_id: str, source_url: str) -> api_main.ExtractionArtifact
     use_case = UseCase(name="Pipeline Use Case", description="Use case for orchestration test")
     relationship = Relationship(
         source_id=capability.id,
-        predicate=PredicateType.ENABLES,
+        raw_predicate="enables",
+        canonical_predicate=PredicateType.ENABLES,
         target_id=use_case.id,
         confidence=0.9,
         evidence_text="Capability enables the use case.",
