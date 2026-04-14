@@ -92,12 +92,12 @@ Deploy in this order to satisfy dependencies:
 # 1. Create namespace
 kubectl apply -f namespace.yml
 
-# 2. Create secrets (review and update secrets.yml first!)
+# 2. Create secrets (dev overlay only)
 # For development:
-kubectl apply -f secrets.yml
+kubectl apply -f k8s/overlays/dev/secrets.yml
 
 # For production with Vault (requires External Secrets Operator):
-# kubectl apply -f external-secrets/vault-integration.yml
+# kubectl apply -f k8s/external-secrets/vault-integration.yml
 
 # 3. Create config maps
 kubectl apply -f configmap-global.yml
