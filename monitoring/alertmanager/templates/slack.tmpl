@@ -1,3 +1,10 @@
+{{/*
+  Slack notification templates for Alertmanager
+  SECURITY NOTE: These templates render in Slack's mrkdwn format, not HTML.
+  Slack mrkdwn does not support HTML tags, so XSS via template injection is not applicable.
+  Variables are rendered as plain text in Slack's proprietary markup format.
+  See: https://api.slack.com/reference/surfaces/formatting
+*/}}
 {{ define "slack.title" -}}
 [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
 {{- end }}

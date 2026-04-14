@@ -628,6 +628,7 @@ def storage_stage(self, prev_result: dict):
             if raw_content_id:
                 raw_content = session.query(RawContent).get(UUID(raw_content_id))
                 if raw_content:
+                    extraction_started_at = datetime.utcnow()
                     # Create ExtractedData record
                     extracted = ExtractedData(
                         job_id=job_id,
@@ -637,7 +638,7 @@ def storage_stage(self, prev_result: dict):
                         extraction_method=config.get("extraction_config", {}).get(
                             "method", "DETERMINISTIC"
                         ),
-                        extraction_time_ms=0,  # TODO: Track
+                        extraction_time_ms=None,
                         data={
                             "title": raw_content.meta_title,
                             "description": raw_content.meta_description,
@@ -646,6 +647,9 @@ def storage_stage(self, prev_result: dict):
                         provenance_source_url=raw_content.source_url,
                         storage_path=raw_content.storage_html_path,
                         format="JSON",
+                    )
+                    extracted.extraction_time_ms = int(
+                        (datetime.utcnow() - extraction_started_at).total_seconds() * 1000
                     )
                     session.add(extracted)
                     session.flush()

@@ -19,3 +19,4 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 | HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning |
 | FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning |
 | DeploymentSignatureVerification | [deployment-signature-verification.md](deployment-signature-verification.md) | critical |
+| SLOBreach | [slo-breach-response.md](slo-breach-response.md) | critical |

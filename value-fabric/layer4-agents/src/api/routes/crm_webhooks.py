@@ -22,6 +22,15 @@ from ...services.crm_sync_service import CRMSyncService
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/crm", tags=["CRM Webhooks"])
 
+# Header constants for webhook signature verification
+SALESFORCE_SIGNATURE_HEADER = "X-Salesforce-Signature"
+HUBSPOT_SIGNATURE_HEADER = "X-HubSpot-Signature"
+HUBSPOT_SIGNATURE_V3_HEADER = "X-HubSpot-Signature-v3"
+
+# App state attribute names for webhook secrets
+SALESFORCE_WEBHOOK_SECRET_ATTR = "salesforce_webhook_secret"
+HUBSPOT_WEBHOOK_SECRET_ATTR = "hubspot_webhook_secret"
+
 
 # ============================================================================
 # Salesforce Webhooks
@@ -32,7 +41,7 @@ router = APIRouter(prefix="/webhooks/crm", tags=["CRM Webhooks"])
 async def salesforce_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    x_salesforce_signature: str | None = Header(None),
+    x_salesforce_signature: str | None = Header(None, alias=SALESFORCE_SIGNATURE_HEADER),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Handle Salesforce outbound message or platform event webhook.
@@ -50,14 +59,13 @@ async def salesforce_webhook(
     body = await request.body()
 
     # Verify signature if configured
-    webhook_secret = getattr(request.app.state, "salesforce_webhook_secret", None)
+    webhook_secret = getattr(request.app.state, SALESFORCE_WEBHOOK_SECRET_ATTR, None)
     if webhook_secret:
-        if not x_salesforce_signature:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing webhook signature"
-            )
-        expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, x_salesforce_signature):
+        sig_valid = False
+        if x_salesforce_signature:
+            expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+            sig_valid = hmac.compare_digest(expected, x_salesforce_signature)
+        if not sig_valid:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
             )
@@ -66,8 +74,8 @@ async def salesforce_webhook(
     try:
         data = json.loads(body.decode())
     except json.JSONDecodeError:
-        logger.warning("Salesforce webhook received non-JSON payload")
-        data = {"raw_body": body.decode()}
+        logger.warning("Salesforce webhook received non-JSON payload", extra={"body_preview": body[:200].decode(errors='replace')})
+        data = {"raw_body": body.decode(errors='replace')}
 
     # Extract record info from Salesforce payload
     # Platform events: {"data": {"payload": {"RecordId": "...", "ChangeEventHeader": {...}}}}
@@ -153,21 +161,31 @@ def _handle_webhook_error(
     event_type: str = "unknown",
     event_count: int = 0,
     companies_to_sync: int = 0,
+    request_id: str | None = None,
 ) -> dict[str, Any]:
     """Handle webhook processing error with audit logging.
 
     Returns a 202 Accepted response to prevent CRM retry storms,
     while emitting an audit event for observability.
     """
-    logger.error(f"Failed to process {provider} webhook: {error}")
+    extra = {"provider": provider, "error_type": type(error).__name__}
+    if request_id:
+        extra["request_id"] = request_id
+    if record_id:
+        extra["record_id"] = record_id
+    if event_count:
+        extra["event_count"] = event_count
+
+    logger.error(f"Failed to process {provider} webhook: {type(error).__name__}: {str(error)}", extra=extra)
 
     # Build resource_id based on provider and available context
     resource_id = record_id or f"{provider}_{event_count}_events"
 
     # Build details dict with only relevant fields
+    # Note: error_type only (not str(error)) to prevent leaking sensitive data
     details: dict[str, Any] = {
         "provider": provider,
-        "error": str(error),
+        "error_type": type(error).__name__,
     }
     if event_type != "unknown":
         details["event_type"] = event_type
@@ -189,7 +207,7 @@ def _handle_webhook_error(
     return {
         "status": "error",
         "provider": provider,
-        "error": str(error),
+        "error_type": type(error).__name__,
         "audit_event_id": str(event.id),
     }
 
@@ -203,8 +221,8 @@ def _handle_webhook_error(
 async def hubspot_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    x_hubspot_signature: str | None = Header(None),
-    x_hubspot_signature_v3: str | None = Header(None),
+    x_hubspot_signature: str | None = Header(None, alias=HUBSPOT_SIGNATURE_HEADER),
+    x_hubspot_signature_v3: str | None = Header(None, alias=HUBSPOT_SIGNATURE_V3_HEADER),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Handle HubSpot webhook for contact/company/deal changes.
@@ -235,15 +253,14 @@ async def hubspot_webhook(
     body = await request.body()
 
     # Verify signature if configured (v3 or legacy)
-    webhook_secret = getattr(request.app.state, "hubspot_webhook_secret", None)
+    webhook_secret = getattr(request.app.state, HUBSPOT_WEBHOOK_SECRET_ATTR, None)
     if webhook_secret:
         sig_to_verify = x_hubspot_signature_v3 or x_hubspot_signature
-        if not sig_to_verify:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing webhook signature"
-            )
-        expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, sig_to_verify):
+        sig_valid = False
+        if sig_to_verify:
+            expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+            sig_valid = hmac.compare_digest(expected, sig_to_verify)
+        if not sig_valid:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
             )
@@ -251,7 +268,9 @@ async def hubspot_webhook(
     # Parse JSON from cached body bytes
     try:
         events = json.loads(body.decode())
-        if not isinstance(events, list):
+        if events is None:
+            events = []
+        elif not isinstance(events, list):
             events = [events]
     except json.JSONDecodeError as e:
         logger.warning(f"HubSpot webhook received invalid payload: {e}")
@@ -262,9 +281,19 @@ async def hubspot_webhook(
     event_count = 0
 
     for event in events:
+        # Skip non-dict events (malformed payload protection)
+        if not isinstance(event, dict):
+            logger.warning(f"Skipping non-dict event in HubSpot webhook: {type(event)}")
+            continue
+
         event_count += 1
         subscription_type = event.get("subscriptionType", "")
         object_id = event.get("objectId")
+
+        # Validate subscription_type is string before .lower()
+        if not isinstance(subscription_type, str):
+            logger.warning(f"Skipping event with non-string subscriptionType: {type(subscription_type)}")
+            continue
 
         # Handle company events directly
         if "company" in subscription_type.lower() and object_id:
