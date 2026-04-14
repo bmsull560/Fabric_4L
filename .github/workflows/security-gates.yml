@@ -219,6 +219,69 @@ jobs:
           path: frontend/pnpm-audit-report.json
           retention-days: 14
 
+  # Dockerfile non-root user check
+  dockerfile-non-root-check:
+    name: Dockerfile Non-Root User Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Dockerfiles for USER directive
+        run: |
+          # Files that must have USER directive (runtime stages)
+          REQUIRED_FILES="
+            frontend/Dockerfile
+            value-fabric/layer1-ingestion/Dockerfile
+            value-fabric/layer2-extraction/Dockerfile
+            value-fabric/layer3-knowledge/Dockerfile
+            value-fabric/layer4-agents/Dockerfile
+            value-fabric/layer5-ground-truth/Dockerfile
+            value-fabric/layer6-benchmarks/Dockerfile
+          "
+
+          FAILED=0
+          for file in $REQUIRED_FILES; do
+            if [ -f "$file" ]; then
+              # Check if file contains USER directive (excluding builder stages)
+              # We look for USER followed by non-root/non-0 user
+              if ! grep -qE "^USER\s+(appuser|node|[^0])" "$file"; then
+                echo "❌ FAIL: $file - missing non-root USER directive"
+                FAILED=1
+              else
+                echo "✅ PASS: $file - has non-root USER directive"
+              fi
+            else
+              echo "⚠️  SKIP: $file - file not found"
+            fi
+          done
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "Dockerfiles must include 'USER <non-root>' directive before runtime"
+            exit 1
+          fi
+
+      - name: Test image runs as non-root
+        run: |
+          # Build test images and verify user
+          docker build -t test-frontend frontend/
+          docker build -t test-layer3 value-fabric/layer3-knowledge/
+          docker build -t test-layer4 value-fabric/layer4-agents/
+          docker build -t test-layer6 value-fabric/layer6-benchmarks/
+
+          # Check running user (should not be root/0)
+          for image in test-frontend test-layer3 test-layer4 test-layer6; do
+            USER_ID=$(docker run --rm --entrypoint id $image -u 2>/dev/null || echo "unknown")
+            if [ "$USER_ID" = "0" ] || echo "$USER_ID" | grep -q "uid=0"; then
+              echo "❌ FAIL: $image runs as root (uid=0)"
+              exit 1
+            else
+              echo "✅ PASS: $image runs as non-root: $USER_ID"
+            fi
+          done
+
   # Dependency review for PRs
   dependency-review:
     name: Dependency Review
