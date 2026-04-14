@@ -9,6 +9,7 @@ Or via Docker:
 """
 
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -103,11 +104,26 @@ def create_app() -> FastAPI:
         ],
     )
 
-    # CORS — restrict in production via environment variable
+    # CORS middleware with production validation (P0-20)
+    # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
+    _environment = os.getenv("ENVIRONMENT", "development")
+    _cors_origins_env = os.getenv("CORS_ORIGINS", "")
+
+    if _environment == "production" and not _cors_origins_env:
+        raise RuntimeError(
+            "FATAL: CORS_ORIGINS environment variable must be set in production. "
+            "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
+        )
+
+    # Parse CORS origins, filtering out empty strings from trailing commas
+    allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
+    # Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
+    allow_credentials = "*" not in allow_origins
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.debug else [],
-        allow_credentials=True,
+        allow_origins=allow_origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

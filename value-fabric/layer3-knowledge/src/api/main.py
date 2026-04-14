@@ -433,8 +433,10 @@ if _environment == "production" and not _cors_origins_env:
         "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
     )
 
-allow_origins = _cors_origins_env.split(",") if _cors_origins_env else ["*"]
-allow_credentials = False if "*" in allow_origins else True  # Must be False when using wildcard origins
+# Parse CORS origins, filtering out empty strings from trailing commas
+allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
+# Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
+allow_credentials = "*" not in allow_origins
 
 app.add_middleware(
     CORSMiddleware,
@@ -1216,7 +1218,10 @@ async def ingest_rdf(
 ):
     """Ingest RDF data from Layer 2 extraction pipeline."""
     # Extract tenant_id from header or request body (header takes precedence)
-    tenant_id = x_tenant_id or request.tenant_id or "system"
+    # Strip whitespace and fall back to "system" for empty/None values
+    tenant_id = (x_tenant_id or request.tenant_id or "system").strip()
+    if not tenant_id:
+        tenant_id = "system"
 
     try:
         stats = await sync_manager.sync_extraction_result(

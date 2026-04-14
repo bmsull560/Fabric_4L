@@ -51,7 +51,11 @@ async def salesforce_webhook(
 
     # Verify signature if configured
     webhook_secret = getattr(request.app.state, "salesforce_webhook_secret", None)
-    if webhook_secret and x_salesforce_signature:
+    if webhook_secret:
+        if not x_salesforce_signature:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing webhook signature"
+            )
         expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
         if not hmac.compare_digest(expected, x_salesforce_signature):
             raise HTTPException(
@@ -234,12 +238,15 @@ async def hubspot_webhook(
     webhook_secret = getattr(request.app.state, "hubspot_webhook_secret", None)
     if webhook_secret:
         sig_to_verify = x_hubspot_signature_v3 or x_hubspot_signature
-        if sig_to_verify:
-            expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
-            if not hmac.compare_digest(expected, sig_to_verify):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
-                )
+        if not sig_to_verify:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing webhook signature"
+            )
+        expected = hmac.new(webhook_secret.encode(), body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, sig_to_verify):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
+            )
 
     # Parse JSON from cached body bytes
     try:

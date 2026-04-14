@@ -28,7 +28,8 @@ class Constraint:
             if len(self.property_name) == 1:
                 prop_str = f"n.{self.property_name[0]}"
             else:
-                prop_str = ", ".join(f"n.{p}" for p in self.property_name)
+                # Wrap composite properties in parentheses for valid Cypher
+                prop_str = f"({', '.join(f'n.{p}' for p in self.property_name)})"
         else:
             prop_str = f"n.{self.property_name}"
 

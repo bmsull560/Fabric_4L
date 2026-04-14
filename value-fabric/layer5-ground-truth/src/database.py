@@ -74,13 +74,16 @@ async def set_tenant_context(session: AsyncSession, tenant_id: Optional[UUID | s
 
     Args:
         session: SQLAlchemy async session
-        tenant_id: Tenant UUID or string identifier
+        tenant_id: Tenant UUID or string identifier (whitespace is stripped)
     """
-    if tenant_id:
+    # Normalize tenant_id: strip whitespace, convert to string, check for empty
+    normalized_id = str(tenant_id).strip() if tenant_id else ""
+    
+    if normalized_id:
         # Use SET LOCAL - only affects current transaction
         await session.execute(
             text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": str(tenant_id)}
+            {"tenant_id": normalized_id}
         )
     else:
         # Clear tenant context for system-level operations

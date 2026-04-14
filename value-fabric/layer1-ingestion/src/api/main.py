@@ -130,8 +130,10 @@ if _environment == "production" and not _cors_origins_env:
         "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
     )
 
-allow_origins = _cors_origins_env.split(",") if _cors_origins_env else ["*"]
-allow_credentials = False if "*" in allow_origins else True  # Must be False when using wildcard origins
+# Parse CORS origins, filtering out empty strings from trailing commas
+allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
+# Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
+allow_credentials = "*" not in allow_origins
 
 app.add_middleware(
     CORSMiddleware,

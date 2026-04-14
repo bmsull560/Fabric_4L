@@ -32,13 +32,16 @@ def set_tenant_context(session: Session, tenant_id: Optional[UUID | str]) -> Non
 
     Args:
         session: SQLAlchemy session
-        tenant_id: Tenant UUID or string identifier
+        tenant_id: Tenant UUID or string identifier (whitespace is stripped)
     """
-    if tenant_id:
+    # Normalize tenant_id: strip whitespace, convert to string, check for empty
+    normalized_id = str(tenant_id).strip() if tenant_id else ""
+    
+    if normalized_id:
         # Use SET LOCAL - only affects current transaction
         session.execute(
             text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": str(tenant_id)}
+            {"tenant_id": normalized_id}
         )
     else:
         # Clear tenant context for system-level operations
@@ -54,9 +57,8 @@ def get_db_session(tenant_id: Optional[UUID | str] = None) -> Generator[Session,
     """
     session = SessionLocal()
     try:
-        # P0-08: Set tenant context for RLS if provided
-        if tenant_id:
-            set_tenant_context(session, tenant_id)
+        # P0-08: Set tenant context for RLS (always set for consistency)
+        set_tenant_context(session, tenant_id)
         yield session
         session.commit()
     except Exception:
@@ -88,4 +90,20 @@ def get_db_with_tenant(
             ...
     """
     with get_db_session(tenant_id=x_tenant_id) as session:
+        yield session
+
+
+def get_db_with_tenant_from_context(
+    tenant_id: Optional[UUID | str] = None
+) -> Generator[Session, None, None]:
+    """
+    Context manager for database sessions with RLS tenant context.
+    For use outside FastAPI request lifecycle (e.g., background tasks).
+
+    Usage::
+
+        with get_db_with_tenant_from_context(tenant_id=tenant_uuid) as db:
+            ...
+    """
+    with get_db_session(tenant_id=tenant_id) as session:
         yield session
