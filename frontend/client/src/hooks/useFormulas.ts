@@ -1,12 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
 import { withApiError, FormulaApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
-
-// Formula-specific stale time overrides
-const FORMULA_STALE_TIME = {
-  ...STALE_TIME,
-  approvals: 10 * 1000,  // 10 seconds for pending approvals (more frequent updates)
-} as const;
 
 export type FormulaStatus = 'active' | 'draft' | 'pending' | 'deprecated' | 'archived';
 
@@ -48,12 +43,6 @@ export interface ApproveFormulaParams {
   reason?: string;
 }
 
-const FORMULA_KEYS = {
-  all: ['formulas'] as const,
-  list: (filters: FormulaFilters) => [...FORMULA_KEYS.all, 'list', filters] as const,
-  detail: (id: string) => [...FORMULA_KEYS.all, 'detail', id] as const,
-  approvals: ['formulas', 'approvals'] as const,
-};
 
 export interface FormulaFilters {
   status?: FormulaStatus | 'all';
@@ -82,9 +71,9 @@ async function fetchFormulas(filters: FormulaFilters): Promise<Formula[]> {
  */
 export function useFormulas(filters: FormulaFilters = {}) {
   return useQuery<Formula[], FormulaApiError>({
-    queryKey: FORMULA_KEYS.list(filters),
+    queryKey: QK.formulas.list(filters),
     queryFn: () => withApiError(fetchFormulas(filters), FormulaApiError),
-    staleTime: FORMULA_STALE_TIME.list,
+    staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -103,13 +92,13 @@ async function fetchFormula(formulaId: string): Promise<Formula> {
  */
 export function useFormula(formulaId: string | null) {
   return useQuery<Formula, FormulaApiError>({
-    queryKey: FORMULA_KEYS.detail(formulaId || ''),
+    queryKey: QK.formulas.detail(formulaId || ''),
     queryFn: async () => {
       if (!formulaId) throw new FormulaApiError('No formula ID provided');
       return withApiError(fetchFormula(formulaId), FormulaApiError);
     },
     enabled: !!formulaId,
-    staleTime: FORMULA_STALE_TIME.detail,
+    staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -127,9 +116,9 @@ async function fetchFormulaApprovals(): Promise<ApprovalRequest[]> {
  */
 export function useFormulaApprovals() {
   return useQuery<ApprovalRequest[], FormulaApiError>({
-    queryKey: FORMULA_KEYS.approvals,
+    queryKey: QK.formulas.approvals,
     queryFn: () => withApiError(fetchFormulaApprovals(), FormulaApiError),
-    staleTime: FORMULA_STALE_TIME.approvals,
+    staleTime: STALE_TIME.approvals,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -152,7 +141,7 @@ export function useApproveFormula() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: FORMULA_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
       console.error('Formula approval failed:', error.message);
@@ -174,7 +163,7 @@ export function useSubmitFormula() {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: FORMULA_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
       console.error('Formula submission failed:', error.message);

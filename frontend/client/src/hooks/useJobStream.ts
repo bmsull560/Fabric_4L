@@ -8,6 +8,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { apiClient } from '@/api/client';
 import { SSEBuilders, SSE_TIMEOUT_MS as SHARED_SSE_TIMEOUT_MS } from './useSSEUtils';
 import { parseExtractionJob } from '@/types/api';
+import { POLL_INTERVALS } from './usePolling';
 
 export interface JobStreamEvent {
   type: 'progress' | 'status' | 'log' | 'entity' | 'complete' | 'error';
@@ -29,7 +30,6 @@ export interface JobStreamState {
   }>;
 }
 
-const POLL_INTERVAL_MS = 2000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -214,7 +214,7 @@ export function useJobStream(jobId: string | null) {
       // Immediate first poll
       pollJobStatus();
       // Set up interval polling
-      pollIntervalRef.current = setInterval(pollJobStatus, POLL_INTERVAL_MS);
+      pollIntervalRef.current = setInterval(pollJobStatus, POLL_INTERVALS.jobStream);
     };
 
     // Start with SSE, will fall back to polling if SSE fails

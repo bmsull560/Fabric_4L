@@ -6,8 +6,11 @@
  *   Admin     — tenant governance & configuration
  *
  * Fixed sidebar (216px) + sticky header (52px) + scrollable main content
+ *
+ * Wrapped in React.memo so the layout (header + sidebar) does NOT re-render
+ * on every route change. Only re-renders when tier or i18n locale changes.
  */
-import { useState, useCallback } from "react";
+import { memo, useState, useCallback } from "react";
 import { Link } from "wouter";
 import { TieredNav, type UserTier } from "./navigation/TieredNav";
 import { Search, Bell, User } from "lucide-react";
@@ -32,7 +35,13 @@ interface AppShellProps {
   effectiveTier?: UserTier;
 }
 
-export default function AppShell({ 
+/**
+ * AppShell is memoized to prevent the full layout (header + sidebar) from
+ * re-rendering on every route change. Because `children` is a new reference
+ * on each render, we use a custom equality function that ignores children
+ * and only re-renders when tier props change.
+ */
+const AppShell = memo(function AppShell({ 
   children, 
   currentTier: externalCurrentTier,
   effectiveTier: externalEffectiveTier 
@@ -97,11 +106,19 @@ export default function AppShell({
           onAdvancedModeToggle={handleAdvancedModeToggle}
         />
 
-        {/* Main */}
+        {/* Main — children change on every route; AppShell shell stays stable */}
         <main className="flex-1 overflow-y-auto bg-neutral-50" data-tier={effectiveTier}>
           {children}
         </main>
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom equality: ignore children (always new ref), only re-render on tier changes
+  return (
+    prevProps.currentTier === nextProps.currentTier &&
+    prevProps.effectiveTier === nextProps.effectiveTier
+  );
+});
+
+export default AppShell;

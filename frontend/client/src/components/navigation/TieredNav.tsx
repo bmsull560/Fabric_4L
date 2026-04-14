@@ -17,7 +17,7 @@
  * - Tier switcher in footer
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -275,15 +275,20 @@ interface SidebarItemProps {
   depth?: number;
 }
 
-function SidebarItem({ item, currentTier, depth = 0 }: SidebarItemProps) {
+// SidebarItem is wrapped in memo so it only re-renders when its own props change.
+// Without this, every location change re-renders the entire nav spine.
+const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: SidebarItemProps) {
   const [location] = useLocation();
   const isActive = location.startsWith(item.path);
   const [open, setOpen] = useState(isActive);
 
   const tierStyle = TIER_STYLES[item.tier];
 
-  // Filter visible children based on tier
-  const visibleChildren = item.children?.filter(child => isItemVisible(child, currentTier));
+  // Memoize child filtering — only recomputes when item.children or currentTier changes
+  const visibleChildren = useMemo(
+    () => item.children?.filter(child => isItemVisible(child, currentTier)),
+    [item.children, currentTier]
+  );
   const hasVisibleChildren = visibleChildren && visibleChildren.length > 0;
 
   // Indentation based on depth
@@ -346,7 +351,7 @@ function SidebarItem({ item, currentTier, depth = 0 }: SidebarItemProps) {
       )}
     </div>
   );
-}
+}); // end memo(SidebarItem)
 
 interface TierSwitcherProps {
   currentTier: UserTier;
@@ -460,13 +465,18 @@ export function TieredNav({
   isAdvancedModeEnabled = false,
   onAdvancedModeToggle = () => {},
 }: TieredNavProps) {
-  // Filter navigation spine based on effective tier
-  // Advanced mode allows standard users to see advanced items
-  const effectiveTier: UserTier = currentTier === "standard" && isAdvancedModeEnabled
-    ? "advanced"
-    : currentTier;
+  // Memoize effectiveTier and visibleNavItems so the NAV_SPINE.filter() call
+  // only runs when currentTier or isAdvancedModeEnabled actually changes,
+  // not on every route change that re-renders the parent AppShell.
+  const effectiveTier = useMemo<UserTier>(
+    () => (currentTier === "standard" && isAdvancedModeEnabled ? "advanced" : currentTier),
+    [currentTier, isAdvancedModeEnabled]
+  );
 
-  const visibleNavItems = NAV_SPINE.filter(item => isItemVisible(item, effectiveTier));
+  const visibleNavItems = useMemo(
+    () => NAV_SPINE.filter(item => isItemVisible(item, effectiveTier)),
+    [effectiveTier]
+  );
 
   return (
     <aside className="w-[240px] shrink-0 bg-white border-r border-neutral-200 overflow-y-auto z-20 flex flex-col h-full">

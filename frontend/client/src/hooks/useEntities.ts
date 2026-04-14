@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
 import { parseEntityResults, type ApiEntityResultDto } from '@/types/api';
 
 export interface Entity {
@@ -12,12 +14,6 @@ export interface Entity {
   createdAt?: string;
 }
 
-const ENTITY_KEYS = {
-  all: ['entities'] as const,
-  list: () => [...ENTITY_KEYS.all, 'list'] as const,
-  search: (query: string) => [...ENTITY_KEYS.all, 'search', query] as const,
-  detail: (id: string) => [...ENTITY_KEYS.all, 'detail', id] as const,
-};
 
 function mapEntityResult(result: ApiEntityResultDto): Entity {
   return {
@@ -36,7 +32,7 @@ function mapEntityResult(result: ApiEntityResultDto): Entity {
  */
 export function useEntities() {
   return useQuery({
-    queryKey: ENTITY_KEYS.list(),
+    queryKey: QK.entities.list(),
     queryFn: async () => {
       // Use hybrid search with empty query to get all entities
       const response = await apiClient.post('l3', '/search/hybrid', {
@@ -47,13 +43,13 @@ export function useEntities() {
       const results = parseEntityResults(response.data?.results);
       return results.map(mapEntityResult);
     },
-    staleTime: 60 * 1000,
+    staleTime: STALE_TIME.stats,
   });
 }
 
 export function useEntitySearch(query: string) {
   return useQuery({
-    queryKey: ENTITY_KEYS.search(query),
+    queryKey: QK.entities.search(query),
     queryFn: async () => {
       const response = await apiClient.post('l3', '/search/hybrid', {
         query: query.trim(),
@@ -64,7 +60,7 @@ export function useEntitySearch(query: string) {
       return results.map(mapEntityResult);
     },
     enabled: query.trim().length > 0,
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.poll,
   });
 }
 
@@ -92,7 +88,7 @@ function mapEntityType(type: string): Entity['type'] {
  */
 export function useEntity(id: string | null) {
   return useQuery({
-    queryKey: ENTITY_KEYS.detail(id || ''),
+    queryKey: QK.entities.detail(id || ''),
     queryFn: async () => {
       if (!id) throw new Error('No entity ID provided');
       // Use graph query to get entity details
@@ -131,7 +127,7 @@ export function useCreateEntity() {
       throw new Error('Entity creation not supported');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ENTITY_KEYS.list() });
+      queryClient.invalidateQueries({ queryKey: QK.entities.list() });
     },
   });
 }

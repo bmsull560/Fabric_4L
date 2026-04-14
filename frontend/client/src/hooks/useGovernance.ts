@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
 // ── Error Class ─────────────────────────────────────────────────────────────
@@ -47,11 +48,6 @@ export interface ApiKey {
 
 // ── Query Keys ──────────────────────────────────────────────────────────────
 
-const GOVERNANCE_KEYS = {
-  tenants: ['governance', 'tenants'] as const,
-  users: (tenantId?: string) => ['governance', 'users', tenantId] as const,
-  apiKeys: (tenantId?: string) => ['governance', 'api-keys', tenantId] as const,
-};
 
 // ── Fetch Functions ─────────────────────────────────────────────────────────
 
@@ -74,7 +70,7 @@ async function fetchApiKeys(): Promise<ApiKey[]> {
 
 export function useTenants() {
   return useQuery<Tenant[], GovernanceApiError>({
-    queryKey: GOVERNANCE_KEYS.tenants,
+    queryKey: QK.governance.tenants,
     queryFn: () => withApiError(fetchTenants(), GovernanceApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
@@ -84,7 +80,7 @@ export function useTenants() {
 
 export function useUsers() {
   return useQuery<User[], GovernanceApiError>({
-    queryKey: GOVERNANCE_KEYS.users(),
+    queryKey: QK.governance.users(),
     queryFn: () => withApiError(fetchUsers(), GovernanceApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
@@ -94,7 +90,7 @@ export function useUsers() {
 
 export function useApiKeys() {
   return useQuery<ApiKey[], GovernanceApiError>({
-    queryKey: GOVERNANCE_KEYS.apiKeys(),
+    queryKey: QK.governance.apiKeys(),
     queryFn: () => withApiError(fetchApiKeys(), GovernanceApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
@@ -111,7 +107,7 @@ export function useInviteUser() {
       return response.data as User;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: GOVERNANCE_KEYS.users() });
+      queryClient.invalidateQueries({ queryKey: QK.governance.users() });
     },
   });
 }
@@ -124,7 +120,7 @@ export function useRevokeApiKey() {
       await apiClient.delete('l4', `/api-keys/${keyId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: GOVERNANCE_KEYS.apiKeys() });
+      queryClient.invalidateQueries({ queryKey: QK.governance.apiKeys() });
     },
   });
 }

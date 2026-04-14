@@ -1,5 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
+import { POLL_INTERVALS } from './usePolling';
 import { parseIngestionAggregation, parseIngestionJobs, type ApiIngestionJobDto } from '@/types/api';
 
 export interface IngestionJob {
@@ -21,12 +24,6 @@ export interface IngestionStats {
   avgProcessingTime: number;
 }
 
-const INGESTION_KEYS = {
-  all: ['ingestion'] as const,
-  jobs: () => [...INGESTION_KEYS.all, 'jobs'] as const,
-  recent: () => [...INGESTION_KEYS.all, 'recent'] as const,
-  stats: () => [...INGESTION_KEYS.all, 'stats'] as const,
-};
 
 function mapIngestionJob(job: ApiIngestionJobDto): IngestionJob {
   return {
@@ -42,26 +39,26 @@ function mapIngestionJob(job: ApiIngestionJobDto): IngestionJob {
 
 export function useIngestionJobs() {
   return useQuery({
-    queryKey: INGESTION_KEYS.jobs(),
+    queryKey: QK.ingestion.jobs(),
     queryFn: async () => {
       const response = await apiClient.get('l1', '/jobs');
       const jobs = parseIngestionJobs(response.data?.data);
       return jobs.map(mapIngestionJob);
     },
-    staleTime: 30 * 1000,
+    staleTime: STALE_TIME.poll,
   });
 }
 
 export function useRecentIngestionJobs(limit = 5) {
   return useQuery({
-    queryKey: INGESTION_KEYS.recent(),
+    queryKey: QK.ingestion.recent(),
     queryFn: async () => {
       const response = await apiClient.get('l1', `/jobs?limit=${limit}&sort_by=created_at&sort_order=desc`);
       const jobs = parseIngestionJobs(response.data?.data);
       return jobs.map(mapIngestionJob);
     },
-    staleTime: 30 * 1000,
-    refetchInterval: 5000,
+    staleTime: STALE_TIME.poll,
+    refetchInterval: POLL_INTERVALS.ingestion,
   });
 }
 
@@ -86,7 +83,7 @@ function mapJobStatus(status: string): IngestionJob['status'] {
 
 export function useIngestionStats() {
   return useQuery({
-    queryKey: INGESTION_KEYS.stats(),
+    queryKey: QK.ingestion.stats(),
     queryFn: async () => {
       const response = await apiClient.get('l1', '/jobs?limit=1');
       const agg = parseIngestionAggregation(response.data?.aggregation);
@@ -98,7 +95,7 @@ export function useIngestionStats() {
         avgProcessingTime: agg.total_execution_time_ms ?? 0,
       };
     },
-    staleTime: 60 * 1000,
+    staleTime: STALE_TIME.stats,
   });
 }
 
@@ -121,8 +118,8 @@ export function useSubmitDomain() {
       return executeResponse.data.job_id as string;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: INGESTION_KEYS.recent() });
-      queryClient.invalidateQueries({ queryKey: INGESTION_KEYS.stats() });
+      queryClient.invalidateQueries({ queryKey: QK.ingestion.recent() });
+      queryClient.invalidateQueries({ queryKey: QK.ingestion.stats() });
     },
   });
 }

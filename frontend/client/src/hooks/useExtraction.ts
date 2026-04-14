@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
 import { parseExtractionJob } from '@/types/api';
 
 export interface ExtractionJob {
@@ -38,10 +40,6 @@ export interface EntityChip {
   color: string;
 }
 
-const EXTRACTION_KEYS = {
-  all: ['extraction'] as const,
-  job: (id: string) => [...EXTRACTION_KEYS.all, 'job', id] as const,
-};
 
 const TYPE_COLORS: Record<string, string> = {
   sys: 'text-neutral-400',
@@ -71,7 +69,7 @@ const ENTITY_CHIP_COLORS: Record<string, string> = {
  */
 export function useExtractionJob(jobId: string | null) {
   return useQuery({
-    queryKey: EXTRACTION_KEYS.job(jobId || ''),
+    queryKey: QK.extraction.job(jobId || ''),
     queryFn: async () => {
       if (!jobId) throw new Error('No job ID provided');
 
@@ -176,7 +174,7 @@ export function useExtractionJob(jobId: string | null) {
       }
       return 2000; // Poll every 2 seconds while running
     },
-    staleTime: 1000,
+    staleTime: STALE_TIME.realtime,
   });
 }
 

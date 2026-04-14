@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
 
 export interface GraphNode {
   id: string;
@@ -97,12 +99,6 @@ function createTraversalKey(params: EntityTraversalRequest): string {
   return `${params.entity_id}|${params.direction ?? 'both'}`;
 }
 
-const GRAPH_KEYS = {
-  all: ['graph'] as const,
-  query: (params: GraphQueryRequest) => [...GRAPH_KEYS.all, 'query', createQueryKey(params)] as const,
-  context: (entityId: string, hops?: number) => [...GRAPH_KEYS.all, 'context', entityId, hops] as const,
-  traversal: (params: EntityTraversalRequest) => [...GRAPH_KEYS.all, 'traversal', createTraversalKey(params)] as const,
-};
 
 /**
  * Execute a GraphRAG query with multi-hop traversal.
@@ -125,7 +121,7 @@ export function useGraphQuery() {
       // Cache the entities from the response for other queries
       data.entities?.forEach((entity) => {
         if (!entity.id) return; // Skip entities without IDs
-        queryClient.setQueryData(GRAPH_KEYS.context(entity.id, 0), {
+        queryClient.setQueryData(QK.graph.context(entity.id, 0), {
           entity_id: entity.id,
           center: entity,
           neighbors: [],
@@ -156,7 +152,7 @@ export function useEntityContext(
   relationshipTypes?: string[]
 ) {
   return useQuery({
-    queryKey: GRAPH_KEYS.context(entityId || '', hops),
+    queryKey: QK.graph.context(entityId || '', hops),
     queryFn: async (): Promise<EntityContextResponse> => {
       if (!entityId) throw new Error('No entity ID provided');
 
@@ -174,7 +170,7 @@ export function useEntityContext(
       return response.data as EntityContextResponse;
     },
     enabled: !!entityId,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: STALE_TIME.stats,
   });
 }
 
@@ -212,7 +208,7 @@ export function useEntityTraversal() {
  */
 export function useFullGraph() {
   return useQuery({
-    queryKey: [...GRAPH_KEYS.all, 'full'],
+    queryKey: [...QK.graph.all, 'full'],
     queryFn: async (): Promise<ContextGraph> => {
       // Use hybrid search to get all entities, then build a simple graph
       const response = await apiClient.post('l3', '/search/hybrid', {
@@ -239,6 +235,6 @@ export function useFullGraph() {
         relationships: [],
       };
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: STALE_TIME.stats,
   });
 }

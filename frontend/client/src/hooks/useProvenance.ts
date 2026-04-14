@@ -1,5 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
 
 export interface ProvenanceStep {
   step: number;
@@ -49,28 +51,23 @@ export interface AuditLogResponse {
   per_page: number;
 }
 
-const PROVENANCE_KEYS = {
-  all: ['provenance'] as const,
-  trail: (entityId: string) => [...PROVENANCE_KEYS.all, 'trail', entityId] as const,
-  audit: (filters: AuditLogFilter) => [...PROVENANCE_KEYS.all, 'audit', filters] as const,
-};
 
 export function useProvenanceTrail(entityId: string | null) {
   return useQuery({
-    queryKey: PROVENANCE_KEYS.trail(entityId || ''),
+    queryKey: QK.provenance.trail(entityId || ''),
     queryFn: async () => {
       if (!entityId) throw new Error('No entity ID provided');
       const response = await apiClient.get('l3', `/provenance/${encodeURIComponent(entityId)}`);
       return response.data as ProvenanceTrail;
     },
     enabled: !!entityId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: STALE_TIME.activity,
   });
 }
 
 export function useAuditLogs(filters: AuditLogFilter = {}) {
   return useQuery({
-    queryKey: PROVENANCE_KEYS.audit(filters),
+    queryKey: QK.provenance.audit(filters),
     queryFn: async () => {
       const params = new URLSearchParams();
       if (filters.source) params.set('source', filters.source);
@@ -83,7 +80,7 @@ export function useAuditLogs(filters: AuditLogFilter = {}) {
       const response = await apiClient.get('l3', `/audit/logs?${params.toString()}`);
       return response.data as AuditLogResponse;
     },
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: STALE_TIME.poll,
   });
 }
 

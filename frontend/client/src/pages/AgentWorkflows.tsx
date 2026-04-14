@@ -4,9 +4,10 @@
  * Data Flow: React Query for server state, Zustand for UI state
  */
 import { useState } from "react";
-import { Bot, Clock, AlertTriangle, Loader2 } from "lucide-react";
+import { Bot, Clock, AlertTriangle } from "lucide-react";
 import { useActiveWorkflows, useWorkflowHistory, type Workflow } from "@/hooks/useWorkflows";
 import { PageHeader, MetricCard, DataTable, StatusBadge, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
+import { QueryState } from "@/components/QueryState";
 
 export default function AgentWorkflows() {
   const [activeTab, setActiveTab] = useState("Workflow Dashboard");
@@ -28,10 +29,6 @@ export default function AgentWorkflows() {
   const isLoading = activeLoading || historyLoading;
   const error = activeError || historyError;
 
-  const errorMessage = error
-    ? (error as any).response?.data?.detail || (error as Error).message
-    : null;
-
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
@@ -45,17 +42,6 @@ export default function AgentWorkflows() {
         active={activeTab}
         onChange={setActiveTab}
       />
-
-      {/* Error display */}
-      {errorMessage && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-red-600" />
-            <span className="text-red-700 text-sm">{errorMessage}</span>
-            <Btn variant="ghost" className="text-[11px] ml-auto" onClick={() => refetchActive()}>Retry</Btn>
-          </div>
-        </div>
-      )}
 
       {/* KPI row */}
       <div className="flex gap-4 mb-6">
@@ -81,17 +67,15 @@ export default function AgentWorkflows() {
       {/* Active agents */}
       <SectionCard title="Active Agents" className="mb-5">
         <div className="p-4 space-y-3">
-          {isLoading ? (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 size={24} className="animate-spin text-blue-600" />
-              <span className="ml-2 text-neutral-500">Loading workflows...</span>
-            </div>
-          ) : activeWorkflows.length === 0 ? (
-            <div className="text-center p-8 text-neutral-500">
-              No active workflows. Start a new analysis to see agents in action.
-            </div>
-          ) : (
-            activeWorkflows.map((workflow: Workflow) => (
+          <QueryState
+            isLoading={isLoading}
+            error={error}
+            isEmpty={activeWorkflows.length === 0}
+            emptyMessage="No active workflows."
+            emptySubMessage="Start a new analysis to see agents in action."
+            loadingMessage="Loading workflows…"
+          >
+            {activeWorkflows.map((workflow: Workflow) => (
               <div
                 key={workflow.id}
                 className={`flex items-start gap-3 p-3 rounded-lg border ${
@@ -128,31 +112,33 @@ export default function AgentWorkflows() {
                   <Btn variant="ghost" className="text-[11px]">View</Btn>
                 </div>
               </div>
-            ))
-          )}
+            ))}
+          </QueryState>
         </div>
       </SectionCard>
 
       {/* History */}
       <SectionCard title="Workflow History" noPad>
-        <DataTable
-          columns={["Job ID", "Name", "Status", "Progress", "Created", "Actions"]}
-          rows={workflows.map((w: Workflow) => [
-            <span className="font-mono text-[11px] text-neutral-600">{w.id}</span>,
-            <span className="text-neutral-700 font-semibold">{w.name}</span>,
-            <StatusBadge status={w.status}/>,
-            <span className="text-neutral-500 text-[11px]">{w.progress}%</span>,
-            <span className="text-neutral-400 text-[11px]">{w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '-'}</span>,
-            <div className="flex gap-2">
-              <button className="text-blue-600 text-[11px] hover:underline">View</button>
-            </div>,
-          ])}
-        />
-        {workflows.length === 0 && !isLoading && (
-          <div className="text-center p-8 text-neutral-500">
-            No workflow history available.
-          </div>
-        )}
+        <QueryState
+          isLoading={historyLoading}
+          error={historyError}
+          isEmpty={workflows.length === 0}
+          emptyMessage="No workflow history available."
+        >
+          <DataTable
+            columns={["Job ID", "Name", "Status", "Progress", "Created", "Actions"]}
+            rows={workflows.map((w: Workflow) => [
+              <span className="font-mono text-[11px] text-neutral-600">{w.id}</span>,
+              <span className="text-neutral-700 font-semibold">{w.name}</span>,
+              <StatusBadge status={w.status}/>,
+              <span className="text-neutral-500 text-[11px]">{w.progress}%</span>,
+              <span className="text-neutral-400 text-[11px]">{w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '-'}</span>,
+              <div className="flex gap-2">
+                <button className="text-blue-600 text-[11px] hover:underline">View</button>
+              </div>,
+            ])}
+          />
+        </QueryState>
       </SectionCard>
     </div>
   );

@@ -1,5 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
+import { L4_ANALYSIS_PREFIX } from '@/lib/apiConfig';
+import { POLL_INTERVALS } from './usePolling';
 
 export interface DocumentExportRequest {
   document_type: 'business_case' | 'audit_report';
@@ -34,18 +38,9 @@ export interface BusinessCase {
 }
 
 // Constants for document operations
-const EXPORT_POLL_INTERVAL_MS = 2000;
-const BUSINESS_CASE_STALE_TIME_MS = 5 * 60 * 1000;
+// EXPORT_POLL_INTERVAL_MS removed — use POLL_INTERVALS.exportStatus from usePolling
 const ALLOWED_SCHEMES = ['http:', 'https:', 'blob:', 'data:'];
 
-// Layer 4 prefixes for analysis routes (business cases, ROI, whitespace)
-const L4_ANALYSIS_PREFIX = '/analysis';
-
-const DOCUMENT_KEYS = {
-  all: ['documents'] as const,
-  export: (id: string) => [...DOCUMENT_KEYS.all, 'export', id] as const,
-  businessCase: (id: string) => [...DOCUMENT_KEYS.all, 'businessCase', id] as const,
-};
 
 /**
  * Generic document export request (L3).
@@ -79,14 +74,14 @@ export function useBusinessCaseExport() {
  */
 export function useBusinessCase(businessCaseId: string | null) {
   return useQuery({
-    queryKey: DOCUMENT_KEYS.businessCase(businessCaseId || ''),
+    queryKey: QK.documents.businessCase(businessCaseId || ''),
     queryFn: async () => {
       if (!businessCaseId) throw new Error('No business case ID provided');
       const response = await apiClient.get('l4', `${L4_ANALYSIS_PREFIX}/cases/${businessCaseId}`);
       return response.data as BusinessCase;
     },
     enabled: !!businessCaseId,
-    staleTime: BUSINESS_CASE_STALE_TIME_MS,
+    staleTime: STALE_TIME.detail,
   });
 }
 

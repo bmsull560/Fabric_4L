@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { STALE_TIME } from './useApiShared';
 import {
   parseBusinessCaseNarrativeOutput,
   parseBusinessCaseRoiOutput,
@@ -27,10 +29,6 @@ export interface BusinessCaseData {
   generatedAt: string;
 }
 
-const BUSINESS_CASE_KEYS = {
-  all: ['business-cases'] as const,
-  detail: (id: string) => [...BUSINESS_CASE_KEYS.all, 'detail', id] as const,
-};
 
 /**
  * Get business case from L4 agent workflow results
@@ -38,7 +36,7 @@ const BUSINESS_CASE_KEYS = {
  */
 export function useBusinessCase(caseId: string | null) {
   return useQuery({
-    queryKey: BUSINESS_CASE_KEYS.detail(caseId || ''),
+    queryKey: QK.businessCases.detail(caseId || ''),
     queryFn: async () => {
       if (!caseId) throw new Error('No case ID provided');
 
@@ -83,7 +81,7 @@ export function useBusinessCase(caseId: string | null) {
       };
     },
     enabled: !!caseId,
-    staleTime: 60 * 1000,
+    staleTime: STALE_TIME.stats,
   });
 }
 

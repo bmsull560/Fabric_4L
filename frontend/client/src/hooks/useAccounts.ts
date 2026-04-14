@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
 import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
 export type CRMProvider = 'salesforce' | 'hubspot';
@@ -88,14 +89,6 @@ export class AccountApiError extends BaseApiError {
   }
 }
 
-const ACCOUNT_KEYS = {
-  all: ['accounts'] as const,
-  list: (filters: AccountFilters) => [...(['accounts'] as const), 'list', filters] as const,
-  detail: (id: string) => [...(['accounts'] as const), 'detail', id] as const,
-  activity: (id: string) => [...(['accounts'] as const), 'activity', id] as const,
-  syncStatus: [...(['accounts'] as const), 'sync-status'] as const,
-  filters: [...(['accounts'] as const), 'filters'] as const,
-};
 
 export interface AccountFilters {
   provider?: CRMProvider | 'all';
@@ -143,7 +136,7 @@ async function fetchAccounts(filters: AccountFilters): Promise<AccountListRespon
 
 export function useAccounts(filters: AccountFilters = {}) {
   return useQuery<AccountListResponse, AccountApiError>({
-    queryKey: ACCOUNT_KEYS.list(filters),
+    queryKey: QK.accounts.list(filters),
     queryFn: () => withApiError(fetchAccounts(filters), AccountApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
@@ -158,7 +151,7 @@ async function fetchAccount(accountId: string): Promise<Account> {
 
 export function useAccount(accountId: string | null) {
   return useQuery<Account, AccountApiError>({
-    queryKey: ACCOUNT_KEYS.detail(accountId || ''),
+    queryKey: QK.accounts.detail(accountId || ''),
     queryFn: async () => {
       if (!accountId) throw new AccountApiError('No account ID provided');
       return withApiError(fetchAccount(accountId), AccountApiError);
@@ -177,13 +170,13 @@ async function fetchAccountActivity(accountId: string, sinceDays: number = 90): 
 
 export function useAccountActivity(accountId: string | null, sinceDays?: number) {
   return useQuery<AccountActivity, AccountApiError>({
-    queryKey: ACCOUNT_KEYS.activity(accountId || ''),
+    queryKey: QK.accounts.activity(accountId || ''),
     queryFn: async () => {
       if (!accountId) throw new AccountApiError('No account ID provided');
       return withApiError(fetchAccountActivity(accountId, sinceDays), AccountApiError);
     },
     enabled: !!accountId,
-    staleTime: 5 * 60 * 1000, // 5 minutes for activity
+    staleTime: STALE_TIME.activity,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -196,9 +189,9 @@ async function fetchSyncStatus(): Promise<AccountSyncStatusInfo[]> {
 
 export function useAccountSyncStatus() {
   return useQuery<AccountSyncStatusInfo[], AccountApiError>({
-    queryKey: ACCOUNT_KEYS.syncStatus,
+    queryKey: QK.accounts.syncStatus,
     queryFn: () => withApiError(fetchSyncStatus(), AccountApiError),
-    staleTime: 30 * 1000, // 30 seconds for sync status
+    staleTime: STALE_TIME.poll,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -211,9 +204,9 @@ async function fetchFilterOptions(): Promise<FilterOptions> {
 
 export function useAccountFilterOptions() {
   return useQuery<FilterOptions, AccountApiError>({
-    queryKey: ACCOUNT_KEYS.filters,
+    queryKey: QK.accounts.filters,
     queryFn: () => withApiError(fetchFilterOptions(), AccountApiError),
-    staleTime: 5 * 60 * 1000, // 5 minutes for filter options
+    staleTime: STALE_TIME.activity,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -239,7 +232,7 @@ export function useSyncAccounts() {
     },
     onSuccess: () => {
       // Invalidate all account queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ACCOUNT_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: QK.accounts.all });
     },
     onError: (error) => {
       console.error('[useSyncAccounts] Sync failed:', error.message);
@@ -260,8 +253,8 @@ export function useRefreshAccount() {
     },
     onSuccess: (data) => {
       // Invalidate specific account queries
-      queryClient.invalidateQueries({ queryKey: ACCOUNT_KEYS.detail(data.id) });
-      queryClient.invalidateQueries({ queryKey: ACCOUNT_KEYS.list({}) });
+      queryClient.invalidateQueries({ queryKey: QK.accounts.detail(data.id) });
+      queryClient.invalidateQueries({ queryKey: QK.accounts.list({}) });
     },
     onError: (error, accountId) => {
       console.error(`[useRefreshAccount] Failed to refresh account ${accountId}:`, error.message);

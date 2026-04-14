@@ -234,8 +234,8 @@ function VariableRegistryContent() {
   const isLoading = variablesLoading || bindingsLoading;
   const error = variablesError || bindingsError;
 
-  const handleTestBinding = (id: string) => {
-    console.log(`Testing binding ${id}`);
+  const handleTestBinding = (_id: string) => {
+    // TODO: invoke binding test via L3 API
   };
 
   if (isLoading) {
