@@ -31,7 +31,7 @@ describe('GraphExplorer', () => {
 
   it('handles empty graph state', async () => {
     server.use(
-      http.post('/api/v1/graph/v1/search/hybrid', () => {
+      http.post('/api/v1/graph/search/hybrid', () => {
         return HttpResponse.json({ results: [] });
       })
     );
@@ -46,7 +46,7 @@ describe('GraphExplorer', () => {
 
   it('handles graph error state', async () => {
     server.use(
-      http.post('/api/v1/graph/v1/search/hybrid', () => {
+      http.post('/api/v1/graph/search/hybrid', () => {
         return HttpResponse.json({ error: 'Neo4j connection failed' }, { status: 500 });
       })
     );

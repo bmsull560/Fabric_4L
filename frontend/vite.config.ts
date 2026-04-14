@@ -205,7 +205,7 @@ export default defineConfig({
       '/api/v1/agents': {
         target: 'http://localhost:8004',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/v1\/agents/, ''),
+        rewrite: (path) => path.replace(/^\/api\/v1\/agents/, '/v1'),
       },
       '/api/v1/truths': {
         target: 'http://localhost:8005',

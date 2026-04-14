@@ -32,14 +32,14 @@ function mapEntityResult(result: ApiEntityResultDto): Entity {
 
 /**
  * Search entities using hybrid search (BM25 + vector + graph)
- * Layer 3 API: POST /v1/search/hybrid
+ * Layer 3 API: POST /search/hybrid
  */
 export function useEntities() {
   return useQuery({
     queryKey: ENTITY_KEYS.list(),
     queryFn: async () => {
       // Use hybrid search with empty query to get all entities
-      const response = await apiClient.post('l3', '/v1/search/hybrid', {
+      const response = await apiClient.post('l3', '/search/hybrid', {
         query: '',
         search_type: 'hybrid',
         top_k: 50,
@@ -55,7 +55,7 @@ export function useEntitySearch(query: string) {
   return useQuery({
     queryKey: ENTITY_KEYS.search(query),
     queryFn: async () => {
-      const response = await apiClient.post('l3', '/v1/search/hybrid', {
+      const response = await apiClient.post('l3', '/search/hybrid', {
         query: query.trim(),
         search_type: 'hybrid',
         top_k: 20,
@@ -96,7 +96,7 @@ export function useEntity(id: string | null) {
     queryFn: async () => {
       if (!id) throw new Error('No entity ID provided');
       // Use graph query to get entity details
-      const response = await apiClient.post('l3', '/v1/query/graph', {
+      const response = await apiClient.post('l3', '/query/graph', {
         query: `Find entity with ID ${id}`,
         max_hops: 1,
         max_results: 1,
