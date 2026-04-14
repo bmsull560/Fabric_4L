@@ -1,5 +1,0 @@
-{
-  "default_deny_exists": true,
-  "deny_all_in_kustomization": true,
-  "layer_policies_present": true
-}

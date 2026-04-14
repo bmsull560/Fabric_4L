@@ -1,5 +1,0 @@
-{
-  "tenant_isolation_primitives_present": true,
-  "tenant_resolution_controls_present": true,
-  "tenant_negative_tests_present": true
-}
