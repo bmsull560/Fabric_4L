@@ -18,6 +18,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
+from ..testability import Clock, SystemClock
 from .permissions import Permission, Role, ROLE_PERMISSIONS
 
 
@@ -177,11 +178,16 @@ class APIKeyModel(BaseModel):
         """Return True if this key carries the given permission."""
         return permission in self.permissions
 
-    def is_expired(self) -> bool:
-        """Return True if this key has passed its expiry timestamp."""
+    def is_expired(self, clock: Clock | None = None) -> bool:
+        """Return True if this key has passed its expiry timestamp.
+
+        Args:
+            clock: Optional injectable clock.  Defaults to the system clock.
+        """
         if self.expires_at is None:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        now = (clock or SystemClock()).now()
+        return now > self.expires_at
 
 
 class APIKeyCreateRequest(BaseModel):
