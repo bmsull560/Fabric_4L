@@ -170,8 +170,7 @@ def app(mock_executor):
         current_node: Optional[str] = Field(None, description="Current node when paused")
         message: str
 
-        class Config:
-            populate_by_name = True
+        model_config = ConfigDict(populate_by_name=True)
 
     class WorkflowResumeRequest(BaseModel):
         user_id: str = Field(..., description="User resuming the workflow")
@@ -185,8 +184,7 @@ def app(mock_executor):
         message: str
         estimated_completion_seconds: int = Field(default=60)
 
-        class Config:
-            populate_by_name = True
+        model_config = ConfigDict(populate_by_name=True)
 
     def get_executor():
         return mock_executor

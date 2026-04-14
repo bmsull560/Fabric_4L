@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ErrorCode(str, Enum):
@@ -70,10 +70,8 @@ class ErrorResponse(BaseModel):
         description="Optional additional error context (sanitized in production)",
     )
 
-    class Config:
-        """Pydantic configuration."""
-
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "code": "ENTITY_NOT_FOUND",
                 "message": "The requested entity was not found",
@@ -81,3 +79,4 @@ class ErrorResponse(BaseModel):
                 "details": {"entity_type": "Company", "entity_id": "12345"},
             }
         }
+    )

@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AuditAction(str, Enum):
@@ -96,5 +96,4 @@ class AuditEvent(BaseModel):
     details: Dict[str, Any] = Field(default_factory=dict, description="Action-specific metadata")
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
