@@ -3,7 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
 import AppShell from "./components/AppShell";
 import { useUserTierStore, type UserTier } from "./stores/userTierStore";
 
@@ -28,8 +28,9 @@ import NotFound          from "./pages/NotFound";
 import Login             from "./pages/Login";
 
 /**
- * Route Guard Component — Enforces tier-based access control
- * Uses canonical route tier mapping from userTierStore
+ * Route Guard Component — Enforces authentication and tier-based access control
+ * Requires valid authentication before checking tier permissions.
+ * Uses canonical route tier mapping from userTierStore.
  */
 function RouteGuard({
   children,
@@ -39,10 +40,21 @@ function RouteGuard({
   requiredTier?: UserTier;
 }) {
   const [location] = useLocation();
+  const { isAuthenticated, isLoading } = useAuthContext();
   const canAccessRoute = useUserTierStore(state => state.canAccessRoute);
   const effectiveTier = useUserTierStore(state => state.effectiveTier);
 
-  // Check if user can access this route
+  // Wait for auth state to be determined before rendering
+  if (isLoading) {
+    return null;
+  }
+
+  // Redirect unauthenticated users to login
+  if (!isAuthenticated) {
+    return <Redirect to="/login" />;
+  }
+
+  // Check if user can access this route based on tier
   if (!canAccessRoute(requiredTier)) {
     // Redirect based on user's effective tier
     if (effectiveTier === "standard") {
