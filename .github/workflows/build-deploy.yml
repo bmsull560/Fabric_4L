@@ -34,6 +34,11 @@ jobs:
     name: Build Images
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
     strategy:
       matrix:
         layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
@@ -59,6 +64,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.1
+
       - name: Log in to Container Registry
         uses: docker/login-action@v3
         with:
@@ -71,6 +79,7 @@ jobs:
         run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
 
       - name: Build and push image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
@@ -85,9 +94,93 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
 
+      - name: Sign pushed tags with OIDC keyless Cosign
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+          IMAGE_SHA_TAG: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
+          IMAGE_BRANCH_TAG: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:${{ github.ref_name }}
+          IMAGE_LATEST_TAG: ${{ inputs.push_latest && format('{0}/{1}/fabric_4l/{2}:latest', env.REGISTRY, github.repository_owner, matrix.layer) || '' }}
+          IMAGE_DIGEST_REF: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}@${{ steps.build.outputs.digest }}
+        run: |
+          set -euo pipefail
+          refs=("$IMAGE_SHA_TAG" "$IMAGE_BRANCH_TAG")
+          if [ -n "$IMAGE_LATEST_TAG" ]; then
+            refs+=("$IMAGE_LATEST_TAG")
+          fi
+
+          for ref in "${refs[@]}"; do
+            echo "Signing ${ref}"
+            cosign sign --yes "$ref"
+          done
+
+          echo "Signing immutable digest reference ${IMAGE_DIGEST_REF}"
+          cosign sign --yes "$IMAGE_DIGEST_REF"
+
+      - name: Publish SLSA provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  verify-supply-chain:
+    name: Verify Signatures and Attestations
+    needs: build-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
+
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.8.1
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Verify signatures and provenance attestations
+        env:
+          IMAGE_SHA_TAG: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
+          IMAGE_BRANCH_TAG: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:${{ github.ref_name }}
+          IMAGE_LATEST_TAG: ${{ inputs.push_latest && format('{0}/{1}/fabric_4l/{2}:latest', env.REGISTRY, github.repository_owner, matrix.layer) || '' }}
+          CERT_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/build-deploy.yml@refs/heads/main
+        run: |
+          set -euo pipefail
+          refs=("$IMAGE_SHA_TAG" "$IMAGE_BRANCH_TAG")
+          if [ -n "$IMAGE_LATEST_TAG" ]; then
+            refs+=("$IMAGE_LATEST_TAG")
+          fi
+
+          for ref in "${refs[@]}"; do
+            echo "Verifying signature for ${ref}"
+            cosign verify \
+              --certificate-identity "$CERT_IDENTITY" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "$ref" >/dev/null
+
+            echo "Verifying SLSA provenance attestation for ${ref}"
+            cosign verify-attestation \
+              --type slsaprovenance \
+              --certificate-identity "$CERT_IDENTITY" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "$ref" >/dev/null
+          done
+
   test-images:
     name: Test Built Images
-    needs: build-matrix
+    needs: verify-supply-chain
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
