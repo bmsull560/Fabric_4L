@@ -54,19 +54,23 @@ def upgrade() -> None:
         """)
 
     # Create bypass policy for admin/system operations
-    # This allows operations when app.tenant_id is not set
+    # Restricted to explicit admin roles only - NEVER use PUBLIC
     for table in RLS_TABLES:
         op.execute(f"""
             CREATE POLICY admin_bypass_policy ON {table}
                 FOR ALL
-                TO PUBLIC
+                TO admin_role, system_role
                 USING (current_setting('app.tenant_id', true) = '')
         """)
 
 
 def downgrade() -> None:
     """Remove RLS policies and disable RLS."""
-    # Drop policies first
+    # Revoke bypass privilege from admin roles first (defense in depth)
+    for table in RLS_TABLES:
+        op.execute(f"REVOKE ALL ON {table} FROM admin_role, system_role")
+    
+    # Drop policies
     for table in RLS_TABLES:
         op.execute(f"DROP POLICY IF EXISTS tenant_isolation_policy ON {table}")
         op.execute(f"DROP POLICY IF EXISTS admin_bypass_policy ON {table}")

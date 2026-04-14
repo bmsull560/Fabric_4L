@@ -28,6 +28,16 @@ env:
   HEALTH_MAX_RETRIES: 30
   HEALTH_RETRY_DELAY_SEC: 2
   HEALTH_TIMEOUT_SEC: 60
+  # SBOM/Attestation configuration
+  SBOM_FORMAT: cyclonedx-json
+  ATTESTATION_TYPE: provenance
+
+permissions:
+  id-token: write      # Required for Cosign keyless signing (Sigstore)
+  attestations: write  # Required for provenance attestation
+  contents: read       # Required for checkout
+  packages: write      # Required for container registry push
+  actions: read        # Required for cache access
 
 jobs:
   build-matrix:
@@ -84,6 +94,50 @@ jobs:
           build-args: |
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
+
+      # SECURITY: Generate SBOM for supply chain visibility
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}
+          format: ${{ env.SBOM_FORMAT }}
+          output-file: sbom-${{ matrix.layer }}-${{ steps.sha.outputs.short }}.json
+          upload-artifact: true
+          artifact-name: sbom-${{ matrix.layer }}-${{ steps.sha.outputs.short }}
+
+      # SECURITY: Sign image and generate provenance attestation
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: 'v2.2.0'
+
+      - name: Sign image and generate attestation
+        run: |
+          IMAGE_REF="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/${{ matrix.layer }}:sha-${{ steps.sha.outputs.short }}"
+
+          # Sign the image with Cosign (keyless using GitHub OIDC)
+          cosign sign --yes \
+            --rekor-url https://rekor.sigstore.dev \
+            "${IMAGE_REF}"
+
+          # Generate provenance attestation
+          cosign attest --yes \
+            --predicate-type https://slsa.dev/provenance/v0.2 \
+            --type slsaprovenance \
+            --rekor-url https://rekor.sigstore.dev \
+            "${IMAGE_REF}"
+        env:
+          COSIGN_EXPERIMENTAL: 1
+
+      # Upload attestation as artifact for audit trail
+      - name: Upload attestation
+        uses: actions/upload-artifact@v4
+        with:
+          name: attestation-${{ matrix.layer }}-${{ steps.sha.outputs.short }}
+          path: |
+            *.att
+            *.sig
+          retention-days: 30
 
   test-images:
     name: Test Built Images

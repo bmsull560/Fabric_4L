@@ -5,6 +5,7 @@ Extends the checkpoint database configuration to support operational data storag
 for accounts, CRM sync metadata, and workflow state.
 
 P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
+SECURITY: Fail-safe tenant isolation - tenant context is mandatory
 """
 
 import os
@@ -12,7 +13,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from uuid import UUID
 
-from fastapi import Header
+from fastapi import Header, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -89,8 +90,64 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 # ---------------------------------------------------------------------------
 
 
+class TenantContextError(Exception):
+    """Raised when tenant context is missing or invalid in fail-safe mode."""
+    pass
+
+
+# SECURITY: Fail-safe mode - require explicit tenant context
+# Set to False only for admin/system operations with proper role validation
+FAIL_SAFE_MODE = True
+
+
+def validate_tenant_id(tenant_id: UUID | str | None) -> str:
+    """Validate tenant_id format and return normalized string.
+    
+    SECURITY: Strict validation to prevent tenant confusion attacks.
+    
+    Args:
+        tenant_id: Tenant identifier to validate
+        
+    Returns:
+        Normalized tenant ID string
+        
+    Raises:
+        TenantContextError: If tenant_id is invalid or missing in fail-safe mode
+    """
+    if tenant_id is None:
+        if FAIL_SAFE_MODE:
+            raise TenantContextError(
+                "Tenant context is mandatory in fail-safe mode. "
+                "Use explicit admin role context for system operations."
+            )
+        return ""
+    
+    # Convert to string and normalize
+    normalized = str(tenant_id).strip()
+    
+    # Fail-safe: empty tenant_id is not allowed
+    if not normalized:
+        raise TenantContextError(
+            "Empty tenant_id is not allowed. Provide a valid tenant context."
+        )
+    
+    # Validate UUID format for strict tenant isolation
+    if normalized.lower() not in ('system', 'admin', 'internal'):
+        try:
+            UUID(normalized)
+        except ValueError:
+            raise TenantContextError(
+                f"Invalid tenant_id format: {normalized}. Expected UUID."
+            )
+    
+    return normalized
+
+
 async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None) -> None:
     """P0-08: Set PostgreSQL app.tenant_id for RLS policies.
+    
+    SECURITY: Fail-safe semantics - tenant context is mandatory unless
+    explicitly using admin bypass with proper role authentication.
 
     Executes SET LOCAL app.tenant_id = '...' which applies for the
     duration of the current transaction. RLS policies in PostgreSQL
@@ -99,19 +156,19 @@ async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None
     Args:
         session: SQLAlchemy async session
         tenant_id: Tenant UUID or string identifier (whitespace is stripped)
+        
+    Raises:
+        TenantContextError: If tenant_id is missing/invalid in fail-safe mode
     """
-    # Normalize tenant_id: strip whitespace, convert to string, check for empty
-    normalized_id = str(tenant_id).strip() if tenant_id else ""
+    # SECURITY: Validate tenant context with fail-safe semantics
+    normalized_id = validate_tenant_id(tenant_id)
     
-    if normalized_id:
-        # Use SET LOCAL - only affects current transaction
-        await session.execute(
-            text("SET LOCAL app.tenant_id = :tenant_id"),
-            {"tenant_id": normalized_id}
-        )
-    else:
-        # Clear tenant context for system-level operations
-        await session.execute(text("SET LOCAL app.tenant_id = ''"))
+    # Set tenant context for RLS policies
+    # Empty string only allowed for admin roles (enforced by RLS policy TO clause)
+    await session.execute(
+        text("SET LOCAL app.tenant_id = :tenant_id"),
+        {"tenant_id": normalized_id}
+    )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -135,10 +192,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_db_with_tenant(
-    x_tenant_id: str | None = Header(None, alias="X-Tenant-ID")
+    x_tenant_id: str = Header(..., alias="X-Tenant-ID", description="Tenant UUID for RLS isolation")
 ) -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session with RLS tenant context.
+    
+    SECURITY: Mandatory tenant context - X-Tenant-ID header is required.
+    Fail-safe: Rejects requests without explicit tenant identification.
 
     Automatically extracts X-Tenant-ID header and sets PostgreSQL app.tenant_id
     for Row-Level Security policies.
@@ -148,10 +208,29 @@ async def get_db_with_tenant(
         @router.get("/accounts/{id}")
         async def get_account(id: UUID, db: AsyncSession = Depends(get_db_with_tenant)):
             ...
+    
+    Raises:
+        HTTPException: 400 if X-Tenant-ID header is missing or invalid
     """
+    # SECURITY: Fail-fast on missing tenant header
+    if not x_tenant_id or not x_tenant_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="X-Tenant-ID header is required for tenant isolation",
+        )
+    
+    try:
+        # Validate UUID format for strict tenant isolation
+        UUID(x_tenant_id.strip())
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="X-Tenant-ID must be a valid UUID",
+        )
+    
     factory = get_session_factory()
     async with factory() as session:
-        # P0-08: Set tenant context for RLS
+        # P0-08: Set tenant context for RLS (fail-safe validation)
         await set_tenant_context(session, x_tenant_id)
         try:
             yield session
@@ -167,15 +246,34 @@ async def get_db_with_tenant(
 
 
 @asynccontextmanager
-async def db_session(tenant_id: UUID | str | None = None) -> AsyncGenerator[AsyncSession, None]:
+async def db_session(
+    tenant_id: UUID | str | None = None,
+    *,
+    require_tenant: bool = True
+) -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for use outside of FastAPI request lifecycle.
 
+    SECURITY: Fail-safe by default - tenant context is mandatory.
+
     Args:
-        tenant_id: Optional tenant ID to set for RLS context (P0-08)
+        tenant_id: Tenant ID to set for RLS context (P0-08)
+        require_tenant: If True (default), enforce mandatory tenant context.
+                       Set to False only for admin/system operations with
+                       proper role authentication.
+    
+    Raises:
+        TenantContextError: If tenant_id is missing/invalid and require_tenant=True
     """
+    # SECURITY: Enforce mandatory tenant context by default
+    if require_tenant and tenant_id is None:
+        raise TenantContextError(
+            "Database session requires explicit tenant context. "
+            "Pass tenant_id or use require_tenant=False for admin operations."
+        )
+    
     factory = get_session_factory()
     async with factory() as session:
-        # P0-08: Set tenant context for RLS if provided
+        # P0-08: Set tenant context for RLS (fail-safe validation)
         if tenant_id:
             await set_tenant_context(session, tenant_id)
         try:
