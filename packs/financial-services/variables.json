@@ -1,0 +1,453 @@
+{
+  "pack_id": "financial-services-v1",
+  "variables": [
+    {
+      "variable_id": "fs-var-001",
+      "variable_name": "Avoided_Fraud_Losses",
+      "display_name": "Avoided Fraud Losses",
+      "description": "Estimated annual fraud losses prevented through AI detection",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
+      "default_value": 25000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 1000000000
+        }
+      ],
+      "industry_benchmarks": {
+        "high": 50000000,
+        "typical": 25000000,
+        "low": 5000000
+      },
+      "tags": ["fraud", "loss-prevention", "risk"],
+      "used_in_formulas": ["fs-f-001"]
+    },
+    {
+      "variable_id": "fs-var-002",
+      "variable_name": "False_Positive_Savings",
+      "display_name": "False Positive Reduction Savings",
+      "description": "Value from reduced false positive rates in fraud detection",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
+      "default_value": 5000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": ["fraud", "false-positives", "efficiency"],
+      "used_in_formulas": ["fs-f-001"]
+    },
+    {
+      "variable_id": "fs-var-003",
+      "variable_name": "AI_Platform_Cost",
+      "display_name": "AI Platform Annual Cost",
+      "description": "Annual investment in AI fraud detection platform and infrastructure",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
+      "default_value": 8000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": ["cost", "investment", "platform"],
+      "used_in_formulas": ["fs-f-001"]
+    },
+    {
+      "variable_id": "fs-var-004",
+      "variable_name": "Additional_Customers_Acquired",
+      "display_name": "Additional Customers Acquired",
+      "description": "New customers acquired through reduced onboarding abandonment",
+      "data_type": "INTEGER",
+      "unit_of_measure": "customers",
+      "valid_range": {
+        "min": 0,
+        "max": 50000
+      },
+      "default_value": 5000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000
+        }
+      ],
+      "tags": ["customers", "acquisition", "onboarding"],
+      "used_in_formulas": ["fs-f-002"]
+    },
+    {
+      "variable_id": "fs-var-005",
+      "variable_name": "First_Year_Revenue_Per_Customer",
+      "display_name": "First Year Revenue Per Customer",
+      "description": "Average first year revenue from newly acquired customers",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 10000
+      },
+      "default_value": 2500,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000
+        }
+      ],
+      "tags": ["revenue", "customers", "unit-economics"],
+      "used_in_formulas": ["fs-f-002"]
+    },
+    {
+      "variable_id": "fs-var-006",
+      "variable_name": "Operational_Savings",
+      "display_name": "Operational Cost Savings",
+      "description": "Annual savings from reduced manual onboarding and KYC processing",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
+      "default_value": 5000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": ["savings", "operations", "efficiency"],
+      "used_in_formulas": ["fs-f-001", "fs-f-002"]
+    },
+    {
+      "variable_id": "fs-var-007",
+      "variable_name": "Baseline_Default_Rate",
+      "display_name": "Baseline Default Rate",
+      "description": "Current portfolio default rate before model improvements",
+      "data_type": "RATE",
+      "unit_of_measure": "percent",
+      "valid_range": {
+        "min": 0,
+        "max": 0.2
+      },
+      "default_value": 0.05,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Risk_Data_Warehouse",
+        "entity": "Loan_Portfolio",
+        "attribute": "default_rate",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 0.2
+        }
+      ],
+      "industry_benchmarks": {
+        "prime": 0.02,
+        "subprime": 0.08,
+        "deep_subprime": 0.15
+      },
+      "tags": ["credit", "default", "risk"],
+      "used_in_formulas": ["fs-f-003"]
+    },
+    {
+      "variable_id": "fs-var-008",
+      "variable_name": "Target_Default_Rate",
+      "display_name": "Target Default Rate",
+      "description": "Expected default rate after implementing improved credit models",
+      "data_type": "RATE",
+      "unit_of_measure": "percent",
+      "valid_range": {
+        "min": 0,
+        "max": 0.2
+      },
+      "default_value": 0.035,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 0.2
+        }
+      ],
+      "tags": ["credit", "default", "target"],
+      "used_in_formulas": ["fs-f-003"]
+    },
+    {
+      "variable_id": "fs-var-009",
+      "variable_name": "Loan_Portfolio_Value",
+      "display_name": "Loan Portfolio Value",
+      "description": "Total outstanding value of loan portfolio being assessed",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 100000000000
+      },
+      "default_value": 5000000000,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Core_Banking",
+        "entity": "Loan_Portfolio",
+        "attribute": "outstanding_principal",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000000
+        }
+      ],
+      "tags": ["portfolio", "loans", "value"],
+      "used_in_formulas": ["fs-f-003"]
+    },
+    {
+      "variable_id": "fs-var-010",
+      "variable_name": "FTE_Cost_Savings",
+      "display_name": "FTE Cost Savings",
+      "description": "Annual savings from reduced compliance headcount through automation",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
+      "default_value": 5000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": ["compliance", "fte", "savings"],
+      "used_in_formulas": ["fs-f-004"]
+    },
+    {
+      "variable_id": "fs-var-011",
+      "variable_name": "Report_Acceleration_Value",
+      "display_name": "Report Acceleration Value",
+      "description": "Value from faster regulatory submissions and reduced penalties",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 15000000
+      },
+      "default_value": 3000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 15000000
+        }
+      ],
+      "tags": ["compliance", "reporting", "velocity"],
+      "used_in_formulas": ["fs-f-004"]
+    },
+    {
+      "variable_id": "fs-var-012",
+      "variable_name": "Revenue_Per_Segment",
+      "display_name": "Revenue Per Customer Segment",
+      "description": "Incremental revenue from personalized segment targeting",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 500
+      },
+      "default_value": 75,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500
+        }
+      ],
+      "tags": ["personalization", "revenue", "segments"],
+      "used_in_formulas": ["fs-f-005"]
+    },
+    {
+      "variable_id": "fs-var-013",
+      "variable_name": "Segment_Population",
+      "display_name": "Target Segment Population",
+      "description": "Number of customers in targeted personalization segments",
+      "data_type": "INTEGER",
+      "unit_of_measure": "customers",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 200000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["personalization", "segments", "population"],
+      "used_in_formulas": ["fs-f-005"]
+    },
+    {
+      "variable_id": "fs-var-014",
+      "variable_name": "Daily_Trade_Volume",
+      "display_name": "Daily Trade Volume",
+      "description": "Average number of trades processed daily",
+      "data_type": "INTEGER",
+      "unit_of_measure": "trades",
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
+      "default_value": 100000,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "Trading_Platform",
+        "entity": "Trade_Statistics",
+        "attribute": "daily_volume",
+        "refresh_frequency": "daily"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": ["trading", "volume", "operations"],
+      "used_in_formulas": ["fs-f-006"]
+    },
+    {
+      "variable_id": "fs-var-015",
+      "variable_name": "Settlement_Efficiency_Gain",
+      "display_name": "Settlement Efficiency Gain",
+      "description": "Percentage improvement in settlement processing time",
+      "data_type": "RATE",
+      "unit_of_measure": "percent",
+      "valid_range": {
+        "min": 0,
+        "max": 0.5
+      },
+      "default_value": 0.25,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 0.5
+        }
+      ],
+      "tags": ["settlement", "efficiency", "operations"],
+      "used_in_formulas": ["fs-f-006"]
+    },
+    {
+      "variable_id": "fs-var-016",
+      "variable_name": "Current_Advisors",
+      "display_name": "Current Number of Advisors",
+      "description": "Current count of wealth management advisors",
+      "data_type": "INTEGER",
+      "unit_of_measure": "advisors",
+      "valid_range": {
+        "min": 0,
+        "max": 10000
+      },
+      "default_value": 500,
+      "source_type": "LOOKUP",
+      "source_binding": {
+        "system": "HRIS",
+        "entity": "Employee",
+        "attribute": "headcount",
+        "refresh_frequency": "monthly"
+      },
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000
+        }
+      ],
+      "tags": ["advisors", "wealth", "headcount"],
+      "used_in_formulas": ["fs-f-007"]
+    },
+    {
+      "variable_id": "fs-var-017",
+      "variable_name": "Advisor_Capacity_Increase",
+      "display_name": "Advisor Capacity Increase",
+      "description": "Additional clients each advisor can manage with AI assistance",
+      "data_type": "INTEGER",
+      "unit_of_measure": "clients",
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
+      "default_value": 25,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "tags": ["advisors", "capacity", "productivity"],
+      "used_in_formulas": ["fs-f-007"]
+    },
+    {
+      "variable_id": "fs-var-018",
+      "variable_name": "Revenue_Per_Client",
+      "display_name": "Revenue Per Client",
+      "description": "Annual revenue per wealth management client",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 50000
+      },
+      "default_value": 8000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000
+        }
+      ],
+      "tags": ["revenue", "clients", "wealth"],
+      "used_in_formulas": ["fs-f-007"]
+    }
+  ]
+}

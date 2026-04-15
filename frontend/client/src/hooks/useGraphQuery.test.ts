@@ -7,7 +7,7 @@
  * - useEntityTraversal: Value tree traversal
  * - useFullGraph: Full graph retrieval
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
@@ -35,7 +35,8 @@ describe('useGraphQuery', () => {
   });
 
   it('handles query errors', async () => {
-    server.use(
+    // Reset and override handlers for this test
+    server.resetHandlers(
       http.post('/api/v1/query/graph', () => {
         return HttpResponse.json({ error: 'Query timeout' }, { status: 504 });
       })
@@ -92,7 +93,8 @@ describe('useEntityContext', () => {
   });
 
   it('handles entity not found', async () => {
-    server.use(
+    // Reset and override handlers for this test
+    server.resetHandlers(
       http.get('/api/v1/entity/:entityId/context', () => {
         return HttpResponse.json({ error: 'Entity not found' }, { status: 404 });
       })
@@ -119,7 +121,8 @@ describe('useEntityTraversal', () => {
   });
 
   it('handles traversal errors', async () => {
-    server.use(
+    // Reset and override handlers for this test
+    server.resetHandlers(
       http.post('/api/v1/entity/traverse', () => {
         return HttpResponse.json({ error: 'Invalid direction' }, { status: 400 });
       })
@@ -146,7 +149,8 @@ describe('useFullGraph', () => {
   });
 
   it('normalizes search results to graph nodes', async () => {
-    server.use(
+    // Reset and override handlers for this test
+    server.resetHandlers(
       http.post('/api/v1/search/hybrid', () => {
         return HttpResponse.json({
           results: [
@@ -167,7 +171,8 @@ describe('useFullGraph', () => {
   });
 
   it('handles empty graph', async () => {
-    server.use(
+    // Reset and override handlers for this test
+    server.resetHandlers(
       http.post('/api/v1/search/hybrid', () => {
         return HttpResponse.json({ results: [] });
       })

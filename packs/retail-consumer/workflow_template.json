@@ -1,0 +1,155 @@
+{
+  "pack_id": "retail-consumer-v1",
+  "template_id": "rc-wf-001",
+  "template_name": "Retail & Consumer Value Assessment Workflow",
+  "description": "Complete 5-phase business case workflow for retail and consumer value assessments covering omnichannel, pricing, inventory, personalization, and store operations",
+  "estimated_duration": "4-5 weeks",
+  "required_roles": ["value_engineer", "merchandising_director", "digital_commerce_vp", "store_operations_vp"],
+  "phases": [
+    {
+      "phase_id": "discovery",
+      "name": "Discovery & Data Collection",
+      "order": 1,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "rc-disc-001",
+          "name": "Omnichannel Baseline",
+          "description": "Collect current fulfillment metrics, BOPIS adoption, and ship-from-store performance",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "digital_commerce_vp",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["Incremental_Revenue", "Omnichannel_Investment"],
+          "formulas_used": [],
+          "automated_data_sources": ["OMS", "E_Commerce"],
+          "manual_inputs_required": ["Fulfillment cost analysis"],
+          "deliverables": ["Omnichannel baseline report"]
+        },
+        {
+          "task_id": "rc-disc-002",
+          "name": "Pricing Performance Analysis",
+          "description": "Measure current margins, markdown rates, and competitive positioning",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "merchandising_director",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["Margin_Improvement_Value", "Markdown_Reduction_Value"],
+          "formulas_used": [],
+          "automated_data_sources": ["Pricing", "Planning"],
+          "manual_inputs_required": ["Competitive pricing analysis"],
+          "deliverables": ["Pricing performance baseline"]
+        }
+      ]
+    },
+    {
+      "phase_id": "analysis",
+      "name": "Value Analysis & Opportunity Sizing",
+      "order": 2,
+      "estimated_duration": "10 days",
+      "tasks": [
+        {
+          "task_id": "rc-anal-001",
+          "name": "Omnichannel ROI Model",
+          "description": "Calculate omnichannel fulfillment ROI including revenue lift and cost tradeoffs",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["rc-disc-001"],
+          "input_variables": ["Incremental_Revenue", "Cost_Avoidance", "Fulfillment_Cost_Inflation", "Omnichannel_Investment"],
+          "formulas_used": ["rc-f-001"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Platform investment estimates"],
+          "deliverables": ["Omnichannel business case"]
+        },
+        {
+          "task_id": "rc-anal-002",
+          "name": "Dynamic Pricing Value",
+          "description": "Quantify value from pricing optimization including margin improvement and markdown reduction",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["rc-disc-002"],
+          "input_variables": ["Margin_Improvement_Value", "Markdown_Reduction_Value", "Pricing_Platform_Cost"],
+          "formulas_used": ["rc-f-002"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Pricing platform costs"],
+          "deliverables": ["Dynamic pricing business case"]
+        }
+      ]
+    },
+    {
+      "phase_id": "validation",
+      "name": "Validation & Benchmarking",
+      "order": 3,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "rc-val-001",
+          "name": "Industry Benchmark Validation",
+          "description": "Compare value estimates to retail industry benchmarks",
+          "type": "benchmarking",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 6,
+          "dependencies": ["rc-anal-001", "rc-anal-002"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": ["Industry_Benchmark_Database"],
+          "manual_inputs_required": ["Peer retailer comparison"],
+          "deliverables": ["Benchmark validation report"]
+        }
+      ]
+    },
+    {
+      "phase_id": "recommendations",
+      "name": "Recommendations & Business Case",
+      "order": 4,
+      "estimated_duration": "8 days",
+      "tasks": [
+        {
+          "task_id": "rc-rec-001",
+          "name": "Investment Roadmap",
+          "description": "Rank retail initiatives by ROI and strategic priority",
+          "type": "recommendation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["rc-val-001"],
+          "input_variables": [],
+          "formulas_used": ["rc-f-001", "rc-f-002"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Strategic alignment scoring"],
+          "deliverables": ["Investment roadmap"]
+        }
+      ]
+    },
+    {
+      "phase_id": "approval",
+      "name": "Review & Approval",
+      "order": 5,
+      "estimated_duration": "4 days",
+      "tasks": [
+        {
+          "task_id": "rc-app-001",
+          "name": "Executive Approval",
+          "description": "Obtain approval from merchandising and digital commerce leadership",
+          "type": "approval",
+          "priority": "high",
+          "assigned_role": "merchandising_director",
+          "estimated_hours": 2,
+          "dependencies": ["rc-rec-001"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Approval signatures"],
+          "deliverables": ["Approved business case"]
+        }
+      ]
+    }
+  ]
+}

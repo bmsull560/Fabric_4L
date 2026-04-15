@@ -1,0 +1,170 @@
+{
+  "pack_id": "ai-technology-v1",
+  "template_id": "ai-wf-001",
+  "template_name": "AI & Technology Services Value Assessment Workflow",
+  "description": "Complete 5-phase business case workflow for AI/ML platform value assessments covering MLOps, LLM adoption, computer vision, and AI governance initiatives",
+  "estimated_duration": "4-5 weeks",
+  "required_roles": ["value_engineer", "chief_ai_officer", "ml_engineering_vp", "ai_ethics_officer"],
+  "phases": [
+    {
+      "phase_id": "discovery",
+      "name": "Discovery & Data Collection",
+      "order": 1,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "ai-disc-001",
+          "name": "MLOps Baseline",
+          "description": "Collect current model deployment times, inference costs, and drift rates",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "ml_engineering_vp",
+          "estimated_hours": 8,
+          "dependencies": [],
+          "input_variables": ["Inference_Cost_Savings", "MLOps_Investment"],
+          "formulas_used": [],
+          "automated_data_sources": ["ML_Platform", "Cloud_Billing"],
+          "manual_inputs_required": ["Model velocity analysis", "Inference cost audit"],
+          "deliverables": ["MLOps baseline report"]
+        },
+        {
+          "task_id": "ai-disc-002",
+          "name": "LLM Usage Analysis",
+          "description": "Measure current LLM adoption, developer productivity metrics, and API costs",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "ml_engineering_vp",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["Developer_Productivity_Value", "LLM_Platform_Cost"],
+          "formulas_used": [],
+          "automated_data_sources": ["LLM_Gateway", "Developer_Analytics"],
+          "manual_inputs_required": ["Developer productivity survey", "Use case inventory"],
+          "deliverables": ["LLM adoption baseline"]
+        },
+        {
+          "task_id": "ai-disc-003",
+          "name": "AI Governance Assessment",
+          "description": "Document current bias detection coverage, explainability practices, and audit readiness",
+          "type": "data_collection",
+          "priority": "medium",
+          "assigned_role": "ai_ethics_officer",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["Regulatory_Risk_Avoidance", "Governance_Platform_Cost"],
+          "formulas_used": [],
+          "automated_data_sources": ["Governance_Platform"],
+          "manual_inputs_required": ["Model documentation review", "Regulatory gap analysis"],
+          "deliverables": ["AI governance baseline"]
+        }
+      ]
+    },
+    {
+      "phase_id": "analysis",
+      "name": "Value Analysis & Opportunity Sizing",
+      "order": 2,
+      "estimated_duration": "10 days",
+      "tasks": [
+        {
+          "task_id": "ai-anal-001",
+          "name": "MLOps ROI Model",
+          "description": "Calculate MLOps platform ROI including inference optimization and deployment velocity",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["ai-disc-001"],
+          "input_variables": ["Inference_Cost_Savings", "Drift_Reduction_Value", "Velocity_Value", "MLOps_Investment"],
+          "formulas_used": ["ai-f-001"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Platform cost estimates", "Velocity improvement projections"],
+          "deliverables": ["MLOps business case"]
+        },
+        {
+          "task_id": "ai-anal-002",
+          "name": "LLM Productivity Value",
+          "description": "Quantify value from LLM adoption including developer productivity and content efficiency",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["ai-disc-002"],
+          "input_variables": ["Developer_Productivity_Value", "LLM_Platform_Cost"],
+          "formulas_used": ["ai-f-002"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Productivity benchmark analysis"],
+          "deliverables": ["LLM adoption business case"]
+        }
+      ]
+    },
+    {
+      "phase_id": "validation",
+      "name": "Validation & Benchmarking",
+      "order": 3,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "ai-val-001",
+          "name": "Industry Benchmark Validation",
+          "description": "Compare value estimates to AI/ML industry benchmarks",
+          "type": "benchmarking",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 6,
+          "dependencies": ["ai-anal-001", "ai-anal-002"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": ["Industry_Benchmark_Database"],
+          "manual_inputs_required": ["Peer company comparison"],
+          "deliverables": ["Benchmark validation report"]
+        }
+      ]
+    },
+    {
+      "phase_id": "recommendations",
+      "name": "Recommendations & Business Case",
+      "order": 4,
+      "estimated_duration": "8 days",
+      "tasks": [
+        {
+          "task_id": "ai-rec-001",
+          "name": "AI Investment Roadmap",
+          "description": "Rank AI initiatives by ROI and strategic importance",
+          "type": "recommendation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["ai-val-001"],
+          "input_variables": [],
+          "formulas_used": ["ai-f-001", "ai-f-002", "ai-f-006"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Strategic alignment assessment"],
+          "deliverables": ["AI investment roadmap"]
+        }
+      ]
+    },
+    {
+      "phase_id": "approval",
+      "name": "Review & Approval",
+      "order": 5,
+      "estimated_duration": "4 days",
+      "tasks": [
+        {
+          "task_id": "ai-app-001",
+          "name": "Executive Approval",
+          "description": "Obtain approval from Chief AI Officer and Engineering leadership",
+          "type": "approval",
+          "priority": "high",
+          "assigned_role": "chief_ai_officer",
+          "estimated_hours": 2,
+          "dependencies": ["ai-rec-001"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Approval signatures"],
+          "deliverables": ["Approved business case"]
+        }
+      ]
+    }
+  ]
+}

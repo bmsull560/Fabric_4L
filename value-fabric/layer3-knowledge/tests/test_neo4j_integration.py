@@ -18,6 +18,11 @@ Requirements (in addition to the project's dev extras)::
     pip install testcontainers[neo4j]
 
 The ``NEO4J_PASSWORD`` used inside the container is ``testpassword``.
+
+Docker Requirements:
+    - Docker must be running for these tests to execute
+    - Tests will be skipped if Docker is unavailable
+    - Add to pytest.ini: markers = integration: marks tests as integration (deselect with '-m "not integration"')
 """
 
 
@@ -44,9 +49,22 @@ NEO4J_PASSWORD = "testpassword"
 
 @pytest.fixture(scope="session")
 def neo4j_container():
-    """Start a Neo4j 5.x container for the entire test session."""
-    with Neo4jContainer(image=NEO4J_IMAGE, password=NEO4J_PASSWORD) as container:
-        yield container
+    """Start a Neo4j 5.x container for the entire test session.
+    
+    P1 Fix: Uses wait_for_logs for deterministic container readiness.
+    """
+    from testcontainers.core.waiting_utils import wait_for_logs
+    
+    container = Neo4jContainer(image=NEO4J_IMAGE, password=NEO4J_PASSWORD)
+    container.start()
+    
+    # P1 Fix: Deterministic wait for Neo4j to be ready
+    wait_for_logs(container, "Started.", timeout=60)
+    
+    yield container
+    
+    # Cleanup
+    container.stop()
 
 
 @pytest.fixture(scope="session")

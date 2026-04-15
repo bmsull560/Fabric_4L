@@ -1,0 +1,245 @@
+{
+  "pack_id": "energy-utilities-v1",
+  "template_id": "eu-wf-001",
+  "template_name": "Energy & Utilities Value Assessment Workflow",
+  "description": "Complete 5-phase business case workflow for energy and utilities value assessments covering smart grid, renewable energy, demand response, predictive maintenance, and customer engagement initiatives",
+  "estimated_duration": "4-5 weeks",
+  "required_roles": ["value_engineer", "grid_operations_manager", "renewable_energy_lead", "asset_manager", "customer_experience_lead"],
+  "phases": [
+    {
+      "phase_id": "discovery",
+      "name": "Discovery & Data Collection",
+      "order": 1,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "eu-disc-001",
+          "name": "Grid Reliability Baseline",
+          "description": "Collect current SAIDI/SAIFI metrics, outage costs, and restoration times",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "grid_operations_manager",
+          "estimated_hours": 8,
+          "dependencies": [],
+          "input_variables": ["Outage_Cost_Savings", "Annual_Smart_Grid_Cost"],
+          "formulas_used": [],
+          "automated_data_sources": ["SCADA", "OMS", "AMI"],
+          "manual_inputs_required": ["Outage cost analysis", "Storm impact assessment"],
+          "deliverables": ["Grid reliability baseline report"]
+        },
+        {
+          "task_id": "eu-disc-002",
+          "name": "Renewable Generation Analysis",
+          "description": "Measure current renewable penetration, curtailment rates, and grid integration challenges",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "renewable_energy_lead",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["REC_Revenue", "Fuel_Cost_Savings", "Integration_Costs"],
+          "formulas_used": [],
+          "automated_data_sources": ["Generation_Management", "Markets"],
+          "manual_inputs_required": ["Grid integration study", "Forecast accuracy analysis"],
+          "deliverables": ["Renewable generation baseline"]
+        },
+        {
+          "task_id": "eu-disc-003",
+          "name": "Asset Health Assessment",
+          "description": "Document current asset health indices, failure rates, and maintenance strategies",
+          "type": "data_collection",
+          "priority": "medium",
+          "assigned_role": "asset_manager",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["Avoided_Failure_Cost", "Extended_Life_Value", "Predictive_Maintenance_Investment"],
+          "formulas_used": [],
+          "automated_data_sources": ["EAM", "Work_Management"],
+          "manual_inputs_required": ["Asset condition assessment", "Failure mode analysis"],
+          "deliverables": ["Asset health baseline"]
+        },
+        {
+          "task_id": "eu-disc-004",
+          "name": "Customer Operations Review",
+          "description": "Analyze call center volumes, digital adoption rates, and customer satisfaction",
+          "type": "data_collection",
+          "priority": "medium",
+          "assigned_role": "customer_experience_lead",
+          "estimated_hours": 4,
+          "dependencies": [],
+          "input_variables": ["Call_Center_Savings", "Platform_Investment"],
+          "formulas_used": [],
+          "automated_data_sources": ["CRM", "Call_Center"],
+          "manual_inputs_required": ["Customer journey mapping", "Digital channel analysis"],
+          "deliverables": ["Customer operations baseline"]
+        }
+      ]
+    },
+    {
+      "phase_id": "analysis",
+      "name": "Value Analysis & Opportunity Sizing",
+      "order": 2,
+      "estimated_duration": "10 days",
+      "tasks": [
+        {
+          "task_id": "eu-anal-001",
+          "name": "Smart Grid ROI Model",
+          "description": "Calculate smart grid investment ROI including outage reduction and deferred capex",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["eu-disc-001"],
+          "input_variables": ["Outage_Cost_Savings", "Operational_Savings", "Deferred_Capex_Value", "Annual_Smart_Grid_Cost", "Cumulative_Investment"],
+          "formulas_used": ["eu-f-001"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Smart grid cost estimates", "Implementation roadmap"],
+          "deliverables": ["Smart grid business case"]
+        },
+        {
+          "task_id": "eu-anal-002",
+          "name": "Renewable Integration Value",
+          "description": "Quantify value from renewable energy including RECs, carbon credits, and fuel savings",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["eu-disc-002"],
+          "input_variables": ["REC_Revenue", "Carbon_Credit_Value", "Fuel_Cost_Savings", "Capacity_Payment_Avoidance", "Integration_Costs"],
+          "formulas_used": ["eu-f-002"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Market price forecasts", "Carbon credit projections"],
+          "deliverables": ["Renewable integration business case"]
+        },
+        {
+          "task_id": "eu-anal-003",
+          "name": "Predictive Maintenance Value",
+          "description": "Calculate value from predictive maintenance including avoided failures and extended asset life",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["eu-disc-003"],
+          "input_variables": ["Avoided_Failure_Cost", "Extended_Life_Value", "OMS_Savings", "Predictive_Maintenance_Investment"],
+          "formulas_used": ["eu-f-004"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Sensor deployment costs", "Analytics platform investment"],
+          "deliverables": ["Predictive maintenance business case"]
+        }
+      ]
+    },
+    {
+      "phase_id": "validation",
+      "name": "Validation & Benchmarking",
+      "order": 3,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "eu-val-001",
+          "name": "Industry Benchmark Validation",
+          "description": "Compare value estimates to utility industry benchmarks for SAIDI, renewable penetration, and asset health",
+          "type": "benchmarking",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 6,
+          "dependencies": ["eu-anal-001", "eu-anal-002", "eu-anal-003"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": ["Industry_Benchmark_Database"],
+          "manual_inputs_required": ["Peer utility comparison", "Regional factor adjustment"],
+          "deliverables": ["Benchmark validation report"]
+        },
+        {
+          "task_id": "eu-val-002",
+          "name": "Regulatory Impact Assessment",
+          "description": "Review regulatory implications for rate cases, renewable mandates, and environmental compliance",
+          "type": "compliance_review",
+          "priority": "high",
+          "assigned_role": "renewable_energy_lead",
+          "estimated_hours": 4,
+          "dependencies": ["eu-anal-002"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Regulatory filing requirements", "Compliance timeline"],
+          "deliverables": ["Regulatory impact assessment"]
+        }
+      ]
+    },
+    {
+      "phase_id": "recommendations",
+      "name": "Recommendations & Business Case",
+      "order": 4,
+      "estimated_duration": "8 days",
+      "tasks": [
+        {
+          "task_id": "eu-rec-001",
+          "name": "Capital Investment Roadmap",
+          "description": "Rank initiatives by ROI, strategic fit, and implementation timeline",
+          "type": "recommendation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["eu-val-001", "eu-val-002"],
+          "input_variables": [],
+          "formulas_used": ["eu-f-001", "eu-f-002", "eu-f-003", "eu-f-004"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Capital planning alignment", "Rate case integration"],
+          "deliverables": ["Capital investment roadmap"]
+        },
+        {
+          "task_id": "eu-rec-002",
+          "name": "Executive Business Case",
+          "description": "Create executive presentation with financial summary and rate case strategy",
+          "type": "deliverable",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 10,
+          "dependencies": ["eu-rec-001"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Executive presentation draft", "Board talking points"],
+          "deliverables": ["Executive business case presentation"]
+        }
+      ]
+    },
+    {
+      "phase_id": "approval",
+      "name": "Review & Approval",
+      "order": 5,
+      "estimated_duration": "4 days",
+      "tasks": [
+        {
+          "task_id": "eu-app-001",
+          "name": "Stakeholder Review",
+          "description": "Present findings to operations, regulatory, and finance stakeholders",
+          "type": "review",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 4,
+          "dependencies": ["eu-rec-002"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Stakeholder feedback sessions"],
+          "deliverables": ["Review feedback summary"]
+        },
+        {
+          "task_id": "eu-app-002",
+          "name": "Final Approval",
+          "description": "Obtain formal approval from executives and regulatory affairs",
+          "type": "approval",
+          "priority": "high",
+          "assigned_role": "grid_operations_manager",
+          "estimated_hours": 2,
+          "dependencies": ["eu-app-001"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Approval signatures"],
+          "deliverables": ["Approved business case document"]
+        }
+      ]
+    }
+  ]
+}

@@ -20,13 +20,34 @@ Usage:
 
 import argparse
 import json
+import logging
 import sys
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
 from neo4j import GraphDatabase
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stderr,
+)
+logger = logging.getLogger(__name__)
+
+# Constants for query analysis thresholds
+DEFAULT_SLOW_QUERY_THRESHOLD_MS = 500
+DEFAULT_TOP_N_QUERIES = 20
+DEFAULT_CONTINUOUS_INTERVAL_S = 60
+HIGH_MEMORY_THRESHOLD_BYTES = 100 * 1024 * 1024  # 100MB
+IO_BOUND_CPU_RATIO = 0.3
+WAIT_TIME_CPU_RATIO = 0.5
+LOW_CACHE_HIT_RATIO = 0.5
+QUERY_TRUNCATE_LENGTH = 500
+QUERY_PREVIEW_LENGTH = 200
+QUERY_DISPLAY_LENGTH = 150
 
 
 @dataclass
@@ -115,15 +136,15 @@ class Neo4jQueryProfiler:
             # Enable query logging if not already enabled
             session.run("CALL dbms.setConfigValue('dbms.logs.query.enabled', 'true')")
             
-            result = session.run(f"""
+            result = session.run("""
                 CALL db.stats.retrieve('QUERIES') YIELD section, data
                 UNWIND data AS query
                 WITH query
-                WHERE query.elapsedTimeMillis > {threshold_ms}
+                WHERE query.elapsedTimeMillis > $threshold
                 RETURN query
                 ORDER BY query.elapsedTimeMillis DESC
                 LIMIT 50
-            """)
+            """, threshold=threshold_ms)
             
             profiles = []
             for record in result:
@@ -134,7 +155,7 @@ class Neo4jQueryProfiler:
                 
                 profile = QueryProfile(
                     query_id=q.get("queryId", "unknown"),
-                    query_text=q.get("query", "")[:500],  # Truncate long queries
+                    query_text=q.get("query", "")[:QUERY_TRUNCATE_LENGTH],
                     elapsed_time_ms=q.get("elapsedTimeMillis", 0),
                     planning_time_ms=q.get("planningTimeMillis", 0),
                     cpu_time_ms=q.get("cpuTimeMillis", 0),
@@ -143,7 +164,7 @@ class Neo4jQueryProfiler:
                     page_cache_hits=hits,
                     page_cache_misses=misses,
                     hit_ratio=hit_ratio,
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                     metadata={
                         "runtime": q.get("runtime", "unknown"),
                         "pool": q.get("pool", "unknown"),
@@ -154,31 +175,26 @@ class Neo4jQueryProfiler:
             return profiles
     
     def explain_query(self, query_text: str) -> Optional[QueryPlan]:
-        """Get execution plan for a query."""
+        """Get execution plan for a query.
+
+        Args:
+            query_text: The Cypher query to explain. Note: This is executed with
+                EXPLAIN and should not contain user-modifiable content.
+
+        Returns:
+            QueryPlan with execution details, or None if explanation fails.
+        """
+        # SECURITY: EXPLAIN runs the query planner; only explain trusted queries
+        # This is intended for profiling known slow queries, not arbitrary user input
         with self.driver.session() as session:
             try:
-                result = session.run(f"EXPLAIN {query_text}")
+                # Use parameterized query to avoid injection risks
+                result = session.run(
+                    "EXPLAIN CYPHER runtime=slotted $query_text",
+                    query_text=query_text,
+                )
                 plan = result.consume().profile
-                
-                # Extract operators
-                operators = []
-                index_usage = []
-                
-                def extract_operators(operator):
-                    operators.append({
-                        "name": operator.name,
-                        "rows": operator.rows,
-                        "db_hits": operator.db_hits,
-                        "time": operator.time,
-                    })
-                    if hasattr(operator, "index"):
-                        index_usage.append(operator.index)
-                    if hasattr(operator, "children"):
-                        for child in operator.children:
-                            extract_operators(child)
-                
-                if plan:
-                    extract_operators(plan)
+                operators, index_usage = self._extract_plan_operators(plan)
                 
                 return QueryPlan(
                     query_id="explained",
@@ -187,12 +203,42 @@ class Neo4jQueryProfiler:
                     pipeline_info=[],
                     operators=operators,
                     index_usage=list(set(index_usage)),
-                    timestamp=datetime.utcnow().isoformat(),
+                    timestamp=datetime.now(UTC).isoformat(),
                 )
             except Exception as e:
-                print(f"Error explaining query: {e}", file=sys.stderr)
+                logger.error("Failed to explain query: %s", e)
                 return None
-    
+
+    def _extract_plan_operators(self, plan) -> tuple[list[dict], list[str]]:
+        """Extract operators and index usage from query plan.
+
+        Args:
+            plan: The query plan profile from Neo4j.
+
+        Returns:
+            Tuple of (operators list, index usage list).
+        """
+        operators: list[dict] = []
+        index_usage: list[str] = []
+
+        def _extract_recursive(operator):
+            operators.append({
+                "name": operator.name,
+                "rows": operator.rows,
+                "db_hits": operator.db_hits,
+                "time": operator.time,
+            })
+            if hasattr(operator, "index"):
+                index_usage.append(operator.index)
+            if hasattr(operator, "children"):
+                for child in operator.children:
+                    _extract_recursive(child)
+
+        if plan:
+            _extract_recursive(plan)
+
+        return operators, index_usage
+
     def get_query_statistics(self) -> dict:
         """Get aggregate query statistics."""
         with self.driver.session() as session:
@@ -217,39 +263,39 @@ class Neo4jQueryProfiler:
     def generate_optimization_recommendations(self, slow_queries: list[QueryProfile]) -> list[dict]:
         """Generate optimization recommendations for slow queries."""
         recommendations = []
-        
+
         for query in slow_queries:
             recs = []
-            
+
             # Check for high page cache misses
             if query.page_cache_misses > query.page_cache_hits:
                 recs.append({
                     "type": "cache_optimization",
                     "description": "High page cache misses detected. Consider increasing Neo4j page cache size.",
                     "action": "Increase dbms.memory.pagecache.size",
-                    "priority": "high" if query.hit_ratio < 0.5 else "medium",
+                    "priority": "high" if query.hit_ratio < LOW_CACHE_HIT_RATIO else "medium",
                 })
-            
+
             # Check for high wait time (lock contention)
-            if query.wait_time_ms > query.cpu_time_ms * 0.5:
+            if query.wait_time_ms > query.cpu_time_ms * WAIT_TIME_CPU_RATIO:
                 recs.append({
                     "type": "lock_contention",
                     "description": "High wait time indicates lock contention. Review concurrent access patterns.",
                     "action": "Analyze query patterns for concurrent writes",
                     "priority": "high",
                 })
-            
+
             # Check for long elapsed time with low CPU time (I/O bound)
-            if query.elapsed_time_ms > 1000 and query.cpu_time_ms < query.elapsed_time_ms * 0.3:
+            if query.elapsed_time_ms > 1000 and query.cpu_time_ms < query.elapsed_time_ms * IO_BOUND_CPU_RATIO:
                 recs.append({
                     "type": "io_optimization",
                     "description": "Query appears I/O bound. Consider adding indexes or optimizing data model.",
                     "action": "Review query plan and add appropriate indexes",
                     "priority": "medium",
                 })
-            
+
             # Check for high memory allocation
-            if query.allocated_bytes > 100 * 1024 * 1024:  # > 100MB
+            if query.allocated_bytes > HIGH_MEMORY_THRESHOLD_BYTES:
                 recs.append({
                     "type": "memory_optimization",
                     "description": f"High memory allocation ({query.allocated_bytes / 1024 / 1024:.1f} MB). "
@@ -261,30 +307,30 @@ class Neo4jQueryProfiler:
             if recs:
                 recommendations.append({
                     "query_id": query.query_id,
-                    "query_preview": query.query_text[:200],
+                    "query_preview": query.query_text[:QUERY_PREVIEW_LENGTH],
                     "elapsed_time_ms": query.elapsed_time_ms,
                     "recommendations": recs,
                 })
         
         return recommendations
     
-    def run_profiler(self, threshold_ms: int = 500, top_n: int = 20) -> dict:
+    def run_profiler(self, threshold_ms: int = DEFAULT_SLOW_QUERY_THRESHOLD_MS, top_n: int = DEFAULT_TOP_N_QUERIES) -> dict:
         """Run complete profiling analysis."""
-        print(f"Connecting to Neo4j at {self.uri}...", file=sys.stderr)
+        logger.info("Connecting to Neo4j at %s", self.uri)
         self.connect()
-        
+
         try:
-            print("Collecting query statistics...", file=sys.stderr)
+            logger.info("Collecting query statistics...")
             statistics = self.get_query_statistics()
-            
-            print(f"Finding queries > {threshold_ms}ms...", file=sys.stderr)
+
+            logger.info("Finding queries > %d ms...", threshold_ms)
             slow_queries = self.get_slow_queries(threshold_ms)
-            
-            print("Generating recommendations...", file=sys.stderr)
+
+            logger.info("Generating recommendations...")
             recommendations = self.generate_optimization_recommendations(slow_queries[:top_n])
-            
+
             return {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "neo4j_uri": self.uri,
                 "threshold_ms": threshold_ms,
                 "statistics": statistics,
@@ -351,7 +397,7 @@ def generate_report(analysis: dict, format: str = "text") -> str:
                 f"{query['page_cache_misses']} misses "
                 f"({hit_ratio_pct:.1f}% hit ratio)",
                 f"   Memory: {query['allocated_bytes'] / 1024 / 1024:.2f} MB",
-                f"   Query: {query['query_text'][:150]}...",
+                f"   Query: {query['query_text'][:QUERY_DISPLAY_LENGTH]}...",
             ])
     
     if analysis['optimization_recommendations']:
@@ -405,13 +451,13 @@ def main():
     parser.add_argument(
         "--threshold",
         type=int,
-        default=500,
+        default=DEFAULT_SLOW_QUERY_THRESHOLD_MS,
         help="Slow query threshold in milliseconds",
     )
     parser.add_argument(
         "--top-n",
         type=int,
-        default=20,
+        default=DEFAULT_TOP_N_QUERIES,
         help="Number of slow queries to report",
     )
     parser.add_argument(
@@ -422,7 +468,7 @@ def main():
     parser.add_argument(
         "--interval",
         type=int,
-        default=60,
+        default=DEFAULT_CONTINUOUS_INTERVAL_S,
         help="Sampling interval in seconds (for continuous mode)",
     )
     parser.add_argument(
@@ -445,25 +491,25 @@ def main():
     )
     
     if args.continuous:
-        print(f"Running continuous profiler (interval: {args.interval}s)", file=sys.stderr)
-        print("Press Ctrl+C to stop", file=sys.stderr)
-        
+        logger.info("Running continuous profiler (interval: %ds)", args.interval)
+        logger.info("Press Ctrl+C to stop")
+
         try:
             while True:
                 analysis = profiler.run_profiler(args.threshold, args.top_n)
                 report = generate_report(analysis, args.format)
-                print(report)
-                
+                print(report)  # Report goes to stdout
+
                 if args.output:
-                    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
                     output_file = args.output.replace(".json", f"_{timestamp}.json")
                     with open(output_file, "w") as f:
                         json.dump(analysis, f, indent=2)
-                    print(f"Saved: {output_file}", file=sys.stderr)
-                
+                    logger.info("Saved: %s", output_file)
+
                 time.sleep(args.interval)
         except KeyboardInterrupt:
-            print("\nProfiler stopped", file=sys.stderr)
+            logger.info("Profiler stopped")
     else:
         analysis = profiler.run_profiler(args.threshold, args.top_n)
         report = generate_report(analysis, args.format)
@@ -472,20 +518,20 @@ def main():
         if args.output:
             with open(args.output, "w") as f:
                 json.dump(analysis, f, indent=2)
-            print(f"\nAnalysis saved to: {args.output}", file=sys.stderr)
-        
+            logger.info("Analysis saved to: %s", args.output)
+
         # Exit with error code if critical issues found
         critical_count = sum(
             1 for rec_group in analysis['optimization_recommendations']
             for rec in rec_group['recommendations']
             if rec['priority'] == 'high'
         )
-        
+
         if critical_count > 0:
-            print(f"\n⚠️  {critical_count} critical optimization(s) found", file=sys.stderr)
+            logger.warning("%d critical optimization(s) found", critical_count)
             sys.exit(1)
         else:
-            print("\n✅ Query performance acceptable", file=sys.stderr)
+            logger.info("Query performance acceptable")
             sys.exit(0)
 
 

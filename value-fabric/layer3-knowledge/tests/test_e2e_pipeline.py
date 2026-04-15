@@ -50,10 +50,13 @@ from src.retrieval.vector_store import VectorStore
 from src.schema.initializer import SchemaInitializer
 
 # Skip entire module if testcontainers not installed
-pytestmark = pytest.mark.skipif(
-    not HAS_TESTCONTAINERS,
-    reason="testcontainers not installed - run: pip install testcontainers[neo4j]"
-)
+pytestmark = [
+    pytest.mark.skipif(
+        not HAS_TESTCONTAINERS,
+        reason="testcontainers not installed - run: pip install testcontainers[neo4j]"
+    ),
+    pytest.mark.integration,  # P1: Explicit marker for selective test running
+]
 
 
 # Test configuration
@@ -69,30 +72,32 @@ REQUIRED_VECTOR_INDEXES = {
 
 @pytest_asyncio.fixture(scope="module")
 async def neo4j_container() -> AsyncGenerator[Neo4jContainer, None]:
-    """Start Neo4j container for testing."""
+    """Start Neo4j container for testing with deterministic wait strategy.
+    
+    P1 Fix: Replaced hardcoded retry loop with testcontainers' built-in wait
+    strategy for more reliable container startup detection.
+    """
+    from testcontainers.core.waiting_utils import wait_for_logs
+    
     container = Neo4jContainer(
         image="neo4j:5.15-community",
         password=TEST_NEO4J_PASSWORD,
     ).with_env("NEO4J_PLUGINS", '["apoc", "graph-data-science"]')
     
+    # P1 Fix: Use testcontainers' built-in wait strategy instead of manual retry loop
+    # This provides deterministic container readiness detection
     container.start()
+    wait_for_logs(container, "Started.", timeout=60)
     
-    # Wait for Neo4j to be ready
-    max_retries = 30
-    for i in range(max_retries):
-        try:
-            driver = AsyncGraphDatabase.driver(
-                container.get_connection_url(),
-                auth=("neo4j", TEST_NEO4J_PASSWORD),
-            )
-            await driver.verify_connectivity()
-            await driver.close()
-            break
-        except Exception:
-            if i == max_retries - 1:
-                container.stop()
-                raise RuntimeError("Neo4j failed to start")
-            await asyncio.sleep(1)
+    # Additional verification that Neo4j is accepting connections
+    driver = AsyncGraphDatabase.driver(
+        container.get_connection_url(),
+        auth=("neo4j", TEST_NEO4J_PASSWORD),
+    )
+    try:
+        await driver.verify_connectivity()
+    finally:
+        await driver.close()
     
     yield container
     
@@ -166,6 +171,7 @@ async def neo4j_loader(
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 class TestSchemaInitialization:
     """Test Neo4j schema initialization."""
     

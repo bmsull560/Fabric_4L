@@ -4,47 +4,31 @@ Tests the pause/resume lifecycle for human-in-the-loop workflows.
 Verifies state persistence across interruptions and container restarts.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-import pytest_asyncio
-from langgraph.checkpoint.memory import InMemorySaver
 
 from src.config.checkpoint import CheckpointConfig
 from src.engine.executor import OrchestrationController, WorkflowExecutionError
 from src.engine.state_manager import StateManager
-from src.models.agent_state import AgentState, BaseAgentState, WorkflowStatus
+from src.models.agent_state import BaseAgentState, WorkflowStatus
 from src.models.workflow_config import EdgeConfig, NodeConfig, NodeType
 from src.tools.registry import ToolRegistry
 from src.workflows.base import BaseWorkflow, WorkflowConfig
+
+# Reuse fixtures from conftest.py: mock_checkpoint_saver, mock_tool_registry,
+# state_manager, orchestrator_with_checkpoint, controller_with_running_state,
+# controller_with_paused_state, completed_workflow_state
 
 # Test constants
 TEST_WORKFLOW_TYPE = "roi_calculator"
 
 
-class MockCheckpointSaver(InMemorySaver):
-    """Mock checkpoint saver extending InMemorySaver for testing.
-    
-    InMemorySaver provides full BaseCheckpointSaver implementation
-    with in-memory storage - perfect for testing without Postgres.
-    """
-    
-    @property
-    def checkpoints(self) -> dict[str, Any]:
-        """Expose underlying storage for test assertions."""
-        return getattr(self, 'storage', {})
-    
-    @property
-    def saved_threads(self) -> set:
-        """Expose saved thread IDs for test assertions."""
-        return set(self.checkpoints.keys())
-
-
 class SimpleTestWorkflow(BaseWorkflow):
     """Simple workflow for testing checkpoint/resume."""
-    
+
     def __init__(self, tool_registry, checkpoint_saver=None, pause_after_node: str | None = None):
         """Initialize with optional pause point."""
         config = WorkflowConfig(
@@ -65,21 +49,22 @@ class SimpleTestWorkflow(BaseWorkflow):
         super().__init__(config, tool_registry, checkpoint_saver)
         self.pause_after_node = pause_after_node
         self.executed_nodes: list = []
-    
-    async def _execute_tool(self, tool_name: str, state: AgentState, config: dict) -> dict[str, Any]:
+
+    async def _execute_tool(self, tool_name: str, state, config: dict) -> dict[str, Any]:
         """Track node execution."""
         current_node = state.current_node
         self.executed_nodes.append(current_node)
-        
+
         # Simulate pause after specified node
         if self.pause_after_node and current_node == self.pause_after_node:
             state.status = WorkflowStatus.PENDING
             return {"status": "paused", "node": current_node}
-        
+
         return {"status": "completed", "node": current_node, "tool": tool_name}
-    
-    def create_initial_state(self, input_data: dict[str, Any]) -> AgentState:
+
+    def create_initial_state(self, input_data: dict[str, Any]):
         """Create initial state."""
+        from datetime import UTC
         return BaseAgentState(
             workflow_id=input_data.get("workflow_id", f"test-{datetime.now(UTC).timestamp()}"),
             workflow_type=TEST_WORKFLOW_TYPE,
@@ -93,80 +78,40 @@ class SimpleTestWorkflow(BaseWorkflow):
 @pytest.mark.unit
 class TestCheckpointPersistence:
     """Test that workflow state persists across interruptions."""
-    
+
     @pytest.mark.asyncio
-    async def test_checkpoint_saver_stores_state(self):
+    async def test_checkpoint_saver_stores_state(self, mock_checkpoint_saver, mock_tool_registry):
         """Verify checkpoint saver receives state during workflow execution."""
-        # Setup
-        mock_saver = MockCheckpointSaver()
-        mock_registry = Mock(spec=ToolRegistry)
-        mock_registry.execute = AsyncMock(return_value={"result": "test"})
-        
-        workflow = SimpleTestWorkflow(mock_registry, mock_saver)
+        workflow = SimpleTestWorkflow(mock_tool_registry, mock_checkpoint_saver)
         initial_state = workflow.create_initial_state({"test": "data"})
         workflow_id = initial_state.workflow_id
-        
-        # Execute workflow
+
         await workflow.run(initial_state, thread_id=workflow_id)
-        
-        # Assert checkpoint was saved
-        assert workflow_id in mock_saver.saved_threads
-        assert workflow_id in mock_saver.checkpoints
-    
+
+        assert workflow_id in mock_checkpoint_saver.saved_threads
+        assert workflow_id in mock_checkpoint_saver.checkpoints
+
     @pytest.mark.asyncio
-    async def test_workflow_without_checkpoint_saver_runs_normally(self):
+    async def test_workflow_without_checkpoint_saver_runs_normally(self, mock_tool_registry):
         """Workflow functions without checkpointing (backward compatibility)."""
-        # Setup
-        mock_registry = Mock(spec=ToolRegistry)
-        mock_registry.execute = AsyncMock(return_value={"result": "test"})
-        
-        workflow = SimpleTestWorkflow(mock_registry, checkpoint_saver=None)
+        workflow = SimpleTestWorkflow(mock_tool_registry, checkpoint_saver=None)
         initial_state = workflow.create_initial_state({"test": "data"})
-        
-        # Execute - should not raise
+
         result = await workflow.run(initial_state, thread_id="test-wf-1")
-        
-        # Assert workflow completed
+
         assert result is not None
 
 
 @pytest.mark.unit
 class TestResumeWorkflow:
     """Test OrchestrationController resume functionality."""
-    
+
     @pytest.mark.asyncio
-    async def test_resume_workflow_loads_state(self):
+    async def test_resume_workflow_loads_state(self, controller_with_running_state, state_manager):
         """Resume loads existing state and continues execution."""
-        # Setup
-        mock_saver = MockCheckpointSaver()
-        mock_registry = Mock(spec=ToolRegistry)
-        
-        # Create state manager with pre-existing state
-        state_manager = StateManager()
-        workflow_id = "test-resume-wf-1"
-        existing_state = BaseAgentState(
-            workflow_id=workflow_id,
-            workflow_type=TEST_WORKFLOW_TYPE,
-            status=WorkflowStatus.RUNNING,
-            current_node="middle",
-            input_data={"test": "data"},
-            output_data={"start": {"status": "completed"}},
-            errors=[]
-        )
+        controller, workflow_id, existing_state = controller_with_running_state
         await state_manager.save_state(workflow_id, existing_state)
-        
-        # Create controller with metadata for this workflow
-        controller = OrchestrationController(
-            tool_registry=mock_registry,
-            state_manager=state_manager,
-            checkpoint_saver=mock_saver
-        )
-        controller._workflow_metadata[workflow_id] = {
-            "workflow_type": TEST_WORKFLOW_TYPE,
-            "started_at": datetime.now(UTC).isoformat()
-        }
-        
-        # Mock create_workflow to return a mock workflow
+
         mock_workflow = Mock(spec=BaseWorkflow)
         mock_result = BaseAgentState(
             workflow_id=workflow_id,
@@ -177,118 +122,70 @@ class TestResumeWorkflow:
             errors=[]
         )
         mock_workflow.run = AsyncMock(return_value=mock_result)
-        
+
         with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
-            # Resume
             result = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="test-user",
                 resume_data={"approved": True}
             )
-        
-        # Assert
+
         assert result is not None
         assert result.workflow_id == workflow_id
         mock_workflow.run.assert_called_once()
-    
+
     @pytest.mark.asyncio
-    async def test_resume_completed_workflow_fails(self):
+    async def test_resume_completed_workflow_fails(self, mock_tool_registry, state_manager, completed_workflow_state):
         """Cannot resume a workflow that is already completed."""
-        # Setup
-        state_manager = StateManager()
-        workflow_id = "completed-wf-1"
-        completed_state = BaseAgentState(
-            workflow_id=workflow_id,
-            workflow_type=TEST_WORKFLOW_TYPE,
-            status=WorkflowStatus.COMPLETED,
-            input_data={},
-            output_data={},
-            errors=[]
-        )
-        await state_manager.save_state(workflow_id, completed_state)
-        
+        workflow_id = completed_workflow_state.workflow_id
+        await state_manager.save_state(workflow_id, completed_workflow_state)
+
         controller = OrchestrationController(
-            tool_registry=Mock(spec=ToolRegistry),
+            tool_registry=mock_tool_registry,
             state_manager=state_manager
         )
-        controller._workflow_metadata[workflow_id] = {
-            "workflow_type": TEST_WORKFLOW_TYPE
-        }
-        
-        # Assert resume fails
+        controller._workflow_metadata[workflow_id] = {"workflow_type": TEST_WORKFLOW_TYPE}
+
         with pytest.raises(WorkflowExecutionError):
-            await controller.resume_workflow(
-                workflow_id=workflow_id,
-                user_id="test-user"
-            )
-        
+            await controller.resume_workflow(workflow_id=workflow_id, user_id="test-user")
+
     @pytest.mark.asyncio
-    async def test_resume_nonexistent_workflow_fails(self):
+    async def test_resume_nonexistent_workflow_fails(self, mock_tool_registry, state_manager):
         """Cannot resume a workflow that doesn't exist."""
-        # Setup
-        state_manager = StateManager()
         controller = OrchestrationController(
-            tool_registry=Mock(spec=ToolRegistry),
+            tool_registry=mock_tool_registry,
             state_manager=state_manager
         )
-        
-        # Assert resume fails
+
         with pytest.raises(WorkflowExecutionError) as exc_info:
-            await controller.resume_workflow(
-                workflow_id="nonexistent-wf",
-                user_id="test-user"
-            )
-        # Assert
+            await controller.resume_workflow(workflow_id="nonexistent-wf", user_id="test-user")
+
         assert "not found" in str(exc_info.value).lower() or "no state found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
-    async def test_resume_merges_user_data(self):
+    async def test_resume_merges_user_data(self, controller_with_running_state, state_manager):
         """Resume merges user resume data into state."""
-        # Setup
-        mock_saver = MockCheckpointSaver()
-        state_manager = StateManager()
-        workflow_id = "resume-data-wf"
-
-        existing_state = BaseAgentState(
-            workflow_id=workflow_id,
-            workflow_type=TEST_WORKFLOW_TYPE,
-            status=WorkflowStatus.RUNNING,
-            input_data={"original": "data"},
-            output_data={},
-            errors=[]
-        )
+        controller, workflow_id, existing_state = controller_with_running_state
+        existing_state.input_data = {"original": "data"}
         await state_manager.save_state(workflow_id, existing_state)
-        
-        controller = OrchestrationController(
-            tool_registry=Mock(spec=ToolRegistry),
-            state_manager=state_manager,
-            checkpoint_saver=mock_saver
-        )
-        controller._workflow_metadata[workflow_id] = {
-            "workflow_type": TEST_WORKFLOW_TYPE
-        }
-        
-        # Mock create_workflow to return a mock workflow
-        mock_workflow = Mock(spec=BaseWorkflow)
-        # Simulate what resume_workflow does: merges resume_data into output_data
+
         async def mock_run(state, thread_id):
             return state
+
+        mock_workflow = Mock(spec=BaseWorkflow)
         mock_workflow.run = AsyncMock(side_effect=mock_run)
-        
-        # Resume with user data
+
         resume_data = {"approved": True, "notes": "Proceed with caution"}
-        
+
         with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
             result = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="test-user",
                 resume_data=resume_data
             )
-        
-        # Verify result has the resume data in output_data
+
         assert result is not None
         assert result.workflow_id == workflow_id
-        # Verify data was captured in output_data (not input_data)
         assert "resume_decision" in result.output_data
         assert result.output_data["resume_decision"] == resume_data
         assert result.output_data["resumed_by"] == "test-user"
@@ -343,41 +240,11 @@ class TestCheckpointIntegration:
     """End-to-end integration tests for checkpoint/resume."""
 
     @pytest.mark.asyncio
-    async def test_full_pause_resume_lifecycle(self):
+    async def test_full_pause_resume_lifecycle(self, controller_with_paused_state, state_manager):
         """Complete workflow: start -> pause -> resume -> complete."""
-        # Mock workflow execution to avoid LangGraph recursion issues in tests
-        # This tests the checkpoint/resume lifecycle at the controller level
-
-        mock_saver = MockCheckpointSaver()
-        mock_registry = Mock(spec=ToolRegistry)
-        mock_registry.execute = AsyncMock(return_value={"result": "success"})
-
-        state_manager = StateManager()
-        workflow_id = "lifecycle-wf"
-
-        # Create initial running state (simulating paused workflow)
-        initial_state = BaseAgentState(
-            workflow_id=workflow_id,
-            workflow_type=TEST_WORKFLOW_TYPE,
-            status=WorkflowStatus.PAUSED,
-            current_node="middle",
-            input_data={"test": "lifecycle"},
-            output_data={"start": {"status": "completed"}},
-            errors=[]
-        )
+        controller, workflow_id, initial_state = controller_with_paused_state
         await state_manager.save_state(workflow_id, initial_state)
 
-        controller = OrchestrationController(
-            tool_registry=mock_registry,
-            state_manager=state_manager,
-            checkpoint_saver=mock_saver
-        )
-        controller._workflow_metadata[workflow_id] = {
-            "workflow_type": TEST_WORKFLOW_TYPE,
-            "started_at": datetime.now(UTC).isoformat()
-        }
-
-        # Mock the workflow to return a completed state
         mock_workflow = Mock(spec=BaseWorkflow)
         completed_state = BaseAgentState(
             workflow_id=workflow_id,
@@ -394,7 +261,6 @@ class TestCheckpointIntegration:
         )
         mock_workflow.run = AsyncMock(return_value=completed_state)
 
-        # Resume workflow
         with patch("src.engine.executor.create_workflow", return_value=mock_workflow):
             result = await controller.resume_workflow(
                 workflow_id=workflow_id,
@@ -402,94 +268,42 @@ class TestCheckpointIntegration:
                 resume_data={"approved": True}
             )
 
-        # Verify workflow completed
         assert result is not None
         assert result.workflow_id == workflow_id
         assert result.status == WorkflowStatus.COMPLETED
         mock_workflow.run.assert_called_once()
         
     @pytest.mark.asyncio
-    async def test_multiple_resumes_continue_progress(self):
+    async def test_multiple_resumes_continue_progress(self, controller_with_running_state, state_manager, mock_checkpoint_saver):
         """Multiple resume calls continue from latest checkpoint."""
-        # Setup
-        mock_saver = MockCheckpointSaver()
-        mock_registry = Mock(spec=ToolRegistry)
-        
-        state_manager = StateManager()
-        workflow_id = "multi-resume-wf"
-        
-        # Create initial running state
-        existing_state = BaseAgentState(
-            workflow_id=workflow_id,
-            workflow_type=TEST_WORKFLOW_TYPE,
-            status=WorkflowStatus.RUNNING,
-            current_node="middle",
-            input_data={"test": "multi"},
-            output_data={"resume_count": 0},
-            errors=[]
-        )
+        controller, workflow_id, existing_state = controller_with_running_state
+        existing_state.output_data = {"resume_count": 0}
         await state_manager.save_state(workflow_id, existing_state)
-        
-        controller = OrchestrationController(
-            tool_registry=mock_registry,
-            state_manager=state_manager,
-            checkpoint_saver=mock_saver
-        )
-        controller._workflow_metadata[workflow_id] = {
-            "workflow_type": TEST_WORKFLOW_TYPE
-        }
-        
-        # Mock create_workflow to return a mock workflow
-        mock_workflow = Mock(spec=BaseWorkflow)
+
         async def mock_run(state, thread_id):
             return state
+
+        mock_workflow = Mock(spec=BaseWorkflow)
         mock_workflow.run = AsyncMock(side_effect=mock_run)
-        
+
         with patch("src.engine.executor.create_workflow", return_value=mock_workflow) as mock_create:
-            # First resume
             result1 = await controller.resume_workflow(
                 workflow_id=workflow_id,
                 user_id="user-1",
                 resume_data={"iteration": 1}
             )
-        
+
         assert result1 is not None
         assert result1.output_data["resume_decision"] == {"iteration": 1}
-        
-        # Verify create_workflow was called with checkpoint_saver
         mock_create.assert_called_once()
-        call_args = mock_create.call_args
-        # checkpoint_saver is 3rd positional arg: create_workflow(type, registry, saver)
-        assert call_args.args[2] is mock_saver
+        assert mock_create.call_args.args[2] is mock_checkpoint_saver
 
 
-# Fixtures for pytest
-@pytest.fixture
-def mock_checkpoint_saver() -> MockCheckpointSaver:
-    """Provide mock checkpoint saver."""
-    return MockCheckpointSaver()
-
-
-@pytest.fixture
-def mock_tool_registry() -> Mock:
-    """Provide mock tool registry."""
-    registry = Mock(spec=ToolRegistry)
-    registry.execute = AsyncMock(return_value={"result": "mock"})
-    return registry
-
-
-@pytest_asyncio.fixture
-async def orchestrator_with_checkpoint(
-    mock_tool_registry: Mock,
-    mock_checkpoint_saver: MockCheckpointSaver
-) -> OrchestrationController:
-    """Provide OrchestrationController with checkpointing enabled."""
-    state_manager = StateManager()
-    controller = OrchestrationController(
-        tool_registry=mock_tool_registry,
-        state_manager=state_manager,
-        checkpoint_saver=mock_checkpoint_saver
-    )
-    await controller.start()
-    yield controller
-    await controller.stop()
+# Fixtures moved to conftest.py:
+# - mock_checkpoint_saver
+# - mock_tool_registry
+# - state_manager
+# - orchestrator_with_checkpoint
+# - controller_with_running_state
+# - controller_with_paused_state
+# - completed_workflow_state

@@ -1,0 +1,275 @@
+{
+  "pack_id": "financial-services-v1",
+  "template_id": "fs-wf-001",
+  "template_name": "Financial Services Value Assessment Workflow",
+  "description": "Complete 5-phase business case workflow for financial services value assessments covering fraud detection, digital onboarding, credit risk, compliance, and wealth management initiatives",
+  "estimated_duration": "4-5 weeks",
+  "required_roles": ["value_engineer", "risk_manager", "compliance_officer", "digital_banking_lead", "wealth_advisor"],
+  "phases": [
+    {
+      "phase_id": "discovery",
+      "name": "Discovery & Data Collection",
+      "order": 1,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "fs-disc-001",
+          "name": "Fraud Loss Baseline",
+          "description": "Collect current fraud loss rates, transaction volumes, and false positive rates",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "risk_manager",
+          "estimated_hours": 8,
+          "dependencies": [],
+          "input_variables": ["Avoided_Fraud_Losses", "False_Positive_Savings"],
+          "formulas_used": [],
+          "automated_data_sources": ["Fraud_Monitoring", "Transaction_Logs"],
+          "manual_inputs_required": ["Fraud trend analysis", "Industry benchmark comparison"],
+          "deliverables": ["Fraud loss baseline report"]
+        },
+        {
+          "task_id": "fs-disc-002",
+          "name": "Digital Onboarding Analysis",
+          "description": "Measure current onboarding abandonment rates, KYC processing times, and customer acquisition costs",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "digital_banking_lead",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["Additional_Customers_Acquired", "First_Year_Revenue_Per_Customer"],
+          "formulas_used": [],
+          "automated_data_sources": ["Onboarding_Platform", "CRM"],
+          "manual_inputs_required": ["Customer journey mapping", "Abandonment root cause analysis"],
+          "deliverables": ["Digital onboarding baseline"]
+        },
+        {
+          "task_id": "fs-disc-003",
+          "name": "Credit Risk Model Assessment",
+          "description": "Analyze current default rates, loan portfolio composition, and model performance",
+          "type": "data_collection",
+          "priority": "high",
+          "assigned_role": "risk_manager",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["Baseline_Default_Rate", "Loan_Portfolio_Value"],
+          "formulas_used": [],
+          "automated_data_sources": ["Risk_Data_Warehouse", "Core_Banking"],
+          "manual_inputs_required": ["Model performance metrics", "Alternative data opportunities"],
+          "deliverables": ["Credit risk baseline assessment"]
+        },
+        {
+          "task_id": "fs-disc-004",
+          "name": "Compliance Operations Review",
+          "description": "Document regulatory reporting processes, FTE allocation, and audit findings",
+          "type": "data_collection",
+          "priority": "medium",
+          "assigned_role": "compliance_officer",
+          "estimated_hours": 6,
+          "dependencies": [],
+          "input_variables": ["FTE_Cost_Savings", "Report_Acceleration_Value"],
+          "formulas_used": [],
+          "automated_data_sources": ["Compliance_Management_System"],
+          "manual_inputs_required": ["Process documentation", "Regulatory timeline analysis"],
+          "deliverables": ["Compliance operations baseline"]
+        }
+      ]
+    },
+    {
+      "phase_id": "analysis",
+      "name": "Value Analysis & Opportunity Sizing",
+      "order": 2,
+      "estimated_duration": "10 days",
+      "tasks": [
+        {
+          "task_id": "fs-anal-001",
+          "name": "Fraud Detection Value Model",
+          "description": "Calculate fraud detection ROI including avoided losses and operational savings",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["fs-disc-001"],
+          "input_variables": ["Avoided_Fraud_Losses", "False_Positive_Savings", "Operational_Savings", "AI_Platform_Cost"],
+          "formulas_used": ["fs-f-001"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["AI vendor cost estimates", "Implementation timeline"],
+          "deliverables": ["Fraud detection business case"]
+        },
+        {
+          "task_id": "fs-anal-002",
+          "name": "Digital Banking Value Model",
+          "description": "Quantify value from digital onboarding optimization and customer acquisition",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["fs-disc-002"],
+          "input_variables": ["Additional_Customers_Acquired", "First_Year_Revenue_Per_Customer", "Operational_Savings"],
+          "formulas_used": ["fs-f-002"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Digital platform investment estimates"],
+          "deliverables": ["Digital onboarding business case"]
+        },
+        {
+          "task_id": "fs-anal-003",
+          "name": "Credit Risk Model Value",
+          "description": "Calculate value from improved default prediction and alternative data",
+          "type": "value_analysis",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["fs-disc-003"],
+          "input_variables": ["Baseline_Default_Rate", "Target_Default_Rate", "Loan_Portfolio_Value"],
+          "formulas_used": ["fs-f-003"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Model improvement projections"],
+          "deliverables": ["Credit risk model business case"]
+        },
+        {
+          "task_id": "fs-anal-004",
+          "name": "Compliance Automation Value",
+          "description": "Quantify savings from automated regulatory reporting and FTE reduction",
+          "type": "value_analysis",
+          "priority": "medium",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 6,
+          "dependencies": ["fs-disc-004"],
+          "input_variables": ["FTE_Cost_Savings", "Report_Acceleration_Value"],
+          "formulas_used": ["fs-f-004"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Automation platform costs"],
+          "deliverables": ["Compliance automation business case"]
+        }
+      ]
+    },
+    {
+      "phase_id": "validation",
+      "name": "Validation & Benchmarking",
+      "order": 3,
+      "estimated_duration": "7 days",
+      "tasks": [
+        {
+          "task_id": "fs-val-001",
+          "name": "Industry Benchmark Validation",
+          "description": "Compare value estimates to industry benchmarks for fraud rates, onboarding times, and default rates",
+          "type": "benchmarking",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 6,
+          "dependencies": ["fs-anal-001", "fs-anal-002", "fs-anal-003", "fs-anal-004"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": ["Industry_Benchmark_Database"],
+          "manual_inputs_required": ["Peer comparison analysis"],
+          "deliverables": ["Benchmark validation report"]
+        },
+        {
+          "task_id": "fs-val-002",
+          "name": "Risk Assessment Review",
+          "description": "Review risk factors, implementation challenges, and mitigation strategies",
+          "type": "risk_review",
+          "priority": "high",
+          "assigned_role": "risk_manager",
+          "estimated_hours": 4,
+          "dependencies": ["fs-anal-001", "fs-anal-003"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Risk register review", "Mitigation plan"],
+          "deliverables": ["Risk assessment document"]
+        },
+        {
+          "task_id": "fs-val-003",
+          "name": "Compliance Impact Assessment",
+          "description": "Validate compliance implications and regulatory approval requirements",
+          "type": "compliance_review",
+          "priority": "high",
+          "assigned_role": "compliance_officer",
+          "estimated_hours": 4,
+          "dependencies": ["fs-anal-004"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Regulatory impact assessment"],
+          "deliverables": ["Compliance impact report"]
+        }
+      ]
+    },
+    {
+      "phase_id": "recommendations",
+      "name": "Recommendations & Business Case",
+      "order": 4,
+      "estimated_duration": "8 days",
+      "tasks": [
+        {
+          "task_id": "fs-rec-001",
+          "name": "Prioritized Investment Roadmap",
+          "description": "Rank initiatives by ROI, strategic fit, and implementation complexity",
+          "type": "recommendation",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 8,
+          "dependencies": ["fs-val-001", "fs-val-002", "fs-val-003"],
+          "input_variables": [],
+          "formulas_used": ["fs-f-001", "fs-f-002", "fs-f-003", "fs-f-004"],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Strategic alignment scoring"],
+          "deliverables": ["Investment roadmap"]
+        },
+        {
+          "task_id": "fs-rec-002",
+          "name": "Executive Business Case",
+          "description": "Create executive presentation with financial summary and implementation plan",
+          "type": "deliverable",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 10,
+          "dependencies": ["fs-rec-001"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Executive presentation draft"],
+          "deliverables": ["Executive business case presentation"]
+        }
+      ]
+    },
+    {
+      "phase_id": "approval",
+      "name": "Review & Approval",
+      "order": 5,
+      "estimated_duration": "4 days",
+      "tasks": [
+        {
+          "task_id": "fs-app-001",
+          "name": "Stakeholder Review",
+          "description": "Present findings to key stakeholders for feedback and refinement",
+          "type": "review",
+          "priority": "high",
+          "assigned_role": "value_engineer",
+          "estimated_hours": 4,
+          "dependencies": ["fs-rec-002"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Stakeholder feedback sessions"],
+          "deliverables": ["Review feedback summary"]
+        },
+        {
+          "task_id": "fs-app-002",
+          "name": "Final Approval",
+          "description": "Obtain formal approval from executives and finance",
+          "type": "approval",
+          "priority": "high",
+          "assigned_role": "digital_banking_lead",
+          "estimated_hours": 2,
+          "dependencies": ["fs-app-001"],
+          "input_variables": [],
+          "formulas_used": [],
+          "automated_data_sources": [],
+          "manual_inputs_required": ["Approval signatures"],
+          "deliverables": ["Approved business case document"]
+        }
+      ]
+    }
+  ]
+}

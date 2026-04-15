@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { createWrapper } from "../test-utils";
+import { createWrapper, createWrapperWithRetry } from "../test-utils";
 import { useValuePacks, useValuePack, useApplyValuePack, ValuePackApiError } from "./useValuePacks";
 import { apiClient } from "@/api/client";
 import { AxiosResponse } from "axios";
@@ -81,19 +81,21 @@ describe("useValuePacks", () => {
       // Clear previous mocks and set up persistent rejection
       vi.mocked(apiClient.get).mockReset().mockRejectedValue(error);
 
+      // P1 Fix: Use createWrapperWithRetry(false) to disable retries for faster error state testing
+      // This reduces test time from ~15s (with retries) to ~1s
       const { result } = renderHook(() => useValuePacks(), {
-        wrapper: createWrapper(),
+        wrapper: createWrapperWithRetry(false),
       });
 
-      // Wait for error state after all retries exhausted (3 retries with exponential backoff ~7s)
+      // Wait for error state without retries
       await waitFor(
         () => expect(result.current.isError).toBe(true),
-        { timeout: 10000 }
+        { timeout: 5000 }
       );
 
       expect(result.current.error).toBeDefined();
       expect(result.current.error?.message).toBe("Network error");
-    }, 15000);
+    }, 10000);
   });
 
   describe("useValuePack hook (single pack)", () => {

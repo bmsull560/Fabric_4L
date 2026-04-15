@@ -42,7 +42,8 @@ def validate_customer_id(customer_id: str) -> str:
     return customer_id
 
 from ...database import get_db
-from ...services.billing_service import BillingService, StripeError
+from ...services.billing_service import BillingService
+from ...services.stripe_client import StripeError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -129,8 +130,8 @@ async def get_subscription(
 
 @router.post("/checkout")
 async def create_checkout(
-    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     request: CheckoutRequest,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     """Create a Stripe checkout session for subscription.
@@ -162,8 +163,8 @@ async def create_checkout(
 
 @router.post("/portal")
 async def create_portal(
-    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     request: PortalRequest,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
     """Create a Stripe customer portal session.
@@ -242,8 +243,8 @@ async def check_feature(
 
 @router.post("/sync-customer")
 async def sync_customer(
-    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     request: CustomerSyncRequest,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Sync customer with Stripe (create or update).

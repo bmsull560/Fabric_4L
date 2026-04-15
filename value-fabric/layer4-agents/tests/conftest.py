@@ -117,3 +117,149 @@ def roi_calculator_workflow(mock_tool_registry, mock_openai_client):
         tool_registry=mock_tool_registry,
         openai_client=mock_openai_client,
     )
+
+
+# ── Checkpoint/Resume Test Fixtures ─────────────────────────────────────────
+# These fixtures reduce duplication in test_checkpoint_resume.py
+
+from datetime import UTC, datetime
+from typing import Any
+
+import pytest_asyncio
+from langgraph.checkpoint.memory import InMemorySaver
+
+from src.engine.executor import OrchestrationController
+from src.engine.state_manager import StateManager
+from src.models.agent_state import BaseAgentState, WorkflowStatus
+
+TEST_WORKFLOW_TYPE = "roi_calculator"
+
+
+class MockCheckpointSaver(InMemorySaver):
+    """Mock checkpoint saver extending InMemorySaver for testing.
+
+    InMemorySaver provides full BaseCheckpointSaver implementation
+    with in-memory storage - perfect for testing without Postgres.
+    """
+
+    @property
+    def checkpoints(self) -> dict[str, Any]:
+        """Expose underlying storage for test assertions."""
+        return getattr(self, 'storage', {})
+
+    @property
+    def saved_threads(self) -> set:
+        """Expose saved thread IDs for test assertions."""
+        return set(self.checkpoints.keys())
+
+
+@pytest.fixture
+def mock_checkpoint_saver() -> MockCheckpointSaver:
+    """Provide mock checkpoint saver."""
+    return MockCheckpointSaver()
+
+
+@pytest.fixture
+def state_manager() -> StateManager:
+    """Provide fresh StateManager instance."""
+    return StateManager()
+
+
+@pytest_asyncio.fixture
+async def orchestrator_with_checkpoint(
+    mock_tool_registry: Mock,
+    mock_checkpoint_saver: MockCheckpointSaver
+) -> OrchestrationController:
+    """Provide OrchestrationController with checkpointing enabled."""
+    state_manager = StateManager()
+    controller = OrchestrationController(
+        tool_registry=mock_tool_registry,
+        state_manager=state_manager,
+        checkpoint_saver=mock_checkpoint_saver
+    )
+    await controller.start()
+    yield controller
+    await controller.stop()
+
+
+@pytest.fixture
+def controller_with_running_state(
+    mock_tool_registry: Mock,
+    mock_checkpoint_saver: MockCheckpointSaver,
+    state_manager: StateManager
+) -> tuple[OrchestrationController, str, BaseAgentState]:
+    """Provide controller with pre-existing running workflow state.
+
+    Returns:
+        Tuple of (controller, workflow_id, existing_state)
+    """
+    workflow_id = "test-resume-wf"
+    existing_state = BaseAgentState(
+        workflow_id=workflow_id,
+        workflow_type=TEST_WORKFLOW_TYPE,
+        status=WorkflowStatus.RUNNING,
+        current_node="middle",
+        input_data={"test": "data"},
+        output_data={"start": {"status": "completed"}},
+        errors=[]
+    )
+
+    controller = OrchestrationController(
+        tool_registry=mock_tool_registry,
+        state_manager=state_manager,
+        checkpoint_saver=mock_checkpoint_saver
+    )
+    controller._workflow_metadata[workflow_id] = {
+        "workflow_type": TEST_WORKFLOW_TYPE,
+        "started_at": datetime.now(UTC).isoformat()
+    }
+
+    return controller, workflow_id, existing_state
+
+
+@pytest.fixture
+def controller_with_paused_state(
+    mock_tool_registry: Mock,
+    mock_checkpoint_saver: MockCheckpointSaver,
+    state_manager: StateManager
+) -> tuple[OrchestrationController, str, BaseAgentState]:
+    """Provide controller with pre-existing paused workflow state.
+
+    Returns:
+        Tuple of (controller, workflow_id, initial_state)
+    """
+    workflow_id = "lifecycle-wf"
+    initial_state = BaseAgentState(
+        workflow_id=workflow_id,
+        workflow_type=TEST_WORKFLOW_TYPE,
+        status=WorkflowStatus.PAUSED,
+        current_node="middle",
+        input_data={"test": "lifecycle"},
+        output_data={"start": {"status": "completed"}},
+        errors=[]
+    )
+
+    controller = OrchestrationController(
+        tool_registry=mock_tool_registry,
+        state_manager=state_manager,
+        checkpoint_saver=mock_checkpoint_saver
+    )
+    controller._workflow_metadata[workflow_id] = {
+        "workflow_type": TEST_WORKFLOW_TYPE,
+        "started_at": datetime.now(UTC).isoformat()
+    }
+
+    return controller, workflow_id, initial_state
+
+
+@pytest.fixture
+def completed_workflow_state() -> BaseAgentState:
+    """Provide a completed workflow state fixture."""
+    return BaseAgentState(
+        workflow_id="completed-wf",
+        workflow_type=TEST_WORKFLOW_TYPE,
+        status=WorkflowStatus.COMPLETED,
+        input_data={},
+        output_data={},
+        errors=[]
+    )

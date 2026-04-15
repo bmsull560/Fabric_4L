@@ -54,7 +54,7 @@ export function useBilling(customerId: string) {
   const subscriptionQuery = useQuery({
     queryKey: billingKeys.subscription(customerId),
     queryFn: async () => {
-      const response = await apiClient.get('l4', `/billing/subscription?customer_id=${customerId}`);
+      const response = await apiClient.get('l4', `/billing/subscription?customer_id=${encodeURIComponent(customerId)}`);
       return response.data as Subscription;
     },
     enabled: !!customerId,
@@ -69,7 +69,7 @@ export function useBilling(customerId: string) {
     }) => {
       setCheckoutError(null);
       return withApiError(
-        apiClient.post('l4', `/billing/checkout?customer_id=${customerId}`, params).then(r => r.data as CheckoutResponse),
+        apiClient.post('l4', `/billing/checkout?customer_id=${encodeURIComponent(customerId)}`, params).then(r => r.data as CheckoutResponse),
         BaseApiError
       );
     },
@@ -87,7 +87,7 @@ export function useBilling(customerId: string) {
     mutationFn: async (returnUrl: string) => {
       setPortalError(null);
       return withApiError(
-        apiClient.post('l4', `/billing/portal?customer_id=${customerId}`, { return_url: returnUrl }).then(r => r.data as PortalResponse),
+        apiClient.post('l4', `/billing/portal?customer_id=${encodeURIComponent(customerId)}`, { return_url: returnUrl }).then(r => r.data as PortalResponse),
         BaseApiError
       );
     },
@@ -101,6 +101,8 @@ export function useBilling(customerId: string) {
     const result = await createPortalMutation.mutateAsync(returnUrl);
     if (result.url) {
       window.location.href = result.url;
+    } else {
+      throw new Error('Failed to create portal session: no URL returned');
     }
   };
 
@@ -112,6 +114,8 @@ export function useBilling(customerId: string) {
     });
     if (result.url) {
       window.location.href = result.url;
+    } else {
+      throw new Error('Failed to create checkout session: no URL returned');
     }
   };
 
@@ -145,7 +149,7 @@ export function useEntitlements(customerId: string) {
   return useQuery({
     queryKey: billingKeys.entitlements(customerId),
     queryFn: async () => {
-      const response = await apiClient.get('l4', `/billing/entitlements?customer_id=${customerId}`);
+      const response = await apiClient.get('l4', `/billing/entitlements?customer_id=${encodeURIComponent(customerId)}`);
       return response.data as EntitlementsResponse;
     },
     enabled: !!customerId,
@@ -159,7 +163,7 @@ export function useFeatureCheck(customerId: string, featureId: string) {
     queryFn: async () => {
       const response = await apiClient.get(
         'l4',
-        `/billing/check-feature?customer_id=${customerId}&feature_id=${featureId}`
+        `/billing/check-feature?customer_id=${encodeURIComponent(customerId)}&feature_id=${encodeURIComponent(featureId)}`
       );
       return response.data as FeatureCheck;
     },

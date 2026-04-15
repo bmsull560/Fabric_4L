@@ -90,25 +90,6 @@ export interface GraphApiError {
 }
 
 /**
- * Create stable cache key from query parameters
- * Uses truncated values to prevent key explosion while maintaining uniqueness
- */
-function createQueryKey(params: GraphQueryRequest): string {
-  const keyParts = [
-    params.query?.slice(0, 50) || 'empty',
-    params.entity_type || 'all',
-    params.max_hops ?? 2,
-    params.max_results ?? 20,
-  ];
-  return keyParts.join('|');
-}
-
-function createTraversalKey(params: EntityTraversalRequest): string {
-  return `${params.entity_id}|${params.direction ?? 'both'}`;
-}
-
-
-/**
  * Execute a GraphRAG query with multi-hop traversal.
  * POST /query/graph
  */

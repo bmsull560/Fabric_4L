@@ -1,7 +1,8 @@
 # Test Quality Remediation - Implementation Summary
 
-**Completed**: 2026-04-10  
+**Completed**: 2026-04-15  
 **Workflow**: `/test-quality-remediation`
+**Phase 4 Rewrites**: 4 P1 issues resolved
 
 ---
 
@@ -16,7 +17,118 @@ The audit report (based on static analysis) showed 8 P0 blocking issues. Runtime
 
 ---
 
-## Fix Applied
+## Phase 4 Rewrites (2026-04-15)
+
+### P1 Fix 1: E2E Test Reliability - test_e2e_pipeline.py
+**Location**: `value-fabric/layer3-knowledge/tests/test_e2e_pipeline.py`
+
+**Problem**: 
+- Missing `@pytest.mark.integration` marker for selective test running
+- Hardcoded retry loop with `asyncio.sleep(1)` causing timing flakiness
+
+**Changes**:
+1. Added `pytest.mark.integration` to module pytestmark
+2. Replaced manual retry loop (30 iterations × 1s sleep) with `wait_for_logs()` strategy
+3. Added `@pytest.mark.integration` to `TestSchemaInitialization` class
+
+**Before**:
+```python
+# Lines 81-95: Hardcoded retry loop
+max_retries = 30
+for i in range(max_retries):
+    try:
+        driver = AsyncGraphDatabase.driver(...)
+        await driver.verify_connectivity()
+        break
+    except Exception:
+        if i == max_retries - 1:
+            raise RuntimeError("Neo4j failed to start")
+        await asyncio.sleep(1)  # Flaky timing
+```
+
+**After**:
+```python
+# Deterministic wait strategy using testcontainers
+from testcontainers.core.waiting_utils import wait_for_logs
+container.start()
+wait_for_logs(container, "Started.", timeout=60)
+```
+
+**Impact**: 
+- More reliable container startup detection
+- Faster test execution when container starts quickly
+- Clear marker for selective test running (`pytest -m "not integration"`)
+
+---
+
+### P1 Fix 2: Slow Frontend Test - useValuePacks.test.tsx
+**Location**: `frontend/client/src/hooks/useValuePacks.test.tsx`
+
+**Problem**: Error state test took 15s due to 3 retries with exponential backoff
+
+**Changes**:
+1. Import `createWrapperWithRetry` helper
+2. Use `createWrapperWithRetry(false)` to disable retries for error state testing
+3. Reduced timeout from 15s to 10s (5s waitFor + buffer)
+
+**Impact**: Test time reduced from ~15s to ~1-2s
+
+---
+
+### P1 Fix 3: E2E Test Reliability - test_neo4j_integration.py
+**Location**: `value-fabric/layer3-knowledge/tests/test_neo4j_integration.py`
+
+**Problem**: Used context manager pattern without explicit wait strategy for container readiness
+
+**Changes**:
+1. Replaced `with Neo4jContainer(...) as container:` with explicit `start()`/`stop()`
+2. Added `wait_for_logs(container, "Started.", timeout=60)` for deterministic startup
+3. Explicit cleanup in fixture
+
+**Impact**: More reliable container startup detection, consistent with `test_e2e_pipeline.py` fix
+
+---
+
+### P1 Fix 4: Test Length & Duplication - test_checkpoint_resume.py
+**Location**: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`
+
+**Problem**: Tests in `TestResumeWorkflow` class had 15-30 lines of repeated setup code
+
+**Changes**:
+1. **Extracted `state_manager_with_state` fixture**: Factory for creating StateManager with pre-existing workflow state
+2. **Extracted `controller_with_metadata` fixture**: Factory for creating OrchestrationController with workflow metadata
+3. **Extracted `mock_workflow_factory` fixture**: Factory for creating mock workflows with configurable results
+
+**Before** (example from `test_resume_workflow_loads_state`):
+```python
+# 30+ lines of setup
+state_manager = StateManager()
+existing_state = BaseAgentState(...)  # 10 lines
+await state_manager.save_state(workflow_id, existing_state)
+controller = OrchestrationController(...)  # 6 lines
+controller._workflow_metadata[workflow_id] = {...}
+mock_workflow = Mock(spec=BaseWorkflow)  # 10 lines
+mock_result = BaseAgentState(...)
+mock_workflow.run = AsyncMock(return_value=mock_result)
+```
+
+**After**:
+```python
+# 5 lines using fixtures
+state_manager = await state_manager_with_state(...)
+controller = controller_with_metadata(...)
+mock_workflow = mock_workflow_factory(...)
+```
+
+**Impact**:
+- Reduced test setup lines by ~70% (30+ lines → ~5 lines per test)
+- Improved readability: tests now focus on behavior, not boilerplate
+- Better maintainability: setup logic centralized in fixtures
+- Reduced duplication: 4 tests now share common fixture factories
+
+---
+
+## Previous Fixes (2026-04-10)
 
 ### Issue: Logger.error kwargs misuse (P0)
 **Location**: `value-fabric/layer3-knowledge/src/api/main.py:149-151`

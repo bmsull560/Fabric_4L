@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 from ..config.plans import check_entitlement, get_entitlements_response, get_plan
 from ..models.billing import BillingCustomer, BillingSubscription, BillingWebhookEvent, SubscriptionStatus
-from .stripe_client import get_price_id, get_stripe, StripeNotConfiguredError
+from .stripe_client import get_price_id, get_stripe, StripeNotConfiguredError, StripeError
 
 # Lazy-loaded stripe module
 _stripe = None
@@ -28,19 +28,6 @@ def _get_stripe():
     if _stripe is None:
         _stripe = get_stripe()
     return _stripe
-
-
-class StripeNotConfiguredError(Exception):
-    """Raised when Stripe SDK is not available or not configured."""
-    pass
-
-
-try:
-    from stripe.error import StripeError as _StripeError
-    StripeError = _StripeError
-except ImportError:
-    # Fallback for environments without stripe installed (tests)
-    StripeError = StripeNotConfiguredError
 
 
 class BillingService:
@@ -90,7 +77,7 @@ class BillingService:
                         metadata={"app_customer_id": customer_id},
                     )
                     stripe_customer_id = stripe_customer.id
-                except (StripeError, StripeNotConfiguredError) as e:
+                except (StripeNotConfiguredError,) as e:
                     # Log but continue - we can retry Stripe sync later
                     logger.warning(f"Stripe customer creation failed: {e}")
 
