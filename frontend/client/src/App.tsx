@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
@@ -11,6 +11,7 @@ import { useUserTierStore, type UserTier } from "./stores/userTierStore";
 // ── Route-level code splitting ────────────────────────────────────────────────
 // Each page is loaded only when its route is first visited, reducing the initial
 // JS bundle by ~60–70% and improving Time-to-Interactive for all users.
+const LandingPage            = lazy(() => import("./pages/LandingPage"));
 const CommandCenter          = lazy(() => import("./pages/CommandCenter"));
 const ValueNarrativeHome    = lazy(() => import("./pages/ValueNarrativeHome"));
 const ExtractionEngine       = lazy(() => import("./pages/ExtractionEngine"));
@@ -100,6 +101,7 @@ function RouteGuard({
 function Router() {
   const rawCurrentTier = useUserTierStore(state => state.currentTier);
   const rawEffectiveTier = useUserTierStore(state => state.effectiveTier);
+  const { isAuthenticated, isLoading } = useAuthContext();
   
   // SECURITY: Sanitize tier values - 'unknown' tier should never be passed to UI
   // This ensures AppShell only receives valid, renderable tier values
@@ -107,13 +109,31 @@ function Router() {
   const effectiveTier: RequiredUserTier = rawEffectiveTier === 'unknown' ? 'standard' : rawEffectiveTier;
 
   return (
-    <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
-      <Suspense fallback={<PageLoader />}>
-        <Switch>
-          {/* Root redirect to Home */}
-          <Route path="/">
-            <Redirect to="/home"/>
-          </Route>
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        {/* ═══════════════════════════════════════════════════════════════
+            PUBLIC ROUTES — Outside AppShell (unauthenticated)
+            ═══════════════════════════════════════════════════════════════ */}
+        
+        {/* Landing Page — Marketing/Login page */}
+        <Route path="/">
+          {isAuthenticated ? <Redirect to="/home" /> : <LandingPage />}
+        </Route>
+
+        {/* Legacy Login route — handles OIDC callbacks */}
+        <Route path="/login">
+          <Login />
+        </Route>
+        <Route path="/login/callback">
+          <Login /> {/* Handles OIDC callback with code+state */}
+        </Route>
+
+        {/* ═══════════════════════════════════════════════════════════════
+            AUTHENTICATED ROUTES — Inside AppShell with RouteGuard
+            ═══════════════════════════════════════════════════════════════ */}
+        <Route>
+          <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
+            <Switch>
 
           {/* ═══════════════════════════════════════════════════════════════
               HOME — Dashboard (All Tiers)
@@ -386,21 +406,15 @@ function Router() {
             </RouteGuard>
           </Route>
 
-          {/* Authentication — public routes, no RouteGuard */}
-          <Route path="/login">
-            <Login />
-          </Route>
-          <Route path="/login/callback">
-            <Login /> {/* Handles OIDC callback with code+state */}
-          </Route>
-
-          {/* Catch-all */}
-          <Route>
-            <ErrorBoundary><NotFound /></ErrorBoundary>
-          </Route>
-        </Switch>
-      </Suspense>
-    </AppShell>
+              {/* Catch-all for authenticated routes */}
+              <Route>
+                <ErrorBoundary><NotFound /></ErrorBoundary>
+              </Route>
+            </Switch>
+          </AppShell>
+        </Route>
+      </Switch>
+    </Suspense>
   );
 }
 

@@ -32,6 +32,7 @@ interface AuthContextType {
   handleCallback: (code: string, state: string) => Promise<boolean>;
   logout: () => void;
   refreshToken: () => Promise<boolean>;
+  devBypass?: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -249,6 +250,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [logout]);
 
+  /**
+   * Development bypass — creates mock auth state without credentials
+   * Only available in development mode
+   */
+  const devBypass = useCallback(() => {
+    if (!import.meta.env.DEV) {
+      console.warn('devBypass only available in development mode');
+      return;
+    }
+    
+    const mockUser: UserInfo = {
+      id: 'dev-user-001',
+      email: 'dev@value-fabric.com',
+      role: 'admin',
+      tenantId: 'dev-tenant',
+      tenantSlug: 'development',
+    };
+    
+    // Create a mock JWT token (valid structure but not verified)
+    const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
+      btoa(JSON.stringify({ 
+        sub: mockUser.id, 
+        email: mockUser.email, 
+        role: mockUser.role,
+        exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour expiry
+      })) + 
+      '.mock-signature';
+    
+    setAccessToken(mockToken);
+    setUser(mockUser);
+    setIsAuthenticated(true);
+    
+    localStorage.setItem('accessToken', mockToken);
+    localStorage.setItem('userInfo', JSON.stringify(mockUser));
+    localStorage.setItem('tenantId', mockUser.tenantSlug);
+    
+    useUserTierStore.getState().setUserRole(mockUser.role);
+    
+    console.log('[DEV] Authentication bypassed — logged in as', mockUser.email);
+  }, []);
+
   const value: AuthContextType = {
     isAuthenticated,
     isLoading,
@@ -258,6 +300,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     handleCallback,
     logout,
     refreshToken,
+    devBypass: import.meta.env.DEV ? devBypass : undefined,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
