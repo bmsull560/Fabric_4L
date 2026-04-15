@@ -7,9 +7,9 @@
 import { http, HttpResponse, delay, type PathParams } from 'msw';
 
 // Base API paths from environment config
-// Note: L3_PREFIX is empty because Layer 3 routes are mounted at /v1 directly
+// Note: L3_PREFIX must match api/client.ts LAYER_PREFIXES.l3 which is '/graph'
 const API_BASE = '/api/v1';
-const L3_PREFIX = '';  // Layer 3 routes: /v1/query/graph, /v1/entity/{id}/context, etc.
+const L3_PREFIX = '/graph';  // Layer 3 routes: /v1/graph/variables, /v1/graph/query, etc.
 const L4_PREFIX = '/agents';
 const L2_PREFIX = '/extract';
 
@@ -251,6 +251,7 @@ export const jobStreamMocks = [
 // ===== Graph Query Mocks (L3) =====
 
 export const graphMocks = [
+  // Canonical GraphRAG endpoint (preferred)
   http.post(`${API_BASE}${L3_PREFIX}/query/graph`, async () => {
     await delay(150);
     return HttpResponse.json({
@@ -276,6 +277,36 @@ export const graphMocks = [
       },
       confidence_score: 0.92,
       processing_time_ms: 120,
+    });
+  }),
+
+  // Legacy alias for backward compatibility - redirects to same handler
+  http.post(`${API_BASE}/graphrag`, async () => {
+    await delay(150);
+    return HttpResponse.json({
+      query: 'test query (legacy alias)',
+      entities: [
+        {
+          id: 'ent-1',
+          name: 'Test Entity',
+          entity_type: 'capability',
+          confidence_score: 0.95,
+          description: 'A test entity',
+        },
+      ],
+      relationships: [
+        { source: 'ent-1', target: 'ent-2', type: 'RELATED_TO', confidence: 0.9 },
+      ],
+      context_graph: {
+        nodes: [
+          { id: 'ent-1', name: 'Test Entity', entity_type: 'capability', confidence_score: 0.95 },
+          { id: 'ent-2', name: 'Related Entity', entity_type: 'usecase', confidence_score: 0.88 },
+        ],
+        relationships: [{ source: 'ent-1', target: 'ent-2', type: 'RELATED_TO' }],
+      },
+      confidence_score: 0.92,
+      processing_time_ms: 120,
+      _meta: { note: 'Legacy /v1/graphrag endpoint - use /v1/query/graph for new code' },
     });
   }),
 
@@ -574,7 +605,7 @@ export const formulaMocks = [
   }),
 
   // Update formula
-  http.put(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params, request }) => {
+  http.patch(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params, request }) => {
     await delay(150);
     const id = params.id as string;
     const body = (await request.json()) as { name?: string; description?: string; expression?: string };

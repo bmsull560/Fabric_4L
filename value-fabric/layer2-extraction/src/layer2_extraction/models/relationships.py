@@ -174,6 +174,8 @@ class Relationship(BaseModel):
             )
         return None
 
+    model_config = {"extra": "forbid"}
+
 
 class RelationshipGraph(BaseModel):
     """Container for all relationships in an extraction result."""
@@ -207,3 +209,5 @@ class RelationshipGraph(BaseModel):
     def get_by_predicate(self, predicate: PredicateType) -> list[Relationship]:
         """Get all relationships of a specific type."""
         return [r for r in self.relationships if r.canonical_predicate == predicate]
+
+    model_config = {"extra": "forbid"}

@@ -8,12 +8,18 @@ from httpx import AsyncClient
 from tests.conftest import TestUtils, create_mock_graphrag_response
 
 
+# Canonical GraphRAG endpoint - preferred for new implementations
+CANONICAL_GRAPH_RAG_ENDPOINT = "/v1/query/graph"
+# Legacy alias - retained for backward compatibility
+LEGACY_GRAPH_RAG_ENDPOINT = "/v1/graphrag"
+
+
 class TestGraphRAGEndpoints:
-    """Test GraphRAG endpoints."""
+    """Test GraphRAG endpoints - using canonical /v1/query/graph endpoint."""
     
     def test_graphrag_endpoint_basic(self, test_client: TestClient, sample_graphrag_query, test_utils: TestUtils):
-        """Test basic GraphRAG endpoint."""
-        response = test_client.post("/v1/graphrag", json=sample_graphrag_query)
+        """Test basic GraphRAG endpoint using canonical route."""
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=sample_graphrag_query)
         
         assert response.status_code == 200
         data = response.json()
@@ -22,93 +28,93 @@ class TestGraphRAGEndpoints:
         assert data["query"] == sample_graphrag_query["query"]
     
     def test_graphrag_endpoint_with_entity_filter(self, test_client: TestClient, sample_graphrag_query):
-        """Test GraphRAG endpoint with entity type filter."""
+        """Test GraphRAG endpoint with entity type filter using canonical route."""
         graphrag_query = sample_graphrag_query.copy()
         graphrag_query["entity_type"] = "Capability"
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == graphrag_query["query"]
     
     def test_graphrag_endpoint_with_confidence_threshold(self, test_client: TestClient, sample_graphrag_query):
-        """Test GraphRAG endpoint with confidence threshold."""
+        """Test GraphRAG endpoint with confidence threshold using canonical route."""
         graphrag_query = sample_graphrag_query.copy()
         graphrag_query["confidence_threshold"] = 0.9
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == graphrag_query["query"]
     
     def test_graphrag_endpoint_invalid_confidence_threshold(self, test_client: TestClient, sample_graphrag_query):
-        """Test GraphRAG endpoint with invalid confidence threshold."""
+        """Test GraphRAG endpoint with invalid confidence threshold returns 422 using canonical route."""
         graphrag_query = sample_graphrag_query.copy()
         graphrag_query["confidence_threshold"] = 1.5  # Exceeds max of 1.0
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 422  # Validation error
     
     def test_graphrag_endpoint_invalid_max_hops(self, test_client: TestClient, sample_graphrag_query):
-        """Test GraphRAG endpoint with invalid max hops."""
+        """Test GraphRAG endpoint with invalid max hops returns 422 using canonical route."""
         graphrag_query = sample_graphrag_query.copy()
         graphrag_query["max_hops"] = 10  # Exceeds max of 5
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 422  # Validation error
     
     def test_graphrag_endpoint_invalid_max_results(self, test_client: TestClient, sample_graphrag_query):
-        """Test GraphRAG endpoint with invalid max results."""
+        """Test GraphRAG endpoint with invalid max results returns 422 using canonical route."""
         graphrag_query = sample_graphrag_query.copy()
         graphrag_query["max_results"] = 100  # Exceeds max of 50
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 422  # Validation error
     
     def test_graphrag_endpoint_missing_query(self, test_client: TestClient):
-        """Test GraphRAG endpoint with missing query."""
+        """Test GraphRAG endpoint with missing query returns 422 using canonical route."""
         graphrag_query = {
             "max_hops": 3,
             "max_results": 10
         }
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 422  # Validation error
     
     def test_graphrag_endpoint_empty_query(self, test_client: TestClient):
-        """Test GraphRAG endpoint with empty query."""
+        """Test GraphRAG endpoint with empty query returns 422 using canonical route."""
         graphrag_query = {
             "query": "",
             "max_hops": 3,
             "max_results": 10
         }
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 422  # Validation error
     
     def test_graphrag_endpoint_long_query(self, test_client: TestClient):
-        """Test GraphRAG endpoint with too long query."""
+        """Test GraphRAG endpoint with too long query returns 422 using canonical route."""
         graphrag_query = {
             "query": "x" * 1001,  # Exceeds max length of 1000
             "max_hops": 3,
             "max_results": 10
         }
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 422  # Validation error
     
     @pytest.mark.asyncio
     async def test_graphrag_endpoint_async(self, async_client: AsyncClient, sample_graphrag_query, test_utils: TestUtils):
-        """Test GraphRAG endpoint with async client."""
-        response = await async_client.post("/v1/graphrag", json=sample_graphrag_query)
+        """Test GraphRAG endpoint with async client using canonical route."""
+        response = await async_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=sample_graphrag_query)
         
         assert response.status_code == 200
         data = response.json()
@@ -117,12 +123,12 @@ class TestGraphRAGEndpoints:
         assert data["query"] == sample_graphrag_query["query"]
     
     def test_graphrag_endpoint_with_mock_response(self, test_client: TestClient, sample_graphrag_query, mock_app_state, test_utils: TestUtils):
-        """Test GraphRAG endpoint with mocked response."""
+        """Test GraphRAG endpoint with mocked response using canonical route."""
         # Configure mock GraphRAG response
         mock_response = create_mock_graphrag_response()
         mock_app_state.graph_rag.query.return_value = mock_response.query.return_value
         
-        response = test_client.post("/v1/graphrag", json=sample_graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=sample_graphrag_query)
         
         assert response.status_code == 200
         data = response.json()
@@ -139,7 +145,7 @@ class TestGraphRAGEndpoints:
         assert call_args[1]["max_results"] == sample_graphrag_query["max_results"]
     
     def test_graphrag_endpoint_different_entity_types(self, test_client: TestClient, mock_app_state):
-        """Test GraphRAG endpoint with different entity types."""
+        """Test GraphRAG endpoint with different entity types using canonical route."""
         mock_response = create_mock_graphrag_response()
         mock_app_state.graph_rag.query.return_value = mock_response.query.return_value
         
@@ -153,14 +159,14 @@ class TestGraphRAGEndpoints:
                 "max_results": 10
             }
             
-            response = test_client.post("/v1/graphrag", json=graphrag_query)
+            response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
             
             assert response.status_code == 200
             data = response.json()
             assert data["query"] == graphrag_query["query"]
     
     def test_graphrag_endpoint_different_hops(self, test_client: TestClient, mock_app_state):
-        """Test GraphRAG endpoint with different hop counts."""
+        """Test GraphRAG endpoint with different hop counts using canonical route."""
         mock_response = create_mock_graphrag_response()
         mock_app_state.graph_rag.query.return_value = mock_response.query.return_value
         
@@ -173,14 +179,14 @@ class TestGraphRAGEndpoints:
                 "max_results": 10
             }
             
-            response = test_client.post("/v1/graphrag", json=graphrag_query)
+            response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
             
             assert response.status_code == 200
             data = response.json()
             assert data["query"] == graphrag_query["query"]
     
     def test_graphrag_endpoint_with_context_disabled(self, test_client: TestClient, mock_app_state):
-        """Test GraphRAG endpoint with context disabled."""
+        """Test GraphRAG endpoint with context disabled using canonical route."""
         mock_response = create_mock_graphrag_response()
         mock_app_state.graph_rag.query.return_value = mock_response.query.return_value
         
@@ -191,14 +197,14 @@ class TestGraphRAGEndpoints:
             "include_context": False
         }
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 200
         data = response.json()
         assert data["query"] == graphrag_query["query"]
     
     def test_graphrag_endpoint_error_handling(self, test_client: TestClient, mock_app_state):
-        """Test GraphRAG endpoint error handling."""
+        """Test GraphRAG endpoint error handling using canonical route."""
         # Configure mock to raise exception
         mock_app_state.graph_rag.query.side_effect = Exception("GraphRAG service unavailable")
         
@@ -208,14 +214,28 @@ class TestGraphRAGEndpoints:
             "max_results": 10
         }
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 500
         data = response.json()
         assert "error" in data
     
+    def test_graphrag_legacy_alias_endpoint(self, test_client: TestClient, sample_graphrag_query, test_utils: TestUtils):
+        """Test backward-compatible /v1/graphrag alias still functions correctly.
+        
+        This ensures existing clients using the legacy endpoint continue to work.
+        New implementations should use /v1/query/graph (canonical).
+        """
+        response = test_client.post(LEGACY_GRAPH_RAG_ENDPOINT, json=sample_graphrag_query)
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        test_utils.assert_valid_graphrag_response(data)
+        assert data["query"] == sample_graphrag_query["query"]
+    
     def test_graphrag_response_structure(self, test_client: TestClient, mock_app_state, test_utils: TestUtils):
-        """Test GraphRAG response structure in detail."""
+        """Test GraphRAG response structure in detail using canonical route."""
         # Configure mock response with detailed data
         mock_app_state.graph_rag.query.return_value = {
             "query": "What capabilities enable automated invoice processing?",
@@ -272,7 +292,7 @@ class TestGraphRAGEndpoints:
             "max_results": 10
         }
         
-        response = test_client.post("/v1/graphrag", json=graphrag_query)
+        response = test_client.post(CANONICAL_GRAPH_RAG_ENDPOINT, json=graphrag_query)
         
         assert response.status_code == 200
         data = response.json()

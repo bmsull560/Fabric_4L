@@ -6,6 +6,8 @@
  * constants. This prevents divergence and makes cache tuning a one-line change.
  */
 
+import type { ZodError } from 'zod';
+
 // ── Cache duration constants (milliseconds) ───────────────────────────────────
 export const STALE_TIME = {
   // Short-lived — frequently changing data (job queues, sync status)
@@ -33,6 +35,19 @@ export const RETRY_CONFIG = {
   maxRetries: isTestEnv ? false : 3,
   retryDelay: (attemptIndex: number) => Math.min(1_000 * 2 ** attemptIndex, 30_000),
 } as const;
+
+// ── Zod error formatting ──────────────────────────────────────────────────────
+/**
+ * Format Zod validation errors into a human-readable string.
+ *
+ * @param error - The ZodError to format
+ * @param context - Description of what was being validated (e.g., 'formula response')
+ * @returns Formatted error message with issue details
+ */
+export function formatZodError(error: ZodError, context: string): string {
+  const details = error.issues.map(e => `${String(e.path)}: ${e.message}`).join(', ');
+  return `Invalid ${context}: ${details}`;
+}
 
 // ── Base API error class ──────────────────────────────────────────────────────
 export class BaseApiError extends Error {

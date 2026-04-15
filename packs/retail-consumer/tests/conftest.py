@@ -82,37 +82,53 @@ def pack_dir() -> Path:
     return PACK_DIR
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_pack_id() -> str:
     """Return the expected pack ID for consistency checks."""
     return EXPECTED_PACK_ID
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def ontology_data() -> dict[str, Any]:
-    """Load and return ontology.json data."""
+    """Load and return ontology.json data.
+    
+    Uses function scope to prevent file descriptor accumulation
+    under high-concurrency test runs.
+    """
     return load_json_file("ontology.json")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def formulas_data() -> dict[str, Any]:
-    """Load and return formulas.json data."""
+    """Load and return formulas.json data.
+    
+    Uses function scope to prevent file descriptor accumulation
+    under high-concurrency test runs.
+    """
     return load_json_file("formulas.json")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def variables_data() -> dict[str, Any]:
-    """Load and return variables.json data."""
+    """Load and return variables.json data.
+    
+    Uses function scope to prevent file descriptor accumulation
+    under high-concurrency test runs.
+    """
     return load_json_file("variables.json")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def workflow_template_data() -> dict[str, Any]:
-    """Load and return workflow_template.json data."""
+    """Load and return workflow_template.json data.
+    
+    Uses function scope to prevent file descriptor accumulation
+    under high-concurrency test runs.
+    """
     return load_json_file("workflow_template.json")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def pack_files(
     ontology_data: dict[str, Any],
     formulas_data: dict[str, Any],

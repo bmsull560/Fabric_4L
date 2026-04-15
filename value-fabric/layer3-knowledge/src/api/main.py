@@ -1452,6 +1452,50 @@ async def _execute_graph_rag_query(
     )
 
 
+@app.post("/v1/graphrag", response_model=GraphRAGResponse)
+async def graph_rag_legacy_alias(
+    query: GraphRAGQuery,
+    graph_rag=Depends(get_graph_rag),
+):
+    """Execute a GraphRAG query - backward-compatible alias for /v1/query/graph.
+
+    This endpoint exists for backward compatibility with existing clients and tests.
+    New implementations should use `/v1/query/graph` (preferred) or `/v1/query`.
+    """
+    try:
+        deduplicator = get_request_deduplicator()
+
+        if deduplicator:
+            params = {
+                "query": query.query,
+                "entity_type": query.entity_type,
+                "max_hops": query.max_hops,
+                "max_results": query.max_results,
+            }
+            return await deduplicator.execute(
+                operation="graph_rag_query",
+                params=params,
+                executor=_execute_graph_rag_query,
+                ttl=60,
+                graph_rag=graph_rag,
+                query_text=query.query,
+                entity_type=query.entity_type,
+                max_hops=query.max_hops,
+                max_results=query.max_results,
+            )
+        else:
+            return await _execute_graph_rag_query(
+                graph_rag,
+                query.query,
+                query.entity_type,
+                query.max_hops,
+                query.max_results,
+            )
+    except Exception as e:
+        logger.error(f"GraphRAG query failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/v1/query/graph", response_model=GraphRAGResponse)
 @app.post("/v1/query", response_model=GraphRAGResponse)
 async def graph_rag_query(
@@ -1466,6 +1510,7 @@ async def graph_rag_query(
     Notes:
     - Preferred route: `/v1/query/graph`
     - Legacy route retained: `/v1/query` (deprecate later)
+    - Backward-compatible alias: `/v1/graphrag`
     """
     try:
         deduplicator = get_request_deduplicator()

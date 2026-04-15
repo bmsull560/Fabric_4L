@@ -1,45 +1,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { withApiError, VariableApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import { withApiError, VariableApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
+import {
+  VariableSchema,
+  VariableListSchema,
+  SourceBindingListSchema,
+  VariableStatsSchema,
+  type Variable,
+  type VariableType,
+  type SourceType,
+  type ValidationStatus,
+  type SourceBinding,
+  type VariableStats,
+} from '@/lib/schemas/variable';
 
-export type VariableType = 'rate' | 'currency' | 'integer' | 'float' | 'boolean' | 'string';
-export type SourceType = 'CRM' | 'Billing' | 'ERP' | 'Manual' | 'Model' | 'API' | 'Database';
-export type ValidationStatus = 'validated' | 'pending' | 'failed' | 'deprecated';
-
-export interface Variable {
-  id: string;
-  variable_id: string;
-  name: string;
-  display_name: string;
-  description?: string;
-  type: VariableType;
-  unit: string;
-  source: SourceType;
-  binding: string;
-  binding_path?: string;
-  default_value?: string;
-  valid_range?: { min: number; max: number };
-  used_in_count: number;
-  validation_status: ValidationStatus;
-  validation_message?: string;
-  tags: string[];
-  created_at: string;
-  updated_at: string;
-  version: string;
-}
-
-export interface SourceBinding {
-  id: string;
-  name: string;
-  source_type: SourceType;
-  connection_string?: string;
-  status: 'connected' | 'disconnected' | 'error';
-  last_sync?: string;
-  variables_bound: number;
-  error_message?: string;
-}
-
+export type { Variable, VariableType, SourceType, ValidationStatus, SourceBinding, VariableStats };
 
 export interface VariableFilters {
   type?: VariableType | 'all';
@@ -48,17 +24,8 @@ export interface VariableFilters {
   search?: string;
 }
 
-export interface VariableStats {
-  total: number;
-  validated: number;
-  pending: number;
-  failed: number;
-  manual_sources: number;
-  avg_usage: number;
-}
-
 // Re-export for backward compatibility
-export { VariableApiError } from './useApiShared';
+export { VariableApiError, formatZodError } from './useApiShared';
 
 async function fetchVariables(filters: VariableFilters): Promise<Variable[]> {
   const params = new URLSearchParams();
@@ -68,7 +35,14 @@ async function fetchVariables(filters: VariableFilters): Promise<Variable[]> {
   if (filters.search) params.set('search', filters.search);
 
   const response = await apiClient.get('l3', `/variables?${params.toString()}`);
-  return response.data as Variable[];
+  
+  // Runtime validation with Zod
+  const parsed = VariableListSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Variable list validation failed:', parsed.error);
+    throw new VariableApiError(formatZodError(parsed.error, 'variable list response'));
+  }
+  return parsed.data;
 }
 
 export function useVariables(filters: VariableFilters = {}) {
@@ -83,7 +57,14 @@ export function useVariables(filters: VariableFilters = {}) {
 
 async function fetchVariable(variableId: string): Promise<Variable> {
   const response = await apiClient.get('l3', `/variables/${variableId}`);
-  return response.data as Variable;
+  
+  // Runtime validation with Zod
+  const parsed = VariableSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Variable detail validation failed:', parsed.error);
+    throw new VariableApiError(formatZodError(parsed.error, 'variable response'));
+  }
+  return parsed.data;
 }
 
 export function useVariable(variableId: string | null) {
@@ -102,7 +83,14 @@ export function useVariable(variableId: string | null) {
 
 async function fetchVariableStats(): Promise<VariableStats> {
   const response = await apiClient.get('l3', '/variables/stats');
-  return response.data as VariableStats;
+  
+  // Runtime validation with Zod
+  const parsed = VariableStatsSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Variable stats validation failed:', parsed.error);
+    throw new VariableApiError(formatZodError(parsed.error, 'variable stats response'));
+  }
+  return parsed.data;
 }
 
 export function useVariableStats() {
@@ -117,7 +105,14 @@ export function useVariableStats() {
 
 async function fetchSourceBindings(): Promise<SourceBinding[]> {
   const response = await apiClient.get('l3', '/variables/bindings');
-  return response.data as SourceBinding[];
+  
+  // Runtime validation with Zod
+  const parsed = SourceBindingListSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Source binding list validation failed:', parsed.error);
+    throw new VariableApiError(formatZodError(parsed.error, 'source binding list response'));
+  }
+  return parsed.data;
 }
 
 export function useSourceBindings() {

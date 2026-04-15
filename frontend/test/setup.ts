@@ -63,9 +63,13 @@ Object.defineProperty(window, 'location', {
 // Start MSW server before all tests
 beforeAll(() => {
   server.listen({
-    onUnhandledRequest: (request) => {
-      // Log unhandled requests for debugging
-      console.warn(`Unhandled ${request.method} request to ${request.url}`);
+    onUnhandledRequest: (request, print) => {
+      // Fail tests on unhandled requests to ensure deterministic mocks
+      print.warning();
+      throw new Error(
+        `Unhandled ${request.method} request to ${request.url}. ` +
+        `Add a handler in test/mocks/handlers.ts for this endpoint.`
+      );
     },
   });
 });

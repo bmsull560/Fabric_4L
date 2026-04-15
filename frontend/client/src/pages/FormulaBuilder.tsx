@@ -6,7 +6,7 @@
  * Progressive disclosure: basic expression authoring visible by default;
  * governance controls revealed under "Governance" tab.
  */
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import {
@@ -306,6 +306,16 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   const isSaving = isCreating || isUpdating;
 
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const saveTimeoutRef = useRef<number | null>(null);
+
+  // Cleanup timeout on unmount to prevent state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        window.clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = () => {
     setSaveError(null);
@@ -321,7 +331,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         {
           onSuccess: (data) => {
             setSaveSuccess(true);
-            setTimeout(() => navigate(`/model/value-studio/formulas/${data.formula_id}`), 500);
+            saveTimeoutRef.current = window.setTimeout(() => navigate(`/model/value-studio/formulas/${data.formula_id}`), 500);
           },
           onError: (err) => {
             setSaveError(err.message);
@@ -340,7 +350,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         {
           onSuccess: () => {
             setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
+            saveTimeoutRef.current = window.setTimeout(() => setSaveSuccess(false), 3000);
           },
           onError: (err) => {
             setSaveError(err.message);
@@ -433,6 +443,10 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
       );
     } else if (newState === "draft" && activationState === "approved") {
       // Revise workflow: move from approved back to draft
+      setActivationState(newState);
+    } else if (newState === "draft" && activationState === "pending") {
+      // Reject or request changes: move from pending back to draft
+      // This could be extended to call a reject API if one exists
       setActivationState(newState);
     }
   };

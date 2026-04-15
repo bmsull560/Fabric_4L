@@ -12,6 +12,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from pydantic import BaseModel
+
 # OpenAI import with graceful fallback
 try:
     from openai import AsyncOpenAI
@@ -190,6 +192,94 @@ class LLMClient:
             return await self._anthropic_completion(
                 messages, extraction_job_id, endpoint, temperature
             )
+
+    async def chat_completion_structured(
+        self,
+        messages: list[dict[str, str]],
+        extraction_job_id: str,
+        endpoint: str,
+        response_format: type[BaseModel],
+        temperature: float = 0.0,
+        logprobs: bool = True,
+    ) -> tuple[BaseModel, CostRecord | None]:
+        """Execute structured output completion with Pydantic model validation.
+
+        Uses OpenAI's beta.chat.completions.parse() API for type-safe responses.
+        Falls back to tool-based approach for Anthropic provider.
+
+        Args:
+            messages: Chat messages
+            extraction_job_id: Job ID for cost attribution
+            endpoint: Endpoint name for cost tracking
+            response_format: Pydantic model class defining the expected response structure
+            temperature: Sampling temperature (default: 0.0 for deterministic extraction)
+            logprobs: Request logprobs for confidence calibration (OpenAI only)
+
+        Returns:
+            Tuple of (parsed_pydantic_model, cost_record)
+
+        Raises:
+            ValueError: If provider is Anthropic (not yet supported for structured outputs)
+            RuntimeError: If max retries exceeded
+        """
+        if self.provider == LLMProvider.OPENAI:
+            return await self._openai_structured_completion(
+                messages, extraction_job_id, endpoint, response_format, temperature, logprobs
+            )
+        else:
+            # Anthropic doesn't support native structured outputs yet
+            # Fall back to tool-based approach
+            raise ValueError(
+                "Structured outputs not yet supported for Anthropic. "
+                "Use chat_completion() with tools parameter instead."
+            )
+
+    async def _openai_structured_completion(
+        self,
+        messages: list[dict[str, str]],
+        extraction_job_id: str,
+        endpoint: str,
+        response_format: type[BaseModel],
+        temperature: float,
+        logprobs: bool,
+    ) -> tuple[BaseModel, CostRecord | None]:
+        """Execute OpenAI structured output completion using parse() API."""
+        if not OPENAI_AVAILABLE:
+            raise ImportError("openai package not installed. Run: pip install openai>=1.40.0")
+
+        for attempt in range(self.max_retries):
+            try:
+                response = await self._client.beta.chat.completions.parse(
+                    model=self.model,
+                    messages=messages,
+                    temperature=temperature,
+                    response_format=response_format,
+                )
+
+                # Calculate cost
+                cost_record = None
+                if self.cost_tracking_enabled:
+                    cost_record = self._calculate_cost(
+                        extraction_job_id=extraction_job_id,
+                        provider="openai",
+                        model=self.model,
+                        endpoint=endpoint,
+                        input_tokens=response.usage.prompt_tokens if response.usage else 0,
+                        output_tokens=response.usage.completion_tokens if response.usage else 0,
+                    )
+                    self._cost_records.append(cost_record)
+
+                # Return parsed Pydantic model directly
+                parsed_result = response.choices[0].message.parsed
+                return parsed_result, cost_record
+
+            except Exception:
+                if attempt == self.max_retries - 1:
+                    raise
+                wait_time = (2**attempt) + random.uniform(0, 0.25)
+                await asyncio.sleep(wait_time)
+
+        raise RuntimeError("Max retries exceeded")
 
     async def _openai_completion(
         self,

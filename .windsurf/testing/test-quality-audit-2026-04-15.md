@@ -267,6 +267,60 @@ assert timeout == 30  # Why 30? (seconds? retries?)
 
 ---
 
+## Phase 4: Rewrite Completed
+
+### P0-1: Packs Import Error ✅ FIXED
+**Status**: Already resolved in current codebase  
+**Verification**: `cd packs/retail-consumer && pytest tests/` - 49 tests pass
+
+### P1-1: Weak Test Naming ✅ FIXED
+**File**: `value-fabric/layer2-extraction/tests/test_extraction.py`  
+**Changes**:
+- `test_capability_creation` → `test_creates_capability_with_valid_name_and_description`
+- `test_capability_validation` → `test_rejects_capability_with_empty_name`
+- `test_usecase_validation` → `test_creates_usecase_with_valid_capability_references`
+- `test_value_driver_formula_validation` → `test_validates_value_driver_formula_syntax`
+- `test_persona_role_type` → `test_creates_persona_with_valid_role_type`
+- `test_feature_creation` → `test_creates_feature_with_valid_data`
+- `test_feature_validation` → `test_rejects_feature_with_invalid_status`
+
+**Verification**: 9/9 tests pass with improved names
+
+### P1-4: Session Fixture Resource Leak ✅ FIXED
+**File**: `packs/retail-consumer/tests/conftest.py`  
+**Change**: Changed `ontology_data`, `formulas_data`, `variables_data`, `workflow_template_data` from `@pytest.fixture(scope="session")` to `@pytest.fixture` (function scope)
+
+**Impact**: Prevents file descriptor exhaustion under high concurrency  
+**Verification**: 49/49 tests pass, no performance regression observed
+
+### P1-7: Magic Numbers ✅ FIXED
+**File**: `value-fabric/layer2-extraction/tests/test_extraction.py`  
+**Change**: Added `UUID_STRING_LENGTH = 36` constant and replaced magic number
+
+### P0-2: L3 GraphRAG API Alignment ✅ FIXED
+**File**: `value-fabric/layer3-knowledge/src/api/main.py`  
+**Change**: Added backward-compatible `/v1/graphrag` endpoint alias that delegates to same handler as `/v1/query/graph`
+
+**File**: `value-fabric/layer3-knowledge/tests/test_graphrag_endpoints.py`  
+**Changes**:
+- Added `CANONICAL_GRAPH_RAG_ENDPOINT = "/v1/query/graph"` constant
+- Updated all 16 test methods to use canonical endpoint
+- Added explicit `test_graphrag_legacy_alias_endpoint` test to verify backward compatibility
+
+**File**: `frontend/test/mocks/handlers.ts`  
+**Change**: Added MSW mock handler for legacy `/api/v1/graphrag` endpoint alongside existing canonical endpoint mock
+
+### P0-3: L4 Checkpoint Test Deterministic Mocking ✅ FIXED
+**File**: `value-fabric/layer4-agents/tests/test_checkpoint_resume.py`  
+**Changes**:
+- Fixed test name: `test_get_checkpoint_saver_returns_none_on_failure` → `test_get_checkpoint_saver_raises_connection_error_on_failure`
+- Fixed exception type: `RuntimeError` → `CheckpointConnectionError` (matches actual code behavior)
+- Added explicit error message assertions verifying context propagation
+- Added new test `test_factory_get_checkpoint_saver_returns_none_on_db_failure` testing the factory function's graceful degradation
+- Added imports: `os`, `CheckpointConnectionError`, `get_checkpoint_saver`
+
+---
+
 ## Phase 3: Prioritization - Rewrite Queue
 
 ### P0 - Critical (Fix First)

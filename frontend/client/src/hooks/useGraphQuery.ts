@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
+import {
+  GraphQueryResponseSchema,
+  EntityContextResponseSchema,
+  EntityTraversalResponseSchema,
+  safeParseResponse,
+} from '@/lib/schemas';
 
 export interface GraphNode {
   id: string;
@@ -104,7 +110,13 @@ export function useGraphQuery() {
         max_hops: request.max_hops ?? 2,
         max_results: request.max_results ?? 20,
       });
-      return response.data as GraphQueryResponse;
+
+      // Runtime validation at trust boundary
+      const validated = safeParseResponse(GraphQueryResponseSchema, response.data, 'POST /query/graph');
+      if (!validated) {
+        throw new Error('Invalid graph query response format');
+      }
+      return validated;
     },
     onSuccess: (data) => {
       // Cache the entities from the response for other queries

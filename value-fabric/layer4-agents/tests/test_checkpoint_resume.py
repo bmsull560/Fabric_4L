@@ -4,13 +4,14 @@ Tests the pause/resume lifecycle for human-in-the-loop workflows.
 Verifies state persistence across interruptions and container restarts.
 """
 
+import os
 from datetime import datetime
 from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.config.checkpoint import CheckpointConfig
+from src.config.checkpoint import CheckpointConfig, CheckpointConnectionError, get_checkpoint_saver
 from src.engine.executor import OrchestrationController, WorkflowExecutionError
 from src.engine.state_manager import StateManager
 from src.models.agent_state import BaseAgentState, WorkflowStatus
@@ -224,15 +225,42 @@ class TestCheckpointConfiguration:
             assert result == expected
     
     @pytest.mark.asyncio
-    async def test_get_checkpoint_saver_returns_none_on_failure(self):
-        """Factory returns None if checkpointing fails (graceful degradation)."""
+    async def test_get_checkpoint_saver_raises_connection_error_on_failure(self):
+        """CheckpointConfig.get_saver() raises CheckpointConnectionError when DB unavailable.
+        
+        This test verifies that database connection failures are properly caught
+        and converted to CheckpointConnectionError, allowing callers to handle
+        persistence failures gracefully.
+        """
         # When database is unavailable, should raise CheckpointConnectionError
         with patch("src.config.checkpoint.asyncpg.connect") as mock_connect:
             mock_connect.side_effect = Exception("Database unavailable")
             
-            with pytest.raises(RuntimeError):
+            with pytest.raises(CheckpointConnectionError) as exc_info:
                 async with CheckpointConfig.get_saver() as _:
                     pass
+            
+            # Verify the error message contains useful context
+            assert "Database connection failed" in str(exc_info.value)
+            assert "Database unavailable" in str(exc_info.value.__cause__)
+
+    @pytest.mark.asyncio
+    async def test_factory_get_checkpoint_saver_returns_none_on_db_failure(self):
+        """Factory function get_checkpoint_saver() returns None on DB failure for graceful degradation.
+        
+        Unlike CheckpointConfig.get_saver() which raises exceptions, the factory function
+        is designed to silently fail and return None, allowing workflows to continue
+        without checkpointing when the database is unavailable.
+        """
+        # Must set env var to trigger DB connection attempt
+        with patch.dict(os.environ, {"CHECKPOINT_DATABASE_URL": "postgresql://invalid:5432/test"}):
+            with patch("src.config.checkpoint.CheckpointConfig.create_saver") as mock_create:
+                mock_create.side_effect = CheckpointConnectionError("Database unavailable")
+                
+                result = await get_checkpoint_saver()
+                
+                # Factory should gracefully return None instead of raising
+                assert result is None
 
 
 @pytest.mark.integration

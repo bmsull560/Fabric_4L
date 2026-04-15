@@ -1,40 +1,19 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { withApiError, FormulaApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import { withApiError, FormulaApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
+import {
+  FormulaSchema,
+  FormulaListSchema,
+  ApprovalRequestListSchema,
+  FormulaEvaluationResultSchema,
+  type Formula,
+  type FormulaStatus,
+  type ApprovalRequest,
+  type FormulaEvaluationResult,
+} from '@/lib/schemas/formula';
 
-export type FormulaStatus = 'active' | 'draft' | 'pending' | 'deprecated' | 'archived';
-
-export interface Formula {
-  id: string;
-  formula_id: string;
-  name: string;
-  description?: string;
-  pack_id?: string;
-  pack_name?: string;
-  version: string;
-  status: FormulaStatus;
-  owner?: string;
-  updated_at: string;
-  created_at: string;
-  used_in_count: number;
-  governance_score?: number;
-  last_reviewed?: string;
-  reviewers?: string[];
-  expression?: string;
-  variables?: string[];
-}
-
-export interface ApprovalRequest {
-  id: string;
-  formula_id: string;
-  formula_name: string;
-  submitted_by: string;
-  submitted_at: string;
-  change_summary: string;
-  previous_version: string;
-  status: 'pending' | 'approved' | 'rejected';
-}
+export type { Formula, FormulaStatus, ApprovalRequest, FormulaEvaluationResult };
 
 /** Parameters for formula approval action */
 export interface ApproveFormulaParams {
@@ -60,7 +39,14 @@ async function fetchFormulas(filters: FormulaFilters): Promise<Formula[]> {
   if (filters.pack_id) params.set('pack_id', filters.pack_id);
 
   const response = await apiClient.get('l3', `/formulas?${params.toString()}`);
-  return response.data as Formula[];
+  
+  // Runtime validation with Zod
+  const parsed = FormulaListSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Formula list validation failed:', parsed.error);
+    throw new FormulaApiError(formatZodError(parsed.error, 'formula list response'));
+  }
+  return parsed.data;
 }
 
 /**
@@ -81,7 +67,14 @@ export function useFormulas(filters: FormulaFilters = {}) {
 
 async function fetchFormula(formulaId: string): Promise<Formula> {
   const response = await apiClient.get('l3', `/formulas/${formulaId}`);
-  return response.data as Formula;
+  
+  // Runtime validation with Zod
+  const parsed = FormulaSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Formula detail validation failed:', parsed.error);
+    throw new FormulaApiError(formatZodError(parsed.error, 'formula response'));
+  }
+  return parsed.data;
 }
 
 /**
@@ -106,7 +99,14 @@ export function useFormula(formulaId: string | null) {
 
 async function fetchFormulaApprovals(): Promise<ApprovalRequest[]> {
   const response = await apiClient.get('l3', '/formulas/approvals/pending');
-  return response.data as ApprovalRequest[];
+  
+  // Runtime validation with Zod
+  const parsed = ApprovalRequestListSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Formula approvals validation failed:', parsed.error);
+    throw new FormulaApiError(formatZodError(parsed.error, 'formula approvals response'));
+  }
+  return parsed.data;
 }
 
 /**
@@ -270,14 +270,6 @@ export interface FormulaEvaluationInput {
   output_unit?: string;
 }
 
-export interface FormulaEvaluationResult {
-  result: number;
-  unit: string;
-  confidence: number;
-  calculation_steps: Array<{ step: number; operation: string; result: string }>;
-  formula_used: string;
-}
-
 /**
  * Hook to evaluate a formula with test inputs.
  *
@@ -287,7 +279,14 @@ export function useEvaluateFormula() {
   return useMutation<FormulaEvaluationResult, FormulaApiError, FormulaEvaluationInput>({
     mutationFn: async (input) => {
       const response = await apiClient.post('l3', '/formulas/evaluate', input);
-      return response.data as FormulaEvaluationResult;
+      
+      // Runtime validation with Zod
+      const parsed = FormulaEvaluationResultSchema.safeParse(response.data);
+      if (!parsed.success) {
+        console.error('Formula evaluation validation failed:', parsed.error);
+        throw new FormulaApiError(formatZodError(parsed.error, 'formula evaluation response'));
+      }
+      return parsed.data;
     },
     onError: (error) => {
       console.error('Formula evaluation failed:', error.message);

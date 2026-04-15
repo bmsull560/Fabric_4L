@@ -108,6 +108,7 @@ class Capability(BaseModel):
         return v.strip()
 
     model_config = ConfigDict(
+        extra="forbid",
         json_schema_extra={
             "example": {
                 "name": "Real-Time Data Ingestion",
@@ -159,6 +160,8 @@ class UseCase(BaseModel):
                 raise ValueError(f"Invalid capability reference: {ref}")
         return v
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class Persona(BaseModel):
     """A stakeholder or user persona in the enterprise buying process.
@@ -201,6 +204,8 @@ class Persona(BaseModel):
             except ValueError:
                 raise ValueError(f"Invalid persona reference: {ref}")
         return v
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class ValueDriver(BaseModel):
@@ -259,6 +264,8 @@ class ValueDriver(BaseModel):
             )
         return v
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class Feature(BaseModel):
     """A product feature that implements a capability.
@@ -309,6 +316,8 @@ class Feature(BaseModel):
         """Normalize name for matching while preserving original in display."""
         return v.strip()
 
+    model_config = ConfigDict(extra="forbid")
+
 
 class ExtractionResult(BaseModel):
     """Complete result from an extraction job.
@@ -341,3 +350,5 @@ class ExtractionResult(BaseModel):
             if entity.id == entity_id:
                 return entity
         return None
+
+    model_config = ConfigDict(extra="forbid")

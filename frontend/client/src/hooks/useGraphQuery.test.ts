@@ -39,9 +39,9 @@ describe('useGraphQuery', () => {
   });
 
   it('handles query errors', async () => {
-    // Reset and override handlers for this test
-    server.resetHandlers(
-      http.post('/api/v1/query/graph', () => {
+    // Override handler for this test
+    server.use(
+      http.post('/api/v1/graph/query/graph', () => {
         return HttpResponse.json({ error: 'Query timeout' }, { status: 504 });
       })
     );
@@ -97,9 +97,9 @@ describe('useEntityContext', () => {
   });
 
   it('handles entity not found', async () => {
-    // Reset and override handlers for this test
-    server.resetHandlers(
-      http.get('/api/v1/entity/:entityId/context', () => {
+    // Override handler for this test
+    server.use(
+      http.get('/api/v1/graph/entity/:entityId/context', () => {
         return HttpResponse.json({ error: 'Entity not found' }, { status: 404 });
       })
     );
@@ -125,9 +125,9 @@ describe('useEntityTraversal', () => {
   });
 
   it('handles traversal errors', async () => {
-    // Reset and override handlers for this test
-    server.resetHandlers(
-      http.post('/api/v1/entity/traverse', () => {
+    // Override handler for this test
+    server.use(
+      http.post('/api/v1/graph/entity/traverse', () => {
         return HttpResponse.json({ error: 'Invalid direction' }, { status: 400 });
       })
     );
@@ -153,9 +153,9 @@ describe('useFullGraph', () => {
   });
 
   it('normalizes search results to graph nodes', async () => {
-    // Reset and override handlers for this test
-    server.resetHandlers(
-      http.post('/api/v1/search/hybrid', () => {
+    // Override handler for this test
+    server.use(
+      http.post('/api/v1/graph/search/hybrid', () => {
         return HttpResponse.json({
           results: [
             { id: 'ent-1', name: 'Entity One', entity_type: 'capability', confidence_score: 0.95 },
@@ -175,9 +175,9 @@ describe('useFullGraph', () => {
   });
 
   it('handles empty graph', async () => {
-    // Reset and override handlers for this test
-    server.resetHandlers(
-      http.post('/api/v1/search/hybrid', () => {
+    // Override handler for this test
+    server.use(
+      http.post('/api/v1/graph/search/hybrid', () => {
         return HttpResponse.json({ results: [] });
       })
     );

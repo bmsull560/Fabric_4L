@@ -38,7 +38,7 @@ class TestOntologyModels:
         )
         
         assert cap.name == "Real-Time Data Ingestion"
-        assert len(cap.id) == 36  # UUID length
+        assert len(cap.id) == UUID_STRING_LENGTH
         assert cap.confidence == 0.92
         assert cap.technical_features == ["Kafka streaming", "CDC"]
     
