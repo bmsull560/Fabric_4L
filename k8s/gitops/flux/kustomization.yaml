@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: flux-system
+
+resources:
+  - apps-kustomization.yaml
+  - gitrepository.yaml
+  - image-automation.yaml
+  - alerts.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: value-fabric
+  app.kubernetes.io/managed-by: flux

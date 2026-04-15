@@ -64,24 +64,41 @@ spec:
           envFrom:
             - configMapRef:
                 name: value-fabric-config
+            - secretRef:
+                name: layer3-db-credentials
+                optional: false
+            - secretRef:
+                name: layer3-secrets
+                optional: false
+            - secretRef:
+                name: layer3-auth
+                optional: false
+            - secretRef:
+                name: neo4j-secret
+                optional: false
           env:
+            # Dynamic database credentials (required)
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: layer3-db-credentials
+                  key: DATABASE_URL
+            # Neo4j from ExternalSecret
             - name: NEO4J_URI
-              value: "bolt://neo4j:7687"
+              valueFrom:
+                secretKeyRef:
+                  name: layer3-secrets
+                  key: NEO4J_URI
             - name: NEO4J_USER
-              value: "neo4j"
+              valueFrom:
+                secretKeyRef:
+                  name: layer3-secrets
+                  key: NEO4J_USER
             - name: NEO4J_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: neo4j-secret
-                  key: auth
-            - name: REDIS_URL
-              value: "redis://redis:6379/0"
-            - name: PINECONE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: pinecone-secret
-                  key: api-key
-                  optional: true
+                  name: layer3-secrets
+                  key: NEO4J_PASSWORD
             - name: PINECONE_INDEX
               valueFrom:
                 configMapKeyRef:

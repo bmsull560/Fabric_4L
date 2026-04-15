@@ -1,0 +1,153 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisRun
+metadata:
+  name: deployment-health-gate
+  namespace: value-fabric-prod
+  annotations:
+    argoproj.io/description: "Pre-deployment health verification"
+spec:
+  metrics:
+    # Gate 1: Environment health
+    - name: environment-health
+      interval: 10s
+      initialDelay: 5s
+      count: 3
+      successCondition: result[0] == 1
+      failureLimit: 1
+      provider:
+        job:
+          metadata:
+            name: environment-health-check
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: check
+                    image: curlimages/curl:latest
+                    command:
+                      - /bin/sh
+                      - -c
+                      - |
+                        # Check all layers are healthy
+                        for service in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+                          response=$(curl -s -o /dev/null -w "%{http_code}" \
+                            http://${service}.value-fabric-prod.svc.cluster.local:8000/health || echo "000")
+                          if [ "$response" != "200" ]; then
+                            echo "Health check failed for $service: $response"
+                            exit 1
+                          fi
+                        done
+                        echo "All services healthy"
+                    restartPolicy: Never
+                backoffLimit: 1
+
+    # Gate 2: Resource availability
+    - name: resource-gate
+      interval: 10s
+      count: 1
+      successCondition: result[0] >= 0.2
+      failureLimit: 0
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            (
+              sum(kube_node_status_allocatable{resource="cpu"}) 
+              - sum(kube_pod_container_resource_requests{resource="cpu"})
+            ) / sum(kube_node_status_allocatable{resource="cpu"})
+
+    # Gate 3: Recent error rate check
+    - name: error-rate-gate
+      interval: 5s
+      count: 5
+      successCondition: result[0] < 0.05
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{
+              namespace="value-fabric-prod",
+              status=~"5.."
+            }[5m]))
+            /
+            sum(rate(http_requests_total{
+              namespace="value-fabric-prod"
+            }[5m]))
+
+    # Gate 4: Database connectivity
+    - name: database-connectivity
+      interval: 10s
+      count: 2
+      successCondition: result[0] == 1
+      failureLimit: 0
+      provider:
+        job:
+          metadata:
+            name: db-connectivity-check
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: check
+                    image: postgres:15-alpine
+                    command:
+                      - /bin/sh
+                      - -c
+                      - |
+                        pg_isready -h postgres.value-fabric-prod.svc.cluster.local -p 5432 -U ${DB_USER}
+                    env:
+                      - name: DB_USER
+                        valueFrom:
+                          secretKeyRef:
+                            name: postgres-credentials
+                            key: username
+                    restartPolicy: Never
+                backoffLimit: 1
+---
+# Automated rollback AnalysisRun
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisRun
+metadata:
+  name: automated-rollback-check
+  namespace: value-fabric-prod
+  annotations:
+    argoproj.io/description: "Post-deployment rollback verification"
+spec:
+  metrics:
+    - name: rollback-decision
+      interval: 30s
+      count: 10
+      successCondition: result[0] == "false"
+      failureCondition: result[0] == "true"
+      failureLimit: 3
+      provider:
+        job:
+          metadata:
+            name: rollback-decision
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: evaluate
+                    image: bitnami/kubectl:latest
+                    command:
+                      - /bin/bash
+                      - -c
+                      - |
+                        # Check if rollback is needed
+                        ERROR_RATE=$(kubectl exec -n monitoring deploy/prometheus -- \
+                          sh -c 'wget -qO- "http://localhost:9090/api/v1/query?query=sum(rate(http_requests_total{namespace=\"value-fabric-prod\",status=~\"5..\"}[5m]))/sum(rate(http_requests_total{namespace=\"value-fabric-prod\"}[5m]))"' | \
+                          jq -r '.data.result[0].value[1] // "0"')
+                        
+                        LATENCY=$(kubectl exec -n monitoring deploy/prometheus -- \
+                          sh -c 'wget -qO- "http://localhost:9090/api/v1/query?query=histogram_quantile(0.95,sum(rate(http_request_duration_seconds_bucket{namespace=\"value-fabric-prod\"}[5m]))by(le))*1000"' | \
+                          jq -r '.data.result[0].value[1] // "0"')
+                        
+                        if (( $(echo "$ERROR_RATE > 0.1" | bc -l) )) || (( $(echo "$LATENCY > 1000" | bc -l) )); then
+                          echo "true"  # Trigger rollback
+                          exit 1
+                        fi
+                        echo "false"  # Continue
+                    restartPolicy: Never
+                backoffLimit: 0

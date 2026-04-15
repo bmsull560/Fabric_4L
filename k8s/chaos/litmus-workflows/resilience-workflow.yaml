@@ -1,0 +1,200 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: value-fabric-resilience-suite
+  namespace: value-fabric-prod
+  labels:
+    workflow-type: chaos-suite
+    tier: resilience
+spec:
+  entrypoint: resilience-pipeline
+  serviceAccountName: argo-chaos
+  ttlStrategy:
+    secondsAfterCompletion: 86400  # 24 hours
+  volumeClaimTemplates:
+    - metadata:
+        name: chaos-results
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+  templates:
+    - name: resilience-pipeline
+      dag:
+        tasks:
+          # Phase 1: Pod Resilience
+          - name: pod-delete-test
+            templateRef:
+              name: chaos-experiment-runner
+              template: run-experiment
+            arguments:
+              parameters:
+                - name: experiment-name
+                  value: pod-delete-all-layers
+            
+          # Phase 2: Network Resilience
+          - name: network-partition-test
+            templateRef:
+              name: chaos-experiment-runner
+              template: run-experiment
+            arguments:
+              parameters:
+                - name: experiment-name
+                  value: network-partition-l3-l4
+            dependencies: [pod-delete-test]
+            
+          # Phase 3: Resource Stress
+          - name: cpu-stress-test
+            templateRef:
+              name: chaos-experiment-runner
+              template: run-experiment
+            arguments:
+              parameters:
+                - name: experiment-name
+                  value: cpu-stress-layer4-agents
+            dependencies: [network-partition-test]
+            
+          - name: memory-stress-test
+            templateRef:
+              name: chaos-experiment-runner
+              template: run-experiment
+            arguments:
+              parameters:
+                - name: experiment-name
+                  value: memory-stress-layer2-extraction
+            dependencies: [network-partition-test]
+            
+          # Phase 4: Scaling Tests
+          - name: autoscaler-test
+            templateRef:
+              name: chaos-experiment-runner
+              template: run-experiment
+            arguments:
+              parameters:
+                - name: experiment-name
+                  value: pod-autoscaler-l1-ingestion
+            dependencies: [cpu-stress-test, memory-stress-test]
+            
+          # Phase 5: Generate Report
+          - name: generate-report
+            template: report-generation
+            dependencies: [autoscaler-test]
+    
+    - name: report-generation
+      container:
+        image: bitnami/kubectl:latest
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            echo "Generating Chaos Test Report..."
+            echo "================================"
+            echo "Test Run: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "Namespace: value-fabric-prod"
+            echo ""
+            echo "Experiments Run:"
+            echo "  - pod-delete-all-layers"
+            echo "  - network-partition-l3-l4"
+            echo "  - cpu-stress-layer4-agents"
+            echo "  - memory-stress-layer2-extraction"
+            echo "  - pod-autoscaler-l1-ingestion"
+            echo ""
+            
+            # Get all chaos results
+            kubectl get chaosresults -n value-fabric-prod -o yaml > /tmp/chaos-results.yaml
+            
+            # Extract verdicts
+            echo "Results Summary:"
+            kubectl get chaosresults -n value-fabric-prod \
+              -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.experimentStatus.verdict}{"\n"}{end}'
+            
+            # Check for failures
+            FAILURES=$(kubectl get chaosresults -n value-fabric-prod \
+              -o jsonpath='{range .items[*]}{.status.experimentStatus.verdict}{"\n"}{end}' | grep -c "Fail" || true)
+            
+            if [ "$FAILURES" -gt 0 ]; then
+              echo ""
+              echo "WARNING: $FAILURES experiments failed!"
+              exit 1
+            else
+              echo ""
+              echo "SUCCESS: All chaos experiments passed!"
+              exit 0
+            fi
+        volumeMounts:
+          - name: chaos-results
+            mountPath: /tmp
+  
+  # Pod disruption budget for workflow pods
+  podDisruptionBudget:
+    minAvailable: 1
+---
+# Template for running chaos experiments
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: chaos-experiment-runner
+  namespace: value-fabric-prod
+spec:
+  templates:
+    - name: run-experiment
+      inputs:
+        parameters:
+          - name: experiment-name
+      resource:
+        action: create
+        manifest: |
+          apiVersion: litmuschaos.io/v1alpha1
+          kind: ChaosEngine
+          metadata:
+            name: {{inputs.parameters.experiment-name}}
+            namespace: value-fabric-prod
+          spec:
+            appinfo:
+              appns: 'value-fabric-prod'
+              applabel: 'app.kubernetes.io/part-of=value-fabric'
+              appkind: 'deployment'
+            engineState: 'active'
+            chaosServiceAccount: litmus-admin
+            experiments:
+              - name: {{inputs.parameters.experiment-name}}
+        successCondition: status.experimentStatus.verdict == Pass
+        failureCondition: status.experimentStatus.verdict == Fail
+---
+# ServiceAccount for running chaos workflows
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argo-chaos
+  namespace: value-fabric-prod
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argo-chaos-role
+rules:
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["chaosengines", "chaosexperiments", "chaosresults"]
+    verbs: ["create", "get", "list", "watch", "patch", "update", "delete"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["workflows", "workflowtemplates"]
+    verbs: ["create", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-chaos-binding
+subjects:
+  - kind: ServiceAccount
+    name: argo-chaos
+    namespace: value-fabric-prod
+roleRef:
+  kind: ClusterRole
+  name: argo-chaos-role
+  apiGroup: rbac.authorization.k8s.io

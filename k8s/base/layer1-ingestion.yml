@@ -55,28 +55,26 @@ spec:
           envFrom:
             - configMapRef:
                 name: value-fabric-config
+            - secretRef:
+                name: layer1-db-credentials
+                optional: false
+            - secretRef:
+                name: layer1-secrets
+                optional: false
+            - secretRef:
+                name: layer1-auth
+                optional: false
           env:
+            # Required: Explicit DATABASE_URL from dynamic secret
             - name: DATABASE_URL
-              value: "postgresql://postgres:postgres@postgres:5432/ingestion"
+              valueFrom:
+                secretKeyRef:
+                  name: layer1-db-credentials
+                  key: DATABASE_URL
+            # Optional overrides (if not in layer1-secrets)
             - name: REDIS_URL
               value: "redis://redis:6379/0"
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: openai-secret
-                  key: api-key
-            - name: BROWSERBASE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: browserbase-secret
-                  key: api-key
-                  optional: true
-            - name: FIRECRAWL_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: firecrawl-secret
-                  key: api-key
-                  optional: true
+              optional: true
             - name: LOG_LEVEL
               value: "info"
             - name: CRAWL_RATE_LIMIT_PER_DOMAIN

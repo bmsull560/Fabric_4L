@@ -1,0 +1,69 @@
+# Infisical Machine Identity and UniversalAuth Configuration
+# This creates the authentication credentials for the Infisical operator
+---
+# UniversalAuth credentials secret
+# Create this ONCE per cluster after generating credentials in Infisical UI
+# kubectl create secret generic infisical-universal-auth \
+#   --from-literal=clientId=<CLIENT_ID> \
+#   --from-literal=clientSecret=<CLIENT_SECRET> \
+#   -n value-fabric
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-universal-auth
+  namespace: value-fabric
+  labels:
+    app: infisical
+    component: auth
+type: Opaque
+stringData:
+  # These are placeholders - replace with actual credentials from Infisical
+  # DO NOT commit real credentials to git
+  clientId: "<INFISICAL_CLIENT_ID>"
+  clientSecret: "<INFISICAL_CLIENT_SECRET>"
+
+---
+# Infisical Operator ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: infisical-operator
+  namespace: value-fabric
+  labels:
+    app: infisical
+    component: operator
+
+---
+# RBAC for Infisical Operator
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: infisical-operator-role
+  labels:
+    app: infisical
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["secrets.infisical.com"]
+    resources: ["infisicalsecrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["secrets.infisical.com"]
+    resources: ["infisicalsecrets/status"]
+    verbs: ["get", "update", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: infisical-operator-binding
+  labels:
+    app: infisical
+subjects:
+  - kind: ServiceAccount
+    name: infisical-operator
+    namespace: value-fabric
+roleRef:
+  kind: ClusterRole
+  name: infisical-operator-role
+  apiGroup: rbac.authorization.k8s.io

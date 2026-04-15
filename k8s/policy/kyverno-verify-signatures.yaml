@@ -1,0 +1,161 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Ensures all container images are signed with Cosign using
+      keyless signing (OIDC from GitHub Actions).
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: verify-cosign-signature
+      match:
+        resources:
+          kinds:
+            - Pod
+          namespaces:
+            - "value-fabric"
+            - "value-fabric-*"
+      exclude:
+        resources:
+          namespaces:
+            - kube-system
+            - kyverno
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/bmsull560/fabric_4l/*"
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/bmsull560/Fabric_4L/.github/workflows/build-deploy.yml*"
+                    rekorURL: https://rekor.sigstore.dev
+          # Additional verification for attestations
+          attestations:
+            - type: https://slsa.dev/provenance/v0.2
+              attestors:
+                - entries:
+                    - keyless:
+                        issuer: "https://token.actions.githubusercontent.com"
+                        subject: "https://github.com/bmsull560/Fabric_4L/.github/workflows/build-deploy.yml*"
+                        rekorURL: https://rekor.sigstore.dev
+              conditions:
+                - all:
+                    - key: buildType
+                      operator: Equals
+                      value: "https://github.com/slsa-framework/slsa-github-generator/container@v1"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-sbom-attestation
+  annotations:
+    policies.kyverno.io/title: Require SBOM Attestation
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Requires all images to have an SBOM attestation attached.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-sbom-attestation
+      match:
+        resources:
+          kinds:
+            - Pod
+          namespaces:
+            - "value-fabric"
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/bmsull560/fabric_4l/*"
+          required: true
+          attestations:
+            - type: https://cyclonedx.org/bom
+              attestors:
+                - entries:
+                    - keyless:
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekorURL: https://rekor.sigstore.dev
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: block-latest-tag
+  annotations:
+    policies.kyverno.io/title: Block Latest Tag
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Prevents use of the 'latest' tag which can lead to
+      unpredictable deployments and rollback issues.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-specific-tag
+      match:
+        resources:
+          kinds:
+            - Pod
+            - Deployment
+            - StatefulSet
+            - DaemonSet
+            - Job
+            - CronJob
+          namespaces:
+            - "value-fabric"
+      validate:
+        message: "The 'latest' tag is not allowed. Use a specific version or SHA tag."
+        pattern:
+          spec:
+            =(initContainers):
+              - image: "!*:latest"
+            =(containers):
+              - image: "!*:latest"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-digest
+  annotations:
+    policies.kyverno.io/title: Require Image Digest
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Requires all images to be referenced by digest (@sha256:...)
+      rather than tag for immutability.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-image-digest
+      match:
+        resources:
+          kinds:
+            - Pod
+            - Deployment
+            - StatefulSet
+            - DaemonSet
+          namespaces:
+            - "value-fabric"
+      validate:
+        message: "Images should be referenced by digest (@sha256:...) for immutability."
+        pattern:
+          spec:
+            =(initContainers):
+              - image: "*@sha256:*"
+            =(containers):
+              - image: "*@sha256:*"

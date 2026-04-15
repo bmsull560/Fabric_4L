@@ -1,0 +1,135 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: pod-delete-all-layers
+  namespace: value-fabric-prod
+  labels:
+    chaos-type: pod-delete
+    tier: resilience
+spec:
+  appinfo:
+    appns: 'value-fabric-prod'
+    applabel: 'tier in (ingestion,extraction,knowledge,agents,ground-truth,benchmarks)'
+    appkind: 'deployment'
+  # Do not delete auxilary apps - monitoring, logging, etc
+  auxiliaryAppInfo: ''
+  engineState: 'active'
+  # Running chaos through service account
+  annotationCheck: 'true'
+  # Provide pod-level or node-level
+  # node-level can be: node-cpu-hog, node-memory-hog, node-taint
+  # pod-level can be: pod-delete, pod-cpu-hog, pod-memory-hog, pod-network-loss
+  chaosServiceAccount: litmus-admin
+  # Define the monitoring settings
+  monitoring: true
+  # Job cleanup policy - retain or delete
+  jobCleanUpPolicy: 'delete'
+  experiments:
+    - name: pod-delete
+      spec:
+        components:
+          env:
+            # Set to 'enable' if you want to kill the application
+            # Set to 'disable' if you don't want to kill the application
+            - name: KILL_APPLICATION
+              value: 'enable'
+            # Provide the total chaos duration
+            - name: TOTAL_CHAOS_DURATION
+              value: '30'
+            # Set the chaos interval (in sec)
+            - name: CHAOS_INTERVAL
+              value: '10'
+            # Set to 'true' to force delete (grace period = 0)
+            - name: FORCE
+              value: 'false'
+            # Random or sequence
+            - name: SEQUENCE
+              value: 'parallel'
+          probe:
+            # Readiness probe - verify pods are ready after chaos
+            - name: "check-pod-readiness"
+              type: "cmdProbe"
+              mode: "Edge"
+              runProperties:
+                probeTimeout: "30s"
+                retry: 3
+                interval: "5s"
+                initialDelay: "10s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl get pods -n value-fabric-prod \
+                    -l tier in (ingestion,extraction,knowledge,agents,ground-truth,benchmarks) \
+                    --field-selector=status.phase=Running \
+                    -o jsonpath='{.items[*].metadata.name}'
+              comparator:
+                type: "string"
+                criteria: "notEmpty"
+                value: ""
+            
+            # HTTP probe - verify API is responsive
+            - name: "api-health-check"
+              type: "httpProbe"
+              mode: "Continuous"
+              runProperties:
+                probeTimeout: "10s"
+                retry: 2
+                interval: "5s"
+                initialDelay: "5s"
+              httpProbe/inputs:
+                url: "http://layer4-agents.value-fabric-prod.svc.cluster.local:8000/health"
+                insecureSkipVerify: false
+                method:
+                  get:
+                    criteria: "=="
+                    responseCode: "200"
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: pod-delete
+  labels:
+    name: pod-delete
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+          - "apps"
+          - "batch"
+          - "litmuschaos.io"
+        resources:
+          - "jobs"
+          - "pods"
+          - "pods/log"
+          - "events"
+          - "chaosengines"
+          - "chaosexperiments"
+          - "chaosresults"
+        verbs:
+          - "create"
+          - "list"
+          - "get"
+          - "patch"
+          - "update"
+          - "delete"
+    image: "litmuschaos/go-runner:latest"
+    imagePullPolicy: Always
+    args:
+      - -c
+      - ./experiments -name pod-delete
+    command:
+      - /bin/bash
+    env:
+      - name: TARGET_CONTAINER
+        value: ''
+      - name: FORCE
+        value: 'false'
+      - name: CHAOS_INTERVAL
+        value: '10'
+      - name: TOTAL_CHAOS_DURATION
+        value: '30'
+    labels:
+      name: pod-delete
+      app.kubernetes.io/part-of: litmus

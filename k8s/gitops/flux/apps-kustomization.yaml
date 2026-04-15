@@ -1,0 +1,64 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: value-fabric-apps
+  namespace: flux-system
+spec:
+  interval: 5m
+  path: ./k8s/overlays/prod
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: value-fabric
+  targetNamespace: value-fabric-prod
+  timeout: 5m
+  wait: true
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: layer1-ingestion
+      namespace: value-fabric-prod
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: layer2-extraction
+      namespace: value-fabric-prod
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: layer3-knowledge
+      namespace: value-fabric-prod
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: layer4-agents
+      namespace: value-fabric-prod
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: layer5-ground-truth
+      namespace: value-fabric-prod
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: layer6-benchmarks
+      namespace: value-fabric-prod
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: frontend
+      namespace: value-fabric-prod
+  postBuild:
+    substituteFrom:
+      - kind: ConfigMap
+        name: cluster-settings
+      - kind: Secret
+        name: cluster-secrets
+  patches:
+    - patch: |
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: all-deployments
+        spec:
+          template:
+            spec:
+              containers:
+                - name: "*"
+                  imagePullPolicy: Always
+      target:
+        kind: Deployment

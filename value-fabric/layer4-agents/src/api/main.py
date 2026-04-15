@@ -32,6 +32,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.rate_limiter import RedisRateLimiter
 from shared.identity.vault_check import check_vault_health
+from shared.security import add_security_middleware, SecurityConfig
 
 from ..config.checkpoint import CheckpointConfig
 from ..config.settings import settings
@@ -49,6 +50,7 @@ from ..tenants.api import api_keys_router, tenants_router, users_router
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
 from .routes import accounts, analysis, tools, workflows
+from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
 from .routes.crm_webhooks import router as crm_webhooks_router
@@ -268,6 +270,25 @@ if "*" in _cors_origins:
         "Set CORS_ORIGINS to specific origins in production."
     )
 
+# SecurityMiddleware — input validation and security headers (before CORS)
+_security_config_l4 = SecurityConfig(
+    skip_validation_paths=frozenset({
+        "/agents/v1/workflows",
+        "/agents/v1/skills",
+        "/agents/v1/analyze",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l4)
+
+# GovernanceMiddleware — provides auth and tenant context
+try:
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+except ImportError:
+    logging.getLogger(__name__).warning(
+        "shared.identity not importable — GovernanceMiddleware skipped in L4."
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -302,6 +323,7 @@ app.include_router(api_keys_router, prefix="/v1")
 app.include_router(oidc_router)
 app.include_router(models_router, prefix="/v1")
 app.include_router(feature_flags_router, prefix="/v1")
+app.include_router(billing_router, prefix="/v1")
 
 # Thesys C1 streaming proxy
 app.include_router(c1_router, prefix="/v1", tags=["c1"])

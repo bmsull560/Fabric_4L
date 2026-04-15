@@ -1,0 +1,143 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: memory-stress-layer2-extraction
+  namespace: value-fabric-prod
+  labels:
+    chaos-type: memory-stress
+    tier: resilience
+spec:
+  appinfo:
+    appns: 'value-fabric-prod'
+    applabel: 'app=layer2-extraction'
+    appkind: 'deployment'
+  engineState: 'active'
+  annotationCheck: 'true'
+  chaosServiceAccount: litmus-admin
+  monitoring: true
+  jobCleanUpPolicy: 'delete'
+  experiments:
+    - name: pod-memory-hog
+      spec:
+        components:
+          env:
+            # Amount of memory to consume (in MB or %)
+            - name: MEMORY_CONSUMPTION
+              value: '512Mi'
+            # Total chaos duration
+            - name: TOTAL_CHAOS_DURATION
+              value: '90'
+            # Chaos interval
+            - name: CHAOS_INTERVAL
+              value: '10'
+            # Number of workers
+            - name: NUMBER_OF_WORKERS
+              value: '4'
+            # Sequence
+            - name: SEQUENCE
+              value: 'parallel'
+          probe:
+            # Verify pod doesn't OOM during normal operation
+            - name: "oom-check"
+              type: "cmdProbe"
+              mode: "Continuous"
+              runProperties:
+                probeTimeout: "10s"
+                retry: 2
+                interval: "15s"
+                initialDelay: "30s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl get pods -n value-fabric-prod -l app=layer2-extraction \
+                    -o jsonpath='{.items[*].status.containerStatuses[*].lastState.terminated.reason}' | grep -v "OOMKilled"
+              comparator:
+                type: "string"
+                criteria: "notContains"
+                value: "OOMKilled"
+            
+            # Verify extraction jobs are not lost
+            - name: "extraction-job-persistence"
+              type: "httpProbe"
+              mode: "Continuous"
+              runProperties:
+                probeTimeout: "15s"
+                retry: 2
+                interval: "10s"
+                initialDelay: "10s"
+              httpProbe/inputs:
+                url: "http://layer2-extraction.value-fabric-prod.svc.cluster.local:8000/api/v1/extract/status"
+                insecureSkipVerify: false
+                method:
+                  get:
+                    criteria: "!="
+                    responseCode: "503"
+            
+            # Post-chaos: verify graceful restart if OOM occurred
+            - name: "graceful-recovery"
+              type: "cmdProbe"
+              mode: "PostChaos"
+              runProperties:
+                probeTimeout: "60s"
+                retry: 6
+                interval: "10s"
+                initialDelay: "20s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl rollout status deployment/layer2-extraction -n value-fabric-prod --timeout=60s
+              comparator:
+                type: "string"
+                criteria: "contains"
+                value: "successfully rolled out"
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: pod-memory-hog
+  labels:
+    name: pod-memory-hog
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+          - "apps"
+          - "batch"
+          - "litmuschaos.io"
+        resources:
+          - "jobs"
+          - "pods"
+          - "pods/exec"
+          - "pods/log"
+          - "events"
+          - "chaosengines"
+          - "chaosexperiments"
+          - "chaosresults"
+        verbs:
+          - "create"
+          - "list"
+          - "get"
+          - "patch"
+          - "update"
+          - "delete"
+    image: "litmuschaos/go-runner:latest"
+    imagePullPolicy: Always
+    args:
+      - -c
+      - ./experiments -name pod-memory-hog
+    command:
+      - /bin/bash
+    env:
+      - name: MEMORY_CONSUMPTION
+        value: '512Mi'
+      - name: TOTAL_CHAOS_DURATION
+        value: '90'
+      - name: CHAOS_INTERVAL
+        value: '10'
+      - name: NUMBER_OF_WORKERS
+        value: '4'
+    labels:
+      name: pod-memory-hog
+      app.kubernetes.io/part-of: litmus

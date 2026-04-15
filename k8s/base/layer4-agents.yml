@@ -53,49 +53,43 @@ spec:
           envFrom:
             - configMapRef:
                 name: value-fabric-config
+            - secretRef:
+                name: layer4-db-credentials
+                optional: false
+            - secretRef:
+                name: layer4-secrets
+                optional: false
+            - secretRef:
+                name: layer4-auth
+                optional: false
           env:
-            - name: OPENAI_API_KEY
+            # Dynamic database credentials (required)
+            - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: openai-secret
-                  key: api-key
-            - name: ANTHROPIC_API_KEY
+                  name: layer4-db-credentials
+                  key: DATABASE_URL
+            - name: CHECKPOINT_DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: anthropic-secret
-                  key: api-key
-                  optional: true
-            - name: LLM_MODEL
-              value: "gpt-4o"
-            - name: REDIS_URL
-              value: "redis://redis:6379/0"
+                  name: layer4-db-credentials
+                  key: DATABASE_URL
+            # Neo4j from ExternalSecret
             - name: NEO4J_URI
-              value: "bolt://neo4j:7687"
+              valueFrom:
+                secretKeyRef:
+                  name: layer4-secrets
+                  key: NEO4J_URI
             - name: NEO4J_USER
-              value: "neo4j"
+              valueFrom:
+                secretKeyRef:
+                  name: layer4-secrets
+                  key: NEO4J_USER
             - name: NEO4J_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: neo4j-secret
-                  key: auth
-            - name: LAYER1_API_URL
-              value: "http://layer1-ingestion:8000"
-            - name: LAYER2_API_URL
-              value: "http://layer2-extraction:8000"
-            - name: LAYER3_API_URL
-              value: "http://layer3-knowledge:8001"
-            - name: LAYER5_GROUND_TRUTH_URL
-              value: "http://layer5-ground-truth:8005"
-            - name: LAYER6_BENCHMARKS_URL
-              value: "http://layer6-benchmarks:8006"
-            - name: PINECONE_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: pinecone-secret
-                  key: api-key
-                  optional: true
-            - name: CHECKPOINT_DATABASE_URL
-              value: "postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth"
+                  name: layer4-secrets
+                  key: NEO4J_PASSWORD
             - name: LOG_LEVEL
               value: "info"
           resources:

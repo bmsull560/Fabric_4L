@@ -1,0 +1,314 @@
+"""
+GitOps and progressive delivery tests.
+
+Validates:
+1. Canary deployment configuration
+2. Health gate logic
+3. Feature flag behavior
+4. Rollback triggers
+"""
+
+import subprocess
+from unittest.mock import Mock, patch
+
+import pytest
+import yaml
+
+
+class TestArgoRollouts:
+    """Test Argo Rollouts configuration."""
+
+    def test_rollout_yaml_valid(self):
+        """Rollout YAML files are valid Kubernetes resources."""
+        rollout_files = [
+            "k8s/gitops/rollouts/layer4-agents-rollout.yaml",
+            "k8s/gitops/rollouts/layer1-ingestion-rollout.yaml",
+        ]
+
+        for file in rollout_files:
+            try:
+                with open(file) as f:
+                    docs = list(yaml.safe_load_all(f))
+
+                # First doc should be a Rollout
+                rollout = docs[0]
+                assert rollout["apiVersion"] == "argoproj.io/v1alpha1"
+                assert rollout["kind"] == "Rollout"
+                assert "spec" in rollout
+                assert "strategy" in rollout["spec"]
+                assert "canary" in rollout["spec"]["strategy"]
+            except FileNotFoundError:
+                pytest.skip(f"File not found: {file}")
+
+    def test_canary_steps_defined(self):
+        """Canary rollout has proper steps defined."""
+        try:
+            with open("k8s/gitops/rollouts/layer4-agents-rollout.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+                rollout = docs[0]
+
+            steps = rollout["spec"]["strategy"]["canary"]["steps"]
+            assert len(steps) > 0
+
+            # Should have weight steps
+            weight_steps = [s for s in steps if "setWeight" in s]
+            assert len(weight_steps) >= 2  # At least 2 weight changes
+
+            # Should have pause steps
+            pause_steps = [s for s in steps if "pause" in s]
+            assert len(pause_steps) >= 1
+
+            # Should have analysis steps
+            analysis_steps = [s for s in steps if "analysis" in s]
+            assert len(analysis_steps) >= 1
+        except FileNotFoundError:
+            pytest.skip("Rollout file not found")
+
+    def test_auto_rollback_enabled(self):
+        """Auto-rollback is enabled for safety."""
+        try:
+            with open("k8s/gitops/rollouts/layer4-agents-rollout.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+                rollout = docs[0]
+
+            canary = rollout["spec"]["strategy"]["canary"]
+            assert canary.get("autoRollbackEnabled") is True
+        except FileNotFoundError:
+            pytest.skip("Rollout file not found")
+
+    def test_analysis_templates_defined(self):
+        """Analysis templates are properly configured."""
+        try:
+            with open("k8s/gitops/rollouts/layer4-agents-rollout.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Find AnalysisTemplates
+            templates = [d for d in docs if d.get("kind") == "AnalysisTemplate"]
+            assert len(templates) >= 2  # success-rate, latency, error-rate
+
+            for template in templates:
+                assert "spec" in template
+                assert "metrics" in template["spec"]
+
+                for metric in template["spec"]["metrics"]:
+                    assert "name" in metric
+                    assert "interval" in metric
+                    assert "provider" in metric
+        except FileNotFoundError:
+            pytest.skip("Rollout file not found")
+
+
+class TestHealthGates:
+    """Test health gate configuration."""
+
+    def test_health_gates_yaml_valid(self):
+        """Health gates YAML is valid."""
+        try:
+            with open("k8s/gitops/rollouts/health-gates.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Should have AnalysisRun definitions
+            analysis_runs = [d for d in docs if d.get("kind") == "AnalysisRun"]
+            assert len(analysis_runs) >= 1
+        except FileNotFoundError:
+            pytest.skip("Health gates file not found")
+
+    def test_pre_deployment_health_checks(self):
+        """Pre-deployment health checks are comprehensive."""
+        try:
+            with open("k8s/gitops/rollouts/health-gates.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Find deployment health gate
+            health_gate = None
+            for doc in docs:
+                if doc.get("kind") == "AnalysisRun" and "deployment-health-gate" in str(
+                    doc.get("metadata", {}).get("name", "")
+                ):
+                    health_gate = doc
+                    break
+
+            if health_gate:
+                metrics = health_gate["spec"]["metrics"]
+                metric_names = [m["name"] for m in metrics]
+
+                # Should check environment, resources, errors, database
+                assert any("environment" in n or "health" in n for n in metric_names)
+                assert any("resource" in n for n in metric_names)
+                assert any("error" in n for n in metric_names)
+        except FileNotFoundError:
+            pytest.skip("Health gates file not found")
+
+
+class TestFeatureFlags:
+    """Test feature flag configuration."""
+
+    def test_feature_flags_per_environment(self):
+        """Feature flags are configured per environment."""
+        try:
+            with open("k8s/feature-flags/feature-flag-config.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Should have ConfigMaps for each environment
+            configmaps = [d for d in docs if d.get("kind") == "ConfigMap"]
+            assert len(configmaps) >= 3  # dev, staging, prod
+
+            namespaces = [cm["metadata"]["namespace"] for cm in configmaps]
+            assert any("prod" in ns for ns in namespaces)
+            assert any("staging" in ns for ns in namespaces)
+            assert any("dev" in ns for ns in namespaces)
+        except FileNotFoundError:
+            pytest.skip("Feature flags file not found")
+
+    def test_production_conservative_rollout(self):
+        """Production has conservative feature flag settings."""
+        try:
+            with open("k8s/feature-flags/feature-flag-config.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Find production ConfigMap
+            prod_cm = None
+            for doc in docs:
+                if doc.get("kind") == "ConfigMap" and "prod" in doc.get("metadata", {}).get("namespace", ""):
+                    prod_cm = doc
+                    break
+
+            if prod_cm:
+                data = prod_cm.get("data", {})
+
+                # Experimental features should be disabled in prod
+                assert data.get("FEATURE_EXPERIMENTAL_AI") == "false"
+                assert data.get("FEATURE_BETA_FORMULAS") == "false"
+
+                # Core features should be enabled
+                assert data.get("FEATURE_MULTI_TENANT_ISOLATION") == "true"
+                assert data.get("FEATURE_SSO_OIDC") == "true"
+        except FileNotFoundError:
+            pytest.skip("Feature flags file not found")
+
+    def test_dev_all_features_enabled(self):
+        """Development environment has all features enabled."""
+        try:
+            with open("k8s/feature-flags/feature-flag-config.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Find dev ConfigMap
+            dev_cm = None
+            for doc in docs:
+                if doc.get("kind") == "ConfigMap" and "dev" in doc.get("metadata", {}).get("namespace", ""):
+                    dev_cm = doc
+                    break
+
+            if dev_cm:
+                data = dev_cm.get("data", {})
+
+                # All features should be enabled in dev
+                for key, value in data.items():
+                    if key.startswith("FEATURE_"):
+                        assert value == "true", f"Feature {key} should be enabled in dev"
+                    if key.startswith("ROLLOUT_"):
+                        assert value == "100", f"Rollout {key} should be 100% in dev"
+        except FileNotFoundError:
+            pytest.skip("Feature flags file not found")
+
+
+class TestArgoCD:
+    """Test ArgoCD application configuration."""
+
+    def test_argocd_applications_yaml_valid(self):
+        """ArgoCD applications YAML is valid."""
+        try:
+            with open("k8s/gitops/argocd-applications.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Should have Applications
+            apps = [d for d in docs if d.get("kind") == "Application"]
+            assert len(apps) >= 3  # dev, staging, production
+
+            # Should have AppProject
+            projects = [d for d in docs if d.get("kind") == "AppProject"]
+            assert len(projects) >= 1
+        except FileNotFoundError:
+            pytest.skip("ArgoCD applications file not found")
+
+    def test_production_requires_manual_sync(self):
+        """Production application requires manual sync."""
+        try:
+            with open("k8s/gitops/argocd-applications.yaml") as f:
+                docs = list(yaml.safe_load_all(f))
+
+            # Find production application
+            prod_app = None
+            for doc in docs:
+                if doc.get("kind") == "Application" and "production" in str(
+                    doc.get("metadata", {}).get("name", "")
+                ):
+                    prod_app = doc
+                    break
+
+            if prod_app:
+                sync_policy = prod_app["spec"]["syncPolicy"]
+                automated = sync_policy.get("automated", {})
+
+                # Production should not auto-sync
+                assert automated.get("selfHeal") is False or automated.get("prune") is False
+        except FileNotFoundError:
+            pytest.skip("ArgoCD applications file not found")
+
+
+class TestCanaryConfiguration:
+    """Test Flagger canary configuration."""
+
+    def test_flagger_canary_yaml_valid(self):
+        """Flagger canary YAML is valid."""
+        try:
+            with open("k8s/feature-flags/flagger-canary.yaml") as f:
+                canary = yaml.safe_load(f)
+
+            assert canary["apiVersion"] == "flagger.app/v1beta1"
+            assert canary["kind"] == "Canary"
+            assert "spec" in canary
+        except FileNotFoundError:
+            pytest.skip("Flagger canary file not found")
+
+    def test_canary_thresholds_reasonable(self):
+        """Canary thresholds are set to reasonable values."""
+        try:
+            with open("k8s/feature-flags/flagger-canary.yaml") as f:
+                canary = yaml.safe_load(f)
+
+            analysis = canary["spec"]["analysis"]
+
+            # Threshold should allow some failures but not too many
+            assert analysis["threshold"] <= 10
+
+            # Max weight should not be 100 (that's full promotion)
+            assert analysis["maxWeight"] <= 50
+
+            # Step weight should be reasonable
+            assert analysis["stepWeight"] >= 5
+        except FileNotFoundError:
+            pytest.skip("Flagger canary file not found")
+
+    def test_webhooks_configured(self):
+        """Pre/post rollout webhooks are configured."""
+        try:
+            with open("k8s/feature-flags/flagger-canary.yaml") as f:
+                canary = yaml.safe_load(f)
+
+            webhooks = canary["spec"]["analysis"].get("webhooks", [])
+            webhook_types = [w.get("type") for w in webhooks]
+
+            # Should have acceptance test before rollout
+            assert "pre-rollout" in webhook_types
+
+            # Should have load test during rollout
+            assert "rollout" in webhook_types
+
+            # Should have conformance test after rollout
+            assert "post-rollout" in webhook_types
+
+            # Should have rollback notification
+            assert "rollback" in webhook_types
+        except FileNotFoundError:
+            pytest.skip("Flagger canary file not found")

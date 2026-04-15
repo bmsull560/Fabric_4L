@@ -1,0 +1,111 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-slsa-provenance
+  annotations:
+    policies.kyverno.io/title: Verify SLSA Provenance
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: critical
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Verifies that container images have SLSA provenance attestations
+      and that the build was performed in a trusted environment.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: verify-slsa-attestation
+      match:
+        resources:
+          kinds:
+            - Pod
+          namespaces:
+            - "value-fabric"
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/bmsull560/fabric_4l/*"
+          required: true
+          attestations:
+            - type: https://slsa.dev/provenance/v0.2
+              attestors:
+                - entries:
+                    - keyless:
+                        issuer: "https://token.actions.githubusercontent.com"
+                        rekorURL: https://rekor.sigstore.dev
+              conditions:
+                - all:
+                    # Verify build was from our repository
+                    - key: invocation.configSource.uri
+                      operator: Equals
+                      value: "git+https://github.com/bmsull560/Fabric_4L@refs/heads/main"
+                    # Verify build type is correct
+                    - key: buildType
+                      operator: Equals
+                      value: "https://github.com/slsa-framework/slsa-github-generator/container@v1"
+                    # Verify it was built in GitHub Actions
+                    - key: invocation.environment.name
+                      operator: Equals
+                      value: "github-hosted"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Container Registries
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      Only allows images from approved container registries.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        resources:
+          kinds:
+            - Pod
+          namespaces:
+            - "value-fabric"
+      validate:
+        message: "Only images from approved registries are allowed."
+        pattern:
+          spec:
+            =(initContainers):
+              - image: "ghcr.io/bmsull560/* | gcr.io/* | *.gcr.io/* | registry.k8s.io/*"
+            =(containers):
+              - image: "ghcr.io/bmsull560/* | gcr.io/* | *.gcr.io/* | registry.k8s.io/*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-helm-provenance
+  annotations:
+    policies.kyverno.io/title: Verify Helm Chart Provenance
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: HelmRelease
+    policies.kyverno.io/description: >-
+      Requires Helm charts to have verified provenance when installed
+      via Flux or ArgoCD.
+spec:
+  validationFailureAction: Audit
+  background: false
+  rules:
+    - name: check-helm-values
+      match:
+        resources:
+          kinds:
+            - HelmRelease
+          namespaces:
+            - "flux-system"
+            - "argocd"
+      validate:
+        message: "Helm releases should specify chart version and verify signatures."
+        pattern:
+          spec:
+            chart:
+              spec:
+                version: "?*"

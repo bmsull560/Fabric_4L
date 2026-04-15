@@ -1,0 +1,231 @@
+# Pre-commit hooks for Value Fabric
+# Install: pre-commit install
+# Update: pre-commit autoupdate
+# Run all: pre-commit run --all-files
+
+repos:
+  # ============================================
+  # SECURITY - MUST PASS
+  # ============================================
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+        name: Detect secrets (gitleaks)
+        description: Scans for secrets and credentials
+        fail_fast: true  # Stop if secrets found
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: detect-private-key
+        name: Detect private keys
+        fail_fast: true
+
+  # ============================================
+  # FORMATTING
+  # ============================================
+
+  # Python - Black
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        name: Black (Python formatter)
+        language_version: python3.11
+        files: \.py$
+        exclude: ^(migrations/|\.venv/|venv/|__pycache__/)
+
+  # Python - Ruff (lint + import sorting)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.3
+    hooks:
+      - id: ruff
+        name: Ruff (Python linter)
+        args: [--fix, --exit-non-zero-on-fix]
+        files: \.py$
+        exclude: ^(migrations/|\.venv/|venv/|__pycache__/)
+
+  # Python - isort
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (Python import sorting)
+        args: ["--profile", "black", "--filter-files"]
+        files: \.py$
+        exclude: ^(migrations/|\.venv/|venv/|__pycache__/)
+
+  # TypeScript/JavaScript - Prettier
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        name: Prettier (TS/JS/JSON/YAML formatter)
+        types_or: [javascript, jsx, ts, tsx, json, yaml, markdown]
+        exclude: ^(pnpm-lock\.yaml|package-lock\.json|yarn\.lock)$
+        additional_dependencies:
+          - prettier@3.3.3
+          - prettier-plugin-tailwindcss@0.6.8
+
+  # ============================================
+  # LINTING
+  # ============================================
+
+  # Python - mypy (type checking)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        name: mypy (Python type checker)
+        additional_dependencies:
+          - types-requests
+          - types-PyYAML
+          - types-python-dateutil
+          - pydantic
+        files: ^value-fabric/.+\.py$
+        exclude: ^(migrations/|tests/|\.venv/|venv/|__pycache__/)
+        args:
+          - --strict
+          - --ignore-missing-imports
+          - --show-error-codes
+
+  # ============================================
+  # GENERAL FILE CHECKS
+  # ============================================
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # File endings
+      - id: trailing-whitespace
+        name: Remove trailing whitespace
+      - id: end-of-file-fixer
+        name: Ensure files end with newline
+      - id: mixed-line-ending
+        name: Normalize line endings
+        args: [--fix=lf]
+
+      # JSON/YAML validation
+      - id: check-json
+        name: Validate JSON
+        exclude: ^\.vscode/
+      - id: check-yaml
+        name: Validate YAML
+        args: [--unsafe]  # Allow custom tags
+
+      # File checks
+      - id: check-added-large-files
+        name: Block large files (>500KB)
+        args: [--maxkb=500]
+      - id: check-case-conflict
+        name: Check for case conflicts
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-symlinks
+        name: Check symlinks point to something
+      - id: destroyed-symlinks
+        name: Detect destroyed symlinks
+
+      # Executable bits
+      - id: check-executables-have-shebangs
+        name: Check executables have shebangs
+      - id: check-shebang-scripts-are-executable
+        name: Check shebang scripts are executable
+
+      # Encoding
+      - id: fix-byte-order-marker
+        name: Fix UTF-8 byte order marker
+
+  # ============================================
+  # SAST (Static Analysis)
+ # ============================================
+
+  # Semgrep for security patterns
+  - repo: https://github.com/returntocorp/semgrep
+    rev: v1.93.0
+    hooks:
+      - id: semgrep
+        name: Semgrep (security SAST)
+        args:
+          - --config=auto
+          - --error
+          - --skip-git-ignore
+          - --metrics=off
+        exclude: ^(tests/|\.venv/|venv/|__pycache__/|node_modules/|\.turbo/)
+
+  # ============================================
+  # DOCKER
+  # ============================================
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.13.0-beta
+    hooks:
+      - id: hadolint
+        name: Hadolint (Dockerfile linter)
+        files: Dockerfile.*|.*Dockerfile
+        args:
+          - --ignore=DL3008  # Pin versions in apt-get install
+          - --ignore=DL3013  # Pin versions in pip
+          - --ignore=DL3018  # Pin versions in apk add
+
+  # ============================================
+  # COMMIT MESSAGES
+  # ============================================
+
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.29.1
+    hooks:
+      - id: commitizen
+        name: Commitizen (conventional commits)
+        stages: [commit-msg]
+
+  # ============================================
+  # LOCAL HOOKS (Project-specific)
+  # ============================================
+
+  # Contract drift check
+  - repo: local
+    hooks:
+      - id: contract-drift-check
+        name: Check for OpenAPI/Schema drift
+        entry: python scripts/check_contract_drift.py
+        language: system
+        files: ^(contracts/|value-fabric/.+/api/)
+        pass_filenames: false
+        always_run: true
+
+  # License header check
+  - repo: local
+    hooks:
+      - id: license-header
+        name: Check license headers
+        entry: python scripts/check_license_headers.py
+        language: system
+        files: \.(py|ts|tsx|js|jsx)$
+        pass_filenames: true
+
+  # Test discovery validation
+  - repo: local
+    hooks:
+      - id: test-discovery
+        name: Validate test discovery
+        entry: python scripts/ci/ci_eval_gate.py --discover-only
+        language: system
+        files: ^(tests/|value-fabric/.+/tests/)
+        pass_filenames: false
+        always_run: true
+
+# ============================================
+# GLOBAL CONFIGURATION
+# ============================================
+
+# Default stages to run
+default_stages: [pre-commit, pre-push]
+
+# Fail fast on critical hooks
+fail_fast: true
+
+# Minimum pre-commit version
+minimum_pre_commit_version: '3.0.0'

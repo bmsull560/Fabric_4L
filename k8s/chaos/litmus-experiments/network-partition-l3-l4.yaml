@@ -1,0 +1,132 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: network-partition-l3-l4
+  namespace: value-fabric-prod
+  labels:
+    chaos-type: network-partition
+    tier: resilience
+spec:
+  appinfo:
+    appns: 'value-fabric-prod'
+    applabel: 'app in (layer3-knowledge,layer4-agents)'
+    appkind: 'deployment'
+  engineState: 'active'
+  annotationCheck: 'true'
+  chaosServiceAccount: litmus-admin
+  monitoring: true
+  jobCleanUpPolicy: 'delete'
+  experiments:
+    - name: pod-network-partition
+      spec:
+        components:
+          env:
+            # Target direction
+            # Supported: ingress, egress, both
+            - name: TARGET_DIRECTION
+              value: 'both'
+            # Comma separated target hosts
+            # format: <target-namespace>/<target-app-label>
+            - name: TARGET_NAMESPACE
+              value: 'value-fabric-prod'
+            - name: TARGET_LABEL
+              value: 'app=layer3-knowledge'
+            # Set the chaos duration
+            - name: TOTAL_CHAOS_DURATION
+              value: '60'
+            # Set the chaos interval
+            - name: CHAOS_INTERVAL
+              value: '10'
+            # Provide the destination ips
+            # If not provided, will use default networking rules
+            - name: DESTINATION_IPS
+              value: ''
+            # Provide the destination hosts
+            - name: DESTINATION_HOSTS
+              value: ''
+          probe:
+            # Check that layer4 still responds (graceful degradation)
+            - name: "layer4-graceful-degradation"
+              type: "httpProbe"
+              mode: "Edge"
+              runProperties:
+                probeTimeout: "15s"
+                retry: 3
+                interval: "5s"
+                initialDelay: "5s"
+              httpProbe/inputs:
+                url: "http://layer4-agents.value-fabric-prod.svc.cluster.local:8000/health"
+                insecureSkipVerify: false
+                method:
+                  get:
+                    criteria: "=="
+                    responseCode: "200"
+            
+            # Verify knowledge layer recovers after network restore
+            - name: "knowledge-recovery"
+              type: "cmdProbe"
+              mode: "PostChaos"
+              runProperties:
+                probeTimeout: "60s"
+                retry: 5
+                interval: "10s"
+                initialDelay: "30s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl exec -n value-fabric-prod deploy/layer3-knowledge -- \
+                    wget -qO- http://localhost:8000/health | grep -q "healthy"
+              comparator:
+                type: "string"
+                criteria: "contains"
+                value: "healthy"
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: pod-network-partition
+  labels:
+    name: pod-network-partition
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+          - "apps"
+          - "batch"
+          - "litmuschaos.io"
+          - "networking.k8s.io"
+        resources:
+          - "jobs"
+          - "pods"
+          - "pods/log"
+          - "events"
+          - "networkpolicies"
+          - "chaosengines"
+          - "chaosexperiments"
+          - "chaosresults"
+        verbs:
+          - "create"
+          - "list"
+          - "get"
+          - "patch"
+          - "update"
+          - "delete"
+    image: "litmuschaos/go-runner:latest"
+    imagePullPolicy: Always
+    args:
+      - -c
+      - ./experiments -name network-partition
+    command:
+      - /bin/bash
+    env:
+      - name: TARGET_DIRECTION
+        value: 'both'
+      - name: TOTAL_CHAOS_DURATION
+        value: '60'
+      - name: CHAOS_INTERVAL
+        value: '10'
+    labels:
+      name: pod-network-partition
+      app.kubernetes.io/part-of: litmus

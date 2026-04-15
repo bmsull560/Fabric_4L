@@ -1,0 +1,145 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: cpu-stress-layer4-agents
+  namespace: value-fabric-prod
+  labels:
+    chaos-type: cpu-stress
+    tier: resilience
+spec:
+  appinfo:
+    appns: 'value-fabric-prod'
+    applabel: 'app=layer4-agents'
+    appkind: 'deployment'
+  engineState: 'active'
+  annotationCheck: 'true'
+  chaosServiceAccount: litmus-admin
+  monitoring: true
+  jobCleanUpPolicy: 'delete'
+  experiments:
+    - name: pod-cpu-hog
+      spec:
+        components:
+          env:
+            # Number of CPU cores to stress
+            - name: CPU_CORES
+              value: '2'
+            # Total chaos duration
+            - name: TOTAL_CHAOS_DURATION
+              value: '120'
+            # Chaos interval
+            - name: CHAOS_INTERVAL
+              value: '10'
+            # Number of stress instances
+            - name: NUMBER_OF_WORKERS
+              value: '4'
+            # Sequence: parallel or serial
+            - name: SEQUENCE
+              value: 'parallel'
+            # Target container
+            - name: TARGET_CONTAINER
+              value: 'layer4-agents'
+          probe:
+            # Verify HPA triggers scale-up
+            - name: "hpa-scale-up"
+              type: "cmdProbe"
+              mode: "Continuous"
+              runProperties:
+                probeTimeout: "30s"
+                retry: 5
+                interval: "10s"
+                initialDelay: "30s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl get hpa layer4-agents -n value-fabric-prod -o jsonpath='{.status.currentReplicas}'
+              comparator:
+                type: "int"
+                criteria: ">="
+                value: "2"
+            
+            # Verify no job loss during stress
+            - name: "job-queue-health"
+              type: "httpProbe"
+              mode: "Continuous"
+              runProperties:
+                probeTimeout: "10s"
+                retry: 2
+                interval: "10s"
+                initialDelay: "10s"
+              httpProbe/inputs:
+                url: "http://layer4-agents.value-fabric-prod.svc.cluster.local:8000/api/v1/workflows/queue/status"
+                insecureSkipVerify: false
+                method:
+                  get:
+                    criteria: "<"
+                    responseCode: "500"
+            
+            # Post-chaos: verify pod recovers
+            - name: "cpu-recovery"
+              type: "cmdProbe"
+              mode: "PostChaos"
+              runProperties:
+                probeTimeout: "30s"
+                retry: 3
+                interval: "5s"
+                initialDelay: "10s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl top pod -n value-fabric-prod -l app=layer4-agents | awk 'NR>1 {print $2}' | sed 's/m//'
+              comparator:
+                type: "int"
+                criteria: "<"
+                value: "500"
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: pod-cpu-hog
+  labels:
+    name: pod-cpu-hog
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+          - "apps"
+          - "batch"
+          - "litmuschaos.io"
+        resources:
+          - "jobs"
+          - "pods"
+          - "pods/exec"
+          - "pods/log"
+          - "events"
+          - "chaosengines"
+          - "chaosexperiments"
+          - "chaosresults"
+        verbs:
+          - "create"
+          - "list"
+          - "get"
+          - "patch"
+          - "update"
+          - "delete"
+    image: "litmuschaos/go-runner:latest"
+    imagePullPolicy: Always
+    args:
+      - -c
+      - ./experiments -name pod-cpu-hog
+    command:
+      - /bin/bash
+    env:
+      - name: CPU_CORES
+        value: '2'
+      - name: TOTAL_CHAOS_DURATION
+        value: '120'
+      - name: CHAOS_INTERVAL
+        value: '10'
+      - name: NUMBER_OF_WORKERS
+        value: '4'
+    labels:
+      name: pod-cpu-hog
+      app.kubernetes.io/part-of: litmus

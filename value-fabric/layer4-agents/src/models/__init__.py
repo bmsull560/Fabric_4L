@@ -8,6 +8,13 @@ from .account import (
     EmbeddedOpportunity,
     SyncStatus,
 )
+from .billing import (
+    BillingCustomer,
+    BillingSubscription,
+    BillingWebhookEvent,
+    PlanId,
+    SubscriptionStatus,
+)
 from .agent_state import (
     AgentState,
     BaseAgentState,
@@ -79,6 +86,12 @@ __all__ = [
     "EmbeddedContact",
     "EmbeddedOpportunity",
     "SyncStatus",
+    # Billing Models
+    "BillingCustomer",
+    "BillingSubscription",
+    "BillingWebhookEvent",
+    "PlanId",
+    "SubscriptionStatus",
     # Agent State
     "AgentState",
     "BaseAgentState",

@@ -1,0 +1,152 @@
+# Vault Database Secrets Engine - PostgreSQL Role Configurations
+# These are Vault policy/role definitions (not K8s manifests)
+# Apply via: vault policy write ... && vault write database/roles/...
+
+# ============================================
+# VAULT POLICIES
+# ============================================
+
+# Policy for application dynamic credentials
+# File: vault-policy-app-read.hcl
+# vault policy write value-fabric-app vault-policy-app-read.hcl
+# 
+# path "database/creds/app-role" {
+#   capabilities = ["read"]
+# }
+# 
+# path "secret/data/value-fabric/*" {
+#   capabilities = ["read", "list"]
+# }
+
+# Policy for admin operations
+# File: vault-policy-admin.hcl
+# vault policy write value-fabric-admin vault-policy-admin.hcl
+#
+# path "database/creds/admin-role" {
+#   capabilities = ["read"]
+# }
+#
+# path "database/rotate-role/*" {
+#   capabilities = ["update"]
+# }
+#
+# path "secret/*" {
+#   capabilities = ["create", "read", "update", "delete", "list"]
+# }
+
+# ============================================
+# DATABASE CONNECTION CONFIG
+# ============================================
+
+# Configure PostgreSQL connection (run once in Vault)
+# vault write database/config/postgres \
+#   plugin_name=postgresql-database-plugin \
+#   allowed_roles="app-role,admin-role,readonly-role" \
+#   connection_url="postgresql://{{username}}:{{password}}@postgres.value-fabric.svc.cluster.local:5432/postgres" \
+#   username="vault" \
+#   password="<vault-admin-password>"
+
+# ============================================
+# EXTERNAL SECRET MANIFESTS
+# ============================================
+
+---
+# Dynamic credentials for application (short-lived)
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: postgres-app-credentials
+  namespace: value-fabric
+spec:
+  refreshInterval: "1h"  # Rotate every hour
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: postgres-app-secret
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        # Connection string format for SQLAlchemy/psycopg2
+        DATABASE_URL: "postgresql://{{ .username }}:{{ .password }}@postgres.value-fabric.svc.cluster.local:5432/ingestion?sslmode=require"
+        # Individual components for apps that need them
+        DB_HOST: "postgres.value-fabric.svc.cluster.local"
+        DB_PORT: "5432"
+        DB_NAME: "ingestion"
+        DB_USER: "{{ .username }}"
+        DB_PASSWORD: "{{ .password }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: database/creds/app-role
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: database/creds/app-role
+        property: password
+
+---
+# Admin credentials for migrations/DDL (longer-lived)
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: postgres-admin-credentials
+  namespace: value-fabric
+spec:
+  refreshInterval: "4h"  # Rotate every 4 hours
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: postgres-admin-secret
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        DATABASE_URL: "postgresql://{{ .username }}:{{ .password }}@postgres.value-fabric.svc.cluster.local:5432/postgres?sslmode=require"
+        DB_HOST: "postgres.value-fabric.svc.cluster.local"
+        DB_PORT: "5432"
+        DB_NAME: "postgres"
+        DB_USER: "{{ .username }}"
+        DB_PASSWORD: "{{ .password }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: database/creds/admin-role
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: database/creds/admin-role
+        property: password
+
+---
+# Readonly credentials for reporting/analytics
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: postgres-readonly-credentials
+  namespace: value-fabric
+spec:
+  refreshInterval: "24h"  # Rotate daily
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: vault-backend
+  target:
+    name: postgres-readonly-secret
+    creationPolicy: Owner
+    template:
+      type: Opaque
+      data:
+        DATABASE_URL: "postgresql://{{ .username }}:{{ .password }}@postgres.value-fabric.svc.cluster.local:5432/ingestion?sslmode=require&options=-cdefault_transaction_read_only=on"
+        DB_USER: "{{ .username }}"
+        DB_PASSWORD: "{{ .password }}"
+  data:
+    - secretKey: username
+      remoteRef:
+        key: database/creds/readonly-role
+        property: username
+    - secretKey: password
+      remoteRef:
+        key: database/creds/readonly-role
+        property: password

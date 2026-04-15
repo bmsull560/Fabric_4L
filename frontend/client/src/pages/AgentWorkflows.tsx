@@ -4,10 +4,21 @@
  * Data Flow: React Query for server state, Zustand for UI state
  */
 import { useState } from "react";
-import { Bot, Clock, AlertTriangle, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
-import { useActiveWorkflows, useWorkflowHistory, type Workflow } from "@/hooks/useWorkflows";
-import { PageHeader, MetricCard, DataTable, StatusBadge, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
+import { 
+  Bot, Clock, AlertTriangle, ChevronLeft, ChevronRight, RefreshCw,
+  Eye, Pause, MoreHorizontal 
+} from "lucide-react";
+import { 
+  useActiveWorkflows, 
+  useWorkflowHistory, 
+  useCancelWorkflow,
+  type Workflow 
+} from "@/hooks/useWorkflows";
+import { PageHeader, MetricCard, DataTable, StatusBadge as StatusBadgePrimitive, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
 import { QueryState } from "@/components/QueryState";
+import { WorkflowDetail } from "@/components/WorkflowDetail";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -88,6 +99,13 @@ export default function AgentWorkflows() {
   // Pagination state
   const [activePage, setActivePage] = useState(0);
   const [historyPage, setHistoryPage] = useState(0);
+  
+  // Detail drawer state
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  
+  // Cancel mutation
+  const cancelWorkflow = useCancelWorkflow();
 
   // Server state: React Query handles fetching, caching, loading, error
   const {
@@ -187,12 +205,15 @@ export default function AgentWorkflows() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="text-[12px] font-bold text-neutral-900 font-mono">{workflow.id}</span>
-                    <StatusBadge status={workflow.status}/>
+                    <StatusBadgePrimitive status={workflow.status}/>
                   </div>
                   <div className="text-[11px] text-neutral-600">
                     <span className="font-semibold">{workflow.name}</span>
                     {workflow.progress > 0 && (
-                      <span className="ml-2">Progress: {workflow.progress}%</span>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <Progress value={workflow.progress} className="h-1.5 w-24" />
+                        <span className="text-[10px] text-neutral-500">{workflow.progress}%</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -201,7 +222,28 @@ export default function AgentWorkflows() {
                     <Clock size={10}/>
                     {workflow.status}
                   </div>
-                  <Btn variant="ghost" className="text-[11px]">View</Btn>
+                  {(workflow.status === 'running' || workflow.status === 'pending') && (
+                    <Btn 
+                      variant="ghost" 
+                      className="text-[11px] text-red-600 hover:text-red-700"
+                      onClick={() => cancelWorkflow.mutate(workflow.id)}
+                      disabled={cancelWorkflow.isPending}
+                    >
+                      <Pause size={12} className="mr-1" />
+                      {cancelWorkflow.isPending ? 'Cancelling...' : 'Cancel'}
+                    </Btn>
+                  )}
+                  <Btn 
+                    variant="ghost" 
+                    className="text-[11px]"
+                    onClick={() => {
+                      setSelectedWorkflow(workflow);
+                      setIsDetailOpen(true);
+                    }}
+                  >
+                    <Eye size={12} className="mr-1" />
+                    View
+                  </Btn>
                 </div>
               </div>
             ))}
@@ -236,11 +278,20 @@ export default function AgentWorkflows() {
             rows={historyWorkflows.map((w: Workflow) => [
               <span className="font-mono text-[11px] text-neutral-600">{w.id}</span>,
               <span className="text-neutral-700 font-semibold">{w.name}</span>,
-              <StatusBadge status={w.status}/>,
+              <StatusBadgePrimitive status={w.status}/>,
               <span className="text-neutral-500 text-[11px]">{w.progress}%</span>,
               <span className="text-neutral-400 text-[11px]">{w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '-'}</span>,
               <div className="flex gap-2">
-                <button className="text-blue-600 text-[11px] hover:underline">View</button>
+                <button 
+                  className="text-blue-600 text-[11px] hover:underline flex items-center gap-1"
+                  onClick={() => {
+                    setSelectedWorkflow(w);
+                    setIsDetailOpen(true);
+                  }}
+                >
+                  <Eye size={12} />
+                  View
+                </button>
               </div>,
             ])}
           />
@@ -260,6 +311,17 @@ export default function AgentWorkflows() {
           />
         )}
       </SectionCard>
+      
+      {/* Workflow Detail Drawer */}
+      <WorkflowDetail
+        workflow={selectedWorkflow}
+        isOpen={isDetailOpen}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setSelectedWorkflow(null);
+        }}
+        onCancel={(id) => cancelWorkflow.mutate(id)}
+      />
     </div>
   );
 }

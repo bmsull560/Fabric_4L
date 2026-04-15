@@ -1,0 +1,222 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: value-fabric-dev
+  namespace: argocd
+  labels:
+    environment: dev
+    tier: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: value-fabric
+  source:
+    repoURL: https://github.com/bmsull560/Fabric_4L.git
+    targetRevision: HEAD
+    path: k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: value-fabric-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: value-fabric-staging
+  namespace: argocd
+  labels:
+    environment: staging
+    tier: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "#deployments"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "#alerts"
+spec:
+  project: value-fabric
+  source:
+    repoURL: https://github.com/bmsull560/Fabric_4L.git
+    targetRevision: HEAD
+    path: k8s/overlays/staging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: value-fabric-staging
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: value-fabric-production
+  namespace: argocd
+  labels:
+    environment: production
+    tier: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: "Prune=false,Replace=false"
+    notifications.argoproj.io/subscribe.on-sync-succeeded.slack: "#deployments"
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: "#alerts"
+spec:
+  project: value-fabric
+  source:
+    repoURL: https://github.com/bmsull560/Fabric_4L.git
+    targetRevision: main
+    path: k8s/overlays/prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: value-fabric-prod
+  syncPolicy:
+    # Production requires manual sync with approval
+    automated:
+      prune: false
+      selfHeal: false
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: argoproj.io
+      kind: Rollout
+      jsonPointers:
+        - /spec/replicas
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: value-fabric
+  namespace: argocd
+  labels:
+    tier: platform
+spec:
+  description: Value Fabric Platform
+  sourceRepos:
+    - https://github.com/bmsull560/Fabric_4L.git
+  destinations:
+    - namespace: value-fabric-*
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: DaemonSet
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: policy
+      kind: PodDisruptionBudget
+    - group: argoproj.io
+      kind: Rollout
+    - group: flagger.app
+      kind: Canary
+  roles:
+    - name: admin
+      description: Admin access to all applications
+      policies:
+        - p, proj:value-fabric:admin, applications, *, value-fabric/*, allow
+      groups:
+        - value-fabric:platform-team
+---
+# ApplicationSet for multi-environment management
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: value-fabric-rollouts
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: dev
+            url: https://kubernetes.default.svc
+            branch: HEAD
+            autoSync: true
+          - cluster: staging
+            url: https://kubernetes.default.svc
+            branch: HEAD
+            autoSync: true
+          - cluster: production
+            url: https://kubernetes.default.svc
+            branch: main
+            autoSync: false
+  template:
+    metadata:
+      name: value-fabric-{{cluster}}
+      labels:
+        environment: '{{cluster}}'
+    spec:
+      project: value-fabric
+      source:
+        repoURL: https://github.com/bmsull560/Fabric_4L.git
+        targetRevision: '{{branch}}'
+        path: k8s/overlays/{{cluster}}
+      destination:
+        server: '{{url}}'
+        namespace: value-fabric-{{cluster}}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: '{{autoSync}}'

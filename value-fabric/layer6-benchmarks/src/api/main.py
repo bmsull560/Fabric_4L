@@ -19,6 +19,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
+from shared.security import add_security_middleware, SecurityConfig
 
 from ..metrics import get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
@@ -94,6 +95,24 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# SecurityMiddleware — input validation and security headers (before CORS)
+# L6 has no skip paths — all endpoints require strict validation
+_security_config_l6 = SecurityConfig(
+    skip_validation_paths=frozenset(),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l6)
+
+# GovernanceMiddleware — provides auth and tenant context
+try:
+    from shared.identity.middleware import GovernanceMiddleware
+
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+except ImportError:
+    logging.getLogger(__name__).warning(
+        "shared.identity not importable — GovernanceMiddleware skipped in L6."
+    )
 
 # CORS middleware with production validation (P0-20)
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec

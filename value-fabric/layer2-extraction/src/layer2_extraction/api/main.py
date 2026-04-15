@@ -78,25 +78,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Add metrics middleware if available
-if metrics:
-    metrics_middleware = MetricsMiddleware(metrics)
-    app.middleware("http")(metrics_middleware)
-
-# GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
-try:
-    from shared.identity.middleware import GovernanceMiddleware
-
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
-except ImportError:
-    import logging as _log
-
-    _log.getLogger(__name__).warning(
-        "shared.identity not importable — GovernanceMiddleware skipped in L2. "
-        "Ensure the shared package is installed."
-    )
-
-# CORS middleware with production validation (P0-20)
+# CORS middleware with production validation (P0-20) — OUTERMOST
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
 _environment = os.getenv("ENVIRONMENT", "development")
 _cors_origins_env = os.getenv("CORS_ORIGINS", "")
@@ -119,6 +101,37 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# SecurityMiddleware — input validation and security headers
+from shared.security import add_security_middleware, SecurityConfig
+
+_security_config_l2 = SecurityConfig(
+    skip_validation_paths=frozenset({
+        "/v1/extract",
+        "/v1/extract/batch",
+        "/v1/nl-query",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l2)
+
+# GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
+try:
+    from shared.identity.middleware import GovernanceMiddleware
+
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+except ImportError:
+    import logging as _log
+
+    _log.getLogger(__name__).warning(
+        "shared.identity not importable — GovernanceMiddleware skipped in L2. "
+        "Ensure the shared package is installed."
+    )
+
+# Add metrics middleware if available — INNERMOST
+if metrics:
+    metrics_middleware = MetricsMiddleware(metrics)
+    app.middleware("http")(metrics_middleware)
 
 # Include WebSocket router for real-time pipeline streaming
 app.include_router(websocket_router, prefix="/v1")

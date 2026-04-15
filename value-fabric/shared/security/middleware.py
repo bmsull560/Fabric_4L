@@ -1,17 +1,19 @@
-"""Security middleware for input validation and sanitization."""
+"""Security middleware for input validation and sanitization.
+
+Provides centralized security validation with per-layer configuration support.
+Uses stream caching with receive() override to avoid body consumption issues.
+"""
 
 import html
 import json
 import re
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Callable, FrozenSet
 
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-
-from ..logging_config import get_logger
-
-logger = get_logger(__name__)
+from starlette.types import Message, Receive, Scope, Send
 
 # Security patterns for injection detection
 SQL_INJECTION_PATTERNS = [
@@ -51,6 +53,22 @@ COMMAND_INJECTION_PATTERNS = [
     # Scripting language invocations
     r"\b(python|perl|ruby|php)\s+(-c|-e|--eval)",
 ]
+
+
+@dataclass(frozen=True)
+class SecurityConfig:
+    """Configuration for SecurityMiddleware.
+    
+    Attributes:
+        skip_validation_paths: Paths that bypass security validation
+        strict_mode: If True, blocks requests on security violations
+        max_body_size_bytes: Maximum body size to buffer (default 1MB)
+        validate_json_bodies: Whether to scan JSON request bodies
+    """
+    skip_validation_paths: FrozenSet[str] = field(default_factory=frozenset)
+    strict_mode: bool = True
+    max_body_size_bytes: int = 1_048_576  # 1MB
+    validate_json_bodies: bool = True
 
 
 class SecurityValidator:
@@ -138,57 +156,39 @@ class SecurityValidator:
 
 
 class SecurityMiddleware(BaseHTTPMiddleware):
-    """Security middleware for input validation and sanitization."""
+    """Security middleware for input validation and sanitization.
+    
+    Uses stream caching with receive() override to ensure downstream
+    consumers can still read the request body after security validation.
+    """
 
-    # Paths that skip security validation (RDF/Turtle data triggers false positives)
-    # Also skip graph query endpoints that accept natural language queries
-    SKIP_VALIDATION_PATHS = frozenset(
-        {
-            "/v1/ingest",
-            "/v1/sync",
-            "/v1/batch/ingest",
-            "/v1/query/graph",
-            "/v1/query",
-            "/v1/graph/query",
-            "/query/graph",
-            "/graph/query",
-        }
-    )
-
-    def __init__(self, app, strict_mode: bool = True):
+    def __init__(self, app, config: SecurityConfig):
         """Initialize security middleware.
-
+        
         Args:
-            app: FastAPI application
-            strict_mode: If True, blocks requests on security violations
+            app: FastAPI/Starlette application
+            config: Security configuration including skip paths and strict mode
         """
         super().__init__(app)
-        self.strict_mode = strict_mode
+        self.config = config
         # Pre-compute normalized paths for efficient lookup
         self._normalized_skip_paths = frozenset(
-            p.rstrip("/").lower() for p in self.SKIP_VALIDATION_PATHS
+            p.rstrip("/").lower() for p in config.skip_validation_paths
         )
 
     def _should_skip_validation(self, path: str) -> bool:
-        """Check if path should skip security validation.
-
-        Handles trailing slashes and case-insensitive matching for robustness.
-
-        Args:
-            path: Request path to check
-
-        Returns:
-            True if path should skip validation
-        """
-        # Normalize path: remove trailing slash, lowercase
+        """Check if path should skip security validation."""
         normalized = path.rstrip("/").lower()
         return normalized in self._normalized_skip_paths
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        """Process request through security validation."""
-        # Skip validation for RDF ingestion endpoints and graph query endpoints
+        """Process request through security validation with body stream caching."""
+        # Skip validation for configured paths
         if self._should_skip_validation(request.url.path):
-            logger.debug(f"Skipping validation for {request.url.path}")
+            return await call_next(request)
+
+        # Skip body validation for OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
             return await call_next(request)
 
         violations = []
@@ -212,30 +212,25 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                         f"Command injection detected in query parameter '{key}'"
                     )
 
-        # Validate request body for JSON requests
-        if request.headers.get("content-type", "").startswith("application/json"):
-            try:
-                body = await request.body()
-                if body:
-                    json_data = json.loads(body.decode("utf-8"))
+        # Cache and validate request body if applicable
+        body_content = None
+        if (
+            self.config.validate_json_bodies
+            and request.headers.get("content-type", "").startswith("application/json")
+            and request.method in ("POST", "PUT", "PATCH")
+        ):
+            body_content = await self._cache_and_validate_body(request, violations)
 
-                    # Validate JSON structure
-                    if not SecurityValidator.validate_json_structure(json_data):
-                        violations.append(
-                            "Invalid JSON structure - possible recursion attack"
-                        )
-
-                    # Scan JSON values for injection patterns
-                    self._validate_json_data(json_data, violations)
-
-            except json.JSONDecodeError:
-                # Invalid JSON will be handled by FastAPI
-                pass
-            except Exception as e:
-                logger.warning(f"Error validating request body: {e}")
-
-        # Log violations and handle response
+        # Handle violations
         if violations:
+            # Import logger locally to avoid circular imports
+            try:
+                from structlog import get_logger
+                logger = get_logger(__name__)
+            except ImportError:
+                import logging
+                logger = logging.getLogger(__name__)
+
             logger.warning(
                 "Security violations detected",
                 extra={
@@ -246,7 +241,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-            if self.strict_mode:
+            if self.config.strict_mode:
                 return JSONResponse(
                     status_code=400,
                     content={
@@ -258,6 +253,11 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Update request with sanitized query params
         request._query_params = sanitized_query
 
+        # If we cached body content, inject a new receive() that returns it
+        if body_content is not None:
+            original_receive = request.receive
+            request._receive = self._make_receive_override(original_receive, body_content)
+
         response = await call_next(request)
 
         # Add security headers
@@ -265,14 +265,80 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        # Strict CSP for API responses (not HTML pages)
-        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
-        # Additional security headers
-        response.headers["Permissions-Policy"] = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; frame-ancestors 'none'"
+        )
+        response.headers["Permissions-Policy"] = (
+            "accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+            "magnetometer=(), microphone=(), payment=(), usb=()"
+        )
         response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
 
         return response
+
+    async def _cache_and_validate_body(
+        self, request: Request, violations: list[str]
+    ) -> bytes | None:
+        """Cache body content and validate for injection patterns.
+        
+        Returns the cached body content if valid size, None if too large.
+        """
+        try:
+            body = await request.body()
+            
+            # Skip if body is too large
+            if len(body) > self.config.max_body_size_bytes:
+                return body  # Return but don't validate - too large to scan
+
+            if body:
+                try:
+                    json_data = json.loads(body.decode("utf-8"))
+
+                    # Validate JSON structure
+                    if not SecurityValidator.validate_json_structure(json_data):
+                        violations.append(
+                            "Invalid JSON structure - possible recursion attack"
+                        )
+
+                    # Scan JSON values for injection patterns
+                    self._validate_json_data(json_data, violations)
+
+                except json.JSONDecodeError:
+                    # Invalid JSON will be handled by FastAPI
+                    pass
+                except Exception:
+                    # Log but don't block on validation errors
+                    pass
+
+            return body
+
+        except Exception:
+            # If we can't read the body, don't block but don't cache either
+            return None
+
+    def _make_receive_override(
+        self, original_receive: Receive, cached_body: bytes
+    ) -> Receive:
+        """Create a receive() override that returns cached body then resumes original.
+        
+        This preserves compatibility with FastAPI/Starlette body consumption.
+        """
+        body_sent = False
+
+        async def receive() -> Message:
+            nonlocal body_sent
+            if not body_sent and cached_body:
+                body_sent = True
+                return {
+                    "type": "http.request",
+                    "body": cached_body,
+                    "more_body": False,
+                }
+            # After body is consumed, delegate to original receive
+            return await original_receive()
+
+        return receive
 
     def _validate_json_data(
         self, data: Any, violations: list[str], path: str = ""
@@ -302,17 +368,14 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def _is_rdf_data(value: str) -> bool:
         """Check if string looks like RDF/Turtle data (not injection)."""
-        # Look for RDF/Turtle-specific patterns that indicate legitimate data
         rdf_indicators = [
-            "@prefix",  # Turtle prefix declaration
-            "@base",  # Turtle base declaration
-            "rdf:type",  # RDF type predicate
-            "http://",  # HTTP URLs in RDF
-            "https://",  # HTTPS URLs in RDF
+            "@prefix",
+            "@base",
+            "rdf:type",
+            "http://",
+            "https://",
         ]
-        # Check for multiple RDF indicators to reduce false positives
         indicator_count = sum(1 for ind in rdf_indicators if ind in value)
-        # Also check for Turtle-specific URI syntax <...>
         has_uri_syntax = "<http" in value and ">" in value
         return indicator_count >= 2 or (indicator_count >= 1 and has_uri_syntax)
 
@@ -320,8 +383,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self, value: str, path: str, violations: list[str]
     ) -> None:
         """Check string value for various injection patterns."""
-        # Skip injection checks for legitimate RDF/Turtle data which contains
-        # URLs with special characters like < > : that trigger false positives
+        # Skip injection checks for legitimate RDF/Turtle data
         if self._is_rdf_data(value):
             return
 
@@ -346,11 +408,13 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             violations.append(f"Command injection detected in field '{path}'")
 
 
-def add_security_middleware(app, strict_mode: bool = True) -> None:
+def add_security_middleware(app, config: SecurityConfig | None = None) -> None:
     """Add security middleware to FastAPI application.
-
+    
     Args:
         app: FastAPI application
-        strict_mode: If True, blocks requests on security violations
+        config: Security configuration. If None, uses defaults (strict mode, no skip paths).
     """
-    app.add_middleware(SecurityMiddleware, strict_mode=strict_mode)
+    if config is None:
+        config = SecurityConfig()
+    app.add_middleware(SecurityMiddleware, config=config)

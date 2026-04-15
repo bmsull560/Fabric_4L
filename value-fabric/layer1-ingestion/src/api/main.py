@@ -163,10 +163,42 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Add metrics middleware if available
-if metrics:
-    metrics_middleware = MetricsMiddleware(metrics)
-    app.middleware("http")(metrics_middleware)
+# CORS middleware with production validation (P0-20) — OUTERMOST
+# Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
+_environment = os.getenv("ENVIRONMENT", "development")
+_cors_origins_env = os.getenv("CORS_ORIGINS", "")
+
+if _environment == "production" and not _cors_origins_env:
+    raise RuntimeError(
+        "FATAL: CORS_ORIGINS environment variable must be set in production. "
+        "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
+    )
+
+# Parse CORS origins, filtering out empty strings from trailing commas
+allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
+# Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
+allow_credentials = "*" not in allow_origins
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# SecurityMiddleware — input validation and security headers
+from shared.security import add_security_middleware, SecurityConfig
+
+_security_config_l1 = SecurityConfig(
+    skip_validation_paths=frozenset({
+        "/v1/ingest",
+        "/v1/ingest/batch",
+        "/v1/batch/ingest",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l1)
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
 # api_key_resolver is None here (L1 uses JWT auth primarily); pass a resolver
@@ -193,29 +225,10 @@ except ImportError:
         "Ensure the shared package is installed."
     )
 
-# CORS middleware with production validation (P0-20)
-# Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
-_environment = os.getenv("ENVIRONMENT", "development")
-_cors_origins_env = os.getenv("CORS_ORIGINS", "")
-
-if _environment == "production" and not _cors_origins_env:
-    raise RuntimeError(
-        "FATAL: CORS_ORIGINS environment variable must be set in production. "
-        "Use 'https://yourdomain.com' or comma-separated list of allowed origins."
-    )
-
-# Parse CORS origins, filtering out empty strings from trailing commas
-allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
-# Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
-allow_credentials = "*" not in allow_origins
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allow_origins,
-    allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Add metrics middleware if available — INNERMOST
+if metrics:
+    metrics_middleware = MetricsMiddleware(metrics)
+    app.middleware("http")(metrics_middleware)
 
 # Create router for spec-compliant endpoints
 router = APIRouter(prefix="/api/v1/ingestion")

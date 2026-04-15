@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags
+  namespace: value-fabric-prod
+data:
+  # Feature flag definitions - controlled via environment
+  FEATURE_ADVANCED_MODE: "false"
+  FEATURE_BENCHMARK_POLICIES: "true"
+  FEATURE_WORKFLOW_RESUME: "true"
+  FEATURE_KNOWLEDGE_GRAPH_UI: "true"
+  FEATURE_MULTI_TENANT_ISOLATION: "true"
+  FEATURE_SSO_OIDC: "true"
+  FEATURE_EXPERIMENTAL_AI: "false"
+  FEATURE_BETA_FORMULAS: "false"
+  
+  # Rollout percentages (0-100)
+  ROLLOUT_ADVANCED_MODE: "0"
+  ROLLOUT_EXPERIMENTAL_AI: "0"
+  ROLLOUT_BETA_FORMULAS: "0"
+  
+  # Feature dependencies
+  # advanced_mode requires: sso_oidc
+  # experimental_ai requires: advanced_mode
+  # beta_formulas requires: advanced_mode
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags-staging
+  namespace: value-fabric-staging
+data:
+  # Staging: Enable beta features for testing
+  FEATURE_ADVANCED_MODE: "true"
+  FEATURE_BENCHMARK_POLICIES: "true"
+  FEATURE_WORKFLOW_RESUME: "true"
+  FEATURE_KNOWLEDGE_GRAPH_UI: "true"
+  FEATURE_MULTI_TENANT_ISOLATION: "true"
+  FEATURE_SSO_OIDC: "true"
+  FEATURE_EXPERIMENTAL_AI: "true"
+  FEATURE_BETA_FORMULAS: "true"
+  
+  ROLLOUT_ADVANCED_MODE: "100"
+  ROLLOUT_EXPERIMENTAL_AI: "50"
+  ROLLOUT_BETA_FORMULAS: "100"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feature-flags-dev
+  namespace: value-fabric-dev
+data:
+  # Dev: All features enabled
+  FEATURE_ADVANCED_MODE: "true"
+  FEATURE_BENCHMARK_POLICIES: "true"
+  FEATURE_WORKFLOW_RESUME: "true"
+  FEATURE_KNOWLEDGE_GRAPH_UI: "true"
+  FEATURE_MULTI_TENANT_ISOLATION: "true"
+  FEATURE_SSO_OIDC: "true"
+  FEATURE_EXPERIMENTAL_AI: "true"
+  FEATURE_BETA_FORMULAS: "true"
+  
+  ROLLOUT_ADVANCED_MODE: "100"
+  ROLLOUT_EXPERIMENTAL_AI: "100"
+  ROLLOUT_BETA_FORMULAS: "100"

@@ -1,0 +1,320 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: string
+        default: 'staging'
+      image_tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+      registry:
+        description: 'Container registry'
+        default: 'ghcr.io'
+        required: false
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+        default: 'staging'
+      image_tag:
+        description: 'Image tag to deploy'
+        required: true
+        type: string
+      registry:
+        description: 'Container registry'
+        default: 'ghcr.io'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ${{ inputs.registry || 'ghcr.io' }}
+  IMAGE_TAG: ${{ inputs.image_tag }}
+  ENVIRONMENT: ${{ inputs.environment }}
+
+jobs:
+  # ============================================
+  # Pre-deployment Checks
+  # ============================================
+  preflight:
+    name: Pre-deployment Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify image signatures
+        uses: sigstore/cosign-installer@v3.8.1
+
+      - name: Check all images are signed
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          for layer in layer1-ingestion layer2-extraction layer3-knowledge layer4-agents layer5-ground-truth layer6-benchmarks frontend; do
+            IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/fabric_4l/$layer:${{ env.IMAGE_TAG }}"
+            echo "Verifying signature for: $IMAGE"
+            
+            if ! cosign verify \
+              --certificate-identity-regexp="https://github.com/${{ github.repository }}/.github/workflows/.*" \
+              --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+              "$IMAGE"; then
+              echo "Signature verification failed for: $IMAGE"
+              exit 1
+            fi
+          done
+          
+          echo "All image signatures verified ✓"
+
+      - name: Download and verify SBOMs
+        run: |
+          # This would download SBOMs from artifact storage
+          # and verify they match the deployed images
+          echo "SBOM verification placeholder - integrate with artifact store"
+
+      - name: Check environment health
+        if: env.ENVIRONMENT != 'dev'
+        run: |
+          # Check if previous deployment is healthy before proceeding
+          echo "Environment health check placeholder"
+          # curl -fsS "https://api.${{ env.ENVIRONMENT }}.value-fabric.com/health"
+
+  # ============================================
+  # Deploy to Environment
+  # ============================================
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: preflight
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.deploy-info.outputs.url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.31.2'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.16.2'
+
+      - name: Configure kubeconfig
+        run: |
+          # This would typically use a cloud provider action to configure access
+          # For example:
+          # - aws eks update-kubeconfig --region us-east-1 --name value-fabric-${{ env.ENVIRONMENT }}
+          # - gcloud container clusters get-credentials value-fabric --zone us-central1
+          # - az aks get-credentials --resource-group value-fabric --name value-fabric
+          
+          echo "Kubeconfig configuration placeholder"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+
+      - name: Update image tags in Helm values
+        run: |
+          # Update the image tag in the Helm values file
+          VALUES_FILE="infra/helm/value-fabric/values-${{ env.ENVIRONMENT }}.yaml"
+          
+          if [ -f "$VALUES_FILE" ]; then
+            sed -i "s/tag: .*/tag: ${{ env.IMAGE_TAG }}/g" "$VALUES_FILE"
+            echo "Updated $VALUES_FILE with tag: ${{ env.IMAGE_TAG }}"
+          else
+            echo "Values file not found: $VALUES_FILE"
+            # Create environment-specific values if not exists
+          fi
+
+      - name: Deploy with Helm
+        run: |
+          echo "Deploying to ${{ env.ENVIRONMENT }}"
+          
+          # helm upgrade --install value-fabric ./infra/helm/value-fabric \
+          #   --namespace value-fabric \
+          #   --values infra/helm/value-fabric/values.yaml \
+          #   --values infra/helm/value-fabric/values-${{ env.ENVIRONMENT }}.yaml \
+          #   --set global.image.tag=${{ env.IMAGE_TAG }} \
+          #   --wait \
+          #   --timeout 600s
+          
+          echo "Helm deployment placeholder - integrate with actual cluster"
+
+      - name: Record deployment info
+        id: deploy-info
+        run: |
+          URL="https://api.${{ env.ENVIRONMENT }}.value-fabric.com"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $URL"
+
+      - name: Create deployment record
+        run: |
+          cat << 'EOF' > deployment-record.json
+          {
+            "environment": "${{ env.ENVIRONMENT }}",
+            "image_tag": "${{ env.IMAGE_TAG }}",
+            "commit_sha": "${{ github.sha }}",
+            "deployed_by": "${{ github.actor }}",
+            "deployed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+            "workflow_run": "${{ github.run_id }}"
+          }
+          EOF
+          
+          cat deployment-record.json
+
+      - name: Upload deployment record
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-record-${{ env.ENVIRONMENT }}-${{ env.IMAGE_TAG }}
+          path: deployment-record.json
+          retention-days: 90
+
+  # ============================================
+  # Smoke Tests
+  # ============================================
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy
+    if: inputs.environment != 'dev'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for rollout
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+          # kubectl rollout status deployment -n value-fabric --timeout=300s
+
+      - name: Health check endpoints
+        run: |
+          BASE_URL="https://api.${{ env.ENVIRONMENT }}.value-fabric.com"
+          
+          endpoints=(
+            "/health"
+            "/health/version"
+            "/api/v1/health"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            url="${BASE_URL}${endpoint}"
+            echo "Checking: $url"
+            
+            if ! curl -fsS --max-time 30 "$url"; then
+              echo "Health check failed: $url"
+              exit 1
+            fi
+          done
+          
+          echo "All health checks passed ✓"
+
+      - name: Critical path tests
+        run: |
+          echo "Running critical path smoke tests"
+          # This would run a subset of E2E tests against the deployed environment
+          # pytest tests/e2e/smoke/ --base-url=https://api.${{ env.ENVIRONMENT }}.value-fabric.com
+
+  # ============================================
+  # Rollback on Failure
+  # ============================================
+  rollback-on-failure:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [deploy, smoke-tests]
+    if: failure() && inputs.environment != 'dev'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Alert on failure
+        run: |
+          echo "Deployment failed - initiating rollback procedures"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+          echo "Failed tag: ${{ env.IMAGE_TAG }}"
+          
+          # Send alert to PagerDuty/Slack
+          # curl -X POST ${{ secrets.PAGERDUTY_INTEGRATION_URL }} \
+          #   -H "Content-Type: application/json" \
+          #   -d '{"event_type":"trigger","description":"Deployment failed"}'
+
+      - name: Rollback to previous version
+        run: |
+          echo "Rolling back to previous stable version"
+          
+          # helm rollback value-fabric 0 -n value-fabric
+          # or
+          # kubectl rollout undo deployment/<name> -n value-fabric
+          
+          echo "Rollback placeholder - integrate with actual cluster"
+
+  # ============================================
+  # Post-deployment Verification
+  # ============================================
+  verify:
+    name: Post-deployment Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: smoke-tests
+    if: success()
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify metrics
+        run: |
+          echo "Verifying deployment metrics"
+          # Check error rates, latency, etc.
+          # curl -s "https://prometheus.${{ env.ENVIRONMENT }}.value-fabric.com/api/v1/query?query=up"
+
+      - name: Record successful deployment
+        run: |
+          echo "Recording successful deployment to ${{ env.ENVIRONMENT }}"
+          
+          # This would update a deployment tracking system
+          # or create a GitHub release with deployment metadata
+
+  # ============================================
+  # Notify
+  # ============================================
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [deploy, smoke-tests]
+    if: always()
+
+    steps:
+      - name: Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          channel: '#deployments'
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: env.SLACK_WEBHOOK_URL != ''
+
+      - name: Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ env.ENVIRONMENT }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag**: ${{ env.IMAGE_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ needs.smoke-tests.result == 'success' && '✅ Success' || (needs.deploy.result == 'failure' && '❌ Failed' || '🔄 In Progress') }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://api.${{ env.ENVIRONMENT }}.value-fabric.com" >> $GITHUB_STEP_SUMMARY

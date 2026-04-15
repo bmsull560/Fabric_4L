@@ -1,0 +1,120 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: layer4-agents
+  namespace: value-fabric-prod
+spec:
+  provider: nginx
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: layer4-agents
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: layer4-agents
+  service:
+    port: 8000
+    targetPort: 8000
+    gateways:
+      - public-gateway.istio-system.svc.cluster.local
+    hosts:
+      - agents.value-fabric.com
+  analysis:
+    # Schedule interval (default 10s)
+    interval: 30s
+    # Max number of failed metric checks before rollback
+    threshold: 5
+    # Max traffic percentage routed to canary
+    maxWeight: 50
+    # Canary increment step
+    stepWeight: 10
+    # Prometheus query URL
+    metrics:
+      - name: request-success-rate
+        interval: 1m
+        # Minimum req success rate (non 5xx responses)
+        # percentage (0-100)
+        thresholdRange:
+          min: 99
+        # customizable metric check
+        query: |
+          sum(rate(http_requests_total{
+            namespace="value-fabric-prod",
+            service="layer4-agents-canary",
+            status!~"5.."
+          }[1m]))
+          /
+          sum(rate(http_requests_total{
+            namespace="value-fabric-prod",
+            service="layer4-agents-canary"
+          }[1m])) * 100
+      
+      - name: request-duration
+        interval: 1m
+        # Maximum req duration P99
+        # milliseconds
+        thresholdRange:
+          max: 500
+        query: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{
+              namespace="value-fabric-prod",
+              service="layer4-agents-canary"
+            }[1m])) by (le)
+          ) * 1000
+    # Testing (optional)
+    webhooks:
+      # Acceptance test - run before traffic shift
+      - name: acceptance-test
+        type: pre-rollout
+        url: http://flagger-loadtester.value-fabric-prod/
+        timeout: 30s
+        metadata:
+          cmd: "curl -sf http://layer4-agents-canary.value-fabric-prod:8000/ready"
+      
+      # Load test - run during canary
+      - name: load-test
+        type: rollout
+        url: http://flagger-loadtester.value-fabric-prod/
+        timeout: 5s
+        metadata:
+          cmd: "hey -z 1m -q 10 -c 2 http://layer4-agents-canary.value-fabric-prod:8000/health"
+      
+      # Conformance test - run after promotion
+      - name: conformance-test
+        type: post-rollout
+        url: http://flagger-loadtester.value-fabric-prod/
+        timeout: 30s
+        metadata:
+          type: bash
+          cmd: "curl -sf http://layer4-agents.value-fabric-prod:8000/health"
+      
+      # Rollback webhook
+      - name: rollback-notify
+        type: rollback
+        url: http://flagger-loadtester.value-fabric-prod/
+        metadata:
+          cmd: "echo 'Rollback triggered for layer4-agents'"
+  
+  # A/B testing configuration (alternative to Canary)
+  abTesting:
+    enabled: false
+    match:
+      - headers:
+          x-canary:
+            exact: "true"
+      - cookies:
+          canary:
+            exact: "always"
+  
+  # Blue/Green deployment (alternative to Canary)
+  blueGreen:
+    enabled: false
+    mirror: false
+    activeMetadata:
+      annotations:
+        role: active
+    previewMetadata:
+      annotations:
+        role: preview

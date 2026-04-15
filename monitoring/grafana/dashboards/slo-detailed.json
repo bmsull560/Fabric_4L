@@ -1,0 +1,244 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Detailed SLO tracking: Availability, latency, error budgets with burn rates",
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 1,
+      "panels": [],
+      "title": "SLO Summary - All Layers",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "custom": {"align": "auto", "displayMode": "auto", "inspect": false},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.99}]}
+        }
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 1},
+      "id": 2,
+      "options": {"showHeader": true, "sortBy": [{"desc": false, "displayName": "Service"}]},
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {"expr": "label_join(value_fabric_slo_availability_ratio, \"Service\", \"\", \"service\")", "format": "table", "instant": true, "refId": "A"}
+      ],
+      "title": "Availability SLO Status",
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 9},
+      "id": 3,
+      "panels": [],
+      "title": "Layer 1 - Ingestion SLOs",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.999}, {"color": "green", "value": 0.9999}]},
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 10},
+      "id": 4,
+      "options": {"colorMode": "value", "graphMode": "area"},
+      "targets": [
+        {"expr": "avg_over_time(value_fabric_slo_availability_ratio{service=\"layer1-ingestion\"}[30d]) or vector(0)", "refId": "A"}
+      ],
+      "title": "L1 Availability (30d)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "fillOpacity": 10},
+          "unit": "ms"
+        }
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 10},
+      "id": 5,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {"expr": "histogram_quantile(0.99, sum(rate(layer1_http_request_duration_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "p99 Latency", "refId": "A"},
+        {"expr": "value_fabric_slo_latency_threshold_ms{service=\"layer1-ingestion\"}", "legendFormat": "SLO Target", "refId": "B"}
+      ],
+      "title": "L1 Latency vs SLO",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.1}, {"color": "red", "value": 1}]},
+          "unit": "percent"
+        }
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 10},
+      "id": 6,
+      "options": {"colorMode": "value", "graphMode": "area"},
+      "targets": [
+        {"expr": "value_fabric_slo_error_budget_remaining_ratio{service=\"layer1-ingestion\"} * 100", "refId": "A"}
+      ],
+      "title": "L1 Error Budget Remaining",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 18},
+      "id": 7,
+      "panels": [],
+      "title": "Layer 2 - Extraction SLOs",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.999}, {"color": "green", "value": 0.9999}]},
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 19},
+      "id": 8,
+      "options": {"colorMode": "value", "graphMode": "area"},
+      "targets": [
+        {"expr": "avg_over_time(value_fabric_slo_availability_ratio{service=\"layer2-extraction\"}[30d]) or vector(0)", "refId": "A"}
+      ],
+      "title": "L2 Availability (30d)",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "fillOpacity": 10},
+          "unit": "ms"
+        }
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 19},
+      "id": 9,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {"expr": "histogram_quantile(0.99, sum(rate(layer2_http_request_duration_seconds_bucket[5m])) by (le)) * 1000", "legendFormat": "p99 Latency", "refId": "A"},
+        {"expr": "value_fabric_slo_latency_threshold_ms{service=\"layer2-extraction\"}", "legendFormat": "SLO Target", "refId": "B"}
+      ],
+      "title": "L2 Latency vs SLO",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.1}, {"color": "red", "value": 1}]},
+          "unit": "percent"
+        }
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 19},
+      "id": 10,
+      "options": {"colorMode": "value", "graphMode": "area"},
+      "targets": [
+        {"expr": "value_fabric_slo_error_budget_remaining_ratio{service=\"layer2-extraction\"} * 100", "refId": "A"}
+      ],
+      "title": "L2 Error Budget Remaining",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 27},
+      "id": 11,
+      "panels": [],
+      "title": "Error Budget Burn Rates",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"drawStyle": "line", "fillOpacity": 10},
+          "unit": "percent"
+        }
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
+      "id": 12,
+      "options": {"legend": {"displayMode": "table", "placement": "right"}},
+      "targets": [
+        {"expr": "rate(value_fabric_slo_error_budget_consumed_total[1h]) * 100", "legendFormat": "{{service}} (1h burn)", "refId": "A"},
+        {"expr": "rate(value_fabric_slo_error_budget_consumed_total[6h]) * 100 / 6", "legendFormat": "{{service}} (6h avg)", "refId": "B"}
+      ],
+      "title": "Error Budget Burn Rate",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 36},
+      "id": 13,
+      "panels": [],
+      "title": "SLO Compliance Heatmap",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "custom": {"align": "center", "displayMode": "color-background", "inspect": false},
+          "mappings": [
+            {"options": {"0": {"color": "red", "text": "VIOLATED"}}, "type": "value"},
+            {"options": {"1": {"color": "green", "text": "COMPLIANT"}}, "type": "value"}
+          ],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]},
+          "unit": "none"
+        }
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 37},
+      "id": 14,
+      "options": {"showHeader": true},
+      "targets": [
+        {"expr": "label_join(value_fabric_slo_compliance_status, \"Service\", \"\", \"service\")", "format": "table", "instant": true, "refId": "A"}
+      ],
+      "title": "SLO Compliance by Service",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["slo", "reliability", "error-budget"],
+  "time": {"from": "now-7d", "to": "now"},
+  "timezone": "browser",
+  "title": "SLO Detailed Tracking",
+  "uid": "slo-detailed",
+  "version": 1
+}

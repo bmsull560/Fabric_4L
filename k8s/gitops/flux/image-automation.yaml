@@ -1,0 +1,59 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImageRepository
+metadata:
+  name: layer4-agents
+  namespace: flux-system
+spec:
+  image: ghcr.io/bmsull560/fabric_4l/layer4-agents
+  interval: 1m
+  secretRef:
+    name: ghcr-auth
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta2
+kind: ImagePolicy
+metadata:
+  name: layer4-agents
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: layer4-agents
+  filterTags:
+    pattern: '^sha-[a-f0-9]+-(?P<ts>[0-9]+)$'
+    extract: '$ts'
+  policy:
+    semver:
+      range: '>=0.0.0'
+---
+apiVersion: image.toolkit.fluxcd.io/v1beta1
+kind: ImageUpdateAutomation
+metadata:
+  name: value-fabric-automation
+  namespace: flux-system
+spec:
+  interval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: value-fabric
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        name: Flux Bot
+        email: flux@value-fabric.local
+      messageTemplate: |
+        Automated image update
+
+        Images:
+        {{ range .Updated.Images -}}
+        - {{.}}
+        {{ end -}}
+
+        [skip ci]
+    signingKey:
+      secretRef:
+        name: flux-gpg-signing-key
+  policy:
+    semver:
+      range: '>=0.0.0'

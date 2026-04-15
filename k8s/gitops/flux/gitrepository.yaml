@@ -1,0 +1,21 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: value-fabric
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    branch: main
+  secretRef:
+    name: flux-system
+  url: https://github.com/bmsull560/Fabric_4L.git
+  ignore:
+    - ".github/"
+    - "tests/"
+    - "docs/"
+    - "scripts/"
+    - "*.md"
+    - "frontend/"
+    - "value-fabric/*/src/"
+    - "value-fabric/*/tests/"

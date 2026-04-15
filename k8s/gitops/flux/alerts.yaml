@@ -1,0 +1,31 @@
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: slack
+  namespace: flux-system
+spec:
+  type: slack
+  address: https://hooks.slack.com/services/${SLACK_WEBHOOK_URL}
+  channel: deployments
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: value-fabric-alerts
+  namespace: flux-system
+spec:
+  providerRef:
+    name: slack
+  eventSources:
+    - kind: Kustomization
+      name: value-fabric-apps
+    - kind: GitRepository
+      name: value-fabric
+    - kind: ImageUpdateAutomation
+      name: value-fabric-automation
+  eventSeverity: info
+  exclusionList:
+    - ".*succeeded.*"
+  inclusionList:
+    - ".*failed.*"
+    - ".*error.*"

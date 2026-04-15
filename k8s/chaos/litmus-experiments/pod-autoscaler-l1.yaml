@@ -1,0 +1,144 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: pod-autoscaler-l1-ingestion
+  namespace: value-fabric-prod
+  labels:
+    chaos-type: autoscaler
+    tier: resilience
+spec:
+  appinfo:
+    appns: 'value-fabric-prod'
+    applabel: 'app=layer1-ingestion'
+    appkind: 'deployment'
+  engineState: 'active'
+  annotationCheck: 'true'
+  chaosServiceAccount: litmus-admin
+  monitoring: true
+  jobCleanUpPolicy: 'delete'
+  experiments:
+    - name: pod-autoscaler
+      spec:
+        components:
+          env:
+            # Number of replicas to scale to
+            - name: REPLICA_COUNT
+              value: '6'
+            # Total chaos duration
+            - name: TOTAL_CHAOS_DURATION
+              value: '180'
+            # Chaos interval
+            - name: CHAOS_INTERVAL
+              value: '30'
+            # Sequence
+            - name: SEQUENCE
+              value: 'parallel'
+          probe:
+            # Verify scale-up happens within 60s
+            - name: "scale-up-latency"
+              type: "cmdProbe"
+              mode: "Edge"
+              runProperties:
+                probeTimeout: "60s"
+                retry: 6
+                interval: "10s"
+                initialDelay: "10s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl get deployment layer1-ingestion -n value-fabric-prod \
+                    -o jsonpath='{.status.readyReplicas}' | grep -E '[3-6]'
+              comparator:
+                type: "regex"
+                criteria: "matches"
+                value: "[3-6]"
+            
+            # Verify ingestion throughput during scale-up
+            - name: "throughput-maintenance"
+              type: "httpProbe"
+              mode: "Continuous"
+              runProperties:
+                probeTimeout: "10s"
+                retry: 2
+                interval: "5s"
+                initialDelay: "5s"
+              httpProbe/inputs:
+                url: "http://layer1-ingestion.value-fabric-prod.svc.cluster.local:8000/api/v1/ingest"
+                insecureSkipVerify: false
+                method:
+                  post:
+                    body: '{"test": true}'
+                    contentType: "application/json"
+                    criteria: "<"
+                    responseCode: "500"
+            
+            # Post-chaos: verify scale-down completes
+            - name: "scale-down-completion"
+              type: "cmdProbe"
+              mode: "PostChaos"
+              runProperties:
+                probeTimeout: "120s"
+                retry: 12
+                interval: "10s"
+                initialDelay: "30s"
+              operation: "present"
+              source:
+                command: |
+                  kubectl get deployment layer1-ingestion -n value-fabric-prod \
+                    -o jsonpath='{.status.readyReplicas}' | grep -E '[1-3]'
+              comparator:
+                type: "regex"
+                criteria: "matches"
+                value: "[1-3]"
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: pod-autoscaler
+  labels:
+    name: pod-autoscaler
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups:
+          - ""
+          - "apps"
+          - "batch"
+          - "litmuschaos.io"
+          - "autoscaling"
+        resources:
+          - "jobs"
+          - "pods"
+          - "pods/log"
+          - "events"
+          - "deployments"
+          - "deployments/scale"
+          - "horizontalpodautoscalers"
+          - "chaosengines"
+          - "chaosexperiments"
+          - "chaosresults"
+        verbs:
+          - "create"
+          - "list"
+          - "get"
+          - "patch"
+          - "update"
+          - "delete"
+    image: "litmuschaos/go-runner:latest"
+    imagePullPolicy: Always
+    args:
+      - -c
+      - ./experiments -name pod-autoscaler
+    command:
+      - /bin/bash
+    env:
+      - name: REPLICA_COUNT
+        value: '6'
+      - name: TOTAL_CHAOS_DURATION
+        value: '180'
+      - name: CHAOS_INTERVAL
+        value: '30'
+    labels:
+      name: pod-autoscaler
+      app.kubernetes.io/part-of: litmus

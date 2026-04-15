@@ -1,0 +1,132 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: layer1-ingestion
+  namespace: value-fabric-prod
+  labels:
+    app: layer1-ingestion
+    tier: ingestion
+spec:
+  replicas: 3
+  strategy:
+    canary:
+      canaryService: layer1-ingestion-canary
+      stableService: layer1-ingestion-stable
+      trafficRouting:
+        nginx:
+          stableIngress: layer1-ingestion
+          annotationPrefix: nginx.ingress.kubernetes.io
+          additionalIngressAnnotations:
+            canary-by-header: X-Canary
+            canary-by-header-value: "true"
+      
+      steps:
+        - setWeight: 10
+        - pause: {duration: 5m}
+        - analysis:
+            templates:
+              - templateName: ingestion-success-rate
+        - setWeight: 50
+        - pause: {duration: 10m}
+        - analysis:
+            templates:
+              - templateName: ingestion-success-rate
+              - templateName: ingestion-throughput
+        - setWeight: 100
+      
+      autoRollbackEnabled: true
+      maxUnavailable: 0
+      maxSurge: "25%"
+      scaleDownDelaySeconds: 600
+  
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: layer1-ingestion
+  template:
+    metadata:
+      labels:
+        app: layer1-ingestion
+        tier: ingestion
+    spec:
+      serviceAccountName: layer1-ingestion
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: layer1-ingestion
+          image: ghcr.io/bmsull560/fabric_4l/layer1-ingestion:{{ .Values.image.tag }}
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ingestion-success-rate
+  namespace: value-fabric-prod
+spec:
+  metrics:
+    - name: success-rate
+      interval: 1m
+      count: 3
+      successCondition: result[0] >= 0.99
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{
+              service="layer1-ingestion",
+              status!~"5.."
+            }[1m]))
+            /
+            sum(rate(http_requests_total{
+              service="layer1-ingestion"
+            }[1m]))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: ingestion-throughput
+  namespace: value-fabric-prod
+spec:
+  metrics:
+    - name: throughput
+      interval: 30s
+      count: 5
+      successCondition: result[0] >= 100
+      failureCondition: result[0] < 50
+      failureLimit: 2
+      provider:
+        prometheus:
+          address: http://prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            sum(rate(http_requests_total{
+              service="layer1-ingestion"
+            }[1m]))

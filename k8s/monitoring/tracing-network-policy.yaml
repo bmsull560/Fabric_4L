@@ -1,0 +1,111 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jaeger-network-policy
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: jaeger
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow OTLP gRPC from all namespaces
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4317
+    # Allow OTLP HTTP from all namespaces
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 4318
+    # Allow Jaeger Thrift from all namespaces
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 14268
+    # Allow gRPC from all namespaces
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 14250
+    # Allow Zipkin from all namespaces
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 9411
+    # Allow UI access from ingress controller namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 16686
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 14269
+  egress:
+    # Allow all egress (Jaeger is collector, doesn't need external)
+    - {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: otel-collector-network-policy
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: opentelemetry
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow OTLP from all value-fabric namespaces
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              part-of: value-fabric
+      ports:
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
+    # Allow Prometheus scraping
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 8889
+  egress:
+    # Allow egress to Jaeger
+    - to:
+        - podSelector:
+            matchLabels:
+              app: jaeger
+      ports:
+        - protocol: TCP
+          port: 14250
+    # Allow egress to Prometheus
+    - to:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090

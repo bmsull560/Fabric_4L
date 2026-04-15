@@ -55,25 +55,38 @@ spec:
           envFrom:
             - configMapRef:
                 name: value-fabric-config
+            - secretRef:
+                name: layer2-db-credentials
+                optional: false
+            - secretRef:
+                name: layer2-secrets
+                optional: false
+            - secretRef:
+                name: layer2-auth
+                optional: false
           env:
-            - name: OPENAI_API_KEY
+            # Dynamic database credentials (required)
+            - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: openai-secret
-                  key: api-key
-            - name: LLM_MODEL
-              value: "gpt-4o"
-            - name: REDIS_URL
-              value: "redis://redis:6379/0"
+                  name: layer2-db-credentials
+                  key: DATABASE_URL
+            # Neo4j from shared secret
             - name: NEO4J_URI
-              value: "bolt://neo4j:7687"
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-secret
+                  key: NEO4J_URI
             - name: NEO4J_USER
-              value: "neo4j"
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-secret
+                  key: NEO4J_USER
             - name: NEO4J_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: neo4j-secret
-                  key: auth
+                  key: NEO4J_PASSWORD
             - name: RDF_OUTPUT_DIR
               value: "/app/rdf-output"
             - name: LOG_LEVEL

@@ -47,7 +47,7 @@ from .exceptions import (
     ValidationError,
     ValueFabricException,
 )
-from .middleware import add_security_middleware
+from shared.security import add_security_middleware, SecurityConfig
 
 # Import shared error handling (Task 60/61: Error Response Hardening + Request Correlation)
 try:
@@ -539,6 +539,20 @@ if SHARED_ERROR_HANDLING_AVAILABLE:
     app.add_middleware(RequestIDMiddleware)
     logger.info("RequestIDMiddleware enabled for trace correlation")
 
+# Security middleware — runs before auth to validate input
+_security_config_l3 = SecurityConfig(
+    skip_validation_paths=frozenset({
+        "/v1/ingest",
+        "/v1/sync",
+        "/v1/batch/ingest",
+        "/v1/query/graph",
+        "/v1/query",
+        "/v1/graph/query",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l3)
+
 # GovernanceMiddleware — provides verified JWT + API-key auth for L3.
 # Replaces the existing AuthenticationMiddleware in auth/middleware.py.
 # api_key_resolver is None here; plug in the DB-backed resolver from L4's
@@ -552,9 +566,6 @@ except ImportError:
         "shared.identity not importable — GovernanceMiddleware skipped in L3. "
         "Ensure the shared package is installed."
     )
-
-# Security middleware
-add_security_middleware(app, strict_mode=True)
 
 # Rate limiting middleware
 try:

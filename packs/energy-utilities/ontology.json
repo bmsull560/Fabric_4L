@@ -1,0 +1,353 @@
+{
+  "pack_id": "energy-utilities-v1",
+  "pack_name": "Energy & Utilities Value Pack",
+  "version": "1.0.0",
+  "description": "Complete value model for utilities, renewable energy, and oil & gas - grid modernization, demand response, energy storage, and customer engagement",
+  "industry": "Energy & Utilities",
+  "created_at": "2026-04-15",
+  "ontology": {
+    "node_types": {
+      "Capability": {
+        "description": "Energy and utilities capabilities and technology platforms",
+        "examples": [
+          "Smart Grid Platform",
+          "Renewable Energy Management",
+          "Demand Response System",
+          "Predictive Asset Analytics",
+          "Energy Storage Control",
+          "Customer Engagement Platform",
+          "EV Charging Network"
+        ]
+      },
+      "UseCase": {
+        "description": "Energy and utilities use cases and operational scenarios",
+        "examples": [
+          "Outage Management",
+          "Renewable Integration",
+          "Peak Load Management",
+          "Asset Condition Monitoring",
+          "Time-of-Use Pricing",
+          "Virtual Power Plant",
+          "Managed EV Charging"
+        ]
+      },
+      "Persona": {
+        "description": "Energy and utilities stakeholders and decision makers",
+        "examples": [
+          "VP Grid Operations",
+          "Director of Renewable Strategy",
+          "Asset Management Lead",
+          "Customer Experience Director",
+          "Energy Markets Manager",
+          "Regulatory Affairs Director"
+        ]
+      },
+      "ValueDriver": {
+        "description": "Energy and utilities value drivers and KPIs",
+        "examples": [
+          "SAIDI/SAIFI",
+          "System Average Interruption Duration Index",
+          "Renewable Penetration",
+          "Peak Demand Reduction",
+          "Customer Satisfaction Score",
+          "Cost per kWh Delivered"
+        ]
+      }
+    },
+    "relationships": {
+      "ENABLES": {
+        "from": "Capability",
+        "to": "UseCase",
+        "properties": {
+          "enablement_type": ["REQUIRED", "ENHANCES", "OPTIONAL"],
+          "contribution_weight": "Float (0.0-1.0)"
+        }
+      },
+      "BENEFITS": {
+        "from": "UseCase",
+        "to": "Persona",
+        "properties": {
+          "benefit_type": ["RELIABILITY", "EFFICIENCY", "REVENUE", "SUSTAINABILITY"],
+          "impact_level": ["TRANSFORMATIONAL", "SIGNIFICANT", "MODERATE", "MINOR"]
+        }
+      },
+      "DRIVES": {
+        "from": "Persona",
+        "to": "ValueDriver",
+        "properties": {
+          "driver_type": ["PRIMARY", "SECONDARY", "TERTIARY"],
+          "influence_weight": "Float (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "entities": [
+    {
+      "type": "Capability",
+      "id": "eu-cap-001",
+      "name": "Smart Grid Platform",
+      "description": "Advanced metering infrastructure, distribution automation, and grid optimization platform for real-time grid management",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "components": ["AMI", "DA", "SCADA", "OMS", "ADMS"],
+        "communication": ["RF mesh", "Cellular", "Fiber", "PLC"],
+        "coverage": "Distribution network monitoring and control"
+      },
+      "confidence_score": 0.90
+    },
+    {
+      "type": "Capability",
+      "id": "eu-cap-002",
+      "name": "Renewable Energy Management",
+      "description": "Renewable generation forecasting, curtailment management, and grid integration optimization",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "forecasting": ["Solar irradiance", "Wind speed", "Weather modeling"],
+        "integration": ["Ramping control", "Frequency response", "Voltage support"]
+      },
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Capability",
+      "id": "eu-cap-003",
+      "name": "Demand Response System",
+      "description": "Customer load control, price signals, and automated demand response for peak management",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "programs": ["Direct load control", "Price-based", "Emergency", "Economic"],
+        "technologies": ["Smart thermostats", "Water heaters", "EV chargers", "Industrial loads"]
+      },
+      "confidence_score": 0.85
+    },
+    {
+      "type": "Capability",
+      "id": "eu-cap-004",
+      "name": "Predictive Asset Analytics",
+      "description": "ML-based asset health monitoring, failure prediction, and maintenance optimization for generation, transmission, and distribution assets",
+      "category": "ANALYTICS",
+      "technical_specs": {
+        "asset_types": ["Transformers", "Switchgear", "Turbines", "Lines", "Substations"],
+        "data_sources": ["DGA", "Thermography", "Vibration", "Partial discharge", "Oil analysis"]
+      },
+      "confidence_score": 0.87
+    },
+    {
+      "type": "Capability",
+      "id": "eu-cap-005",
+      "name": "Energy Storage Control",
+      "description": "Battery energy storage system control for arbitrage, ancillary services, and grid support",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "applications": ["Arbitrage", "Frequency regulation", "Peak shaving", "Backup power"],
+        "technologies": ["Lithium-ion", "Flow batteries", "Pumped hydro", "Compressed air"]
+      },
+      "confidence_score": 0.82
+    },
+    {
+      "type": "UseCase",
+      "id": "eu-uc-001",
+      "name": "Outage Management",
+      "description": "Rapid outage detection, isolation, and restoration using smart grid automation and predictive analytics",
+      "operational_context": "Distribution grid operations",
+      "business_process": "Emergency response and restoration",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.90
+    },
+    {
+      "type": "UseCase",
+      "id": "eu-uc-002",
+      "name": "Renewable Integration",
+      "description": "Seamless integration of solar, wind, and distributed energy resources with grid stability management",
+      "operational_context": "Grid planning and operations",
+      "business_process": "Generation dispatch and balancing",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.85
+    },
+    {
+      "type": "UseCase",
+      "id": "eu-uc-003",
+      "name": "Peak Load Management",
+      "description": "Active management of peak demand through demand response, storage dispatch, and price signals",
+      "operational_context": "System operations and markets",
+      "business_process": "Load forecasting and resource scheduling",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Persona",
+      "id": "eu-per-001",
+      "name": "VP Grid Operations",
+      "description": "Grid operations leader responsible for distribution system reliability, outage management, and smart grid operations",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Grid Operations",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Outage duration and frequency",
+        "Aging infrastructure",
+        "Renewable integration challenges",
+        "Storm resilience"
+      ],
+      "success_metrics": ["SAIDI", "SAIFI", "CAIDI", "Restoration time"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "eu-per-002",
+      "name": "Director of Renewable Strategy",
+      "description": "Renewable energy strategy leader responsible for clean energy goals, renewable procurement, and carbon reduction initiatives",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Strategy & Sustainability",
+      "seniority_level": "DIRECTOR",
+      "pain_points": [
+        "Renewable integration costs",
+        "Grid stability concerns",
+        "Regulatory compliance",
+        "Renewable curtailment"
+      ],
+      "success_metrics": ["Renewable percentage", "Carbon intensity", "Curtailment rate", "Renewable LCOE"],
+      "decision_making_authority": "RECOMMENDS"
+    },
+    {
+      "type": "Persona",
+      "id": "eu-per-003",
+      "name": "Asset Management Lead",
+      "description": "Asset management leader responsible for capital planning, maintenance strategy, and asset lifecycle optimization",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Asset Management",
+      "seniority_level": "DIRECTOR",
+      "pain_points": [
+        "Aging asset base",
+        "Budget constraints",
+        "Unplanned failures",
+        "Regulatory pressure"
+      ],
+      "success_metrics": ["Asset health index", "Planned maintenance ratio", "Failure rate", "O&M spend"],
+      "decision_making_authority": "RECOMMENDS"
+    },
+    {
+      "type": "ValueDriver",
+      "id": "eu-vd-001",
+      "name": "SAIDI",
+      "description": "System Average Interruption Duration Index - average outage duration per customer per year",
+      "category": "RELIABILITY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Minutes",
+      "typical_range_min": 60.0,
+      "typical_range_max": 300.0,
+      "industry_benchmarks": {
+        "best_in_class": 60,
+        "good": 120,
+        "average": 180,
+        "poor": 300
+      },
+      "kpis": ["CAIDI", "MAIFI", "Customer minutes lost"]
+    },
+    {
+      "type": "ValueDriver",
+      "id": "eu-vd-002",
+      "name": "Renewable Penetration",
+      "description": "Percentage of total generation from renewable sources including solar, wind, hydro, and geothermal",
+      "category": "SUSTAINABILITY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 5.0,
+      "typical_range_max": 80.0,
+      "industry_benchmarks": {
+        "leader": 70,
+        "progressive": 40,
+        "average": 20,
+        "laggard": 10
+      }
+    },
+    {
+      "type": "ValueDriver",
+      "id": "eu-vd-003",
+      "name": "Peak Demand Reduction",
+      "description": "Reduction in peak demand through demand response, energy efficiency, and distributed resources",
+      "category": "CAPACITY_EFFICIENCY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "MW",
+      "typical_range_min": 10.0,
+      "typical_range_max": 5000.0,
+      "industry_benchmarks": {
+        "aggressive": 15,
+        "moderate": 8,
+        "minimal": 3
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "ENABLES",
+      "from": "eu-cap-001",
+      "to": "eu-uc-001",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.95,
+      "evidence_quote": "Smart grid platform essential for rapid outage detection and restoration"
+    },
+    {
+      "type": "ENABLES",
+      "from": "eu-cap-002",
+      "to": "eu-uc-002",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.9,
+      "evidence_quote": "Renewable management platform enables high renewable penetration"
+    },
+    {
+      "type": "ENABLES",
+      "from": "eu-cap-003",
+      "to": "eu-uc-003",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.85,
+      "evidence_quote": "Demand response system enables active peak load management"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "eu-uc-001",
+      "to": "eu-per-001",
+      "benefit_type": "RELIABILITY",
+      "impact_level": "TRANSFORMATIONAL",
+      "evidence_quote": "Smart grid outage management dramatically reduces SAIDI/SAIFI"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "eu-uc-002",
+      "to": "eu-per-002",
+      "benefit_type": "SUSTAINABILITY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Renewable integration advances clean energy goals"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "eu-uc-003",
+      "to": "eu-per-001",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Peak load management defers infrastructure investment"
+    },
+    {
+      "type": "DRIVES",
+      "from": "eu-per-001",
+      "to": "eu-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.95,
+      "evidence_quote": "Grid operations VP accountable for reliability metrics"
+    },
+    {
+      "type": "DRIVES",
+      "from": "eu-per-002",
+      "to": "eu-vd-002",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.9,
+      "evidence_quote": "Renewable strategy director drives clean energy targets"
+    },
+    {
+      "type": "DRIVES",
+      "from": "eu-per-003",
+      "to": "eu-vd-001",
+      "driver_type": "SECONDARY",
+      "influence_weight": 0.7,
+      "evidence_quote": "Asset management contributes to reliability through maintenance"
+    }
+  ]
+}

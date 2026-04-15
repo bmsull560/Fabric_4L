@@ -1,0 +1,352 @@
+{
+  "pack_id": "financial-services-v1",
+  "pack_name": "Financial Services Value Pack",
+  "version": "1.0.0",
+  "description": "Complete value model for banking, fintech, and insurance - risk management, digital banking, compliance, and wealth management",
+  "industry": "Financial Services",
+  "created_at": "2026-04-15",
+  "ontology": {
+    "node_types": {
+      "Capability": {
+        "description": "Financial services capabilities and technology platforms",
+        "examples": [
+          "Fraud Detection AI",
+          "Digital Onboarding Platform",
+          "Credit Risk Models",
+          "Compliance Automation",
+          "Personalization Engine",
+          "Trading Systems",
+          "Wealth Advisor Workbench"
+        ]
+      },
+      "UseCase": {
+        "description": "Financial services use cases and operational scenarios",
+        "examples": [
+          "Real-time Transaction Monitoring",
+          "Digital Account Opening",
+          "Automated KYC/AML",
+          "Personalized Product Recommendations",
+          "Regulatory Reporting",
+          "Trade Settlement",
+          "Portfolio Optimization"
+        ]
+      },
+      "Persona": {
+        "description": "Financial services stakeholders and decision makers",
+        "examples": [
+          "Chief Risk Officer",
+          "Head of Digital Banking",
+          "Compliance Director",
+          "Wealth Management Head",
+          "Treasury Operations Manager",
+          "Chief Information Officer"
+        ]
+      },
+      "ValueDriver": {
+        "description": "Financial services value drivers and KPIs",
+        "examples": [
+          "Fraud Loss Ratio",
+          "Cost-to-Income Ratio",
+          "Customer Acquisition Cost",
+          "Net Promoter Score",
+          "Regulatory Compliance Score",
+          "Assets Under Management"
+        ]
+      }
+    },
+    "relationships": {
+      "ENABLES": {
+        "from": "Capability",
+        "to": "UseCase",
+        "properties": {
+          "enablement_type": ["REQUIRED", "ENHANCES", "OPTIONAL"],
+          "contribution_weight": "Float (0.0-1.0)"
+        }
+      },
+      "BENEFITS": {
+        "from": "UseCase",
+        "to": "Persona",
+        "properties": {
+          "benefit_type": ["RISK_REDUCTION", "EFFICIENCY", "REVENUE", "COMPLIANCE"],
+          "impact_level": ["TRANSFORMATIONAL", "SIGNIFICANT", "MODERATE", "MINOR"]
+        }
+      },
+      "DRIVES": {
+        "from": "Persona",
+        "to": "ValueDriver",
+        "properties": {
+          "driver_type": ["PRIMARY", "SECONDARY", "TERTIARY"],
+          "influence_weight": "Float (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "entities": [
+    {
+      "type": "Capability",
+      "id": "fs-cap-001",
+      "name": "Fraud Detection AI",
+      "description": "Machine learning platform for real-time fraud detection across transactions, applications, and behavioral patterns",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "ml_models": ["Transaction anomaly detection", "Behavioral biometrics", "Device fingerprinting"],
+        "data_sources": ["Core banking", "Card networks", "Device signals", "Behavioral data"],
+        "latency_requirements": "<100ms for real-time scoring"
+      },
+      "confidence_score": 0.92
+    },
+    {
+      "type": "Capability",
+      "id": "fs-cap-002",
+      "name": "Digital Onboarding Platform",
+      "description": "End-to-end digital customer onboarding with automated KYC, AML screening, and document verification",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "technologies": ["OCR/IDV", "Biometric verification", "AML screening APIs", "eSignature"],
+        "integration": ["Core banking", "CRM", "Sanctions lists", "Credit bureaus"]
+      },
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Capability",
+      "id": "fs-cap-003",
+      "name": "Credit Risk Models",
+      "description": "Advanced credit risk scoring using alternative data, ML models, and real-time behavioral signals",
+      "category": "ANALYTICS",
+      "technical_specs": {
+        "models": ["Probability of default", "Loss given default", "Exposure at default"],
+        "data": ["Traditional credit", "Alternative data", "Behavioral signals", "Macroeconomic factors"]
+      },
+      "confidence_score": 0.90
+    },
+    {
+      "type": "Capability",
+      "id": "fs-cap-004",
+      "name": "Compliance Automation",
+      "description": "Automated regulatory reporting, audit trails, and compliance monitoring with AI-assisted exception management",
+      "category": "INFRASTRUCTURE",
+      "technical_specs": {
+        "coverage": ["Basel III", "CCAR", "MiFID II", "GDPR", "AML"],
+        "automation": ["Report generation", "Data validation", "Exception routing", "Audit logs"]
+      },
+      "confidence_score": 0.87
+    },
+    {
+      "type": "Capability",
+      "id": "fs-cap-005",
+      "name": "Personalization Engine",
+      "description": "AI-driven customer personalization for product recommendations, pricing, and next-best-action",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "models": ["Recommendation engine", "Propensity scoring", "Price optimization"],
+        "channels": ["Mobile", "Web", "Branch", "Call center", "Email"]
+      },
+      "confidence_score": 0.85
+    },
+    {
+      "type": "UseCase",
+      "id": "fs-uc-001",
+      "name": "Real-time Transaction Monitoring",
+      "description": "Detect and prevent fraudulent transactions in real-time with sub-100ms latency",
+      "operational_context": "Payment processing and card transactions",
+      "business_process": "Risk management and fraud prevention",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.90
+    },
+    {
+      "type": "UseCase",
+      "id": "fs-uc-002",
+      "name": "Digital Account Opening",
+      "description": "End-to-end digital account opening with automated verification and funding",
+      "operational_context": "Customer acquisition and onboarding",
+      "business_process": "Retail banking customer onboarding",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.88
+    },
+    {
+      "type": "UseCase",
+      "id": "fs-uc-003",
+      "name": "Automated KYC/AML",
+      "description": "Automated customer due diligence, sanctions screening, and ongoing monitoring",
+      "operational_context": "Compliance and regulatory requirements",
+      "business_process": "Customer onboarding and relationship management",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.85
+    },
+    {
+      "type": "Persona",
+      "id": "fs-per-001",
+      "name": "Chief Risk Officer",
+      "description": "Executive responsible for enterprise risk management including credit, market, operational, and compliance risk",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Risk Management",
+      "seniority_level": "C_SUITE",
+      "pain_points": [
+        "Fraud losses and write-offs",
+        "Regulatory compliance burden",
+        "Model risk management",
+        "Real-time risk visibility"
+      ],
+      "success_metrics": ["Fraud loss ratio", "Provision coverage", "Regulatory findings", "Risk-adjusted returns"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "fs-per-002",
+      "name": "Head of Digital Banking",
+      "description": "Digital banking leader responsible for mobile, web, and digital customer experiences",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Digital Banking",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Customer acquisition costs",
+        "Digital onboarding abandonment",
+        "Cross-sell effectiveness",
+        "Competition from fintechs"
+      ],
+      "success_metrics": ["Digital adoption", "Onboarding conversion", "NPS", "Digital sales ratio"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "fs-per-003",
+      "name": "Compliance Director",
+      "description": "Compliance leader responsible for regulatory reporting, audit management, and regulatory relationships",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Compliance",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Manual report generation",
+        "Regulatory deadline pressure",
+        "Data quality issues",
+        "Audit finding remediation"
+      ],
+      "success_metrics": ["Report timeliness", "Audit findings", "Regulatory ratings", "Compliance costs"],
+      "decision_making_authority": "RECOMMENDS"
+    },
+    {
+      "type": "ValueDriver",
+      "id": "fs-vd-001",
+      "name": "Fraud Loss Ratio",
+      "description": "Fraud losses as a percentage of total transaction volume or revenue",
+      "category": "RISK_MITIGATION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 0.01,
+      "typical_range_max": 1.0,
+      "industry_benchmarks": {
+        "best_in_class": 0.02,
+        "average": 0.08,
+        "poor": 0.2
+      },
+      "kpis": ["Detection rate", "False positive rate", "Time to detect"]
+    },
+    {
+      "type": "ValueDriver",
+      "id": "fs-vd-002",
+      "name": "Cost-to-Income Ratio",
+      "description": "Operating costs as a percentage of operating income - efficiency metric for banking operations",
+      "category": "COST_REDUCTION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 40.0,
+      "typical_range_max": 80.0,
+      "industry_benchmarks": {
+        "best_in_class": 45,
+        "good": 55,
+        "average": 65,
+        "poor": 75
+      }
+    },
+    {
+      "type": "ValueDriver",
+      "id": "fs-vd-003",
+      "name": "Customer Acquisition Cost",
+      "description": "Fully-loaded cost to acquire a new banking customer including marketing, onboarding, and operational costs",
+      "category": "CAPITAL_EFFICIENCY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "USD",
+      "typical_range_min": 100.0,
+      "typical_range_max": 500.0,
+      "industry_benchmarks": {
+        "digital_first": 150,
+        "traditional": 350,
+        "fintech": 100
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "ENABLES",
+      "from": "fs-cap-001",
+      "to": "fs-uc-001",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.95,
+      "evidence_quote": "AI fraud detection essential for real-time transaction monitoring"
+    },
+    {
+      "type": "ENABLES",
+      "from": "fs-cap-002",
+      "to": "fs-uc-002",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.9,
+      "evidence_quote": "Digital onboarding platform enables end-to-end account opening"
+    },
+    {
+      "type": "ENABLES",
+      "from": "fs-cap-004",
+      "to": "fs-uc-003",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.85,
+      "evidence_quote": "Compliance automation enables automated KYC and AML processes"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "fs-uc-001",
+      "to": "fs-per-001",
+      "benefit_type": "RISK_REDUCTION",
+      "impact_level": "TRANSFORMATIONAL",
+      "evidence_quote": "Real-time fraud detection dramatically reduces fraud losses"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "fs-uc-002",
+      "to": "fs-per-002",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Digital onboarding reduces abandonment and acquisition costs"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "fs-uc-003",
+      "to": "fs-per-003",
+      "benefit_type": "COMPLIANCE",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Automated KYC/AML reduces compliance burden and improves accuracy"
+    },
+    {
+      "type": "DRIVES",
+      "from": "fs-per-001",
+      "to": "fs-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.95,
+      "evidence_quote": "CRO directly accountable for fraud loss ratio performance"
+    },
+    {
+      "type": "DRIVES",
+      "from": "fs-per-002",
+      "to": "fs-vd-003",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.9,
+      "evidence_quote": "Digital banking head drives customer acquisition efficiency"
+    },
+    {
+      "type": "DRIVES",
+      "from": "fs-per-003",
+      "to": "fs-vd-002",
+      "driver_type": "SECONDARY",
+      "influence_weight": 0.7,
+      "evidence_quote": "Compliance automation contributes to cost-to-income improvements"
+    }
+  ]
+}
