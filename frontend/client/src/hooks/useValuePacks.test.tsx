@@ -1,18 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
-import { createWrapper, createWrapperWithRetry } from "../test-utils";
+import { createWrapper, createWrapperWithRetry, createMockResponse } from "../test-utils";
 import { useValuePacks, useValuePack, useApplyValuePack, ValuePackApiError } from "./useValuePacks";
 import { apiClient } from "@/api/client";
-import { AxiosResponse } from "axios";
-
-// Helper to create typed mock response
-const createMockResponse = <T,>(data: T): AxiosResponse<T> => ({
-  data,
-  status: 200,
-  statusText: "OK",
-  headers: {},
-  config: {} as any,
-});
 
 // Mock the API client
 vi.mock("@/api/client", () => ({

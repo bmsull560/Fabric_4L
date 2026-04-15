@@ -6,7 +6,7 @@
 import { useState, useMemo } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { useEntities, type Entity } from "@/hooks/useEntities";
-import { useEntityUIStore, type Entity as EntityTypeDef } from "@/stores";
+import { useEntityUIStore, type EntityUIType } from "@/stores";
 import {
   PageHeader, EntityBadge, DataTable, Toolbar, SearchInput, Btn, SectionCard, Tabs
 } from "@/components/WfPrimitives";
@@ -107,7 +107,7 @@ export default function OntologyBrowser() {
         ) : (
           <DataTable
             columns={["Entity Name", "Type", "Confidence", "Status", "Actions"]}
-            rows={filteredEntities.map((e: Entity | EntityTypeDef) => [
+            rows={filteredEntities.map((e: Entity) => [
               <span className="font-semibold text-neutral-800">{e.name}</span>,
               <EntityBadge type={mapEntityType(e.type)}/>,
               <span className={`text-[12px] ${CONF_COLORS(e.confidence)}`}>{e.confidence}%</span>,

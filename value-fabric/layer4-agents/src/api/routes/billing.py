@@ -315,7 +315,7 @@ async def stripe_webhook(
         logger.warning(f"Webhook validation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail="Invalid webhook payload",
         ) from e
     except StripeError as e:
         await db.rollback()

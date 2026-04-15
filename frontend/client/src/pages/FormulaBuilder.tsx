@@ -8,19 +8,31 @@
  */
 import { useState, useMemo } from "react";
 import type { ReactNode } from "react";
+import { useParams, useLocation } from "wouter";
 import {
   Play, Save, X, Plus, GitBranch, CheckCircle2, Clock, AlertCircle,
   Lock, Unlock, History, ChevronRight, Users, Tag, Link2,
-  Loader2,
+  Loader2, ArrowLeft,
 } from "lucide-react";
 import { PageHeader, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
 import { useVariables, type Variable, type VariableType, type SourceType } from "@/hooks/useVariables";
+import {
+  useFormula,
+  useCreateFormula,
+  useUpdateFormula,
+  useSubmitFormula,
+  useApproveFormula,
+  useEvaluateFormula,
+  type FormulaEvaluationInput,
+} from "@/hooks/useFormulas";
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
 
-type VariableType = "rate" | "currency" | "integer";
+// VariableType is imported from @/hooks/useVariables
+// Local subset for formula-specific variable types
+type FormulaVariableType = "rate" | "currency" | "integer";
 type VariableSource = "CRM" | "Billing" | "Model" | "Manual";
 type FormulaStatus = "draft" | "pending" | "approved" | "archived";
 type ActivationState = "draft" | "pending" | "approved";
@@ -29,7 +41,7 @@ type DependentType = "Business Case" | "Value Tree" | "Workflow";
 /** A variable bound to a formula with type and source information */
 interface FormulaVariable {
   name: string;
-  type: VariableType;
+  type: FormulaVariableType;
   source: VariableSource;
 }
 
@@ -73,11 +85,15 @@ const SOURCE_TYPE_COLOR: Record<VariableSource, string> = {
   Manual: "bg-amber-50 text-amber-700",
 };
 
-const VAR_TYPE_COLOR: Record<VariableType, string> = {
+const VAR_TYPE_COLOR: Record<FormulaVariableType, string> = {
   rate: "bg-cyan-100 text-cyan-700",
   currency: "bg-emerald-100 text-emerald-700",
   integer: "bg-neutral-100 text-neutral-600",
 };
+
+const MOCK_FORMULA_EXPRESSION = `// Example formula expression
+ARR = MRR * 12
+GrowthRate = (CurrentARR - PreviousARR) / PreviousARR * 100`;
 
 const ACTIVATION_STATUS_CONFIG: Record<ActivationState, StatusConfig> = {
   draft: {
@@ -107,7 +123,7 @@ const VERSION_STATUS_COLORS: Record<FormulaStatus, string> = {
 /** Map API Variable to FormulaVariable format */
 function mapVariableToFormulaVariable(variable: Variable): FormulaVariable {
   // Map VariableType to FormulaVariable type (only 'rate' | 'currency' | 'integer')
-  const typeMap: Record<string, 'rate' | 'currency' | 'integer'> = {
+  const typeMap: Record<string, FormulaVariableType> = {
     rate: 'rate',
     currency: 'currency',
     integer: 'integer',
@@ -229,10 +245,52 @@ function ActivationButton({ state, onStateChange }: ActivationButtonProps) {
 // Main Component
 // ============================================================================
 
-export default function FormulaBuilder() {
+interface FormulaBuilderProps {
+  isNew?: boolean;
+}
+
+export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
+  const params = useParams();
+  const formulaId = params.formulaId;
+  const [, navigate] = useLocation();
+
   const [activeTab, setActiveTab] = useState("Expression");
   const [tested, setTested] = useState(false);
   const [activationState, setActivationState] = useState<ActivationState>("draft");
+  const [formulaExpression, setFormulaExpression] = useState(MOCK_FORMULA_EXPRESSION);
+  const [formulaName, setFormulaName] = useState("Customer Churn Reduction ROI");
+  const [formulaDescription, setFormulaDescription] = useState("Calculate ROI from reducing customer churn through predictive analytics");
+  const [testInputs, setTestInputs] = useState(MOCK_TEST_INPUTS);
+  const [evaluationResult, setEvaluationResult] = useState<{
+    result: number;
+    roi: number;
+    roiPercent: number;
+    confidence: number;
+  } | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Fetch existing formula if editing
+  const { data: existingFormula, isLoading: isLoadingFormula } = useFormula(
+    !isNew && formulaId ? formulaId : null
+  );
+
+  // Mutations
+  const { mutate: createFormula, isPending: isCreating } = useCreateFormula();
+  const { mutate: updateFormula, isPending: isUpdating } = useUpdateFormula();
+  const { mutate: submitFormula, isPending: isSubmitting } = useSubmitFormula();
+  const { mutate: approveFormula, isPending: isApproving } = useApproveFormula();
+  const { mutate: evaluateFormula } = useEvaluateFormula();
+
+  // Load existing formula data
+  useMemo(() => {
+    if (existingFormula && !isNew) {
+      setFormulaName(existingFormula.name);
+      setFormulaDescription(existingFormula.description || "");
+      setFormulaExpression(existingFormula.expression || MOCK_FORMULA_EXPRESSION);
+      setActivationState((existingFormula.status as ActivationState) || "draft");
+    }
+  }, [existingFormula, isNew]);
 
   // P1-21: Fetch real variables from API
   const { data: apiVariables, isLoading: variablesLoading, isError: variablesError } = useVariables({ status: 'validated' });
@@ -245,22 +303,149 @@ export default function FormulaBuilder() {
 
   const statusConfig = ACTIVATION_STATUS_CONFIG[activationState];
 
+  const isSaving = isCreating || isUpdating;
+
+  const handleSave = () => {
+    setSaveError(null);
+    if (isNew) {
+      createFormula(
+        {
+          name: formulaName,
+          description: formulaDescription,
+          expression: formulaExpression,
+          variables: availableVariables.map((v) => v.name),
+        },
+        {
+          onSuccess: (data) => {
+            navigate(`/model/value-studio/formulas/${data.formula_id}`);
+          },
+          onError: (err) => {
+            setSaveError(err.message);
+          },
+        }
+      );
+    } else if (formulaId) {
+      updateFormula(
+        {
+          formulaId,
+          name: formulaName,
+          description: formulaDescription,
+          expression: formulaExpression,
+          variables: availableVariables.map((v) => v.name),
+        },
+        {
+          onError: (err) => {
+            setSaveError(err.message);
+          },
+        }
+      );
+    }
+  };
+
+  const handleTest = async () => {
+    setIsEvaluating(true);
+    setSaveError(null);
+
+    // Parse test inputs into evaluation format
+    const inputs = testInputs.map((input) => ({
+      name: input.label,
+      value: parseFloat(input.value.replace(/[$,%]/g, "")) || 0,
+      unit: input.value.includes("$") ? "USD" : input.value.includes("%") ? "percent" : undefined,
+    }));
+
+    evaluateFormula(
+      {
+        formulaId: isNew ? undefined : formulaId,
+        expression: formulaExpression,
+        inputs,
+      },
+      {
+        onSuccess: (result) => {
+          const costInput = inputs.find((i) => i.name.includes("Cost"));
+          const costValue = costInput?.value ?? 0;
+          setEvaluationResult({
+            result: result.result,
+            roi: result.result - costValue,
+            roiPercent: ((result.result - costValue) / (costValue || 1)) * 100,
+            confidence: result.confidence,
+          });
+          setTested(true);
+          setIsEvaluating(false);
+        },
+        onError: (err) => {
+          setSaveError(err.message);
+          setIsEvaluating(false);
+        },
+      }
+    );
+  };
+
+  const handleActivationChange = (newState: ActivationState) => {
+    if (!formulaId || isNew) {
+      setActivationState(newState);
+      return;
+    }
+
+    if (newState === "pending" && activationState === "draft") {
+      submitFormula(formulaId, {
+        onSuccess: () => setActivationState(newState),
+        onError: (err) => setSaveError(err.message),
+      });
+    } else if (newState === "approved" && activationState === "pending") {
+      approveFormula(
+        { formulaId, action: "approve" },
+        {
+          onSuccess: () => setActivationState(newState),
+          onError: (err) => setSaveError(err.message),
+        }
+      );
+    } else {
+      setActivationState(newState);
+    }
+  };
+
+  if (isLoadingFormula) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 size={32} className="animate-spin text-neutral-400" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
+      {/* Back button for edit mode */}
+      {!isNew && (
+        <button
+          onClick={() => navigate("/model/value-studio/formulas")}
+          className="flex items-center gap-1 text-[12px] text-neutral-500 hover:text-neutral-800 mb-4 transition-colors"
+        >
+          <ArrowLeft size={14} /> Back to formulas
+        </button>
+      )}
+
       {/* Header with governance status */}
       <div className="flex items-start justify-between mb-5">
         <PageHeader
-          breadcrumbs={["Value Models", "Formula Studio", "Customer Churn Reduction ROI"]}
-          title="Customer Churn Reduction ROI"
-          subtitle="Governed formula asset — version 3 (draft)"
+          breadcrumbs={["Value Models", "Formula Studio", isNew ? "New Formula" : formulaName]}
+          title={formulaName}
+          subtitle={isNew ? "Create new formula" : `Governed formula asset — ${activationState}`}
         />
         <div className="flex items-center gap-2 shrink-0">
           <span className={`flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${statusConfig.color}`}>
             {statusConfig.icon} {statusConfig.label}
           </span>
-          <ActivationButton state={activationState} onStateChange={setActivationState} />
+          <ActivationButton state={activationState} onStateChange={handleActivationChange} />
         </div>
       </div>
+
+      {saveError && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-700">
+          {saveError}
+        </div>
+      )}
 
       {/* Tabs: Expression | Variables | Governance | Dependencies */}
       <Tabs
@@ -281,71 +466,98 @@ export default function FormulaBuilder() {
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">Name</label>
                     <input
-                      readOnly
-                      value="Customer Churn Reduction ROI"
-                      className="w-full border border-neutral-200 rounded-md px-3 py-2 text-[13px] text-neutral-800 bg-neutral-50 outline-none"
+                      value={formulaName}
+                      onChange={(e) => setFormulaName(e.target.value)}
+                      placeholder="Enter formula name..."
+                      className="w-full border border-neutral-200 rounded-md px-3 py-2 text-[13px] text-neutral-800 bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">Description</label>
                     <textarea
-                      readOnly
-                      value="Calculate ROI from reducing customer churn through predictive analytics"
+                      value={formulaDescription}
+                      onChange={(e) => setFormulaDescription(e.target.value)}
+                      placeholder="Describe what this formula calculates..."
                       rows={2}
-                      className="w-full border border-neutral-200 rounded-md px-3 py-2 text-[12px] text-neutral-700 bg-neutral-50 outline-none resize-none"
+                      className="w-full border border-neutral-200 rounded-md px-3 py-2 text-[12px] text-neutral-700 bg-white outline-none resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">Value Driver</label>
-                      <div className="border border-neutral-200 rounded-md px-3 py-2 text-[12px] text-neutral-700 bg-neutral-50 flex justify-between">
-                        Revenue Retention <span className="text-neutral-400">▾</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">Value Pack</label>
-                      <div className="border border-neutral-200 rounded-md px-3 py-2 text-[12px] text-neutral-700 bg-neutral-50 flex justify-between">
-                        Enterprise Security ROI <span className="text-neutral-400">▾</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </SectionCard>
 
               <SectionCard title="Formula Expression">
-                <div className="bg-[#0d1117] rounded-lg p-4 font-mono text-[12px] text-[#c9d1d9] leading-relaxed whitespace-pre">
-                  {MOCK_FORMULA_EXPRESSION}
-                </div>
+                <textarea
+                  value={formulaExpression}
+                  onChange={(e) => setFormulaExpression(e.target.value)}
+                  placeholder="Enter formula expression using {variable_name} syntax..."
+                  className="w-full h-32 bg-[#0d1117] rounded-lg p-4 font-mono text-[12px] text-[#c9d1d9] leading-relaxed outline-none resize-none focus:ring-2 focus:ring-blue-500/20"
+                  spellCheck={false}
+                />
                 <div className="flex gap-2 mt-3">
-                  <Btn variant="primary" onClick={() => setTested(true)}>
-                    <Play size={11}/> Test with Sample Data
+                  <Btn
+                    variant="primary"
+                    onClick={handleTest}
+                    disabled={isEvaluating || !formulaExpression.trim()}
+                  >
+                    {isEvaluating ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Play size={11} />
+                    )}
+                    {isEvaluating ? " Testing..." : " Test with Sample Data"}
                   </Btn>
-                  <Btn variant="ghost"><Save size={11}/> Save Draft</Btn>
+                  <Btn
+                    variant="ghost"
+                    onClick={handleSave}
+                    disabled={isSaving || !formulaName.trim()}
+                  >
+                    {isSaving ? (
+                      <Loader2 size={11} className="animate-spin" />
+                    ) : (
+                      <Save size={11} />
+                    )}
+                    {isSaving ? " Saving..." : " Save Draft"}
+                  </Btn>
                 </div>
               </SectionCard>
 
-              {tested && (
+              {tested && evaluationResult && (
                 <SectionCard title="Test Results">
                   <div className="space-y-1.5 mb-3">
-                    {MOCK_TEST_INPUTS.map((input) => (
+                    {testInputs.map((input, idx) => (
                       <div key={input.label} className="flex justify-between text-[12px]">
                         <span className="text-neutral-500 font-mono">{input.label}:</span>
-                        <span className="font-semibold text-neutral-800">{input.value}</span>
+                        <input
+                          type="text"
+                          value={input.value}
+                          onChange={(e) => {
+                            const newInputs = [...testInputs];
+                            newInputs[idx].value = e.target.value;
+                            setTestInputs(newInputs);
+                          }}
+                          className="font-semibold text-neutral-800 bg-transparent border-b border-neutral-200 focus:border-blue-500 outline-none text-right w-32"
+                        />
                       </div>
                     ))}
                   </div>
                   <div className="border-t border-neutral-100 pt-3 flex items-center gap-6">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Result</span>
-                      <div className="text-[20px] font-extrabold text-emerald-700">$900,000.00</div>
+                      <div className="text-[20px] font-extrabold text-emerald-700">
+                        ${evaluationResult.result.toLocaleString()}
+                      </div>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">ROI</span>
-                      <div className="text-[20px] font-extrabold text-emerald-700">900%</div>
+                      <div className="text-[20px] font-extrabold text-emerald-700">
+                        {evaluationResult.roiPercent.toFixed(0)}%
+                      </div>
                     </div>
                     <div className="ml-auto">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Confidence</span>
-                      <div className="text-[14px] font-bold text-neutral-700">High (0.91)</div>
+                      <div className="text-[14px] font-bold text-neutral-700">
+                        High ({evaluationResult.confidence.toFixed(2)})
+                      </div>
                     </div>
                   </div>
                 </SectionCard>

@@ -170,3 +170,127 @@ export function useSubmitFormula() {
     },
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Formula CRUD Operations
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CreateFormulaInput {
+  name: string;
+  description?: string;
+  expression: string;
+  variables: string[];
+  pack_id?: string;
+}
+
+/**
+ * Hook to create a new formula.
+ *
+ * @returns Mutation result with execute function and loading/error states
+ */
+export function useCreateFormula() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Formula, FormulaApiError, CreateFormulaInput>({
+    mutationFn: async (input) => {
+      const response = await apiClient.post('l3', '/formulas', input);
+      return response.data as Formula;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+    },
+    onError: (error) => {
+      console.error('Formula creation failed:', error.message);
+    },
+  });
+}
+
+export interface UpdateFormulaInput {
+  formulaId: string;
+  name?: string;
+  description?: string;
+  expression?: string;
+  variables?: string[];
+  pack_id?: string;
+}
+
+/**
+ * Hook to update an existing formula.
+ *
+ * @returns Mutation result with execute function and loading/error states
+ */
+export function useUpdateFormula() {
+  const queryClient = useQueryClient();
+
+  return useMutation<Formula, FormulaApiError, UpdateFormulaInput>({
+    mutationFn: async ({ formulaId, ...updates }) => {
+      const response = await apiClient.put('l3', `/formulas/${formulaId}`, updates);
+      return response.data as Formula;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+      queryClient.invalidateQueries({ queryKey: QK.formulas.detail(variables.formulaId) });
+    },
+    onError: (error) => {
+      console.error('Formula update failed:', error.message);
+    },
+  });
+}
+
+/**
+ * Hook to delete/archive a formula.
+ *
+ * @returns Mutation result with execute function and loading/error states
+ */
+export function useDeleteFormula() {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, FormulaApiError, string>({
+    mutationFn: async (formulaId) => {
+      const response = await apiClient.delete('l3', `/formulas/${formulaId}`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.formulas.all });
+    },
+    onError: (error) => {
+      console.error('Formula deletion failed:', error.message);
+    },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Formula Evaluation
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface FormulaEvaluationInput {
+  formulaId?: string;
+  expression?: string;
+  inputs: Array<{ name: string; value: number; unit?: string }>;
+  output_unit?: string;
+}
+
+export interface FormulaEvaluationResult {
+  result: number;
+  unit: string;
+  confidence: number;
+  calculation_steps: Array<{ step: number; operation: string; result: string }>;
+  formula_used: string;
+}
+
+/**
+ * Hook to evaluate a formula with test inputs.
+ *
+ * @returns Mutation result with execute function and loading/error states
+ */
+export function useEvaluateFormula() {
+  return useMutation<FormulaEvaluationResult, FormulaApiError, FormulaEvaluationInput>({
+    mutationFn: async (input) => {
+      const response = await apiClient.post('l3', '/formulas/evaluate', input);
+      return response.data as FormulaEvaluationResult;
+    },
+    onError: (error) => {
+      console.error('Formula evaluation failed:', error.message);
+    },
+  });
+}

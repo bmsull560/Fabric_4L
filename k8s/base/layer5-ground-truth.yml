@@ -27,6 +27,7 @@ spec:
       initContainers:
         - name: migrate
           image: value-fabric/layer5-ground-truth:latest
+          imagePullPolicy: Always
           command: ["alembic", "upgrade", "head"]
           env:
             - name: DATABASE_URL_SYNC
@@ -43,8 +44,10 @@ spec:
             - name: tmp
               mountPath: /tmp
       containers:
+        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
         - name: api
           image: value-fabric/layer5-ground-truth:latest
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -121,12 +121,12 @@ export function useEntity(id: string | null) {
       if (!id) throw new Error('No entity ID provided');
 
       const encodedId = encodeURIComponent(id);
-      const response = await apiClient.get<EntityContextResponse>(
+      const response = await apiClient.get(
         'l3',
         `/entity/${encodedId}/context?hops=1`
       );
 
-      const context = response.data;
+      const context = response.data as EntityContextResponse;
       if (!context?.center) {
         throw new Error('Entity not found');
       }

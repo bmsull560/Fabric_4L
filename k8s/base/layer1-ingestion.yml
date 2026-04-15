@@ -42,8 +42,10 @@ spec:
         - name: init-tmp
           emptyDir: {}
       containers:
+        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
         - name: api
           image: value-fabric/layer1-ingestion:latest
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -106,8 +108,10 @@ spec:
             - name: raw-content
               mountPath: /app/raw-content
         # Celery worker sidecar
+        # NOTE: Use kustomize to sync image tag with main container
         - name: celery-worker
           image: value-fabric/layer1-ingestion:latest
+          imagePullPolicy: Always
           command: ["celery", "-A", "src.shared.tasks", "worker", "-l", "info"]
           securityContext:
             allowPrivilegeEscalation: false

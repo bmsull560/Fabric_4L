@@ -51,8 +51,10 @@ spec:
         - name: init-tmp
           emptyDir: {}
       containers:
+        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
         - name: api
           image: value-fabric/layer3-knowledge:latest
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

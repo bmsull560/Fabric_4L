@@ -1,5 +1,5 @@
 # Dockerfile for Layer 3: Knowledge Graph & Semantic Layer
-FROM python:3.11-slim
+FROM python:3.11.11-slim-bookworm
 
 # Security: Create non-root user early
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
@@ -19,11 +19,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set work directory
 WORKDIR /app
 
-# Install Python dependencies (production only — no dev extras)
-COPY pyproject.toml ./
-RUN pip install -e "."
+# Install Python dependencies from lockfile (production only)
+COPY requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
-# Copy project
+# Copy application code
 COPY src/ ./src/
 
 # Change ownership to non-root user

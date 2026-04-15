@@ -19,6 +19,7 @@ const OntologyBrowser        = lazy(() => import("./pages/OntologyBrowser"));
 const EntityDetail           = lazy(() => import("./pages/EntityDetail"));
 const ValueTreeExplorer      = lazy(() => import("./pages/ValueTreeExplorer"));
 const FormulaBuilder         = lazy(() => import("./pages/FormulaBuilder"));
+const FormulaList            = lazy(() => import("./pages/FormulaList"));
 const GraphExplorer          = lazy(() => import("./pages/GraphExplorer"));
 const AgentWorkflows         = lazy(() => import("./pages/AgentWorkflows"));
 const BusinessCase           = lazy(() => import("./pages/BusinessCase"));
@@ -245,6 +246,16 @@ function Router() {
             </RouteGuard>
           </Route>
           <Route path="/model/value-studio/formulas">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><FormulaList /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/model/value-studio/formulas/new">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><FormulaBuilder isNew /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/model/value-studio/formulas/:formulaId">
             <RouteGuard requiredTier="advanced">
               <ErrorBoundary><FormulaBuilder /></ErrorBoundary>
             </RouteGuard>

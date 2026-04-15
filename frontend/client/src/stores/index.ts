@@ -2,6 +2,14 @@
 export { useUserTierStore, getRouteTier } from './userTierStore';
 export type { UserTier, UserPermissions } from './userTierStore';
 
+// Ingestion UI Store (Command Center)
+export { useIngestionUIStore } from './ingestionStore';
+export type { IngestionUIStore } from './ingestionStore';
+
+// Entity UI Store (Ontology Browser)
+export { useEntityUIStore } from './entityStore';
+export type { EntityUIStore, EntityType as EntityUIType } from './entityStore';
+
 // Narrative Creation Store (Value Narrative Hero)
 export { useNarrativeStore, DEFAULT_INDUSTRY, FALLBACK_INDUSTRIES, looksLikeUrl } from './narrativeStore';
 export type { OutputType, InputMethod } from './narrativeStore';
@@ -32,3 +40,6 @@ export {
   useCreateEntity,
   type Entity as EntityData,
 } from '../hooks/useEntities';
+
+// Re-export Entity type from hooks for OntologyBrowser compatibility
+export type { Entity } from '../hooks/useEntities';

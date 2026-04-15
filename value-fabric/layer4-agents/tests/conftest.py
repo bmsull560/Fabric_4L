@@ -177,9 +177,11 @@ async def orchestrator_with_checkpoint(
         state_manager=state_manager,
         checkpoint_saver=mock_checkpoint_saver
     )
-    await controller.start()
-    yield controller
-    await controller.stop()
+    try:
+        await controller.start()
+        yield controller
+    finally:
+        await controller.stop()
 
 
 @pytest.fixture

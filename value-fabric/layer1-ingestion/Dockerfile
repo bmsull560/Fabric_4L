@@ -1,20 +1,27 @@
-FROM python:3.11-slim-bookworm
+# Multi-stage build for Layer 1: Data Ingestion Service
+# Stage 1: Builder - installs dependencies and Playwright browsers
+FROM python:3.11.11-slim-bookworm AS builder
 
-# Security: Create non-root user
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+WORKDIR /app
 
-# Install system dependencies
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
-    curl \
-    wget \
-    gnupg \
-    poppler-utils \
-    tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright dependencies
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Install Playwright browsers
+RUN playwright install chromium
+RUN playwright install-deps chromium
+
+# Stage 2: Runtime - minimal image with only runtime dependencies
+FROM python:3.11.11-slim-bookworm AS runtime
+
+# Install runtime dependencies (Playwright libs + curl for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     libnss3 \
@@ -34,26 +41,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 \
     libcairo2 \
     libatspi2.0-0 \
+    poppler-utils \
+    tesseract-ocr \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
+# Create non-root user
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy Python packages from builder
+COPY --from=builder /root/.local /home/appuser/.local
+ENV PATH=/home/appuser/.local/bin:$PATH
 
-# Install Playwright browsers
-RUN playwright install chromium
-RUN playwright install-deps chromium
+# Copy Playwright browsers from builder
+COPY --from=builder /root/.cache/ms-playwright /home/appuser/.cache/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
 
 # Copy application code
 COPY src/ ./src/
 COPY alembic.ini .
 COPY migrations/ ./migrations/
 
-# Change ownership to non-root user
-RUN chown -R appuser:appgroup /app
+# Change ownership
+RUN chown -R appuser:appgroup /app /home/appuser
 
 # Switch to non-root user
 USER appuser
@@ -65,5 +77,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Default command (can be overridden)
+# Default command
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.11-slim-bookworm
+FROM python:3.11.11-slim-bookworm
 
 # Security: Run as non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
@@ -13,11 +13,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements first for better caching
-COPY pyproject.toml .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -e "."
+# Install Python dependencies from lockfile
+COPY requirements.lock .
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Copy application code
 COPY src/ ./src/

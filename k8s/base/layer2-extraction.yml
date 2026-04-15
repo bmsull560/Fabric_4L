@@ -42,8 +42,10 @@ spec:
             capabilities:
               drop: ["ALL"]
       containers:
+        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
         - name: api
           image: value-fabric/layer2-extraction:latest
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

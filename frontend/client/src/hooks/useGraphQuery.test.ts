@@ -19,6 +19,10 @@ import {
   useFullGraph,
 } from './useGraphQuery';
 
+beforeEach(() => {
+  server.resetHandlers();
+});
+
 describe('useGraphQuery', () => {
   it('executes graph query successfully', async () => {
     const wrapper = createWrapper();

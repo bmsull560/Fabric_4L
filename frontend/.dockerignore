@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Documentation
+*.md
+docs/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+*.tgz
+
+# Development
+.env
+.env.*
+!.env.example
+*.local
+
+# Tests
+coverage/
+.nyc_output/
+e2e/playwright-report/
+e2e/test-results/
+*.test.ts
+*.test.tsx
+*.spec.ts
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (safety)
+*.pem
+*.key
+secrets/

@@ -27,6 +27,7 @@ spec:
       containers:
         - name: web
           image: value-fabric/frontend:latest
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

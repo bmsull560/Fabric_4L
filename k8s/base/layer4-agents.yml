@@ -40,8 +40,10 @@ spec:
         - name: tmp
           emptyDir: {}
       containers:
+        # NOTE: Use kustomize images.newTag in production; :latest is dev-only
         - name: api
           image: value-fabric/layer4-agents:latest
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

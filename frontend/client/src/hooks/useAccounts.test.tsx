@@ -1,8 +1,8 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
+import { createWrapper, createMockResponse } from '../test-utils';
 import {
   useAccounts,
   useAccount,
@@ -25,30 +25,6 @@ vi.mock('@/api/client', () => ({
     post: vi.fn(),
   },
 }));
-
-// Helper to create mock responses
-function createMockResponse<T>(data: T): { data: T; status: number } {
-  return { data, status: 200 };
-}
-
-// Helper to create wrapper with QueryClient
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-
-  return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    );
-  };
-}
 
 // Sample data
 const sampleAccount: Account = {

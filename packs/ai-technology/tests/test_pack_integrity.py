@@ -1,6 +1,10 @@
 """AI & Technology Value Pack - Integrity Tests
 
 Validates pack structure, JSON validity, and cross-reference integrity.
+
+NOTE (P1-4): File handle verification - fixtures use scope="class" which may
+hold files open longer. Monitor for FD exhaustion under high concurrency.
+See: cat /proc/sys/fs/file-nr or lsof -p <pid> during load testing.
 """
 
 import json

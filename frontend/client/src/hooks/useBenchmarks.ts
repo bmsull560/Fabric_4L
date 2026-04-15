@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { withApiError, BenchmarkApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
@@ -29,6 +29,22 @@ export interface Benchmark {
 export { BenchmarkApiError } from './useApiShared';
 
 
+
+export interface BenchmarkPolicy {
+  id: string;
+  policy_id: string;
+  name: string;
+  description?: string;
+  rules: Array<{
+    metric: string;
+    threshold: number;
+    operator: 'gt' | 'lt' | 'eq' | 'gte' | 'lte';
+  }>;
+  status: 'active' | 'draft' | 'archived';
+  priority: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface BenchmarkFilters {
   industry?: string;

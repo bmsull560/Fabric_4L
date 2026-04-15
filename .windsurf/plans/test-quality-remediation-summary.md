@@ -17,6 +17,30 @@ The audit report (based on static analysis) showed 8 P0 blocking issues. Runtime
 
 ---
 
+## P2 Improvements (2026-04-15)
+
+### P2 Fix 1: Shared Mock Response Helper
+**Location**: `frontend/client/src/test-utils.tsx`
+
+**Problem**: Multiple frontend test files defined their own `createMockResponse` helper inline, causing duplication
+
+**Changes**:
+1. Added `createMockResponse<T>(data: T, status = 200): AxiosResponse<T>` to `test-utils.tsx`
+2. Returns proper AxiosResponse structure with headers, config, statusText
+
+**Files Updated**:
+- `test-utils.tsx` - Added shared helper
+- `useValuePacks.test.tsx` - Now imports from shared
+- `useAccounts.test.tsx` - Migrated to shared helper (15 tests)
+- `useBilling.test.tsx` - Migrated to shared helper (10 tests)
+
+**Impact**: 
+- Reduced duplication across 4 test files
+- Consistent mock response structure
+- ~40 lines of duplicate code removed
+
+---
+
 ## Phase 4 Rewrites (2026-04-15)
 
 ### P1 Fix 1: E2E Test Reliability - test_e2e_pipeline.py

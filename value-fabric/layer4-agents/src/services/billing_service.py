@@ -93,7 +93,7 @@ class BillingService:
 
                 # Create default free subscription
                 await self._create_free_subscription(customer_id)
-                await self.db.commit()
+                # Note: Caller (billing.py) handles transaction commit
 
                 return customer
 
@@ -107,8 +107,20 @@ class BillingService:
                     continue
                 # Last attempt failed, re-raise
                 raise
-            except Exception:
+            except Exception as e:
                 await self.db.rollback()
+                # Compensation: Log potential Stripe orphan for cleanup
+                # If stripe_customer_id was created but DB failed, we have an orphan
+                if stripe_customer_id:
+                    logger.warning(
+                        "POTENTIAL_STRIPE_ORPHAN",
+                        extra={
+                            "stripe_customer_id": stripe_customer_id,
+                            "customer_id": customer_id,
+                            "error": str(e),
+                            "action_required": "Reconcile Stripe customer or delete if unused",
+                        }
+                    )
                 raise
 
         # Should never reach here

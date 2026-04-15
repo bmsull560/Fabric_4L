@@ -91,6 +91,9 @@ export function useBilling(customerId: string) {
         BaseApiError
       );
     },
+    onSuccess: () => {
+      setPortalError(null);
+    },
     onError: (error) => {
       setPortalError(error instanceof Error ? error : new Error(String(error)));
       console.error('Portal mutation failed:', error);

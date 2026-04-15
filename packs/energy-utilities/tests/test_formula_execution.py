@@ -62,7 +62,12 @@ class TestFormulaCalculations:
         return {v["variable_name"]: v.get("default_value", 0) for v in data["variables"]}
 
     def safe_evaluate(self, expression_str, variables):
-        """Safely evaluate formula expression."""
+        """Safely evaluate formula expression.
+
+        WARNING: Uses eval() with restricted globals. This is acceptable
+        for test fixtures but production should use a proper expression
+        evaluator like asteval or simpleeval.
+        """
         allowed_names = {
             "max": max, "min": min, "abs": abs,
             "sum": sum, "round": round, "pow": pow

@@ -2,9 +2,21 @@ import { ReactElement, ReactNode, useState } from "react";
 import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router } from "wouter";
+import { AxiosResponse, AxiosResponseHeaders } from "axios";
 
 // Re-export for AuthContext tests (avoids circular dependency)
 export type { UserInfo } from "./contexts/AuthContext";
+
+// P2 Improvement: Shared mock response factory for API tests
+export function createMockResponse<T>(data: T, status = 200): AxiosResponse<T> {
+  return {
+    data,
+    status,
+    statusText: status === 200 ? "OK" : "Error",
+    headers: {},
+    config: { headers: {} as AxiosResponseHeaders },
+  } as AxiosResponse<T>;
+}
 
 export const createTestQueryClient = () =>
   new QueryClient({

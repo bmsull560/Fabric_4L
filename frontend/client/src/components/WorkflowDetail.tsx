@@ -345,7 +345,7 @@ function ToolCallRow({ call }: { call: ToolCall }) {
                 {`${JSON.stringify(call.input, null, 2)}`}
               </pre>
             </div>
-            {call.output && (
+            {call.output !== undefined && (
               <div>
                 <span className="text-xs font-medium text-muted-foreground">Output:</span>
                 <pre className="text-xs bg-muted p-2 rounded mt-1 overflow-auto">

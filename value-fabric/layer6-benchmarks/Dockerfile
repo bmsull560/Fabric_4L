@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11.11-slim-bookworm
 
 # Security: Create non-root user early
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
@@ -8,11 +8,9 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency file
-COPY pyproject.toml ./
-
-# Install dependencies from pyproject.toml (production only)
-RUN pip install --no-cache-dir -e "."
+# Install Python dependencies from lockfile (production only)
+COPY requirements.lock ./
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Copy source code
 COPY src/ ./src/

@@ -656,3 +656,33 @@ jobs:
             artifacts/release-evidence/billing-entitlements-summary.json
             artifacts/release-evidence/billing-entitlements-summary.md
           retention-days: 14
+
+  # Docker image build verification - catches Dockerfile regressions
+  docker-build-check:
+    name: Docker Image Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        layer: [layer1-ingestion, layer2-extraction, layer3-knowledge, layer4-agents, layer5-ground-truth, layer6-benchmarks, frontend]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.layer == 'frontend' && 'frontend' || format('value-fabric/{0}', matrix.layer) }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify Dockerfile lint
+        uses: hadolint/hadolint-action@v3.1.0
+        if: matrix.layer != 'frontend'
+        with:
+          dockerfile: ${{ format('value-fabric/{0}/Dockerfile', matrix.layer) }}
+          ignore: DL3008,DL3013,DL3018

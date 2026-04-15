@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useBilling, useEntitlements, useFeatureCheck, billingKeys } from './useBilling';
 import { apiClient } from '@/api/client';
-import { createWrapper } from '@/test-utils';
+import { createWrapper, createMockResponse } from '@/test-utils';
 
 // Mock apiClient
 vi.mock('@/api/client', () => ({
@@ -15,11 +15,6 @@ vi.mock('@/api/client', () => ({
 // Type for mocked apiClient
 const mockGet = apiClient.get as Mock;
 const mockPost = apiClient.post as Mock;
-
-// Helper to create mock response
-function createMockResponse<T>(data: T) {
-  return Promise.resolve({ data });
-}
 
 describe('useBilling', () => {
   beforeEach(() => {
@@ -36,7 +31,7 @@ describe('useBilling', () => {
       cancel_at_period_end: false,
     };
 
-    mockGet.mockImplementation(() => createMockResponse(mockSubscription));
+    mockGet.mockResolvedValue(createMockResponse(mockSubscription));
 
     const { result } = renderHook(() => useBilling('user_123'), {
       wrapper: createWrapper(),
@@ -62,8 +57,8 @@ describe('useBilling', () => {
 
   it('should open customer portal', async () => {
     const mockPortalResponse = { url: 'https://billing.stripe.com/portal' };
-    mockGet.mockImplementation(() => createMockResponse({ plan_id: 'pro' }));
-    mockPost.mockImplementation(() => createMockResponse(mockPortalResponse));
+    mockGet.mockResolvedValue(createMockResponse({ plan_id: 'pro' }));
+    mockPost.mockResolvedValue(createMockResponse(mockPortalResponse));
 
     // Mock window.location.href
     const originalHref = window.location.href;
@@ -90,8 +85,8 @@ describe('useBilling', () => {
 
   it('should initiate checkout for upgrade', async () => {
     const mockCheckoutResponse = { session_id: 'sess_123', url: 'https://checkout.stripe.com/pay' };
-    mockGet.mockImplementation(() => createMockResponse({ plan_id: 'free' }));
-    mockPost.mockImplementation(() => createMockResponse(mockCheckoutResponse));
+    mockGet.mockResolvedValue(createMockResponse({ plan_id: 'free' }));
+    mockPost.mockResolvedValue(createMockResponse(mockCheckoutResponse));
 
     // Mock window.location.href
     Object.defineProperty(window, 'location', {
@@ -145,7 +140,7 @@ describe('useEntitlements', () => {
       },
     };
 
-    mockGet.mockImplementation(() => createMockResponse(mockEntitlements));
+    mockGet.mockResolvedValue(createMockResponse(mockEntitlements));
 
     const { result } = renderHook(() => useEntitlements('user_123'), {
       wrapper: createWrapper(),
@@ -162,7 +157,7 @@ describe('useFeatureCheck', () => {
   });
 
   it('should check feature access', async () => {
-    mockGet.mockImplementation(() => createMockResponse({ feature_id: 'advanced_models', has_access: true }));
+    mockGet.mockResolvedValue(createMockResponse({ feature_id: 'advanced_models', has_access: true }));
 
     const { result } = renderHook(() => useFeatureCheck('user_123', 'advanced_models'), {
       wrapper: createWrapper(),
@@ -176,7 +171,7 @@ describe('useFeatureCheck', () => {
   });
 
   it('should not run when customerId is empty', async () => {
-    mockGet.mockImplementation(() => createMockResponse({ has_access: false }));
+    mockGet.mockResolvedValue(createMockResponse({ has_access: false }));
 
     const { result } = renderHook(() => useFeatureCheck('', 'feature_1'), {
       wrapper: createWrapper(),
@@ -188,7 +183,7 @@ describe('useFeatureCheck', () => {
   });
 
   it('should not run when featureId is empty', async () => {
-    mockGet.mockImplementation(() => createMockResponse({ has_access: false }));
+    mockGet.mockResolvedValue(createMockResponse({ has_access: false }));
 
     const { result } = renderHook(() => useFeatureCheck('user_123', ''), {
       wrapper: createWrapper(),

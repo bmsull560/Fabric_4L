@@ -57,9 +57,6 @@ logs/
 htmlcov/
 .tox/
 
-# Docker
-.dockerignore
-
 # Local data
 postgres_data/
 redis_data/

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11.11-slim-bookworm
 
 LABEL maintainer="Value Fabric Engineering"
 LABEL description="Layer 5 — Ground Truth Service"
@@ -11,10 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python dependencies
-COPY pyproject.toml .
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -e ".[dev]"
+# Install Python dependencies from lockfile (production only — no dev deps)
+COPY requirements.lock .
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Copy source
 COPY . .
