@@ -99,34 +99,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Calls backend to get authorization URL, then redirects browser to IdP
    */
   const initiateLogin = useCallback(async (tenantSlug: string) => {
+    // Set loading state synchronously before async operations
     setIsLoading(true);
-    try {
-      // Build callback URL (must match backend redirect_uri)
-      const callbackUrl = `${window.location.origin}/login/callback`;
-      
-      // Call backend to initiate OIDC flow
-      const response = await fetch(
-        `${API_BASE}${L4_PREFIX}/auth/oidc/${tenantSlug}/login?redirect_uri=${encodeURIComponent(callbackUrl)}`
-      );
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Failed to initiate login');
-      }
-      
-      const { authorization_url, state } = await response.json();
-      
-      // Store state for verification on callback
-      sessionStorage.setItem('oidcState', state);
-      sessionStorage.setItem('oidcTenantSlug', tenantSlug);
-      
-      // Redirect to IdP
-      window.location.href = authorization_url;
-    } catch (error) {
-      console.error('Login initiation failed:', error);
+    
+    // Build callback URL (must match backend redirect_uri)
+    const callbackUrl = `${window.location.origin}/login/callback`;
+    
+    // Call backend to initiate OIDC flow
+    const response = await fetch(
+      `${API_BASE}${L4_PREFIX}/auth/oidc/${tenantSlug}/login?redirect_uri=${encodeURIComponent(callbackUrl)}`
+    );
+    
+    if (!response.ok) {
       setIsLoading(false);
-      throw error;
+      const errorData = await response.json().catch(() => ({ detail: 'Failed to initiate login' }));
+      throw new Error(errorData.detail || 'Failed to initiate login');
     }
+    
+    const { authorization_url, state } = await response.json();
+    
+    // Store state for verification on callback
+    sessionStorage.setItem('oidcState', state);
+    sessionStorage.setItem('oidcTenantSlug', tenantSlug);
+    
+    // Redirect to IdP (this will unload the page, so no need to set loading false)
+    window.location.href = authorization_url;
   }, []);
 
   /**
@@ -147,19 +144,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Authentication failed');
+        const errorData = await response.json().catch(() => ({ detail: 'Authentication failed' }));
+        throw new Error(errorData.detail || 'Authentication failed');
       }
       
       const data = await response.json();
-      const { access_token, user_id, email, role } = data;
+      
+      // Safely extract fields with defaults
+      const access_token = data?.access_token;
+      const user_id = data?.user_id;
+      const email = data?.email;
+      const role = data?.role;
+      
+      if (!access_token) {
+        throw new Error('No access token received from authentication server');
+      }
+      
       const tenantSlug = sessionStorage.getItem('oidcTenantSlug') || 'default';
       
       // Build user info
       const userInfo: UserInfo = {
-        id: user_id,
-        email,
-        role,
+        id: user_id || 'unknown',
+        email: email || 'unknown@example.com',
+        role: role || 'standard',
         tenantId: tenantSlug, // Backend uses slug as tenant identifier
         tenantSlug,
       };
@@ -174,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('tenantId', tenantSlug);
 
       // Synchronize role with userTierStore so tier/permissions reflect the OIDC role
-      useUserTierStore.getState().setUserRole(role);
+      useUserTierStore.getState().setUserRole(role || 'standard');
       
       // Clean up session storage
       sessionStorage.removeItem('oidcState');
