@@ -32,9 +32,11 @@ describe('useActiveWorkflows', () => {
     // Wait for data to load
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    // Verify normalized workflow data
-    expect(result.current.data).toHaveLength(3);
-    expect(result.current.data?.[0]).toMatchObject({
+    // Verify paginated response structure
+    expect(result.current.data?.items).toHaveLength(3);
+    expect(result.current.data?.total).toBe(3);
+    expect(result.current.data?.has_more).toBe(false);
+    expect(result.current.data?.items[0]).toMatchObject({
       id: 'wf-1',
       name: 'Market Analysis Workflow',
       status: 'running',
@@ -43,10 +45,16 @@ describe('useActiveWorkflows', () => {
   });
 
   it('handles empty workflow list', async () => {
-    // Override handler to return empty array
+    // Override handler to return empty paginated response
     server.use(
       http.get('/api/v1/agents/workflows/active', () => {
-        return HttpResponse.json([]);
+        return HttpResponse.json({
+          items: [],
+          total: 0,
+          limit: 50,
+          offset: 0,
+          has_more: false,
+        });
       })
     );
 
@@ -54,17 +62,24 @@ describe('useActiveWorkflows', () => {
     const { result } = renderHook(() => useActiveWorkflows(), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toHaveLength(0);
+    expect(result.current.data?.items).toHaveLength(0);
+    expect(result.current.data?.total).toBe(0);
   });
 
   it('handles malformed workflow data gracefully', async () => {
     server.use(
       http.get('/api/v1/agents/workflows/active', () => {
-        return HttpResponse.json([
-          { workflow_id: 'wf-bad', status: 'unknown_status', progress_percentage: 'invalid' },
-          { workflow_id: '', status: 'running' }, // Empty ID should be filtered
-          { workflow_instance_id: 'wf-alt', workflow_type: 'test', status: 'running' },
-        ]);
+        return HttpResponse.json({
+          items: [
+            { workflow_id: 'wf-bad', status: 'unknown_status', progress_percentage: 'invalid' },
+            { workflow_id: '', status: 'running' }, // Empty ID should be filtered
+            { workflow_instance_id: 'wf-alt', workflow_type: 'test', status: 'running' },
+          ],
+          total: 3,
+          limit: 50,
+          offset: 0,
+          has_more: false,
+        });
       })
     );
 
@@ -74,7 +89,7 @@ describe('useActiveWorkflows', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     // Should filter out empty ID workflows
-    const workflows = result.current.data || [];
+    const workflows = result.current.data?.items || [];
     const badWorkflow = workflows.find(w => w.id === 'wf-bad');
     expect(badWorkflow?.status).toBe('pending'); // Unknown status normalized to pending
     expect(badWorkflow?.progress).toBe(0); // Invalid progress normalized to 0
@@ -96,14 +111,15 @@ describe('useActiveWorkflows', () => {
 });
 
 describe('useWorkflowHistory', () => {
-  it('fetches workflow history', async () => {
+  it('fetches workflow history with pagination', async () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useWorkflowHistory(), { wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toHaveLength(3);
-    expect(result.current.data?.[2]).toMatchObject({
+    expect(result.current.data?.items).toHaveLength(3);
+    expect(result.current.data?.total).toBe(3);
+    expect(result.current.data?.items[2]).toMatchObject({
       id: 'wf-3',
       status: 'completed',
       progress: 100,

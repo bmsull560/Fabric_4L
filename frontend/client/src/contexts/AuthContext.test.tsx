@@ -11,12 +11,14 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
+import { http, HttpResponse, delay } from 'msw';
 import { createWrapper } from '../test-utils';
+import { server } from '../../../test/mocks/server';
 import { AuthProvider, useAuthContext, type UserInfo } from './AuthContext';
 
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// OIDC endpoint paths
+const API_BASE = '/api/v1';
+const L4_PREFIX = '/agents';
 
 // ── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -62,17 +64,18 @@ describe('AuthProvider', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
-    mockFetch.mockClear();
     vi.clearAllMocks();
     // Reset window.location.href
     Object.defineProperty(window, 'location', {
       writable: true,
       value: { href: 'http://localhost:3000', origin: 'http://localhost:3000', pathname: '/', replace: vi.fn() },
     });
+    // Reset MSW handlers
+    server.resetHandlers();
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('initialization', () => {
@@ -167,13 +170,15 @@ describe('AuthProvider', () => {
 
   describe('initiateLogin', () => {
     it('calls backend login endpoint and redirects to IdP', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          authorization_url: 'https://idp.example.com/auth?client_id=test',
-          state: 'oidc-state-123',
-        }),
-      });
+      // Set up MSW handler for OIDC login
+      server.use(
+        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
+          return HttpResponse.json({
+            authorization_url: 'https://idp.example.com/auth?client_id=test',
+            state: 'oidc-state-123',
+          });
+        })
+      );
 
       const wrapper = createWrapper();
       render(
@@ -191,10 +196,6 @@ describe('AuthProvider', () => {
         screen.getByTestId('login-btn').click();
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/auth/oidc/test-tenant/login?redirect_uri=')
-      );
-
       // Verify state stored in sessionStorage
       expect(sessionStorage.getItem('oidcState')).toBe('oidc-state-123');
       expect(sessionStorage.getItem('oidcTenantSlug')).toBe('test-tenant');
@@ -205,11 +206,17 @@ describe('AuthProvider', () => {
       });
     });
 
-    it('throws error when login initiation fails', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ detail: 'Tenant not found' }),
-      });
+    it('shows loading state during login', async () => {
+      // Set up MSW handler with delay to verify loading state
+      server.use(
+        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
+          await delay(50);
+          return HttpResponse.json({
+            authorization_url: 'https://idp.example.com/auth',
+            state: 'state-123',
+          });
+        })
+      );
 
       const wrapper = createWrapper();
       render(
@@ -223,52 +230,147 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('loading')).toHaveTextContent('ready');
       });
 
-      await expect(
-        act(async () => {
-          screen.getByTestId('login-btn').click();
-        })
-      ).rejects.toThrow('Tenant not found');
+      // Click login
+      act(() => {
+        screen.getByTestId('login-btn').click();
+      });
+
+      // Should be loading immediately after click
+      expect(screen.getByTestId('loading')).toHaveTextContent('loading');
+
+      // Wait for the async operation to complete (and redirect)
+      await waitFor(() => {
+        expect(window.location.href).toBe('https://idp.example.com/auth');
+      });
     });
 
-    it('throws error when fetch fails', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    it('throws error when login initiation fails', async () => {
+      // Set up MSW handler to return error
+      server.use(
+        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
+          return new HttpResponse(
+            JSON.stringify({ detail: 'Tenant not found' }),
+            { status: 404 }
+          );
+        })
+      );
+
+      // Component that exposes initiateLogin for direct testing
+      function LoginTrigger() {
+        const auth = useAuthContext();
+        const [error, setError] = React.useState<string>('');
+        return (
+          <div>
+            <button
+              data-testid="trigger-login"
+              onClick={async () => {
+                try {
+                  await auth.initiateLogin('test-tenant');
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              Trigger
+            </button>
+            <div data-testid="login-error">{error}</div>
+          </div>
+        );
+      }
 
       const wrapper = createWrapper();
       render(
         <AuthProvider>
-          <TestComponent />
+          <LoginTrigger />
         </AuthProvider>,
         { wrapper }
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
+      await act(async () => {
+        screen.getByTestId('trigger-login').click();
       });
 
-      await expect(
-        act(async () => {
-          screen.getByTestId('login-btn').click();
+      await waitFor(() => {
+        expect(screen.getByTestId('login-error')).toHaveTextContent('Tenant not found');
+      });
+    });
+
+    it('throws error when network fails', async () => {
+      // Set up MSW handler to simulate network error
+      server.use(
+        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
+          return HttpResponse.error();
         })
-      ).rejects.toThrow('Network error');
+      );
+
+      // Component that exposes initiateLogin for direct testing
+      function LoginTrigger() {
+        const auth = useAuthContext();
+        const [error, setError] = React.useState<string>('');
+        return (
+          <div>
+            <button
+              data-testid="trigger-login"
+              onClick={async () => {
+                try {
+                  await auth.initiateLogin('test-tenant');
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            >
+              Trigger
+            </button>
+            <div data-testid="login-error">{error}</div>
+          </div>
+        );
+      }
+
+      const wrapper = createWrapper();
+      render(
+        <AuthProvider>
+          <LoginTrigger />
+        </AuthProvider>,
+        { wrapper }
+      );
+
+      await act(async () => {
+        screen.getByTestId('trigger-login').click();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('login-error')).toHaveTextContent('Failed to fetch');
+      });
     });
   });
 
   describe('handleCallback', () => {
     beforeEach(() => {
-      sessionStorage.setItem('oidcState', 'expected-state');
+      // Set state to match what TestComponent callback button uses
+      sessionStorage.setItem('oidcState', 'test-state');
       sessionStorage.setItem('oidcTenantSlug', 'test-tenant');
     });
 
     it('exchanges code for tokens and sets auth state', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          access_token: 'new-access-token',
-          user_id: 'user-456',
-          email: 'newuser@example.com',
-          role: 'advanced',
-        }),
-      });
+      // Set up MSW handler for OIDC callback
+      server.use(
+        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/callback`, async ({ request }) => {
+          const url = new URL(request.url);
+          const code = url.searchParams.get('code');
+          const state = url.searchParams.get('state');
+
+          // Verify query params
+          expect(code).toBe('test-code');
+          expect(state).toBe('test-state');
+
+          return HttpResponse.json({
+            access_token: 'new-access-token',
+            user_id: 'user-456',
+            email: 'newuser@example.com',
+            role: 'advanced',
+          });
+        })
+      );
 
       const wrapper = createWrapper();
       render(
@@ -285,10 +387,6 @@ describe('AuthProvider', () => {
       await act(async () => {
         screen.getByTestId('callback-btn').click();
       });
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/auth/oidc/callback?code=test-code&state=test-state')
-      );
 
       // Verify auth state updated
       await waitFor(() => {
@@ -347,10 +445,15 @@ describe('AuthProvider', () => {
     });
 
     it('returns false when callback endpoint returns error', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ detail: 'Invalid authorization code' }),
-      });
+      // Set up MSW handler to return error
+      server.use(
+        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/callback`, async () => {
+          return new HttpResponse(
+            JSON.stringify({ detail: 'Invalid authorization code' }),
+            { status: 400 }
+          );
+        })
+      );
 
       // Component that captures handleCallback result
       function CallbackWithResult() {

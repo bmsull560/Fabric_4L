@@ -12,6 +12,16 @@ import { createWrapper, createWrapperWithRouterPath } from '../test-utils';
 import { useAuth, useRequireAuth, useAuthRedirect } from './useAuth';
 import { useAuthContext, type UserInfo } from '../contexts/AuthContext';
 
+// Mock wouter at top level
+const mockNavigate = vi.fn();
+vi.mock('wouter', async () => {
+  const actual = await vi.importActual('wouter');
+  return {
+    ...actual,
+    useLocation: () => ['/protected', mockNavigate],
+  };
+});
+
 // Mock the AuthContext
 vi.mock('../contexts/AuthContext', async () => {
   const actual = await vi.importActual<typeof import('../contexts/AuthContext')>('../contexts/AuthContext');
@@ -161,19 +171,9 @@ describe('useAuth', () => {
 });
 
 describe('useRequireAuth', () => {
-  const mockNavigate = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
-    // Mock wouter's useLocation
-    vi.mock('wouter', async () => {
-      const actual = await vi.importActual('wouter');
-      return {
-        ...actual,
-        useLocation: () => ['/protected', mockNavigate],
-      };
-    });
   });
 
   afterEach(() => {
@@ -298,7 +298,6 @@ describe('useRequireAuth', () => {
 });
 
 describe('useAuthRedirect', () => {
-  const mockNavigate = vi.fn();
   const mockLogout = vi.fn();
 
   beforeEach(() => {

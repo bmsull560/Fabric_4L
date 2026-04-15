@@ -15,9 +15,13 @@ const L2_PREFIX = '/extract';
 // ===== Workflow Mocks (L4) =====
 
 export const workflowMocks = [
-  http.get(`${API_BASE}${L4_PREFIX}/workflows/active`, async () => {
+  http.get(`${API_BASE}${L4_PREFIX}/workflows/active`, async ({ request }) => {
     await delay(100);
-    return HttpResponse.json([
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+    const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+
+    const allWorkflows = [
       {
         workflow_id: 'wf-1',
         workflow_type: 'market_analysis',
@@ -45,7 +49,19 @@ export const workflowMocks = [
         created_at: '2024-01-14T09:00:00Z',
         completed_at: '2024-01-14T10:30:00Z',
       },
-    ]);
+    ];
+
+    // Apply pagination
+    const paginatedItems = allWorkflows.slice(offset, offset + limit);
+    const hasMore = offset + limit < allWorkflows.length;
+
+    return HttpResponse.json({
+      items: paginatedItems,
+      total: allWorkflows.length,
+      limit,
+      offset,
+      has_more: hasMore,
+    });
   }),
 
   http.post(`${API_BASE}${L4_PREFIX}/workflows`, async ({ request }) => {
@@ -794,6 +810,130 @@ export const businessCaseMocks = [
   }),
 ];
 
+// ===== Value Tree Mocks (L3) =====
+
+interface MockValueTreeNode {
+  id: string;
+  label: string;
+  type: string;
+  layer: number;
+  confidence: number;
+  properties: Record<string, unknown>;
+}
+
+interface MockValueTreeEdge {
+  source: string;
+  target: string;
+  type: string;
+  weight: number;
+}
+
+function generateMockValueTreeNodes(rootId: string): MockValueTreeNode[] {
+  return [
+    {
+      id: rootId,
+      label: 'Root Value Driver',
+      type: 'ValueDriver',
+      layer: 1,
+      confidence: 0.95,
+      properties: { priority: 'high' },
+    },
+    {
+      id: `${rootId}-child-1`,
+      label: 'Customer Outcome',
+      type: 'Persona',
+      layer: 2,
+      confidence: 0.88,
+      properties: {},
+    },
+    {
+      id: `${rootId}-child-2`,
+      label: 'Use Case',
+      type: 'UseCase',
+      layer: 2,
+      confidence: 0.92,
+      properties: {},
+    },
+    {
+      id: `${rootId}-grandchild-1`,
+      label: 'AI Analytics',
+      type: 'Capability',
+      layer: 3,
+      confidence: 0.85,
+      properties: {},
+    },
+  ];
+}
+
+function generateMockValueTreeEdges(rootId: string): MockValueTreeEdge[] {
+  return [
+    { source: rootId, target: `${rootId}-child-1`, type: 'DRIVES', weight: 0.9 },
+    { source: rootId, target: `${rootId}-child-2`, type: 'ENABLES', weight: 0.85 },
+    { source: `${rootId}-child-2`, target: `${rootId}-grandchild-1`, type: 'REQUIRES', weight: 0.8 },
+  ];
+}
+
+function buildLayerStats(nodes: MockValueTreeNode[]): Record<string, number> {
+  return nodes.reduce((acc, node) => {
+    const layer = String(node.layer);
+    acc[layer] = (acc[layer] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+}
+
+export const valueTreeMocks = [
+  http.get(`${API_BASE}${L3_PREFIX}/value-trees/:entityId`, async ({ params, request }) => {
+    await delay(150);
+    const entityId = decodeURIComponent(params.entityId as string);
+    const url = new URL(request.url);
+    const direction = url.searchParams.get('direction') || 'upward';
+    const maxDepth = parseInt(url.searchParams.get('max_depth') || '4', 10);
+
+    const nodes = generateMockValueTreeNodes(entityId);
+    const edges = generateMockValueTreeEdges(entityId);
+
+    return HttpResponse.json({
+      root_entity_id: entityId,
+      direction,
+      nodes,
+      edges,
+      paths: [
+        { length: 2, nodes: [entityId, `${entityId}-child-1`] },
+        { length: 3, nodes: [entityId, `${entityId}-child-2`, `${entityId}-grandchild-1`] },
+      ],
+      stats: {
+        total_nodes: nodes.length,
+        total_edges: edges.length,
+        by_layer: buildLayerStats(nodes),
+        max_depth: maxDepth,
+      },
+    });
+  }),
+
+  http.get(`${API_BASE}${L3_PREFIX}/value-trees/:entityId/paths`, async ({ params, request }) => {
+    await delay(100);
+    const entityId = decodeURIComponent(params.entityId as string);
+
+    return HttpResponse.json([
+      {
+        nodes: [
+          { id: entityId, name: 'Root Entity', type: 'ValueDriver' },
+          { id: 'child-1', name: 'Customer Persona', type: 'Persona' },
+        ],
+        length: 2,
+      },
+      {
+        nodes: [
+          { id: entityId, name: 'Root Entity', type: 'ValueDriver' },
+          { id: 'child-2', name: 'Primary Use Case', type: 'UseCase' },
+          { id: 'grandchild-1', name: 'AI Capability', type: 'Capability' },
+        ],
+        length: 3,
+      },
+    ]);
+  }),
+];
+
 // ===== Value Pack Mocks (L3) =====
 
 export const valuePackMocks = [
@@ -950,5 +1090,6 @@ export const handlers = [
   ...provenanceMocks,
   ...businessCaseMocks,
   ...valuePackMocks,
+  ...valueTreeMocks,
   ...errorMocks,
 ];

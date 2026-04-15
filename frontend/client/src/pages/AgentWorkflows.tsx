@@ -4,30 +4,122 @@
  * Data Flow: React Query for server state, Zustand for UI state
  */
 import { useState } from "react";
-import { Bot, Clock, AlertTriangle } from "lucide-react";
+import { Bot, Clock, AlertTriangle, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { useActiveWorkflows, useWorkflowHistory, type Workflow } from "@/hooks/useWorkflows";
 import { PageHeader, MetricCard, DataTable, StatusBadge, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
 import { QueryState } from "@/components/QueryState";
 
+const ITEMS_PER_PAGE = 10;
+
+// Pagination display range helper
+function getDisplayRange(page: number, itemsPerPage: number, total: number): string {
+  const start = page * itemsPerPage + 1;
+  const end = Math.min((page + 1) * itemsPerPage, total);
+  return `Showing ${start} - ${end} of ${total}`;
+}
+
+// Reusable pagination controls component
+interface PaginationControlsProps {
+  page: number;
+  totalPages: number;
+  hasMore: boolean;
+  isLoading: boolean;
+  displayRange: string;
+  onPrevious: () => void;
+  onNext: () => void;
+  onRefresh: () => void;
+}
+
+function PaginationControls({
+  page,
+  totalPages,
+  hasMore,
+  isLoading,
+  displayRange,
+  onPrevious,
+  onNext,
+  onRefresh,
+}: PaginationControlsProps) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-100 mt-2">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-neutral-500">{displayRange}</span>
+        {hasMore && (
+          <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded">More available</span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Btn
+          variant="ghost"
+          onClick={onPrevious}
+          disabled={page === 0 || isLoading}
+          className="text-xs"
+        >
+          <ChevronLeft size={14} className="mr-1" /> Previous
+        </Btn>
+        <span className="text-xs text-neutral-400">
+          Page {page + 1} of {totalPages || 1}
+        </span>
+        <Btn
+          variant="ghost"
+          onClick={onNext}
+          disabled={!hasMore || isLoading || page >= totalPages - 1}
+          className="text-xs"
+        >
+          Next <ChevronRight size={14} className="ml-1" />
+        </Btn>
+        <div className="w-px h-4 bg-neutral-200 mx-1" />
+        <Btn
+          variant="ghost"
+          onClick={onRefresh}
+          disabled={isLoading}
+          className="text-xs"
+        >
+          <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
 export default function AgentWorkflows() {
   const [activeTab, setActiveTab] = useState("Workflow Dashboard");
+  
+  // Pagination state
+  const [activePage, setActivePage] = useState(0);
+  const [historyPage, setHistoryPage] = useState(0);
 
   // Server state: React Query handles fetching, caching, loading, error
   const {
-    data: activeWorkflows = [],
+    data: activeData,
     isLoading: activeLoading,
     error: activeError,
     refetch: refetchActive,
-  } = useActiveWorkflows();
+  } = useActiveWorkflows({ 
+    limit: ITEMS_PER_PAGE, 
+    offset: activePage * ITEMS_PER_PAGE 
+  });
 
   const {
-    data: workflows = [],
+    data: historyData,
     isLoading: historyLoading,
     error: historyError,
-  } = useWorkflowHistory();
+    refetch: refetchHistory,
+  } = useWorkflowHistory({ 
+    limit: ITEMS_PER_PAGE, 
+    offset: historyPage * ITEMS_PER_PAGE 
+  });
 
+  // Extract items from paginated response
+  const activeWorkflows = activeData?.items ?? [];
+  const historyWorkflows = historyData?.items ?? [];
+  
   const isLoading = activeLoading || historyLoading;
   const error = activeError || historyError;
+  
+  // Pagination helpers
+  const activeTotalPages = activeData ? Math.ceil(activeData.total / ITEMS_PER_PAGE) : 0;
+  const historyTotalPages = historyData ? Math.ceil(historyData.total / ITEMS_PER_PAGE) : 0;
 
   return (
     <div className="p-6 max-w-5xl">
@@ -52,7 +144,7 @@ export default function AgentWorkflows() {
         />
         <MetricCard
           label="Completed Today"
-          value={workflows.filter((w: Workflow) => w.status === 'completed').length.toString()}
+          value={historyWorkflows.filter((w: Workflow) => w.status === 'completed').length.toString()}
           trend="+4 vs yesterday"
           trendUp
         />
@@ -114,6 +206,20 @@ export default function AgentWorkflows() {
               </div>
             ))}
           </QueryState>
+          
+          {/* Active Workflows Pagination */}
+          {activeData && activeData.total > ITEMS_PER_PAGE && (
+            <PaginationControls
+              page={activePage}
+              totalPages={activeTotalPages}
+              hasMore={activeData.has_more}
+              isLoading={activeLoading}
+              displayRange={getDisplayRange(activePage, ITEMS_PER_PAGE, activeData.total)}
+              onPrevious={() => setActivePage(p => Math.max(0, p - 1))}
+              onNext={() => setActivePage(p => Math.min(activeTotalPages - 1, p + 1))}
+              onRefresh={refetchActive}
+            />
+          )}
         </div>
       </SectionCard>
 
@@ -122,12 +228,12 @@ export default function AgentWorkflows() {
         <QueryState
           isLoading={historyLoading}
           error={historyError}
-          isEmpty={workflows.length === 0}
+          isEmpty={historyWorkflows.length === 0}
           emptyMessage="No workflow history available."
         >
           <DataTable
             columns={["Job ID", "Name", "Status", "Progress", "Created", "Actions"]}
-            rows={workflows.map((w: Workflow) => [
+            rows={historyWorkflows.map((w: Workflow) => [
               <span className="font-mono text-[11px] text-neutral-600">{w.id}</span>,
               <span className="text-neutral-700 font-semibold">{w.name}</span>,
               <StatusBadge status={w.status}/>,
@@ -139,6 +245,20 @@ export default function AgentWorkflows() {
             ])}
           />
         </QueryState>
+        
+        {/* Pagination Controls */}
+        {historyData && historyData.total > ITEMS_PER_PAGE && (
+          <PaginationControls
+            page={historyPage}
+            totalPages={historyTotalPages}
+            hasMore={historyData.has_more}
+            isLoading={historyLoading}
+            displayRange={getDisplayRange(historyPage, ITEMS_PER_PAGE, historyData.total)}
+            onPrevious={() => setHistoryPage(p => Math.max(0, p - 1))}
+            onNext={() => setHistoryPage(p => Math.min(historyTotalPages - 1, p + 1))}
+            onRefresh={refetchHistory}
+          />
+        )}
       </SectionCard>
     </div>
   );

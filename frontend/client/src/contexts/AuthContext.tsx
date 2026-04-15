@@ -98,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Calls backend to get authorization URL, then redirects browser to IdP
    */
   const initiateLogin = useCallback(async (tenantSlug: string) => {
+    setIsLoading(true);
     try {
       // Build callback URL (must match backend redirect_uri)
       const callbackUrl = `${window.location.origin}/login/callback`;
@@ -122,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.location.href = authorization_url;
     } catch (error) {
       console.error('Login initiation failed:', error);
+      setIsLoading(false);
       throw error;
     }
   }, []);

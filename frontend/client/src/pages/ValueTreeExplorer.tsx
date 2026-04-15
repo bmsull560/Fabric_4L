@@ -52,13 +52,17 @@ function mapEntityType(type: BackendEntityType): EntityType {
   return mapping[type] || 'capability';
 }
 
+// Constants for UI truncation
+const ENTITY_ID_SHORT_LENGTH = 12;
+const ENTITY_ID_LIST_LENGTH = 16;
+
 // Build hierarchical tree from flat nodes/edges
 function buildTree(nodes: ValueTreeNode[], edges: ValueTreeEdge[], rootId: string): TreeNode | null {
   if (!nodes.length) return null;
 
   // Create node map for quick lookup
   const nodeMap = new Map<string, ValueTreeNode>();
-  nodes.forEach(n => nodeMap.set(n.id, n));
+  nodes.forEach(node => nodeMap.set(node.id, node));
 
   // Build adjacency list (parent -> children)
   const childrenMap = new Map<string, string[]>();
@@ -75,8 +79,8 @@ function buildTree(nodes: ValueTreeNode[], edges: ValueTreeEdge[], rootId: strin
 
     const childIds = childrenMap.get(nodeId) || [];
     const children = childIds
-      .map(id => buildNode(id))
-      .filter((n): n is TreeNode => n !== null);
+      .map(childId => buildNode(childId))
+      .filter((child): child is TreeNode => child !== null);
 
     return {
       id: node.id,
@@ -242,8 +246,8 @@ export default function ValueTreeExplorer() {
 
   // Filter entities that could be tree roots (ValueDrivers or Capabilities)
   const rootCandidates = useMemo(() => {
-    return entities.filter(e => 
-      e.type === 'ValueDriver' || e.type === 'Capability' || e.type === 'UseCase'
+    return entities.filter(entity => 
+      entity.type === 'ValueDriver' || entity.type === 'Capability' || entity.type === 'UseCase'
     );
   }, [entities]);
 
@@ -253,7 +257,7 @@ export default function ValueTreeExplorer() {
         breadcrumbs={["Value Trees", "Tree Explorer"]}
         title="Tree Explorer"
         subtitle={entityId 
-          ? `Visualizing value hierarchy from entity: ${entityId.slice(0, 12)}...`
+          ? `Visualizing value hierarchy from entity: ${entityId.slice(0, ENTITY_ID_SHORT_LENGTH)}...`
           : "Select an entity to visualize its value hierarchy."
         }
         actions={
@@ -303,7 +307,7 @@ export default function ValueTreeExplorer() {
                             <span className="font-medium truncate">{entity.name}</span>
                           </div>
                           <div className="text-[10px] text-neutral-400 mt-1">
-                            {entity.id.slice(0, 16)}...
+                            {entity.id.slice(0, ENTITY_ID_LIST_LENGTH)}...
                           </div>
                         </button>
                       ))

@@ -28,6 +28,9 @@ const VALUE_TREE_KEYS = {
     [...VALUE_TREE_KEYS.all(), 'paths', entityId, direction, maxDepth] as const,
 };
 
+// Cache configuration
+const GC_TIME_TEN_MINUTES = 1000 * 60 * 10; // 10 minutes
+
 export interface UseValueTreeOptions {
   direction?: 'upward' | 'downward';
   maxDepth?: number;
@@ -70,7 +73,7 @@ export function useValueTree(
     },
     enabled: enabled && Boolean(entityId),
     staleTime: STALE_TIME.reference,
-    gcTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: GC_TIME_TEN_MINUTES,
   });
 }
 
@@ -125,17 +128,11 @@ export function useValueTreeCache() {
   const queryClient = useQueryClient();
 
   const invalidateTree = useCallback(
-    (entityId?: string) => {
-      if (entityId) {
-        queryClient.invalidateQueries({
-          queryKey: VALUE_TREE_KEYS.all(),
-        });
-      } else {
-        // Invalidate all value tree queries
-        queryClient.invalidateQueries({
-          queryKey: VALUE_TREE_KEYS.all(),
-        });
-      }
+    (_entityId?: string) => {
+      // Invalidate all value tree queries (entity-specific or global)
+      queryClient.invalidateQueries({
+        queryKey: VALUE_TREE_KEYS.all(),
+      });
     },
     [queryClient]
   );

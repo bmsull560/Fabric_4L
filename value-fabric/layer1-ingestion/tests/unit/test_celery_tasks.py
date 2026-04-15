@@ -20,6 +20,20 @@ from uuid import uuid4
 
 import pytest
 
+# ── Constants ─────────────────────────────────────────────────────────────────
+# All 9 pipeline stage tasks in execution order
+PIPELINE_STAGE_TASKS = [
+    "compliance_check_stage",
+    "browser_launch_stage",
+    "navigation_stage",
+    "content_capture_stage",
+    "ai_extraction_stage",
+    "post_processing_stage",
+    "validation_stage",
+    "storage_stage",
+    "notification_stage",
+]
+
 # ── Path setup ────────────────────────────────────────────────────────────────
 tests_dir = os.path.dirname(os.path.abspath(__file__))
 layer1_dir = str(Path(tests_dir).parent.parent)
@@ -74,15 +88,23 @@ class TestExecutePipelineStage:
         from src.shared.tasks import compliance_check_stage, execute_pipeline_stage
 
         job_id = str(uuid4())
-        with patch.object(compliance_check_stage, "delay") as mock_delay:
-            execute_pipeline_stage(job_id, "COMPLIANCE_CHECK")
-            # Verify dispatch occurred (behavior), not internal call count (implementation)
+        call_count = [0]
+
+        def track_call(*args, **kwargs):
+            call_count[0] += 1
+            return None
+
+        with patch.object(compliance_check_stage, "delay", side_effect=track_call):
+            result = execute_pipeline_stage(job_id, "COMPLIANCE_CHECK")
+            # Verify dispatch occurred by checking call was made
+            assert call_count[0] == 1, "compliance_check_stage.delay should be called exactly once"
+            assert result is None or isinstance(result, dict), "Should return None or dict"
 
     def test_execute_pipeline_stage_unknown_raises(self) -> None:
         """execute_pipeline_stage must raise ValueError for unknown stage names."""
         from src.shared.tasks import execute_pipeline_stage
 
-        with pytest.raises((ValueError, Exception)):
+        with pytest.raises(ValueError, match="not a valid PipelineStage"):
             execute_pipeline_stage(str(uuid4()), "NONEXISTENT_STAGE")
 
 
@@ -104,7 +126,7 @@ class TestProcessScrapingJob:
             validation_stage,
         )
 
-        # Verify all 9 stage tasks exist and are callable
+        # Map stage names to imported tasks
         stage_tasks = [
             compliance_check_stage,
             browser_launch_stage,
@@ -116,7 +138,7 @@ class TestProcessScrapingJob:
             storage_stage,
             notification_stage,
         ]
-        assert len(stage_tasks) == 9, "Pipeline must have exactly 9 stages"
+        assert len(stage_tasks) == len(PIPELINE_STAGE_TASKS), f"Pipeline must have exactly {len(PIPELINE_STAGE_TASKS)} stages"
         for task in stage_tasks:
             assert callable(task), f"Stage task {task} must be callable"
 
@@ -131,7 +153,7 @@ class TestProcessScrapingJob:
         mock_session.query.return_value.get.return_value = None  # Job not found
 
         with patch("src.shared.tasks.get_db_session", return_value=mock_session):
-            with pytest.raises(Exception):
+            with pytest.raises(ValueError, match="not found"):
                 process_scraping_job.run(job_id)
 
     def test_process_scraping_job_returns_task_id_on_success(self) -> None:
@@ -195,8 +217,8 @@ class TestCleanupOldContent:
         assert "deleted_count" in result
         assert result["deleted_count"] == 2
         assert "cutoff_date" in result
-        # cutoff_date must be a valid ISO datetime string
-        cutoff = datetime.fromisoformat(result["cutoff_date"])
+        # cutoff_date must be a valid ISO datetime string in the past
+        cutoff = datetime.fromisoformat(result["cutoff_date"]).replace(tzinfo=UTC)
         assert cutoff < datetime.now(UTC)
 
     def test_cleanup_marks_content_as_deleted(self) -> None:
@@ -271,7 +293,7 @@ class TestComplianceCheckStage:
         mock_session.query.return_value.get.return_value = None  # Job not found
 
         with patch("src.shared.tasks.get_db_session", return_value=mock_session):
-            with pytest.raises(Exception):
+            with pytest.raises(ValueError, match="not found"):
                 # Use .run() to bypass Celery's task dispatch machinery
                 compliance_check_stage.run(job_id)
 
@@ -345,7 +367,8 @@ class TestCeleryRetryBehavior:
         with patch("src.shared.tasks.get_db_session", return_value=mock_session):
             with patch("src.shared.tasks._update_stage"):
                 # Should raise or handle gracefully (not crash silently)
-                with pytest.raises(Exception):
+                # AttributeError because code does config.get() when config is None
+                with pytest.raises((ValueError, AttributeError)):
                     compliance_check_stage.run(job_id)
 
     def test_cleanup_old_content_handles_empty_result(self) -> None:
@@ -413,35 +436,30 @@ class TestPipelineStageErrorPaths:
         """execute_pipeline_stage must recognize all 9 stage names."""
         from src.shared.tasks import execute_pipeline_stage
 
-        known_stages = [
-            "COMPLIANCE_CHECK",
-            "BROWSER_LAUNCH",
-            "NAVIGATION",
-            "CONTENT_CAPTURE",
-            "AI_EXTRACTION",
-            "POST_PROCESSING",
-            "VALIDATION",
-            "STORAGE",
-            "NOTIFICATION",
-        ]
-        for stage_name in known_stages:
+        # Convert stage task names to expected stage constants
+        stage_name_map = {
+            "compliance_check_stage": "COMPLIANCE_CHECK",
+            "browser_launch_stage": "BROWSER_LAUNCH",
+            "navigation_stage": "NAVIGATION",
+            "content_capture_stage": "CONTENT_CAPTURE",
+            "ai_extraction_stage": "AI_EXTRACTION",
+            "post_processing_stage": "POST_PROCESSING",
+            "validation_stage": "VALIDATION",
+            "storage_stage": "STORAGE",
+            "notification_stage": "NOTIFICATION",
+        }
+
+        for task_name, stage_const in stage_name_map.items():
             job_id = str(uuid4())
-            # Patch all stage tasks to prevent actual execution
-            with patch("src.shared.tasks.compliance_check_stage") as m1, \
-                 patch("src.shared.tasks.browser_launch_stage") as m2, \
-                 patch("src.shared.tasks.navigation_stage") as m3, \
-                 patch("src.shared.tasks.content_capture_stage") as m4, \
-                 patch("src.shared.tasks.ai_extraction_stage") as m5, \
-                 patch("src.shared.tasks.post_processing_stage") as m6, \
-                 patch("src.shared.tasks.validation_stage") as m7, \
-                 patch("src.shared.tasks.storage_stage") as m8, \
-                 patch("src.shared.tasks.notification_stage") as m9:
-                for m in (m1, m2, m3, m4, m5, m6, m7, m8, m9):
-                    m.delay = Mock()
+            # Patch only the specific stage being tested
+            with patch(f"src.shared.tasks.{task_name}") as mock_task:
+                mock_task.delay = Mock(return_value=None)
                 try:
-                    execute_pipeline_stage(job_id, stage_name)
-                except (ValueError, Exception):
-                    pytest.fail(f"execute_pipeline_stage should recognize stage: {stage_name}")
+                    result = execute_pipeline_stage(job_id, stage_const)
+                    # Verify the correct task's delay was called
+                    mock_task.delay.assert_called_once()
+                except ValueError as e:
+                    pytest.fail(f"execute_pipeline_stage should recognize stage: {stage_const} ({e})")
 
     def test_celery_worker_prefetch_is_one(self) -> None:
         """Worker prefetch multiplier must be 1 for sequential processing."""

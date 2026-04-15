@@ -16,6 +16,7 @@ import { useNarrativeStore, type OutputType, type InputMethod, FALLBACK_INDUSTRI
 import { useGenerateNarrative, useIndustries } from "@/hooks/useNarrativeGeneration";
 import { useSubmitDomain } from "@/hooks/useIngestion";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 // ── Output type buttons ───────────────────────────────────────────────────────
 
@@ -70,9 +71,9 @@ export default function ValueNarrativeHero() {
 
       <div className="relative max-w-3xl mx-auto px-6 pt-14 pb-10 text-center">
         {/* Badge */}
-        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-[11px] font-semibold tracking-widest uppercase text-blue-300 mb-6">
+        <Badge variant="outline" className="mb-6 px-4 py-1.5 text-[11px] font-semibold tracking-widest uppercase border-primary/30 bg-primary/10 text-primary">
           AI-Powered Value Intelligence
-        </span>
+        </Badge>
 
         {/* Heading */}
         <h1 className="text-[clamp(28px,5vw,48px)] font-extrabold text-white tracking-tight leading-[1.1] mb-4">
@@ -113,8 +114,8 @@ export default function ValueNarrativeHero() {
                   className={cn(
                     "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold border transition-colors",
                     outputType === id
-                      ? "bg-white text-neutral-900 border-white"
-                      : "bg-white/5 text-blue-200/80 border-white/10 hover:bg-white/10 hover:border-white/20"
+                      ? "bg-background text-foreground border-background"
+                      : "bg-background/5 text-primary-foreground/80 border-background/10 hover:bg-background/10 hover:border-background/20"
                   )}
                 >
                   <Icon size={13} />
@@ -126,7 +127,7 @@ export default function ValueNarrativeHero() {
               {INPUT_METHODS.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold border bg-white/5 text-blue-200/80 border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold border bg-background/5 text-primary-foreground/80 border-background/10 hover:bg-background/10 hover:border-background/20 transition-colors"
                 >
                   <Icon size={13} />
                   {label}
@@ -140,15 +141,15 @@ export default function ValueNarrativeHero() {
               <div className="relative">
                 <button
                   onClick={() => setShowIndustryPicker((v) => !v)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold border bg-white/5 text-blue-200/80 border-white/10 hover:bg-white/10 hover:border-white/20 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold border bg-background/5 text-primary-foreground/80 border-background/10 hover:bg-background/10 hover:border-background/20 transition-colors"
                 >
-                  <span className="text-blue-300/60 text-[11px]">Industry:</span>
+                  <span className="text-primary-foreground/60 text-[11px]">Industry:</span>
                   <span>{industry}</span>
                 </button>
 
                 {/* Dropdown */}
                 {showIndustryPicker && (
-                  <div className="absolute bottom-full mb-2 right-0 w-48 bg-[#1a2236] border border-white/10 rounded-lg shadow-xl py-1 z-50 max-h-64 overflow-y-auto">
+                  <div className="absolute bottom-full mb-2 right-0 w-48 bg-popover border border-border rounded-lg shadow-xl py-1 z-50 max-h-64 overflow-y-auto">
                     {industryList.map((ind) => (
                       <button
                         key={ind}
@@ -159,8 +160,8 @@ export default function ValueNarrativeHero() {
                         className={cn(
                           "w-full text-left px-3 py-1.5 text-[12px] transition-colors",
                           industry === ind
-                            ? "bg-blue-600/30 text-white font-semibold"
-                            : "text-blue-200/70 hover:bg-white/5"
+                            ? "bg-primary/30 text-primary-foreground font-semibold"
+                            : "text-muted-foreground hover:bg-muted/50"
                         )}
                       >
                         {ind}
@@ -176,7 +177,7 @@ export default function ValueNarrativeHero() {
                 disabled={!prompt.trim() || isGenerating}
                 className={cn(
                   "inline-flex items-center gap-2 px-5 py-2 rounded-full text-[13px] font-bold transition-all",
-                  "bg-white text-neutral-900 hover:bg-neutral-100",
+                  "bg-background text-foreground hover:bg-muted",
                   "disabled:opacity-40 disabled:cursor-not-allowed"
                 )}
               >
@@ -200,7 +201,7 @@ export default function ValueNarrativeHero() {
           </p>
         )}
         {generateNarrative.isError && (
-          <p className="mt-4 text-[12px] text-red-400/80">
+          <p className="mt-4 text-[12px] text-destructive">
             {generateNarrative.error.message}
           </p>
         )}

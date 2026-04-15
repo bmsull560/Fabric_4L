@@ -85,12 +85,12 @@ k8s/*-secret.yml
 k8s/*-secret.yaml
 
 # Build artifacts
-build/
+/build/
 dist/
 downloads/
 eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 
 # CI/Security evidence artifacts (generated during runs)
 artifacts/zero-trust/

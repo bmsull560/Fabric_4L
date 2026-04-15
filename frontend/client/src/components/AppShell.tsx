@@ -22,9 +22,9 @@ import { useI18n } from "@/i18n";
 type UserMode = "standard" | "advanced" | "admin";
 
 const MODE_PILL: Record<UserMode, string> = {
-  standard: "bg-blue-50 text-blue-700 border-blue-200",
-  advanced: "bg-violet-50 text-violet-700 border-violet-200",
-  admin:    "bg-amber-50 text-amber-700 border-amber-200",
+  standard: "bg-primary/10 text-primary border-primary/20",
+  advanced: "bg-accent/10 text-accent border-accent/20",
+  admin:    "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 // ── Main AppShell ─────────────────────────────────────────────────────────────
@@ -67,15 +67,15 @@ const AppShell = memo(function AppShell({
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       {/* Header */}
-      <header className="h-[52px] shrink-0 bg-white border-b border-neutral-200 flex items-center px-4 gap-4 z-30">
+      <header className="h-[52px] shrink-0 bg-card border-b border-border flex items-center px-4 gap-4 z-30">
         <Link href="/command-center">
           <div className="flex flex-col leading-none cursor-pointer select-none">
-            <span className="text-[14px] font-extrabold text-neutral-900 tracking-tight">{t("appShell.platformName")}</span>
-            <span className="text-[10px] text-neutral-400 font-normal">{t("appShell.platformTagline")}</span>
+            <span className="text-[14px] font-extrabold text-foreground tracking-tight">{t("appShell.platformName")}</span>
+            <span className="text-[10px] text-muted-foreground font-normal">{t("appShell.platformTagline")}</span>
           </div>
         </Link>
         <div className="flex-1 max-w-xs">
-          <div className="flex items-center gap-2 h-7 px-3 bg-neutral-100 rounded-full text-[11px] text-neutral-400 border border-neutral-200">
+          <div className="flex items-center gap-2 h-7 px-3 bg-muted rounded-full text-[11px] text-muted-foreground border border-border">
             <Search size={11} className="shrink-0"/>
             <span>{t("appShell.searchPlaceholder")}</span>
           </div>
@@ -88,10 +88,10 @@ const AppShell = memo(function AppShell({
           )}>
             {`${t(`appShell.modes.${currentTier as UserMode}`)} ${t("appShell.modeSuffix")}`}
           </span>
-          <button className="w-7 h-7 rounded-full border border-neutral-200 bg-neutral-50 flex items-center justify-center text-neutral-500 hover:bg-neutral-100 transition-colors">
+          <button className="w-7 h-7 rounded-full border border-border bg-secondary flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
             <Bell size={12}/>
           </button>
-          <button className="w-7 h-7 rounded-full bg-neutral-800 text-white flex items-center justify-center text-[10px] font-bold">
+          <button className="w-7 h-7 rounded-full bg-foreground text-background flex items-center justify-center text-[10px] font-bold">
             <User size={12}/>
           </button>
         </div>
@@ -107,7 +107,7 @@ const AppShell = memo(function AppShell({
         />
 
         {/* Main — children change on every route; AppShell shell stays stable */}
-        <main className="flex-1 overflow-y-auto bg-neutral-50" data-tier={effectiveTier}>
+        <main className="flex-1 overflow-y-auto bg-background" data-tier={effectiveTier}>
           {children}
         </main>
       </div>

@@ -15,5 +15,8 @@
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
+  },
+  "registries": {
+    "@tweakcn": "https://tweakcn.com/r/themes/{name}"
   }
 }

@@ -55,7 +55,7 @@ export function QueryState({
   fullPage = false,
 }: QueryStateProps) {
   const wrapperClass = cn(
-    "flex flex-col items-center justify-center gap-3 text-neutral-500",
+    "flex flex-col items-center justify-center gap-3 text-muted-foreground",
     fullPage ? "min-h-[60vh]" : "py-16",
     className
   );
@@ -63,7 +63,7 @@ export function QueryState({
   if (isLoading) {
     return (
       <div className={wrapperClass}>
-        <Loader2 size={24} className="animate-spin text-neutral-400" />
+        <Loader2 size={24} className="animate-spin text-muted-foreground/70" />
         <span className="text-sm">{loadingMessage}</span>
       </div>
     );
@@ -79,8 +79,8 @@ export function QueryState({
 
     return (
       <div className={wrapperClass}>
-        <AlertCircle size={24} className="text-red-500" />
-        <span className="text-sm text-red-600 text-center max-w-sm">{message}</span>
+        <AlertCircle size={24} className="text-destructive" />
+        <span className="text-sm text-destructive text-center max-w-sm">{message}</span>
       </div>
     );
   }
@@ -88,10 +88,10 @@ export function QueryState({
   if (isEmpty) {
     return (
       <div className={wrapperClass}>
-        <Inbox size={24} className="text-neutral-300" />
+        <Inbox size={24} className="text-muted-foreground/50" />
         <span className="text-sm">{emptyMessage}</span>
         {emptySubMessage && (
-          <span className="text-xs text-neutral-400 text-center max-w-sm">
+          <span className="text-xs text-muted-foreground text-center max-w-sm">
             {emptySubMessage}
           </span>
         )}

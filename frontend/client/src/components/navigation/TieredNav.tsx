@@ -216,22 +216,22 @@ const NAV_SPINE: NavItem[] = [
 
 const TIER_STYLES = {
   standard: {
-    badge: "bg-blue-50 text-blue-700 border-blue-200",
-    icon: "text-blue-600",
-    active: "bg-blue-50 text-blue-700",
-    hover: "hover:bg-blue-50/50 hover:text-blue-700",
+    badge: "bg-primary/10 text-primary border-primary/20",
+    icon: "text-primary",
+    active: "bg-primary/10 text-primary",
+    hover: "hover:bg-primary/5 hover:text-primary",
   },
   advanced: {
-    badge: "bg-violet-50 text-violet-700 border-violet-200",
-    icon: "text-violet-600",
-    active: "bg-violet-50 text-violet-700",
-    hover: "hover:bg-violet-50/50 hover:text-violet-700",
+    badge: "bg-accent/10 text-accent border-accent/20",
+    icon: "text-accent",
+    active: "bg-accent/10 text-accent",
+    hover: "hover:bg-accent/5 hover:text-accent",
   },
   admin: {
-    badge: "bg-amber-50 text-amber-700 border-amber-200",
-    icon: "text-amber-600",
-    active: "bg-amber-50 text-amber-700",
-    hover: "hover:bg-amber-50/50 hover:text-amber-700",
+    badge: "bg-destructive/10 text-destructive border-destructive/20",
+    icon: "text-destructive",
+    active: "bg-destructive/10 text-destructive",
+    hover: "hover:bg-destructive/5 hover:text-destructive",
   },
 } as const;
 
@@ -294,7 +294,7 @@ const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: 
   // Indentation based on depth
   const getIndentClass = (d: number): string => {
     if (d === 0) return "";
-    if (d === 1) return "ml-4 mt-1 border-l-2 border-neutral-200 pl-3 space-y-0.5";
+    if (d === 1) return "ml-4 mt-1 border-l-2 border-border pl-3 space-y-0.5";
     return "ml-3 pl-2 space-y-0.5";
   };
   const indentClass = getIndentClass(depth);
@@ -307,8 +307,8 @@ const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: 
             "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all select-none cursor-pointer",
             isActive
               ? tierStyle.active
-              : "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
-            item.tier === "admin" && !isActive && "hover:bg-amber-50/30",
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            item.tier === "admin" && !isActive && "hover:bg-destructive/5",
             depth > 0 && "py-1.5 text-[11px]"
           )}
           onClick={(e) => {
@@ -319,7 +319,7 @@ const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: 
           }}
         >
           {item.icon && (
-            <span className={cn("shrink-0", isActive ? tierStyle.icon : "text-neutral-400 group-hover:text-neutral-600")}>
+            <span className={cn("shrink-0", isActive ? tierStyle.icon : "text-muted-foreground group-hover:text-muted-foreground/80")}>
               {item.icon}
             </span>
           )}
@@ -330,7 +330,7 @@ const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: 
             </span>
           )}
           {hasVisibleChildren && (
-            <span className="text-neutral-400 transition-transform">
+            <span className="text-muted-foreground transition-transform">
               {open ? <ChevronDown size={12}/> : <ChevronRight size={12}/>}
             </span>
           )}
@@ -369,27 +369,27 @@ function TierSwitcher({
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="border-t border-neutral-200 bg-white">
+    <div className="border-t border-border bg-card">
       {/* Current Tier Display */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-3 py-3 flex items-center gap-3 hover:bg-neutral-50 transition-colors"
+        className="w-full px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors"
       >
         <div className={cn(
           "w-8 h-8 rounded-lg flex items-center justify-center",
-          currentTier === "standard" && "bg-blue-100 text-blue-700",
-          currentTier === "advanced" && "bg-violet-100 text-violet-700",
-          currentTier === "admin" && "bg-amber-100 text-amber-700",
+          currentTier === "standard" && "bg-primary/10 text-primary",
+          currentTier === "advanced" && "bg-accent/10 text-accent",
+          currentTier === "admin" && "bg-destructive/10 text-destructive",
         )}>
           {TIER_LABELS[currentTier].icon}
         </div>
         <div className="flex-1 text-left">
-          <p className="text-[12px] font-semibold text-neutral-800">{TIER_LABELS[currentTier].label} Mode</p>
-          <p className="text-[10px] text-neutral-500 truncate">{TIER_LABELS[currentTier].description}</p>
+          <p className="text-[12px] font-semibold text-foreground">{TIER_LABELS[currentTier].label} Mode</p>
+          <p className="text-[10px] text-muted-foreground truncate">{TIER_LABELS[currentTier].description}</p>
         </div>
         <ChevronDown 
           size={14} 
-          className={cn("text-neutral-400 transition-transform", isExpanded && "rotate-180")}
+          className={cn("text-muted-foreground transition-transform", isExpanded && "rotate-180")}
         />
       </button>
 
@@ -397,16 +397,16 @@ function TierSwitcher({
       {isExpanded && (
         <div className="px-3 pb-3 space-y-2">
           {/* Advanced Mode Toggle */}
-          <div className="flex items-center justify-between py-2 px-2 bg-neutral-50 rounded-lg">
+          <div className="flex items-center justify-between py-2 px-2 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
-              <Wrench size={12} className="text-violet-600" />
-              <span className="text-[11px] font-medium text-neutral-700">Advanced Mode</span>
+              <Wrench size={12} className="text-accent" />
+              <span className="text-[11px] font-medium text-foreground">Advanced Mode</span>
             </div>
             <button
               onClick={() => onAdvancedModeToggle(!isAdvancedModeEnabled)}
               className={cn(
                 "w-9 h-5 rounded-full transition-colors relative",
-                isAdvancedModeEnabled ? "bg-violet-600" : "bg-neutral-300"
+                isAdvancedModeEnabled ? "bg-accent" : "bg-muted-foreground/30"
               )}
             >
               <span className={cn(
@@ -429,25 +429,25 @@ function TierSwitcher({
                 className={cn(
                   "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] font-medium transition-colors",
                   currentTier === tier
-                    ? tier === "standard" ? "bg-blue-50 text-blue-700" :
-                      tier === "advanced" ? "bg-violet-50 text-violet-700" :
-                      "bg-amber-50 text-amber-700"
-                    : "text-neutral-600 hover:bg-neutral-100",
+                    ? tier === "standard" ? "bg-primary/10 text-primary" :
+                      tier === "advanced" ? "bg-accent/10 text-accent" :
+                      "bg-destructive/10 text-destructive"
+                    : "text-muted-foreground hover:bg-muted",
                   tier === "admin" && "opacity-50 cursor-not-allowed"
                 )}
               >
                 <span className={cn(
                   "w-5 h-5 rounded flex items-center justify-center",
-                  tier === "standard" ? "bg-blue-100 text-blue-600" :
-                  tier === "advanced" ? "bg-violet-100 text-violet-600" :
-                  "bg-amber-100 text-amber-600"
+                  tier === "standard" ? "bg-primary/10 text-primary" :
+                  tier === "advanced" ? "bg-accent/10 text-accent" :
+                  "bg-destructive/10 text-destructive"
                 )}>
                   {tier === "standard" ? <Eye size={10}/> :
                    tier === "advanced" ? <Wrench size={10}/> :
                    <Lock size={10}/>}
                 </span>
                 <span className="flex-1 text-left">{TIER_LABELS[tier].label}</span>
-                {tier === "admin" && <Lock size={10} className="text-neutral-400" />}
+                {tier === "admin" && <Lock size={10} className="text-muted-foreground" />}
               </button>
             ))}
           </div>
@@ -479,7 +479,7 @@ export function TieredNav({
   );
 
   return (
-    <aside className="w-[240px] shrink-0 bg-white border-r border-neutral-200 overflow-y-auto z-20 flex flex-col h-full">
+    <aside className="w-[240px] shrink-0 bg-card border-r border-border overflow-y-auto z-20 flex flex-col h-full">
       {/* Navigation Items */}
       <div className="flex-1 py-4 px-2 space-y-1">
         {visibleNavItems.map(item => (

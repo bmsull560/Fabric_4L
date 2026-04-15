@@ -5,7 +5,7 @@
  * - useBenchmarks: Filtered list fetching
  * - useBenchmark: Single benchmark details
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
@@ -14,6 +14,80 @@ import {
   useBenchmarks,
   useBenchmark,
 } from './useBenchmarks';
+
+// L6 Benchmark handlers for testing
+const l6BenchmarkHandlers = [
+  // List datasets (benchmarks)
+  http.get('/api/v1/benchmarks/datasets', ({ request }) => {
+    const url = new URL(request.url);
+    const industry = url.searchParams.get('industry');
+    const status = url.searchParams.get('status');
+    const confidence = url.searchParams.get('confidence');
+
+    let benchmarks = [
+      {
+        id: 'bench-1',
+        benchmark_id: 'bench-1',
+        name: 'Industry Average ROI',
+        industry: industry || 'Software',
+        vertical: 'SaaS',
+        value_range: '2.5x - 4.0x',
+        confidence: confidence || 'High',
+        source: 'Industry Research',
+        year: 2024,
+        status: status || 'active',
+        tags: ['roi', 'saas'],
+        usage_count: 15,
+      },
+      {
+        id: 'bench-2',
+        benchmark_id: 'bench-2',
+        name: 'Implementation Timeline',
+        industry: industry || 'Software',
+        vertical: 'Enterprise',
+        value_range: '3-6 months',
+        confidence: 'Medium',
+        source: 'Survey Data',
+        year: 2024,
+        status: status || 'active',
+        tags: ['timeline'],
+        usage_count: 8,
+      },
+    ];
+
+    // Apply status filter
+    if (status && status !== 'all') {
+      benchmarks = benchmarks.filter(b => b.status === status);
+    }
+
+    return HttpResponse.json(benchmarks);
+  }),
+
+  // Single dataset (benchmark)
+  http.get('/api/v1/benchmarks/datasets/:id', ({ params }) => {
+    const id = params.id as string;
+    return HttpResponse.json({
+      id,
+      benchmark_id: id,
+      name: 'Detailed Benchmark',
+      industry: 'Software',
+      vertical: 'SaaS',
+      value_range: '2.5x - 4.0x',
+      confidence: 'High',
+      source: 'Industry Research',
+      year: 2024,
+      status: 'active',
+      tags: ['detailed'],
+      usage_count: 10,
+    });
+  }),
+];
+
+// Register L6 handlers before each test (needed because server.resetHandlers()
+// in global setup reverts to original handlers which don't include L6 endpoints)
+beforeEach(() => {
+  server.use(...l6BenchmarkHandlers);
+});
 
 describe('useBenchmarks', () => {
   it('fetches all benchmarks', async () => {
@@ -32,7 +106,7 @@ describe('useBenchmarks', () => {
 
   it('applies industry filter', async () => {
     server.use(
-      http.get('/api/v1/graph/benchmarks', ({ request }) => {
+      http.get('/api/v1/benchmarks/datasets', ({ request }) => {
         const url = new URL(request.url);
         const industry = url.searchParams.get('industry');
 
@@ -82,7 +156,7 @@ describe('useBenchmarks', () => {
 
   it('handles API errors', async () => {
     server.use(
-      http.get('/api/v1/graph/benchmarks', () => {
+      http.get('/api/v1/benchmarks/datasets', () => {
         return HttpResponse.json({ error: 'Database error' }, { status: 500 });
       })
     );
@@ -115,7 +189,7 @@ describe('useBenchmark', () => {
 
   it('handles benchmark not found', async () => {
     server.use(
-      http.get('/api/v1/graph/benchmarks/:id', () => {
+      http.get('/api/v1/benchmarks/datasets/:id', () => {
         return HttpResponse.json({ error: 'Benchmark not found' }, { status: 404 });
       })
     );

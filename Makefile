@@ -1,12 +1,17 @@
-.PHONY: help verify lint typecheck test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
+.PHONY: help verify lint lint-layer1 lint-layer2 lint-layer3 lint-layer4 \
+        lint-layer5 lint-layer6 typecheck typecheck-layer1 typecheck-layer2 \
+        typecheck-layer3 typecheck-layer4 typecheck-layer5 typecheck-layer6 \
+        test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
-        preflight up down logs \
-        check-deprecations test-backup-drills
+        preflight up down logs check-deprecations test-backup-drills
 
 PYTHON := python3
 PIP    := pip install -e
 PYTEST := pytest -v --tb=short
+
+# Ensure mypy is available before running typecheck targets
+MYPY_VERSION_CHECK := $(shell mypy --version 2>/dev/null || echo "mypy_not_found")
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -19,19 +24,38 @@ verify: lint typecheck test contract-tests check-deprecations ## Run all checks 
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
 
-lint: ## Lint all Python layers with ruff
+lint-layer1: ## Lint Layer 1 only
 	@echo "→ Linting Layer 1..."
-	cd value-fabric/layer1-ingestion && ruff check src/
+	@cd value-fabric/layer1-ingestion && ruff check src/
+
+lint-layer2: ## Lint Layer 2 only
 	@echo "→ Linting Layer 2..."
-	cd value-fabric/layer2-extraction && ruff check src/
+	@cd value-fabric/layer2-extraction && ruff check src/
+
+lint-layer3: ## Lint Layer 3 only
 	@echo "→ Linting Layer 3..."
-	cd value-fabric/layer3-knowledge && ruff check src/
+	@cd value-fabric/layer3-knowledge && ruff check src/
+
+lint-layer4: ## Lint Layer 4 only
 	@echo "→ Linting Layer 4..."
-	cd value-fabric/layer4-agents && ruff check src/
+	@cd value-fabric/layer4-agents && ruff check src/
+
+lint-layer5: ## Lint Layer 5 only
 	@echo "→ Linting Layer 5..."
-	cd value-fabric/layer5-ground-truth && ruff check src/
+	@cd value-fabric/layer5-ground-truth && ruff check src/
+
+lint-layer6: ## Lint Layer 6 only
 	@echo "→ Linting Layer 6..."
-	cd value-fabric/layer6-benchmarks && ruff check src/
+	@cd value-fabric/layer6-benchmarks && ruff check src/
+
+lint: ## Lint all Python layers with ruff (fails fast on first error)
+	@$(MAKE) lint-layer1 && \
+	 $(MAKE) lint-layer2 && \
+	 $(MAKE) lint-layer3 && \
+	 $(MAKE) lint-layer4 && \
+	 $(MAKE) lint-layer5 && \
+	 $(MAKE) lint-layer6 && \
+	 echo "✅  Linting complete for all layers"
 
 # Per-layer mypy flags - stricter layers enforce more type safety
 # Layer 1: Relaxed - gradual typing migration in progress
@@ -47,19 +71,45 @@ MYPY_LAYER5_FLAGS = --ignore-missing-imports --strict
 # Layer 6: Minimal - no mypy config in pyproject.toml yet
 MYPY_LAYER6_FLAGS = --ignore-missing-imports
 
-typecheck: ## Type-check all Python layers with mypy
+# Per-layer typecheck targets for development efficiency
+typecheck-layer1: ## Type-check Layer 1 only
+	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 1..."
-	cd value-fabric/layer1-ingestion && mypy src/ $(MYPY_LAYER1_FLAGS)
+	@cd value-fabric/layer1-ingestion && mypy src/ $(MYPY_LAYER1_FLAGS)
+
+typecheck-layer2: ## Type-check Layer 2 only
+	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 2..."
-	cd value-fabric/layer2-extraction && mypy src/ $(MYPY_LAYER2_FLAGS)
+	@cd value-fabric/layer2-extraction && mypy src/ $(MYPY_LAYER2_FLAGS)
+
+typecheck-layer3: ## Type-check Layer 3 only
+	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 3..."
-	cd value-fabric/layer3-knowledge && mypy src/ $(MYPY_LAYER3_FLAGS)
+	@cd value-fabric/layer3-knowledge && mypy src/ $(MYPY_LAYER3_FLAGS)
+
+typecheck-layer4: ## Type-check Layer 4 only
+	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 4..."
-	cd value-fabric/layer4-agents && mypy src/ $(MYPY_LAYER4_FLAGS)
+	@cd value-fabric/layer4-agents && mypy src/ $(MYPY_LAYER4_FLAGS)
+
+typecheck-layer5: ## Type-check Layer 5 only
+	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 5..."
-	cd value-fabric/layer5-ground-truth && mypy src/ $(MYPY_LAYER5_FLAGS)
+	@cd value-fabric/layer5-ground-truth && mypy src/ $(MYPY_LAYER5_FLAGS)
+
+typecheck-layer6: ## Type-check Layer 6 only
+	@if [ "$(MYPY_VERSION_CHECK)" = "mypy_not_found" ]; then echo "❌  mypy not found. Run: pip install mypy"; exit 1; fi
 	@echo "→ Type-checking Layer 6..."
-	cd value-fabric/layer6-benchmarks && mypy src/ $(MYPY_LAYER6_FLAGS)
+	@cd value-fabric/layer6-benchmarks && mypy src/ $(MYPY_LAYER6_FLAGS)
+
+typecheck: ## Type-check all Python layers with mypy (fails fast on first error)
+	@$(MAKE) typecheck-layer1 && \
+	 $(MAKE) typecheck-layer2 && \
+	 $(MAKE) typecheck-layer3 && \
+	 $(MAKE) typecheck-layer4 && \
+	 $(MAKE) typecheck-layer5 && \
+	 $(MAKE) typecheck-layer6 && \
+	 echo "✅  Type-checking complete for all layers"
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 

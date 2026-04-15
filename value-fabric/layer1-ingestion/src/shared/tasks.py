@@ -6,7 +6,7 @@ Manages ScrapingJob lifecycle through 11 PipelineStages.
 
 import asyncio
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 import structlog
@@ -78,7 +78,7 @@ def process_scraping_job(self, job_id: str):
 
             # Start job
             job.status = JobStatus.VALIDATING.value
-            job.started_at = datetime.utcnow()
+            job.started_at = datetime.now(timezone.utc)
             session.commit()
 
         # Execute pipeline chain
@@ -628,7 +628,7 @@ def storage_stage(self, prev_result: dict):
             if raw_content_id:
                 raw_content = session.query(RawContent).get(UUID(raw_content_id))
                 if raw_content:
-                    extraction_started_at = datetime.utcnow()
+                    extraction_started_at = datetime.now(timezone.utc)
                     # Create ExtractedData record
                     extracted = ExtractedData(
                         job_id=job_id,
@@ -649,7 +649,7 @@ def storage_stage(self, prev_result: dict):
                         format="JSON",
                     )
                     extracted.extraction_time_ms = int(
-                        (datetime.utcnow() - extraction_started_at).total_seconds() * 1000
+                        (datetime.now(timezone.utc) - extraction_started_at).total_seconds() * 1000
                     )
                     session.add(extracted)
                     session.flush()
@@ -692,7 +692,7 @@ def notification_stage(prev_result: dict):
 
             # Complete job
             job.status = JobStatus.COMPLETED.value
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(timezone.utc)
             job.progress_percent_complete = 100
             job.progress_stage = PipelineStage.NOTIFICATION.value
 
@@ -703,7 +703,7 @@ def notification_stage(prev_result: dict):
             target = session.query(ScrapingTarget).get(job.target_id)
             if target:
                 target.success_count += 1
-                target.last_success_at = datetime.utcnow()
+                target.last_success_at = datetime.now(timezone.utc)
                 # Calculate average execution time
                 if job.started_at and job.completed_at:
                     duration = (job.completed_at - job.started_at).total_seconds() * 1000
@@ -740,9 +740,9 @@ def _update_stage(
     if stage_detail:
         stage_detail.status = status
         if status == "RUNNING" and not stage_detail.started_at:
-            stage_detail.started_at = datetime.utcnow()
+            stage_detail.started_at = datetime.now(timezone.utc)
         if status in ("COMPLETED", "FAILED"):
-            stage_detail.completed_at = datetime.utcnow()
+            stage_detail.completed_at = datetime.now(timezone.utc)
             if stage_detail.started_at:
                 stage_detail.duration_ms = int(
                     (stage_detail.completed_at - stage_detail.started_at).total_seconds() * 1000
@@ -757,7 +757,7 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
         job = session.query(ScrapingJob).get(job_id)
         if job:
             job.status = JobStatus.FAILED.value
-            job.completed_at = datetime.utcnow()
+            job.completed_at = datetime.now(timezone.utc)
             session.commit()
 
         # Update stage
@@ -783,7 +783,7 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
                     target.error_count += 1
                 except TypeError:
                     target.error_count = 1
-                target.last_error_at = datetime.utcnow()
+                target.last_error_at = datetime.now(timezone.utc)
                 session.commit()
 
 
@@ -816,7 +816,7 @@ def execute_pipeline_stage(job_id: str, stage: str):
 @celery_app.task
 def cleanup_old_content(days: int = 30):
     """Clean up raw content older than specified days."""
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     logger.info("Starting content cleanup", cutoff_date=cutoff_date.isoformat())
 

@@ -119,6 +119,33 @@ export interface PaginatedWorkflows {
 }
 
 /**
+ * Parse API response into PaginatedWorkflows structure.
+ * Handles both new paginated format and legacy formats.
+ */
+function parsePaginatedResponse(data: unknown, items: Workflow[]): PaginatedWorkflows {
+  // Check if response is already paginated
+  if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
+    const paginated = data as PaginatedWorkflows;
+    return {
+      items,
+      total: paginated.total,
+      limit: paginated.limit,
+      offset: paginated.offset,
+      has_more: paginated.has_more,
+    };
+  }
+  
+  // Legacy fallback: treat all as single page
+  return {
+    items,
+    total: items.length,
+    limit: items.length,
+    offset: 0,
+    has_more: false,
+  };
+}
+
+/**
  * Fetch and poll active workflows from Layer 4 with pagination support.
  * Polls every 5 seconds, stops on window focus (already polling).
  * 
@@ -138,30 +165,8 @@ export function useActiveWorkflows(options: { limit?: number; offset?: number; s
       if (status) params.set('status', status);
       
       const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`);
-      
-      // Extract items and wrap in paginated structure
       const items = normalizeWorkflowList(response.data);
-      
-      // Check if response is already paginated
-      const data = response.data;
-      if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
-        return {
-          items,
-          total: (data as PaginatedWorkflows).total,
-          limit: (data as PaginatedWorkflows).limit,
-          offset: (data as PaginatedWorkflows).offset,
-          has_more: (data as PaginatedWorkflows).has_more,
-        };
-      }
-      
-      // Legacy fallback: treat all as single page
-      return {
-        items,
-        total: items.length,
-        limit: items.length,
-        offset: 0,
-        has_more: false,
-      };
+      return parsePaginatedResponse(response.data, items);
     },
     staleTime: STALE_TIME.poll,
     refetchInterval: POLL_INTERVALS.workflows,
@@ -182,29 +187,8 @@ export function useWorkflowHistory(options: { limit?: number; offset?: number } 
       params.set('offset', String(offset));
       
       const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`);
-      
       const items = normalizeWorkflowList(response.data);
-      
-      // Check if response is already paginated
-      const data = response.data;
-      if (data && typeof data === 'object' && 'items' in data && 'total' in data) {
-        return {
-          items,
-          total: (data as PaginatedWorkflows).total,
-          limit: (data as PaginatedWorkflows).limit,
-          offset: (data as PaginatedWorkflows).offset,
-          has_more: (data as PaginatedWorkflows).has_more,
-        };
-      }
-      
-      // Legacy fallback
-      return {
-        items,
-        total: items.length,
-        limit: items.length,
-        offset: 0,
-        has_more: false,
-      };
+      return parsePaginatedResponse(response.data, items);
     },
     staleTime: STALE_TIME.stats,
   });

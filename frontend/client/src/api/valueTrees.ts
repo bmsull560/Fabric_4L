@@ -59,14 +59,19 @@ export interface ValueTreePath {
  * @param direction - 'upward' (Cap→Driver) or 'downward' (Driver→Cap)
  * @param maxDepth - Maximum traversal depth (1-4)
  */
+// Constants for API constraints
+const MAX_DEPTH_LIMIT = 4;
+const MIN_DEPTH_LIMIT = 1;
+const DEFAULT_DEPTH = 4;
+
 export async function getValueTree(
   entityId: string,
   direction: 'upward' | 'downward' = 'upward',
-  maxDepth: number = 4
+  maxDepth: number = DEFAULT_DEPTH
 ): Promise<ValueTreeResponse> {
   const params = new URLSearchParams();
   params.set('direction', direction);
-  params.set('max_depth', String(Math.max(1, Math.min(maxDepth, 4))));
+  params.set('max_depth', String(Math.max(MIN_DEPTH_LIMIT, Math.min(maxDepth, MAX_DEPTH_LIMIT))));
 
   const response = await apiClient.get(
     'l3', 
@@ -90,11 +95,11 @@ export async function getValueTree(
 export async function getValueTreePaths(
   entityId: string,
   direction: 'upward' | 'downward' = 'upward',
-  maxDepth: number = 4
+  maxDepth: number = DEFAULT_DEPTH
 ): Promise<ValueTreePath[]> {
   const params = new URLSearchParams();
   params.set('direction', direction);
-  params.set('max_depth', String(Math.max(1, Math.min(maxDepth, 4))));
+  params.set('max_depth', String(Math.max(MIN_DEPTH_LIMIT, Math.min(maxDepth, MAX_DEPTH_LIMIT))));
 
   const response = await apiClient.get(
     'l3',
