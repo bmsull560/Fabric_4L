@@ -6,7 +6,7 @@
  * Progressive disclosure: basic expression authoring visible by default;
  * governance controls revealed under "Governance" tab.
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import {
@@ -283,7 +283,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   const { mutate: evaluateFormula } = useEvaluateFormula();
 
   // Load existing formula data
-  useMemo(() => {
+  useEffect(() => {
     if (existingFormula && !isNew) {
       setFormulaName(existingFormula.name);
       setFormulaDescription(existingFormula.description || "");
@@ -305,8 +305,11 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
 
   const isSaving = isCreating || isUpdating;
 
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   const handleSave = () => {
     setSaveError(null);
+    setSaveSuccess(false);
     if (isNew) {
       createFormula(
         {
@@ -317,7 +320,8 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         },
         {
           onSuccess: (data) => {
-            navigate(`/model/value-studio/formulas/${data.formula_id}`);
+            setSaveSuccess(true);
+            setTimeout(() => navigate(`/model/value-studio/formulas/${data.formula_id}`), 500);
           },
           onError: (err) => {
             setSaveError(err.message);
@@ -334,6 +338,10 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           variables: availableVariables.map((v) => v.name),
         },
         {
+          onSuccess: () => {
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+          },
           onError: (err) => {
             setSaveError(err.message);
           },
@@ -347,11 +355,15 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
     setSaveError(null);
 
     // Parse test inputs into evaluation format
-    const inputs = testInputs.map((input) => ({
-      name: input.label,
-      value: parseFloat(input.value.replace(/[$,%]/g, "")) || 0,
-      unit: input.value.includes("$") ? "USD" : input.value.includes("%") ? "percent" : undefined,
-    }));
+    const inputs = testInputs.map((input) => {
+      const parsed = parseFloat(input.value.replace(/[$,%]/g, ""));
+      const value = isNaN(parsed) ? 0 : parsed;
+      return {
+        name: input.label,
+        value,
+        unit: input.value.includes("$") ? "USD" : input.value.includes("%") ? "percent" : undefined,
+      };
+    });
 
     evaluateFormula(
       {
@@ -380,9 +392,29 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
     );
   };
 
+  // Valid activation state transitions
+  const VALID_TRANSITIONS: Record<ActivationState, ActivationState[]> = {
+    draft: ["pending"],
+    pending: ["approved", "draft"],
+    approved: ["draft"], // Requires revision workflow
+  };
+
+  const canTransition = (from: ActivationState, to: ActivationState): boolean => {
+    return VALID_TRANSITIONS[from]?.includes(to) ?? false;
+  };
+
   const handleActivationChange = (newState: ActivationState) => {
     if (!formulaId || isNew) {
-      setActivationState(newState);
+      // In new formula mode, only allow valid transitions
+      if (canTransition(activationState, newState)) {
+        setActivationState(newState);
+      }
+      return;
+    }
+
+    // Validate transition before calling API
+    if (!canTransition(activationState, newState)) {
+      setSaveError(`Invalid state transition from ${activationState} to ${newState}`);
       return;
     }
 
@@ -399,7 +431,8 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           onError: (err) => setSaveError(err.message),
         }
       );
-    } else {
+    } else if (newState === "draft" && activationState === "approved") {
+      // Revise workflow: move from approved back to draft
       setActivationState(newState);
     }
   };
@@ -444,6 +477,13 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
       {saveError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-[13px] text-red-700">
           {saveError}
+        </div>
+      )}
+
+      {saveSuccess && (
+        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-[13px] text-emerald-700 flex items-center gap-2">
+          <CheckCircle2 size={16} />
+          Formula saved successfully!
         </div>
       )}
 

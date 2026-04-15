@@ -1,6 +1,14 @@
 """Models package for Value Fabric ontology."""
 
 from .extraction_cost import ExtractionCost, JobCostSummary
+from .extraction_response import (
+    CapabilityExtractionResponse,
+    FeatureExtractionResponse,
+    PersonaExtractionResponse,
+    RelationshipExtractionResponse,
+    UseCaseExtractionResponse,
+    ValueDriverExtractionResponse,
+)
 from .ontology import (
     Capability,
     ExtractionResult,
@@ -41,4 +49,10 @@ __all__ = [
     "DriverType",
     "ExtractionCost",
     "JobCostSummary",
+    "CapabilityExtractionResponse",
+    "UseCaseExtractionResponse",
+    "PersonaExtractionResponse",
+    "ValueDriverExtractionResponse",
+    "FeatureExtractionResponse",
+    "RelationshipExtractionResponse",
 ]

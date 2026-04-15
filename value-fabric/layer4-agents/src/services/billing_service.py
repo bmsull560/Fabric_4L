@@ -309,7 +309,12 @@ class BillingService:
         subscription = result.scalar_one_or_none()
 
         if subscription:
-            subscription.status = status
+            # Validate status against known enum values
+            try:
+                subscription.status = SubscriptionStatus(status)
+            except ValueError:
+                logger.warning(f"Unknown subscription status from Stripe: {status}")
+                # Keep existing status if unknown
             subscription.cancel_at_period_end = cancel_at_period_end
             if current_period_start:
                 subscription.current_period_start = datetime.fromtimestamp(current_period_start, tz=UTC)

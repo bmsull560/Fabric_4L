@@ -139,6 +139,10 @@ class ApiClient {
     return this.getClient(layer).put(path, data, config);
   }
 
+  async patch(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig) {
+    return this.getClient(layer).patch(path, data, config);
+  }
+
   async delete(layer: LayerKey, path: string, config?: AxiosRequestConfig) {
     return this.getClient(layer).delete(path, config);
   }

@@ -2,7 +2,7 @@ import { ReactElement, ReactNode, useState } from "react";
 import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router } from "wouter";
-import { AxiosResponse, AxiosResponseHeaders } from "axios";
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // Re-export for AuthContext tests (avoids circular dependency)
 export type { UserInfo } from "./contexts/AuthContext";
@@ -14,7 +14,7 @@ export function createMockResponse<T>(data: T, status = 200): AxiosResponse<T> {
     status,
     statusText: status === 200 ? "OK" : "Error",
     headers: {},
-    config: { headers: {} as AxiosResponseHeaders },
+    config: { headers: {} } as InternalAxiosRequestConfig,
   } as AxiosResponse<T>;
 }
 

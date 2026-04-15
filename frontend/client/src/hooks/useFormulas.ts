@@ -224,7 +224,7 @@ export function useUpdateFormula() {
 
   return useMutation<Formula, FormulaApiError, UpdateFormulaInput>({
     mutationFn: async ({ formulaId, ...updates }) => {
-      const response = await apiClient.put('l3', `/formulas/${formulaId}`, updates);
+      const response = await apiClient.patch('l3', `/formulas/${formulaId}`, updates);
       return response.data as Formula;
     },
     onSuccess: (_, variables) => {

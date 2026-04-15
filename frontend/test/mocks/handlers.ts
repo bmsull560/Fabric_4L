@@ -450,9 +450,11 @@ export const benchmarkMocks = [
 ];
 
 // ===== Formula Mocks (L3) =====
+// Note: Test environment has VITE_L3_PREFIX=/graph, so we need to include it
+const L3_GRAPH_PREFIX = '/graph';
 
 export const formulaMocks = [
-  http.get(`${API_BASE}${L3_PREFIX}/formulas/approvals/pending`, async () => {
+  http.get(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/approvals/pending`, async () => {
     await delay(100);
     return HttpResponse.json([
       {
@@ -468,7 +470,7 @@ export const formulaMocks = [
     ]);
   }),
 
-  http.get(`${API_BASE}${L3_PREFIX}/formulas`, async ({ request }) => {
+  http.get(`${API_BASE}${L3_GRAPH_PREFIX}/formulas`, async ({ request }) => {
     await delay(100);
     const url = new URL(request.url);
     const statusFilter = url.searchParams.get('status');
@@ -512,7 +514,7 @@ export const formulaMocks = [
     return HttpResponse.json(formulas);
   }),
 
-  http.get(`${API_BASE}${L3_PREFIX}/formulas/:id`, async ({ params }) => {
+  http.get(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params }) => {
     await delay(100);
     const id = params.id as string;
     return HttpResponse.json({
@@ -531,7 +533,7 @@ export const formulaMocks = [
     });
   }),
 
-  http.post(`${API_BASE}${L3_PREFIX}/formulas/:id/approve`, async ({ params }) => {
+  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id/approve`, async ({ params }) => {
     await delay(150);
     return HttpResponse.json({
       formula_id: params.id,
@@ -540,12 +542,86 @@ export const formulaMocks = [
     });
   }),
 
-  http.post(`${API_BASE}${L3_PREFIX}/formulas/:id/submit`, async ({ params }) => {
+  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id/submit`, async ({ params }) => {
     await delay(150);
     return HttpResponse.json({
       formula_id: params.id,
       status: 'pending_approval',
       submitted_at: new Date().toISOString(),
+    });
+  }),
+
+  // Create new formula
+  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas`, async ({ request }) => {
+    await delay(150);
+    const body = (await request.json()) as { name?: string; description?: string; expression?: string };
+    const id = `formula-${Date.now()}`;
+    return HttpResponse.json({
+      id,
+      formula_id: id,
+      name: body?.name || 'New Formula',
+      description: body?.description || '',
+      expression: body?.expression || '',
+      version: '1.0.0',
+      status: 'draft',
+      owner: 'user@example.com',
+      updated_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      used_in_count: 0,
+      governance_score: 1.0,
+      variables: [],
+    }, { status: 201 });
+  }),
+
+  // Update formula
+  http.put(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params, request }) => {
+    await delay(150);
+    const id = params.id as string;
+    const body = (await request.json()) as { name?: string; description?: string; expression?: string };
+    return HttpResponse.json({
+      id,
+      formula_id: id,
+      name: body?.name || 'Updated Formula',
+      description: body?.description || '',
+      expression: body?.expression || '',
+      version: '1.0.1',
+      status: 'draft',
+      owner: 'user@example.com',
+      updated_at: new Date().toISOString(),
+      created_at: '2024-01-01T00:00:00Z',
+      used_in_count: 5,
+      governance_score: 0.95,
+      variables: [],
+    });
+  }),
+
+  // Delete formula
+  http.delete(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params }) => {
+    await delay(100);
+    return HttpResponse.json({
+      formula_id: params.id,
+      deleted: true,
+      deleted_at: new Date().toISOString(),
+    });
+  }),
+
+  // Evaluate formula
+  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/evaluate`, async ({ request }) => {
+    await delay(200);
+    const body = (await request.json()) as { inputs?: Array<{ name: string; value: number }>; expression?: string };
+    const inputs = body?.inputs || [];
+    const result = inputs.reduce((sum, input) => sum + (input.value || 0), 0);
+
+    return HttpResponse.json({
+      result,
+      unit: 'USD',
+      confidence: 0.92,
+      calculation_steps: inputs.map((input, idx) => ({
+        step: idx + 1,
+        operation: `Added ${input.name}`,
+        result: String(input.value),
+      })),
+      formula_used: body?.expression || 'evaluated_formula',
     });
   }),
 ];

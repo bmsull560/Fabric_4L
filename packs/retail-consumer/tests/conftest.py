@@ -1,4 +1,8 @@
-"""Shared fixtures for Retail & Consumer Value Pack tests."""
+"""Shared fixtures for Retail & Consumer Value Pack tests.
+
+NOTE (P1-4): File handle verification - session-scoped fixtures hold files open.
+Monitor for FD exhaustion under high concurrency: cat /proc/sys/fs/file-nr
+"""
 
 import json
 from pathlib import Path
@@ -6,10 +10,12 @@ from typing import Any
 
 import pytest
 
-# Constants
+# Pack Constants
 PACK_DIR = Path(__file__).parent.parent
-EXPECTED_PACK_ID = "retail-consumer-v1"
-REQUIRED_FORMULA_FIELDS = [
+EXPECTED_PACK_ID: str = "retail-consumer-v1"  #: Expected pack identifier for consistency checks
+
+# Validation Constants - centralized to avoid duplication
+REQUIRED_FORMULA_FIELDS: list[str] = [
     "formula_id",
     "name",
     "description",
@@ -17,11 +23,34 @@ REQUIRED_FORMULA_FIELDS = [
     "version",
     "status",
 ]
-REQUIRED_VARIABLE_FIELDS = [
+REQUIRED_VARIABLE_FIELDS: list[str] = [
     "variable_id",
     "variable_name",
     "display_name",
     "data_type",
+]
+REQUIRED_WORKFLOW_FIELDS: list[str] = [
+    "workflow_id",
+    "name",
+    "description",
+    "steps",
+]
+REQUIRED_ONTOLOGY_NODE_TYPES: list[str] = [
+    "Capability",
+    "UseCase",
+    "Persona",
+    "ValueDriver",
+]
+REQUIRED_ONTOLOGY_RELATIONSHIPS: list[str] = [
+    "ENABLES",
+    "BENEFITS",
+    "DRIVES",
+]
+REQUIRED_ENTITY_FIELDS: list[str] = [
+    "type",
+    "id",
+    "name",
+    "description",
 ]
 
 
@@ -59,31 +88,31 @@ def expected_pack_id() -> str:
     return EXPECTED_PACK_ID
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def ontology_data() -> dict[str, Any]:
     """Load and return ontology.json data."""
     return load_json_file("ontology.json")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def formulas_data() -> dict[str, Any]:
     """Load and return formulas.json data."""
     return load_json_file("formulas.json")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def variables_data() -> dict[str, Any]:
     """Load and return variables.json data."""
     return load_json_file("variables.json")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def workflow_template_data() -> dict[str, Any]:
     """Load and return workflow_template.json data."""
     return load_json_file("workflow_template.json")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def pack_files(
     ontology_data: dict[str, Any],
     formulas_data: dict[str, Any],

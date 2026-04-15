@@ -3,10 +3,20 @@
 Validates pack structure, JSON validity, and cross-reference integrity.
 """
 
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import pytest
+
+# Constants are injected by pytest from conftest.py - define local references
+# to make code analyzers happy and provide type hints
+REQUIRED_FORMULA_FIELDS: list[str] = [
+    "formula_id", "name", "description", "formula_type", "version", "status"
+]
+REQUIRED_VARIABLE_FIELDS: list[str] = [
+    "variable_id", "variable_name", "display_name", "data_type"
+]
 
 
 class TestPackStructure:
@@ -84,42 +94,40 @@ class TestPackManifest:
 class TestFormulaIntegrity:
     """Verify formula definitions are consistent."""
 
-    # Required fields that every formula must have
-    REQUIRED_FIELDS = ["formula_id", "name", "description", "formula_type", "version", "status"]
-
     def test_formulas_list_exists(self, formulas_data: dict[str, Any]) -> None:
-        assert "formulas" in formulas_data
-        assert isinstance(formulas_data["formulas"], list)
-        assert len(formulas_data["formulas"]) > 0
+        assert "formulas" in formulas_data, "Missing 'formulas' key in formulas data"
+        assert isinstance(formulas_data["formulas"], list), "Formulas must be a list"
+        assert len(formulas_data["formulas"]) > 0, "At least one formula required"
 
     def test_all_formulas_have_required_fields(self, formulas_data: dict[str, Any]) -> None:
         for formula in formulas_data["formulas"]:
-            for field in self.REQUIRED_FIELDS:
+            for field in REQUIRED_FORMULA_FIELDS:
                 assert field in formula, f"Formula {formula.get('formula_id', 'unknown')} missing field: {field}"
 
     def test_formula_ids_unique(self, formulas_data: dict[str, Any]) -> None:
         ids = [f["formula_id"] for f in formulas_data["formulas"]]
-        assert len(ids) == len(set(ids)), f"Duplicate formula IDs found: {[x for x in ids if ids.count(x) > 1]}"
+        id_counts = Counter(ids)
+        duplicates = [id for id, count in id_counts.items() if count > 1]
+        assert len(duplicates) == 0, f"Duplicate formula IDs found: {duplicates}"
 
 
 class TestVariableIntegrity:
     """Verify variable definitions are consistent."""
 
-    # Required fields that every variable must have
-    REQUIRED_FIELDS = ["variable_id", "variable_name", "display_name", "data_type"]
-
     def test_variables_list_exists(self, variables_data: dict[str, Any]) -> None:
-        assert "variables" in variables_data
-        assert isinstance(variables_data["variables"], list)
+        assert "variables" in variables_data, "Missing 'variables' key in variables data"
+        assert isinstance(variables_data["variables"], list), "Variables must be a list"
 
     def test_all_variables_have_required_fields(self, variables_data: dict[str, Any]) -> None:
         for var in variables_data["variables"]:
-            for field in self.REQUIRED_FIELDS:
+            for field in REQUIRED_VARIABLE_FIELDS:
                 assert field in var, f"Variable {var.get('variable_id', 'unknown')} missing field: {field}"
 
     def test_variable_ids_unique(self, variables_data: dict[str, Any]) -> None:
         ids = [v["variable_id"] for v in variables_data["variables"]]
-        assert len(ids) == len(set(ids)), f"Duplicate variable IDs found: {[x for x in ids if ids.count(x) > 1]}"
+        id_counts = Counter(ids)
+        duplicates = [id for id, count in id_counts.items() if count > 1]
+        assert len(duplicates) == 0, f"Duplicate variable IDs found: {duplicates}"
 
     def test_variable_references_valid_formulas(
         self, variables_data: dict[str, Any], formulas_data: dict[str, Any]

@@ -75,7 +75,7 @@ export function useBilling(customerId: string) {
     },
     onSuccess: () => {
       // Invalidate all billing-related queries (subscription, entitlements, features)
-      queryClient.invalidateQueries({ queryKey: billingKeys.all });
+      queryClient.invalidateQueries({ queryKey: billingKeys.all, exact: false });
     },
     onError: (error) => {
       setCheckoutError(error instanceof Error ? error : new Error(String(error)));

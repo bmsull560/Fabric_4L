@@ -1,13 +1,14 @@
 """Retail & Consumer Value Pack - Ontology Relationship Tests"""
 
+from collections import Counter
 from typing import Any
 
 import pytest
 
-# Constants for ontology validation
-REQUIRED_NODE_TYPES = ["Capability", "UseCase", "Persona", "ValueDriver"]
-REQUIRED_RELATIONSHIPS = ["ENABLES", "BENEFITS", "DRIVES"]
-REQUIRED_ENTITY_FIELDS = ["type", "id", "name", "description"]
+# Local constants (pytest conftest discovery works for fixtures, not module globals)
+REQUIRED_ONTOLOGY_NODE_TYPES: list[str] = ["Capability", "UseCase", "Persona", "ValueDriver"]
+REQUIRED_ONTOLOGY_RELATIONSHIPS: list[str] = ["ENABLES", "BENEFITS", "DRIVES"]
+REQUIRED_ENTITY_FIELDS: list[str] = ["type", "id", "name", "description"]
 
 
 class TestOntologyStructure:
@@ -20,12 +21,12 @@ class TestOntologyStructure:
 
     def test_ontology_has_node_types(self, ontology_data: dict[str, Any]) -> None:
         assert "node_types" in ontology_data["ontology"], "Missing node_types"
-        for nt in REQUIRED_NODE_TYPES:
+        for nt in REQUIRED_ONTOLOGY_NODE_TYPES:
             assert nt in ontology_data["ontology"]["node_types"], f"Missing node type: {nt}"
 
     def test_ontology_has_relationships(self, ontology_data: dict[str, Any]) -> None:
         assert "relationships" in ontology_data["ontology"], "Missing relationships"
-        for rel in REQUIRED_RELATIONSHIPS:
+        for rel in REQUIRED_ONTOLOGY_RELATIONSHIPS:
             assert rel in ontology_data["ontology"]["relationships"], f"Missing relationship: {rel}"
 
 
@@ -43,7 +44,9 @@ class TestEntities:
 
     def test_entity_ids_unique(self, ontology_data: dict[str, Any]) -> None:
         ids = [e["id"] for e in ontology_data["entities"]]
-        assert len(ids) == len(set(ids)), f"Duplicate entity IDs found: {[x for x in ids if ids.count(x) > 1]}"
+        id_counts = Counter(ids)
+        duplicates = [id for id, count in id_counts.items() if count > 1]
+        assert len(duplicates) == 0, f"Duplicate entity IDs found: {duplicates}"
 
 
 class TestRetailConsumerSpecific:

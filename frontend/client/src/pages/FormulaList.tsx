@@ -21,7 +21,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Archive,
-  MoreHorizontal,
   Edit3,
   Trash2,
   Play,
@@ -313,7 +312,7 @@ export default function FormulaList() {
           <div className="space-y-2">
             {filteredFormulas.map((formula) => (
               <div
-                key={formula.id}
+                key={formula.formula_id}
                 onClick={() => navigate(`/model/value-studio/formulas/${formula.formula_id}`)}
                 className="cursor-pointer"
               >

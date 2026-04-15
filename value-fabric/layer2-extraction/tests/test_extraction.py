@@ -7,6 +7,9 @@ import os
 
 import pytest
 
+# Test constants
+UUID_STRING_LENGTH = 36  # Standard UUID format: 8-4-4-4-12 hexadecimal digits with hyphens
+
 from layer2_extraction.extraction import chunk_markdown
 from layer2_extraction.models import (
     Capability,
@@ -25,8 +28,8 @@ from layer2_extraction.models import (
 class TestOntologyModels:
     """Test Pydantic ontology models."""
     
-    def test_capability_creation(self):
-        """Test creating a Capability entity."""
+    def test_creates_capability_with_valid_name_and_description(self):
+        """Should create capability and auto-generate UUID when valid data provided."""
         cap = Capability(
             name="Real-Time Data Ingestion",
             description="Stream data from multiple sources with sub-second latency",
@@ -39,16 +42,16 @@ class TestOntologyModels:
         assert cap.confidence == 0.92
         assert cap.technical_features == ["Kafka streaming", "CDC"]
     
-    def test_capability_validation(self):
-        """Test Capability field validation."""
+    def test_rejects_capability_with_empty_name(self):
+        """Should reject capability creation when name is empty or description too short."""
         with pytest.raises(ValueError):
             Capability(name="", description="Too short")  # Empty name
         
         with pytest.raises(ValueError):
             Capability(name="Test", description="Short")  # Description too short
     
-    def test_usecase_validation(self):
-        """Test UseCase validation with capability references."""
+    def test_creates_usecase_with_valid_capability_references(self):
+        """Should create usecase linking to existing capability by ID."""
         cap = Capability(name="Test Capability", description="A test capability")
         
         uc = UseCase(
@@ -59,8 +62,8 @@ class TestOntologyModels:
         
         assert cap.id in uc.required_capabilities
     
-    def test_value_driver_formula_validation(self):
-        """Test ValueDriver formula string validation."""
+    def test_validates_value_driver_formula_syntax(self):
+        """Should accept valid formula syntax and reject formulas with illegal characters."""
         # Valid formula with simple numeric variables
         # NOTE: Current validation is overly strict with variable names.
         # Using simple single-char variables to pass validation.
@@ -83,8 +86,8 @@ class TestOntologyModels:
                 formula_string="{a} * $rate"  # $ is not allowed
             )
     
-    def test_persona_role_type(self):
-        """Test Persona role type enum."""
+    def test_creates_persona_with_valid_role_type(self):
+        """Should create persona with economic buyer role type and serialize correctly."""
         persona = Persona(
             role_type=RoleType.ECONOMIC_BUYER,
             title="Chief Financial Officer",
@@ -94,8 +97,8 @@ class TestOntologyModels:
         assert persona.role_type == RoleType.ECONOMIC_BUYER
         assert persona.role_type.value == "economic_buyer"
     
-    def test_feature_creation(self):
-        """Test creating a Feature entity."""
+    def test_creates_feature_with_valid_data(self):
+        """Should create feature with GA status and confidence score."""
         feature = Feature(
             name="Dashboard Widget",
             description="Real-time analytics dashboard widget for monitoring KPIs",
@@ -107,8 +110,8 @@ class TestOntologyModels:
         assert feature.implementation_status == "ga"
         assert feature.confidence == 0.88
     
-    def test_feature_validation(self):
-        """Test Feature field validation."""
+    def test_rejects_feature_with_invalid_status(self):
+        """Should reject feature creation when implementation_status is not in allowed values."""
         # Valid statuses
         for status in ["planned", "beta", "ga", "deprecated"]:
             f = Feature(
