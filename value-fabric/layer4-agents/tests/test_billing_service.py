@@ -22,10 +22,21 @@ from src.models.billing import (
     BillingCustomer,
     BillingSubscription,
     BillingWebhookEvent,
-    PlanId,
     SubscriptionStatus,
 )
-from src.services.billing_service import BillingService
+
+# Mock stripe before importing billing service
+mock_stripe_module = MagicMock()
+mock_stripe_module.error = MagicMock()
+mock_stripe_module.error.StripeError = Exception
+mock_stripe_module.error.SignatureVerificationError = Exception
+mock_stripe_module.Webhook = MagicMock()
+mock_stripe_module.Customer = MagicMock()
+mock_stripe_module.checkout = MagicMock()
+mock_stripe_module.billing_portal = MagicMock()
+
+with patch.dict('sys.modules', {'stripe': mock_stripe_module}):
+    from src.services.billing_service import BillingService
 
 
 # =============================================================================
@@ -81,7 +92,7 @@ def sample_subscription():
         id="sub_123",
         customer_id="user_123",
         stripe_subscription_id="sub_stripe123",
-        plan_id=PlanId.PRO,
+        plan_id="pro",
         status=SubscriptionStatus.ACTIVE,
         current_period_start=datetime.now(UTC),
         current_period_end=datetime.now(UTC),
@@ -104,9 +115,12 @@ async def test_get_or_create_customer_new(mock_db):
     mock_db.execute.return_value = mock_result
 
     # Mock Stripe customer creation
-    with patch('src.services.billing_service.stripe') as mock_stripe:
-        mock_stripe.Customer.create.return_value = MagicMock(id="cus_new123")
+    mock_stripe = MagicMock()
+    mock_customer = MagicMock()
+    mock_customer.id = "cus_new123"
+    mock_stripe.Customer.create.return_value = mock_customer
 
+    with patch('src.services.billing_service._get_stripe', return_value=mock_stripe):
         service = BillingService(mock_db)
         customer = await service.get_or_create_customer(
             customer_id="user_new",
@@ -152,7 +166,7 @@ async def test_get_active_subscription(mock_db, sample_subscription):
     subscription = await service.get_active_subscription("user_123")
 
     assert subscription is not None
-    assert subscription.plan_id == PlanId.PRO
+    assert subscription.plan_id == "pro"
     assert subscription.status == SubscriptionStatus.ACTIVE
 
 
@@ -175,7 +189,7 @@ async def test_check_entitlement_free_no_advanced_models(mock_db):
     free_subscription = BillingSubscription(
         id="free_123",
         customer_id="user_123",
-        plan_id=PlanId.FREE,
+        plan_id="free",
         status=SubscriptionStatus.ACTIVE,
     )
 
@@ -214,9 +228,10 @@ async def test_handle_webhook_checkout_completed(mock_db):
         "data": {"object": session_data},
     }
 
-    with patch('src.services.billing_service.stripe.Webhook') as mock_webhook:
-        mock_webhook.construct_event.return_value = mock_event
+    mock_stripe = MagicMock()
+    mock_stripe.Webhook.construct_event.return_value = mock_event
 
+    with patch('src.services.billing_service._get_stripe', return_value=mock_stripe):
         service = BillingService(mock_db)
         result = await service.handle_webhook(
             payload=b'{"test": "payload"}',
@@ -246,9 +261,10 @@ async def test_handle_webhook_idempotency(mock_db):
         "data": {"object": {}},
     }
 
-    with patch('src.services.billing_service.stripe.Webhook') as mock_webhook:
-        mock_webhook.construct_event.return_value = mock_event
+    mock_stripe = MagicMock()
+    mock_stripe.Webhook.construct_event.return_value = mock_event
 
+    with patch('src.services.billing_service._get_stripe', return_value=mock_stripe):
         service = BillingService(mock_db)
         result = await service.handle_webhook(
             payload=b'{"test": "payload"}',
@@ -299,14 +315,10 @@ async def test_create_checkout_session_no_stripe_sync(mock_db, sample_customer):
 @pytest.mark.asyncio
 async def test_webhook_invalid_signature(mock_db):
     """Test webhook rejects invalid signatures."""
-    from stripe.error import SignatureVerificationError
+    mock_stripe = MagicMock()
+    mock_stripe.Webhook.construct_event.side_effect = Exception("Invalid signature")
 
-    with patch('src.services.billing_service.stripe.Webhook.construct_event') as mock_construct:
-        mock_construct.side_effect = SignatureVerificationError(
-            message="Invalid signature",
-            sig_header="test_sig"
-        )
-
+    with patch('src.services.billing_service._get_stripe', return_value=mock_stripe):
         service = BillingService(mock_db)
 
         with pytest.raises(ValueError, match="Invalid signature"):
@@ -324,7 +336,7 @@ async def test_handle_payment_failed_updates_status(mock_db):
         id="sub_123",
         customer_id="user_123",
         stripe_subscription_id="sub_stripe123",
-        plan_id=PlanId.PRO,
+        plan_id="pro",
         status=SubscriptionStatus.ACTIVE,
     )
 

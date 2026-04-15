@@ -1,0 +1,543 @@
+{
+  "pack_id": "ai-technology-v1",
+  "formulas": [
+    {
+      "formula_id": "ai-f-001",
+      "name": "AI Model Operationalization ROI",
+      "description": "Return on investment from operationalizing AI models including inference cost optimization, reduced model drift, automated retraining, and faster time-to-production.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "AI Platform Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15",
+        "validated_by": "MLOps CoE"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Inference_Cost_Savings + Drift_Reduction_Value + Velocity_Value - MLOps_Investment) / MLOps_Investment * 100",
+        "variables": [
+          "Inference_Cost_Savings",
+          "Drift_Reduction_Value",
+          "Velocity_Value",
+          "MLOps_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -50,
+        "max": 1000
+      },
+      "required_variables": [
+        {
+          "name": "Inference_Cost_Savings",
+          "display_name": "Annual Inference Cost Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 5000000,
+          "source": "Cloud_Billing",
+          "description": "Savings from model compression, quantization, and optimized serving"
+        },
+        {
+          "name": "Drift_Reduction_Value",
+          "display_name": "Model Drift Reduction Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 8000000,
+          "source": "ML_Operations",
+          "description": "Value from reduced performance degradation through automated monitoring"
+        },
+        {
+          "name": "Velocity_Value",
+          "display_name": "Time-to-Production Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 12000000,
+          "source": "Product",
+          "description": "Value from faster model deployment and revenue acceleration"
+        },
+        {
+          "name": "MLOps_Investment",
+          "display_name": "MLOps Platform Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 8000000,
+          "source": "Financial",
+          "description": "Annual investment in ML platform, tools, and infrastructure"
+        }
+      ],
+      "benchmarks": {
+        "typical_mlops_roi": 300,
+        "model_velocity_weeks": 4
+      },
+      "tags": ["mlops", "ai-operationalization", "model-serving", "roi"]
+    },
+    {
+      "formula_id": "ai-f-002",
+      "name": "LLM Adoption Productivity Value",
+      "description": "Annual value from enterprise LLM adoption including developer productivity gains, content generation efficiency, and knowledge worker acceleration.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Generative AI Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Developer_Productivity_Value + Content_Efficiency_Value + Support_Automation_Value - LLM_Platform_Cost",
+        "variables": [
+          "Developer_Productivity_Value",
+          "Content_Efficiency_Value",
+          "Support_Automation_Value",
+          "LLM_Platform_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -5000000,
+        "max": 200000000
+      },
+      "required_variables": [
+        {
+          "name": "Developer_Productivity_Value",
+          "display_name": "Developer Productivity Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 30000000,
+          "source": "Engineering",
+          "description": "Value from code generation, testing, and documentation assistance"
+        },
+        {
+          "name": "Content_Efficiency_Value",
+          "display_name": "Content Generation Efficiency Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 15000000,
+          "source": "Marketing",
+          "description": "Value from marketing copy, documentation, and creative content generation"
+        },
+        {
+          "name": "Support_Automation_Value",
+          "display_name": "Support Automation Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 8000000,
+          "source": "Support",
+          "description": "Value from automated ticket resolution and knowledge base answers"
+        },
+        {
+          "name": "LLM_Platform_Cost",
+          "display_name": "LLM Platform Annual Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 15000000,
+          "source": "Financial",
+          "description": "Annual cost of LLM API, fine-tuning, and infrastructure"
+        }
+      ],
+      "benchmarks": {
+        "developer_velocity_lift": 35,
+        "content_time_reduction": 50
+      },
+      "tags": ["llm", "generative-ai", "productivity", "copilot", "automation"]
+    },
+    {
+      "formula_id": "ai-f-003",
+      "name": "AI Data Infrastructure ROI",
+      "description": "Return on investment from AI-ready data infrastructure including feature store value, data quality improvements, and reduced data engineering overhead.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Data Engineering Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Feature_Reuse_Value + Quality_Improvement_Value + Velocity_Savings - Data_Platform_Investment) / Data_Platform_Investment * 100",
+        "variables": [
+          "Feature_Reuse_Value",
+          "Quality_Improvement_Value",
+          "Velocity_Savings",
+          "Data_Platform_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -30,
+        "max": 500
+      },
+      "required_variables": [
+        {
+          "name": "Feature_Reuse_Value",
+          "display_name": "Feature Store Reuse Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 8000000,
+          "source": "Data_Engineering",
+          "description": "Value from reduced redundant feature engineering across teams"
+        },
+        {
+          "name": "Quality_Improvement_Value",
+          "display_name": "Data Quality Improvement Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 6000000,
+          "source": "Data_Governance",
+          "description": "Value from improved model accuracy due to better data quality"
+        },
+        {
+          "name": "Velocity_Savings",
+          "display_name": "Data Engineering Velocity Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 5000000,
+          "source": "Data_Engineering",
+          "description": "Savings from self-service data and reduced data engineering backlog"
+        },
+        {
+          "name": "Data_Platform_Investment",
+          "display_name": "AI Data Platform Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 6000000,
+          "source": "Financial",
+          "description": "Annual investment in feature store, data quality, and data infrastructure"
+        }
+      ],
+      "benchmarks": {
+        "feature_reuse_rate": 60,
+        "data_quality_score_improvement": 25
+      },
+      "tags": ["data-infrastructure", "feature-store", "data-quality", "ml-platform"]
+    },
+    {
+      "formula_id": "ai-f-004",
+      "name": "Computer Vision Automation Value",
+      "description": "Annual value from computer vision automation including quality inspection, safety monitoring, and process optimization.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Computer Vision Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Quality_Inspection_Savings + Safety_Incident_Avoidance + Process_Optimization_Value - Vision_System_Cost",
+        "variables": [
+          "Quality_Inspection_Savings",
+          "Safety_Incident_Avoidance",
+          "Process_Optimization_Value",
+          "Vision_System_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -3000000,
+        "max": 50000000
+      },
+      "required_variables": [
+        {
+          "name": "Quality_Inspection_Savings",
+          "display_name": "Quality Inspection Labor Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 5000000,
+          "source": "Operations",
+          "description": "Reduced manual inspection labor through automated visual inspection"
+        },
+        {
+          "name": "Safety_Incident_Avoidance",
+          "display_name": "Safety Incident Avoidance Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 3000000,
+          "source": "Safety",
+          "description": "Cost avoidance from PPE detection and safety monitoring"
+        },
+        {
+          "name": "Process_Optimization_Value",
+          "display_name": "Process Optimization Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 15000000 },
+          "default_value": 4000000,
+          "source": "Operations",
+          "description": "Value from visual process monitoring and bottleneck detection"
+        },
+        {
+          "name": "Vision_System_Cost",
+          "display_name": "Computer Vision System Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 15000000 },
+          "default_value": 4000000,
+          "source": "Financial",
+          "description": "Annual cost of cameras, compute, ML models, and maintenance"
+        }
+      ],
+      "benchmarks": {
+        "inspection_accuracy": 99,
+        "false_positive_rate": 2
+      },
+      "tags": ["computer-vision", "quality-inspection", "safety", "automation"]
+    },
+    {
+      "formula_id": "ai-f-005",
+      "name": "AI-Powered Search and Discovery Value",
+      "description": "Value from AI-powered enterprise search and knowledge discovery including productivity gains and reduced information silos.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "draft",
+      "governance": {
+        "owner": "Enterprise AI Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "pending_review"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Knowledge_Worker_Productivity + Search_Time_Savings + Duplication_Avoidance - Search_Platform_Cost",
+        "variables": [
+          "Knowledge_Worker_Productivity",
+          "Search_Time_Savings",
+          "Duplication_Avoidance",
+          "Search_Platform_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -2000000,
+        "max": 30000000
+      },
+      "required_variables": [
+        {
+          "name": "Knowledge_Worker_Productivity",
+          "display_name": "Knowledge Worker Productivity Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 8000000,
+          "source": "HR",
+          "description": "Value from faster information discovery and synthesis"
+        },
+        {
+          "name": "Search_Time_Savings",
+          "display_name": "Enterprise Search Time Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 15000000 },
+          "default_value": 5000000,
+          "source": "IT",
+          "description": "Value from reduced time finding information across systems"
+        },
+        {
+          "name": "Duplication_Avoidance",
+          "display_name": "Work Duplication Avoidance",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 3000000,
+          "source": "Operations",
+          "description": "Value from finding existing work and reducing reinvention"
+        },
+        {
+          "name": "Search_Platform_Cost",
+          "display_name": "AI Search Platform Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 3000000,
+          "source": "Financial",
+          "description": "Annual cost of vector database, embeddings, and search infrastructure"
+        }
+      ],
+      "benchmarks": {
+        "search_relevance_improvement": 40,
+        "time_to_find_info_reduction": 60
+      },
+      "tags": ["enterprise-search", "knowledge-management", "semantic-search", "productivity"]
+    },
+    {
+      "formula_id": "ai-f-006",
+      "name": "AI Governance and Responsible AI Value",
+      "description": "Value from AI governance, bias detection, and explainability including regulatory risk reduction and faster model approval.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Responsible AI Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Regulatory_Risk_Avoidance + Bias_Incident_Avoidance + Approval_Velocity_Value - Governance_Platform_Cost",
+        "variables": [
+          "Regulatory_Risk_Avoidance",
+          "Bias_Incident_Avoidance",
+          "Approval_Velocity_Value",
+          "Governance_Platform_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -1000000,
+        "max": 20000000
+      },
+      "required_variables": [
+        {
+          "name": "Regulatory_Risk_Avoidance",
+          "display_name": "Regulatory Risk Avoidance",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 2000000,
+          "source": "Compliance",
+          "description": "Avoided regulatory fines and compliance costs from AI governance"
+        },
+        {
+          "name": "Bias_Incident_Avoidance",
+          "display_name": "AI Bias Incident Avoidance",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 1500000,
+          "source": "Risk",
+          "description": "Cost avoidance from detected and mitigated bias incidents"
+        },
+        {
+          "name": "Approval_Velocity_Value",
+          "display_name": "Model Approval Velocity Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 3000000,
+          "source": "ML_Operations",
+          "description": "Value from faster model approval through automated documentation"
+        },
+        {
+          "name": "Governance_Platform_Cost",
+          "display_name": "AI Governance Platform Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 8000000 },
+          "default_value": 2000000,
+          "source": "Financial",
+          "description": "Annual investment in bias detection, explainability, and governance tools"
+        }
+      ],
+      "benchmarks": {
+        "model_approval_time_reduction": 50,
+        "bias_detection_coverage": 90
+      },
+      "tags": ["responsible-ai", "ai-governance", "bias-detection", "explainability", "regulatory"]
+    },
+    {
+      "formula_id": "ai-f-007",
+      "name": "AI Talent and Training ROI",
+      "description": "Return on investment from AI upskilling, training programs, and talent development including productivity lift and retention improvement.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "draft",
+      "governance": {
+        "owner": "AI Talent Value Engineering",
+        "review_cycle": "annual",
+        "approval_status": "pending_review"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Productivity_Lift_Value + Retention_Savings + External_Hiring_Avoidance - Training_Investment) / Training_Investment * 100",
+        "variables": [
+          "Productivity_Lift_Value",
+          "Retention_Savings",
+          "External_Hiring_Avoidance",
+          "Training_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -20,
+        "max": 500
+      },
+      "required_variables": [
+        {
+          "name": "Productivity_Lift_Value",
+          "display_name": "AI Skills Productivity Lift",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 15000000,
+          "source": "HR",
+          "description": "Value from improved productivity of AI-trained employees"
+        },
+        {
+          "name": "Retention_Savings",
+          "display_name": "AI Talent Retention Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 5000000,
+          "source": "HR",
+          "description": "Reduced turnover costs from AI upskilling programs"
+        },
+        {
+          "name": "External_Hiring_Avoidance",
+          "display_name": "External AI Hiring Avoidance",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 8000000,
+          "source": "HR",
+          "description": "Savings from internal development vs external AI talent acquisition"
+        },
+        {
+          "name": "Training_Investment",
+          "display_name": "AI Training Program Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 5000000,
+          "source": "Financial",
+          "description": "Annual investment in AI training, certifications, and development"
+        }
+      ],
+      "benchmarks": {
+        "productivity_lift_percent": 25,
+        "retention_improvement": 15
+      },
+      "tags": ["ai-talent", "training", "upskilling", "retention", "workforce-development"]
+    }
+  ]
+}

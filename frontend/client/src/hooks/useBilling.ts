@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
 import { apiClient } from '@/api/client';
 import { withApiError, BaseApiError, STALE_TIME } from './useApiShared';
 
@@ -47,6 +48,8 @@ export const billingKeys = {
 // Hooks
 export function useBilling(customerId: string) {
   const queryClient = useQueryClient();
+  const [checkoutError, setCheckoutError] = useState<Error | null>(null);
+  const [portalError, setPortalError] = useState<Error | null>(null);
 
   const subscriptionQuery = useQuery({
     queryKey: billingKeys.subscription(customerId),
@@ -64,28 +67,32 @@ export function useBilling(customerId: string) {
       success_url: string;
       cancel_url: string;
     }) => {
+      setCheckoutError(null);
       return withApiError(
         apiClient.post('l4', `/billing/checkout?customer_id=${customerId}`, params).then(r => r.data as CheckoutResponse),
         BaseApiError
       );
     },
     onSuccess: () => {
-      // Invalidate subscription after checkout
-      queryClient.invalidateQueries({ queryKey: billingKeys.subscription(customerId) });
+      // Invalidate all billing-related queries (subscription, entitlements, features)
+      queryClient.invalidateQueries({ queryKey: billingKeys.all });
     },
     onError: (error) => {
+      setCheckoutError(error instanceof Error ? error : new Error(String(error)));
       console.error('Checkout mutation failed:', error);
     },
   });
 
   const createPortalMutation = useMutation({
     mutationFn: async (returnUrl: string) => {
+      setPortalError(null);
       return withApiError(
         apiClient.post('l4', `/billing/portal?customer_id=${customerId}`, { return_url: returnUrl }).then(r => r.data as PortalResponse),
         BaseApiError
       );
     },
     onError: (error) => {
+      setPortalError(error instanceof Error ? error : new Error(String(error)));
       console.error('Portal mutation failed:', error);
     },
   });
@@ -108,11 +115,21 @@ export function useBilling(customerId: string) {
     }
   };
 
+  const clearErrors = useCallback(() => {
+    setCheckoutError(null);
+    setPortalError(null);
+  }, []);
+
   return {
     // Data
     subscription: subscriptionQuery.data,
     isLoading: subscriptionQuery.isLoading,
     error: subscriptionQuery.error,
+
+    // Mutation errors (exposed for UI display)
+    checkoutError,
+    portalError,
+    clearErrors,
 
     // Actions
     openCustomerPortal,

@@ -59,6 +59,7 @@ from layer2_extraction.output.provenance import (
 )
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
+from shared.security import add_security_middleware, SecurityConfig
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +104,6 @@ app.add_middleware(
 )
 
 # SecurityMiddleware — input validation and security headers
-from shared.security import add_security_middleware, SecurityConfig
-
 _security_config_l2 = SecurityConfig(
     skip_validation_paths=frozenset({
         "/v1/extract",

@@ -54,6 +54,7 @@ from ..shared.models import (
     create_scraping_target,
 )
 from ..shared.tasks import cleanup_old_content, process_scraping_job
+from shared.security import add_security_middleware, SecurityConfig
 
 # Configure logging
 structlog.configure(
@@ -188,8 +189,6 @@ app.add_middleware(
 )
 
 # SecurityMiddleware — input validation and security headers
-from shared.security import add_security_middleware, SecurityConfig
-
 _security_config_l1 = SecurityConfig(
     skip_validation_paths=frozenset({
         "/v1/ingest",

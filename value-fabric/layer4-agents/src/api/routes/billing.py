@@ -6,14 +6,43 @@ and entitlement checks. Minimal scope: checkout, portal, webhooks.
 
 import logging
 import os
+import re
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# Customer ID validation pattern (alphanumeric, underscore, hyphen; 1-64 chars after prefix)
+CUSTOMER_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def validate_customer_id(customer_id: str) -> str:
+    """Validate customer_id format to prevent injection attacks.
+    
+    Args:
+        customer_id: The customer ID to validate
+        
+    Returns:
+        The validated customer ID
+        
+    Raises:
+        HTTPException: If customer_id contains invalid characters
+    """
+    if not customer_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="customer_id is required"
+        )
+    if not CUSTOMER_ID_PATTERN.match(customer_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="customer_id contains invalid characters"
+        )
+    return customer_id
+
 from ...database import get_db
-from ...services.billing_service import BillingService
+from ...services.billing_service import BillingService, StripeError
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -63,7 +92,7 @@ class SubscriptionResponse(BaseModel):
 
 @router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
-    customer_id: str,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Get current subscription status for a customer.
@@ -100,7 +129,7 @@ async def get_subscription(
 
 @router.post("/checkout")
 async def create_checkout(
-    customer_id: str,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     request: CheckoutRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
@@ -133,7 +162,7 @@ async def create_checkout(
 
 @router.post("/portal")
 async def create_portal(
-    customer_id: str,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     request: PortalRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, str]:
@@ -168,7 +197,7 @@ async def create_portal(
 
 @router.get("/entitlements")
 async def get_entitlements(
-    customer_id: str,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Get all feature entitlements for a customer.
@@ -185,8 +214,8 @@ async def get_entitlements(
 
 @router.get("/check-feature")
 async def check_feature(
-    customer_id: str,
-    feature_id: str,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
+    feature_id: str = Query(..., min_length=1, max_length=64),
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Check if a customer has access to a specific feature.
@@ -213,7 +242,7 @@ async def check_feature(
 
 @router.post("/sync-customer")
 async def sync_customer(
-    customer_id: str,
+    customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     request: CustomerSyncRequest,
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
@@ -281,14 +310,22 @@ async def stripe_webhook(
         await db.commit()
         return {"received": True}
     except ValueError as e:
-        logger.warning(f"Webhook processing failed: {e}")
+        await db.rollback()
+        logger.warning(f"Webhook validation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
-    except Exception as e:
-        logger.error(f"Unexpected webhook error: {e}")
+    except StripeError as e:
         await db.rollback()
+        logger.error(f"Stripe API error during webhook: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Stripe processing failed",
+        ) from e
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Unexpected webhook error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Webhook processing failed",

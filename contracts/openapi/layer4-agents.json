@@ -315,20 +315,74 @@
           "workflows"
         ],
         "summary": "List Active Workflows",
-        "description": "List currently active workflows for the authenticated tenant.",
+        "description": "List currently active workflows for the authenticated tenant with pagination.\n\nReturns a paginated list of workflows with metadata for efficient client-side rendering.",
         "operationId": "list_active_workflows_v1_workflows_active_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum number of workflows to return",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum number of workflows to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of workflows to skip",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Number of workflows to skip"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status (pending, running, completed, failed, cancelled)",
+              "title": "Status"
+            },
+            "description": "Filter by status (pending, running, completed, failed, cancelled)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  "type": "array",
+                  "type": "object",
+                  "additionalProperties": true,
                   "title": "Response List Active Workflows V1 Workflows Active Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3485,6 +3539,362 @@
         }
       }
     },
+    "/v1/billing/subscription": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Subscription",
+        "description": "Get current subscription status for a customer.\n\nArgs:\n    customer_id: Internal customer/user ID\n\nReturns:\n    Subscription details including plan and status",
+        "operationId": "get_subscription_v1_billing_subscription_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/checkout": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Create Checkout",
+        "description": "Create a Stripe checkout session for subscription.\n\nArgs:\n    customer_id: Internal customer/user ID\n    request: Checkout session parameters\n\nReturns:\n    Session ID and checkout URL",
+        "operationId": "create_checkout_v1_billing_checkout_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Checkout V1 Billing Checkout Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/portal": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Create Portal",
+        "description": "Create a Stripe customer portal session.\n\nArgs:\n    customer_id: Internal customer/user ID\n    request: Portal session parameters\n\nReturns:\n    Portal URL for customer to manage billing",
+        "operationId": "create_portal_v1_billing_portal_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Create Portal V1 Billing Portal Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/entitlements": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Get Entitlements",
+        "description": "Get all feature entitlements for a customer.\n\nArgs:\n    customer_id: Internal customer/user ID\n\nReturns:\n    Plan details and feature availability map",
+        "operationId": "get_entitlements_v1_billing_entitlements_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Entitlements V1 Billing Entitlements Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/check-feature": {
+      "get": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Check Feature",
+        "description": "Check if a customer has access to a specific feature.\n\nArgs:\n    customer_id: Internal customer/user ID\n    feature_id: Feature identifier to check\n\nReturns:\n    Feature access status",
+        "operationId": "check_feature_v1_billing_check_feature_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "feature_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Feature Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Check Feature V1 Billing Check Feature Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/sync-customer": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Sync Customer",
+        "description": "Sync customer with Stripe (create or update).\n\nArgs:\n    customer_id: Internal customer/user ID\n    request: Customer details\n\nReturns:\n    Customer record with Stripe ID if available",
+        "operationId": "sync_customer_v1_billing_sync_customer_post",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerSyncRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Sync Customer V1 Billing Sync Customer Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/billing/webhook": {
+      "post": {
+        "tags": [
+          "Billing"
+        ],
+        "summary": "Stripe Webhook",
+        "description": "Handle Stripe webhook events.\n\nProcesses subscription lifecycle events from Stripe with idempotency.\nMust configure webhook secret in STRIPE_WEBHOOK_SECRET env var.\n\nHeaders:\n    Stripe-Signature: Webhook signature for verification\n\nReturns:\n    Processing status",
+        "operationId": "stripe_webhook_v1_billing_webhook_post",
+        "parameters": [
+          {
+            "name": "Stripe-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Stripe-Signature"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Stripe Webhook V1 Billing Webhook Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/c1/stream": {
       "post": {
         "tags": [
@@ -4623,6 +5033,33 @@
         "title": "CRMProvider",
         "description": "Supported CRM providers."
       },
+      "CheckoutRequest": {
+        "properties": {
+          "plan_id": {
+            "type": "string",
+            "title": "Plan Id",
+            "description": "Plan to subscribe to (pro, enterprise)"
+          },
+          "success_url": {
+            "type": "string",
+            "title": "Success Url",
+            "description": "Redirect URL after successful checkout"
+          },
+          "cancel_url": {
+            "type": "string",
+            "title": "Cancel Url",
+            "description": "Redirect URL if checkout canceled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan_id",
+          "success_url",
+          "cancel_url"
+        ],
+        "title": "CheckoutRequest",
+        "description": "Request to create a checkout session."
+      },
       "CheckpointInfo": {
         "properties": {
           "checkpoint_id": {
@@ -4859,6 +5296,33 @@
         ],
         "title": "ContactSchema",
         "description": "Contact data embedded in account detail response."
+      },
+      "CustomerSyncRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email",
+            "description": "Customer email address"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name",
+            "description": "Customer name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "CustomerSyncRequest",
+        "description": "Request to sync customer with Stripe."
       },
       "DismissBadgeRequest": {
         "properties": {
@@ -5832,6 +6296,21 @@
         "title": "Permission",
         "description": "Fine-grained permissions enforced at endpoint level."
       },
+      "PortalRequest": {
+        "properties": {
+          "return_url": {
+            "type": "string",
+            "title": "Return Url",
+            "description": "URL to return to after portal session"
+          }
+        },
+        "type": "object",
+        "required": [
+          "return_url"
+        ],
+        "title": "PortalRequest",
+        "description": "Request to create a customer portal session."
+      },
       "PromotionLogResponse": {
         "properties": {
           "id": {
@@ -6415,6 +6894,66 @@
         ],
         "title": "StateValueResponse",
         "description": "Full state value with field-by-field breakdown."
+      },
+      "SubscriptionResponse": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "plan_id": {
+            "type": "string",
+            "title": "Plan Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "current_period_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period Start"
+          },
+          "current_period_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Period End"
+          },
+          "cancel_at_period_end": {
+            "type": "boolean",
+            "title": "Cancel At Period End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "plan_id",
+          "status",
+          "current_period_start",
+          "current_period_end",
+          "cancel_at_period_end"
+        ],
+        "title": "SubscriptionResponse",
+        "description": "Subscription status response."
       },
       "SyncAccountsRequest": {
         "properties": {

@@ -46,11 +46,13 @@ export function BillingSettings() {
   }
 
   if (error) {
+    // Sanitize error message to prevent XSS from malicious Stripe payloads
+    const sanitizedMessage = error.message?.replace(/[<>&"']/g, '') || 'Unknown error';
     return (
       <div className="p-6">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-red-600">Failed to load billing information: {error.message}</p>
+            <p className="text-red-600">Failed to load billing information: {sanitizedMessage}</p>
           </CardContent>
         </Card>
       </div>

@@ -178,6 +178,35 @@ class Settings(BaseSettings):
     )
 
     # ==========================================================================
+    # Billing (Stripe Integration)
+    # ==========================================================================
+    billing_enabled: bool = Field(
+        default=False,
+        description="Enable billing features and Stripe integration"
+    )
+    stripe_secret_key: str | None = Field(
+        default=None,
+        description="Stripe API secret key (sk_...)"
+    )
+    stripe_webhook_secret: str | None = Field(
+        default=None,
+        description="Stripe webhook endpoint secret (whsec_...)"
+    )
+    stripe_price_pro: str | None = Field(
+        default=None,
+        description="Stripe Price ID for Pro plan"
+    )
+    stripe_price_enterprise: str | None = Field(
+        default=None,
+        description="Stripe Price ID for Enterprise plan"
+    )
+
+    @property
+    def is_billing_configured(self) -> bool:
+        """Check if Stripe billing is properly configured."""
+        return self.billing_enabled and self.stripe_secret_key is not None
+
+    # ==========================================================================
     # Validators (P0-29: Fail fast on invalid config)
     # ==========================================================================
 

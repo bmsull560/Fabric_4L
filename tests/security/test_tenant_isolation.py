@@ -14,26 +14,6 @@ from fastapi.testclient import TestClient
 class TestTenantIsolation:
     """Test suite for cross-tenant data access prevention."""
 
-    @pytest.fixture
-    def tenant_a_token(self):
-        """JWT token for Tenant A user."""
-        return {
-            "sub": "user-123",
-            "tenant_id": "tenant-a",
-            "role": "standard",
-            "email": "user@tenant-a.com",
-        }
-
-    @pytest.fixture
-    def tenant_b_token(self):
-        """JWT token for Tenant B user."""
-        return {
-            "sub": "user-456",
-            "tenant_id": "tenant-b",
-            "role": "standard",
-            "email": "user@tenant-b.com",
-        }
-
     def test_user_cannot_access_other_tenant_data(self, client: TestClient, tenant_a_token):
         """P0: User from Tenant A cannot access Tenant B data."""
         # Attempt to access data with spoofed tenant header

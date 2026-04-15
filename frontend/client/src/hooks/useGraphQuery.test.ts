@@ -36,7 +36,7 @@ describe('useGraphQuery', () => {
 
   it('handles query errors', async () => {
     server.use(
-      http.post('/api/v1/graph/query/graph', () => {
+      http.post('/api/v1/query/graph', () => {
         return HttpResponse.json({ error: 'Query timeout' }, { status: 504 });
       })
     );
@@ -93,7 +93,7 @@ describe('useEntityContext', () => {
 
   it('handles entity not found', async () => {
     server.use(
-      http.get('/api/v1/graph/entity/:entityId/context', () => {
+      http.get('/api/v1/entity/:entityId/context', () => {
         return HttpResponse.json({ error: 'Entity not found' }, { status: 404 });
       })
     );
@@ -120,7 +120,7 @@ describe('useEntityTraversal', () => {
 
   it('handles traversal errors', async () => {
     server.use(
-      http.post('/api/v1/graph/entity/traverse', () => {
+      http.post('/api/v1/entity/traverse', () => {
         return HttpResponse.json({ error: 'Invalid direction' }, { status: 400 });
       })
     );
@@ -147,7 +147,7 @@ describe('useFullGraph', () => {
 
   it('normalizes search results to graph nodes', async () => {
     server.use(
-      http.post('/api/v1/graph/search/hybrid', () => {
+      http.post('/api/v1/search/hybrid', () => {
         return HttpResponse.json({
           results: [
             { id: 'ent-1', name: 'Entity One', entity_type: 'capability', confidence_score: 0.95 },
@@ -168,7 +168,7 @@ describe('useFullGraph', () => {
 
   it('handles empty graph', async () => {
     server.use(
-      http.post('/api/v1/graph/search/hybrid', () => {
+      http.post('/api/v1/search/hybrid', () => {
         return HttpResponse.json({ results: [] });
       })
     );

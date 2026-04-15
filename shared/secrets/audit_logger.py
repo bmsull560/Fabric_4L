@@ -100,9 +100,10 @@ class SecretAuditLogger:
     ):
         self.environment = environment or os.getenv("ENVIRONMENT", "production")
         self.enable_file_output = enable_file_output
-        self.log_file_path = log_file_path or os.getenv(
-            "SECRET_AUDIT_LOG_PATH", 
-            "/var/log/value-fabric/secret-audit.log"
+        
+        # Validate and sanitize log file path to prevent path traversal
+        self.log_file_path = self._validate_and_sanitize_path(
+            log_file_path or os.getenv("SECRET_AUDIT_LOG_PATH", "/var/log/value-fabric/secret-audit.log")
         )
         
         # Setup logger
@@ -127,6 +128,43 @@ class SecretAuditLogger:
             except Exception as e:
                 self.logger.warning(f"Failed to initialize shared audit: {e}")
     
+    def _validate_and_sanitize_path(self, path: str) -> str:
+        """Validate path is within allowed base directory to prevent path traversal.
+        
+        Args:
+            path: The requested log file path
+            
+        Returns:
+            The sanitized path
+            
+        Raises:
+            ValueError: If path attempts directory traversal outside base directory
+        """
+        # Normalize the path to resolve any .. sequences
+        normalized = os.path.abspath(os.path.normpath(path))
+        
+        # Define allowed base directories
+        allowed_bases = [
+            "/var/log/value-fabric",
+            "/tmp",
+            os.path.expanduser("~/.value-fabric/logs"),
+        ]
+        
+        # Check if normalized path starts with any allowed base
+        for base in allowed_bases:
+            if normalized.startswith(os.path.abspath(base)):
+                return normalized
+        
+        # If path is relative, make it absolute under default base
+        if not path.startswith("/"):
+            default_base = "/var/log/value-fabric"
+            return os.path.abspath(os.path.join(default_base, path))
+        
+        # Path is outside allowed directories - reject it
+        raise ValueError(
+            f"Log path '{path}' is outside allowed directories: {allowed_bases}"
+        )
+
     def _hash_secret_identifier(self, secret_name: str) -> str:
         """
         Create a hash of the secret identifier for audit logs.

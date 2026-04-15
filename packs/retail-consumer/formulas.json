@@ -1,0 +1,533 @@
+{
+  "pack_id": "retail-consumer-v1",
+  "formulas": [
+    {
+      "formula_id": "rc-f-001",
+      "name": "Omnichannel Fulfillment ROI",
+      "description": "Return on investment from omnichannel fulfillment capabilities including ship-from-store, buy-online-pickup-in-store (BOPIS), and same-day delivery optimization.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Omnichannel Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15",
+        "validated_by": "Supply Chain CoE"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Incremental_Revenue + Cost_Avoidance - Fulfillment_Cost_Inflation) / Omnichannel_Investment * 100",
+        "variables": [
+          "Incremental_Revenue",
+          "Cost_Avoidance",
+          "Fulfillment_Cost_Inflation",
+          "Omnichannel_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -30,
+        "max": 500
+      },
+      "required_variables": [
+        {
+          "name": "Incremental_Revenue",
+          "display_name": "Incremental Revenue from Omnichannel",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 1000000000 },
+          "default_value": 50000000,
+          "source": "Sales_Analytics",
+          "description": "Additional revenue from omnichannel customers and basket size increase"
+        },
+        {
+          "name": "Cost_Avoidance",
+          "display_name": "Fulfillment Cost Avoidance",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 15000000,
+          "source": "Supply_Chain",
+          "description": "Savings from store-based fulfillment vs distribution center"
+        },
+        {
+          "name": "Fulfillment_Cost_Inflation",
+          "display_name": "Fulfillment Cost Inflation",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 20000000,
+          "source": "Supply_Chain",
+          "description": "Additional costs from same-day and expedited fulfillment"
+        },
+        {
+          "name": "Omnichannel_Investment",
+          "display_name": "Omnichannel Platform Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 200000000 },
+          "default_value": 30000000,
+          "source": "Financial",
+          "description": "Annual investment in OMS, inventory visibility, and store fulfillment"
+        }
+      ],
+      "benchmarks": {
+        "omni_customer_value_lift": 30,
+        "bopis_adoption": 25
+      },
+      "tags": ["omnichannel", "fulfillment", "bopis", "ship-from-store", "roi"]
+    },
+    {
+      "formula_id": "rc-f-002",
+      "name": "Dynamic Pricing Value",
+      "description": "Annual value from dynamic pricing optimization including margin improvement, inventory velocity increase, and competitive price positioning.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Pricing Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Margin_Improvement_Value + Markdown_Reduction_Value + Competitive_Position_Value - Pricing_Platform_Cost",
+        "variables": [
+          "Margin_Improvement_Value",
+          "Markdown_Reduction_Value",
+          "Competitive_Position_Value",
+          "Pricing_Platform_Cost"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -5000000,
+        "max": 200000000
+      },
+      "required_variables": [
+        {
+          "name": "Margin_Improvement_Value",
+          "display_name": "Margin Improvement Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 25000000,
+          "source": "Merchandising",
+          "description": "Value from optimized everyday pricing and promotions"
+        },
+        {
+          "name": "Markdown_Reduction_Value",
+          "display_name": "Markdown Reduction Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 15000000,
+          "source": "Planning",
+          "description": "Reduced end-of-season markdowns through better pricing"
+        },
+        {
+          "name": "Competitive_Position_Value",
+          "display_name": "Competitive Position Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 10000000,
+          "source": "Strategy",
+          "description": "Value from competitive price positioning and win rate"
+        },
+        {
+          "name": "Pricing_Platform_Cost",
+          "display_name": "Dynamic Pricing Platform Cost",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 5000000,
+          "source": "Financial",
+          "description": "Annual cost of pricing optimization platform and team"
+        }
+      ],
+      "benchmarks": {
+        "typical_margin_improvement": 200,
+        "markdown_reduction_percent": 15
+      },
+      "tags": ["dynamic-pricing", "markdown-optimization", "competitive-pricing", "margin"]
+    },
+    {
+      "formula_id": "rc-f-003",
+      "name": "Inventory Optimization Value",
+      "description": "Annual value from AI-driven inventory optimization including stockout reduction, working capital improvement, and obsolescence reduction.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Inventory Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Stockout_Recovery + Working_Capital_Benefit + Obsolescence_Reduction - Optimization_Investment",
+        "variables": [
+          "Stockout_Recovery",
+          "Working_Capital_Benefit",
+          "Obsolescence_Reduction",
+          "Optimization_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -5000000,
+        "max": 100000000
+      },
+      "required_variables": [
+        {
+          "name": "Stockout_Recovery",
+          "display_name": "Stockout Recovery Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 20000000,
+          "source": "Sales",
+          "description": "Recovered sales from reduced stockouts"
+        },
+        {
+          "name": "Working_Capital_Benefit",
+          "display_name": "Working Capital Benefit",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 100000000 },
+          "default_value": 15000000,
+          "source": "Finance",
+          "description": "Inventory reduction value at carrying cost"
+        },
+        {
+          "name": "Obsolescence_Reduction",
+          "display_name": "Obsolescence Reduction Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 8000000,
+          "source": "Supply_Chain",
+          "description": "Reduced write-offs from better demand forecasting"
+        },
+        {
+          "name": "Optimization_Investment",
+          "display_name": "Inventory Optimization Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 6000000,
+          "source": "Financial",
+          "description": "Annual investment in planning systems and data science"
+        }
+      ],
+      "benchmarks": {
+        "typical_stockout_reduction": 40,
+        "inventory_turns_improvement": 1.5
+      },
+      "tags": ["inventory-optimization", "working-capital", "stockout-reduction", "forecasting"]
+    },
+    {
+      "formula_id": "rc-f-004",
+      "name": "Personalized Marketing ROI",
+      "description": "Return on investment from AI-powered personalized marketing including conversion rate improvement, customer lifetime value increase, and marketing efficiency gains.",
+      "formula_type": "ROI",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Marketing Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "(Incremental_Revenue - Marketing_Spend_Efficiency) / Personalization_Investment * 100",
+        "variables": [
+          "Incremental_Revenue",
+          "Marketing_Spend_Efficiency",
+          "Personalization_Investment"
+        ]
+      },
+      "unit_of_result": "%",
+      "precision": 1,
+      "valid_range": {
+        "min": -20,
+        "max": 800
+      },
+      "required_variables": [
+        {
+          "name": "Incremental_Revenue",
+          "display_name": "Incremental Revenue from Personalization",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 500000000 },
+          "default_value": 40000000,
+          "source": "Marketing",
+          "description": "Additional revenue from personalized campaigns and recommendations"
+        },
+        {
+          "name": "Marketing_Spend_Efficiency",
+          "display_name": "Marketing Spend Efficiency Gain",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 10000000,
+          "source": "Marketing",
+          "description": "Reduced marketing spend for same results through targeting"
+        },
+        {
+          "name": "Personalization_Investment",
+          "display_name": "Personalization Platform Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 50000000 },
+          "default_value": 8000000,
+          "source": "Financial",
+          "description": "Annual investment in CDP, personalization engine, and data"
+        }
+      ],
+      "benchmarks": {
+        "personalized_lift": 20,
+        "email_open_rate_improvement": 50
+      },
+      "tags": ["personalization", "marketing-roi", "cdp", "customer-lifetime-value"]
+    },
+    {
+      "formula_id": "rc-f-005",
+      "name": "Store Labor Optimization Value",
+      "description": "Annual value from AI-powered workforce optimization including labor cost reduction, improved customer service, and reduced turnover.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Workforce Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Labor_Cost_Savings + Service_Improvement_Value + Turnover_Reduction_Value - WFM_Investment",
+        "variables": [
+          "Labor_Cost_Savings",
+          "Service_Improvement_Value",
+          "Turnover_Reduction_Value",
+          "WFM_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -3000000,
+        "max": 50000000
+      },
+      "required_variables": [
+        {
+          "name": "Labor_Cost_Savings",
+          "display_name": "Labor Cost Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 10000000,
+          "source": "Store_Operations",
+          "description": "Reduced overtime and optimized scheduling savings"
+        },
+        {
+          "name": "Service_Improvement_Value",
+          "display_name": "Customer Service Improvement Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 8000000,
+          "source": "Customer_Experience",
+          "description": "Value from reduced wait times and improved service levels"
+        },
+        {
+          "name": "Turnover_Reduction_Value",
+          "display_name": "Employee Turnover Reduction Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 4000000,
+          "source": "HR",
+          "description": "Savings from reduced recruiting and training costs"
+        },
+        {
+          "name": "WFM_Investment",
+          "display_name": "Workforce Management Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 15000000 },
+          "default_value": 3000000,
+          "source": "Financial",
+          "description": "Annual investment in WFM software and implementation"
+        }
+      ],
+      "benchmarks": {
+        "labor_optimization_percent": 8,
+        "turnover_reduction": 20
+      },
+      "tags": ["workforce-optimization", "labor-scheduling", "store-operations", "retention"]
+    },
+    {
+      "formula_id": "rc-f-006",
+      "name": "Visual Search and Discovery Value",
+      "description": "Value from AI-powered visual search and product discovery including conversion improvement, reduced search abandonment, and increased basket size.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "draft",
+      "governance": {
+        "owner": "Digital Experience Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "pending_review"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Conversion_Uplift_Value + Search_Recovery_Value + Cross_Sell_Uplift - Visual_AI_Investment",
+        "variables": [
+          "Conversion_Uplift_Value",
+          "Search_Recovery_Value",
+          "Cross_Sell_Uplift",
+          "Visual_AI_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -2000000,
+        "max": 30000000
+      },
+      "required_variables": [
+        {
+          "name": "Conversion_Uplift_Value",
+          "display_name": "Conversion Rate Uplift Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 6000000,
+          "source": "Digital",
+          "description": "Value from improved conversion with visual search users"
+        },
+        {
+          "name": "Search_Recovery_Value",
+          "display_name": "Search Abandonment Recovery Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 15000000 },
+          "default_value": 4000000,
+          "source": "Digital",
+          "description": "Recovered sales from customers who would have abandoned"
+        },
+        {
+          "name": "Cross_Sell_Uplift",
+          "display_name": "Cross-sell Uplift Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 3000000,
+          "source": "Merchandising",
+          "description": "Additional sales from 'complete the look' recommendations"
+        },
+        {
+          "name": "Visual_AI_Investment",
+          "display_name": "Visual AI Platform Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 10000000 },
+          "default_value": 2500000,
+          "source": "Financial",
+          "description": "Annual investment in visual search technology"
+        }
+      ],
+      "benchmarks": {
+        "visual_search_conversion_lift": 30,
+        "search_abandonment_reduction": 25
+      },
+      "tags": ["visual-search", "ai-discovery", "conversion-optimization", "cross-sell"]
+    },
+    {
+      "formula_id": "rc-f-007",
+      "name": "Loss Prevention Analytics Value",
+      "description": "Annual value from AI-powered loss prevention including theft reduction, fraud detection, and operational loss prevention.",
+      "formula_type": "CUSTOM",
+      "version": "1.0.0",
+      "status": "active",
+      "governance": {
+        "owner": "Loss Prevention Value Engineering",
+        "review_cycle": "quarterly",
+        "approval_status": "approved",
+        "last_reviewed": "2026-04-15"
+      },
+      "expression": {
+        "format": "STRING_EXPRESSION",
+        "string": "Shrink_Reduction_Value + Fraud_Prevention_Value + Process_Loss_Savings - LP_Analytics_Investment",
+        "variables": [
+          "Shrink_Reduction_Value",
+          "Fraud_Prevention_Value",
+          "Process_Loss_Savings",
+          "LP_Analytics_Investment"
+        ]
+      },
+      "unit_of_result": "USD",
+      "precision": 0,
+      "valid_range": {
+        "min": -2000000,
+        "max": 50000000
+      },
+      "required_variables": [
+        {
+          "name": "Shrink_Reduction_Value",
+          "display_name": "Inventory Shrink Reduction Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 30000000 },
+          "default_value": 8000000,
+          "source": "Loss_Prevention",
+          "description": "Reduced shrink from external and internal theft"
+        },
+        {
+          "name": "Fraud_Prevention_Value",
+          "display_name": "Fraud and Abuse Prevention Value",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 20000000 },
+          "default_value": 5000000,
+          "source": "Loss_Prevention",
+          "description": "Prevented return fraud, coupon abuse, and payment fraud"
+        },
+        {
+          "name": "Process_Loss_Savings",
+          "display_name": "Process Loss Prevention Savings",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 15000000 },
+          "default_value": 3000000,
+          "source": "Operations",
+          "description": "Reduced operational errors and supply chain losses"
+        },
+        {
+          "name": "LP_Analytics_Investment",
+          "display_name": "Loss Prevention Analytics Investment",
+          "type": "currency",
+          "unit": "USD",
+          "valid_range": { "min": 0, "max": 15000000 },
+          "default_value": 4000000,
+          "source": "Financial",
+          "description": "Annual investment in LP analytics, cameras, and systems"
+        }
+      ],
+      "benchmarks": {
+        "industry_shrink_rate": 1.4,
+        "best_in_class_shrink": 0.8
+      },
+      "tags": ["loss-prevention", "shrink-reduction", "fraud-detection", "analytics"]
+    }
+  ]
+}

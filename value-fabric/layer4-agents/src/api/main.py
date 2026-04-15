@@ -323,7 +323,13 @@ app.include_router(api_keys_router, prefix="/v1")
 app.include_router(oidc_router)
 app.include_router(models_router, prefix="/v1")
 app.include_router(feature_flags_router, prefix="/v1")
-app.include_router(billing_router, prefix="/v1")
+
+# Billing routes (conditional on feature flag)
+if settings.is_billing_configured:
+    app.include_router(billing_router, prefix="/v1")
+    logger.info("Billing routes enabled (Stripe configured)")
+else:
+    logger.info("Billing routes disabled (set BILLING_ENABLED=true and STRIPE_SECRET_KEY to enable)")
 
 # Thesys C1 streaming proxy
 app.include_router(c1_router, prefix="/v1", tags=["c1"])

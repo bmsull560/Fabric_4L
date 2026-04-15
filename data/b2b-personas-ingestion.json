@@ -1,0 +1,1652 @@
+{
+  "library_id": "b2b-personas-v1",
+  "library_name": "Comprehensive B2B Persona Library for Value Engineering",
+  "version": "1.0.0",
+  "description": "28 B2B personas across 7 industries as value interpretation lenses—translating capabilities into persona-specific value narratives for ROI modeling and business case development",
+  "created_at": "2026-04-15",
+  "target_schema": "https://valuefabric.ai/contracts/jsonschema/entity.json",
+  "personas": [
+    {
+      "type": "Persona",
+      "id": "mfg-per-001",
+      "name": "Plant Manager",
+      "description": "Senior operations leader responsible for overall plant performance, production targets, and operational excellence initiatives. Acts as a value interpretation lens prioritizing throughput, OEE, and cost per unit.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Operations",
+      "seniority_level": "DIRECTOR",
+      "job_title_variants": ["Plant Manager", "Plant Director", "Site Manager", "Facility Manager", "Manufacturing Director"],
+      "industry": "Manufacturing",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$500M-$5B revenue, 1,000-10,000 employees",
+      "market_context": "High-volume discrete or process manufacturing",
+      "key_objectives": [
+        "Meet daily/weekly production targets (OEE >85%)",
+        "Control variable manufacturing costs",
+        "Maintain workforce safety (zero incidents)",
+        "Reduce unplanned downtime"
+      ],
+      "kpis": ["OEE", "Cost per unit", "Production volume vs. plan", "Safety incident rate", "MTBF"],
+      "pain_points": [
+        "Unplanned equipment downtime disrupting schedules",
+        "Rising labor and energy costs compressing margins",
+        "Quality escapes causing customer complaints",
+        "Maintenance backlogs and spare parts shortages",
+        "Difficulty retaining skilled operators"
+      ],
+      "decision_criteria": [
+        "Proven impact on OEE in similar facilities",
+        "Implementation timeline without production disruption",
+        "Integration with existing MES/ERP/SCADA",
+        "Total cost of ownership (3-5 year view)",
+        "Vendor's manufacturing domain expertise"
+      ],
+      "buying_influence": "PRIMARY_EVALUATOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "We can't stop production to implement this",
+        "Our processes are too complex/custom",
+        "Maintenance team is already overloaded",
+        "We tried something similar before and it failed"
+      ],
+      "primary_value_category": "COST_REDUCTION",
+      "value_drivers": {
+        "revenue_uplift": ["Increased throughput", "Reduced lost sales from stockouts"],
+        "cost_savings": ["Energy efficiency", "Reduced scrap/rework", "Labor optimization"],
+        "risk_reduction": ["Predictive maintenance preventing catastrophic failures"]
+      },
+      "preferred_proof_points": [
+        "Case studies from named manufacturing customers",
+        "Pilot program data from similar facilities",
+        "Before/after OEE metrics",
+        "Third-party analyst reports (Gartner, ARC Advisory)",
+        "ROI calculator with actual data"
+      ],
+      "confidence_score": 0.92,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "mfg-per-002",
+      "name": "VP Manufacturing Operations",
+      "description": "Executive responsible for manufacturing strategy, multi-plant operations, and operational transformation. Acts as value interpretation lens for strategic agility and scalability.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Operations",
+      "seniority_level": "VP",
+      "job_title_variants": ["VP Manufacturing", "VP Operations", "COO", "Head of Manufacturing"],
+      "industry": "Manufacturing",
+      "company_maturity": "Growth",
+      "company_size_range": "$200M-$2B revenue",
+      "market_context": "Competing on cost and delivery reliability",
+      "key_objectives": [
+        "Transform operations for competitive advantage",
+        "Build scalable, repeatable manufacturing processes",
+        "Achieve operational excellence recognition",
+        "Prepare operations for M&A or expansion"
+      ],
+      "kpis": ["Manufacturing margin improvement", "OTIF delivery rate", "Operational maturity score", "Capacity utilization", "NPI cycle time"],
+      "pain_points": [
+        "Inability to scale operations with demand growth",
+        "Siloed data preventing cross-factory optimization",
+        "Competitive pressure from low-cost manufacturers",
+        "Aging workforce and knowledge loss",
+        "Digital transformation initiatives stalling"
+      ],
+      "decision_criteria": [
+        "Strategic fit with Industry 4.0 roadmap",
+        "Ability to scale across multiple plants",
+        "Change management and adoption support",
+        "Executive sponsorship from vendor",
+        "Fast time-to-value (6-12 months)"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "We need to focus on fundamentals, not technology",
+        "Our plants are too different for standardization",
+        "Previous digital initiatives didn't deliver",
+        "Board wants immediate cost reduction, not investment"
+      ],
+      "primary_value_category": "CAPITAL_EFFICIENCY",
+      "value_drivers": {
+        "revenue_uplift": ["Faster NPI", "Improved customer satisfaction", "New service offerings"],
+        "cost_savings": ["Factory consolidation benefits", "Shared services optimization"],
+        "risk_reduction": []
+      },
+      "preferred_proof_points": [
+        "Executive testimonials from peer manufacturers",
+        "Industry awards and recognition",
+        "Benchmark comparisons vs. industry quartiles",
+        "McKinsey/BCG operational excellence research",
+        "Peer networking references"
+      ],
+      "confidence_score": 0.90,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "mfg-per-003",
+      "name": "Quality Engineer",
+      "description": "Technical specialist focused on quality systems, defect analysis, and continuous improvement programs. Acts as value interpretation lens for compliance and quality outcomes.",
+      "role_type": "TECHNICAL_EVALUATOR",
+      "department": "Quality",
+      "seniority_level": "MANAGER",
+      "job_title_variants": ["Quality Engineer", "Quality Manager", "QA Manager", "Continuous Improvement Manager"],
+      "industry": "Manufacturing",
+      "company_maturity": "Regulated",
+      "company_size_range": "$100M-$1B revenue",
+      "market_context": "FDA/regulated or automotive with high quality requirements",
+      "key_objectives": [
+        "Reduce defect rates and customer complaints",
+        "Ensure compliance with quality standards (ISO, FDA, IATF)",
+        "Implement Statistical Process Control (SPC)",
+        "Drive continuous improvement (Six Sigma, Lean)"
+      ],
+      "kpis": ["First Pass Yield (FPY)", "DPMO", "Cost of Quality (COQ)", "Customer complaint rate", "Audit findings count"],
+      "pain_points": [
+        "Manual inspection processes missing defects",
+        "Disconnected quality data across systems",
+        "Reactive quality management (find problems too late)",
+        "Supplier quality issues propagating through supply chain",
+        "Time-consuming compliance documentation"
+      ],
+      "decision_criteria": [
+        "Technical capability for automated inspection",
+        "Integration with QMS and MES systems",
+        "Statistical rigor and traceability",
+        "Compliance with industry regulations",
+        "User interface for quality technicians"
+      ],
+      "buying_influence": "TECHNICAL_GATEKEEPER",
+      "decision_making_authority": "INFLUENCER",
+      "typical_objections": [
+        "Automated inspection can't catch everything",
+        "We need to validate any system change (FDA)",
+        "Quality data is sensitive and can't leave our network",
+        "Our processes are validated—changing them is costly"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": ["Improved customer satisfaction and retention"],
+        "cost_savings": ["Reduced scrap", "Rework", "Warranty costs"],
+        "risk_reduction": ["Compliance risk", "Recall prevention", "Audit readiness"]
+      },
+      "preferred_proof_points": [
+        "Technical validation studies",
+        "FDA/regulatory compliance documentation",
+        "Integration specifications and APIs",
+        "Statistical accuracy benchmarks",
+        "Quality engineering peer references"
+      ],
+      "confidence_score": 0.88,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "mfg-per-004",
+      "name": "Maintenance Manager",
+      "description": "Operational leader responsible for equipment reliability, maintenance workforce management, and asset lifecycle. Acts as value interpretation lens for uptime and maintenance optimization.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Maintenance",
+      "seniority_level": "MANAGER",
+      "job_title_variants": ["Maintenance Manager", "Reliability Manager", "Asset Manager", "Facilities Manager"],
+      "industry": "Manufacturing",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$200M-$3B revenue",
+      "market_context": "Asset-intensive manufacturing",
+      "key_objectives": [
+        "Maximize equipment uptime and reliability",
+        "Optimize maintenance costs (preventive vs. reactive balance)",
+        "Manage maintenance workforce and contractors",
+        "Maintain spare parts inventory"
+      ],
+      "kpis": ["MTBF", "MTTR", "Maintenance cost per unit", "Planned vs. unplanned maintenance ratio", "Technician utilization rate"],
+      "pain_points": [
+        "Constant firefighting (reactive maintenance)",
+        "Limited visibility into equipment health",
+        "Aging assets requiring more frequent repair",
+        "Difficulty hiring skilled maintenance technicians",
+        "CMMS data quality issues"
+      ],
+      "decision_criteria": [
+        "Mobile accessibility for technicians on the floor",
+        "Integration with existing CMMS",
+        "Ease of use (technicians will actually use it)",
+        "Predictive accuracy and false positive rate",
+        "Vendor service and support quality"
+      ],
+      "buying_influence": "END_USER_ADVOCATE",
+      "decision_making_authority": "USER",
+      "typical_objections": [
+        "Technicians won't adopt another new system",
+        "We already have vibration monitoring",
+        "False alarms waste our time",
+        "We know our equipment better than any algorithm"
+      ],
+      "primary_value_category": "COST_REDUCTION",
+      "value_drivers": {
+        "revenue_uplift": ["Reduced production losses from downtime"],
+        "cost_savings": ["Reduced overtime", "Optimized spare parts inventory"],
+        "risk_reduction": ["Prevent catastrophic failures", "Safety incidents"]
+      },
+      "preferred_proof_points": [
+        "Technician testimonials (their peers)",
+        "Mobile app demonstration",
+        "Pilot results from similar equipment",
+        "Training and support quality",
+        "24/7 support availability"
+      ],
+      "confidence_score": 0.85,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "fs-per-001",
+      "name": "Chief Risk Officer",
+      "description": "Executive responsible for enterprise risk management including credit, market, operational, and compliance risk. Acts as value interpretation lens for risk mitigation and regulatory compliance.",
+      "role_type": "ECONOMIC_BUYER",
+      "department": "Risk Management",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Risk Officer", "CRO", "Head of Risk", "Chief Credit Officer"],
+      "industry": "Financial Services",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B+ assets, 5,000+ employees",
+      "market_context": "Bank, insurer, or asset manager with regulatory scrutiny",
+      "key_objectives": [
+        "Minimize fraud losses and write-offs",
+        "Ensure regulatory compliance (Basel, CCAR, AML)",
+        "Manage model risk and validation",
+        "Provide real-time enterprise risk visibility"
+      ],
+      "kpis": ["Fraud loss ratio", "Provision coverage ratio", "Regulatory findings count", "RAROC", "Model validation timeline"],
+      "pain_points": [
+        "Fraud losses eroding profitability",
+        "Regulatory pressure and examination intensity",
+        "Siloed risk data preventing holistic view",
+        "Manual risk reporting processes",
+        "Model risk management complexity"
+      ],
+      "decision_criteria": [
+        "Proven fraud detection accuracy",
+        "Regulatory compliance and audit trail",
+        "Real-time processing capability",
+        "Model explainability and governance",
+        "Integration with core banking systems"
+      ],
+      "buying_influence": "ECONOMIC_BUYER",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our fraud team is skeptical of AI models",
+        "Regulators want to see our models—black box won't work",
+        "We need to validate any new risk model",
+        "Data privacy constraints limit what we can do"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": [],
+        "cost_savings": ["Reduced fraud losses", "Automated compliance reporting"],
+        "risk_reduction": ["Fraud prevention", "Regulatory compliance", "Model risk"]
+      },
+      "preferred_proof_points": [
+        "Fraud detection benchmarks (false positive rate, detection rate)",
+        "Regulatory approval precedents",
+        "Model risk management frameworks",
+        "Peer bank references (named)",
+        "Industry analyst validation (Celent, Aite)"
+      ],
+      "confidence_score": 0.92,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "fs-per-002",
+      "name": "Head of Digital Banking",
+      "description": "Digital banking leader responsible for mobile, web, and digital customer experiences. Acts as value interpretation lens for customer acquisition and digital growth.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Digital Banking",
+      "seniority_level": "VP",
+      "job_title_variants": ["Head of Digital Banking", "Digital Director", "VP Digital", "Chief Digital Officer"],
+      "industry": "Financial Services",
+      "company_maturity": "Growth",
+      "company_size_range": "$500M-$10B assets",
+      "market_context": "Competing with fintechs and neobanks",
+      "key_objectives": [
+        "Drive digital customer acquisition",
+        "Improve digital onboarding conversion rates",
+        "Increase product cross-sell through digital channels",
+        "Compete effectively with fintech challengers"
+      ],
+      "kpis": ["Digital CAC", "Digital onboarding conversion rate", "Digital adoption rate (MAU/DAU)", "NPS", "Digital sales ratio"],
+      "pain_points": [
+        "High customer acquisition costs vs. fintechs",
+        "Digital onboarding abandonment (70%+ drop-off)",
+        "Poor cross-sell effectiveness in digital channels",
+        "Legacy tech limiting personalization",
+        "Mobile app store ratings affecting brand"
+      ],
+      "decision_criteria": [
+        "Time-to-market for new digital capabilities",
+        "Customer experience improvement metrics",
+        "Integration with core and digital banking platforms",
+        "Personalization and recommendation engine capability",
+        "Mobile-first design and performance"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our core system limits what we can do",
+        "We need to prove ROI before scaling",
+        "Security team will block anything new",
+        "We already invested in [legacy platform]"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Customer acquisition", "Cross-sell", "Reduced churn"],
+        "cost_savings": ["Lower CAC", "Reduced branch dependency"],
+        "risk_reduction": ["Improved customer verification", "Fraud prevention"]
+      },
+      "preferred_proof_points": [
+        "Digital banking benchmark studies (J.D. Power, Forrester)",
+        "Onboarding conversion improvement data",
+        "Mobile app performance metrics",
+        "Fintech competitive analysis",
+        "Customer journey analytics"
+      ],
+      "confidence_score": 0.88,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "fs-per-003",
+      "name": "Compliance Director",
+      "description": "Compliance leader responsible for regulatory reporting, audit management, and regulatory relationships. Acts as value interpretation lens for regulatory risk and compliance efficiency.",
+      "role_type": "RISK_GUARDIAN",
+      "department": "Compliance",
+      "seniority_level": "VP",
+      "job_title_variants": ["Compliance Director", "Head of Compliance", "Chief Compliance Officer", "Regulatory Affairs Director"],
+      "industry": "Financial Services",
+      "company_maturity": "Regulated",
+      "company_size_range": "$1B+ assets",
+      "market_context": "Heavy regulatory environment (banking, insurance, wealth)",
+      "key_objectives": [
+        "Ensure regulatory compliance across jurisdictions",
+        "Reduce cost and time of regulatory reporting",
+        "Minimize audit findings and examination issues",
+        "Build defensible compliance documentation"
+      ],
+      "kpis": ["Regulatory report timeliness", "Audit findings count and severity", "Regulatory ratings (CAMELS)", "Compliance cost per report", "Time to respond to regulatory requests"],
+      "pain_points": [
+        "Manual report generation consuming analyst time",
+        "Regulatory deadline pressure and fire drills",
+        "Data quality issues causing restatements",
+        "Audit finding remediation consuming resources",
+        "Keeping up with changing regulations"
+      ],
+      "decision_criteria": [
+        "Pre-built regulatory report templates",
+        "Audit trail and data lineage",
+        "Data quality validation and controls",
+        "Jurisdiction-specific compliance coverage",
+        "Vendor's regulatory expertise and updates"
+      ],
+      "buying_influence": "RISK_GATEKEEPER",
+      "decision_making_authority": "VETO",
+      "typical_objections": [
+        "We need to validate every calculation",
+        "Our data is too messy to automate",
+        "Regulators expect us to understand our own reports",
+        "We can't outsource compliance responsibility"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": [],
+        "cost_savings": ["Reduced analyst headcount", "Faster report generation"],
+        "risk_reduction": ["Compliance risk", "Regulatory enforcement prevention"]
+      },
+      "preferred_proof_points": [
+        "Regulatory compliance attestations",
+        "Audit trail demonstrations",
+        "Named peer references (compliance officers)",
+        "Regulatory update service quality",
+        "Data lineage and reconciliation capabilities"
+      ],
+      "confidence_score": 0.87,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "fs-per-004",
+      "name": "Chief Information Officer",
+      "description": "IT executive responsible for technology strategy, infrastructure, security, and digital transformation. Acts as value interpretation lens for technical feasibility and integration.",
+      "role_type": "TECHNICAL_EVALUATOR",
+      "department": "Information Technology",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Information Officer", "CIO", "Head of IT", "CTO"],
+      "industry": "Financial Services",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B+ revenue",
+      "market_context": "Complex legacy tech landscape",
+      "key_objectives": [
+        "Modernize technology stack",
+        "Ensure security and data protection",
+        "Enable business agility through technology",
+        "Control IT costs and vendor complexity"
+      ],
+      "kpis": ["System uptime and availability", "Security incident count", "IT cost as % of revenue", "Project delivery on-time/on-budget", "Technical debt reduction"],
+      "pain_points": [
+        "Legacy system integration complexity",
+        "Security vulnerabilities and attack surface",
+        "Talent shortage for modern technologies",
+        "Shadow IT and vendor sprawl",
+        "Technical debt impeding innovation"
+      ],
+      "decision_criteria": [
+        "Security certifications and architecture",
+        "Integration capabilities (APIs, connectors)",
+        "Scalability and performance",
+        "Vendor stability and enterprise readiness",
+        "Total cost of ownership"
+      ],
+      "buying_influence": "TECHNICAL_GATEKEEPER",
+      "decision_making_authority": "RECOMMENDS",
+      "typical_objections": [
+        "Our security team will need to review everything",
+        "Integration with our legacy systems is complex",
+        "We have a [preferred vendor] relationship",
+        "This creates another vendor to manage"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": [],
+        "cost_savings": ["Reduced integration costs", "Lower maintenance"],
+        "risk_reduction": ["Security", "Data protection", "Business continuity"]
+      },
+      "preferred_proof_points": [
+        "Security architecture documentation",
+        "SOC 2 Type II / ISO 27001 certifications",
+        "Integration patterns and reference architectures",
+        "Scalability benchmarks",
+        "Enterprise customer references (CIO to CIO)"
+      ],
+      "confidence_score": 0.90,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ls-per-001",
+      "name": "Head of Clinical Operations",
+      "description": "Clinical operations leader responsible for trial execution, patient recruitment, and data quality. Acts as value interpretation lens for clinical trial efficiency.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Clinical Operations",
+      "seniority_level": "VP",
+      "job_title_variants": ["Head of Clinical Operations", "VP Clinical", "Clinical Operations Director", "VP Development"],
+      "industry": "Life Sciences",
+      "company_maturity": "Growth",
+      "company_size_range": "$100M-$5B (biotech to big pharma)",
+      "market_context": "Clinical trials and drug development",
+      "key_objectives": [
+        "Accelerate clinical trial timelines",
+        "Improve patient recruitment and retention",
+        "Ensure data quality and regulatory compliance",
+        "Optimize clinical trial costs"
+      ],
+      "kpis": ["Time to recruit target patient population", "Patient retention rate in trials", "Clinical data query resolution time", "Cost per patient in trials", "Regulatory submission timeline"],
+      "pain_points": [
+        "Slow patient recruitment delaying trials",
+        "Patient drop-out reducing trial power",
+        "Manual data entry errors and query resolution",
+        "Site monitoring inefficiencies",
+        "Regulatory complexity across regions"
+      ],
+      "decision_criteria": [
+        "Regulatory compliance (FDA 21 CFR Part 11, GDPR)",
+        "Patient recruitment effectiveness",
+        "Integration with EDC and CTMS systems",
+        "Site usability and adoption",
+        "Data quality and validation"
+      ],
+      "buying_influence": "PRIMARY_EVALUATOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "FDA validation requirements are burdensome",
+        "Sites won't adopt another new system",
+        "Patient data privacy is non-negotiable",
+        "Our trials are too complex/unique"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Faster time-to-market", "Pipeline acceleration"],
+        "cost_savings": ["Reduced trial costs", "Improved efficiency"],
+        "risk_reduction": ["Regulatory compliance", "Data integrity"]
+      },
+      "preferred_proof_points": [
+        "FDA validation documentation",
+        "Clinical trial success stories",
+        "Patient recruitment benchmarks",
+        "Site satisfaction scores",
+        "Data quality metrics"
+      ],
+      "confidence_score": 0.89,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ls-per-002",
+      "name": "Chief Medical Officer",
+      "description": "Medical executive responsible for clinical strategy, pipeline advancement, and KOL relationships. Acts as value interpretation lens for clinical excellence and patient outcomes.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Medical Affairs",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Medical Officer", "CMO", "Head of Medical", "Chief Development Officer"],
+      "industry": "Life Sciences",
+      "company_maturity": "Growth",
+      "company_size_range": "$200M-$10B",
+      "market_context": "Drug development and medical affairs",
+      "key_objectives": [
+        "Advance clinical pipeline to approval",
+        "Ensure patient safety and clinical excellence",
+        "Build KOL relationships and thought leadership",
+        "Support regulatory strategy and submissions"
+      ],
+      "kpis": ["Pipeline progression milestones", "Regulatory approval success rate", "Publication and presentation impact", "Patient safety metrics", "Medical affairs effectiveness"],
+      "pain_points": [
+        "Clinical trial failures and delays",
+        "Increasing regulatory scrutiny and requirements",
+        "Competitive pressure in key therapeutic areas",
+        "KOL engagement and management complexity",
+        "Evidence generation for payers"
+      ],
+      "decision_criteria": [
+        "Clinical impact and patient benefit",
+        "Regulatory pathway and approval likelihood",
+        "Scientific rigor and credibility",
+        "KOL and investigator feedback",
+        "Competitive differentiation"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "We need more clinical evidence before adopting",
+        "Our investigators are conservative about change",
+        "Regulatory landscape is too uncertain",
+        "Patient safety is paramount—no shortcuts"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Faster approvals", "Expanded indications"],
+        "cost_savings": ["Trial efficiency", "Reduced rescue studies"],
+        "risk_reduction": ["Clinical risk", "Regulatory success"]
+      },
+      "preferred_proof_points": [
+        "Clinical evidence and publications",
+        "KOL testimonials",
+        "Regulatory success stories",
+        "Peer company adoption",
+        "Scientific advisory board endorsements"
+      ],
+      "confidence_score": 0.91,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ls-per-003",
+      "name": "Regulatory Affairs Director",
+      "description": "Regulatory leader responsible for submissions, compliance, and regulatory strategy. Acts as value interpretation lens for regulatory risk and approval success.",
+      "role_type": "RISK_GUARDIAN",
+      "department": "Regulatory Affairs",
+      "seniority_level": "VP",
+      "job_title_variants": ["Regulatory Affairs Director", "Head of Regulatory", "VP Regulatory", "Chief Regulatory Officer"],
+      "industry": "Life Sciences",
+      "company_maturity": "Regulated",
+      "company_size_range": "$100M-$10B",
+      "market_context": "FDA, EMA, and global regulatory submissions",
+      "key_objectives": [
+        "Ensure global regulatory compliance",
+        "Accelerate regulatory submissions and approvals",
+        "Manage regulatory inspections and interactions",
+        "Maintain regulatory dossiers and documentation"
+      ],
+      "kpis": ["Time to regulatory submission", "Regulatory approval timeline", "Inspection findings count", "Submission quality (deficiency letters)", "Regulatory compliance score"],
+      "pain_points": [
+        "Complex global regulatory requirements",
+        "Submission delays and deficiencies",
+        "Inspection findings and remediation",
+        "Changing regulatory expectations",
+        "Managing regulatory consultants and agents"
+      ],
+      "decision_criteria": [
+        "Regulatory compliance and validation",
+        "21 CFR Part 11 and Annex 11 compliance",
+        "Audit trail and data integrity",
+        "Global regulatory coverage",
+        "Submission support capabilities"
+      ],
+      "buying_influence": "RISK_GATEKEEPER",
+      "decision_making_authority": "VETO",
+      "typical_objections": [
+        "Any system change requires revalidation",
+        "We need to prove data integrity",
+        "Regulators are increasingly strict",
+        "Global requirements vary significantly"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": ["Earlier market entry"],
+        "cost_savings": ["Faster submissions", "Reduced deficiencies"],
+        "risk_reduction": ["Regulatory compliance", "Approval success"]
+      },
+      "preferred_proof_points": [
+        "Regulatory compliance certifications",
+        "Validation documentation templates",
+        "Inspection readiness assessments",
+        "Submission success rates",
+        "Global regulatory expertise"
+      ],
+      "confidence_score": 0.90,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ls-per-004",
+      "name": "R&D IT Lead",
+      "description": "IT leader responsible for research systems, scientific data management, and GxP compliance. Acts as value interpretation lens for research technology and data integrity.",
+      "role_type": "TECHNICAL_EVALUATOR",
+      "department": "R&D IT",
+      "seniority_level": "DIRECTOR",
+      "job_title_variants": ["R&D IT Lead", "Head of R&D IT", "Scientific IT Director", "Research Systems Director"],
+      "industry": "Life Sciences",
+      "company_maturity": "Growth",
+      "company_size_range": "$200M-$5B",
+      "market_context": "Research-intensive biopharma",
+      "key_objectives": [
+        "Enable scientific data management",
+        "Support computational biology and chemistry",
+        "Ensure GxP compliance in systems",
+        "Integrate R&D data across functions"
+      ],
+      "kpis": ["Scientific data availability and quality", "System uptime for research", "GxP validation timeline", "Data integration success rate", "R&D IT project delivery"],
+      "pain_points": [
+        "Siloed scientific data across disciplines",
+        "GxP validation burden for research systems",
+        "Legacy ELN and LIMS limitations",
+        "Data explosion from genomics, imaging",
+        "Integration with CROs and partners"
+      ],
+      "decision_criteria": [
+        "Scientific data model flexibility",
+        "GxP validation support",
+        "Integration with ELN, LIMS, SDMS",
+        "Scalability for large datasets",
+        "Cloud and hybrid deployment options"
+      ],
+      "buying_influence": "TECHNICAL_GATEKEEPER",
+      "decision_making_authority": "RECOMMENDS",
+      "typical_objections": [
+        "Our scientists have specific workflows",
+        "GxP validation is time-consuming and costly",
+        "Research data is messy and unstructured",
+        "Integration with academic partners is complex"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": ["Faster discovery cycles"],
+        "cost_savings": ["Reduced validation effort", "Cloud economics"],
+        "risk_reduction": ["Data integrity", "GxP compliance"]
+      },
+      "preferred_proof_points": [
+        "GxP validation packages",
+        "Scientific data model demonstrations",
+        "ELN/LIMS integration specifications",
+        "Scalability benchmarks",
+        "Peer pharma references"
+      ],
+      "confidence_score": 0.87,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "eu-per-001",
+      "name": "Grid Operations Director",
+      "description": "Operations leader responsible for grid reliability, renewable integration, and real-time operations. Acts as value interpretation lens for grid resilience and operational excellence.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Grid Operations",
+      "seniority_level": "VP",
+      "job_title_variants": ["Grid Operations Director", "VP Grid Operations", "System Operations Director", "Control Room Manager"],
+      "industry": "Energy & Utilities",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B-$50B (municipal to major utility)",
+      "market_context": "Electric utility with grid modernization needs",
+      "key_objectives": [
+        "Ensure grid reliability and resilience",
+        "Integrate renewable energy sources",
+        "Optimize grid operations and maintenance",
+        "Manage peak demand and load balancing"
+      ],
+      "kpis": ["SAIDI", "SAIFI", "Renewable integration percentage", "Peak demand management effectiveness", "Grid operations cost per customer"],
+      "pain_points": [
+        "Aging grid infrastructure requiring upgrade",
+        "Distributed energy resource integration complexity",
+        "Extreme weather and climate resilience",
+        "Workforce shortage for field operations",
+        "Cybersecurity threats to grid infrastructure"
+      ],
+      "decision_criteria": [
+        "Grid reliability improvement potential",
+        "Integration with ADMS, OMS, SCADA",
+        "Real-time processing for grid operations",
+        "Cybersecurity and NERC CIP compliance",
+        "Resilience in extreme weather"
+      ],
+      "buying_influence": "PRIMARY_EVALUATOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Grid reliability is non-negotiable—no experiments",
+        "Our systems are air-gapped for security",
+        "Regulatory approval is slow and uncertain",
+        "We have a long-term equipment supplier relationship"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": ["Demand response", "New service offerings"],
+        "cost_savings": ["Reduced outages", "Optimized maintenance"],
+        "risk_reduction": ["Grid reliability", "Cybersecurity", "Regulatory compliance"]
+      },
+      "preferred_proof_points": [
+        "Grid reliability improvement data",
+        "NERC CIP compliance attestations",
+        "Cybersecurity architecture reviews",
+        "Extreme weather resilience case studies",
+        "Utility peer references (named)"
+      ],
+      "confidence_score": 0.88,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "eu-per-002",
+      "name": "Chief Sustainability Officer",
+      "description": "Executive responsible for sustainability strategy, ESG reporting, and decarbonization initiatives. Acts as value interpretation lens for ESG value creation.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Sustainability",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Sustainability Officer", "CSO", "Head of Sustainability", "VP ESG"],
+      "industry": "Energy & Utilities",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B-$100B",
+      "market_context": "Energy transition and decarbonization focus",
+      "key_objectives": [
+        "Achieve net-zero carbon commitments",
+        "Meet ESG reporting requirements",
+        "Transition to renewable energy sources",
+        "Manage carbon pricing and regulatory risk"
+      ],
+      "kpis": ["Carbon emissions reduction (Scope 1, 2, 3)", "Renewable energy percentage", "ESG ratings (MSCI, Sustainalytics)", "Science Based Targets progress", "Stakeholder ESG sentiment"],
+      "pain_points": [
+        "Complex Scope 3 emissions tracking",
+        "ESG data quality and verification",
+        "Investor and regulator pressure on climate",
+        "Balancing decarbonization with affordability",
+        "Greenwashing accusations and reputational risk"
+      ],
+      "decision_criteria": [
+        "Carbon accounting accuracy and verification",
+        "ESG reporting framework alignment (GRI, SASB, TCFD)",
+        "Integration with operational and financial systems",
+        "Audit trail and data assurance",
+        "Stakeholder communication capabilities"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "ESG metrics are hard to measure and verify",
+        "We need to focus on reliability and cost first",
+        "Regulators haven't standardized requirements",
+        "Our board is skeptical of ESG investments"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": [],
+        "cost_savings": ["Carbon cost avoidance", "Efficiency gains"],
+        "risk_reduction": ["Climate risk", "Regulatory compliance", "Reputation"]
+      },
+      "preferred_proof_points": [
+        "ESG ratings improvement case studies",
+        "Third-party verification and assurance",
+        "Science Based Targets validation",
+        "Investor relations success stories",
+        "Industry association recognition"
+      ],
+      "confidence_score": 0.86,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "eu-per-003",
+      "name": "Asset Manager",
+      "description": "Operations leader responsible for asset lifecycle management, capital planning, and maintenance optimization. Acts as value interpretation lens for asset performance and capital efficiency.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Asset Management",
+      "seniority_level": "MANAGER",
+      "job_title_variants": ["Asset Manager", "Asset Management Director", "Capital Planning Manager", "Asset Strategy Manager"],
+      "industry": "Energy & Utilities",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B-$50B",
+      "market_context": "Asset-intensive utility with capital planning needs",
+      "key_objectives": [
+        "Optimize asset lifecycle management",
+        "Predict asset failures and plan replacements",
+        "Balance capital and maintenance spending",
+        "Ensure regulatory asset base optimization"
+      ],
+      "kpis": ["Asset health index", "Capital project delivery on budget", "Maintenance cost per asset", "Asset utilization rate", "Regulatory rate base optimization"],
+      "pain_points": [
+        "Aging asset base and replacement backlog",
+        "Limited visibility into asset health",
+        "Reactive maintenance driving costs",
+        "Siloed asset data across systems",
+        "Regulatory rate case preparation burden"
+      ],
+      "decision_criteria": [
+        "Asset health prediction accuracy",
+        "Integration with EAM/ERP systems",
+        "Mobile access for field crews",
+        "Capital planning and scenario modeling",
+        "Regulatory reporting support"
+      ],
+      "buying_influence": "END_USER_ADVOCATE",
+      "decision_making_authority": "USER",
+      "typical_objections": [
+        "Our asset data is in poor condition",
+        "Field crews resist new technology",
+        "We already have asset management systems",
+        "Regulatory approval for rate base changes is slow"
+      ],
+      "primary_value_category": "CAPITAL_EFFICIENCY",
+      "value_drivers": {
+        "revenue_uplift": [],
+        "cost_savings": ["Optimized maintenance", "Deferred CapEx"],
+        "risk_reduction": ["Asset failure prevention", "Regulatory compliance"]
+      },
+      "preferred_proof_points": [
+        "Asset health prediction accuracy studies",
+        "Mobile app usability demonstrations",
+        "Capital planning ROI calculations",
+        "Regulatory rate case success stories",
+        "Peer utility references"
+      ],
+      "confidence_score": 0.85,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "eu-per-004",
+      "name": "Chief Financial Officer",
+      "description": "Financial executive responsible for utility economics, rate case strategy, and capital planning. Acts as value interpretation lens for regulated return optimization.",
+      "role_type": "ECONOMIC_BUYER",
+      "department": "Finance",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Financial Officer", "CFO", "VP Finance", "Chief Accounting Officer"],
+      "industry": "Energy & Utilities",
+      "company_maturity": "Regulated",
+      "company_size_range": "$1B-$100B",
+      "market_context": "Capital-intensive utility with rate-regulated returns",
+      "key_objectives": [
+        "Optimize regulated rate of return",
+        "Manage rate case strategy and outcomes",
+        "Control operating and capital costs",
+        "Maintain investment-grade credit rating"
+      ],
+      "kpis": ["ROE vs. authorized", "Rate case outcome (allowed ROE)", "O&M cost per customer", "Credit rating and cost of capital", "Free cash flow and dividend coverage"],
+      "pain_points": [
+        "Regulatory lag and rate case pressure",
+        "Rising capital costs and inflation",
+        "Credit rating pressure from leverage",
+        "Cost pass-through limitations",
+        "Shareholder return expectations"
+      ],
+      "decision_criteria": [
+        "Rate case support and regulatory strategy",
+        "O&M cost reduction potential",
+        "Capital efficiency and timing",
+        "Credit rating agency considerations",
+        "Shareholder value creation"
+      ],
+      "buying_influence": "ECONOMIC_BUYER",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Regulators won't approve rate base increases",
+        "We need immediate cost reduction, not investment",
+        "Credit agencies are watching our leverage",
+        "Shareholders want dividend growth, not CapEx"
+      ],
+      "primary_value_category": "CAPITAL_EFFICIENCY",
+      "value_drivers": {
+        "revenue_uplift": [],
+        "cost_savings": ["O&M reduction", "Efficiency gains"],
+        "risk_reduction": ["Regulatory risk", "Credit rating risk"]
+      },
+      "preferred_proof_points": [
+        "Rate case precedents and outcomes",
+        "Regulatory economics analysis",
+        "Credit rating agency feedback",
+        "Shareholder value analysis",
+        "Peer utility financial comparisons"
+      ],
+      "confidence_score": 0.90,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "rc-per-001",
+      "name": "VP Supply Chain",
+      "description": "Supply chain leader responsible for inventory optimization, demand planning, and logistics. Acts as value interpretation lens for working capital and fulfillment efficiency.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Supply Chain",
+      "seniority_level": "VP",
+      "job_title_variants": ["VP Supply Chain", "Chief Supply Chain Officer", "Head of Demand Planning", "VP Logistics"],
+      "industry": "Retail & Consumer",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B-$50B revenue",
+      "market_context": "Multi-channel retail or CPG with complex supply chains",
+      "key_objectives": [
+        "Optimize inventory levels and working capital",
+        "Improve demand forecasting accuracy",
+        "Reduce supply chain disruptions",
+        "Enable omnichannel fulfillment"
+      ],
+      "kpis": ["Inventory turns", "Forecast accuracy (MAPE)", "Stockout rate and fill rate", "Supply chain cost as % of revenue", "Perfect order rate"],
+      "pain_points": [
+        "Demand volatility and forecast errors",
+        "Supply chain disruptions (port congestion, shortages)",
+        "Excess inventory and markdowns",
+        "Siloed planning across channels",
+        "Rising logistics and transportation costs"
+      ],
+      "decision_criteria": [
+        "Demand forecasting accuracy improvement",
+        "Integration with ERP, WMS, TMS",
+        "Multi-echelon inventory optimization",
+        "Scenario planning and simulation",
+        "Supplier collaboration capabilities"
+      ],
+      "buying_influence": "PRIMARY_EVALUATOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our demand is too unpredictable",
+        "We already have planning systems in place",
+        "Supplier data quality is poor",
+        "Integration with legacy ERP is complex"
+      ],
+      "primary_value_category": "CAPITAL_EFFICIENCY",
+      "value_drivers": {
+        "revenue_uplift": ["Improved fill rates", "Reduced stockouts"],
+        "cost_savings": ["Reduced inventory", "Lower logistics costs"],
+        "risk_reduction": ["Supply chain resilience", "Disruption recovery"]
+      },
+      "preferred_proof_points": [
+        "Forecast accuracy improvement studies",
+        "Inventory reduction case studies",
+        "Supply chain ROI calculators",
+        "Retail/CPG peer references",
+        "Analyst validation (Gartner Supply Chain)"
+      ],
+      "confidence_score": 0.89,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "rc-per-002",
+      "name": "Chief Digital Officer",
+      "description": "Digital leader responsible for e-commerce, digital customer experience, and omnichannel strategy. Acts as value interpretation lens for digital revenue growth.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Digital",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Digital Officer", "CDO", "Head of E-commerce", "VP Digital"],
+      "industry": "Retail & Consumer",
+      "company_maturity": "Growth",
+      "company_size_range": "$500M-$20B revenue",
+      "market_context": "Retailer or brand building digital channels",
+      "key_objectives": [
+        "Drive e-commerce revenue growth",
+        "Improve digital customer experience",
+        "Enable personalization at scale",
+        "Compete with Amazon and digital natives"
+      ],
+      "kpis": ["E-commerce revenue growth", "Digital conversion rate", "Customer Lifetime Value (CLV)", "Digital customer acquisition cost", "Personalization effectiveness"],
+      "pain_points": [
+        "Low digital conversion rates",
+        "High customer acquisition costs",
+        "Poor personalization capabilities",
+        "Legacy e-commerce platform limitations",
+        "Data silos preventing unified customer view"
+      ],
+      "decision_criteria": [
+        "E-commerce conversion improvement",
+        "Personalization engine sophistication",
+        "Real-time customer data platform",
+        "Omnichannel integration",
+        "Time to implement and scale"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our e-commerce platform limits what we can do",
+        "We need to see ROI before major investment",
+        "IT says integration will take 18 months",
+        "We tried personalization before and it didn't work"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Conversion improvement", "CLV growth", "New customers"],
+        "cost_savings": ["Lower CAC", "Improved marketing efficiency"],
+        "risk_reduction": ["Competitive positioning", "Brand relevance"]
+      },
+      "preferred_proof_points": [
+        "Digital commerce benchmarks (conversion rates)",
+        "Personalization ROI studies",
+        "Customer data platform case studies",
+        "Omnichannel success stories",
+        "Digital native competitive analysis"
+      ],
+      "confidence_score": 0.87,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "rc-per-003",
+      "name": "Store Operations Director",
+      "description": "Operations leader responsible for store productivity, labor optimization, and in-store experience. Acts as value interpretation lens for store-level efficiency.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Store Operations",
+      "seniority_level": "DIRECTOR",
+      "job_title_variants": ["Store Operations Director", "VP Store Operations", "Retail Operations Director", "Field Operations Director"],
+      "industry": "Retail & Consumer",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B-$50B (100-5,000+ stores)",
+      "market_context": "Brick-and-mortar retail with omnichannel",
+      "key_objectives": [
+        "Improve store productivity and efficiency",
+        "Enable store associates for omnichannel",
+        "Optimize labor scheduling and allocation",
+        "Enhance in-store customer experience"
+      ],
+      "kpis": ["Sales per labor hour", "Store labor as % of sales", "Omnichannel fulfillment from store", "Customer satisfaction (in-store)", "Associate productivity metrics"],
+      "pain_points": [
+        "Labor shortage and rising wages",
+        "Store associate turnover and training burden",
+        "Fulfilling online orders from stores",
+        "Inventory accuracy in stores",
+        "Competing with online convenience"
+      ],
+      "decision_criteria": [
+        "Mobile-first design for associates",
+        "Integration with POS and inventory systems",
+        "Labor scheduling optimization",
+        "Training and adoption support",
+        "Task management and workflow"
+      ],
+      "buying_influence": "END_USER_ADVOCATE",
+      "decision_making_authority": "USER",
+      "typical_objections": [
+        "Store associates are already overwhelmed",
+        "We can't afford more technology in stores",
+        "Our POS system is old and hard to integrate",
+        "Store managers resist change"
+      ],
+      "primary_value_category": "COST_REDUCTION",
+      "value_drivers": {
+        "revenue_uplift": ["Improved service", "Omnichannel conversion"],
+        "cost_savings": ["Labor optimization", "Reduced turnover"],
+        "risk_reduction": ["Labor compliance", "Customer satisfaction"]
+      },
+      "preferred_proof_points": [
+        "Store associate testimonials",
+        "Mobile app demonstrations",
+        "Labor optimization case studies",
+        "Store manager references",
+        "Training effectiveness data"
+      ],
+      "confidence_score": 0.84,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "rc-per-004",
+      "name": "Chief Marketing Officer",
+      "description": "Marketing executive responsible for brand building, customer acquisition, and marketing ROI. Acts as value interpretation lens for brand value and customer engagement.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Marketing",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Marketing Officer", "CMO", "Head of Marketing", "VP Marketing"],
+      "industry": "Retail & Consumer",
+      "company_maturity": "Growth",
+      "company_size_range": "$500M-$20B",
+      "market_context": "Consumer brand building awareness and loyalty",
+      "key_objectives": [
+        "Build brand awareness and equity",
+        "Drive customer acquisition and retention",
+        "Improve marketing ROI and attribution",
+        "Enable personalized customer engagement"
+      ],
+      "kpis": ["Marketing ROI (ROMI)", "Customer acquisition cost (CAC)", "Customer lifetime value (CLV)", "Brand awareness and consideration", "Marketing attribution accuracy"],
+      "pain_points": [
+        "Difficulty measuring marketing ROI",
+        "Rising digital advertising costs",
+        "Customer data fragmentation",
+        "Privacy regulations limiting targeting",
+        "Competing for consumer attention"
+      ],
+      "decision_criteria": [
+        "Marketing attribution capabilities",
+        "Customer data platform integration",
+        "Personalization and segmentation",
+        "Privacy compliance (GDPR, CCPA)",
+        "Campaign optimization and automation"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our customer data is scattered and messy",
+        "We need to prove ROI to the CFO",
+        "Privacy rules are killing our targeting",
+        "We already have too many marketing tools"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Customer acquisition", "Retention", "CLV growth"],
+        "cost_savings": ["Marketing efficiency", "Reduced waste"],
+        "risk_reduction": ["Brand reputation", "Privacy compliance"]
+      },
+      "preferred_proof_points": [
+        "Marketing ROI improvement studies",
+        "Attribution accuracy benchmarks",
+        "Customer data platform case studies",
+        "Privacy compliance attestations",
+        "Brand lift studies"
+      ],
+      "confidence_score": 0.86,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "sw-per-001",
+      "name": "VP Engineering",
+      "description": "Engineering leader responsible for software development velocity, quality, and team scaling. Acts as value interpretation lens for developer productivity.",
+      "role_type": "TECHNICAL_EVALUATOR",
+      "department": "Engineering",
+      "seniority_level": "VP",
+      "job_title_variants": ["VP Engineering", "Head of Engineering", "CTO", "SVP Engineering"],
+      "industry": "Software / SaaS",
+      "company_maturity": "Growth",
+      "company_size_range": "$50M-$5B ARR",
+      "market_context": "SaaS company building software products",
+      "key_objectives": [
+        "Accelerate engineering velocity",
+        "Improve software quality and reliability",
+        "Scale engineering organization efficiently",
+        "Manage technical debt and architecture"
+      ],
+      "kpis": ["Deployment frequency", "Lead time for changes", "Change failure rate", "Mean time to recovery (MTTR)", "Engineering efficiency metrics"],
+      "pain_points": [
+        "Slow deployment cycles",
+        "Production incidents and instability",
+        "Technical debt impeding development",
+        "Talent shortage and hiring challenges",
+        "Scaling infrastructure with growth"
+      ],
+      "decision_criteria": [
+        "Developer experience and productivity",
+        "Integration with CI/CD pipeline",
+        "Code quality and security scanning",
+        "Observability and incident response",
+        "Scalability and performance"
+      ],
+      "buying_influence": "TECHNICAL_GATEKEEPER",
+      "decision_making_authority": "RECOMMENDS",
+      "typical_objections": [
+        "Our developers already have their tools",
+        "Integration with our stack is complex",
+        "We need on-premise or VPC deployment",
+        "Security team needs to review everything"
+      ],
+      "primary_value_category": "COST_REDUCTION",
+      "value_drivers": {
+        "revenue_uplift": ["Faster time-to-market", "Improved product quality"],
+        "cost_savings": ["Developer productivity", "Reduced incidents"],
+        "risk_reduction": ["Security", "Reliability", "Technical debt"]
+      },
+      "preferred_proof_points": [
+        "Developer productivity benchmarks",
+        "DORA metrics improvement",
+        "Integration with popular dev tools",
+        "Security scanning capabilities",
+        "Peer engineering references"
+      ],
+      "confidence_score": 0.90,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "sw-per-002",
+      "name": "Chief Product Officer",
+      "description": "Product executive responsible for product strategy, roadmap, and market fit. Acts as value interpretation lens for product-market fit and revenue growth.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Product",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Product Officer", "CPO", "Head of Product", "SVP Product"],
+      "industry": "Software / SaaS",
+      "company_maturity": "Growth",
+      "company_size_range": "$50M-$5B ARR",
+      "market_context": "Product-led growth or enterprise SaaS",
+      "key_objectives": [
+        "Accelerate product development cycles",
+        "Improve product-market fit",
+        "Enable data-driven product decisions",
+        "Build competitive differentiation"
+      ],
+      "kpis": ["Time to market for new features", "Product adoption and engagement", "Net Revenue Retention (NRR)", "Customer satisfaction (CSAT/NPS)", "Win rate vs. competitors"],
+      "pain_points": [
+        "Slow feedback loops from customers",
+        "Difficulty prioritizing roadmap",
+        "Limited visibility into product usage",
+        "Competitive pressure from feature parity",
+        "Technical debt slowing innovation"
+      ],
+      "decision_criteria": [
+        "Product analytics and insights capabilities",
+        "Customer feedback integration",
+        "Experimentation and A/B testing",
+        "Roadmap alignment and visualization",
+        "Time to value and implementation"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "We need more customer validation before building",
+        "Engineering says it will take too long",
+        "Our roadmap is already committed for 12 months",
+        "Customers are asking for features, not analytics"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Faster releases", "Improved retention", "New revenue"],
+        "cost_savings": ["Reduced wasted development", "Efficient prioritization"],
+        "risk_reduction": ["Product-market fit", "Competitive positioning"]
+      },
+      "preferred_proof_points": [
+        "Product velocity improvement stories",
+        "Customer feedback integration case studies",
+        "Experimentation platform ROI",
+        "NRR improvement data",
+        "Competitive win rate analysis"
+      ],
+      "confidence_score": 0.88,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "sw-per-003",
+      "name": "VP Customer Success",
+      "description": "Customer success leader responsible for retention, expansion, and health scoring. Acts as value interpretation lens for Net Revenue Retention.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Customer Success",
+      "seniority_level": "VP",
+      "job_title_variants": ["VP Customer Success", "Head of Customer Success", "VP CS", "Chief Customer Officer"],
+      "industry": "Software / SaaS",
+      "company_maturity": "Growth",
+      "company_size_range": "$20M-$1B ARR",
+      "market_context": "SaaS with recurring revenue model",
+      "key_objectives": [
+        "Drive Net Revenue Retention (NRR)",
+        "Reduce customer churn and contraction",
+        "Scale customer success efficiently",
+        "Proactively identify expansion opportunities"
+      ],
+      "kpis": ["Net Revenue Retention (NRR)", "Gross Revenue Retention (GRR)", "Customer churn rate", "Expansion revenue", "Customer Health Score coverage"],
+      "pain_points": [
+        "Reactive customer success model",
+        "Limited visibility into customer health",
+        "Scaling CS with limited headcount",
+        "Churn surprises and late warnings",
+        "Expansion opportunity identification"
+      ],
+      "decision_criteria": [
+        "Customer health prediction accuracy",
+        "Integration with CRM and product data",
+        "Automated playbooks and workflows",
+        "Proactive risk and opportunity alerts",
+        "Customer-facing analytics and QBR support"
+      ],
+      "buying_influence": "PRIMARY_EVALUATOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our CSMs don't trust automated health scores",
+        "Customer data is spread across too many systems",
+        "We need to focus on high-touch, not automation",
+        "Executives want relationship-based, not data-driven CS"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Retention", "Expansion", "NRR improvement"],
+        "cost_savings": ["CSM productivity", "Efficient scaling"],
+        "risk_reduction": ["Churn prevention", "Account risk early warning"]
+      },
+      "preferred_proof_points": [
+        "NRR improvement case studies",
+        "Customer health prediction accuracy",
+        "Automated playbook effectiveness",
+        "CSM productivity metrics",
+        "Peer SaaS company references"
+      ],
+      "confidence_score": 0.87,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "sw-per-004",
+      "name": "Chief Revenue Officer",
+      "description": "Revenue executive responsible for sales strategy, productivity, and growth. Acts as value interpretation lens for sales efficiency and pipeline growth.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Revenue / Sales",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Revenue Officer", "CRO", "Head of Sales", "SVP Sales"],
+      "industry": "Software / SaaS",
+      "company_maturity": "Growth",
+      "company_size_range": "$50M-$5B ARR",
+      "market_context": "B2B SaaS with direct and channel sales",
+      "key_objectives": [
+        "Accelerate revenue growth",
+        "Improve sales productivity and efficiency",
+        "Enable data-driven sales decisions",
+        "Optimize pricing and packaging"
+      ],
+      "kpis": ["Revenue growth rate", "Sales productivity (quota attainment)", "Average selling price (ASP)", "Sales cycle length", "Win rate and pipeline conversion"],
+      "pain_points": [
+        "Inconsistent sales execution",
+        "Poor pipeline visibility and forecasting",
+        "Long sales cycles with multiple stakeholders",
+        "Pricing and discounting inconsistency",
+        "Scaling sales with productivity"
+      ],
+      "decision_criteria": [
+        "Sales analytics and forecasting",
+        "Deal intelligence and guidance",
+        "Integration with CRM and sales tools",
+        "Pricing optimization capabilities",
+        "Enablement and coaching support"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Sales reps won't enter data into another system",
+        "Our CRM already has forecasting",
+        "We need to focus on hiring, not tools",
+        "Sales leadership wants simplicity, not complexity"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Win rate improvement", "ASP increase", "Faster cycles"],
+        "cost_savings": ["Sales productivity", "Reduced turnover"],
+        "risk_reduction": ["Pipeline risk visibility", "Forecast accuracy"]
+      },
+      "preferred_proof_points": [
+        "Sales productivity improvement data",
+        "Forecast accuracy benchmarks",
+        "Win rate improvement case studies",
+        "Pricing optimization ROI",
+        "CRO peer testimonials"
+      ],
+      "confidence_score": 0.89,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ai-per-001",
+      "name": "Head of AI/ML",
+      "description": "AI/ML leader responsible for model development, deployment, and infrastructure. Acts as value interpretation lens for ML operationalization.",
+      "role_type": "TECHNICAL_EVALUATOR",
+      "department": "AI/ML",
+      "seniority_level": "VP",
+      "job_title_variants": ["Head of AI/ML", "VP AI", "Head of Machine Learning", "AI Director"],
+      "industry": "AI Technology",
+      "company_maturity": "Growth",
+      "company_size_range": "$100M-$10B",
+      "market_context": "Company building AI/ML products or internal capabilities",
+      "key_objectives": [
+        "Scale AI/ML model development and deployment",
+        "Improve model performance and accuracy",
+        "Manage AI infrastructure costs",
+        "Ensure model governance and reproducibility"
+      ],
+      "kpis": ["Model deployment frequency", "Model performance metrics (accuracy, F1, etc.)", "AI infrastructure cost per inference", "Time to train and deploy models", "Model governance compliance"],
+      "pain_points": [
+        "Difficulty scaling ML pipelines",
+        "Model performance degradation in production",
+        "High compute costs for training and inference",
+        "Siloed ML tools and frameworks",
+        "Model governance and explainability requirements"
+      ],
+      "decision_criteria": [
+        "MLops and model management capabilities",
+        "Integration with popular ML frameworks",
+        "Scalable compute infrastructure",
+        "Model monitoring and drift detection",
+        "Governance, explainability, and lineage"
+      ],
+      "buying_influence": "TECHNICAL_GATEKEEPER",
+      "decision_making_authority": "RECOMMENDS",
+      "typical_objections": [
+        "Our data scientists have their preferred tools",
+        "We need GPU compute—cloud is expensive",
+        "Model governance is still emerging",
+        "Integration with our data platform is complex"
+      ],
+      "primary_value_category": "COST_REDUCTION",
+      "value_drivers": {
+        "revenue_uplift": ["Faster model deployment", "Improved accuracy"],
+        "cost_savings": ["Compute efficiency", "Data scientist productivity"],
+        "risk_reduction": ["Model risk", "Governance", "Reproducibility"]
+      },
+      "preferred_proof_points": [
+        "MLops maturity benchmarks",
+        "Model deployment velocity data",
+        "Compute cost optimization studies",
+        "ML framework integration demos",
+        "AI/ML peer references"
+      ],
+      "confidence_score": 0.88,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ai-per-002",
+      "name": "Chief Data Officer",
+      "description": "Data executive responsible for enterprise data strategy, quality, and governance. Acts as value interpretation lens for data-driven decision making.",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Data",
+      "seniority_level": "C_SUITE",
+      "job_title_variants": ["Chief Data Officer", "CDO", "Head of Data", "VP Data"],
+      "industry": "AI Technology",
+      "company_maturity": "Enterprise",
+      "company_size_range": "$1B-$100B",
+      "market_context": "Data-intensive organization (finance, healthcare, tech)",
+      "key_objectives": [
+        "Establish enterprise data strategy",
+        "Improve data quality and accessibility",
+        "Enable data-driven decision making",
+        "Ensure data governance and compliance"
+      ],
+      "kpis": ["Data quality scores", "Data catalog coverage", "Time to data access for analysts", "Data governance compliance rate", "Data-driven decision percentage"],
+      "pain_points": [
+        "Siloed data across business units",
+        "Poor data quality and trust",
+        "Difficulty finding and accessing data",
+        "Data governance and privacy compliance",
+        "Data platform scalability"
+      ],
+      "decision_criteria": [
+        "Data integration and pipeline capabilities",
+        "Data catalog and discovery features",
+        "Data quality monitoring and remediation",
+        "Governance, privacy, and access control",
+        "Self-service analytics enablement"
+      ],
+      "buying_influence": "EXECUTIVE_SPONSOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our data is too messy to centralize",
+        "Business units won't share their data",
+        "We have too many data tools already",
+        "Data governance is seen as a bottleneck"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": ["Data-driven products", "Improved decisions"],
+        "cost_savings": ["Reduced data redundancy", "Efficient analytics"],
+        "risk_reduction": ["Data privacy", "Compliance", "Security"]
+      },
+      "preferred_proof_points": [
+        "Data quality improvement studies",
+        "Time-to-insight benchmarks",
+        "Data governance success stories",
+        "Self-service analytics adoption",
+        "CDO peer testimonials"
+      ],
+      "confidence_score": 0.89,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ai-per-003",
+      "name": "VP Data Science",
+      "description": "Data science leader responsible for business impact through analytics and model deployment. Acts as value interpretation lens for data science ROI.",
+      "role_type": "OPERATIONAL_USER",
+      "department": "Data Science",
+      "seniority_level": "VP",
+      "job_title_variants": ["VP Data Science", "Head of Data Science", "Chief Data Scientist", "Data Science Director"],
+      "industry": "AI Technology",
+      "company_maturity": "Growth",
+      "company_size_range": "$100M-$10B",
+      "market_context": "Data science-driven organization",
+      "key_objectives": [
+        "Deliver business impact through data science",
+        "Build and retain data science talent",
+        "Operationalize models into production",
+        "Enable exploratory analytics and research"
+      ],
+      "kpis": ["Data science project ROI", "Model deployment success rate", "Time from hypothesis to production", "Data scientist productivity", "Business stakeholder satisfaction"],
+      "pain_points": [
+        "Difficulty productionizing models (model ops gap)",
+        "Limited access to quality data",
+        "Data scientist time spent on infrastructure",
+        "Business stakeholder communication",
+        "Measuring data science impact"
+      ],
+      "decision_criteria": [
+        "Notebook and experimentation environment",
+        "Collaboration and reproducibility features",
+        "Model deployment and monitoring",
+        "Data access and exploration tools",
+        "Business stakeholder reporting"
+      ],
+      "buying_influence": "PRIMARY_EVALUATOR",
+      "decision_making_authority": "FINAL",
+      "typical_objections": [
+        "Our data scientists prefer open-source tools",
+        "We need custom environments for different teams",
+        "Production deployment is IT's job, not ours",
+        "Business doesn't understand what we do"
+      ],
+      "primary_value_category": "REVENUE_ENHANCEMENT",
+      "value_drivers": {
+        "revenue_uplift": ["Model-driven business impact"],
+        "cost_savings": ["Data scientist productivity", "Efficient experimentation"],
+        "risk_reduction": ["Model reliability", "Reproducibility"]
+      },
+      "preferred_proof_points": [
+        "Data science ROI case studies",
+        "Model deployment velocity benchmarks",
+        "Notebook platform comparisons",
+        "Data exploration capabilities",
+        "Data science team testimonials"
+      ],
+      "confidence_score": 0.87,
+      "status": "VALIDATED"
+    },
+    {
+      "type": "Persona",
+      "id": "ai-per-004",
+      "name": "AI Ethics/Governance Officer",
+      "description": "Governance leader responsible for responsible AI, regulatory compliance, and risk mitigation. Acts as value interpretation lens for AI risk management.",
+      "role_type": "RISK_GUARDIAN",
+      "department": "AI Governance",
+      "seniority_level": "DIRECTOR",
+      "job_title_variants": ["AI Ethics Officer", "AI Governance Director", "Responsible AI Lead", "AI Risk Manager"],
+      "industry": "AI Technology",
+      "company_maturity": "Regulated",
+      "company_size_range": "$1B-$100B",
+      "market_context": "Organization with AI regulatory exposure",
+      "key_objectives": [
+        "Ensure responsible AI development and deployment",
+        "Manage AI regulatory compliance (EU AI Act, etc.)",
+        "Establish AI governance frameworks",
+        "Mitigate AI-related reputational risk"
+      ],
+      "kpis": ["AI governance framework coverage", "Model risk assessment completion", "Bias and fairness audit results", "Explainability score for deployed models", "AI incident and complaint count"],
+      "pain_points": [
+        "Lack of AI governance standards",
+        "Emerging regulatory requirements (EU AI Act)",
+        "Difficulty assessing model bias and fairness",
+        "Explainability requirements vs. model complexity",
+        "Reputational risk from AI incidents"
+      ],
+      "decision_criteria": [
+        "Bias detection and fairness metrics",
+        "Explainability and interpretability features",
+        "Model documentation and audit trails",
+        "Regulatory compliance mapping",
+        "AI risk assessment workflows"
+      ],
+      "buying_influence": "RISK_GATEKEEPER",
+      "decision_making_authority": "VETO",
+      "typical_objections": [
+        "AI governance is still evolving—standards unclear",
+        "Data scientists resist explainability constraints",
+        "We don't have enough governance expertise",
+        "Regulations vary by jurisdiction"
+      ],
+      "primary_value_category": "RISK_MITIGATION",
+      "value_drivers": {
+        "revenue_uplift": ["Trust and customer confidence"],
+        "cost_savings": ["Reduced governance overhead", "Efficient audits"],
+        "risk_reduction": ["Regulatory compliance", "Reputational protection"]
+      },
+      "preferred_proof_points": [
+        "AI governance framework alignment",
+        "Bias detection and mitigation studies",
+        "Explainability methodology documentation",
+        "Regulatory compliance roadmaps",
+        "AI ethics peer references"
+      ],
+      "confidence_score": 0.85,
+      "status": "VALIDATED"
+    }
+  ],
+  "metadata": {
+    "total_personas": 28,
+    "industries_covered": 7,
+    "archetypes_represented": 7,
+    "seniority_distribution": {
+      "C_SUITE": 10,
+      "VP": 10,
+      "DIRECTOR": 4,
+      "MANAGER": 4
+    },
+    "value_category_distribution": {
+      "REVENUE_ENHANCEMENT": 9,
+      "COST_REDUCTION": 7,
+      "RISK_MITIGATION": 9,
+      "CAPITAL_EFFICIENCY": 3
+    },
+    "validation_status": "READY_FOR_INGESTION"
+  }
+}

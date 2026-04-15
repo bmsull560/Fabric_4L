@@ -4,17 +4,24 @@ import logging
 import os
 from typing import Any
 
-import stripe
-
 logger = logging.getLogger(__name__)
+
+# Optional stripe import for environments where it's not installed
+try:
+    import stripe
+    _stripe_available = True
+except ImportError:
+    stripe = None  # type: ignore
+    _stripe_available = False
+    logger.warning("stripe module not installed - billing features disabled")
 
 # Initialize Stripe with API key from environment
 _stripe_api_key = os.environ.get("STRIPE_SECRET_KEY", "")
-if _stripe_api_key:
+if _stripe_available and _stripe_api_key:
     stripe.api_key = _stripe_api_key
     logger.info("Stripe SDK initialized")
 else:
-    logger.warning("STRIPE_SECRET_KEY not configured - billing features disabled")
+    logger.warning("Stripe not configured - billing features disabled")
 
 # Price IDs from environment (set in Stripe Dashboard)
 STRIPE_PRICE_PRO = os.environ.get("STRIPE_PRICE_PRO", "")
@@ -33,9 +40,13 @@ def get_stripe() -> Any:
     """Get configured Stripe module.
 
     Raises:
-        StripeNotConfiguredError: If STRIPE_SECRET_KEY is not set.
+        StripeNotConfiguredError: If stripe module is not installed or not configured.
     """
-    if not stripe.api_key:
+    if stripe is None:
+        raise StripeNotConfiguredError(
+            "Stripe module not installed. Install with: pip install stripe"
+        )
+    if not getattr(stripe, 'api_key', None):
         raise StripeNotConfiguredError(
             "Stripe is not configured. Set STRIPE_SECRET_KEY environment variable."
         )

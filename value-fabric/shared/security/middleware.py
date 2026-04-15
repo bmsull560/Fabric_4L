@@ -16,6 +16,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import Message, Receive, Scope, Send
 
 # Security patterns for injection detection
+# WARNING: This is a defense-in-depth layer only. These patterns can be bypassed via:
+# - Unicode homoglyphs (e.g., Cyrillic characters that look like Latin)
+# - Comment-based obfuscation (e.g., S/**/ELECT)
+# - Hex/encoded payloads (e.g., 0x53454c454354)
+# Primary SQL injection protection MUST be via parameterized queries at the data layer.
 SQL_INJECTION_PATTERNS = [
     r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)",
     r"(\b(OR|AND)\s+\d+\s*=\s*\d+)",
@@ -88,9 +93,16 @@ class SecurityValidator:
 
     @staticmethod
     def sanitize_string(value: str) -> str:
-        """Sanitize string input to prevent XSS."""
+        """Sanitize string input to prevent XSS.
+
+        Args:
+            value: The string to sanitize. If not a string, returns str(value).
+
+        Returns:
+            The sanitized string.
+        """
         if not isinstance(value, str):
-            return value
+            return str(value)
 
         # HTML escape
         value = html.escape(value)

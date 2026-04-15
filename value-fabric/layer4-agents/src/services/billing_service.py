@@ -4,21 +4,43 @@ Handles customer management, subscription lifecycle, and entitlement checks.
 Minimal scope: subscription status, customer portal, plan enforcement.
 """
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from stripe.error import StripeError
 
 logger = logging.getLogger(__name__)
 
 from ..config.plans import check_entitlement, get_entitlements_response, get_plan
 from ..models.billing import BillingCustomer, BillingSubscription, BillingWebhookEvent, SubscriptionStatus
-from .stripe_client import get_price_id, get_stripe
+from .stripe_client import get_price_id, get_stripe, StripeNotConfiguredError
 
-stripe = get_stripe()
+# Lazy-loaded stripe module
+_stripe = None
+
+def _get_stripe():
+    """Get stripe module (lazy loaded)."""
+    global _stripe
+    if _stripe is None:
+        _stripe = get_stripe()
+    return _stripe
+
+
+class StripeNotConfiguredError(Exception):
+    """Raised when Stripe SDK is not available or not configured."""
+    pass
+
+
+try:
+    from stripe.error import StripeError as _StripeError
+    StripeError = _StripeError
+except ImportError:
+    # Fallback for environments without stripe installed (tests)
+    StripeError = StripeNotConfiguredError
 
 
 class BillingService:
@@ -33,49 +55,77 @@ class BillingService:
         email: str,
         name: str | None = None,
     ) -> BillingCustomer:
-        """Get existing customer or create new one with Stripe sync."""
-        # Check local DB first
-        result = await self.db.execute(
-            select(BillingCustomer).where(BillingCustomer.id == customer_id)
-        )
-        customer = result.scalar_one_or_none()
+        """Get existing customer or create new one with Stripe sync.
 
-        if customer:
-            # Update email/name if changed
-            if customer.email != email or customer.name != name:
-                customer.email = email
-                if name:
-                    customer.name = name
+        Uses retry loop with exponential backoff to handle race conditions
+        where multiple concurrent requests attempt to create the same customer.
+        """
+        max_retries = 3
+        base_delay = 0.1
+
+        for attempt in range(max_retries):
+            try:
+                # Check local DB first (within transaction)
+                result = await self.db.execute(
+                    select(BillingCustomer).where(BillingCustomer.id == customer_id)
+                )
+                customer = result.scalar_one_or_none()
+
+                if customer:
+                    # Update email/name if changed
+                    if customer.email != email or (name and customer.name != name):
+                        customer.email = email
+                        if name:
+                            customer.name = name
+                        await self.db.flush()
+                    return customer
+
+                # Create Stripe customer first (idempotent operation)
+                stripe_customer_id = None
+                try:
+                    stripe = _get_stripe()
+                    stripe_customer = stripe.Customer.create(
+                        email=email,
+                        name=name or email,
+                        metadata={"app_customer_id": customer_id},
+                    )
+                    stripe_customer_id = stripe_customer.id
+                except (StripeError, StripeNotConfiguredError) as e:
+                    # Log but continue - we can retry Stripe sync later
+                    logger.warning(f"Stripe customer creation failed: {e}")
+
+                # Create local customer record within transaction
+                customer = BillingCustomer(
+                    id=customer_id,
+                    stripe_customer_id=stripe_customer_id,
+                    email=email,
+                    name=name,
+                )
+                self.db.add(customer)
                 await self.db.flush()
-            return customer
 
-        # Create Stripe customer
-        stripe_customer_id = None
-        try:
-            stripe_customer = stripe.Customer.create(
-                email=email,
-                name=name or email,
-                metadata={"app_customer_id": customer_id},
-            )
-            stripe_customer_id = stripe_customer.id
-        except StripeError as e:
-            # Log but continue - we can retry Stripe sync later
-            logger.warning(f"Stripe customer creation failed: {e}")
+                # Create default free subscription
+                await self._create_free_subscription(customer_id)
+                await self.db.commit()
 
-        # Create local customer record
-        customer = BillingCustomer(
-            id=customer_id,
-            stripe_customer_id=stripe_customer_id,
-            email=email,
-            name=name,
-        )
-        self.db.add(customer)
-        await self.db.flush()
+                return customer
 
-        # Create default free subscription
-        await self._create_free_subscription(customer_id)
+            except IntegrityError:
+                # Race condition: another request created the customer
+                await self.db.rollback()
+                if attempt < max_retries - 1:
+                    wait_time = base_delay * (2 ** attempt)
+                    logger.info(f"Customer creation race detected, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+                    continue
+                # Last attempt failed, re-raise
+                raise
+            except Exception:
+                await self.db.rollback()
+                raise
 
-        return customer
+        # Should never reach here
+        raise RuntimeError(f"Failed to create customer after {max_retries} attempts")
 
     async def _create_free_subscription(self, customer_id: str) -> BillingSubscription:
         """Create a free tier subscription for a customer."""
@@ -131,6 +181,7 @@ class BillingService:
             raise ValueError(f"No Stripe price configured for plan: {plan_id}")
 
         try:
+            stripe = _get_stripe()
             session = stripe.checkout.Session.create(
                 customer=customer.stripe_customer_id,
                 mode="subscription",
@@ -161,6 +212,7 @@ class BillingService:
             raise ValueError("Customer not found or not synced with Stripe")
 
         try:
+            stripe = _get_stripe()
             session = stripe.billing_portal.Session.create(
                 customer=customer.stripe_customer_id,
                 return_url=return_url,
@@ -172,11 +224,14 @@ class BillingService:
     async def handle_webhook(self, payload: bytes, signature: str, webhook_secret: str) -> bool:
         """Handle Stripe webhook event with idempotency check."""
         try:
+            stripe = _get_stripe()
             event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
         except ValueError as e:
             raise ValueError(f"Invalid payload: {e}") from e
-        except stripe.error.SignatureVerificationError as e:
-            raise ValueError(f"Invalid signature: {e}") from e
+        except Exception as e:
+            if "signature" in str(e).lower():
+                raise ValueError(f"Invalid signature: {e}") from e
+            raise
 
         event_id = event["id"]
         event_type = event["type"]

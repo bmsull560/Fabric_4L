@@ -7,8 +7,9 @@
 import { http, HttpResponse, delay, type PathParams } from 'msw';
 
 // Base API paths from environment config
+// Note: L3_PREFIX is empty because Layer 3 routes are mounted at /v1 directly
 const API_BASE = '/api/v1';
-const L3_PREFIX = '/graph';
+const L3_PREFIX = '';  // Layer 3 routes: /v1/query/graph, /v1/entity/{id}/context, etc.
 const L4_PREFIX = '/agents';
 const L2_PREFIX = '/extract';
 

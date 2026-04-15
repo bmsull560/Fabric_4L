@@ -67,7 +67,8 @@ export interface EntityTraversalResponse {
   path_count: number;
 }
 
-interface SearchResult {
+/** Raw search result from hybrid search - may have varying field names */
+export interface SearchResult {
   id?: string;
   entity_id?: string;
   name?: string;
@@ -79,6 +80,13 @@ interface SearchResult {
   description?: string;
   properties?: Record<string, unknown>;
   data?: Record<string, unknown>;
+}
+
+/** Error type for graph API operations */
+export interface GraphApiError {
+  message: string;
+  code?: string;
+  statusCode?: number;
 }
 
 /**
@@ -107,8 +115,8 @@ function createTraversalKey(params: EntityTraversalRequest): string {
 export function useGraphQuery() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (request: GraphQueryRequest): Promise<GraphQueryResponse> => {
+  return useMutation<GraphQueryResponse, GraphApiError, GraphQueryRequest>({
+    mutationFn: async (request): Promise<GraphQueryResponse> => {
       const response = await apiClient.post('l3', '/query/graph', {
         query: request.query,
         entity_type: request.entity_type,
@@ -130,6 +138,9 @@ export function useGraphQuery() {
           relationship_count: 0,
         });
       });
+    },
+    onError: (error) => {
+      console.error('GraphRAG query failed:', error);
     },
   });
 }
@@ -185,13 +196,16 @@ export function useEntityContext(
  * mutation.mutate({ entity_id: 'cap-123', direction: 'up' });
  */
 export function useEntityTraversal() {
-  return useMutation({
-    mutationFn: async (request: EntityTraversalRequest): Promise<EntityTraversalResponse> => {
+  return useMutation<EntityTraversalResponse, GraphApiError, EntityTraversalRequest>({
+    mutationFn: async (request): Promise<EntityTraversalResponse> => {
       const response = await apiClient.post('l3', '/entity/traverse', {
         entity_id: request.entity_id,
         direction: request.direction ?? 'both',
       });
       return response.data as EntityTraversalResponse;
+    },
+    onError: (error) => {
+      console.error('Entity traversal failed:', error);
     },
   });
 }

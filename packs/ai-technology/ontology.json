@@ -1,0 +1,352 @@
+{
+  "pack_id": "ai-technology-v1",
+  "pack_name": "AI & Technology Services Value Pack",
+  "version": "1.0.0",
+  "description": "Complete value model for AI/ML platforms, generative AI, MLOps, computer vision, and enterprise AI adoption",
+  "industry": "Technology / AI Services",
+  "created_at": "2026-04-15",
+  "ontology": {
+    "node_types": {
+      "Capability": {
+        "description": "AI and ML capabilities and technology platforms",
+        "examples": [
+          "MLOps Platform",
+          "LLM Gateway",
+          "Feature Store",
+          "Model Serving Infrastructure",
+          "Computer Vision Pipeline",
+          "Enterprise Vector Search",
+          "AI Governance Framework"
+        ]
+      },
+      "UseCase": {
+        "description": "AI and ML use cases and operational scenarios",
+        "examples": [
+          "Model Training at Scale",
+          "Real-time Inference",
+          "LLM-based Code Generation",
+          "Automated Visual Inspection",
+          "Semantic Document Search",
+          "Bias Detection and Mitigation",
+          "Multi-modal AI Applications"
+        ]
+      },
+      "Persona": {
+        "description": "AI/ML stakeholders and decision makers",
+        "examples": [
+          "Chief AI Officer",
+          "VP Machine Learning Engineering",
+          "MLOps Lead",
+          "Data Science Manager",
+          "AI Ethics Officer",
+          "Platform Engineering Lead"
+        ]
+      },
+      "ValueDriver": {
+        "description": "AI/ML value drivers and KPIs",
+        "examples": [
+          "Model Time-to-Production",
+          "Inference Cost per Request",
+          "Model Accuracy/Performance",
+          "AI Adoption Rate",
+          "Data Scientist Productivity",
+          "Model Drift Detection Rate"
+        ]
+      }
+    },
+    "relationships": {
+      "ENABLES": {
+        "from": "Capability",
+        "to": "UseCase",
+        "properties": {
+          "enablement_type": ["REQUIRED", "ENHANCES", "OPTIONAL"],
+          "contribution_weight": "Float (0.0-1.0)"
+        }
+      },
+      "BENEFITS": {
+        "from": "UseCase",
+        "to": "Persona",
+        "properties": {
+          "benefit_type": ["VELOCITY", "EFFICIENCY", "QUALITY", "COMPLIANCE"],
+          "impact_level": ["TRANSFORMATIONAL", "SIGNIFICANT", "MODERATE", "MINOR"]
+        }
+      },
+      "DRIVES": {
+        "from": "Persona",
+        "to": "ValueDriver",
+        "properties": {
+          "driver_type": ["PRIMARY", "SECONDARY", "TERTIARY"],
+          "influence_weight": "Float (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "entities": [
+    {
+      "type": "Capability",
+      "id": "ai-cap-001",
+      "name": "MLOps Platform",
+      "description": "End-to-end ML lifecycle management including experiment tracking, model registry, automated training pipelines, and deployment orchestration",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "components": ["Experiment tracking", "Model registry", "Pipeline orchestration", "Model serving", "Monitoring"],
+        "integrations": ["Kubernetes", "Git", "CI/CD", "Cloud providers", "Data platforms"]
+      },
+      "confidence_score": 0.92
+    },
+    {
+      "type": "Capability",
+      "id": "ai-cap-002",
+      "name": "LLM Gateway",
+      "description": "Unified gateway for managing LLM access, prompt engineering, cost optimization, and security controls across multiple model providers",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "features": ["Provider routing", "Prompt management", "Cost tracking", "Safety filtering", "Caching"],
+        "models": ["GPT-4", "Claude", "Llama", "Gemini", "Custom fine-tuned"]
+      },
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Capability",
+      "id": "ai-cap-003",
+      "name": "Feature Store",
+      "description": "Centralized feature management for training and inference with versioning, lineage, and real-time serving capabilities",
+      "category": "INFRASTRUCTURE",
+      "technical_specs": {
+        "capabilities": ["Feature engineering", "Online/offline serving", "Versioning", "Lineage tracking", "Sharing"],
+        "storage": ["Online store (low latency)", "Offline store (batch)", "Feature registry"]
+      },
+      "confidence_score": 0.90
+    },
+    {
+      "type": "Capability",
+      "id": "ai-cap-004",
+      "name": "Computer Vision Pipeline",
+      "description": "End-to-end computer vision infrastructure for model training, deployment, and real-time inference at scale",
+      "category": "AI_SERVICE",
+      "technical_specs": {
+        "models": ["Object detection", "Classification", "Segmentation", "OCR", "Anomaly detection"],
+        "infrastructure": ["GPU clusters", "Edge deployment", "Model optimization", "Video processing"]
+      },
+      "confidence_score": 0.85
+    },
+    {
+      "type": "Capability",
+      "id": "ai-cap-005",
+      "name": "AI Governance Framework",
+      "description": "Responsible AI tools for bias detection, explainability, model documentation, and regulatory compliance",
+      "category": "GOVERNANCE",
+      "technical_specs": {
+        "capabilities": ["Bias detection", "Explainability", "Model cards", "Risk assessment", "Monitoring"],
+        "frameworks": ["Fairness metrics", "SHAP/LIME", "Regulatory compliance", "Ethical guidelines"]
+      },
+      "confidence_score": 0.87
+    },
+    {
+      "type": "UseCase",
+      "id": "ai-uc-001",
+      "name": "Model Training at Scale",
+      "description": "Distributed training of large models across GPU clusters with automated hyperparameter tuning and experiment tracking",
+      "operational_context": "AI research and development",
+      "business_process": "Model development lifecycle",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.90
+    },
+    {
+      "type": "UseCase",
+      "id": "ai-uc-002",
+      "name": "Real-time Inference Serving",
+      "description": "Low-latency model serving with auto-scaling, A/B testing, and canary deployments for production AI applications",
+      "operational_context": "Production AI systems",
+      "business_process": "Application runtime",
+      "automation_level": "FULLY_AUTOMATED",
+      "confidence_score": 0.92
+    },
+    {
+      "type": "UseCase",
+      "id": "ai-uc-003",
+      "name": "LLM-based Code Generation",
+      "description": "AI-powered code assistance for developers including generation, completion, refactoring, and documentation",
+      "operational_context": "Software engineering",
+      "business_process": "Development lifecycle",
+      "automation_level": "ASSISTED",
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Persona",
+      "id": "ai-per-001",
+      "name": "Chief AI Officer",
+      "description": "Executive responsible for enterprise AI strategy, governance, and value realization across the organization",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "AI Strategy",
+      "seniority_level": "C_SUITE",
+      "pain_points": [
+        "AI ROI demonstration",
+        "Model governance and risk",
+        "Talent acquisition and retention",
+        "Regulatory compliance"
+      ],
+      "success_metrics": ["AI adoption rate", "Model time-to-production", "AI business value", "Responsible AI score"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "ai-per-002",
+      "name": "VP Machine Learning Engineering",
+      "description": "ML engineering leader responsible for model development, deployment infrastructure, and MLOps practices",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "ML Engineering",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Model deployment velocity",
+        "Inference cost optimization",
+        "Production model reliability",
+        "Scaling ML infrastructure"
+      ],
+      "success_metrics": ["Deployment frequency", "Model latency", "Infrastructure cost", "Model performance"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "ai-per-003",
+      "name": "AI Ethics Officer",
+      "description": "Responsible AI leader ensuring ethical AI development, bias mitigation, and regulatory compliance",
+      "role_type": "OPERATIONAL_USER",
+      "department": "AI Governance",
+      "seniority_level": "DIRECTOR",
+      "pain_points": [
+        "Bias detection coverage",
+        "Explainability requirements",
+        "Regulatory uncertainty",
+        "Cross-functional alignment"
+      ],
+      "success_metrics": ["Bias incident rate", "Model documentation completeness", "Audit findings", "Fairness metrics"],
+      "decision_making_authority": "RECOMMENDS"
+    },
+    {
+      "type": "ValueDriver",
+      "id": "ai-vd-001",
+      "name": "Model Time-to-Production",
+      "description": "Average time from model development completion to production deployment",
+      "category": "VELOCITY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Days",
+      "typical_range_min": 7.0,
+      "typical_range_max": 180.0,
+      "industry_benchmarks": {
+        "best_in_class": 7,
+        "good": 30,
+        "average": 60,
+        "poor": 120
+      },
+      "kpis": ["Deployment frequency", "Lead time", "Change failure rate", "Recovery time"]
+    },
+    {
+      "type": "ValueDriver",
+      "id": "ai-vd-002",
+      "name": "Inference Cost per Request",
+      "description": "Average cost to serve a single inference request including compute, storage, and networking",
+      "category": "COST_EFFICIENCY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "USD",
+      "typical_range_min": 0.0001,
+      "typical_range_max": 0.1,
+      "industry_benchmarks": {
+        "optimized": 0.001,
+        "typical": 0.01,
+        "expensive": 0.05
+      }
+    },
+    {
+      "type": "ValueDriver",
+      "id": "ai-vd-003",
+      "name": "AI Adoption Rate",
+      "description": "Percentage of eligible teams and use cases leveraging AI capabilities",
+      "category": "ADOPTION",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 5.0,
+      "typical_range_max": 80.0,
+      "industry_benchmarks": {
+        "leader": 70,
+        "progressive": 40,
+        "average": 20,
+        "laggard": 10
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "ENABLES",
+      "from": "ai-cap-001",
+      "to": "ai-uc-001",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.95,
+      "evidence_quote": "MLOps platform essential for scalable model training"
+    },
+    {
+      "type": "ENABLES",
+      "from": "ai-cap-001",
+      "to": "ai-uc-002",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.95,
+      "evidence_quote": "MLOps platform enables reliable model serving"
+    },
+    {
+      "type": "ENABLES",
+      "from": "ai-cap-002",
+      "to": "ai-uc-003",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.9,
+      "evidence_quote": "LLM gateway enables secure code generation"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "ai-uc-001",
+      "to": "ai-per-002",
+      "benefit_type": "VELOCITY",
+      "impact_level": "TRANSFORMATIONAL",
+      "evidence_quote": "Scale training dramatically accelerates model development"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "ai-uc-002",
+      "to": "ai-per-002",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Real-time serving reduces infrastructure costs"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "ai-uc-003",
+      "to": "ai-per-001",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Code generation significantly improves developer productivity"
+    },
+    {
+      "type": "DRIVES",
+      "from": "ai-per-001",
+      "to": "ai-vd-003",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.95,
+      "evidence_quote": "CAIO directly accountable for enterprise AI adoption"
+    },
+    {
+      "type": "DRIVES",
+      "from": "ai-per-002",
+      "to": "ai-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.95,
+      "evidence_quote": "ML engineering VP owns model velocity metrics"
+    },
+    {
+      "type": "DRIVES",
+      "from": "ai-per-002",
+      "to": "ai-vd-002",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.9,
+      "evidence_quote": "ML engineering responsible for inference cost optimization"
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+# Redis Cache Performance Recording Rules
+# Pre-computed metrics for cache hit ratio monitoring and alerting
+
+groups:
+  - name: redis_cache_performance
+    interval: 30s
+    rules:
+      # Cache Hit Ratio - Core metric for optimization
+      - record: redis_cache_hit_ratio
+        expr: |
+          (
+            rate(redis_keyspace_hits_total[5m])
+            /
+            (
+              rate(redis_keyspace_hits_total[5m])
+              +
+              rate(redis_keyspace_misses_total[5m])
+            )
+          ) * 100
+        labels:
+          metric_type: performance
+
+      # Layer-specific cache hit ratios
+      - record: redis_layer_cache_hit_ratio
+        expr: |
+          (
+            rate(redis_keyspace_hits_total{layer=~"layer[1-4]"}[5m])
+            /
+            (
+              rate(redis_keyspace_hits_total{layer=~"layer[1-4]"}[5m])
+              +
+              rate(redis_keyspace_misses_total{layer=~"layer[1-4]"}[5m])
+            )
+          ) * 100
+
+      # Eviction rate per minute (key indicator of memory pressure)
+      - record: redis_eviction_rate_per_minute
+        expr: |
+          rate(redis_evicted_keys_total[5m]) * 60
+
+      # Memory utilization percentage
+      - record: redis_memory_utilization_percent
+        expr: |
+          (
+            redis_memory_used_bytes
+            /
+            redis_memory_max_bytes
+          ) * 100
+
+      # Connection utilization
+      - record: redis_connection_utilization_percent
+        expr: |
+          (
+            redis_connected_clients
+            /
+            redis_config_maxclients
+          ) * 100
+
+      # Commands per second by category
+      - record: redis_commands_per_second
+        expr: |
+          rate(redis_commands_processed_total[5m])
+
+      # Slow operations indicator (commands taking > 10ms)
+      - record: redis_slow_operations_per_second
+        expr: |
+          rate(redis_slowlog_length[5m])
+
+      # Cache efficiency score (hit ratio weighted by throughput)
+      - record: redis_cache_efficiency_score
+        expr: |
+          redis_cache_hit_ratio
+          *
+          (
+            rate(redis_keyspace_hits_total[5m])
+            +
+            rate(redis_keyspace_misses_total[5m])
+          )
+
+  - name: redis_alerts
+    interval: 30s
+    rules:
+      # Alert: Low cache hit ratio
+      - alert: RedisLowCacheHitRatio
+        expr: |
+          redis_cache_hit_ratio < 85
+        for: 5m
+        labels:
+          severity: warning
+          layer: "{{ $labels.layer }}"
+        annotations:
+          summary: "Redis cache hit ratio below target ({{ $value }}%)"
+          description: |
+            Cache hit ratio for {{ $labels.instance }} is {{ $value | humanize }}%,
+            below the 85% target. Consider:
+            - Increasing cache TTL
+            - Optimizing cache key patterns
+            - Reviewing cache invalidation logic
+          runbook_url: "docs/runbooks/redis-low-hit-ratio.md"
+
+      # Alert: Critical cache hit ratio
+      - alert: RedisCriticalCacheHitRatio
+        expr: |
+          redis_cache_hit_ratio < 70
+        for: 3m
+        labels:
+          severity: critical
+          layer: "{{ $labels.layer }}"
+        annotations:
+          summary: "Redis cache hit ratio critically low ({{ $value }}%)"
+          description: |
+            Cache hit ratio for {{ $labels.instance }} is critically low at {{ $value | humanize }}%.
+            Immediate investigation required.
+
+      # Alert: High eviction rate
+      - alert: RedisHighEvictionRate
+        expr: |
+          redis_eviction_rate_per_minute > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Redis key eviction rate ({{ $value }}/min)"
+          description: |
+            Redis is evicting {{ $value | humanize }} keys per minute.
+            This indicates memory pressure. Consider:
+            - Increasing maxmemory
+            - Optimizing data size
+            - Reviewing expiration policies
+
+      # Alert: Memory near limit
+      - alert: RedisMemoryNearLimit
+        expr: |
+          redis_memory_utilization_percent > 90
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis memory utilization at {{ $value }}%"
+          description: |
+            Redis memory usage is at {{ $value | humanize }}% of max.
+            Risk of OOM and key evictions.
+
+      # Alert: Connection pool exhaustion
+      - alert: RedisConnectionsNearLimit
+        expr: |
+          redis_connection_utilization_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis connections at {{ $value }}% of limit"
+          description: |
+            Redis connections are at {{ $value | humanize }}% of maxclients.
+            Check for connection leaks or increase maxclients.
+
+      # Alert: Slow operations detected
+      - alert: RedisSlowOperations
+        expr: |
+          redis_slow_operations_per_second > 10
+        for: 3m
+        labels:
+          severity: warning
+          layer: "{{ $labels.layer }}"
+        annotations:
+          summary: "Redis slow operations detected ({{ $value }}/sec)"
+          description: |
+            {{ $value | humanize }} slow operations per second detected.
+            Review slowlog for optimization opportunities.
+
+  - name: redis_slo_tracking
+    interval: 1m
+    rules:
+      # SLO: Cache hit ratio >= 85%
+      - record: slo_redis_cache_hit_ratio
+        expr: |
+          redis_cache_hit_ratio >= 85
+        labels:
+          slo: "cache_hit_ratio"
+          target: "85"
+
+      # SLO: Memory utilization < 80%
+      - record: slo_redis_memory_utilization
+        expr: |
+          redis_memory_utilization_percent < 80
+        labels:
+          slo: "memory_utilization"
+          target: "80"
+
+      # SLO Burn Rate (fast burn if < 85% for 1 hour)
+      - alert: RedisSLOBurnRateFast
+        expr: |
+          avg_over_time(slo_redis_cache_hit_ratio[1h]) < 0.85
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis cache SLO burning fast - 1h error budget consumed"
+          description: |
+            Cache hit ratio SLO has been below 85% for 1 hour.
+            2% monthly error budget consumed in 1 hour.
+
+      # SLO Burn Rate (slow burn if < 85% for 6 hours)
+      - alert: RedisSLOBurnRateSlow
+        expr: |
+          avg_over_time(slo_redis_cache_hit_ratio[6h]) < 0.85
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis cache SLO burning slowly - 6h error budget consumed"
+          description: |
+            Cache hit ratio SLO has been below 85% for 6 hours.
+            12% monthly error budget consumed.

@@ -1,0 +1,365 @@
+{
+  "pack_id": "retail-consumer-v1",
+  "pack_name": "Retail & Consumer Value Pack",
+  "version": "1.0.0",
+  "description": "Complete value model for retail, CPG, and consumer brands - omnichannel commerce, inventory optimization, personalized marketing, and store operations",
+  "industry": "Retail & Consumer",
+  "created_at": "2026-04-15",
+  "ontology": {
+    "node_types": {
+      "Capability": {
+        "description": "Retail and consumer capabilities and technology platforms",
+        "examples": [
+          "Omnichannel Order Management",
+          "Dynamic Pricing Engine",
+          "Demand Forecasting",
+          "Customer Data Platform",
+          "Workforce Management",
+          "Visual AI Search",
+          "Loss Prevention Analytics"
+        ]
+      },
+      "UseCase": {
+        "description": "Retail and consumer use cases and operational scenarios",
+        "examples": [
+          "Ship-from-Store",
+          "BOPIS (Buy Online Pickup In Store)",
+          "Same-Day Delivery",
+          "Personalized Promotions",
+          "Smart Scheduling",
+          "Visual Discovery",
+          "Real-time Shrink Detection"
+        ]
+      },
+      "Persona": {
+        "description": "Retail and consumer stakeholders and decision makers",
+        "examples": [
+          "Chief Merchandising Officer",
+          "VP Digital Commerce",
+          "VP Store Operations",
+          "Supply Chain Director",
+          "Marketing Analytics Lead",
+          "Loss Prevention Director"
+        ]
+      },
+      "ValueDriver": {
+        "description": "Retail and consumer value drivers and KPIs",
+        "examples": [
+          "Same-Store Sales Growth",
+          "Gross Margin Rate",
+          "Inventory Turns",
+          "Customer Lifetime Value",
+          "Net Promoter Score",
+          "Shrink Rate"
+        ]
+      }
+    },
+    "relationships": {
+      "ENABLES": {
+        "from": "Capability",
+        "to": "UseCase",
+        "properties": {
+          "enablement_type": ["REQUIRED", "ENHANCES", "OPTIONAL"],
+          "contribution_weight": "Float (0.0-1.0)"
+        }
+      },
+      "BENEFITS": {
+        "from": "UseCase",
+        "to": "Persona",
+        "properties": {
+          "benefit_type": ["REVENUE", "EFFICIENCY", "CUSTOMER_EXPERIENCE", "RISK_REDUCTION"],
+          "impact_level": ["TRANSFORMATIONAL", "SIGNIFICANT", "MODERATE", "MINOR"]
+        }
+      },
+      "DRIVES": {
+        "from": "Persona",
+        "to": "ValueDriver",
+        "properties": {
+          "driver_type": ["PRIMARY", "SECONDARY", "TERTIARY"],
+          "influence_weight": "Float (0.0-1.0)"
+        }
+      }
+    }
+  },
+  "entities": [
+    {
+      "type": "Capability",
+      "id": "rc-cap-001",
+      "name": "Omnichannel Order Management",
+      "description": "Unified order management system enabling ship-from-store, BOPIS, same-day delivery, and endless aisle",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "features": ["Inventory visibility", "Order routing", "Promise engine", "Fulfillment orchestration"],
+        "integration": ["POS", "E-commerce", "WMS", "Carriers", "Store systems"]
+      },
+      "confidence_score": 0.90
+    },
+    {
+      "type": "Capability",
+      "id": "rc-cap-002",
+      "name": "Dynamic Pricing Engine",
+      "description": "AI-powered pricing optimization for competitive positioning, markdown optimization, and promotion effectiveness",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "models": ["Elasticity modeling", "Competitive response", "Markdown optimization", "Promotional planning"],
+        "data_sources": ["Sales data", "Competitor prices", "Inventory levels", "Web traffic"]
+      },
+      "confidence_score": 0.88
+    },
+    {
+      "type": "Capability",
+      "id": "rc-cap-003",
+      "name": "Demand Forecasting",
+      "description": "ML-based demand forecasting for inventory planning, replenishment, and assortment optimization",
+      "category": "ANALYTICS",
+      "technical_specs": {
+        "models": ["Time series", "Causal models", "Hierarchical forecasting", "New product forecasting"],
+        "factors": ["Seasonality", "Promotions", "Weather", "Events", "Trends"]
+      },
+      "confidence_score": 0.85
+    },
+    {
+      "type": "Capability",
+      "id": "rc-cap-004",
+      "name": "Customer Data Platform",
+      "description": "Unified customer data platform enabling personalization, segmentation, and journey orchestration",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "capabilities": ["Identity resolution", "Segmentation", "Attribution", "Real-time activation"],
+        "channels": ["Email", "Mobile", "Web", "Social", "Store", "Contact center"]
+      },
+      "confidence_score": 0.87
+    },
+    {
+      "type": "Capability",
+      "id": "rc-cap-005",
+      "name": "Workforce Management",
+      "description": "AI-powered workforce optimization for scheduling, forecasting, and task management",
+      "category": "PLATFORM",
+      "technical_specs": {
+        "features": ["Labor forecasting", "Optimal scheduling", "Task management", "Time and attendance"],
+        "optimization": ["Labor laws", "Associate preferences", "Skill matching", "Traffic patterns"]
+      },
+      "confidence_score": 0.84
+    },
+    {
+      "type": "Capability",
+      "id": "rc-cap-006",
+      "name": "Visual AI Search",
+      "description": "Visual search and product discovery using computer vision and deep learning for similar item matching",
+      "category": "AI_SERVICE",
+      "technical_specs": {
+        "models": ["Image embedding", "Similarity matching", "Attribute extraction", "Style matching"],
+        "applications": ["Visual search", "Complete the look", "Similar items", "Trend detection"]
+      },
+      "confidence_score": 0.82
+    },
+    {
+      "type": "UseCase",
+      "id": "rc-uc-001",
+      "name": "Ship-from-Store",
+      "description": "Fulfill online orders from store inventory with intelligent order routing and store fulfillment optimization",
+      "operational_context": "E-commerce fulfillment",
+      "business_process": "Order fulfillment and inventory optimization",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.88
+    },
+    {
+      "type": "UseCase",
+      "id": "rc-uc-002",
+      "name": "BOPIS",
+      "description": "Buy Online Pickup In Store with seamless handoff experience and cross-sell opportunities",
+      "operational_context": "Omnichannel customer experience",
+      "business_process": "Customer acquisition and fulfillment",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.90
+    },
+    {
+      "type": "UseCase",
+      "id": "rc-uc-003",
+      "name": "Same-Day Delivery",
+      "description": "Same-day delivery fulfillment through store-based delivery, dark stores, or third-party logistics",
+      "operational_context": "Competitive fulfillment capability",
+      "business_process": "Last-mile delivery optimization",
+      "automation_level": "SEMI_AUTOMATED",
+      "confidence_score": 0.85
+    },
+    {
+      "type": "Persona",
+      "id": "rc-per-001",
+      "name": "Chief Merchandising Officer",
+      "description": "Merchandising leader responsible for assortment, pricing, inventory, and vendor relationships",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Merchandising",
+      "seniority_level": "C_SUITE",
+      "pain_points": [
+        "Markdown optimization",
+        "Inventory productivity",
+        "Competitive pricing",
+        "Assortment planning"
+      ],
+      "success_metrics": ["Gross margin", "Inventory turns", "Sell-through rate", "GMROI"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "rc-per-002",
+      "name": "VP Digital Commerce",
+      "description": "Digital commerce leader responsible for e-commerce, mobile, and omnichannel customer experience",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Digital",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Conversion rate optimization",
+        "Cart abandonment",
+        "Fulfillment costs",
+        "Competition from Amazon"
+      ],
+      "success_metrics": ["Digital sales", "Conversion rate", "AOV", "Customer acquisition cost"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "Persona",
+      "id": "rc-per-003",
+      "name": "VP Store Operations",
+      "description": "Store operations leader responsible for store performance, labor management, and customer experience",
+      "role_type": "EXECUTIVE_SPONSOR",
+      "department": "Store Operations",
+      "seniority_level": "VP",
+      "pain_points": [
+        "Labor productivity",
+        "Store fulfillment complexity",
+        "Associate turnover",
+        "Customer wait times"
+      ],
+      "success_metrics": ["Store productivity", "Labor cost percent", "NPS", "Fulfillment SLA"],
+      "decision_making_authority": "FINAL"
+    },
+    {
+      "type": "ValueDriver",
+      "id": "rc-vd-001",
+      "name": "Same-Store Sales Growth",
+      "description": "Year-over-year sales growth for stores open more than one year, excluding new store impact",
+      "category": "REVENUE",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": -5.0,
+      "typical_range_max": 15.0,
+      "industry_benchmarks": {
+        "strong": 8,
+        "good": 4,
+        "flat": 0,
+        "declining": -3
+      },
+      "kpis": ["Traffic", "Conversion", "Average transaction value", "Units per transaction"]
+    },
+    {
+      "type": "ValueDriver",
+      "id": "rc-vd-002",
+      "name": "Gross Margin Rate",
+      "description": "Gross profit as a percentage of net sales after cost of goods sold and markdowns",
+      "category": "PROFITABILITY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Percentage",
+      "typical_range_min": 20.0,
+      "typical_range_max": 60.0,
+      "industry_benchmarks": {
+        "luxury": 55,
+        "specialty": 45,
+        "department": 35,
+        "discount": 25
+      }
+    },
+    {
+      "type": "ValueDriver",
+      "id": "rc-vd-003",
+      "name": "Inventory Turns",
+      "description": "Number of times inventory is sold and replaced over a period, measuring inventory efficiency",
+      "category": "CAPITAL_EFFICIENCY",
+      "quantification_method": "FORMULA",
+      "unit_of_measure": "Ratio",
+      "typical_range_min": 2.0,
+      "typical_range_max": 15.0,
+      "industry_benchmarks": {
+        "grocery": 12,
+        "fashion": 4,
+        "electronics": 8,
+        "furniture": 3
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "type": "ENABLES",
+      "from": "rc-cap-001",
+      "to": "rc-uc-001",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.95,
+      "evidence_quote": "OMS essential for ship-from-store fulfillment"
+    },
+    {
+      "type": "ENABLES",
+      "from": "rc-cap-001",
+      "to": "rc-uc-002",
+      "enablement_type": "REQUIRED",
+      "contribution_weight": 0.9,
+      "evidence_quote": "Unified inventory enables BOPIS availability"
+    },
+    {
+      "type": "ENABLES",
+      "from": "rc-cap-002",
+      "to": "rc-uc-001",
+      "enablement_type": "ENHANCES",
+      "contribution_weight": 0.7,
+      "evidence_quote": "Dynamic pricing optimizes store fulfillment margins"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "rc-uc-001",
+      "to": "rc-per-002",
+      "benefit_type": "CUSTOMER_EXPERIENCE",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "Ship-from-store improves delivery speed and inventory utilization"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "rc-uc-002",
+      "to": "rc-per-001",
+      "benefit_type": "REVENUE",
+      "impact_level": "SIGNIFICANT",
+      "evidence_quote": "BOPIS drives store traffic and cross-selling"
+    },
+    {
+      "type": "BENEFITS",
+      "from": "rc-uc-003",
+      "to": "rc-per-003",
+      "benefit_type": "EFFICIENCY",
+      "impact_level": "MODERATE",
+      "evidence_quote": "Same-day delivery requires store operational excellence"
+    },
+    {
+      "type": "DRIVES",
+      "from": "rc-per-001",
+      "to": "rc-vd-002",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.95,
+      "evidence_quote": "CMO directly accountable for gross margin performance"
+    },
+    {
+      "type": "DRIVES",
+      "from": "rc-per-002",
+      "to": "rc-vd-001",
+      "driver_type": "PRIMARY",
+      "influence_weight": 0.9,
+      "evidence_quote": "Digital commerce VP drives same-store sales growth through omnichannel"
+    },
+    {
+      "type": "DRIVES",
+      "from": "rc-per-003",
+      "to": "rc-vd-003",
+      "driver_type": "SECONDARY",
+      "influence_weight": 0.7,
+      "evidence_quote": "Store operations contributes to inventory productivity"
+    }
+  ]
+}

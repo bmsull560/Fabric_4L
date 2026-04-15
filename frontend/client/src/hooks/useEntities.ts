@@ -81,35 +81,68 @@ function mapEntityType(type: string): Entity['type'] {
   return typeMap[type] || 'Capability';
 }
 
+export interface GraphEntity {
+  id: string;
+  name: string;
+  entity_type: string;
+  confidence_score: number;
+  description?: string;
+  properties?: Record<string, unknown>;
+}
+
+export interface EntityContextResponse {
+  entity_id: string;
+  center: GraphEntity;
+  neighbors: GraphEntity[];
+  relationships: Array<{
+    source: string;
+    target: string;
+    type: string;
+  }>;
+  entity_count: number;
+  relationship_count: number;
+}
+
 /**
- * Get entity by ID
- * Note: Layer 3 doesn't have a direct GET /entities/{id}
- * We use GraphRAG query to get entity details
+ * Get entity by ID using the entity context endpoint.
+ * Fetches the entity and its immediate neighborhood (1 hop).
+ *
+ * @param id - Entity ID to fetch
+ * @returns Query result with entity details
+ *
+ * @example
+ * const { data, isLoading } = useEntity('entity-123');
+ * // data contains the entity with its properties
  */
 export function useEntity(id: string | null) {
-  return useQuery({
+  return useQuery<Entity, Error>({
     queryKey: QK.entities.detail(id || ''),
-    queryFn: async () => {
+    queryFn: async (): Promise<Entity> => {
       if (!id) throw new Error('No entity ID provided');
-      // Use graph query to get entity details
-      const response = await apiClient.post('l3', '/query/graph', {
-        query: `Find entity with ID ${id}`,
-        max_hops: 1,
-        max_results: 1,
-      });
-      const entities = parseEntityResults(response.data?.entities);
-      if (entities.length === 0) throw new Error('Entity not found');
-      const e = entities[0];
+
+      const encodedId = encodeURIComponent(id);
+      const response = await apiClient.get<EntityContextResponse>(
+        'l3',
+        `/entity/${encodedId}/context?hops=1`
+      );
+
+      const context = response.data;
+      if (!context?.center) {
+        throw new Error('Entity not found');
+      }
+
+      const center = context.center;
       return {
-        id: e.id || e.entity_id || id,
-        name: e.name || e.title || 'Unknown',
-        type: mapEntityType(e.entity_type || e.type || ''),
-        confidence: e.confidence_score ?? e.confidence ?? 0.8,
-        description: e.description,
-        properties: e.properties || e.data,
+        id: center.id || id,
+        name: center.name || 'Unknown',
+        type: mapEntityType(center.entity_type || ''),
+        confidence: center.confidence_score ?? 0.8,
+        description: center.description,
+        properties: center.properties,
       };
     },
     enabled: !!id,
+    staleTime: STALE_TIME.detail,
   });
 }
 

@@ -14,24 +14,6 @@ from fastapi.testclient import TestClient
 class TestRBACEnforcement:
     """Test suite for RBAC policy enforcement."""
 
-    @pytest.fixture
-    def standard_user_token(self):
-        """Standard user with limited permissions."""
-        return {
-            "sub": "user-123",
-            "tenant_id": "tenant-a",
-            "role": "standard",
-        }
-
-    @pytest.fixture
-    def admin_user_token(self):
-        """Admin user with full permissions."""
-        return {
-            "sub": "admin-456",
-            "tenant_id": "tenant-a",
-            "role": "admin",
-        }
-
     def test_standard_user_blocked_from_admin_endpoints(self, client: TestClient, standard_user_token):
         """P0: Standard users cannot access admin endpoints."""
         admin_endpoints = [
