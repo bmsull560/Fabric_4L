@@ -160,7 +160,7 @@
           "name": "AI Feature Monetization",
           "description": "Calculate value from AI feature premium pricing using sw-f-006",
           "type": "value_calculation",
-          "priority": "low",
+          "priority": "medium",
           "assigned_role": "value_engineer",
           "estimated_hours": 4,
           "dependencies": ["sw-disc-001"],

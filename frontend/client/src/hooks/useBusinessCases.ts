@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { STALE_TIME } from './useApiShared';
+import { STALE_TIME, BusinessCaseApiError } from './useApiShared';
 import {
   parseBusinessCaseNarrativeOutput,
   parseBusinessCaseRoiOutput,
@@ -48,6 +48,18 @@ export interface BusinessCaseFilters {
   company?: string;
 }
 
+export interface CreateBusinessCasePayload {
+  name: string;
+  company: string;
+  description?: string;
+}
+
+export interface CreateBusinessCaseResponse {
+  workflow_id: string;
+  name: string;
+  status: string;
+  created_at: string;
+}
 
 /**
  * Get business case from L4 agent workflow results
@@ -178,7 +190,7 @@ export function useBusinessCases(filters: BusinessCaseFilters = {}) {
 
 /**
  * Create a new business case
- * 
+ *
  * @example
  * ```tsx
  * const createCase = useCreateBusinessCase();
@@ -188,8 +200,8 @@ export function useBusinessCases(filters: BusinessCaseFilters = {}) {
 export function useCreateBusinessCase() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (payload: { name: string; company: string; description?: string }) => {
+  return useMutation<CreateBusinessCaseResponse, BusinessCaseApiError, CreateBusinessCasePayload>({
+    mutationFn: async (payload) => {
       const response = await apiClient.post('l4', '/workflows', {
         workflow_type: 'business_case',
         name: payload.name,
@@ -198,17 +210,20 @@ export function useCreateBusinessCase() {
           description: payload.description,
         },
       });
-      return response.data;
+      return response.data as CreateBusinessCaseResponse;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.businessCases.all });
+      queryClient.invalidateQueries({ queryKey: ['business-cases'] });
+    },
+    onError: (error) => {
+      console.error('Failed to create business case:', error.message);
     },
   });
 }
 
 /**
  * Archive a business case
- * 
+ *
  * @example
  * ```tsx
  * const archiveCase = useArchiveBusinessCase();
@@ -218,13 +233,16 @@ export function useCreateBusinessCase() {
 export function useArchiveBusinessCase() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (caseId: string) => {
+  return useMutation<unknown, BusinessCaseApiError, string>({
+    mutationFn: async (caseId) => {
       const response = await apiClient.post('l4', `/workflows/${caseId}/archive`, {});
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QK.businessCases.all });
+      queryClient.invalidateQueries({ queryKey: ['business-cases'] });
+    },
+    onError: (error) => {
+      console.error('Failed to archive business case:', error.message);
     },
   });
 }

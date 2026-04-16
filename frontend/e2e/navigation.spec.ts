@@ -26,7 +26,7 @@ test.describe('Navigation & Access Control', () => {
       await setUserTier(page, 'standard');
     });
 
-    test('can access home dashboard', async ({ page }) => {
+    test('can access home dashboard @smoke', async ({ page }) => {
       await page.goto('/home');
       await expect(page).toHaveURL(/\/home/);
       await expect(appShell.homeLink).toBeVisible();
@@ -37,7 +37,7 @@ test.describe('Navigation & Access Control', () => {
       await expect(page).toHaveURL(/\/library\/packs/);
     });
 
-    test('can access business cases', async ({ page }) => {
+    test('can access business cases @smoke', async ({ page }) => {
       await page.goto('/deliver/cases');
       await expect(page).toHaveURL(/\/deliver\/cases/);
     });

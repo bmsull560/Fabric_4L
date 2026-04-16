@@ -10,13 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies to system site-packages
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright browsers
-RUN playwright install chromium
-RUN playwright install-deps chromium
+RUN python -m playwright install chromium
+RUN python -m playwright install-deps chromium
 
 # Stage 2: Runtime - minimal image with only runtime dependencies
 FROM python:3.11.11-slim-bookworm AS runtime
@@ -46,14 +46,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+# Create non-root user with home directory
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 
 WORKDIR /app
 
-# Copy Python packages from builder
-COPY --from=builder /root/.local /home/appuser/.local
-ENV PATH=/home/appuser/.local/bin:$PATH
+# Copy Python packages from builder (system site-packages)
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+ENV PATH=/usr/local/bin:$PATH
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app/src
 
 # Copy Playwright browsers from builder
 COPY --from=builder /root/.cache/ms-playwright /home/appuser/.cache/ms-playwright

@@ -154,6 +154,47 @@
   - [x] Added useCallback for event handlers in OpportunityFinder (performance)
   - [x] Improved state update logic with functional updates (correctness)
   - [x] All refinements focused and <100 lines each
+- [x] **Phase 2C: E2E Test Coverage — COMPLETE**
+  - [x] BusinessCaseList E2E tests (12 tests: load, filters, sorting, modal, access)
+  - [x] OpportunityFinder E2E tests (11 tests: filters, expand, navigation, access)
+  - [x] WhitespaceAnalysis E2E tests (10 tests: views, filters, access control)
+  - [x] SourceConfiguration E2E tests (10 tests: filters, cards, admin-only)
+  - [x] Admin System Routes E2E tests (14 tests: settings tabs, health grid, access)
+  - [x] 6 new Page Objects created with semantic selectors
+  - [x] All 57 new E2E tests following existing patterns
+- [x] **Phase 2D: Full E2E Regression Suite — EXECUTED**
+  - [x] Fixed port mismatch: Vite 3000 → 3001 (aligned with Playwright config)
+  - [x] Full suite executed: ~1015 tests across 16 specs (Chromium + Firefox)
+  - [x] Infrastructure blocker identified: Backend layers (8001-8006) not running
+  - [x] Comprehensive regression report generated (E2E_REGRESSION_REPORT.md)
+  - [x] **Production-Ready Recovery Sequence created:**
+    - `scripts/check-backend-health.ps1` — Endpoint behavior validation (not just TCP)
+      - Prefers `/ready` over `/health` for readiness gating
+      - Content pattern validation for service-specific health
+    - `scripts/e2e-recovery-sequence.ps1` — Orchestrated 5-step recovery
+      - **Hard gating:** Exits on health/smoke failure (use `-AllowDegradedHealth` to override)
+      - **@smoke contract enforcement:** Fails immediately if zero tests found (minimum: 3 tests)
+      - **@smoke tagged tests:** Uses Playwright grep (not hardcoded file names)
+      - **Cross-layer composition:** Navigation (app shell) + List (API data) + Admin (mutation)
+      - **JSON artifact output:** Machine-readable for CI integration
+      - **4 classification buckets:** Infra, Product, Env-Coupled, Flaky
+      - Step 1: Start backend services
+      - Step 2: Health check verification (readiness > liveness)
+      - Step 3: @smoke tagged smoke test (cross-layer validation)
+      - Step 4: Full E2E suite (only on validated environment)
+      - Step 5: Failure classification with env-coupled bucket
+  - [x] **@smoke Contract implemented:**
+    - 5 tests tagged across 3 spec files
+    - Defensive validation in recovery script (fails if zero found)
+    - Minimum count warning (3+ tests for cross-layer coverage)
+    - Idempotent toggle test with state reversion
+  - [ ] Execute recovery sequence after backend services are running
+  - [x] **Recovery Attempt #1 — BLOCKED (2026-04-16):**
+    - **Blocker:** Missing Class A Secret `OPENAI_API_KEY`
+    - **Health Check:** 0/6 services healthy (all unreachable)
+    - **Action Taken:** Documented blocker with evidence, updated recovery script with pre-flight check
+    - **Status:** Awaiting secret owner or staging environment credentials
+    - **Next Step:** Resume from Phase 1 when secret available
 
 ---
 

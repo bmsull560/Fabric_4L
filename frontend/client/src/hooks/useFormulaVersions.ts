@@ -11,16 +11,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
-
-// ── Error Class ─────────────────────────────────────────────────────────────
-
-export class FormulaVersionsApiError extends BaseApiError {
-  constructor(message: string, statusCode?: number, responseData?: unknown) {
-    super(message, statusCode, responseData);
-    this.name = 'FormulaVersionsApiError';
-  }
-}
+import { withApiError, FormulaVersionsApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -120,5 +111,3 @@ export function useFormulaGovernance(formulaId: string | null) {
     retryDelay: RETRY_CONFIG.retryDelay,
   });
 }
-
-// Types are already exported via export interface declarations above

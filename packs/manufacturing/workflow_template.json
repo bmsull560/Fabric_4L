@@ -176,7 +176,7 @@
           "name": "Energy Savings Assessment",
           "description": "Calculate potential energy cost savings",
           "type": "value_calculation",
-          "priority": "low",
+          "priority": "medium",
           "assigned_role": "value_engineer",
           "estimated_hours": 2,
           "dependencies": ["disc-004"],

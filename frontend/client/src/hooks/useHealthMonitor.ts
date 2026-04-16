@@ -11,16 +11,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
-
-// ── Error Class ─────────────────────────────────────────────────────────────
-
-export class HealthMonitorApiError extends BaseApiError {
-  constructor(message: string, statusCode?: number, responseData?: unknown) {
-    super(message, statusCode, responseData);
-    this.name = 'HealthMonitorApiError';
-  }
-}
+import { withApiError, HealthMonitorApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -92,7 +83,7 @@ export function useSystemHealth() {
     queryKey: QK.platform.health,
     queryFn: () => withApiError(fetchSystemHealth(), HealthMonitorApiError),
     staleTime: STALE_TIME.realtime,
-    refetchInterval: 30000, // 30 seconds for live monitoring
+    refetchInterval: STALE_TIME.poll, // 30 seconds for live monitoring
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
@@ -114,10 +105,8 @@ export function useHealthAlerts() {
     queryKey: [...QK.platform.health, 'alerts'] as const,
     queryFn: () => withApiError(fetchHealthAlerts(), HealthMonitorApiError),
     staleTime: STALE_TIME.poll,
-    refetchInterval: 60000, // 1 minute
+    refetchInterval: STALE_TIME.stats, // 1 minute
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
 }
-
-// Types are already exported via export interface declarations above

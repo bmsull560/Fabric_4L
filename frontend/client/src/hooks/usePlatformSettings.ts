@@ -11,16 +11,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
-
-// ── Error Class ─────────────────────────────────────────────────────────────
-
-export class PlatformSettingsApiError extends BaseApiError {
-  constructor(message: string, statusCode?: number, responseData?: unknown) {
-    super(message, statusCode, responseData);
-    this.name = 'PlatformSettingsApiError';
-  }
-}
+import { withApiError, PlatformSettingsApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 

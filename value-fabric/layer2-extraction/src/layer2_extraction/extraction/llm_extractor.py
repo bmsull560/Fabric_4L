@@ -348,7 +348,8 @@ class EntityExtractor:
             )
 
             entities: list[T] = []
-            for entity in getattr(response, entity_attr, []):
+            entities_list: list[T] = getattr(response, entity_attr, [])
+            for entity in entities_list:
                 if entity.confidence >= confidence_threshold:
                     entity.extraction_job_id = extraction_job_id
                     if hasattr(entity, "source_refs"):

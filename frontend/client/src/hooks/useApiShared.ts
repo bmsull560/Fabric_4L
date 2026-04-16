@@ -83,10 +83,50 @@ export class VariableApiError extends BaseApiError {
   }
 }
 
+export class HealthMonitorApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'HealthMonitorApiError';
+  }
+}
+
+export class FormulaVersionsApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'FormulaVersionsApiError';
+  }
+}
+
+export class FormulaDependentsApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'FormulaDependentsApiError';
+  }
+}
+
+export class BusinessCaseApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'BusinessCaseApiError';
+  }
+}
+
+export class PlatformSettingsApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'PlatformSettingsApiError';
+  }
+}
+
 export type ApiErrorClass =
   | typeof FormulaApiError
   | typeof BenchmarkApiError
   | typeof VariableApiError
+  | typeof HealthMonitorApiError
+  | typeof FormulaVersionsApiError
+  | typeof FormulaDependentsApiError
+  | typeof BusinessCaseApiError
+  | typeof PlatformSettingsApiError
   | typeof BaseApiError;
 
 // ── Error wrapper ─────────────────────────────────────────────────────────────
@@ -104,21 +144,29 @@ export async function withApiError<T, E extends BaseApiError>(
     // Handle ApiError instances (from apiClient interceptor)
     if (err instanceof Error && 'statusCode' in err) {
       const apiErr = err as { statusCode?: number; errorCode?: string; traceId?: string | null };
-      throw new ErrorClass(
+      const newError = new ErrorClass(
         err.message,
         apiErr.statusCode,
         { code: apiErr.errorCode, traceId: apiErr.traceId }
       );
+      (newError as Error).cause = err;
+      throw newError;
     }
     // Handle axios-style errors
     if (err instanceof Error && 'response' in err) {
       const axiosErr = err as { response?: { status?: number; data?: unknown } };
-      throw new ErrorClass(
+      const newError = new ErrorClass(
         err.message,
         axiosErr.response?.status,
         axiosErr.response?.data
       );
+      (newError as Error).cause = err;
+      throw newError;
     }
-    throw new ErrorClass(err instanceof Error ? err.message : 'Unknown error');
+    const newError = new ErrorClass(err instanceof Error ? err.message : 'Unknown error');
+    if (err instanceof Error) {
+      (newError as Error).cause = err;
+    }
+    throw newError;
   }
 }

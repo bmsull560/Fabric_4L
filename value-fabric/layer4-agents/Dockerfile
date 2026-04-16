@@ -10,9 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies to user site
+# Install Python dependencies to system site-packages
 COPY requirements.lock .
-RUN pip install --no-cache-dir --user -r requirements.lock
+RUN pip install --no-cache-dir -r requirements.lock
 
 # Stage 2: Runtime - minimal image with only runtime libraries
 FROM python:3.11.11-slim-bookworm AS runtime
@@ -22,15 +22,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+# Create non-root user with home directory
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /root/.local /home/appuser/.local
-ENV PATH=/home/appuser/.local/bin:$PATH
-ENV PYTHONPATH=/home/appuser/.local/lib/python3.11/site-packages:/app/src
+# Copy installed packages from builder (site-packages location)
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Ensure PATH includes local bin
+ENV PATH=/usr/local/bin:$PATH
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app/src
 
 # Copy source code
 COPY src/ ./src/

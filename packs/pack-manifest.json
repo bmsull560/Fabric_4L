@@ -16,7 +16,8 @@
       "variable_count": 33,
       "entity_count": 13,
       "path": "packs/life-sciences",
-      "tags": ["clinical-trials", "regulatory", "manufacturing", "rnd"]
+      "tags": ["clinical-trials", "regulatory", "manufacturing", "rnd"],
+      "created_at": "2026-04-15"
     },
     {
       "pack_id": "manufacturing-v1",
@@ -30,7 +31,8 @@
       "variable_count": 28,
       "entity_count": 13,
       "path": "packs/manufacturing",
-      "tags": ["oee", "quality", "maintenance", "energy"]
+      "tags": ["oee", "quality", "maintenance", "energy"],
+      "created_at": "2026-04-15"
     },
     {
       "pack_id": "software-v1",
@@ -44,7 +46,8 @@
       "variable_count": 30,
       "entity_count": 13,
       "path": "packs/software",
-      "tags": ["saas", "acquisition", "retention", "platform-engineering"]
+      "tags": ["saas", "acquisition", "retention", "platform-engineering"],
+      "created_at": "2026-04-15"
     },
     {
       "pack_id": "financial-services-v1",
