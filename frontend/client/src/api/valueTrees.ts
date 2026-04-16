@@ -1,12 +1,17 @@
 /**
  * Value Trees API Client
- * 
+ *
  * Provides typed methods for Layer 3 Value Tree endpoints:
  * - GET /v1/value-trees/{entity_id} - Get complete value tree
  * - GET /v1/value-trees/{entity_id}/paths - Get all paths to value drivers
  */
 
 import { apiClient } from './client';
+import {
+  ValueTreeResponseSchema,
+  ValueTreePathListSchema,
+  parseResponseOrThrow,
+} from '@/lib/schemas';
 
 export interface ValueTreeNode {
   id: string;
@@ -74,15 +79,20 @@ export async function getValueTree(
   params.set('max_depth', String(Math.max(MIN_DEPTH_LIMIT, Math.min(maxDepth, MAX_DEPTH_LIMIT))));
 
   const response = await apiClient.get(
-    'l3', 
+    'l3',
     `/value-trees/${encodeURIComponent(entityId)}?${params.toString()}`
   );
-  
+
   if (!response.data) {
     throw new Error('Empty response from value tree API');
   }
 
-  return response.data as ValueTreeResponse;
+  // Runtime validation with Zod - catches API contract drift early
+  return parseResponseOrThrow(
+    ValueTreeResponseSchema,
+    response.data,
+    `GET /value-trees/${entityId}`
+  );
 }
 
 /**
@@ -110,5 +120,10 @@ export async function getValueTreePaths(
     throw new Error('Empty response from value tree paths API');
   }
 
-  return response.data as ValueTreePath[];
+  // Runtime validation with Zod - catches API contract drift early
+  return parseResponseOrThrow(
+    ValueTreePathListSchema,
+    response.data,
+    `GET /value-trees/${entityId}/paths`
+  );
 }

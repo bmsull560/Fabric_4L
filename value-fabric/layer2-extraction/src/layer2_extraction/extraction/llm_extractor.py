@@ -33,6 +33,14 @@ from layer2_extraction.models import (
     ValueCategory,
     ValueDriver,
 )
+from layer2_extraction.models.extraction_response import (
+    CapabilityExtractionResponse,
+    FeatureExtractionResponse,
+    PersonaExtractionResponse,
+    RelationshipExtractionResponse,
+    UseCaseExtractionResponse,
+    ValueDriverExtractionResponse,
+)
 from layer2_extraction.shared.llm_client import CostRecord, LLMClient
 
 from .prompt_loader import render_entity_prompt, render_relationship_prompt
@@ -400,210 +408,47 @@ class EntityExtractor:
     async def _extract_capabilities(
         self, text: str, source_url: str, extraction_job_id: str, confidence_threshold: float
     ) -> list[Capability]:
-        """Extract capabilities from text using structured outputs.
-
-        Uses OpenAI's structured output API with Pydantic model validation
-        for type-safe extraction with automatic schema enforcement.
-        """
-        from ..models.extraction_response import CapabilityExtractionResponse
-
-        prompt = render_entity_prompt(
-            entity_type="capability",
-            text=text,
-            confidence_threshold=confidence_threshold,
+        """Extract capabilities from text using structured outputs."""
+        return await self._extract_entities_generic(
+            "capability", text, source_url, extraction_job_id, confidence_threshold,
+            CapabilityExtractionResponse, "capabilities", "extract_capabilities"
         )
-
-        try:
-            response, _ = await self.client.chat_completion_structured(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an enterprise ontology extractor. Be precise and conservative.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                extraction_job_id=extraction_job_id,
-                endpoint="extract_capabilities",
-                response_format=CapabilityExtractionResponse,
-                temperature=0.0,
-            )
-
-            # Response is already validated Pydantic model
-            capabilities = []
-            for cap in response.capabilities:
-                if cap.confidence >= confidence_threshold:
-                    # Add provenance metadata
-                    cap.source_refs = [source_url]
-                    cap.extraction_job_id = extraction_job_id
-                    capabilities.append(cap)
-
-            return capabilities
-
-        except ValidationError as e:
-            raise LLMExtractionError(f"Failed to extract capabilities - schema validation error: {e}")
-        except Exception as e:
-            raise LLMExtractionError(f"Failed to extract capabilities: {e}")
 
     async def _extract_use_cases(
         self, text: str, source_url: str, extraction_job_id: str, confidence_threshold: float
     ) -> list[UseCase]:
         """Extract use cases from text using structured outputs."""
-        from ..models.extraction_response import UseCaseExtractionResponse
-
-        prompt = render_entity_prompt(
-            entity_type="usecase",
-            text=text,
-            confidence_threshold=confidence_threshold,
+        return await self._extract_entities_generic(
+            "usecase", text, source_url, extraction_job_id, confidence_threshold,
+            UseCaseExtractionResponse, "use_cases", "extract_use_cases"
         )
-
-        try:
-            response, _ = await self.client.chat_completion_structured(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an enterprise ontology extractor. Be precise and conservative.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                extraction_job_id=extraction_job_id,
-                endpoint="extract_use_cases",
-                response_format=UseCaseExtractionResponse,
-                temperature=0.0,
-            )
-
-            use_cases = []
-            for uc in response.use_cases:
-                if uc.confidence >= confidence_threshold:
-                    uc.extraction_job_id = extraction_job_id
-                    use_cases.append(uc)
-
-            return use_cases
-
-        except ValidationError as e:
-            raise LLMExtractionError(f"Failed to extract use cases - schema validation error: {e}")
-        except Exception as e:
-            raise LLMExtractionError(f"Failed to extract use cases: {e}")
 
     async def _extract_personas(
         self, text: str, source_url: str, extraction_job_id: str, confidence_threshold: float
     ) -> list[Persona]:
         """Extract personas from text using structured outputs."""
-        from ..models.extraction_response import PersonaExtractionResponse
-
-        prompt = render_entity_prompt(
-            entity_type="persona",
-            text=text,
-            confidence_threshold=confidence_threshold,
+        return await self._extract_entities_generic(
+            "persona", text, source_url, extraction_job_id, confidence_threshold,
+            PersonaExtractionResponse, "personas", "extract_personas"
         )
-
-        try:
-            response, _ = await self.client.chat_completion_structured(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an enterprise ontology extractor. Be precise and conservative.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                extraction_job_id=extraction_job_id,
-                endpoint="extract_personas",
-                response_format=PersonaExtractionResponse,
-                temperature=0.0,
-            )
-
-            personas = []
-            for p in response.personas:
-                if p.confidence >= confidence_threshold:
-                    p.extraction_job_id = extraction_job_id
-                    personas.append(p)
-
-            return personas
-
-        except ValidationError as e:
-            raise LLMExtractionError(f"Failed to extract personas - schema validation error: {e}")
-        except Exception as e:
-            raise LLMExtractionError(f"Failed to extract personas: {e}")
 
     async def _extract_value_drivers(
         self, text: str, source_url: str, extraction_job_id: str, confidence_threshold: float
     ) -> list[ValueDriver]:
         """Extract value drivers from text using structured outputs."""
-        from ..models.extraction_response import ValueDriverExtractionResponse
-
-        prompt = render_entity_prompt(
-            entity_type="valuedriver",
-            text=text,
-            confidence_threshold=confidence_threshold,
+        return await self._extract_entities_generic(
+            "valuedriver", text, source_url, extraction_job_id, confidence_threshold,
+            ValueDriverExtractionResponse, "value_drivers", "extract_value_drivers"
         )
-
-        try:
-            response, _ = await self.client.chat_completion_structured(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an enterprise ontology extractor. Be precise and conservative.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                extraction_job_id=extraction_job_id,
-                endpoint="extract_value_drivers",
-                response_format=ValueDriverExtractionResponse,
-                temperature=0.0,
-            )
-
-            value_drivers = []
-            for vd in response.value_drivers:
-                if vd.confidence >= confidence_threshold:
-                    vd.extraction_job_id = extraction_job_id
-                    value_drivers.append(vd)
-
-            return value_drivers
-
-        except ValidationError as e:
-            raise LLMExtractionError(f"Failed to extract value drivers - schema validation error: {e}")
-        except Exception as e:
-            raise LLMExtractionError(f"Failed to extract value drivers: {e}")
 
     async def _extract_features(
         self, text: str, source_url: str, extraction_job_id: str, confidence_threshold: float
     ) -> list[Feature]:
         """Extract features from text using structured outputs."""
-        from ..models.extraction_response import FeatureExtractionResponse
-
-        prompt = render_entity_prompt(
-            entity_type="feature",
-            text=text,
-            confidence_threshold=confidence_threshold,
+        return await self._extract_entities_generic(
+            "feature", text, source_url, extraction_job_id, confidence_threshold,
+            FeatureExtractionResponse, "features", "extract_features"
         )
-
-        try:
-            response, _ = await self.client.chat_completion_structured(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an enterprise ontology extractor. Be precise and conservative.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                extraction_job_id=extraction_job_id,
-                endpoint="extract_features",
-                response_format=FeatureExtractionResponse,
-                temperature=0.0,
-            )
-
-            features = []
-            for f in response.features:
-                if f.confidence >= confidence_threshold:
-                    f.source_refs = [source_url]
-                    f.extraction_job_id = extraction_job_id
-                    features.append(f)
-
-            return features
-
-        except ValidationError as e:
-            raise LLMExtractionError(f"Failed to extract features - schema validation error: {e}")
-        except Exception as e:
-            raise LLMExtractionError(f"Failed to extract features: {e}")
 
 
 class RelationshipExtractor:
@@ -651,8 +496,6 @@ class RelationshipExtractor:
         Returns:
             List of relationships with evidence
         """
-        from ..models.extraction_response import RelationshipExtractionResponse
-
         total_entities = sum(len(entity_items) for entity_items in entities.values())
         if total_entities < 2:
             return []

@@ -1,0 +1,124 @@
+/**
+ * Formula Versions React Query Hooks
+ * 
+ * Server state management for formula versioning:
+ * - useFormulaVersions: Fetch version history for a formula
+ * - useFormulaGovernance: Fetch governance metadata with versions
+ * 
+ * Connected to Layer 3 formula governance API.
+ */
+
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
+import { QK } from './queryKeys';
+import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+
+// ── Error Class ─────────────────────────────────────────────────────────────
+
+export class FormulaVersionsApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'FormulaVersionsApiError';
+  }
+}
+
+// ── Types ───────────────────────────────────────────────────────────────────
+
+export interface FormulaVersion {
+  version: string;
+  formula_id: string;
+  status: 'draft' | 'under_review' | 'approved' | 'active' | 'deprecated' | 'retired';
+  created_at: string;
+  created_by: string;
+  change_summary: string;
+  previous_version: string | null;
+}
+
+export interface FormulaGovernance {
+  formula_id: string;
+  current_version: string;
+  status: string;
+  owner: string | null;
+  department: string | null;
+  review_cycle_days: number;
+  approved_by: string | null;
+  approved_at: string | null;
+  last_reviewed_at: string | null;
+  next_review_at: string | null;
+  versions: FormulaVersion[];
+}
+
+// ── Fetch Functions ─────────────────────────────────────────────────────────
+
+async function fetchFormulaVersions(formulaId: string, includeRetired = false): Promise<FormulaVersion[]> {
+  const response = await apiClient.get(
+    'l3',
+    `/formulas/${encodeURIComponent(formulaId)}/versions?include_retired=${includeRetired}`
+  );
+  return response.data as FormulaVersion[];
+}
+
+async function fetchFormulaGovernance(formulaId: string): Promise<FormulaGovernance> {
+  const response = await apiClient.get(
+    'l3',
+    `/formulas/${encodeURIComponent(formulaId)}/governance`
+  );
+  return response.data as FormulaGovernance;
+}
+
+// ── Hooks ───────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch version history for a formula
+ * 
+ * @param formulaId - Formula ID to fetch versions for (null to disable)
+ * @param includeRetired - Whether to include retired versions
+ * @returns Query result with version list
+ * 
+ * @example
+ * ```tsx
+ * const { data: versions, isLoading } = useFormulaVersions('formula-123');
+ * // versions: [{ version: '1.2.0', status: 'active', created_at: '...', ... }]
+ * ```
+ */
+export function useFormulaVersions(formulaId: string | null, includeRetired = false) {
+  return useQuery<FormulaVersion[], FormulaVersionsApiError>({
+    queryKey: [...QK.formulas.all, 'versions', formulaId, includeRetired] as const,
+    queryFn: async () => {
+      if (!formulaId) throw new FormulaVersionsApiError('No formula ID provided');
+      return withApiError(fetchFormulaVersions(formulaId, includeRetired), FormulaVersionsApiError);
+    },
+    enabled: !!formulaId,
+    staleTime: STALE_TIME.detail,
+    retry: RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
+  });
+}
+
+/**
+ * Fetch governance metadata including version history
+ * 
+ * @param formulaId - Formula ID to fetch governance for (null to disable)
+ * @returns Query result with governance data including versions
+ * 
+ * @example
+ * ```tsx
+ * const { data: governance } = useFormulaGovernance('formula-123');
+ * // governance: { owner: '...', versions: [...], status: '...', ... }
+ * ```
+ */
+export function useFormulaGovernance(formulaId: string | null) {
+  return useQuery<FormulaGovernance, FormulaVersionsApiError>({
+    queryKey: [...QK.formulas.all, 'governance', formulaId] as const,
+    queryFn: async () => {
+      if (!formulaId) throw new FormulaVersionsApiError('No formula ID provided');
+      return withApiError(fetchFormulaGovernance(formulaId), FormulaVersionsApiError);
+    },
+    enabled: !!formulaId,
+    staleTime: STALE_TIME.detail,
+    retry: RETRY_CONFIG.maxRetries,
+    retryDelay: RETRY_CONFIG.retryDelay,
+  });
+}
+
+// Types are already exported via export interface declarations above

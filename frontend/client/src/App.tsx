@@ -33,6 +33,12 @@ const BenchmarkPolicies      = lazy(() => import("./pages/admin/BenchmarkPolicie
 const VariableRegistry       = lazy(() => import("./pages/admin/VariableRegistry"));
 const PackManagement         = lazy(() => import("./pages/admin/PackManagement"));
 const PermissionsAdmin       = lazy(() => import("./pages/admin/PermissionsAdmin"));
+const PlatformSettings       = lazy(() => import("./pages/admin/PlatformSettings"));
+const HealthMonitor          = lazy(() => import("./pages/admin/HealthMonitor"));
+const BusinessCaseList       = lazy(() => import("./pages/BusinessCaseList"));
+const OpportunityFinder      = lazy(() => import("./pages/OpportunityFinder"));
+const WhitespaceAnalysis     = lazy(() => import("./pages/WhitespaceAnalysis"));
+const SourceConfiguration    = lazy(() => import("./pages/SourceConfiguration"));
 const NotFound               = lazy(() => import("./pages/NotFound"));
 const Login                  = lazy(() => import("./pages/Login"));
 
@@ -222,7 +228,7 @@ function Router() {
           </Route>
           <Route path="/discover/sources">
             <RouteGuard requiredTier="admin">
-              <ErrorBoundary><Integrations /></ErrorBoundary>
+              <ErrorBoundary><SourceConfiguration /></ErrorBoundary>
             </RouteGuard>
           </Route>
 
@@ -269,17 +275,22 @@ function Router() {
           </Route>
           <Route path="/deliver/cases">
             <RouteGuard>
+              <ErrorBoundary><BusinessCaseList /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/deliver/cases/:caseId">
+            <RouteGuard>
               <ErrorBoundary><BusinessCase /></ErrorBoundary>
             </RouteGuard>
           </Route>
           <Route path="/deliver/opportunities">
             <RouteGuard>
-              <ErrorBoundary><BusinessCase /></ErrorBoundary>
+              <ErrorBoundary><OpportunityFinder /></ErrorBoundary>
             </RouteGuard>
           </Route>
           <Route path="/deliver/whitespace">
             <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><AgentWorkflows /></ErrorBoundary>
+              <ErrorBoundary><WhitespaceAnalysis /></ErrorBoundary>
             </RouteGuard>
           </Route>
           <Route path="/deliver/agents">
@@ -403,7 +414,7 @@ function Router() {
           </Route>
           <Route path="/admin/system/settings">
             <RouteGuard requiredTier="admin">
-              <ErrorBoundary><CommandCenter /></ErrorBoundary>
+              <ErrorBoundary><PlatformSettings /></ErrorBoundary>
             </RouteGuard>
           </Route>
           <Route path="/admin/system/audit">
@@ -413,7 +424,7 @@ function Router() {
           </Route>
           <Route path="/admin/system/health">
             <RouteGuard requiredTier="admin">
-              <ErrorBoundary><CommandCenter /></ErrorBoundary>
+              <ErrorBoundary><HealthMonitor /></ErrorBoundary>
             </RouteGuard>
           </Route>
 

@@ -152,6 +152,58 @@ export const ValuePackSchema = z.object({
   owner: z.string().optional(),
 });
 
+// ===== Value Tree Schemas (High Risk) =====
+
+export const ValueTreeNodeSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  type: z.enum(['Capability', 'UseCase', 'Persona', 'ValueDriver', 'Outcome', 'KPI']),
+  layer: z.number().int().min(1).max(4),
+  confidence: z.number().min(0).max(1),
+  properties: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const ValueTreeEdgeSchema = z.object({
+  source: z.string(),
+  target: z.string(),
+  type: z.enum(['ENABLES', 'BENEFITS', 'DRIVES', 'REQUIRES', 'RELATED_TO']),
+  weight: z.number().min(0).max(1),
+});
+
+export const ValueTreeStatsSchema = z.object({
+  total_nodes: z.number().int().nonnegative(),
+  total_edges: z.number().int().nonnegative(),
+  by_layer: z.record(z.string(), z.number().int().nonnegative()),
+  max_depth: z.number().int().min(1).max(4),
+});
+
+export const ValueTreeResponseSchema = z.object({
+  root_entity_id: z.string(),
+  direction: z.enum(['upward', 'downward']),
+  nodes: z.array(ValueTreeNodeSchema),
+  edges: z.array(ValueTreeEdgeSchema),
+  paths: z.array(
+    z.object({
+      length: z.number().int().positive(),
+      nodes: z.array(z.string()),
+    })
+  ),
+  stats: ValueTreeStatsSchema,
+});
+
+export const ValueTreePathNodeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+});
+
+export const ValueTreePathSchema = z.object({
+  nodes: z.array(ValueTreePathNodeSchema),
+  length: z.number().int().positive(),
+});
+
+export const ValueTreePathListSchema = z.array(ValueTreePathSchema);
+
 // ===== Validation Helpers =====
 
 /**

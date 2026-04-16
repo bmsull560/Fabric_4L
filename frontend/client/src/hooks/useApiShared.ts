@@ -92,7 +92,7 @@ export type ApiErrorClass =
 // ── Error wrapper ─────────────────────────────────────────────────────────────
 /**
  * Wraps an API call with standardized error handling.
- * Extracts status code and response data from axios-style errors.
+ * Extracts status code and response data from axios-style errors or ApiError instances.
  */
 export async function withApiError<T, E extends BaseApiError>(
   promise: Promise<T>,
@@ -101,6 +101,16 @@ export async function withApiError<T, E extends BaseApiError>(
   try {
     return await promise;
   } catch (err: unknown) {
+    // Handle ApiError instances (from apiClient interceptor)
+    if (err instanceof Error && 'statusCode' in err) {
+      const apiErr = err as { statusCode?: number; errorCode?: string; traceId?: string | null };
+      throw new ErrorClass(
+        err.message,
+        apiErr.statusCode,
+        { code: apiErr.errorCode, traceId: apiErr.traceId }
+      );
+    }
+    // Handle axios-style errors
     if (err instanceof Error && 'response' in err) {
       const axiosErr = err as { response?: { status?: number; data?: unknown } };
       throw new ErrorClass(

@@ -4,13 +4,14 @@ These models define the exact schema expected from structured output LLM calls.
 They wrap the ontology models for use with OpenAI's structured outputs API.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .ontology import Capability, Feature, Persona, UseCase, ValueDriver
 from .relationships import Relationship
 
 
 class CapabilityExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     """Structured response for capability extraction.
 
     Expected as response_format parameter to OpenAI structured output API.
@@ -24,6 +25,7 @@ class CapabilityExtractionResponse(BaseModel):
 
 
 class UseCaseExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     """Structured response for use case extraction.
 
     Expected as response_format parameter to OpenAI structured output API.
@@ -37,6 +39,7 @@ class UseCaseExtractionResponse(BaseModel):
 
 
 class PersonaExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     """Structured response for persona extraction.
 
     Expected as response_format parameter to OpenAI structured output API.
@@ -50,6 +53,7 @@ class PersonaExtractionResponse(BaseModel):
 
 
 class ValueDriverExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     """Structured response for value driver extraction.
 
     Expected as response_format parameter to OpenAI structured output API.
@@ -63,6 +67,7 @@ class ValueDriverExtractionResponse(BaseModel):
 
 
 class FeatureExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     """Structured response for feature extraction.
 
     Expected as response_format parameter to OpenAI structured output API.
@@ -76,6 +81,7 @@ class FeatureExtractionResponse(BaseModel):
 
 
 class RelationshipExtractionResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     """Structured response for relationship extraction.
 
     Expected as response_format parameter to OpenAI structured output API.

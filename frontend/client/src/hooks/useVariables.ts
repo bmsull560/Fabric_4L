@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ZodError } from 'zod';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { withApiError, VariableApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
+import { withApiError, VariableApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
 import {
   VariableSchema,
   VariableListSchema,
@@ -15,6 +16,14 @@ import {
   type VariableStats,
 } from '@/lib/schemas/variable';
 
+/**
+ * Format Zod validation errors into a human-readable string.
+ */
+function formatZodError(error: ZodError, context: string): string {
+  const details = error.issues.map((e: { path: (string | number | symbol)[]; message: string }) => `${String(e.path)}: ${e.message}`).join(', ');
+  return `Invalid ${context}: ${details}`;
+}
+
 export type { Variable, VariableType, SourceType, ValidationStatus, SourceBinding, VariableStats };
 
 export interface VariableFilters {
@@ -25,7 +34,7 @@ export interface VariableFilters {
 }
 
 // Re-export for backward compatibility
-export { VariableApiError, formatZodError } from './useApiShared';
+export { VariableApiError } from './useApiShared';
 
 async function fetchVariables(filters: VariableFilters): Promise<Variable[]> {
   const params = new URLSearchParams();

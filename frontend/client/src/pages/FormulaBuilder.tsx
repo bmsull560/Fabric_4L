@@ -25,6 +25,14 @@ import {
   useEvaluateFormula,
   type FormulaEvaluationInput,
 } from "@/hooks/useFormulas";
+import {
+  useFormulaVersions,
+  type FormulaVersion,
+} from "@/hooks/useFormulaVersions";
+import {
+  useFormulaDependents,
+  type DependentAsset,
+} from "@/hooks/useFormulaDependents";
 
 // ============================================================================
 // Type Definitions
@@ -91,9 +99,15 @@ const VAR_TYPE_COLOR: Record<FormulaVariableType, string> = {
   integer: "bg-neutral-100 text-neutral-600",
 };
 
-const MOCK_FORMULA_EXPRESSION = `// Example formula expression
-ARR = MRR * 12
-GrowthRate = (CurrentARR - PreviousARR) / PreviousARR * 100`;
+const DEFAULT_FORMULA_EXPRESSION = `// Enter your formula expression here
+// Example: ARR = MRR * 12
+// Use {variable_name} to reference variables`;
+
+// Default test inputs - will be replaced with dynamic variable sampling
+const DEFAULT_TEST_INPUTS: TestInput[] = [
+  { label: "Customer_Count", value: "1,000" },
+  { label: "Avg_Contract_Value", value: "$50,000" },
+];
 
 const ACTIVATION_STATUS_CONFIG: Record<ActivationState, StatusConfig> = {
   draft: {
@@ -150,58 +164,6 @@ function mapVariableToFormulaVariable(variable: Variable): FormulaVariable {
   };
 }
 
-/** Mock test inputs for demonstration */
-const MOCK_TEST_INPUTS: TestInput[] = [
-  { label: "Customer_Count", value: "1,000" },
-  { label: "Current_Churn_Rate", value: "5%" },
-  { label: "Retention_Lift", value: "20%" },
-  { label: "Avg_Contract_Value", value: "$50,000" },
-  { label: "Implementation_Cost", value: "$100,000" },
-];
-
-/** Mock version history for demonstration */
-const MOCK_VERSION_HISTORY: VersionEntry[] = [
-  {
-    version: "v3 (current draft)",
-    author: "J. Rivera",
-    date: "Today 09:41",
-    status: "draft",
-    note: "Added Implementation_Cost variable",
-  },
-  {
-    version: "v2 (active)",
-    author: "M. Chen",
-    date: "Apr 7",
-    status: "approved",
-    note: "Approved by Finance team",
-  },
-  {
-    version: "v1",
-    author: "J. Rivera",
-    date: "Apr 2",
-    status: "archived",
-    note: "Initial version",
-  },
-];
-
-/** Mock dependent assets for demonstration */
-const MOCK_DEPENDENTS: Dependent[] = [
-  {
-    type: "Business Case",
-    name: "Globex.io — Q2 Expansion",
-    pack: "Enterprise Security ROI",
-  },
-  {
-    type: "Value Tree",
-    name: "Revenue Retention Driver",
-    pack: "SaaS / B2B",
-  },
-  {
-    type: "Workflow",
-    name: "Churn Reduction Agent",
-    pack: "Customer Success",
-  },
-];
 
 // ============================================================================
 // Sub-components
@@ -257,10 +219,10 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   const [activeTab, setActiveTab] = useState("Expression");
   const [tested, setTested] = useState(false);
   const [activationState, setActivationState] = useState<ActivationState>("draft");
-  const [formulaExpression, setFormulaExpression] = useState(MOCK_FORMULA_EXPRESSION);
+  const [formulaExpression, setFormulaExpression] = useState(DEFAULT_FORMULA_EXPRESSION);
   const [formulaName, setFormulaName] = useState("Customer Churn Reduction ROI");
   const [formulaDescription, setFormulaDescription] = useState("Calculate ROI from reducing customer churn through predictive analytics");
-  const [testInputs, setTestInputs] = useState(MOCK_TEST_INPUTS);
+  const [testInputs, setTestInputs] = useState(DEFAULT_TEST_INPUTS);
   const [evaluationResult, setEvaluationResult] = useState<{
     result: number;
     roi: number;
@@ -272,6 +234,14 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
 
   // Fetch existing formula if editing
   const { data: existingFormula, isLoading: isLoadingFormula } = useFormula(
+    !isNew && formulaId ? formulaId : null
+  );
+
+  // Fetch version history and dependents
+  const { data: versionHistory, isLoading: versionsLoading } = useFormulaVersions(
+    !isNew && formulaId ? formulaId : null
+  );
+  const { data: dependents, isLoading: dependentsLoading } = useFormulaDependents(
     !isNew && formulaId ? formulaId : null
   );
 
@@ -287,7 +257,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
     if (existingFormula && !isNew) {
       setFormulaName(existingFormula.name);
       setFormulaDescription(existingFormula.description || "");
-      setFormulaExpression(existingFormula.expression || MOCK_FORMULA_EXPRESSION);
+      setFormulaExpression(existingFormula.expression || DEFAULT_FORMULA_EXPRESSION);
       setActivationState((existingFormula.status as ActivationState) || "draft");
     }
   }, [existingFormula, isNew]);
@@ -654,30 +624,44 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           {activeTab === "Governance" && (
             <div className="space-y-4">
               <SectionCard title="Version History">
+                {versionsLoading && (
+                  <div className="flex items-center gap-2 p-4 text-neutral-500">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-[13px]">Loading versions...</span>
+                  </div>
+                )}
                 <div className="space-y-2">
-                  {MOCK_VERSION_HISTORY.map((version, index) => (
+                  {versionHistory?.map((version: FormulaVersion, index: number) => (
                     <div key={index} className="flex items-start gap-3 p-3 rounded-lg border border-neutral-100 bg-neutral-50">
                       <div className="mt-0.5">
                         {version.status === "approved" && <CheckCircle2 size={14} className="text-emerald-500"/>}
+                        {version.status === "active" && <CheckCircle2 size={14} className="text-emerald-600"/>}
                         {version.status === "draft"    && <Clock size={14} className="text-neutral-400"/>}
-                        {version.status === "archived" && <History size={14} className="text-neutral-300"/>}
+                        {version.status === "under_review" && <AlertCircle size={14} className="text-amber-500"/>}
+                        {version.status === "deprecated" && <History size={14} className="text-neutral-400"/>}
+                        {version.status === "retired" && <History size={14} className="text-neutral-300"/>}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[12px] font-bold text-neutral-800">{version.version}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${VERSION_STATUS_COLORS[version.status]}`}>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${VERSION_STATUS_COLORS[version.status as FormulaStatus] || VERSION_STATUS_COLORS.draft}`}>
                             {version.status}
                           </span>
                         </div>
-                        <p className="text-[11px] text-neutral-500 mt-0.5">{version.note}</p>
-                        <p className="text-[10px] text-neutral-400 mt-0.5">{version.author} · {version.date}</p>
+                        <p className="text-[11px] text-neutral-500 mt-0.5">{version.change_summary}</p>
+                        <p className="text-[10px] text-neutral-400 mt-0.5">{version.created_by} · {new Date(version.created_at).toLocaleDateString()}</p>
                       </div>
-                      {version.status !== "draft" && (
+                      {version.status !== "draft" && version.status !== "under_review" && (
                         <button className="text-[11px] text-blue-600 hover:underline shrink-0">Restore</button>
                       )}
                     </div>
                   ))}
                 </div>
+                {versionHistory?.length === 0 && !versionsLoading && (
+                  <div className="text-center py-4 text-neutral-400 text-[12px]">
+                    No version history available.
+                  </div>
+                )}
               </SectionCard>
 
               <SectionCard title="Approval Workflow">
@@ -706,21 +690,34 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           {/* Dependencies tab */}
           {activeTab === "Dependencies" && (
             <SectionCard title="Used By">
+              {dependentsLoading && (
+                <div className="flex items-center gap-2 p-4 text-neutral-500">
+                  <Loader2 size={16} className="animate-spin" />
+                  <span className="text-[13px]">Loading dependents...</span>
+                </div>
+              )}
               <div className="space-y-2">
-                {MOCK_DEPENDENTS.map((dependent, index) => (
+                {dependents?.map((dependent: DependentAsset, index: number) => (
                   <div key={index} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
                     <Link2 size={13} className="text-neutral-400 shrink-0"/>
                     <div className="flex-1">
                       <p className="text-[12px] font-semibold text-neutral-800">{dependent.name}</p>
-                      <p className="text-[10px] text-neutral-400">{dependent.type} · {dependent.pack}</p>
+                      <p className="text-[10px] text-neutral-400">{dependent.type} · {dependent.pack || 'No Pack'}</p>
                     </div>
                     <ChevronRight size={13} className="text-neutral-300"/>
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-neutral-400 mt-3">
-                Activating or deprecating this formula will affect {MOCK_DEPENDENTS.length} downstream assets.
-              </p>
+              {dependents?.length === 0 && !dependentsLoading && (
+                <div className="text-center py-4 text-neutral-400 text-[12px]">
+                  No dependent assets found.
+                </div>
+              )}
+              {dependents && dependents.length > 0 && (
+                <p className="text-[11px] text-neutral-400 mt-3">
+                  Activating or deprecating this formula will affect {dependents.length} downstream assets.
+                </p>
+              )}
             </SectionCard>
           )}
         </div>
@@ -767,19 +764,27 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
             <div className="space-y-2 text-[11px]">
               <div className="flex justify-between">
                 <span className="text-neutral-400">Version</span>
-                <span className="font-semibold text-neutral-700">v3 (draft)</span>
+                <span className="font-semibold text-neutral-700">
+                  {isNew ? 'New' : existingFormula?.version || 'v1.0.0'}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Created by</span>
-                <span className="font-semibold text-neutral-700">J. Rivera</span>
+                <span className="text-neutral-400">Status</span>
+                <span className="font-semibold text-neutral-700 capitalize">
+                  {activationState.replace('_', ' ')}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Last modified</span>
-                <span className="font-semibold text-neutral-700">Today</span>
+                <span className="text-neutral-400">Variables</span>
+                <span className="font-semibold text-neutral-700">
+                  {availableVariables.length}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Used in</span>
-                <span className="font-semibold text-neutral-700">3 assets</span>
+                <span className="text-neutral-400">Used by</span>
+                <span className="font-semibold text-neutral-700">
+                  {dependentsLoading ? '...' : dependents?.length || 0} assets
+                </span>
               </div>
             </div>
           </SectionCard>

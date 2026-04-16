@@ -107,6 +107,8 @@ export const QK = {
 
   businessCases: {
     all:    ['business-cases'] as const,
+    list:   (filters: { status?: string; search?: string; company?: string }) => 
+              ['business-cases', 'list', stableKey(filters)] as const,
     detail: (id: string) => ['business-cases', 'detail', id] as const,
   },
 
@@ -135,6 +137,13 @@ export const QK = {
   narrative: {
     all:        ['narrative'] as const,
     industries: () => ['narrative', 'industries'] as const,
+  },
+
+  // Platform/Admin Settings
+  platform: {
+    all:      ['platform'] as const,
+    settings: ['platform', 'settings'] as const,
+    health:   ['platform', 'health'] as const,
   },
 } as const;
 

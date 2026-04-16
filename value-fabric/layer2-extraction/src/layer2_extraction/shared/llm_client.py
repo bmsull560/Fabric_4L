@@ -200,12 +200,11 @@ class LLMClient:
         endpoint: str,
         response_format: type[BaseModel],
         temperature: float = 0.0,
-        logprobs: bool = True,
     ) -> tuple[BaseModel, CostRecord | None]:
         """Execute structured output completion with Pydantic model validation.
 
         Uses OpenAI's beta.chat.completions.parse() API for type-safe responses.
-        Falls back to tool-based approach for Anthropic provider.
+        Note: Structured outputs API does not support logprobs parameter.
 
         Args:
             messages: Chat messages
@@ -213,7 +212,6 @@ class LLMClient:
             endpoint: Endpoint name for cost tracking
             response_format: Pydantic model class defining the expected response structure
             temperature: Sampling temperature (default: 0.0 for deterministic extraction)
-            logprobs: Request logprobs for confidence calibration (OpenAI only)
 
         Returns:
             Tuple of (parsed_pydantic_model, cost_record)
@@ -224,7 +222,7 @@ class LLMClient:
         """
         if self.provider == LLMProvider.OPENAI:
             return await self._openai_structured_completion(
-                messages, extraction_job_id, endpoint, response_format, temperature, logprobs
+                messages, extraction_job_id, endpoint, response_format, temperature
             )
         else:
             # Anthropic doesn't support native structured outputs yet
@@ -241,7 +239,6 @@ class LLMClient:
         endpoint: str,
         response_format: type[BaseModel],
         temperature: float,
-        logprobs: bool,
     ) -> tuple[BaseModel, CostRecord | None]:
         """Execute OpenAI structured output completion using parse() API."""
         if not OPENAI_AVAILABLE:

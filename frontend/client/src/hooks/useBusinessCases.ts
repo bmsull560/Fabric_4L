@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
@@ -27,6 +27,25 @@ export interface BusinessCaseData {
   confidence: number;
   executiveSummary: string;
   generatedAt: string;
+}
+
+export interface BusinessCaseListItem {
+  id: string;
+  name: string;
+  company: string;
+  status: 'draft' | 'active' | 'archived';
+  totalValue: string;
+  useCaseCount: number;
+  confidence: number;
+  createdAt: string;
+  updatedAt: string;
+  owner: string;
+}
+
+export interface BusinessCaseFilters {
+  status?: 'draft' | 'active' | 'archived' | 'all';
+  search?: string;
+  company?: string;
 }
 
 
@@ -101,4 +120,111 @@ function generateSummary(useCases: UseCase[], totalValue: number): string {
 
   const topCase = useCases[0];
   return `${topCase.name} presents the most significant opportunity with an estimated ${topCase.roi} in value. Combined with other identified use cases, the total addressable value is estimated at ${formatCurrency(totalValue)} annually with an average payback period of ${useCases.length > 1 ? 'several months' : '6-9 months'}.`;
+}
+
+/**
+ * Fetch list of business cases with filtering support
+ * 
+ * @param filters - Optional filters for status, search, company
+ * @returns Query result with business case list
+ * 
+ * @example
+ * ```tsx
+ * const { data: cases, isLoading } = useBusinessCases({ status: 'active' });
+ * ```
+ */
+export function useBusinessCases(filters: BusinessCaseFilters = {}) {
+  return useQuery({
+    queryKey: QK.businessCases.list(filters),
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+      if (filters.search) params.set('search', filters.search);
+      if (filters.company) params.set('company', filters.company);
+
+      // Query L4 for business case workflows
+      const response = await apiClient.get('l4', `/workflows?type=business_case&${params.toString()}`);
+      
+      // Transform workflow data to BusinessCaseListItem format
+      const items = (response.data?.items || []).map((workflow: { 
+        workflow_id: string;
+        name?: string;
+        status?: string;
+        company_name?: string;
+        total_value?: number;
+        use_case_count?: number;
+        confidence?: number;
+        created_at?: string;
+        updated_at?: string;
+        owner?: string;
+      }) => ({
+        id: workflow.workflow_id,
+        name: workflow.name || `Case ${workflow.workflow_id}`,
+        company: workflow.company_name || 'Unknown Company',
+        status: (workflow.status === 'completed' ? 'active' : workflow.status || 'draft') as BusinessCaseListItem['status'],
+        totalValue: formatCurrency(workflow.total_value ?? 0),
+        useCaseCount: workflow.use_case_count ?? 0,
+        confidence: Math.round((workflow.confidence ?? 0.8) * 100),
+        createdAt: workflow.created_at || new Date().toISOString(),
+        updatedAt: workflow.updated_at || workflow.created_at || new Date().toISOString(),
+        owner: workflow.owner || 'System',
+      }));
+
+      return items as BusinessCaseListItem[];
+    },
+    staleTime: STALE_TIME.list,
+  });
+}
+
+/**
+ * Create a new business case
+ * 
+ * @example
+ * ```tsx
+ * const createCase = useCreateBusinessCase();
+ * createCase.mutate({ name: 'Q2 Expansion', company: 'Acme Corp' });
+ * ```
+ */
+export function useCreateBusinessCase() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { name: string; company: string; description?: string }) => {
+      const response = await apiClient.post('l4', '/workflows', {
+        workflow_type: 'business_case',
+        name: payload.name,
+        input: {
+          company_name: payload.company,
+          description: payload.description,
+        },
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.businessCases.all });
+    },
+  });
+}
+
+/**
+ * Archive a business case
+ * 
+ * @example
+ * ```tsx
+ * const archiveCase = useArchiveBusinessCase();
+ * archiveCase.mutate('case-id-123');
+ * ```
+ */
+export function useArchiveBusinessCase() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (caseId: string) => {
+      const response = await apiClient.post('l4', `/workflows/${caseId}/archive`, {});
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.businessCases.all });
+    },
+  });
 }

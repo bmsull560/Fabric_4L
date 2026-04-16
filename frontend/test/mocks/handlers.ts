@@ -481,11 +481,9 @@ export const benchmarkMocks = [
 ];
 
 // ===== Formula Mocks (L3) =====
-// Note: Test environment has VITE_L3_PREFIX=/graph, so we need to include it
-const L3_GRAPH_PREFIX = '/graph';
 
 export const formulaMocks = [
-  http.get(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/approvals/pending`, async () => {
+  http.get(`${API_BASE}${L3_PREFIX}/formulas/approvals/pending`, async () => {
     await delay(100);
     return HttpResponse.json([
       {
@@ -501,7 +499,7 @@ export const formulaMocks = [
     ]);
   }),
 
-  http.get(`${API_BASE}${L3_GRAPH_PREFIX}/formulas`, async ({ request }) => {
+  http.get(`${API_BASE}${L3_PREFIX}/formulas`, async ({ request }) => {
     await delay(100);
     const url = new URL(request.url);
     const statusFilter = url.searchParams.get('status');
@@ -545,7 +543,7 @@ export const formulaMocks = [
     return HttpResponse.json(formulas);
   }),
 
-  http.get(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params }) => {
+  http.get(`${API_BASE}${L3_PREFIX}/formulas/:id`, async ({ params }) => {
     await delay(100);
     const id = params.id as string;
     return HttpResponse.json({
@@ -564,7 +562,7 @@ export const formulaMocks = [
     });
   }),
 
-  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id/approve`, async ({ params }) => {
+  http.post(`${API_BASE}${L3_PREFIX}/formulas/:id/approve`, async ({ params }) => {
     await delay(150);
     return HttpResponse.json({
       formula_id: params.id,
@@ -573,7 +571,7 @@ export const formulaMocks = [
     });
   }),
 
-  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id/submit`, async ({ params }) => {
+  http.post(`${API_BASE}${L3_PREFIX}/formulas/:id/submit`, async ({ params }) => {
     await delay(150);
     return HttpResponse.json({
       formula_id: params.id,
@@ -583,7 +581,7 @@ export const formulaMocks = [
   }),
 
   // Create new formula
-  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas`, async ({ request }) => {
+  http.post(`${API_BASE}${L3_PREFIX}/formulas`, async ({ request }) => {
     await delay(150);
     const body = (await request.json()) as { name?: string; description?: string; expression?: string };
     const id = `formula-${Date.now()}`;
@@ -605,7 +603,7 @@ export const formulaMocks = [
   }),
 
   // Update formula
-  http.patch(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params, request }) => {
+  http.patch(`${API_BASE}${L3_PREFIX}/formulas/:id`, async ({ params, request }) => {
     await delay(150);
     const id = params.id as string;
     const body = (await request.json()) as { name?: string; description?: string; expression?: string };
@@ -627,7 +625,7 @@ export const formulaMocks = [
   }),
 
   // Delete formula
-  http.delete(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/:id`, async ({ params }) => {
+  http.delete(`${API_BASE}${L3_PREFIX}/formulas/:id`, async ({ params }) => {
     await delay(100);
     return HttpResponse.json({
       formula_id: params.id,
@@ -637,7 +635,7 @@ export const formulaMocks = [
   }),
 
   // Evaluate formula
-  http.post(`${API_BASE}${L3_GRAPH_PREFIX}/formulas/evaluate`, async ({ request }) => {
+  http.post(`${API_BASE}${L3_PREFIX}/formulas/evaluate`, async ({ request }) => {
     await delay(200);
     const body = (await request.json()) as { inputs?: Array<{ name: string; value: number }>; expression?: string };
     const inputs = body?.inputs || [];

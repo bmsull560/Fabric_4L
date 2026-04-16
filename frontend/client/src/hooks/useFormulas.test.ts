@@ -19,6 +19,7 @@ import {
   useFormulaApprovals,
   useApproveFormula,
   useSubmitFormula,
+  useUpdateFormula,
 } from './useFormulas';
 
 describe('useFormulas', () => {
@@ -219,6 +220,46 @@ describe('useSubmitFormula', () => {
     const { result } = renderHook(() => useSubmitFormula(), { wrapper });
 
     result.current.mutate('already-submitted');
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe('useUpdateFormula', () => {
+  it('updates formula with PATCH method', async () => {
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useUpdateFormula(), { wrapper });
+
+    result.current.mutate({
+      formulaId: 'formula-1',
+      name: 'Updated Formula Name',
+      description: 'Updated description',
+      expression: 'updated + expression',
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data).toMatchObject({
+      formula_id: 'formula-1',
+      name: 'Updated Formula Name',
+      version: '1.0.1',
+    });
+  });
+
+  it('handles update error', async () => {
+    server.use(
+      http.patch('/api/v1/graph/formulas/:id', () => {
+        return HttpResponse.json({ error: 'Formula not found' }, { status: 404 });
+      })
+    );
+
+    const wrapper = createWrapper();
+    const { result } = renderHook(() => useUpdateFormula(), { wrapper });
+
+    result.current.mutate({
+      formulaId: 'non-existent',
+      name: 'Will Fail',
+    });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
   });

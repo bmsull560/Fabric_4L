@@ -171,7 +171,13 @@ export function useEntityContext(
         'l3',
         `/entity/${encodedId}/context?${params.toString()}`
       );
-      return response.data as EntityContextResponse;
+
+      // Runtime validation with Zod
+      const validated = safeParseResponse(EntityContextResponseSchema, response.data, `GET /entity/${entityId}/context`);
+      if (!validated) {
+        throw new Error('Invalid entity context response format');
+      }
+      return validated;
     },
     enabled: !!entityId,
     staleTime: STALE_TIME.stats,
@@ -195,7 +201,13 @@ export function useEntityTraversal() {
         entity_id: request.entity_id,
         direction: request.direction ?? 'both',
       });
-      return response.data as EntityTraversalResponse;
+
+      // Runtime validation with Zod
+      const validated = safeParseResponse(EntityTraversalResponseSchema, response.data, 'POST /entity/traverse');
+      if (!validated) {
+        throw new Error('Invalid entity traversal response format');
+      }
+      return validated;
     },
     onError: (error) => {
       console.error('Entity traversal failed:', error);
