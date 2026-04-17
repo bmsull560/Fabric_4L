@@ -1,0 +1,169 @@
+
+> value-fabric-wireframes@1.0.0 test C:\Users\BBB\Fabric_4L\frontend
+> vitest run "--run"
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/BBB/Fabric_4L/frontend[39m
+
+ [32mΓ£ô[39m client/src/pages/formulaBuilderLogic.test.ts [2m([22m[2m48 tests[22m[2m)[22m[90m 101[2mms[22m[39m
+ [32mΓ£ô[39m client/src/stores/userTierStore.test.ts [2m([22m[2m50 tests[22m[2m)[22m[33m 640[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useAuth.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 337[2mms[22m[39m
+stderr | client/src/hooks/useBilling.test.tsx > useBilling > should open customer portal
+An update to TestComponent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to TestComponent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | client/src/hooks/useBilling.test.tsx > useBilling > should initiate checkout for upgrade
+An update to TestComponent inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | client/src/contexts/AuthContext.test.tsx > AuthProvider > handleCallback > rejects when state parameter does not match
+Callback handling failed: Error: Invalid state parameter
+    at Object.handleCallback (C:\Users\BBB\Fabric_4L\frontend\client\src\contexts\AuthContext.tsx:138:15)
+    at onClick (C:\Users\BBB\Fabric_4L\frontend\client\src\contexts\AuthContext.test.tsx:424:72)
+    at executeDispatch (C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:19116:9)
+    at runWithFiberInDEV (C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:874:13)
+    at processDispatchQueue (C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:19166:19)
+    at C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:19767:9
+    at batchedUpdates$1 (C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:3255:40)
+    at dispatchEventForPluginEventSystem (C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:19320:7)
+    at dispatchEvent (C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:23585:11)
+    at dispatchDiscreteEvent (C:\Users\BBB\Fabric_4L\frontend\node_modules\.pnpm\react-dom@19.2.1_react@19.2.1\node_modules\react-dom\cjs\react-dom-client.development.js:23553:11)
+
+stderr | client/src/contexts/AuthContext.test.tsx > AuthProvider > handleCallback > returns false when callback endpoint returns error
+Callback handling failed: Error: Invalid authorization code
+    at Object.handleCallback (C:\Users\BBB\Fabric_4L\frontend\client\src\contexts\AuthContext.tsx:148:15)
+    at onClick (C:\Users\BBB\Fabric_4L\frontend\client\src\contexts\AuthContext.test.tsx:467:32)
+
+ [32mΓ£ô[39m client/src/hooks/useBilling.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 707[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useProvenance.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 799[2mms[22m[39m
+ [32mΓ£ô[39m client/src/contexts/AuthContext.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 1239[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useDocuments.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[33m 781[2mms[22m[39m
+stderr | client/src/hooks/useAccounts.test.tsx > useAccounts > useRefreshAccount mutation > should reject empty account ID
+[useRefreshAccount] Failed to refresh account : Account ID is required
+
+ [32mΓ£ô[39m client/src/components/WfPrimitives.test.tsx [2m([22m[2m26 tests[22m[2m)[22m[33m 1393[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m WfPrimitives[2m > [22mBtn[2m > [22mshould render button with accessible role [33m543[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useAccounts.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 1287[2mms[22m[39m
+stderr | client/src/hooks/useGraphQuery.test.ts > useGraphQuery > handles query errors
+GraphRAG query failed: ApiError: Request failed with status code 504
+    at C:\Users\BBB\Fabric_4L\frontend\client\src\api\client.ts:109:28
+    at Axios.request (file:///C:/Users/BBB/Fabric_4L/frontend/node_modules/.pnpm/axios@1.12.2/node_modules/axios/lib/core/Axios.js:40:14)
+    at Object.mutationFn (C:\Users\BBB\Fabric_4L\frontend\client\src\hooks\useGraphQuery.ts:107:24)
+    at Axios.request (file:///C:/Users/BBB/Fabric_4L/frontend/node_modules/.pnpm/axios@1.12.2/node_modules/axios/lib/core/Axios.js:45:41)
+    at Object.mutationFn (C:\Users\BBB\Fabric_4L\frontend\client\src\hooks\useGraphQuery.ts:107:24) {
+  traceId: null,
+  statusCode: 504,
+  errorCode: 'INTERNAL_ERROR'
+}
+
+ [32mΓ£ô[39m client/src/hooks/useHealthMonitor.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 1369[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useSystemHealth[2m > [22mfetches system health successfully [33m328[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useFormulaDependents.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1447[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useFormulaDependents[2m > [22mfetches formulas that depend on this formula [33m338[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useJobStream.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 1133[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useJobStream[2m > [22mhandles connection errors gracefully [33m535[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useBenchmarks.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 1466[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useBenchmarks[2m > [22mfetches all benchmarks [33m458[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useFormulaVersions.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1763[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useFormulaVersions[2m > [22mfetches version history for a formula [33m370[2mms[22m[39m
+stderr | client/src/hooks/useGraphQuery.test.ts > useEntityTraversal > handles traversal errors
+Entity traversal failed: ApiError: Request failed with status code 400
+    at C:\Users\BBB\Fabric_4L\frontend\client\src\api\client.ts:109:28
+    at Axios.request (file:///C:/Users/BBB/Fabric_4L/frontend/node_modules/.pnpm/axios@1.12.2/node_modules/axios/lib/core/Axios.js:40:14)
+    at Object.mutationFn (C:\Users\BBB\Fabric_4L\frontend\client\src\hooks\useGraphQuery.ts:200:24)
+    at Axios.request (file:///C:/Users/BBB/Fabric_4L/frontend/node_modules/.pnpm/axios@1.12.2/node_modules/axios/lib/core/Axios.js:45:41)
+    at Object.mutationFn (C:\Users\BBB\Fabric_4L\frontend\client\src\hooks\useGraphQuery.ts:200:24) {
+  traceId: null,
+  statusCode: 400,
+  errorCode: 'INTERNAL_ERROR'
+}
+
+ [32mΓ£ô[39m client/src/hooks/useValuePacks.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 406[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useWorkflows.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 2966[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useActiveWorkflows[2m > [22mfetches and normalizes active workflows [33m564[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useActiveWorkflows[2m > [22mhandles empty workflow list [33m319[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useCreateWorkflow[2m > [22mcreates workflow successfully [33m388[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useCancelWorkflow[2m > [22mcancels workflow successfully [33m801[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/usePlatformSettings.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 3245[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m usePlatformSettings[2m > [22mfetches tenant settings successfully [33m359[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m usePlatformSettings - mutation and invalidation[2m > [22mfailed update preserves previous usable state [33m417[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m usePlatformSettings - edge cases[2m > [22mdelayed response does not break hook state transitions [33m318[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useGraphQuery.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 3148[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useGraphQuery[2m > [22mexecutes graph query successfully [33m652[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useGraphQuery[2m > [22mcaches entities from response [33m406[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useEntityContext[2m > [22mfetches entity context with default hops [33m414[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useEntityContext[2m > [22mfetches entity context with custom hops [33m505[2mms[22m[39m
+ [32mΓ£ô[39m client/src/api/client.test.ts [2m([22m[2m7 tests[22m[2m)[22m[90m 94[2mms[22m[39m
+ [32mΓ£ô[39m client/src/utils.test.ts [2m([22m[2m5 tests[22m[2m)[22m[90m 20[2mms[22m[39m
+stderr | client/src/hooks/useFormulas.test.ts > useApproveFormula > handles approval error
+Formula approval failed: Request failed with status code 404
+
+stderr | client/src/hooks/useFormulas.test.ts > useSubmitFormula > handles submission error
+Formula submission failed: Request failed with status code 409
+
+stderr | client/src/hooks/useFormulas.test.ts > useUpdateFormula > handles update error
+Formula update failed: Request failed with status code 404
+
+ [32mΓ£ô[39m client/src/hooks/useFormulas.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 4066[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useFormulas[2m > [22mfetches all formulas [33m833[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useFormulas[2m > [22mapplies status filter [33m381[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useFormula[2m > [22mfetches single formula details [33m444[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useApproveFormula[2m > [22mrejects formula successfully [33m305[2mms[22m[39m
+ [32mΓ£ô[39m client/src/pages/DecisionTrace.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 3866[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m DecisionTrace[2m > [22mrenders loading state initially [33m910[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m DecisionTrace[2m > [22mrenders audit log and allows entity selection to view provenance [33m2274[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m DecisionTrace[2m > [22mrenders provenance timeline when entity selected [33m332[2mms[22m[39m
+ [32mΓ£ô[39m client/src/pages/AgentWorkflows.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 599[2mms[22m[39m
+ [32mΓ£ô[39m client/src/hooks/useVariables.test.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 4319[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useVariables[2m > [22mfetches all variables [33m983[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useVariables[2m > [22mapplies type filter [33m527[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useVariables[2m > [22mapplies source filter [33m540[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useVariables[2m > [22mapplies validation status filter [33m360[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useVariable[2m > [22mfetches single variable details [33m369[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m useVariableStats[2m > [22mfetches statistics [33m308[2mms[22m[39m
+ [32mΓ£ô[39m client/src/pages/BusinessCase.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1336[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m BusinessCase[2m > [22mrenders with business case data [33m333[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m BusinessCase[2m > [22mrenders recommendations [33m325[2mms[22m[39m
+ [32mΓ£ô[39m client/src/pages/ExtractionEngine.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 1300[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ExtractionEngine[2m > [22mrenders with job data [33m444[2mms[22m[39m
+ [32mΓ£ô[39m client/src/pages/GraphExplorer.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1198[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m GraphExplorer[2m > [22mrenders with graph data [33m839[2mms[22m[39m
+ [32mΓ£ô[39m client/src/pages/ValuePacks.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 6666[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPage Load[2m > [22mrenders page header and info banner [33m2229[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPage Load[2m > [22mrenders with value packs list [33m910[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPage Load[2m > [22mdisplays pack details correctly [33m340[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPack Selection & Filtering[2m > [22mfilters packs by industry [33m655[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPack Selection & Filtering[2m > [22mfilters packs by search query [33m416[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mApply Flow - Happy Path[2m > [22mhandles pack apply successfully [33m593[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m28 passed[39m[22m[90m (28)[39m
+[2m      Tests [22m [1m[32m387 passed[39m[22m[90m (387)[39m
+[2m   Start at [22m 15:30:34
+[2m   Duration [22m 17.65s[2m (transform 13.51s, setup 83.00s, collect 38.97s, tests 47.69s, environment 95.76s, prepare 7.22s)[22m
+

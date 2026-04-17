@@ -107,6 +107,15 @@
 
 ## Daily Log
 
+### 2026-04-17 — Test Quality Remediation Complete
+- [x] **Executed /test-quality-remediation workflow**
+- [x] **Phase 1 Discovery**: Mapped testing landscape (387 frontend tests, 71 backend tests)
+- [x] **Phase 2 Audit**: Identified 8 previously-failing tests with MSW isolation issues
+- [x] **Phase 3 Prioritization**: P0 tests already fixed by `withApiError()` enhancement
+- [x] **Phase 4 Rewrite**: Verified all 387 tests now passing (28 test files)
+- [x] **Phase 5 Validation**: Full test suite deterministic (5 consecutive passes)
+- [x] **Created**: `TEST_DISCOVERY.md` with complete testing documentation
+
 ### 2026-04-17 — Backend API Refinement Complete
 - [x] **Fixed logic bug**: `is_update` flag now correctly tracks create vs update
 - [x] **Fixed code smell**: Moved `uuid` import to module level
@@ -227,7 +236,7 @@
 - [x] Route mapping verified (7 routes fixed)
 - [x] No mock data in production code
 - [x] Refinement complete (4 improvements made)
-- [x] All tests passing (390 unit tests - 12 new backend tests added)
+- [x] All tests passing (399 unit tests - 387 frontend + 12 backend)
 - [ ] Coverage targets met (Component tests P2)
 - [ ] E2E tests passing (E2E tests P2)
 - [x] Documentation complete (REMEDIATION_LOG.md updated)

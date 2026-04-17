@@ -49,24 +49,34 @@ pnpm test:e2e      # Playwright E2E tests
 
 ## Failing Tests Analysis
 
-### Pattern: Test Isolation Issues
-The 8 failing tests all exhibit the same pattern:
-- **Symptom**: `expected false to be true` (isSuccess never becomes true)
-- **Behavior**: Tests pass when run in isolation, fail in full suite
-- **Cause**: MSW mock handler pollution between tests
+### ✅ RESOLVED: Test Isolation Issues Fixed
 
-### Affected Test Files
-1. `useBenchmarks.test.ts` - `fetches all benchmarks`
-2. `useFormulaDependents.test.ts` - `fetches formulas that depend on this formula`
-3. `useFormulas.test.ts` - `fetches all formulas`
-4. `useFormulaVersions.test.ts` - `fetches version history for a formula`
-5. `useHealthMonitor.test.ts` - `fetches system health successfully`
-6. `usePlatformSettings.test.tsx` - `fetches tenant settings successfully`
-7. `useVariables.test.ts` - `fetches all variables`
-8. `useWorkflows.test.ts` - `fetches and normalizes active workflows`
+**Status**: All tests now passing (387/387)
 
-### Root Cause
-MSW server handlers are being overridden by previous tests and not properly reset. The `server.use()` calls in some tests are persisting across test boundaries.
+**Previous Issue**: 8 tests exhibited `expected false to be true` (isSuccess never becomes true)
+- Tests passed in isolation but failed in full suite
+- Root cause was MSW mock handler pollution between tests
+
+**Fix Applied**: Proper error handling in `withApiError()` function
+- Updated `useApiShared.ts` to handle both `ApiError` instances and axios-style errors
+- Enhanced error extraction to properly get `statusCode` from different error types
+
+### Verification
+```bash
+pnpm test -- --run
+Test Files  28 passed (28)
+Tests  387 passed (387)
+```
+
+### Previously Affected Test Files (Now Passing)
+1. ✅ `useBenchmarks.test.ts` - `fetches all benchmarks`
+2. ✅ `useFormulaDependents.test.ts` - `fetches formulas that depend on this formula`
+3. ✅ `useFormulas.test.ts` - `fetches all formulas`
+4. ✅ `useFormulaVersions.test.ts` - `fetches version history for a formula`
+5. ✅ `useHealthMonitor.test.ts` - `fetches system health successfully`
+6. ✅ `usePlatformSettings.test.tsx` - `fetches tenant settings successfully`
+7. ✅ `useVariables.test.ts` - `fetches all variables`
+8. ✅ `useWorkflows.test.ts` - `fetches and normalizes active workflows`
 
 ---
 
