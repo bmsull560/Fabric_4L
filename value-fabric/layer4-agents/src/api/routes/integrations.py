@@ -197,7 +197,7 @@ async def create_or_update_integration(
         credentials["instance_url"] = request.instance_url
 
     try:
-        integration = await service.create_or_update_integration(
+        integration, is_created = await service.create_or_update_integration(
             tenant_id=tenant_id,
             provider=provider,
             enabled=request.enabled,
@@ -208,16 +208,24 @@ async def create_or_update_integration(
             user_id=x_user_id,
         )
 
-        # Emit audit event
-        await emit_audit_event(
-            action=AuditAction.UPDATE,
-            resource_type="integration",
-            resource_id=str(integration.id),
-            tenant_id=tenant_id,
-            user_id=x_user_id,
-            outcome=AuditOutcome.SUCCESS,
-            details={"provider": provider.value, "enabled": request.enabled},
-        )
+        # Emit audit event (best-effort, log failure but don't fail request)
+        try:
+            await emit_audit_event(
+                action=AuditAction.CREATE if is_created else AuditAction.UPDATE,
+                resource_type="integration",
+                resource_id=str(integration.id),
+                tenant_id=tenant_id,
+                user_id=x_user_id,
+                outcome=AuditOutcome.SUCCESS,
+                details={"provider": provider.value, "enabled": request.enabled, "is_created": is_created},
+            )
+        except Exception as audit_error:
+            logger.error(
+                "Audit event failed for integration %s: %s",
+                integration.id,
+                audit_error,
+                exc_info=True,
+            )
 
         return IntegrationStatusResponse(**integration.to_dict())
 
@@ -248,16 +256,25 @@ async def delete_integration(
             detail=f"No {provider.value} integration found",
         )
 
-    # Emit audit event
-    await emit_audit_event(
-        action=AuditAction.DELETE,
-        resource_type="integration",
-        resource_id=f"{tenant_id}:{provider.value}",
-        tenant_id=tenant_id,
-        user_id=x_user_id,
-        outcome=AuditOutcome.SUCCESS,
-        details={"provider": provider.value},
-    )
+    # Emit audit event (best-effort, log failure but don't fail request)
+    try:
+        await emit_audit_event(
+            action=AuditAction.DELETE,
+            resource_type="integration",
+            resource_id=f"{tenant_id}:{provider.value}",
+            tenant_id=tenant_id,
+            user_id=x_user_id,
+            outcome=AuditOutcome.SUCCESS,
+            details={"provider": provider.value},
+        )
+    except Exception as audit_error:
+        logger.error(
+            "Audit event failed for deleted integration %s:%s: %s",
+            tenant_id,
+            provider.value,
+            audit_error,
+            exc_info=True,
+        )
 
 
 @router.post("/{provider}/test", response_model=ConnectionTestResponse)
@@ -289,16 +306,24 @@ async def trigger_sync(
     try:
         result = await service.trigger_sync(tenant_id, provider, user_id=x_user_id)
 
-        # Emit audit event
-        await emit_audit_event(
-            action=AuditAction.CREATE,
-            resource_type="sync_job",
-            resource_id=result["sync_id"],
-            tenant_id=tenant_id,
-            user_id=x_user_id,
-            outcome=AuditOutcome.SUCCESS,
-            details={"provider": provider.value, "sync_id": result["sync_id"]},
-        )
+        # Emit audit event (best-effort, log failure but don't fail request)
+        try:
+            await emit_audit_event(
+                action=AuditAction.CREATE,
+                resource_type="sync_job",
+                resource_id=result["sync_id"],
+                tenant_id=tenant_id,
+                user_id=x_user_id,
+                outcome=AuditOutcome.SUCCESS,
+                details={"provider": provider.value, "sync_id": result["sync_id"]},
+            )
+        except Exception as audit_error:
+            logger.error(
+                "Audit event failed for sync job %s: %s",
+                result["sync_id"],
+                audit_error,
+                exc_info=True,
+            )
 
         return SyncTriggerResponse(**result)
 

@@ -119,10 +119,14 @@ class Integration(Base):
         Returns:
             Dictionary representation, credentials excluded by default
         """
+        # Handle both enum instances and string values from SQLAlchemy
+        provider_val = self.provider.value if hasattr(self.provider, 'value') else self.provider
+        status_val = self.sync_status.value if hasattr(self.sync_status, 'value') else self.sync_status
+
         result = {
             "id": str(self.id),
             "tenant_id": self.tenant_id,
-            "provider": self.provider.value if isinstance(self.provider, PyEnum) else self.provider,
+            "provider": provider_val,
             "enabled": self.enabled,
             "instance_url": self.instance_url,
             "sync_interval_minutes": self.sync_interval_minutes,
@@ -134,9 +138,7 @@ class Integration(Base):
             "records_synced": self.records_synced,
             "records_updated": self.records_updated,
             "records_failed": self.records_failed,
-            "status": self.sync_status.value
-            if isinstance(self.sync_status, PyEnum)
-            else self.sync_status,
+            "status": status_val,
             "last_error_message": self.last_error_message,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

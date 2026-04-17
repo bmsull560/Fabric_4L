@@ -6,10 +6,21 @@ Tests validation logic, edge cases, and error handling.
 
 import pytest
 from src.models.account import CRMProvider
+from src.services.encryption_service import DEFAULT_KEY_ID, EncryptionService
 from src.services.integration_service import (
     IntegrationService,
     IntegrationValidationError,
 )
+
+
+@pytest.fixture(autouse=True)
+def clear_encryption_cache():
+    """Clear encryption cache between tests to prevent pollution."""
+    from collections import OrderedDict
+    EncryptionService._MASTER_KEY = None
+    EncryptionService._key_cache = OrderedDict()
+    EncryptionService._cache_lock = None
+    yield
 
 
 class TestIntegrationValidation:
@@ -129,13 +140,12 @@ class TestIntegrationValidation:
         assert "valid HTTP/HTTPS URL" in str(exc.value)
 
     def test_validate_config_valid_instance_urls(self):
-        """Test that valid instance URLs pass."""
+        """Test that valid HTTPS instance URLs pass."""
         service = IntegrationService(None)
         
         valid_urls = [
             "https://instance.salesforce.com",
             "https://api.hubspot.com",
-            "http://localhost:8080",
             "https://my-org.my.salesforce.com",
             "https://10.0.0.1:443",
         ]
@@ -149,6 +159,49 @@ class TestIntegrationValidation:
                 batch_size=100,
                 instance_url=url,
             )
+
+    def test_validate_config_http_localhost_allowed(self):
+        """Test that HTTP is allowed only for localhost."""
+        service = IntegrationService(None)
+        
+        # HTTP on localhost should be allowed
+        service._validate_config(
+            enabled=False,
+            credentials={},
+            sync_interval=60,
+            batch_size=100,
+            instance_url="http://localhost:8080",
+        )
+
+    def test_validate_config_http_production_rejected(self):
+        """Test that HTTP is rejected for production URLs."""
+        service = IntegrationService(None)
+        
+        # HTTP on production domains should fail
+        with pytest.raises(IntegrationValidationError) as exc:
+            service._validate_config(
+                enabled=False,
+                credentials={},
+                sync_interval=60,
+                batch_size=100,
+                instance_url="http://instance.salesforce.com",
+            )
+        assert "HTTPS is required" in str(exc.value)
+
+    def test_validate_config_http_localhost_subdomain_rejected(self):
+        """Test that HTTP is rejected for localhost subdomains (not actual localhost)."""
+        service = IntegrationService(None)
+        
+        # HTTP on localhost.something.com should fail (not real localhost)
+        with pytest.raises(IntegrationValidationError) as exc:
+            service._validate_config(
+                enabled=False,
+                credentials={},
+                sync_interval=60,
+                batch_size=100,
+                instance_url="http://localhost.mydomain.com",
+            )
+        assert "HTTPS is required" in str(exc.value)
 
     def test_validate_config_none_instance_url(self):
         """Test that None instance_url is allowed."""
@@ -167,52 +220,48 @@ class TestIntegrationValidation:
 class TestEncryptionService:
     """Test suite for encryption service."""
 
-    def test_encryption_roundtrip(self):
+    @pytest.mark.asyncio
+    async def test_encryption_roundtrip(self):
         """Test that encrypt/decrypt preserves data."""
-        from src.services.encryption_service import EncryptionService
-        
         test_data = '{"api_key": "secret123", "api_secret": "supersecret"}'
         
-        encrypted = EncryptionService.encrypt(test_data, key_id="v1")
+        encrypted = await EncryptionService.encrypt(test_data, key_id=DEFAULT_KEY_ID)
         assert encrypted != test_data.encode()
         assert isinstance(encrypted, bytes)
         
-        decrypted = EncryptionService.decrypt(encrypted, key_id="v1")
+        decrypted = await EncryptionService.decrypt(encrypted, key_id=DEFAULT_KEY_ID)
         assert decrypted == test_data
 
-    def test_encryption_empty_data(self):
+    @pytest.mark.asyncio
+    async def test_encryption_empty_data(self):
         """Test that empty data is handled gracefully."""
-        from src.services.encryption_service import EncryptionService
-        
         # Empty string returns empty bytes
-        assert EncryptionService.encrypt("", key_id="v1") == b""
-        assert EncryptionService.decrypt(b"", key_id="v1") == ""
+        assert await EncryptionService.encrypt("", key_id=DEFAULT_KEY_ID) == b""
+        assert await EncryptionService.decrypt(b"", key_id=DEFAULT_KEY_ID) == ""
 
-    def test_encryption_different_keys(self):
+    @pytest.mark.asyncio
+    async def test_encryption_different_keys(self):
         """Test that different key_ids produce different ciphertexts."""
-        from src.services.encryption_service import EncryptionService
-        
         test_data = "sensitive data"
         
-        encrypted_v1 = EncryptionService.encrypt(test_data, key_id="v1")
-        encrypted_v2 = EncryptionService.encrypt(test_data, key_id="v2")
+        encrypted_v1 = await EncryptionService.encrypt(test_data, key_id=DEFAULT_KEY_ID)
+        encrypted_v2 = await EncryptionService.encrypt(test_data, key_id="v2")
         
         # Same plaintext, different ciphertexts
         assert encrypted_v1 != encrypted_v2
         
         # But both decrypt correctly with their keys
-        assert EncryptionService.decrypt(encrypted_v1, key_id="v1") == test_data
-        assert EncryptionService.decrypt(encrypted_v2, key_id="v2") == test_data
+        assert await EncryptionService.decrypt(encrypted_v1, key_id=DEFAULT_KEY_ID) == test_data
+        assert await EncryptionService.decrypt(encrypted_v2, key_id="v2") == test_data
 
-    def test_decryption_wrong_key_fails(self):
+    @pytest.mark.asyncio
+    async def test_decryption_wrong_key_fails(self):
         """Test that decrypting with wrong key fails appropriately."""
-        from src.services.encryption_service import EncryptionService
-        
         test_data = "sensitive data"
-        encrypted = EncryptionService.encrypt(test_data, key_id="v1")
+        encrypted = await EncryptionService.encrypt(test_data, key_id=DEFAULT_KEY_ID)
         
         # Decrypting with wrong key should fail
         with pytest.raises(ValueError) as exc:
-            EncryptionService.decrypt(encrypted, key_id="wrong_key")
+            await EncryptionService.decrypt(encrypted, key_id="wrong_key")
         
         assert "Failed to decrypt" in str(exc.value)

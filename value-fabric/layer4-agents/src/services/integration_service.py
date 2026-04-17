@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.account import CRMProvider
 from ..models.integration import Integration, IntegrationStatus
-from .encryption_service import EncryptionService
+from .encryption_service import DEFAULT_KEY_ID, EncryptionService
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ class IntegrationService:
         sync_interval_minutes: int = 60,
         sync_batch_size: int = 100,
         user_id: str | None = None,
-    ) -> Integration:
+    ) -> tuple[Integration, bool]:
         """Create or update an integration configuration.
 
         Args:
@@ -125,7 +125,7 @@ class IntegrationService:
             user_id: User making the change (for audit)
 
         Returns:
-            Created/updated Integration
+            Tuple of (Integration, is_created) where is_created is True for new integrations
 
         Raises:
             IntegrationValidationError: If configuration is invalid
@@ -137,7 +137,7 @@ class IntegrationService:
 
         # Encrypt credentials
         credentials_json = json.dumps(credentials)
-        encrypted_creds = EncryptionService.encrypt(credentials_json, key_id="v1")
+        encrypted_creds = await EncryptionService.encrypt(credentials_json, key_id=DEFAULT_KEY_ID)
 
         # Check if integration exists
         existing = await self.get_integration(tenant_id, provider)
@@ -147,7 +147,7 @@ class IntegrationService:
             # Update existing
             existing.enabled = enabled
             existing.credentials_encrypted = encrypted_creds
-            existing.encryption_key_id = "v1"
+            existing.encryption_key_id = DEFAULT_KEY_ID
             existing.instance_url = instance_url
             existing.sync_interval_minutes = sync_interval_minutes
             existing.sync_batch_size = sync_batch_size
@@ -162,7 +162,7 @@ class IntegrationService:
                 provider=provider,
                 enabled=enabled,
                 credentials_encrypted=encrypted_creds,
-                encryption_key_id="v1",
+                encryption_key_id=DEFAULT_KEY_ID,
                 instance_url=instance_url,
                 sync_interval_minutes=sync_interval_minutes,
                 sync_batch_size=sync_batch_size,
@@ -183,7 +183,7 @@ class IntegrationService:
             user_id,
         )
 
-        return existing
+        return existing, not is_update
 
     async def delete_integration(
         self, tenant_id: str, provider: CRMProvider, user_id: str | None = None
@@ -243,7 +243,7 @@ class IntegrationService:
 
         try:
             # Decrypt credentials (for actual connection test - TODO)
-            creds_json = EncryptionService.decrypt(
+            creds_json = await EncryptionService.decrypt(
                 integration.credentials_encrypted, integration.encryption_key_id
             )
             _credentials = json.loads(creds_json)  # noqa: F841 - reserved for connection test
@@ -337,10 +337,23 @@ class IntegrationService:
                 f"sync_batch_size must be between {self.MIN_BATCH_SIZE} and {self.MAX_BATCH_SIZE}"
             )
 
-        if instance_url and not _INSTANCE_URL_PATTERN.match(instance_url):
-            raise IntegrationValidationError(
-                f"instance_url must be a valid HTTP/HTTPS URL: {instance_url}"
+        if instance_url:
+            if not _INSTANCE_URL_PATTERN.match(instance_url):
+                raise IntegrationValidationError(
+                    f"instance_url must be a valid HTTP/HTTPS URL: {instance_url}"
+                )
+            # Require HTTPS for production URLs (allow HTTP only for localhost)
+            # Match exact localhost or localhost with port (not localhost.something.com)
+            localhost_prefix = "http://localhost"
+            is_localhost_http = (
+                instance_url.startswith(localhost_prefix) and
+                (len(instance_url) == len(localhost_prefix) or
+                 instance_url[len(localhost_prefix)] in (":", "/"))  # port, path, or exact match
             )
+            if instance_url.startswith("http://") and not is_localhost_http:
+                raise IntegrationValidationError(
+                    f"HTTPS is required for production URLs: {instance_url}"
+                )
 
     async def decrypt_credentials(
         self, integration: Integration
@@ -353,7 +366,7 @@ class IntegrationService:
         Returns:
             Decrypted credentials dict
         """
-        creds_json = EncryptionService.decrypt(
+        creds_json = await EncryptionService.decrypt(
             integration.credentials_encrypted, integration.encryption_key_id
         )
         return json.loads(creds_json)
