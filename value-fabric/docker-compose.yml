@@ -102,7 +102,7 @@ services:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7474"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

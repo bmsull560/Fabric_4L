@@ -204,14 +204,30 @@ The InteractiveBusinessCase component uses the C1 stream API for conversational 
 
 ## Implementation Priority
 
-| API | Priority | Effort | Blocker |
-|-----|----------|--------|---------|
-| GET /v1/integrations | P1 | Medium | None |
-| POST /v1/integrations/:provider | P1 | Medium | Encryption infra |
-| DELETE /v1/integrations/:provider | P1 | Low | None |
-| POST /v1/integrations/:provider/test | P2 | Medium | Rate limiting |
-| POST /v1/integrations/:provider/sync | P2 | High | Background jobs |
-| POST /v1/agents/c1/stream | P1 | Medium | Thesys API key |
+| API | Priority | Status | Location |
+|-----|----------|--------|----------|
+| GET /v1/integrations | P1 | ✅ **Implemented** | `layer4-agents/src/api/routes/integrations.py` |
+| POST /v1/integrations/:provider | P1 | ✅ **Implemented** | `layer4-agents/src/api/routes/integrations.py` |
+| DELETE /v1/integrations/:provider | P1 | ✅ **Implemented** | `layer4-agents/src/api/routes/integrations.py` |
+| POST /v1/integrations/:provider/test | P2 | ✅ **Implemented** | `layer4-agents/src/api/routes/integrations.py` |
+| POST /v1/integrations/:provider/sync | P2 | ✅ **Implemented** | `layer4-agents/src/api/routes/integrations.py` |
+| POST /v1/c1/stream | P1 | ✅ **Already Complete** | `layer4-agents/src/api/routes/c1.py` |
+
+### Implementation Details
+
+**Files Created**:
+1. `layer4-agents/src/models/integration.py` — Integration SQLAlchemy model
+2. `layer4-agents/src/services/encryption_service.py` — Fernet-based credential encryption
+3. `layer4-agents/src/services/integration_service.py` — Business logic and validation
+4. `layer4-agents/src/api/routes/integrations.py` — FastAPI routes
+5. `layer4-agents/migrations/versions/010_add_integrations_table.py` — Database migration
+
+**Security Features**:
+- AES-128-CBC + HMAC encryption via Fernet
+- Credentials encrypted at rest, never returned in API responses
+- PBKDF2 key derivation for key rotation support
+- Audit logging for all CRUD operations
+- Tenant isolation enforced at database level
 
 ---
 
@@ -219,8 +235,13 @@ The InteractiveBusinessCase component uses the C1 stream API for conversational 
 
 | Component | Backend API | Frontend Status | Production Ready |
 |-----------|-------------|-----------------|------------------|
-| Integrations | ❌ Missing | ✅ Complete | ❌ No (needs persistence) |
-| InteractiveBusinessCase | ⚠️ Required | ✅ Complete | ⚠️ Pending L4 endpoint |
+| Integrations | ✅ **Complete** | ✅ Complete | ✅ **Production Ready** |
+| InteractiveBusinessCase | ✅ **Complete** | ✅ Complete | ✅ **Production Ready** |
+
+**Deployment Requirements**:
+- Set `CREDENTIALS_MASTER_KEY` environment variable for credential encryption
+- Run migration `010_add_integrations_table.py`
+- Set `THESYS_API_KEY` for C1 streaming functionality (optional)
 
 ---
 

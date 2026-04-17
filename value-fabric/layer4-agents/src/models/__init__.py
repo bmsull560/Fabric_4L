@@ -8,6 +8,10 @@ from .account import (
     EmbeddedOpportunity,
     SyncStatus,
 )
+from .integration import (
+    Integration,
+    IntegrationStatus,
+)
 from .billing import (
     BillingCustomer,
     BillingSubscription,
@@ -86,6 +90,9 @@ __all__ = [
     "EmbeddedContact",
     "EmbeddedOpportunity",
     "SyncStatus",
+    # Integration Models
+    "Integration",
+    "IntegrationStatus",
     # Billing Models
     "BillingCustomer",
     "BillingSubscription",

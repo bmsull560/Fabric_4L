@@ -8,9 +8,13 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies from lockfile (production only)
-COPY requirements.lock ./
-RUN pip install --no-cache-dir -r requirements.lock
+# Install Python dependencies directly
+RUN pip install --no-cache-dir \
+    fastapi>=0.115.0 \
+    uvicorn[standard]>=0.32.0 \
+    pydantic>=2.9.0 \
+    httpx>=0.27.0 \
+    prometheus-client>=0.21.0
 
 # Copy source code
 COPY src/ ./src/

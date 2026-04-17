@@ -55,6 +55,7 @@ from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
 from .routes.crm_webhooks import router as crm_webhooks_router
 from .routes.health_badges import health_badges_router
+from .routes.integrations import router as integrations_router
 from .routes.state_inspector import state_inspector_router
 from .websocket import get_ws_manager, websocket_router
 
@@ -314,6 +315,7 @@ app.include_router(crm_webhooks_router, prefix="/v1")
 app.include_router(checkpoint_router, prefix="/v1", tags=["checkpoints"])
 app.include_router(state_inspector_router, prefix="/v1", tags=["state-inspector"])
 app.include_router(health_badges_router, prefix="/v1", tags=["health"])
+app.include_router(integrations_router, prefix="/v1")
 app.include_router(websocket_router, prefix="/v1")
 
 # Governance routes

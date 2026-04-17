@@ -13,12 +13,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Install Python dependencies from lockfile
-COPY requirements.lock .
-RUN pip install --no-cache-dir -r requirements.lock
+# Install Python dependencies directly (avoid editable install issues)
+RUN pip install --no-cache-dir \
+    fastapi>=0.115.0 \
+    uvicorn[standard]>=0.32.0 \
+    pydantic>=2.9.0 \
+    openai>=1.40.0 \
+    langchain>=0.3.0 \
+    langchain-text-splitters>=0.3.0 \
+    rdflib>=7.1.0 \
+    numpy>=1.26.0 \
+    redis>=5.2.0 \
+    celery>=5.4.0 \
+    httpx>=0.27.0 \
+    python-dotenv>=1.0.0 \
+    prometheus-client>=0.21.0 \
+    psutil>=6.0.0
 
 # Copy application code
 COPY src/ ./src/
+
+# Set PYTHONPATH so imports work
+ENV PYTHONPATH=/app
 
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app

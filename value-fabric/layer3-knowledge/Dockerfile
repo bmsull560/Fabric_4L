@@ -19,12 +19,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set work directory
 WORKDIR /app
 
-# Install Python dependencies from lockfile (production only)
-COPY requirements.lock ./
-RUN pip install --no-cache-dir -r requirements.lock
+# Install Python dependencies directly
+RUN pip install --no-cache-dir \
+    fastapi>=0.109 \
+    uvicorn[standard]>=0.27 \
+    neo4j>=5.15 \
+    pinecone-client>=3.0 \
+    rdflib>=7.0 \
+    sentence-transformers>=2.3 \
+    pydantic>=2.5 \
+    pydantic-settings>=2.1 \
+    python-multipart>=0.0.6 \
+    httpx>=0.26 \
+    numpy>=1.26 \
+    scikit-learn>=1.4 \
+    networkx>=3.2 \
+    redis>=5.2.0 \
+    psutil>=6.0.0
 
 # Copy application code
 COPY src/ ./src/
+
+# Set PYTHONPATH so imports work
+ENV PYTHONPATH=/app
 
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app

@@ -107,6 +107,26 @@
 
 ## Daily Log
 
+### 2026-04-17 — Backend API Refinement Complete
+- [x] **Fixed logic bug**: `is_update` flag now correctly tracks create vs update
+- [x] **Fixed code smell**: Moved `uuid` import to module level
+- [x] **Added URL validation**: `_INSTANCE_URL_PATTERN` regex for instance_url
+- [x] **Hardened encryption**: Added Fernet key length validation (43 chars)
+- [x] **Created comprehensive test suite**: `test_integration_service.py` (12 tests)
+- [x] **Fixed linting**: Removed 3 unused imports/variables (ruff clean)
+- [x] All 12 unit tests passing for validation and encryption
+
+### 2026-04-16 — Backend API Implementation Complete
+- [x] Created `Integration` SQLAlchemy model with encrypted credentials
+- [x] Created `EncryptionService` using Fernet (AES-128-CBC + HMAC)
+- [x] Created `IntegrationService` with CRUD, validation, connection testing
+- [x] Created `integrations.py` API routes (GET/POST/DELETE /v1/integrations/:provider)
+- [x] Created Alembic migration `010_add_integrations_table.py`
+- [x] Updated `main.py` to register integrations router
+- [x] Added `cryptography` dependency for credential encryption
+- [x] **C1 Stream endpoint**: Already implemented at `POST /v1/c1/stream`
+- [x] **All P1 Medium Priority backend APIs now complete**
+
 ### 2026-04-15 — P1 Medium Priority Assessment
 - [x] Assessed InteractiveBusinessCase.tsx — ✅ Already complete with real backend API (`POST /v1/agents/c1/stream`)
 - [x] Assessed Integrations.tsx — UI complete, requires backend persistence API
@@ -202,12 +222,12 @@
 
 - [x] All P0 blockers resolved (7/7 issues fixed)
 - [x] All P1 high priority resolved (29 unit tests, 4 list views)
-- [ ] All P1 medium priority (Integrations backend API - flagged for backend team)
+- [x] All P1 medium priority (Integrations backend API - ✅ Implemented)
 - [ ] All P2 issues resolved (Pending Phase 2C)
 - [x] Route mapping verified (7 routes fixed)
 - [x] No mock data in production code
 - [x] Refinement complete (4 improvements made)
-- [x] All tests passing (378 unit tests)
+- [x] All tests passing (390 unit tests - 12 new backend tests added)
 - [ ] Coverage targets met (Component tests P2)
 - [ ] E2E tests passing (E2E tests P2)
 - [x] Documentation complete (REMEDIATION_LOG.md updated)
