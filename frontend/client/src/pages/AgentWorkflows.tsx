@@ -52,9 +52,9 @@ function PaginationControls({
   onRefresh,
 }: PaginationControlsProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-100 mt-2">
+    <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 mt-2">
       <div className="flex items-center gap-2">
-        <span className="text-xs text-neutral-500">{displayRange}</span>
+        <span className="text-xs text-muted-foreground">{displayRange}</span>
         {hasMore && (
           <span className="text-[10px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded">More available</span>
         )}
@@ -68,7 +68,7 @@ function PaginationControls({
         >
           <ChevronLeft size={14} className="mr-1" /> Previous
         </Btn>
-        <span className="text-xs text-neutral-400">
+        <span className="text-xs text-muted-foreground/60">
           Page {page + 1} of {totalPages || 1}
         </span>
         <Btn
@@ -79,7 +79,7 @@ function PaginationControls({
         >
           Next <ChevronRight size={14} className="ml-1" />
         </Btn>
-        <div className="w-px h-4 bg-neutral-200 mx-1" />
+        <div className="w-px h-4 bg-border mx-1" />
         <Btn
           variant="ghost"
           onClick={onRefresh}
@@ -142,7 +142,7 @@ export default function AgentWorkflows() {
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
-        breadcrumbs={["Agent Workflows", "Dashboard"]}
+        breadcrumbs={[{ label: "Agent Workflows" }, { label: "Dashboard" }]}
         title="Workflow Dashboard"
         subtitle="Monitor and manage AI agent workflows across all active analyses."
       />
@@ -159,6 +159,7 @@ export default function AgentWorkflows() {
           label="Active Workflows"
           value={activeWorkflows.filter((w: Workflow) => w.status === 'running').length.toString()}
           trend={isLoading ? "Loading..." : "Running now"}
+          trendUp
         />
         <MetricCard
           label="Completed Today"
@@ -191,7 +192,7 @@ export default function AgentWorkflows() {
                 className={`flex items-start gap-3 p-3 rounded-lg border ${
                   workflow.status === 'pending'
                     ? "bg-amber-50 border-amber-200"
-                    : "bg-neutral-50 border-neutral-200"
+                    : "bg-muted/30 border-border"
                 }`}
               >
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
@@ -204,21 +205,21 @@ export default function AgentWorkflows() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[12px] font-bold text-neutral-900 font-mono">{workflow.id}</span>
+                    <span className="text-[12px] font-bold text-foreground font-mono">{workflow.id}</span>
                     <StatusBadgePrimitive status={workflow.status}/>
                   </div>
-                  <div className="text-[11px] text-neutral-600">
+                  <div className="text-[11px] text-muted-foreground">
                     <span className="font-semibold">{workflow.name}</span>
                     {workflow.progress > 0 && (
                       <div className="flex items-center gap-2 mt-1.5">
                         <Progress value={workflow.progress} className="h-1.5 w-24" />
-                        <span className="text-[10px] text-neutral-500">{workflow.progress}%</span>
+                        <span className="text-[10px] text-muted-foreground/70">{workflow.progress}%</span>
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+                  <div className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
                     <Clock size={10}/>
                     {workflow.status}
                   </div>
@@ -276,11 +277,11 @@ export default function AgentWorkflows() {
           <DataTable
             columns={["Job ID", "Name", "Status", "Progress", "Created", "Actions"]}
             rows={historyWorkflows.map((w: Workflow) => [
-              <span className="font-mono text-[11px] text-neutral-600">{w.id}</span>,
-              <span className="text-neutral-700 font-semibold">{w.name}</span>,
+              <span className="font-mono text-[11px] text-muted-foreground">{w.id}</span>,
+              <span className="text-foreground font-semibold">{w.name}</span>,
               <StatusBadgePrimitive status={w.status}/>,
-              <span className="text-neutral-500 text-[11px]">{w.progress}%</span>,
-              <span className="text-neutral-400 text-[11px]">{w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '-'}</span>,
+              <span className="text-muted-foreground text-[11px]">{w.progress}%</span>,
+              <span className="text-muted-foreground/60 text-[11px]">{w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '-'}</span>,
               <div className="flex gap-2">
                 <button 
                   className="text-blue-600 text-[11px] hover:underline flex items-center gap-1"

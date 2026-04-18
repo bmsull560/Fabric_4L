@@ -14,7 +14,8 @@ RUN pip install --no-cache-dir \
     uvicorn[standard]>=0.32.0 \
     pydantic>=2.9.0 \
     httpx>=0.27.0 \
-    prometheus-client>=0.21.0
+    prometheus-client>=0.21.0 \
+    psutil>=5.9
 
 # Copy shared package
 COPY shared/ ./shared/

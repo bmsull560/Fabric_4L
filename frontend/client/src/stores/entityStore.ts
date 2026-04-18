@@ -20,6 +20,10 @@ export interface EntityUIStore {
   selectedType: EntityType | null;
   setSelectedType: (type: EntityType | null) => void;
 
+  /** Currently selected entity ID for detail drawer */
+  selectedEntityId: string | null;
+  setSelectedEntityId: (id: string | null) => void;
+
   /** Clear all filters */
   clearFilters: () => void;
 
@@ -30,12 +34,14 @@ export interface EntityUIStore {
 const DEFAULTS = {
   searchQuery: '',
   selectedType: null as EntityType | null,
+  selectedEntityId: null as string | null,
 };
 
 export const useEntityUIStore = create<EntityUIStore>((set) => ({
   ...DEFAULTS,
   setSearchQuery: (value) => set({ searchQuery: value }),
   setSelectedType: (type) => set({ selectedType: type }),
-  clearFilters: () => set({ searchQuery: '', selectedType: null }),
-  reset: () => set(DEFAULTS),
+  setSelectedEntityId: (id) => set({ selectedEntityId: id }),
+  clearFilters: () => set({ searchQuery: '', selectedType: null, selectedEntityId: null }),
+  reset: () => set({ ...DEFAULTS }),
 }));

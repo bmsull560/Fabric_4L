@@ -14,20 +14,21 @@ from fastapi.testclient import TestClient
 class TestRBACEnforcement:
     """Test suite for RBAC policy enforcement."""
 
-    def test_standard_user_blocked_from_admin_endpoints(self, client: TestClient, standard_user_token):
-        """P0: Standard users cannot access admin endpoints."""
-        admin_endpoints = [
-            "/api/v1/admin/users",
-            "/api/v1/admin/config",
-            "/api/v1/admin/audit-logs",
-        ]
+    @pytest.mark.parametrize("endpoint", [
+        "/api/v1/admin/users",
+        "/api/v1/admin/config",
+        "/api/v1/admin/audit-logs",
+    ])
+    def test_standard_user_blocked_from_admin_endpoint(self, client: TestClient, standard_user_token, endpoint: str):
+        """P0: Standard users cannot access admin endpoints.
 
-        for endpoint in admin_endpoints:
-            response = client.get(
-                endpoint,
-                headers={"Authorization": f"Bearer {standard_user_token}"},
-            )
-            assert response.status_code == 403, f"Admin endpoint {endpoint} should be forbidden"
+        Each endpoint is tested independently for clearer failure reporting.
+        """
+        response = client.get(
+            endpoint,
+            headers={"Authorization": f"Bearer {standard_user_token}"},
+        )
+        assert response.status_code == 403, f"Admin endpoint {endpoint} should be forbidden"
 
     def test_admin_user_can_access_admin_endpoints(self, client: TestClient, admin_user_token):
         """Admin users can access admin endpoints."""

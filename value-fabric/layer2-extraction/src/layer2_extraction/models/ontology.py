@@ -352,3 +352,311 @@ class ExtractionResult(BaseModel):
         return None
 
     model_config = ConfigDict(extra="forbid")
+
+
+# =============================================================================
+# Schema-Level Models (Ontology Definition)
+# =============================================================================
+# These models define the structure of types, properties, and relationships
+# that guide extraction. They represent the "schema" layer, distinct from the
+# "instance" layer above (Capability, UseCase, etc.)
+
+
+class PropertyType(str, Enum):
+    """Valid property types for ontology type definitions."""
+
+    STRING = "string"
+    NUMBER = "number"
+    BOOLEAN = "boolean"
+    DATE = "date"
+    ARRAY = "array"
+    OBJECT = "object"
+    REFERENCE = "reference"
+
+
+class RelationshipType(str, Enum):
+    """Valid relationship types between ontology types."""
+
+    DEPENDS_ON = "depends_on"
+    EXTENDS = "extends"
+    RELATES_TO = "relates_to"
+    CONTAINS = "contains"
+
+
+class Cardinality(str, Enum):
+    """Cardinality constraints for relationships."""
+
+    ONE_TO_ONE = "one_to_one"
+    ONE_TO_MANY = "one_to_many"
+    MANY_TO_MANY = "many_to_many"
+
+
+class PropertyConstraints(BaseModel):
+    """Constraints for ontology property definitions.
+
+    Attributes:
+        min_length: Minimum length for string properties
+        max_length: Maximum length for string properties
+        min: Minimum value for numeric properties
+        max: Maximum value for numeric properties
+        pattern: Regex pattern for string validation
+        enum: Allowed values for enumerated properties
+        reference_type_id: Type ID for reference properties
+    """
+
+    min_length: int | None = None
+    max_length: int | None = None
+    min: float | None = None
+    max: float | None = None
+    pattern: str | None = None
+    enum: list[str] | None = None
+    reference_type_id: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class OntologyProperty(BaseModel):
+    """A property definition for an ontology type.
+
+    Schema-level: defines what properties a type should have.
+    Instance-level: extracted entities have actual values for these properties.
+
+    Attributes:
+        id: Unique identifier for this property definition
+        name: Property name (snake_case recommended)
+        type: Data type of the property
+        description: Human-readable description
+        required: Whether this property is required
+        default_value: Default value if not specified
+        constraints: Validation constraints
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    name: str = Field(..., min_length=1, max_length=255)
+    type: PropertyType
+    description: str | None = Field(default=None, max_length=1000)
+    required: bool = False
+    default_value: str | int | float | bool | list | dict | None = None
+    constraints: PropertyConstraints | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class OntologyType(BaseModel):
+    """An ontology type definition (schema-level).
+
+    Defines the structure for a category of entities that can be extracted.
+    For example, "Capability" type defines that all capabilities have:
+    - name (required string)
+    - description (required string)
+    - technical_features (optional array)
+
+    Attributes:
+        id: Unique type identifier (e.g., "capability", "use_case")
+        name: Human-readable type name
+        description: Type description
+        properties: Property definitions for this type
+        parent_type_id: Parent type for inheritance (optional)
+        is_active: Whether this type is currently active
+        version: Schema version number
+        created_at: Creation timestamp
+        updated_at: Last update timestamp
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str = Field(default="", max_length=2000)
+    properties: list[OntologyProperty] = Field(default_factory=list)
+    parent_type_id: str | None = None
+    is_active: bool = True
+    version: int = 1
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @field_validator("properties")
+    @classmethod
+    def validate_unique_property_names(cls, v: list[OntologyProperty]) -> list[OntologyProperty]:
+        """Ensure property names are unique within the type."""
+        names = [p.name for p in v]
+        if len(names) != len(set(names)):
+            raise ValueError("Property names must be unique within a type")
+        return v
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class TypeRelationship(BaseModel):
+    """A relationship definition between two ontology types.
+
+    Schema-level: defines that type A can relate to type B via relationship R.
+    Instance-level: extracted entities have actual relationships.
+
+    Attributes:
+        id: Unique relationship identifier
+        source_type_id: Source type ID
+        target_type_id: Target type ID
+        relationship_type: Type of relationship
+        description: Relationship description
+        cardinality: Cardinality constraint
+        created_at: Creation timestamp
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    source_type_id: str
+    target_type_id: str
+    relationship_type: RelationshipType
+    description: str | None = Field(default=None, max_length=1000)
+    cardinality: Cardinality = Cardinality.MANY_TO_MANY
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ValidationError(BaseModel):
+    """Validation error for ontology schema."""
+
+    field: str
+    message: str
+    severity: str = "error"  # error | warning
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ValidationWarning(BaseModel):
+    """Validation warning for ontology schema."""
+
+    field: str
+    message: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class OntologySchema(BaseModel):
+    """Complete ontology schema definition.
+
+    Contains all type definitions and their relationships.
+    This is the authoritative schema used to guide extraction.
+
+    Attributes:
+        types: All ontology type definitions
+        relationships: All type relationship definitions
+        version: Schema version identifier
+        published_at: When this version was published
+        published_by: Who published this version
+    """
+
+    types: list[OntologyType] = Field(default_factory=list)
+    relationships: list[TypeRelationship] = Field(default_factory=list)
+    version: str = "1.0.0"
+    published_at: datetime | None = None
+    published_by: str | None = None
+
+    @field_validator("types")
+    @classmethod
+    def validate_unique_type_ids(cls, v: list[OntologyType]) -> list[OntologyType]:
+        """Ensure type IDs are unique within the schema."""
+        ids = [t.id for t in v]
+        if len(ids) != len(set(ids)):
+            raise ValueError("Type IDs must be unique within the schema")
+        return v
+
+    def get_type_by_id(self, type_id: str) -> OntologyType | None:
+        """Find a type definition by its ID."""
+        for t in self.types:
+            if t.id == type_id:
+                return t
+        return None
+
+    def get_relationships_for_type(self, type_id: str) -> list[TypeRelationship]:
+        """Get all relationships where this type is the source."""
+        return [r for r in self.relationships if r.source_type_id == type_id]
+
+    def validate_schema(self) -> tuple[bool, list[ValidationError], list[ValidationWarning]]:
+        """Validate the ontology schema for consistency.
+
+        Returns:
+            Tuple of (is_valid, errors, warnings)
+        """
+        errors: list[ValidationError] = []
+        warnings: list[ValidationWarning] = []
+
+        # Collect all type IDs
+        type_ids = {t.id for t in self.types}
+
+        # Check relationship integrity
+        for rel in self.relationships:
+            if rel.source_type_id not in type_ids:
+                errors.append(ValidationError(
+                    field=f"relationship.{rel.id}.source_type_id",
+                    message=f"Source type '{rel.source_type_id}' does not exist"
+                ))
+            if rel.target_type_id not in type_ids:
+                errors.append(ValidationError(
+                    field=f"relationship.{rel.id}.target_type_id",
+                    message=f"Target type '{rel.target_type_id}' does not exist"
+                ))
+
+        # Check parent type references
+        for t in self.types:
+            if t.parent_type_id and t.parent_type_id not in type_ids:
+                errors.append(ValidationError(
+                    field=f"type.{t.id}.parent_type_id",
+                    message=f"Parent type '{t.parent_type_id}' does not exist"
+                ))
+
+        # Check for orphaned types (no relationships, no parent)
+        for t in self.types:
+            has_relationships = any(
+                r.source_type_id == t.id or r.target_type_id == t.id
+                for r in self.relationships
+            )
+            if not t.parent_type_id and not has_relationships:
+                warnings.append(ValidationWarning(
+                    field=f"type.{t.id}",
+                    message=f"Type '{t.name}' has no relationships and no parent type"
+                ))
+
+        # Check for circular inheritance
+        def has_circular_inheritance(type_id: str, visited: set[str]) -> bool:
+            if type_id in visited:
+                return True
+            t = self.get_type_by_id(type_id)
+            if not t or not t.parent_type_id:
+                return False
+            return has_circular_inheritance(t.parent_type_id, visited | {type_id})
+
+        for t in self.types:
+            if t.parent_type_id and has_circular_inheritance(t.id, set()):
+                errors.append(ValidationError(
+                    field=f"type.{t.id}.parent_type_id",
+                    message=f"Circular inheritance detected for type '{t.id}'"
+                ))
+
+        is_valid = len([e for e in errors if e.severity == "error"]) == 0
+        return is_valid, errors, warnings
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class SchemaVersion(BaseModel):
+    """Published version of an ontology schema.
+
+    Attributes:
+        id: Unique version identifier
+        tenant_id: Tenant this schema belongs to
+        version: Version string (e.g., "1.2.3")
+        schema_data: Complete schema as JSON dict
+        published_by: User who published
+        published_at: Publication timestamp
+        comment: Optional changelog comment
+    """
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    tenant_id: str
+    version: str
+    schema_data: dict = Field(alias="schema_json")
+    published_by: str | None = None
+    published_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    comment: str | None = None
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)

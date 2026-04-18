@@ -16,9 +16,11 @@
 import type { BenchmarkFilters } from './useBenchmarks';
 import type { FormulaFilters } from './useFormulas';
 import type { ValuePackFilters } from './useValuePacks';
+import type { ModelFilters } from './useModels';
 import type { VariableFilters } from './useVariables';
 import type { GraphQueryRequest, EntityTraversalRequest } from './useGraphQuery';
 import type { AuditLogFilter } from './useProvenance';
+import type { SourceFilters } from './useSources';
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 export const QK = {
@@ -28,12 +30,24 @@ export const QK = {
     jobs:   () => ['ingestion', 'jobs'] as const,
     recent: () => ['ingestion', 'recent'] as const,
     stats:  () => ['ingestion', 'stats'] as const,
+    list:   (filters: unknown) => ['ingestion', 'list', stableKey(filters)] as const,
+    detail: (id: string) => ['ingestion', 'detail', id] as const,
+    logs:   (id: string) => ['ingestion', 'logs', id] as const,
+  },
+
+  // Layer 1 — Sources (Data Source Configuration)
+  sources: {
+    all:    ['sources'] as const,
+    list:   (filters: SourceFilters) => ['sources', 'list', stableKey(filters)] as const,
+    detail: (id: string) => ['sources', 'detail', id] as const,
+    stats:  ['sources', 'stats'] as const,
   },
 
   // Layer 2 — Extraction
   extraction: {
-    all: ['extraction'] as const,
-    job: (id: string) => ['extraction', 'job', id] as const,
+    all:     ['extraction'] as const,
+    job:     (id: string) => ['extraction', 'job', id] as const,
+    results: (id: string) => ['extraction', 'results', id] as const,
   },
 
   // Layer 3 — Knowledge graph
@@ -45,6 +59,8 @@ export const QK = {
                  ['graph', 'context', entityId, hops] as const,
     traversal: (params: EntityTraversalRequest) =>
                  ['graph', 'traversal', stableKey(params)] as const,
+    subgraph:  (query?: string, centerEntityId?: string, depth?: number, limit?: number) =>
+                 ['graph', 'subgraph', query ?? '', centerEntityId ?? '', depth ?? 2, limit ?? 100] as const,
   },
 
   entities: {
@@ -81,6 +97,13 @@ export const QK = {
     list:   (filters: ValuePackFilters) => ['value-packs', 'list', filters] as const,
     detail: (id: string) => ['value-packs', 'detail', id] as const,
     stats:  ['value-packs', 'stats'] as const,
+  },
+
+  models: {
+    all:     ['models'] as const,
+    list:    (filters: ModelFilters) => ['models', 'list', stableKey(filters)] as const,
+    detail:  (id: string) => ['models', 'detail', id] as const,
+    folders: () => ['models', 'folders'] as const,
   },
 
   valueTrees: {
@@ -133,6 +156,12 @@ export const QK = {
     filters:    ['accounts', 'filters'] as const,
   },
 
+  integrations: {
+    all:    ['integrations'] as const,
+    list:   ['integrations', 'list'] as const,
+    detail: (provider: string) => ['integrations', 'detail', provider] as const,
+  },
+
   // Narrative generation
   narrative: {
     all:        ['narrative'] as const,
@@ -145,6 +174,13 @@ export const QK = {
     settings: ['platform', 'settings'] as const,
     health:   ['platform', 'health'] as const,
   },
+
+  // Ontology Schema Management
+  ontology: {
+    all:    ['ontology'] as const,
+    schema: () => ['ontology', 'schema'] as const,
+    type:   (id: string) => ['ontology', 'type', id] as const,
+  },
 } as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -153,5 +189,6 @@ export const QK = {
  * can use it as a cache key without reference equality issues.
  */
 function stableKey(obj: unknown): string {
-  return JSON.stringify(obj, Object.keys(obj as object).sort());
+  if (obj == null || typeof obj !== 'object') return String(obj);
+  return JSON.stringify(obj, Object.keys(obj).sort());
 }

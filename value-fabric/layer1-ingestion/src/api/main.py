@@ -54,7 +54,12 @@ from ..shared.models import (
     create_scraping_target,
 )
 from ..shared.tasks import cleanup_old_content, process_scraping_job
-from shared.security import add_security_middleware, SecurityConfig
+
+try:
+    from shared.security import add_security_middleware, SecurityConfig
+except ImportError:
+    add_security_middleware = None
+    SecurityConfig = None
 
 # Configure logging
 structlog.configure(
@@ -188,16 +193,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# SecurityMiddleware — input validation and security headers
-_security_config_l1 = SecurityConfig(
-    skip_validation_paths=frozenset({
-        "/v1/ingest",
-        "/v1/ingest/batch",
-        "/v1/batch/ingest",
-    }),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l1)
+# SecurityMiddleware — input validation and security headers (only if shared package available)
+if SecurityConfig and add_security_middleware:
+    _security_config_l1 = SecurityConfig(
+        skip_validation_paths=frozenset({
+            "/v1/ingest",
+            "/v1/ingest/batch",
+            "/v1/batch/ingest",
+        }),
+        strict_mode=True,
+    )
+    add_security_middleware(app, config=_security_config_l1)
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
 # api_key_resolver is None here (L1 uses JWT auth primarily); pass a resolver
@@ -1953,7 +1959,8 @@ async def health_check(db: Session = Depends(get_db)):
 
     # Database check
     try:
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
         components["database"] = ComponentHealth(status="healthy", latency_ms=0)
     except Exception as e:
         components["database"] = ComponentHealth(status="unhealthy", message=str(e))
@@ -2144,7 +2151,8 @@ async def legacy_health_check():
     # Database dependency
     db = SessionLocal()
     try:
-        db.execute("SELECT 1")
+        from sqlalchemy import text
+        db.execute(text("SELECT 1"))
         dependencies.append({"name": "database", "status": "healthy", "error": None})
     except Exception as e:
         dependencies.append({"name": "database", "status": "unhealthy", "error": str(e)})

@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "audit_infrastructure",
+  "version": "1.0.0",
+  "description": "Infrastructure security and compliance audit for Kubernetes, IaC, CI/CD pipelines, and secret management with drift detection and policy validation",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "audit_scope": {
+        "type": "string",
+        "enum": ["all", "kubernetes", "iac", "cicd", "secrets", "containers", "networking"],
+        "default": "all",
+        "description": "Specific infrastructure areas to audit"
+      },
+      "environments": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["local", "dev", "staging", "production"]
+        },
+        "default": ["staging", "production"],
+        "description": "Environments to audit"
+      },
+      "k8s_namespaces": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": ["default", "value-fabric"],
+        "description": "Kubernetes namespaces to audit"
+      },
+      "run_iac_scanners": {
+        "type": "boolean",
+        "default": true,
+        "description": "Run Checkov/Trivy config scanners"
+      },
+      "check_container_security": {
+        "type": "boolean",
+        "default": true,
+        "description": "Validate container security configurations"
+      },
+      "verify_network_policies": {
+        "type": "boolean",
+        "default": true,
+        "description": "Verify K8s NetworkPolicy coverage"
+      },
+      "drift_detection": {
+        "type": "boolean",
+        "default": true,
+        "description": "Detect infrastructure drift from desired state"
+      },
+      "severity_threshold": {
+        "type": "string",
+        "enum": ["critical", "high", "medium", "low"],
+        "default": "medium",
+        "description": "Minimum severity level to report"
+      },
+      "output_format": {
+        "type": "string",
+        "enum": ["markdown", "json", "sarif"],
+        "default": "markdown",
+        "description": "Output format for audit report"
+      },
+      "fail_on_critical": {
+        "type": "boolean",
+        "default": true,
+        "description": "Return non-zero exit code if critical findings detected"
+      }
+    },
+    "required": []
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "summary": {
+        "type": "object",
+        "properties": {
+          "total_findings": { "type": "integer" },
+          "critical_count": { "type": "integer" },
+          "high_count": { "type": "integer" },
+          "medium_count": { "type": "integer" },
+          "low_count": { "type": "integer" },
+          "environments_audited": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "infrastructure_score": { "type": "number", "minimum": 0, "maximum": 100 },
+          "drift_detected": { "type": "boolean" },
+          "compliance_pass_rate": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      },
+      "kubernetes_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "resource_type": { "type": "string" },
+            "namespace": { "type": "string" },
+            "name": { "type": "string" },
+            "issue": { "type": "string" },
+            "severity": { "type": "string" },
+            "cis_benchmark": { "type": "string" },
+            "remediation": { "type": "string" }
+          }
+        }
+      },
+      "iac_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string" },
+            "resource": { "type": "string" },
+            "check_id": { "type": "string" },
+            "check_name": { "type": "string" },
+            "severity": { "type": "string" },
+            "guideline": { "type": "string" },
+            "fix": { "type": "string" }
+          }
+        }
+      },
+      "container_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "image": { "type": "string" },
+            "layer": { "type": "string" },
+            "vulnerability_id": { "type": "string" },
+            "severity": { "type": "string" },
+            "package": { "type": "string" },
+            "fixed_version": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        }
+      },
+      "secrets_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "secret_name": { "type": "string" },
+            "namespace": { "type": "string" },
+            "issue": { "type": "string" },
+            "severity": { "type": "string" },
+            "recommendation": { "type": "string" }
+          }
+        }
+      },
+      "cicd_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "workflow": { "type": "string" },
+            "issue": { "type": "string" },
+            "severity": { "type": "string" },
+            "recommendation": { "type": "string" }
+          }
+        }
+      },
+      "network_policy_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "namespace": { "type": "string" },
+            "issue": { "type": "string" },
+            "severity": { "type": "string" },
+            "current_policy": { "type": "string" },
+            "recommended_policy": { "type": "string" }
+          }
+        }
+      },
+      "drift_analysis": {
+        "type": "object",
+        "properties": {
+          "drift_detected": { "type": "boolean" },
+          "resources_with_drift": { "type": "integer" },
+          "drift_details": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource": { "type": "string" },
+                "namespace": { "type": "string" },
+                "expected_state": { "type": "string" },
+                "actual_state": { "type": "string" },
+                "drift_type": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "recommendations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "priority": { "type": "integer", "minimum": 1, "maximum": 5 },
+            "category": { "type": "string" },
+            "description": { "type": "string" },
+            "security_impact": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

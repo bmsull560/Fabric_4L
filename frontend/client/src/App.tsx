@@ -15,7 +15,9 @@ const LandingPage            = lazy(() => import("./pages/LandingPage"));
 const CommandCenter          = lazy(() => import("./pages/CommandCenter"));
 const ValueNarrativeHome    = lazy(() => import("./pages/ValueNarrativeHome"));
 const ExtractionEngine       = lazy(() => import("./pages/ExtractionEngine"));
-const OntologyBrowser        = lazy(() => import("./pages/OntologyBrowser"));
+const IngestionJobs          = lazy(() => import("./pages/IngestionJobs"));
+const OntologyEditor         = lazy(() => import("./pages/OntologyEditor"));
+const EntityBrowser          = lazy(() => import("./pages/EntityBrowser"));
 const EntityDetail           = lazy(() => import("./pages/EntityDetail"));
 const ValueTreeExplorer      = lazy(() => import("./pages/ValueTreeExplorer"));
 const FormulaBuilder         = lazy(() => import("./pages/FormulaBuilder"));
@@ -35,6 +37,7 @@ const PackManagement         = lazy(() => import("./pages/admin/PackManagement")
 const PermissionsAdmin       = lazy(() => import("./pages/admin/PermissionsAdmin"));
 const PlatformSettings       = lazy(() => import("./pages/admin/PlatformSettings"));
 const HealthMonitor          = lazy(() => import("./pages/admin/HealthMonitor"));
+const MyModels               = lazy(() => import("./pages/MyModels"));
 const BusinessCaseList       = lazy(() => import("./pages/BusinessCaseList"));
 const OpportunityFinder      = lazy(() => import("./pages/OpportunityFinder"));
 const WhitespaceAnalysis     = lazy(() => import("./pages/WhitespaceAnalysis"));
@@ -164,7 +167,7 @@ function Router() {
           </Route>
           <Route path="/library/models">
             <RouteGuard>
-              <ErrorBoundary><ValuePacks /></ErrorBoundary>
+              <ErrorBoundary><MyModels /></ErrorBoundary>
             </RouteGuard>
           </Route>
           <Route path="/library/authoring">
@@ -191,7 +194,7 @@ function Router() {
           </Route>
           <Route path="/discover/jobs">
             <RouteGuard>
-              <ErrorBoundary><ExtractionEngine /></ErrorBoundary>
+              <ErrorBoundary><IngestionJobs /></ErrorBoundary>
             </RouteGuard>
           </Route>
           <Route path="/discover/extraction">
@@ -206,7 +209,7 @@ function Router() {
           </Route>
           <Route path="/discover/knowledge/entities">
             <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><EntityDetail /></ErrorBoundary>
+              <ErrorBoundary><EntityBrowser /></ErrorBoundary>
             </RouteGuard>
           </Route>
           <Route path="/discover/knowledge/graph">
@@ -216,7 +219,7 @@ function Router() {
           </Route>
           <Route path="/discover/knowledge/ontology">
             <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><OntologyBrowser /></ErrorBoundary>
+              <ErrorBoundary><OntologyEditor /></ErrorBoundary>
             </RouteGuard>
           </Route>
 

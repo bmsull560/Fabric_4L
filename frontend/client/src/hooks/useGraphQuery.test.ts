@@ -149,18 +149,24 @@ describe('useFullGraph', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.nodes).toBeInstanceOf(Array);
-    expect(result.current.data?.relationships).toBeInstanceOf(Array);
+    expect(result.current.data?.edges).toBeInstanceOf(Array);
   });
 
-  it('normalizes search results to graph nodes', async () => {
+  it('returns coherent subgraph with nodes and edges', async () => {
     // Override handler for this test
     server.use(
-      http.post('/api/v1/graph/search/hybrid', () => {
+      http.get('/api/v1/graph/subgraph', () => {
         return HttpResponse.json({
-          results: [
-            { id: 'ent-1', name: 'Entity One', entity_type: 'capability', confidence_score: 0.95 },
-            { id: 'ent-2', title: 'Entity Two', type: 'usecase', confidence: 0.88 },
+          root_entity_id: '',
+          nodes: [
+            { id: 'ent-1', label: 'Entity One', type: 'Capability', confidence: 0.95 },
+            { id: 'ent-2', label: 'Entity Two', type: 'UseCase', confidence: 0.88 },
           ],
+          edges: [
+            { source: 'ent-1', target: 'ent-2', type: 'ENABLES' },
+          ],
+          depth: 2,
+          stats: { total_nodes: 2, total_edges: 1, density: 0.5 },
         });
       })
     );
@@ -170,15 +176,24 @@ describe('useFullGraph', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    // Should handle both id/entity_id and name/title field variations
+    // Should return coherent graph with both nodes AND edges
     expect(result.current.data?.nodes).toHaveLength(2);
+    expect(result.current.data?.edges).toHaveLength(1);
+    expect(result.current.data?.edges[0].source).toBe('ent-1');
+    expect(result.current.data?.edges[0].target).toBe('ent-2');
   });
 
-  it('handles empty graph', async () => {
+  it('handles empty subgraph', async () => {
     // Override handler for this test
     server.use(
-      http.post('/api/v1/graph/search/hybrid', () => {
-        return HttpResponse.json({ results: [] });
+      http.get('/api/v1/graph/subgraph', () => {
+        return HttpResponse.json({
+          root_entity_id: '',
+          nodes: [],
+          edges: [],
+          depth: 2,
+          stats: { total_nodes: 0, total_edges: 0, density: 0 },
+        });
       })
     );
 
@@ -188,6 +203,6 @@ describe('useFullGraph', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.nodes).toHaveLength(0);
-    expect(result.current.data?.relationships).toHaveLength(0);
+    expect(result.current.data?.edges).toHaveLength(0);
   });
 });

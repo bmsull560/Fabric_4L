@@ -116,7 +116,7 @@ const STATUS_CONFIG: Record<OpportunityStatus, {
   investigating: { label: 'Investigating', color: 'text-amber-600', bgColor: 'bg-amber-50' },
   qualified: { label: 'Qualified', color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   converted: { label: 'Converted', color: 'text-violet-600', bgColor: 'bg-violet-50' },
-  dismissed: { label: 'Dismissed', color: 'text-neutral-500', bgColor: 'bg-neutral-100' },
+  dismissed: { label: 'Dismissed', color: 'text-muted-foreground', bgColor: 'bg-muted/30' },
 };
 
 const IMPACT_CONFIG: Record<ImpactLevel, {
@@ -139,8 +139,8 @@ const IMPACT_CONFIG: Record<ImpactLevel, {
   },
   low: {
     label: 'Low Impact',
-    color: 'text-neutral-500',
-    bgColor: 'bg-neutral-100',
+    color: 'text-muted-foreground',
+    bgColor: 'bg-muted/30',
     icon: <Zap size={14} />,
   },
 };
@@ -170,8 +170,8 @@ function OpportunityCard({
 
   return (
     <div className={cn(
-      "bg-white border rounded-xl transition-all",
-      isExpanded ? "border-neutral-300 shadow-sm" : "border-neutral-200 hover:border-neutral-300"
+      "bg-card border rounded-xl transition-all",
+      isExpanded ? "border-neutral-300 shadow-sm" : "border-border hover:border-neutral-300"
     )}>
       <div
         className="p-4 cursor-pointer"
@@ -180,20 +180,20 @@ function OpportunityCard({
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-[14px] font-semibold text-neutral-800">
+              <h3 className="text-[14px] font-semibold text-foreground">
                 {opportunity.title}
               </h3>
               <span className={cn(
                 "text-[10px] font-medium px-2 py-0.5 rounded-full",
-                CATEGORY_COLORS[opportunity.category] || 'bg-neutral-100 text-neutral-600'
+                CATEGORY_COLORS[opportunity.category] || 'bg-muted/30 text-muted-foreground'
               )}>
                 {opportunity.category}
               </span>
             </div>
-            <p className="text-[12px] text-neutral-500 mb-2 line-clamp-2">
+            <p className="text-[12px] text-muted-foreground mb-2 line-clamp-2">
               {opportunity.description}
             </p>
-            <div className="flex items-center gap-3 text-[11px] text-neutral-400">
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground/60">
               <span className="flex items-center gap-1">
                 <Building2 size={11} />
                 {opportunity.account}
@@ -211,13 +211,13 @@ function OpportunityCard({
           <div className="flex items-center gap-3 ml-4">
             <div className="text-right">
               <p className="text-[18px] font-bold text-emerald-600">{opportunity.estimatedValue}</p>
-              <p className="text-[10px] text-neutral-400">Est. Value</p>
+              <p className="text-[10px] text-muted-foreground/60">Est. Value</p>
             </div>
             <div className="text-right">
-              <p className="text-[18px] font-bold text-neutral-800">{opportunity.aiScore}</p>
-              <p className="text-[10px] text-neutral-400">AI Score</p>
+              <p className="text-[18px] font-bold text-foreground">{opportunity.aiScore}</p>
+              <p className="text-[10px] text-muted-foreground/60">AI Score</p>
             </div>
-            <button className="p-1 rounded hover:bg-neutral-100">
+            <button className="p-1 rounded hover:bg-muted/30">
               {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
           </div>
@@ -225,17 +225,17 @@ function OpportunityCard({
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4 border-t border-neutral-100 pt-3">
+        <div className="px-4 pb-4 border-t border-border/50 pt-3">
           <div className="grid grid-cols-2 gap-4">
             {/* Insights */}
             <div>
-              <h4 className="text-[11px] font-semibold text-neutral-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+              <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
                 <Lightbulb size={12} />
                 AI Insights
               </h4>
               <ul className="space-y-1">
                 {opportunity.insights.map((insight, idx) => (
-                  <li key={idx} className="text-[11px] text-neutral-600 flex items-start gap-1.5">
+                  <li key={idx} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
                     <span className="w-1 h-1 rounded-full bg-blue-400 mt-1.5 shrink-0" />
                     {insight}
                   </li>
@@ -245,13 +245,13 @@ function OpportunityCard({
 
             {/* Recommended Actions */}
             <div>
-              <h4 className="text-[11px] font-semibold text-neutral-600 uppercase tracking-wider mb-2 flex items-center gap-1">
+              <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
                 <Target size={12} />
                 Recommended Actions
               </h4>
               <ul className="space-y-1">
                 {opportunity.recommendedActions.map((action, idx) => (
-                  <li key={idx} className="text-[11px] text-neutral-600 flex items-start gap-1.5">
+                  <li key={idx} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
                     <span className="w-1 h-1 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
                     {action}
                   </li>
@@ -261,13 +261,13 @@ function OpportunityCard({
           </div>
 
           {/* Sources & Actions */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-neutral-100">
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-border/50">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-neutral-400">Sources:</span>
+              <span className="text-[10px] text-muted-foreground/60">Sources:</span>
               {opportunity.sources.map((source, idx) => (
                 <span
                   key={idx}
-                  className="text-[10px] px-2 py-0.5 bg-neutral-100 text-neutral-600 rounded"
+                  className="text-[10px] px-2 py-0.5 bg-muted/30 text-muted-foreground rounded"
                 >
                   {source}
                 </span>
@@ -299,7 +299,7 @@ function OpportunityCard({
 
 function OpportunitySkeleton() {
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-4">
+    <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <Skeleton className="h-5 w-64 mb-2" />
@@ -447,33 +447,33 @@ function OpportunityFinderContent() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign size={14} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Total Pipeline</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Pipeline</span>
           </div>
           <p className="text-[22px] font-extrabold text-emerald-600">${(stats.totalValue / 1000000).toFixed(1)}M</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp size={14} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">High Impact</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">High Impact</span>
           </div>
-          <p className="text-[22px] font-extrabold text-neutral-800">{stats.highImpact}</p>
+          <p className="text-[22px] font-extrabold text-foreground">{stats.highImpact}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Lightbulb size={14} className="text-blue-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">New This Week</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">New This Week</span>
           </div>
-          <p className="text-[22px] font-extrabold text-neutral-800">{stats.newOpps}</p>
+          <p className="text-[22px] font-extrabold text-foreground">{stats.newOpps}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Target size={14} className="text-violet-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Avg AI Score</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Avg AI Score</span>
           </div>
-          <p className="text-[22px] font-extrabold text-neutral-800">
+          <p className="text-[22px] font-extrabold text-foreground">
             {opportunities.length > 0 ? Math.round(opportunities.reduce((sum, o) => sum + o.aiScore, 0) / opportunities.length) : 0}
           </p>
         </div>
@@ -481,21 +481,21 @@ function OpportunityFinderContent() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <div className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2 flex-1 max-w-sm">
-          <Search size={14} className="text-neutral-400" />
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 flex-1 max-w-sm">
+          <Search size={14} className="text-muted-foreground/60" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search opportunities..."
-            className="flex-1 text-[13px] bg-transparent outline-none text-neutral-700"
+            className="flex-1 text-[13px] bg-transparent outline-none text-muted-foreground"
           />
         </div>
 
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+          className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
         >
           <option value="all">All Categories</option>
           {categories.map(cat => (
@@ -506,7 +506,7 @@ function OpportunityFinderContent() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as OpportunityStatus | 'all')}
-          className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+          className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
         >
           <option value="all">All Status</option>
           <option value="new">New</option>
@@ -518,7 +518,7 @@ function OpportunityFinderContent() {
         <select
           value={impactFilter}
           onChange={(e) => setImpactFilter(e.target.value as ImpactLevel | 'all')}
-          className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+          className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
         >
           <option value="all">All Impact</option>
           <option value="high">High</option>
@@ -527,11 +527,11 @@ function OpportunityFinderContent() {
         </select>
 
         <div className="flex items-center gap-2 ml-auto">
-          <span className="text-[12px] text-neutral-500">Sort:</span>
+          <span className="text-[12px] text-muted-foreground">Sort:</span>
           <select
             value={sortField}
             onChange={(e) => handleSort(e.target.value as SortField)}
-            className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+            className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
           >
             <option value="aiScore">AI Score</option>
             <option value="value">Value</option>
@@ -554,7 +554,7 @@ function OpportunityFinderContent() {
       </div>
 
       {opportunities.length === 0 && (
-        <div className="text-center py-12 text-neutral-400">
+        <div className="text-center py-12 text-muted-foreground/60">
           <Lightbulb size={48} className="mx-auto mb-4 text-neutral-300" />
           <p className="text-[14px] font-medium">No opportunities found</p>
           <p className="text-[12px] mt-1">Adjust filters or run an AI scan to discover new opportunities</p>

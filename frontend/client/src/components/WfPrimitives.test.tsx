@@ -153,7 +153,7 @@ describe("WfPrimitives", () => {
       render(
         <PageHeader
           title="Final Page"
-          breadcrumbs={["Home", "Section", "Final Page"]}
+          breadcrumbs={[{ label: "Home" }, { label: "Section" }, { label: "Final Page" }]}
         />
       );
 

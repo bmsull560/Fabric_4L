@@ -30,6 +30,7 @@ export interface ValuePack {
   created_at?: string;
   version?: string;
   owner?: string;
+  category?: string;
 }
 
 
@@ -37,6 +38,7 @@ export interface ValuePackFilters {
   industry?: string | 'all';
   status?: PackStatus | 'all';
   scope?: PackScope | 'all';
+  category?: string | 'all';
   search?: string;
 }
 
@@ -45,6 +47,7 @@ async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> 
   if (filters.industry && filters.industry !== 'all') params.set('industry', filters.industry);
   if (filters.status && filters.status !== 'all') params.set('status', filters.status);
   if (filters.scope && filters.scope !== 'all') params.set('scope', filters.scope);
+  if (filters.category && filters.category !== 'all') params.set('category', filters.category);
   if (filters.search) params.set('search', filters.search);
 
   const response = await apiClient.get('l3', `/packs?${params.toString()}`);

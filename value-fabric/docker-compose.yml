@@ -58,6 +58,7 @@ services:
       - NEO4J_PASSWORD=${NEO4J_PASSWORD:-valuefabric}
       - RDF_OUTPUT_DIR=/app/rdf-output
       - LOG_LEVEL=info
+      - LAYER3_API_URL=http://layer3-knowledge:8001
       # Infisical — leave blank to use plain env vars
       - INFISICAL_CLIENT_ID=${INFISICAL_CLIENT_ID:-}
       - INFISICAL_CLIENT_SECRET=${INFISICAL_CLIENT_SECRET:-}
@@ -192,7 +193,7 @@ services:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health').raise_for_status()"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -237,7 +238,7 @@ services:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/api/v1/health"]
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8005/api/v1/health').raise_for_status()"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -306,16 +307,21 @@ services:
     networks:
       - value-fabric-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Celery Worker for Layer 1
   layer1-celery-worker:
     build:
-      context: ./layer1-ingestion
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer1-ingestion/Dockerfile
     container_name: value-fabric-layer1-celery-worker
-    command: celery -A layer1_ingestion.src.shared.tasks worker --loglevel=info --concurrency=4 -Q celery,ingestion,processing
+    command: celery -A src.shared.tasks worker --loglevel=info --concurrency=4 -Q celery,ingestion,processing
     environment:
-      - DATABASE_URL=postgresql://layer1:layer1pass@postgres:5432/layer1_db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
       - PYTHONPATH=/app
@@ -328,7 +334,7 @@ services:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "celery", "-A", "layer1_ingestion.src.shared.tasks", "inspect", "--timeout", "5"]
+      test: ["CMD", "celery", "-A", "src.shared.tasks", "inspect", "ping", "--timeout", "5"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -336,12 +342,12 @@ services:
   # Celery Beat for Scheduled Tasks
   layer1-celery-beat:
     build:
-      context: ./layer1-ingestion
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer1-ingestion/Dockerfile
     container_name: value-fabric-layer1-celery-beat
-    command: celery -A layer1_ingestion.src.shared.tasks beat --loglevel=info
+    command: celery -A src.shared.tasks beat --loglevel=info
     environment:
-      - DATABASE_URL=postgresql://layer1:layer1pass@postgres:5432/layer1_db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
       - PYTHONPATH=/app
@@ -355,16 +361,21 @@ services:
     networks:
       - value-fabric-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os; os.kill(1, 0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # Flower - Celery Monitoring UI
   flower:
     build:
-      context: ./layer1-ingestion
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer1-ingestion/Dockerfile
     container_name: value-fabric-flower
-    command: celery -A layer1_ingestion.src.shared.tasks flower --port=5555
+    command: celery -A src.shared.tasks flower --port=5555
     environment:
-      - DATABASE_URL=postgresql://layer1:layer1pass@postgres:5432/layer1_db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
       - PYTHONPATH=/app
@@ -379,7 +390,7 @@ services:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:5555/flower/"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5555/')"]
       interval: 30s
       timeout: 10s
       retries: 3

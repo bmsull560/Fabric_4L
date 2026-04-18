@@ -140,17 +140,17 @@ function OutlineNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
   return (
     <div>
       <div
-        className="flex items-center gap-1.5 py-1 text-[12px] hover:bg-neutral-100 rounded px-1 cursor-pointer"
+        className="flex items-center gap-1.5 py-1 text-[12px] hover:bg-muted/30 rounded px-1 cursor-pointer"
         style={{ paddingLeft: `${depth * 16 + 4}px` }}
         onClick={() => setOpen(o => !o)}
       >
         {hasChildren ? (
-          open ? <ChevronDown size={11} className="text-neutral-400"/> : <ChevronRight size={11} className="text-neutral-400"/>
+          open ? <ChevronDown size={11} className="text-muted-foreground/60"/> : <ChevronRight size={11} className="text-muted-foreground/60"/>
         ) : (
           <span className="w-[11px] text-neutral-300 text-[10px]">─</span>
         )}
         <EntityBadge type={node.type}/>
-        <span className="text-neutral-700">{node.label}</span>
+        <span className="text-muted-foreground">{node.label}</span>
       </div>
       {hasChildren && open && node.children!.map((child) => (
         <OutlineNode key={child.id} node={child} depth={depth + 1}/>
@@ -162,7 +162,7 @@ function OutlineNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
 function ValueTreeSkeleton({ view }: { view: "visual" | "outline" }) {
   if (view === "visual") {
     return (
-      <div className="bg-white border border-neutral-200 rounded-lg p-8 overflow-x-auto shadow-sm">
+      <div className="bg-card border border-border rounded-lg p-8 overflow-x-auto shadow-sm">
         <div className="flex justify-center min-w-[700px]">
           {/* Skeleton tree structure */}
           <div className="flex flex-col items-center gap-4">
@@ -188,7 +188,7 @@ function ValueTreeSkeleton({ view }: { view: "visual" | "outline" }) {
   }
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+    <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
       <div className="space-y-2">
         {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
           <Skeleton key={i} className="h-6" style={{ marginLeft: `${Math.min(i, 3) * 16}px` }} />
@@ -254,7 +254,7 @@ export default function ValueTreeExplorer() {
   return (
     <div className="p-6 max-w-6xl">
       <PageHeader
-        breadcrumbs={["Value Trees", "Tree Explorer"]}
+        breadcrumbs={[{ label: "Value Trees" }, { label: "Tree Explorer" }]}
         title="Tree Explorer"
         subtitle={entityId 
           ? `Visualizing value hierarchy from entity: ${entityId.slice(0, ENTITY_ID_SHORT_LENGTH)}...`
@@ -266,26 +266,26 @@ export default function ValueTreeExplorer() {
               <Btn 
                 variant="ghost" 
                 onClick={() => setShowEntitySelector(!showEntitySelector)}
-                className={showEntitySelector ? "bg-neutral-100" : ""}
+                className={showEntitySelector ? "bg-muted/30" : ""}
               >
                 {entityId ? "Change Root Entity ▾" : "Select Tree ▾"}
               </Btn>
               {showEntitySelector && (
-                <div className="absolute top-full right-0 mt-1 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg z-50">
-                  <div className="p-3 border-b border-neutral-100">
-                    <div className="flex items-center gap-2 text-[12px] text-neutral-500">
+                <div className="absolute top-full right-0 mt-1 w-80 bg-card border border-border rounded-lg shadow-lg z-50">
+                  <div className="p-3 border-b border-border/50">
+                    <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
                       <Search size={12} />
                       <span>Select root entity</span>
                     </div>
                   </div>
                   <div className="max-h-64 overflow-y-auto p-2 space-y-1">
                     {entitiesLoading ? (
-                      <div className="p-4 text-center text-neutral-500 text-[12px]">
+                      <div className="p-4 text-center text-muted-foreground text-[12px]">
                         <Loader2 size={14} className="animate-spin inline mr-2" />
                         Loading entities...
                       </div>
                     ) : rootCandidates.length === 0 ? (
-                      <div className="p-4 text-center text-neutral-500 text-[12px]">
+                      <div className="p-4 text-center text-muted-foreground text-[12px]">
                         No entities available. 
                         <a href="/discover/knowledge/entities" className="text-blue-600 hover:underline ml-1">
                           Browse entities
@@ -299,14 +299,14 @@ export default function ValueTreeExplorer() {
                           className={`w-full text-left px-3 py-2 rounded-lg text-[12px] transition-colors ${
                             entityId === entity.id 
                               ? "bg-blue-50 text-blue-700" 
-                              : "hover:bg-neutral-50 text-neutral-700"
+                              : "hover:bg-muted/20 text-muted-foreground"
                           }`}
                         >
                           <div className="flex items-center gap-2">
                             <EntityBadge type={mapEntityType(entity.type)} />
                             <span className="font-medium truncate">{entity.name}</span>
                           </div>
-                          <div className="text-[10px] text-neutral-400 mt-1">
+                          <div className="text-[10px] text-muted-foreground/60 mt-1">
                             {entity.id.slice(0, ENTITY_ID_LIST_LENGTH)}...
                           </div>
                         </button>
@@ -352,24 +352,24 @@ export default function ValueTreeExplorer() {
           <SectionCard className="flex-1 py-3">
             <div className="flex items-center gap-4 text-[12px]">
               <div>
-                <span className="text-neutral-400 uppercase tracking-wider text-[10px]">Nodes</span>
-                <p className="font-bold text-neutral-800 text-[18px]">{stats.totalNodes}</p>
+                <span className="text-muted-foreground/60 uppercase tracking-wider text-[10px]">Nodes</span>
+                <p className="font-bold text-foreground text-[18px]">{stats.totalNodes}</p>
               </div>
               <div className="w-px h-8 bg-neutral-200" />
               <div>
-                <span className="text-neutral-400 uppercase tracking-wider text-[10px]">Edges</span>
-                <p className="font-bold text-neutral-800 text-[18px]">{stats.totalEdges}</p>
+                <span className="text-muted-foreground/60 uppercase tracking-wider text-[10px]">Edges</span>
+                <p className="font-bold text-foreground text-[18px]">{stats.totalEdges}</p>
               </div>
               <div className="w-px h-8 bg-neutral-200" />
               <div>
-                <span className="text-neutral-400 uppercase tracking-wider text-[10px]">Max Depth</span>
-                <p className="font-bold text-neutral-800 text-[18px]">{stats.maxDepth}</p>
+                <span className="text-muted-foreground/60 uppercase tracking-wider text-[10px]">Max Depth</span>
+                <p className="font-bold text-foreground text-[18px]">{stats.maxDepth}</p>
               </div>
               <div className="ml-auto flex gap-2">
                 {Object.entries(stats.byLayer).map(([layer, count]) => (
-                  <div key={layer} className="text-center px-2 py-1 bg-neutral-50 rounded">
-                    <span className="text-[10px] text-neutral-400">L{layer}</span>
-                    <p className="font-semibold text-neutral-700">{count}</p>
+                  <div key={layer} className="text-center px-2 py-1 bg-muted/20 rounded">
+                    <span className="text-[10px] text-muted-foreground/60">L{layer}</span>
+                    <p className="font-semibold text-muted-foreground">{count}</p>
                   </div>
                 ))}
               </div>
@@ -409,10 +409,10 @@ export default function ValueTreeExplorer() {
 
       {/* Empty State - No entity selected */}
       {!entityId && !treeLoading && !treeError && (
-        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-12 text-center">
+        <div className="bg-muted/20 border border-border rounded-lg p-12 text-center">
           <TreeDeciduous className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
-          <h3 className="text-[14px] font-semibold text-neutral-700 mb-2">No Entity Selected</h3>
-          <p className="text-[12px] text-neutral-500 mb-4 max-w-md mx-auto">
+          <h3 className="text-[14px] font-semibold text-muted-foreground mb-2">No Entity Selected</h3>
+          <p className="text-[12px] text-muted-foreground mb-4 max-w-md mx-auto">
             Select a root entity (Value Driver, Persona, or Capability) to visualize its value hierarchy.
           </p>
           <Btn variant="primary" onClick={() => setShowEntitySelector(true)}>
@@ -423,10 +423,10 @@ export default function ValueTreeExplorer() {
 
       {/* Empty State - No tree data */}
       {entityId && !treeLoading && !treeError && !tree && (
-        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-12 text-center">
+        <div className="bg-muted/20 border border-border rounded-lg p-12 text-center">
           <TreeDeciduous className="w-12 h-12 text-neutral-300 mx-auto mb-4" />
-          <h3 className="text-[14px] font-semibold text-neutral-700 mb-2">No Value Tree Found</h3>
-          <p className="text-[12px] text-neutral-500 mb-4 max-w-md mx-auto">
+          <h3 className="text-[14px] font-semibold text-muted-foreground mb-2">No Value Tree Found</h3>
+          <p className="text-[12px] text-muted-foreground mb-4 max-w-md mx-auto">
             This entity doesn&apos;t have any connected value relationships. Try selecting a different entity or create relationships in the knowledge graph.
           </p>
           <Btn variant="outline" onClick={() => setShowEntitySelector(true)}>
@@ -438,13 +438,13 @@ export default function ValueTreeExplorer() {
       {/* Success State - Tree Display */}
       {!treeLoading && !treeError && tree && (
         view === "visual" ? (
-          <div className="bg-white border border-neutral-200 rounded-lg p-8 overflow-x-auto shadow-sm">
+          <div className="bg-card border border-border rounded-lg p-8 overflow-x-auto shadow-sm">
             <div className="flex justify-center min-w-[700px]">
               <TreeNodeView node={tree}/>
             </div>
           </div>
         ) : (
-          <div className="bg-white border border-neutral-200 rounded-lg p-4 shadow-sm">
+          <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
             <OutlineNode node={tree}/>
           </div>
         )

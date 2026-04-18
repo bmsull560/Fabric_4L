@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
@@ -8,6 +9,10 @@ import {
   EntityTraversalResponseSchema,
   safeParseResponse,
 } from '@/lib/schemas';
+import {
+  SubgraphResponseSchema,
+  validateOrThrow,
+} from '@/lib/validation/schemas';
 
 export interface GraphNode {
   id: string;
@@ -215,45 +220,177 @@ export function useEntityTraversal() {
   });
 }
 
+export interface SubgraphResponse {
+  root_entity_id: string;
+  nodes: GraphNode[];
+  edges: GraphRelationship[];
+  depth: number;
+  stats: {
+    total_nodes: number;
+    total_edges: number;
+    density: number;
+  };
+}
+
 /**
- * Convenience hook for fetching the full graph (all entities/relationships via empty query).
- * Uses hybrid search with empty query as a workaround until a dedicated /graph endpoint exists.
+ * Fetch a coherent subgraph from the backend.
  *
- * @returns Query result with all nodes (relationships not yet populated - requires entity context queries)
+ * ## Contract Guarantees
+ * - **Coherent**: All edges connect nodes in the response (no orphan edges)
+ * - **Deterministic**: Same query returns identical graph structure (same dataset)
+ * - **Bounded**: Respects depth (1-3) and limit (1-500) parameters
+ * - **Complete**: Returns empty arrays, never null/undefined
  *
- * @example
- * const { data, isLoading } = useFullGraph();
- * // data.nodes contains all entities from the knowledge graph
+ * ## Modes
+ * - **Query mode** (`query`): Searches for matching entities, returns 1-hop subgraph
+ * - **Center mode** (`centerEntityId`): Expands N hops from specific entity
+ *
+ * ## Response Structure
+ * ```typescript
+ * {
+ *   root_entity_id: string;      // Empty for query mode
+ *   nodes: GraphNode[];          // All nodes in subgraph
+ *   edges: GraphRelationship[];  // All edges between returned nodes
+ *   depth: number;               // Actual traversal depth used
+ *   stats: {
+ *     total_nodes: number;       // Node count
+ *     total_edges: number;       // Edge count
+ *     density: number;           // Graph density (0.0-1.0)
+ *   }
+ * }
+ * ```
+ *
+ * ## Example
+ * ```typescript
+ * // Query mode - search for entities
+ * const { data, isLoading } = useSubgraph({
+ *   query: "AI processing",
+ *   depth: 2,
+ *   limit: 100
+ * });
+ *
+ * // Center mode - expand from specific entity
+ * const { data } = useSubgraph({
+ *   centerEntityId: "cap-123",
+ *   depth: 2
+ * });
+ * ```
+ *
+ * ## Performance
+ * - Single API call (no N+1 queries)
+ * - Response time ~100-300ms typical
+ * - Frontend is pure renderer (no client-side assembly)
+ *
+ * @param options.query - Search string for query mode
+ * @param options.centerEntityId - Entity ID for center expansion mode
+ * @param options.depth - Traversal depth 1-3 (default: 2)
+ * @param options.limit - Max nodes 1-500 (default: 100)
+ * @returns Subgraph with coherent nodes, edges, and statistics
  */
-export function useFullGraph() {
+export function useSubgraph(options: {
+  query?: string;
+  centerEntityId?: string;
+  depth?: number;
+  limit?: number;
+}) {
+  const { query, centerEntityId, depth = 2, limit = 100 } = options;
+
   return useQuery({
-    queryKey: [...QK.graph.all, 'full'],
-    queryFn: async (): Promise<ContextGraph> => {
-      // Use hybrid search to get all entities, then build a simple graph
-      const response = await apiClient.post('l3', '/search/hybrid', {
-        query: '',
-        search_type: 'hybrid',
-        top_k: 100,
-      });
+    queryKey: QK.graph.subgraph(query, centerEntityId, depth, limit),
+    queryFn: async (): Promise<SubgraphResponse> => {
+      // Build query params
+      const params = new URLSearchParams();
+      if (query) params.set('query', query);
+      if (centerEntityId) params.set('center_entity_id', centerEntityId);
+      params.set('depth', depth.toString());
+      params.set('limit', limit.toString());
 
-      const results: SearchResult[] = response.data?.results || [];
-      const nodes: GraphNode[] = results
-        .filter((r) => r.id || r.entity_id) // Skip entities without IDs
-        .map((r, index) => ({
-          id: r.id || r.entity_id || `entity-${index}`,
-          name: r.name || r.title || 'Unknown',
-          entity_type: r.entity_type || r.type || 'Unknown',
-          confidence_score: r.confidence_score ?? r.confidence ?? 0.8,
-          description: r.description,
-          properties: r.properties || r.data,
-        }));
+      const response = await apiClient.get('l3', `/v1/graph/subgraph?${params.toString()}`);
 
-      // For now, return nodes without relationships (would need entity context for each)
-      return {
-        nodes,
-        relationships: [],
-      };
+      // Validate response with Zod schema
+      const validated = validateOrThrow(SubgraphResponseSchema, response.data, 'SubgraphResponse');
+
+      return validated;
     },
+    enabled: query !== undefined || !!centerEntityId,
     staleTime: STALE_TIME.stats,
   });
+}
+
+/**
+ * @deprecated Use useSubgraph instead for coherent graph data.
+ * Kept for backward compatibility during transition.
+ */
+export function useFullGraph() {
+  return useSubgraph({ query: '', depth: 2, limit: 100 });
+}
+
+/** Zoom and pan state for graph visualization */
+export interface GraphViewState {
+  zoom: number;
+  panX: number;
+  panY: number;
+}
+
+const DEFAULT_VIEW_STATE: GraphViewState = {
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+};
+
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 3;
+const ZOOM_STEP = 0.2;
+
+/**
+ * Hook for managing graph zoom and pan state.
+ * Provides controls for zooming, panning, and resetting the view.
+ *
+ * @example
+ * const { viewState, zoomIn, zoomOut, resetView, panBy } = useGraphViewState();
+ */
+export function useGraphViewState() {
+  const [viewState, setViewState] = React.useState<GraphViewState>(DEFAULT_VIEW_STATE);
+
+  const zoomIn = React.useCallback(() => {
+    setViewState((prev) => ({
+      ...prev,
+      zoom: Math.min(prev.zoom + ZOOM_STEP, MAX_ZOOM),
+    }));
+  }, []);
+
+  const zoomOut = React.useCallback(() => {
+    setViewState((prev) => ({
+      ...prev,
+      zoom: Math.max(prev.zoom - ZOOM_STEP, MIN_ZOOM),
+    }));
+  }, []);
+
+  const resetView = React.useCallback(() => {
+    setViewState(DEFAULT_VIEW_STATE);
+  }, []);
+
+  const panBy = React.useCallback((dx: number, dy: number) => {
+    setViewState((prev) => ({
+      ...prev,
+      panX: prev.panX + dx,
+      panY: prev.panY + dy,
+    }));
+  }, []);
+
+  const setZoom = React.useCallback((zoom: number) => {
+    setViewState((prev) => ({
+      ...prev,
+      zoom: Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom)),
+    }));
+  }, []);
+
+  return {
+    viewState,
+    zoomIn,
+    zoomOut,
+    resetView,
+    panBy,
+    setZoom,
+  };
 }

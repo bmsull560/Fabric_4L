@@ -1,0 +1,167 @@
+import React from 'react';
+import { Btn } from '@/components/WfPrimitives';
+import {
+  Cloud,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Play,
+  Settings,
+} from 'lucide-react';
+import type { Integration, CRMProvider } from '@/hooks/useIntegrations';
+import { PROVIDER_NAMES, PROVIDER_STYLES } from './constants';
+import { formatLastSync, formatRecordCount } from './utils';
+
+interface IntegrationListProps {
+  integrations: Integration[] | undefined;
+  selectedProvider: CRMProvider | null;
+  onSelect: (provider: CRMProvider) => void;
+  onSync: (provider: CRMProvider) => void;
+  isSyncing: boolean;
+  syncingProvider: CRMProvider | null;
+}
+
+export function IntegrationList({
+  integrations,
+  selectedProvider,
+  onSelect,
+  onSync,
+  isSyncing,
+  syncingProvider,
+}: IntegrationListProps) {
+  // Filter to only enabled/active integrations
+  const activeIntegrations = integrations?.filter(i => i.enabled) || [];
+
+  if (activeIntegrations.length === 0) {
+    return null; // Don't render if no active integrations
+  }
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden mt-6">
+      <div className="px-6 py-4 border-b border-neutral-100">
+        <h3 className="text-[14px] font-semibold text-neutral-800">Active Integrations</h3>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-neutral-50">
+              <th className="px-6 py-3 text-left text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                Provider
+              </th>
+              <th className="px-6 py-3 text-left text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                Last Sync
+              </th>
+              <th className="px-6 py-3 text-left text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                Records
+              </th>
+              <th className="px-6 py-3 text-right text-[11px] font-medium text-neutral-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-neutral-100">
+            {activeIntegrations.map((integration) => {
+              const provider = integration.provider as CRMProvider;
+              const isSelected = selectedProvider === provider;
+              const isThisSyncing = isSyncing && syncingProvider === provider;
+              const status = integration.status || 'idle';
+
+              return (
+                <tr
+                  key={integration.id}
+                  className={`hover:bg-neutral-50 cursor-pointer transition-colors ${
+                    isSelected ? 'bg-blue-50/30' : ''
+                  }`}
+                  onClick={() => onSelect(provider)}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className={`flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center ${PROVIDER_STYLES[provider].gridIconBg} ${PROVIDER_STYLES[provider].gridIconText}`}>
+                        <Cloud size={16} />
+                      </div>
+                      <div className="ml-3">
+                        <div className="text-[13px] font-medium text-neutral-900">
+                          {PROVIDER_NAMES[provider]}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium ${
+                      status === 'failed'
+                        ? 'bg-red-100 text-red-700'
+                        : status === 'running'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {status === 'failed' ? (
+                        <>
+                          <AlertCircle size={10} />
+                          Error
+                        </>
+                      ) : status === 'running' ? (
+                        <>
+                          <Loader2 size={10} className="animate-spin" />
+                          Syncing
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={10} />
+                          Active
+                        </>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-[13px] text-neutral-700">
+                      {formatLastSync(integration.last_successful_sync_at)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-[13px] text-neutral-700">
+                      {formatRecordCount(integration.records_synced)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Btn
+                        variant="ghost"
+                        onClick={() => onSelect(provider)}
+                        className="px-2 py-1 text-[12px]"
+                      >
+                        <Settings size={14} className="mr-1" />
+                        Configure
+                      </Btn>
+                      <Btn
+                        variant={isThisSyncing ? 'ghost' : 'outline'}
+                        onClick={() => onSync(provider)}
+                        disabled={isThisSyncing}
+                        className="px-2 py-1 text-[12px]"
+                      >
+                        {isThisSyncing ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin mr-1" />
+                            Syncing
+                          </>
+                        ) : (
+                          <>
+                            <Play size={14} className="mr-1" />
+                            Sync
+                          </>
+                        )}
+                      </Btn>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

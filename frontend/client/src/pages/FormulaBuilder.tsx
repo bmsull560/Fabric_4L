@@ -96,7 +96,7 @@ const SOURCE_TYPE_COLOR: Record<VariableSource, string> = {
 const VAR_TYPE_COLOR: Record<FormulaVariableType, string> = {
   rate: "bg-cyan-100 text-cyan-700",
   currency: "bg-emerald-100 text-emerald-700",
-  integer: "bg-neutral-100 text-neutral-600",
+  integer: "bg-muted/30 text-muted-foreground",
 };
 
 const DEFAULT_FORMULA_EXPRESSION = `// Enter your formula expression here
@@ -112,7 +112,7 @@ const DEFAULT_TEST_INPUTS: TestInput[] = [
 const ACTIVATION_STATUS_CONFIG: Record<ActivationState, StatusConfig> = {
   draft: {
     label: "Draft",
-    color: "bg-neutral-100 text-neutral-600",
+    color: "bg-muted/30 text-muted-foreground",
     icon: <Clock size={11} />,
   },
   pending: {
@@ -130,8 +130,8 @@ const ACTIVATION_STATUS_CONFIG: Record<ActivationState, StatusConfig> = {
 const VERSION_STATUS_COLORS: Record<FormulaStatus, string> = {
   approved: "bg-emerald-50 text-emerald-700",
   pending: "bg-amber-50 text-amber-700",
-  draft: "bg-neutral-100 text-neutral-600",
-  archived: "bg-neutral-50 text-neutral-400",
+  draft: "bg-muted/30 text-muted-foreground",
+  archived: "bg-muted/20 text-muted-foreground/60",
 };
 
 /** Map API Variable to FormulaVariable format */
@@ -425,7 +425,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
-          <Loader2 size={32} className="animate-spin text-neutral-400" />
+          <Loader2 size={32} className="animate-spin text-muted-foreground/60" />
         </div>
       </div>
     );
@@ -437,7 +437,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
       {!isNew && (
         <button
           onClick={() => navigate("/model/value-studio/formulas")}
-          className="flex items-center gap-1 text-[12px] text-neutral-500 hover:text-neutral-800 mb-4 transition-colors"
+          className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground mb-4 transition-colors"
         >
           <ArrowLeft size={14} /> Back to formulas
         </button>
@@ -446,7 +446,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
       {/* Header with governance status */}
       <div className="flex items-start justify-between mb-5">
         <PageHeader
-          breadcrumbs={["Value Models", "Formula Studio", isNew ? "New Formula" : formulaName]}
+          breadcrumbs={[{ label: "Value Models" }, { label: "Formula Studio" }, { label: isNew ? "New Formula" : formulaName }]}
           title={formulaName}
           subtitle={isNew ? "Create new formula" : `Governed formula asset — ${activationState}`}
         />
@@ -488,22 +488,22 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
               <SectionCard title="Formula Definition">
                 <div className="space-y-3">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">Name</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1">Name</label>
                     <input
                       value={formulaName}
                       onChange={(e) => setFormulaName(e.target.value)}
                       placeholder="Enter formula name..."
-                      className="w-full border border-neutral-200 rounded-md px-3 py-2 text-[13px] text-neutral-800 bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      className="w-full border border-border rounded-md px-3 py-2 text-[13px] text-foreground bg-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block mb-1">Description</label>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 block mb-1">Description</label>
                     <textarea
                       value={formulaDescription}
                       onChange={(e) => setFormulaDescription(e.target.value)}
                       placeholder="Describe what this formula calculates..."
                       rows={2}
-                      className="w-full border border-neutral-200 rounded-md px-3 py-2 text-[12px] text-neutral-700 bg-white outline-none resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      className="w-full border border-border rounded-md px-3 py-2 text-[12px] text-foreground bg-white outline-none resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -550,7 +550,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                   <div className="space-y-1.5 mb-3">
                     {testInputs.map((input, idx) => (
                       <div key={input.label} className="flex justify-between text-[12px]">
-                        <span className="text-neutral-500 font-mono">{input.label}:</span>
+                        <span className="text-muted-foreground font-mono">{input.label}:</span>
                         <input
                           type="text"
                           value={input.value}
@@ -559,27 +559,27 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                             newInputs[idx].value = e.target.value;
                             setTestInputs(newInputs);
                           }}
-                          className="font-semibold text-neutral-800 bg-transparent border-b border-neutral-200 focus:border-blue-500 outline-none text-right w-32"
+                          className="font-semibold text-foreground bg-transparent border-b border-border focus:border-blue-500 outline-none text-right w-32"
                         />
                       </div>
                     ))}
                   </div>
-                  <div className="border-t border-neutral-100 pt-3 flex items-center gap-6">
+                  <div className="border-t border-border/50 pt-3 flex items-center gap-6">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Result</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Result</span>
                       <div className="text-[20px] font-extrabold text-emerald-700">
                         ${evaluationResult.result.toLocaleString()}
                       </div>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">ROI</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">ROI</span>
                       <div className="text-[20px] font-extrabold text-emerald-700">
                         {evaluationResult.roiPercent.toFixed(0)}%
                       </div>
                     </div>
                     <div className="ml-auto">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Confidence</span>
-                      <div className="text-[14px] font-bold text-neutral-700">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">Confidence</span>
+                      <div className="text-[14px] font-bold text-foreground">
                         High ({evaluationResult.confidence.toFixed(2)})
                       </div>
                     </div>
@@ -593,7 +593,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           {activeTab === "Variables" && (
             <SectionCard title="Variable Registry — Bound Variables">
               {variablesLoading && (
-                <div className="flex items-center gap-2 p-4 text-neutral-500">
+                <div className="flex items-center gap-2 p-4 text-muted-foreground">
                   <Loader2 size={16} className="animate-spin" />
                   <span className="text-[13px]">Loading variables...</span>
                 </div>
@@ -605,12 +605,12 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
               )}
               <div className="space-y-2">
                 {availableVariables.map((variable) => (
-                  <div key={variable.name} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
+                  <div key={variable.name} className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg border border-border/50">
                     <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0"/>
-                    <span className="flex-1 font-mono text-[12px] text-neutral-800">{variable.name}</span>
+                    <span className="flex-1 font-mono text-[12px] text-foreground">{variable.name}</span>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${VAR_TYPE_COLOR[variable.type]}`}>{variable.type}</span>
                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_TYPE_COLOR[variable.source]}`}>{variable.source}</span>
-                    <button className="text-[11px] text-neutral-400 hover:text-neutral-700">Edit binding</button>
+                    <button className="text-[11px] text-muted-foreground/60 hover:text-foreground">Edit binding</button>
                   </div>
                 ))}
               </div>
@@ -625,31 +625,31 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
             <div className="space-y-4">
               <SectionCard title="Version History">
                 {versionsLoading && (
-                  <div className="flex items-center gap-2 p-4 text-neutral-500">
+                  <div className="flex items-center gap-2 p-4 text-muted-foreground">
                     <Loader2 size={16} className="animate-spin" />
                     <span className="text-[13px]">Loading versions...</span>
                   </div>
                 )}
                 <div className="space-y-2">
                   {versionHistory?.map((version: FormulaVersion, index: number) => (
-                    <div key={index} className="flex items-start gap-3 p-3 rounded-lg border border-neutral-100 bg-neutral-50">
+                    <div key={index} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
                       <div className="mt-0.5">
                         {version.status === "approved" && <CheckCircle2 size={14} className="text-emerald-500"/>}
                         {version.status === "active" && <CheckCircle2 size={14} className="text-emerald-600"/>}
-                        {version.status === "draft"    && <Clock size={14} className="text-neutral-400"/>}
+                        {version.status === "draft"    && <Clock size={14} className="text-muted-foreground/60"/>}
                         {version.status === "under_review" && <AlertCircle size={14} className="text-amber-500"/>}
-                        {version.status === "deprecated" && <History size={14} className="text-neutral-400"/>}
-                        {version.status === "retired" && <History size={14} className="text-neutral-300"/>}
+                        {version.status === "deprecated" && <History size={14} className="text-muted-foreground/60"/>}
+                        {version.status === "retired" && <History size={14} className="text-muted-foreground/40"/>}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-[12px] font-bold text-neutral-800">{version.version}</span>
+                          <span className="text-[12px] font-bold text-foreground">{version.version}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${VERSION_STATUS_COLORS[version.status as FormulaStatus] || VERSION_STATUS_COLORS.draft}`}>
                             {version.status}
                           </span>
                         </div>
-                        <p className="text-[11px] text-neutral-500 mt-0.5">{version.change_summary}</p>
-                        <p className="text-[10px] text-neutral-400 mt-0.5">{version.created_by} · {new Date(version.created_at).toLocaleDateString()}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{version.change_summary}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">{version.created_by} · {new Date(version.created_at).toLocaleDateString()}</p>
                       </div>
                       {version.status !== "draft" && version.status !== "under_review" && (
                         <button className="text-[11px] text-blue-600 hover:underline shrink-0">Restore</button>
@@ -658,7 +658,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
                   ))}
                 </div>
                 {versionHistory?.length === 0 && !versionsLoading && (
-                  <div className="text-center py-4 text-neutral-400 text-[12px]">
+                  <div className="text-center py-4 text-muted-foreground/60 text-[12px]">
                     No version history available.
                   </div>
                 )}
@@ -666,19 +666,19 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
 
               <SectionCard title="Approval Workflow">
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
-                    <Users size={14} className="text-neutral-400"/>
+                  <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg border border-border/50">
+                    <Users size={14} className="text-muted-foreground/60"/>
                     <div className="flex-1">
-                      <p className="text-[12px] font-semibold text-neutral-800">Required Approvers</p>
-                      <p className="text-[11px] text-neutral-500">Finance Team · Formula Governance Admin</p>
+                      <p className="text-[12px] font-semibold text-foreground">Required Approvers</p>
+                      <p className="text-[11px] text-muted-foreground">Finance Team · Formula Governance Admin</p>
                     </div>
                     <button className="text-[11px] text-blue-600 hover:underline">Edit</button>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
-                    <Tag size={14} className="text-neutral-400"/>
+                  <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg border border-border/50">
+                    <Tag size={14} className="text-muted-foreground/60"/>
                     <div className="flex-1">
-                      <p className="text-[12px] font-semibold text-neutral-800">Scope</p>
-                      <p className="text-[11px] text-neutral-500">Tenant: Acme Corp · Pack: Enterprise Security ROI</p>
+                      <p className="text-[12px] font-semibold text-foreground">Scope</p>
+                      <p className="text-[11px] text-muted-foreground">Tenant: Acme Corp · Pack: Enterprise Security ROI</p>
                     </div>
                     <button className="text-[11px] text-blue-600 hover:underline">Edit</button>
                   </div>
@@ -691,30 +691,30 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           {activeTab === "Dependencies" && (
             <SectionCard title="Used By">
               {dependentsLoading && (
-                <div className="flex items-center gap-2 p-4 text-neutral-500">
+                <div className="flex items-center gap-2 p-4 text-muted-foreground">
                   <Loader2 size={16} className="animate-spin" />
                   <span className="text-[13px]">Loading dependents...</span>
                 </div>
               )}
               <div className="space-y-2">
                 {dependents?.map((dependent: DependentAsset, index: number) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-neutral-50 rounded-lg border border-neutral-100">
-                    <Link2 size={13} className="text-neutral-400 shrink-0"/>
+                  <div key={index} className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg border border-border/50">
+                    <Link2 size={13} className="text-muted-foreground/60 shrink-0"/>
                     <div className="flex-1">
-                      <p className="text-[12px] font-semibold text-neutral-800">{dependent.name}</p>
-                      <p className="text-[10px] text-neutral-400">{dependent.type} · {dependent.pack || 'No Pack'}</p>
+                      <p className="text-[12px] font-semibold text-foreground">{dependent.name}</p>
+                      <p className="text-[10px] text-muted-foreground/60">{dependent.type} · {dependent.pack || 'No Pack'}</p>
                     </div>
-                    <ChevronRight size={13} className="text-neutral-300"/>
+                    <ChevronRight size={13} className="text-muted-foreground/40"/>
                   </div>
                 ))}
               </div>
               {dependents?.length === 0 && !dependentsLoading && (
-                <div className="text-center py-4 text-neutral-400 text-[12px]">
+                <div className="text-center py-4 text-muted-foreground/60 text-[12px]">
                   No dependent assets found.
                 </div>
               )}
               {dependents && dependents.length > 0 && (
-                <p className="text-[11px] text-neutral-400 mt-3">
+                <p className="text-[11px] text-muted-foreground/60 mt-3">
                   Activating or deprecating this formula will affect {dependents.length} downstream assets.
                 </p>
               )}
@@ -726,14 +726,14 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
         <div className="w-[220px] shrink-0 space-y-4">
           <SectionCard title="Available Variables">
             {variablesLoading && (
-              <div className="flex items-center gap-2 p-2 text-neutral-500 text-[11px]">
+              <div className="flex items-center gap-2 p-2 text-muted-foreground text-[11px]">
                 <Loader2 size={12} className="animate-spin" />
                 <span>Loading...</span>
               </div>
             )}
             <div className="space-y-1.5">
               {availableVariables.map((variable) => (
-                <div key={variable.name} className="flex items-center gap-2 p-2 bg-neutral-50 rounded border border-neutral-100 text-[11px] font-mono text-neutral-700 hover:bg-neutral-100 cursor-pointer transition-colors">
+                <div key={variable.name} className="flex items-center gap-2 p-2 bg-muted/20 rounded border border-border/50 text-[11px] font-mono text-foreground hover:bg-muted/30 cursor-pointer transition-colors">
                   <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0"/>
                   <span className="truncate">{variable.name}</span>
                 </div>
@@ -745,15 +745,15 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           </SectionCard>
 
           <SectionCard title="Industry Benchmarks">
-            <div className="space-y-2 text-[11px] text-neutral-600">
+            <div className="space-y-2 text-[11px] text-muted-foreground">
               {[
                 { label: "SaaS Average Churn",  value: "5–7% / year" },
                 { label: "Enterprise ACV",       value: "$50K – $500K" },
                 { label: "Retention Lift",       value: "15–25%" },
               ].map(b => (
-                <div key={b.label} className="p-2 bg-neutral-50 rounded border border-neutral-100">
-                  <div className="font-semibold text-neutral-700">{b.label}</div>
-                  <div className="text-neutral-500">{b.value}</div>
+                <div key={b.label} className="p-2 bg-muted/20 rounded border border-border/50">
+                  <div className="font-semibold text-foreground">{b.label}</div>
+                  <div className="text-muted-foreground">{b.value}</div>
                 </div>
               ))}
             </div>
@@ -763,26 +763,26 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           <SectionCard title="Formula Metadata">
             <div className="space-y-2 text-[11px]">
               <div className="flex justify-between">
-                <span className="text-neutral-400">Version</span>
-                <span className="font-semibold text-neutral-700">
+                <span className="text-muted-foreground/60">Version</span>
+                <span className="font-semibold text-foreground">
                   {isNew ? 'New' : existingFormula?.version || 'v1.0.0'}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Status</span>
-                <span className="font-semibold text-neutral-700 capitalize">
+                <span className="text-muted-foreground/60">Status</span>
+                <span className="font-semibold text-foreground capitalize">
                   {activationState.replace('_', ' ')}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Variables</span>
-                <span className="font-semibold text-neutral-700">
+                <span className="text-muted-foreground/60">Variables</span>
+                <span className="font-semibold text-foreground">
                   {availableVariables.length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-neutral-400">Used by</span>
-                <span className="font-semibold text-neutral-700">
+                <span className="text-muted-foreground/60">Used by</span>
+                <span className="font-semibold text-foreground">
                   {dependentsLoading ? '...' : dependents?.length || 0} assets
                 </span>
               </div>

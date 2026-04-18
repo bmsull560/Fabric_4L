@@ -2,11 +2,10 @@
 
 from fastapi import APIRouter, Request
 
-from .. import main as handlers
-
 router = APIRouter(tags=["system"])
 
 
-@router.get("/health")
-async def health_check(request: Request | None = None):
+@router.get("/health", response_model=None)
+async def health_check(request: Request):
+    from .. import main as handlers
     return await handlers.health_check(request)

@@ -46,8 +46,8 @@ const STATUS_CONFIG: Record<BusinessCaseListItem['status'], {
 }> = {
   draft: {
     label: "Draft",
-    color: "text-neutral-600",
-    bgColor: "bg-neutral-100",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted/30",
     icon: <Clock size={12} />,
   },
   active: {
@@ -58,8 +58,8 @@ const STATUS_CONFIG: Record<BusinessCaseListItem['status'], {
   },
   archived: {
     label: "Archived",
-    color: "text-neutral-500",
-    bgColor: "bg-neutral-100",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted/30",
     icon: <Archive size={12} />,
   },
 };
@@ -87,11 +87,11 @@ function CaseCard({
   const status = STATUS_CONFIG[caseItem.status];
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-4 hover:border-neutral-300 transition-colors group">
+    <div className="bg-card border border-border rounded-xl p-4 hover:border-neutral-300 transition-colors group">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-[14px] font-semibold text-neutral-800 truncate">
+            <h3 className="text-[14px] font-semibold text-foreground truncate">
               {caseItem.name}
             </h3>
             <span className={cn(
@@ -101,7 +101,7 @@ function CaseCard({
               {status.icon} {status.label}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[12px] text-neutral-500">
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
             <Building2 size={12} />
             <span>{caseItem.company}</span>
             <span className="text-neutral-300">·</span>
@@ -112,7 +112,7 @@ function CaseCard({
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={() => navigate(`/deliver/cases/${caseItem.id}`)}
-            className="p-1.5 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700"
+            className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/60 hover:text-muted-foreground"
             title="View details"
           >
             <ArrowUpRight size={14} />
@@ -121,7 +121,7 @@ function CaseCard({
             <button
               onClick={() => onArchive(caseItem.id)}
               disabled={isArchiving}
-              className="p-1.5 rounded hover:bg-red-50 text-neutral-400 hover:text-red-500 disabled:opacity-50"
+              className="p-1.5 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-500 disabled:opacity-50"
               title="Archive"
             >
               <Archive size={14} />
@@ -131,17 +131,17 @@ function CaseCard({
       </div>
 
       <div className="grid grid-cols-3 gap-3 mt-4">
-        <div className="bg-neutral-50 rounded-lg p-2">
-          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">Total Value</p>
+        <div className="bg-muted/20 rounded-lg p-2">
+          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Total Value</p>
           <p className="text-[16px] font-bold text-emerald-600">{caseItem.totalValue}</p>
         </div>
-        <div className="bg-neutral-50 rounded-lg p-2">
-          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">Confidence</p>
-          <p className="text-[16px] font-bold text-neutral-700">{caseItem.confidence}%</p>
+        <div className="bg-muted/20 rounded-lg p-2">
+          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Confidence</p>
+          <p className="text-[16px] font-bold text-muted-foreground">{caseItem.confidence}%</p>
         </div>
-        <div className="bg-neutral-50 rounded-lg p-2">
-          <p className="text-[10px] text-neutral-400 uppercase tracking-wider">Updated</p>
-          <p className="text-[12px] font-medium text-neutral-700">
+        <div className="bg-muted/20 rounded-lg p-2">
+          <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Updated</p>
+          <p className="text-[12px] font-medium text-muted-foreground">
             {new Date(caseItem.updatedAt).toLocaleDateString()}
           </p>
         </div>
@@ -154,7 +154,7 @@ function CaseListSkeleton() {
   return (
     <div className="space-y-4">
       {[1, 2, 3].map(i => (
-        <div key={i} className="bg-white border border-neutral-200 rounded-xl p-4">
+        <div key={i} className="bg-card border border-border rounded-xl p-4">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1">
               <Skeleton className="h-5 w-48 mb-2" />
@@ -308,55 +308,55 @@ function BusinessCaseListContent() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp size={14} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Total Value</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Value</span>
           </div>
           <p className="text-[22px] font-extrabold text-emerald-600">${(stats.totalValue / 1000000).toFixed(1)}M</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 size={14} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Active</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Active</span>
           </div>
-          <p className="text-[22px] font-extrabold text-neutral-800">{stats.active}</p>
+          <p className="text-[22px] font-extrabold text-foreground">{stats.active}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
-            <Clock size={14} className="text-neutral-400" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Drafts</span>
+            <Clock size={14} className="text-muted-foreground/60" />
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Drafts</span>
           </div>
-          <p className="text-[22px] font-extrabold text-neutral-800">{stats.draft}</p>
+          <p className="text-[22px] font-extrabold text-foreground">{stats.draft}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Building2 size={14} className="text-blue-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Companies</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Companies</span>
           </div>
-          <p className="text-[22px] font-extrabold text-neutral-800">{new Set(cases.map(c => c.company)).size}</p>
+          <p className="text-[22px] font-extrabold text-foreground">{new Set(cases.map(c => c.company)).size}</p>
         </div>
       </div>
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2 flex-1 max-w-sm">
-          <Search size={14} className="text-neutral-400" />
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 flex-1 max-w-sm">
+          <Search size={14} className="text-muted-foreground/60" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search cases or companies..."
-            className="flex-1 text-[13px] bg-transparent outline-none text-neutral-700"
+            className="flex-1 text-[13px] bg-transparent outline-none text-muted-foreground"
           />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter size={14} className="text-neutral-400" />
+          <Filter size={14} className="text-muted-foreground/60" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as BusinessCaseFilters['status'])}
-            className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+            className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -366,11 +366,11 @@ function BusinessCaseListContent() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[12px] text-neutral-500">Sort by:</span>
+          <span className="text-[12px] text-muted-foreground">Sort by:</span>
           <select
             value={sortField}
             onChange={(e) => handleSort(e.target.value as SortField)}
-            className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+            className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
           >
             <option value="updatedAt">Last Updated</option>
             <option value="name">Name</option>
@@ -380,7 +380,7 @@ function BusinessCaseListContent() {
           </select>
           <button
             onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
-            className="text-[12px] px-2 py-2 border border-neutral-200 rounded-lg hover:bg-neutral-50"
+            className="text-[12px] px-2 py-2 border border-border rounded-lg hover:bg-muted/20"
           >
             {sortDirection === 'asc' ? '↑' : '↓'}
           </button>
@@ -400,7 +400,7 @@ function BusinessCaseListContent() {
       </div>
 
       {sortedCases.length === 0 && (
-        <div className="text-center py-12 text-neutral-400">
+        <div className="text-center py-12 text-muted-foreground/60">
           <Building2 size={48} className="mx-auto mb-4 text-neutral-300" />
           <p className="text-[14px] font-medium">No business cases found</p>
           <p className="text-[12px] mt-1">Create your first case to get started</p>
@@ -414,27 +414,27 @@ function BusinessCaseListContent() {
       {/* New Case Modal (simplified) */}
       {showNewCaseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-[16px] font-semibold text-neutral-800 mb-4">Create New Business Case</h3>
+          <div className="bg-card rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-[16px] font-semibold text-foreground mb-4">Create New Business Case</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-[12px] font-medium text-neutral-600 mb-1">Case Name</label>
+                <label className="block text-[12px] font-medium text-muted-foreground mb-1">Case Name</label>
                 <input
                   type="text"
                   value={newCaseName}
                   onChange={(e) => setNewCaseName(e.target.value)}
                   placeholder="e.g., Q2 Expansion Analysis"
-                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
               <div>
-                <label className="block text-[12px] font-medium text-neutral-600 mb-1">Company</label>
+                <label className="block text-[12px] font-medium text-muted-foreground mb-1">Company</label>
                 <input
                   type="text"
                   value={newCaseCompany}
                   onChange={(e) => setNewCaseCompany(e.target.value)}
                   placeholder="e.g., Acme Corporation"
-                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-[13px] outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
             </div>

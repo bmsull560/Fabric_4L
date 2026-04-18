@@ -157,8 +157,8 @@ const STATUS_CONFIG: Record<ConnectionStatus, {
   },
   disconnected: {
     icon: <XCircle size={14} />,
-    color: 'text-neutral-500',
-    bgColor: 'bg-neutral-100',
+    color: 'text-muted-foreground',
+    bgColor: 'bg-muted/30',
     label: 'Disconnected',
   },
   error: {
@@ -205,8 +205,8 @@ function SourceCard({
 
   return (
     <div className={cn(
-      "bg-white border rounded-xl transition-all",
-      isExpanded ? "border-neutral-300 shadow-sm" : "border-neutral-200 hover:border-neutral-300"
+      "bg-card border rounded-xl transition-all",
+      isExpanded ? "border-neutral-300 shadow-sm" : "border-border hover:border-neutral-300"
     )}>
       <div className="p-4" onClick={onToggle}>
         <div className="flex items-center gap-4">
@@ -221,7 +221,7 @@ function SourceCard({
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="text-[14px] font-semibold text-neutral-800">{source.name}</h3>
+              <h3 className="text-[14px] font-semibold text-foreground">{source.name}</h3>
               <span className={cn(
                 "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full",
                 status.bgColor, status.color
@@ -229,15 +229,15 @@ function SourceCard({
                 {status.icon} {status.label}
               </span>
             </div>
-            <p className="text-[11px] text-neutral-400 truncate">{source.endpoint || 'No endpoint configured'}</p>
+            <p className="text-[11px] text-muted-foreground/60 truncate">{source.endpoint || 'No endpoint configured'}</p>
           </div>
 
           {/* Stats */}
           <div className="flex items-center gap-6 text-right shrink-0">
             {source.recordCount !== undefined && (
               <div>
-                <p className="text-[14px] font-bold text-neutral-800">{source.recordCount.toLocaleString()}</p>
-                <p className="text-[10px] text-neutral-400">records</p>
+                <p className="text-[14px] font-bold text-foreground">{source.recordCount.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground/60">records</p>
               </div>
             )}
             <div>
@@ -248,11 +248,11 @@ function SourceCard({
               )}>
                 {source.healthScore}%
               </p>
-              <p className="text-[10px] text-neutral-400">health</p>
+              <p className="text-[10px] text-muted-foreground/60">health</p>
             </div>
             <div>
-              <p className="text-[12px] font-medium text-neutral-700">{FREQUENCY_LABELS[source.syncFrequency]}</p>
-              <p className="text-[10px] text-neutral-400">sync</p>
+              <p className="text-[12px] font-medium text-muted-foreground">{FREQUENCY_LABELS[source.syncFrequency]}</p>
+              <p className="text-[10px] text-muted-foreground/60">sync</p>
             </div>
           </div>
 
@@ -261,14 +261,14 @@ function SourceCard({
             <button
               onClick={(e) => { e.stopPropagation(); onTest(); }}
               disabled={isTesting}
-              className="p-2 rounded hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 disabled:opacity-50"
+              className="p-2 rounded hover:bg-muted/30 text-muted-foreground/60 hover:text-muted-foreground disabled:opacity-50"
               title="Test connection"
             >
               <TestTube size={14} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-2 rounded hover:bg-red-50 text-neutral-400 hover:text-red-500"
+              className="p-2 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-500"
               title="Delete source"
             >
               <Trash2 size={14} />
@@ -287,9 +287,9 @@ function SourceCard({
 
       {/* Expanded Details */}
       {isExpanded && (
-        <div className="px-4 pb-4 border-t border-neutral-100 pt-3">
+        <div className="px-4 pb-4 border-t border-border/50 pt-3">
           {/* Sync Info */}
-          <div className="flex items-center gap-6 mb-4 text-[11px] text-neutral-500">
+          <div className="flex items-center gap-6 mb-4 text-[11px] text-muted-foreground">
             {source.lastSyncAt && (
               <span className="flex items-center gap-1">
                 <Clock size={12} />
@@ -307,25 +307,25 @@ function SourceCard({
           {/* Field Mappings */}
           {source.fieldMappings.length > 0 && (
             <div>
-              <h4 className="text-[11px] font-semibold text-neutral-600 uppercase tracking-wider mb-2">
+              <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                 Field Mappings ({source.fieldMappings.length})
               </h4>
-              <div className="bg-neutral-50 rounded-lg border border-neutral-200 overflow-hidden">
+              <div className="bg-muted/20 rounded-lg border border-border overflow-hidden">
                 <table className="w-full text-[11px]">
-                  <thead className="bg-neutral-100">
+                  <thead className="bg-muted/30">
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium text-neutral-600">Source Field</th>
-                      <th className="px-3 py-2 text-center font-medium text-neutral-600">→</th>
-                      <th className="px-3 py-2 text-left font-medium text-neutral-600">Target Field</th>
-                      <th className="px-3 py-2 text-center font-medium text-neutral-600">Required</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Source Field</th>
+                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">→</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Target Field</th>
+                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Required</th>
                     </tr>
                   </thead>
                   <tbody>
                     {source.fieldMappings.map((mapping, idx) => (
-                      <tr key={idx} className="border-t border-neutral-200">
-                        <td className="px-3 py-2 font-mono text-neutral-700">{mapping.sourceField}</td>
-                        <td className="px-3 py-2 text-center text-neutral-400">→</td>
-                        <td className="px-3 py-2 font-mono text-neutral-700">{mapping.targetField}</td>
+                      <tr key={idx} className="border-t border-border">
+                        <td className="px-3 py-2 font-mono text-muted-foreground">{mapping.sourceField}</td>
+                        <td className="px-3 py-2 text-center text-muted-foreground/60">→</td>
+                        <td className="px-3 py-2 font-mono text-muted-foreground">{mapping.targetField}</td>
                         <td className="px-3 py-2 text-center">
                           {mapping.isRequired ? (
                             <span className="text-emerald-600">●</span>
@@ -360,7 +360,7 @@ function SourceCard({
 
 function SourceSkeleton() {
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-4">
+    <div className="bg-card border border-border rounded-xl p-4">
       <div className="flex items-center gap-4">
         <Skeleton className="w-10 h-10 rounded-lg" />
         <div className="flex-1">
@@ -473,31 +473,31 @@ function SourceConfigurationContent() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Database size={14} className="text-blue-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Total Sources</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Sources</span>
           </div>
-          <p className="text-[22px] font-extrabold text-neutral-800">{stats.total}</p>
+          <p className="text-[22px] font-extrabold text-foreground">{stats.total}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Plug size={14} className="text-emerald-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Connected</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Connected</span>
           </div>
           <p className="text-[22px] font-extrabold text-emerald-600">{stats.connected}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={14} className="text-red-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Errors</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Errors</span>
           </div>
           <p className="text-[22px] font-extrabold text-red-600">{stats.error}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <FileText size={14} className="text-violet-500" />
-            <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Total Records</span>
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Records</span>
           </div>
           <p className="text-[22px] font-extrabold text-violet-600">{(stats.totalRecords / 1000000).toFixed(1)}M</p>
         </div>
@@ -505,21 +505,21 @@ function SourceConfigurationContent() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2 flex-1 max-w-sm">
-          <Search size={14} className="text-neutral-400" />
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 flex-1 max-w-sm">
+          <Search size={14} className="text-muted-foreground/60" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search sources..."
-            className="flex-1 text-[13px] bg-transparent outline-none text-neutral-700"
+            className="flex-1 text-[13px] bg-transparent outline-none text-muted-foreground"
           />
         </div>
 
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as SourceType | 'all')}
-          className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+          className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
         >
           <option value="all">All Types</option>
           <option value="crm">CRM</option>
@@ -532,7 +532,7 @@ function SourceConfigurationContent() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as ConnectionStatus | 'all')}
-          className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+          className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
         >
           <option value="all">All Status</option>
           <option value="connected">Connected</option>
@@ -557,7 +557,7 @@ function SourceConfigurationContent() {
       </div>
 
       {filteredSources.length === 0 && (
-        <div className="text-center py-12 text-neutral-400">
+        <div className="text-center py-12 text-muted-foreground/60">
           <Database size={48} className="mx-auto mb-4 text-neutral-300" />
           <p className="text-[14px] font-medium">No sources found</p>
           <p className="text-[12px] mt-1">Add a data source to start ingesting data</p>

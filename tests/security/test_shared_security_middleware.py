@@ -6,22 +6,37 @@ a full FastAPI app fixture.
 """
 
 import json
+import sys
+from pathlib import Path
+from typing import Generator
+
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
 
-# Import the middleware directly
-# TODO: Replace with proper PYTHONPATH setup or pip install -e . to avoid runtime path manipulation
-import sys
-sys.path.insert(0, 'value-fabric')
+# P0 Fix: Properly handle shared module import with cleanup
+# Add value-fabric to path for shared imports, then remove after import to maintain isolation
+_repo_root = Path(__file__).resolve().parents[2]
+_value_fabric_path = str(_repo_root / "value-fabric")
 
-from shared.security import (
-    SecurityConfig,
-    SecurityMiddleware,
-    SecurityValidator,
-    add_security_middleware,
-)
+if _value_fabric_path not in sys.path:
+    sys.path.insert(0, _value_fabric_path)
+    _PATH_ADDED = True
+else:
+    _PATH_ADDED = False
+
+try:
+    from shared.security import (
+        SecurityConfig,
+        SecurityMiddleware,
+        SecurityValidator,
+        add_security_middleware,
+    )
+finally:
+    # P0 Fix: Remove path modification immediately after import to prevent isolation leakage
+    if _PATH_ADDED and _value_fabric_path in sys.path:
+        sys.path.remove(_value_fabric_path)
 
 
 class TestSecurityConfig:

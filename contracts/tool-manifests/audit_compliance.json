@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "audit_compliance",
+  "version": "1.0.0",
+  "description": "Automated compliance audit for SOC 2 Type II, GDPR, and ISO 27001 controls with evidence collection and drift detection",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "frameworks": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["soc2", "gdpr", "iso27001"]
+        },
+        "default": ["soc2", "gdpr"],
+        "description": "Compliance frameworks to audit against"
+      },
+      "controls": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": [],
+        "description": "Specific control IDs to audit (empty = all controls)"
+      },
+      "collect_evidence": {
+        "type": "boolean",
+        "default": true,
+        "description": "Collect and bundle evidence artifacts"
+      },
+      "evidence_retention_days": {
+        "type": "integer",
+        "default": 90,
+        "minimum": 30,
+        "description": "Days to retain evidence artifacts"
+      },
+      "audit_scope": {
+        "type": "string",
+        "enum": ["full", "security", "data_protection", "access_control", "monitoring", "incident_response"],
+        "default": "full",
+        "description": "Scope of compliance audit"
+      },
+      "include_drift_detection": {
+        "type": "boolean",
+        "default": true,
+        "description": "Detect drift from previous compliance baseline"
+      },
+      "severity_threshold": {
+        "type": "string",
+        "enum": ["critical", "high", "medium", "low"],
+        "default": "medium",
+        "description": "Minimum severity to include in findings"
+      },
+      "output_format": {
+        "type": "string",
+        "enum": ["markdown", "json", "pdf", "sarif"],
+        "default": "markdown",
+        "description": "Output format for compliance report"
+      },
+      "output_directory": {
+        "type": "string",
+        "default": "./compliance-evidence",
+        "description": "Directory for evidence artifacts"
+      },
+      "fail_on_critical": {
+        "type": "boolean",
+        "default": true,
+        "description": "Return non-zero exit code if critical findings detected"
+      }
+    },
+    "required": []
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "summary": {
+        "type": "object",
+        "properties": {
+          "audit_date": { "type": "string", "format": "date-time" },
+          "frameworks_audited": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "total_controls": { "type": "integer" },
+          "compliant_controls": { "type": "integer" },
+          "non_compliant_controls": { "type": "integer" },
+          "partial_controls": { "type": "integer" },
+          "compliance_score": { "type": "number", "minimum": 0, "maximum": 100 },
+          "evidence_bundle_path": { "type": "string" }
+        }
+      },
+      "soc2_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "control_id": { "type": "string" },
+            "control_name": { "type": "string" },
+            "trust_service_criteria": { "type": "string" },
+            "status": { "type": "string", "enum": ["compliant", "non_compliant", "partial"] },
+            "severity": { "type": "string" },
+            "findings": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "evidence": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "recommendations": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "owner": { "type": "string" },
+            "remediation_timeline": { "type": "string" }
+          }
+        }
+      },
+      "gdpr_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "article": { "type": "string" },
+            "requirement": { "type": "string" },
+            "status": { "type": "string", "enum": ["compliant", "non_compliant", "partial"] },
+            "severity": { "type": "string" },
+            "data_categories": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "processing_activities": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "findings": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "technical_measures": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "organizational_measures": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "audit_logging_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "event_type": { "type": "string" },
+            "covered": { "type": "boolean" },
+            "retention_compliant": { "type": "boolean" },
+            "tamper_proof": { "type": "boolean" },
+            "severity": { "type": "string" },
+            "gaps": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "data_retention_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "data_category": { "type": "string" },
+            "retention_policy_defined": { "type": "boolean" },
+            "automated_deletion": { "type": "boolean" },
+            "current_retention_days": { "type": "integer" },
+            "policy_retention_days": { "type": "integer" },
+            "compliant": { "type": "boolean" },
+            "severity": { "type": "string" }
+          }
+        }
+      },
+      "access_control_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "resource_type": { "type": "string" },
+            "rbac_implemented": { "type": "boolean" },
+            "mfa_required": { "type": "boolean" },
+            "least_privilege_enforced": { "type": "boolean" },
+            "regular_access_reviews": { "type": "boolean" },
+            "severity": { "type": "string" },
+            "gaps": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "evidence_artifacts": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "control_id": { "type": "string" },
+            "artifact_type": { "type": "string" },
+            "file_path": { "type": "string" },
+            "checksum": { "type": "string" },
+            "generated_at": { "type": "string", "format": "date-time" }
+          }
+        }
+      },
+      "drift_detected": {
+        "type": "boolean",
+        "description": "Whether compliance drift was detected from baseline"
+      },
+      "drift_details": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "control_id": { "type": "string" },
+            "previous_status": { "type": "string" },
+            "current_status": { "type": "string" },
+            "change_type": { "type": "string", "enum": ["regression", "improvement", "new"] }
+          }
+        }
+      },
+      "executive_summary": {
+        "type": "object",
+        "properties": {
+          "overall_posture": { "type": "string", "enum": ["strong", "acceptable", "needs_improvement", "critical"] },
+          "key_strengths": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "priority_gaps": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "recommendations": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

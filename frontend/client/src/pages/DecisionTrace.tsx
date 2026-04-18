@@ -146,7 +146,7 @@ export default function DecisionTrace() {
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
-        breadcrumbs={["Audit & Provenance", "Decision Traces"]}
+        breadcrumbs={[{ label: "Audit & Provenance" }, { label: "Decision Traces" }]}
         title="Decision Trace Viewer"
         subtitle={
           selectedEntityId && provenanceTrail

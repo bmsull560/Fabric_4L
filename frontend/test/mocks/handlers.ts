@@ -378,6 +378,43 @@ export const graphMocks = [
       total: 3,
     });
   }),
+
+  // Coherent subgraph endpoint (replaces sampling approach)
+  http.get(`${API_BASE}${L3_PREFIX}/subgraph`, async ({ request }) => {
+    await delay(150);
+    const url = new URL(request.url);
+    const query = url.searchParams.get('query');
+    const centerId = url.searchParams.get('center_entity_id');
+    const depth = parseInt(url.searchParams.get('depth') || '2', 10);
+    const limit = parseInt(url.searchParams.get('limit') || '100', 10);
+
+    // Mock coherent subgraph with nodes AND edges
+    const nodes = [
+      { id: 'ent-1', label: 'AI Processing', type: 'Capability', confidence: 0.95 },
+      { id: 'ent-2', label: 'Data Pipeline', type: 'Capability', confidence: 0.88 },
+      { id: 'ent-3', label: 'Customer Analytics', type: 'UseCase', confidence: 0.92 },
+      { id: 'ent-4', label: 'Data Scientist', type: 'Persona', confidence: 0.85 },
+    ];
+
+    const edges = [
+      { source: 'ent-1', target: 'ent-2', type: 'ENABLES', properties: {} },
+      { source: 'ent-2', target: 'ent-3', type: 'ENABLES', properties: {} },
+      { source: 'ent-3', target: 'ent-4', type: 'USED_BY', properties: {} },
+      { source: 'ent-1', target: 'ent-3', type: 'SUPPORTS', properties: {} },
+    ];
+
+    return HttpResponse.json({
+      root_entity_id: centerId || '',
+      nodes: nodes.slice(0, limit),
+      edges: edges,
+      depth: depth,
+      stats: {
+        total_nodes: nodes.length,
+        total_edges: edges.length,
+        density: 0.33,
+      },
+    });
+  }),
 ];
 
 // ===== Benchmark Mocks (L3) =====
@@ -1049,6 +1086,7 @@ export const valuePackMocks = [
     const industry = url.searchParams.get('industry');
     const status = url.searchParams.get('status');
     const scope = url.searchParams.get('scope');
+    const category = url.searchParams.get('category');
     const search = url.searchParams.get('search');
 
     let packs = [
@@ -1064,10 +1102,12 @@ export const valuePackMocks = [
         workflow_count: 3,
         status: 'active',
         scope: 'global' as const,
+        category: 'Security',
         updated_at: '2024-01-15T10:00:00Z',
         created_at: '2024-01-10T08:00:00Z',
         version: '1.2.0',
         owner: 'security-team',
+        created_by: 'security-team',
       },
       {
         id: 'pack-2',
@@ -1081,10 +1121,12 @@ export const valuePackMocks = [
         workflow_count: 2,
         status: 'published',
         scope: 'global' as const,
+        category: 'Analytics',
         updated_at: '2024-01-14T15:30:00Z',
         created_at: '2024-01-12T09:00:00Z',
         version: '1.0.0',
         owner: 'customer-success',
+        created_by: 'customer-success',
       },
       {
         id: 'pack-3',
@@ -1098,10 +1140,12 @@ export const valuePackMocks = [
         workflow_count: 4,
         status: 'draft',
         scope: 'tenant' as const,
+        category: 'Compliance',
         updated_at: '2024-01-13T11:00:00Z',
         created_at: '2024-01-13T10:00:00Z',
         version: '0.9.0',
         owner: 'compliance-team',
+        created_by: 'compliance-team',
       },
       {
         id: 'pack-4',
@@ -1115,14 +1159,16 @@ export const valuePackMocks = [
         workflow_count: 5,
         status: 'archived',
         scope: 'global' as const,
+        category: 'Finance',
         updated_at: '2023-12-01T09:00:00Z',
         created_at: '2023-11-15T08:00:00Z',
         version: '0.5.0',
         owner: 'finance-team',
+        created_by: 'finance-team',
       },
     ];
 
-    // Apply filters
+    // Apply filters (matching backend behavior)
     if (industry && industry !== 'all') {
       packs = packs.filter(p => p.industry.toLowerCase().includes(industry.toLowerCase()));
     }
@@ -1132,15 +1178,54 @@ export const valuePackMocks = [
     if (scope && scope !== 'all') {
       packs = packs.filter(p => p.scope === scope);
     }
+    if (category && category !== 'all') {
+      packs = packs.filter(p => p.category?.toLowerCase() === category.toLowerCase());
+    }
     if (search) {
       const searchLower = search.toLowerCase();
-      packs = packs.filter(p => 
+      packs = packs.filter(p =>
         p.name.toLowerCase().includes(searchLower) ||
         p.description?.toLowerCase().includes(searchLower)
       );
     }
 
     return HttpResponse.json(packs);
+  }),
+
+  http.get(`${API_BASE}${L3_PREFIX}/packs/:packId`, async ({ params }) => {
+    await delay(50);
+    const packId = params.packId as string;
+    const allPacks: Record<string, object> = {
+      'enterprise-security-roi': {
+        id: 'pack-1', pack_id: 'enterprise-security-roi', name: 'Enterprise Security ROI',
+        industry: 'SaaS / B2B', description: 'Comprehensive security ROI calculations for enterprise customers',
+        driver_count: 5, formula_count: 12, benchmark_count: 8, workflow_count: 3,
+        status: 'active', scope: 'global', category: 'Security', updated_at: '2024-01-15T10:00:00Z', version: '1.2.0',
+      },
+      'churn-reduction': {
+        id: 'pack-2', pack_id: 'churn-reduction', name: 'Customer Churn Reduction',
+        industry: 'SaaS / B2B', description: 'Analyze and reduce customer churn with predictive models',
+        driver_count: 3, formula_count: 8, benchmark_count: 5, workflow_count: 2,
+        status: 'published', scope: 'global', category: 'Analytics', updated_at: '2024-01-14T15:30:00Z', version: '1.0.0',
+      },
+      'healthcare-compliance': {
+        id: 'pack-3', pack_id: 'healthcare-compliance', name: 'Healthcare Compliance',
+        industry: 'Healthcare', description: 'HIPAA compliance and risk assessment tools',
+        driver_count: 4, formula_count: 6, benchmark_count: 10, workflow_count: 4,
+        status: 'draft', scope: 'tenant', category: 'Compliance', updated_at: '2024-01-13T11:00:00Z', version: '0.9.0',
+      },
+      'fintech-metrics': {
+        id: 'pack-4', pack_id: 'fintech-metrics', name: 'Fintech Metrics Suite',
+        industry: 'Financial Services', description: 'Regulatory and growth metrics for fintech companies',
+        driver_count: 6, formula_count: 15, benchmark_count: 12, workflow_count: 5,
+        status: 'archived', scope: 'global', category: 'Finance', updated_at: '2023-12-01T09:00:00Z', version: '0.5.0',
+      },
+    };
+    const pack = allPacks[packId];
+    if (!pack) {
+      return HttpResponse.json({ error: 'Pack not found' }, { status: 404 });
+    }
+    return HttpResponse.json(pack);
   }),
 
   http.post(`${API_BASE}${L3_PREFIX}/packs/:packId/apply`, async ({ params, request }) => {

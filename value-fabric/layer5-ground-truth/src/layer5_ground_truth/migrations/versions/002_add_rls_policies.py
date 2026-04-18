@@ -13,7 +13,7 @@ from typing import Union
 from alembic import op
 
 revision: str = "002"
-down_revision: Union[str, None] = "20240101_0000_a1b2c3d4e5f6_initial_ground_truth_schema"
+down_revision: Union[str, None] = "a1b2c3d4e5f6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -29,6 +29,10 @@ RLS_TABLES = [
 
 def upgrade() -> None:
     """Enable RLS and create policies for organization isolation."""
+    # Ensure required roles exist for admin bypass policies
+    op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'admin_role') THEN CREATE ROLE admin_role NOLOGIN; END IF; END $$")
+    op.execute("DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'system_role') THEN CREATE ROLE system_role NOLOGIN; END IF; END $$")
+
     # Enable RLS on each table
     for table in RLS_TABLES:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")

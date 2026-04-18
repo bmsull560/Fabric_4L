@@ -37,7 +37,7 @@ COPY shared/ ./shared/
 COPY layer2-extraction/src/ ./src/
 
 # Set PYTHONPATH so imports work
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app:/app/src
 
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app
@@ -51,4 +51,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the application
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.layer2_extraction.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

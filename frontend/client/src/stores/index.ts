@@ -6,9 +6,17 @@ export type { UserTier, UserPermissions } from './userTierStore';
 export { useIngestionUIStore } from './ingestionStore';
 export type { IngestionUIStore } from './ingestionStore';
 
+// Ingestion Jobs UI Store (Ingestion Jobs Page)
+export { useIngestionJobsStore } from './ingestionJobsStore';
+export type { IngestionJobsUIStore, JobFilters, JobStatusFilter } from './ingestionJobsStore';
+
 // Entity UI Store (Ontology Browser)
 export { useEntityUIStore } from './entityStore';
 export type { EntityUIStore, EntityType as EntityUIType } from './entityStore';
+
+// Ontology Editor Store
+export { useOntologyStore } from './ontologyStore';
+export type { OntologyEditorState, OntologyEditorActions, OntologyChange } from './ontologyStore';
 
 // Narrative Creation Store (Value Narrative Hero)
 export { useNarrativeStore, DEFAULT_INDUSTRY, FALLBACK_INDUSTRIES, looksLikeUrl } from './narrativeStore';
@@ -29,8 +37,19 @@ export {
   useRecentIngestionJobs,
   useIngestionStats,
   useSubmitDomain,
+  useIngestionJobList,
+  useIngestionJobDetail,
+  useJobComplianceLogs,
+  useCancelJob,
+  useRetryJob,
   type IngestionJob,
   type IngestionStats,
+  type JobListFilters,
+  type IngestionJobDetail,
+  type JobStage,
+  type JobError,
+  type ComplianceLogEntry,
+  type JobListResponse,
 } from '../hooks/useIngestion';
 
 export {

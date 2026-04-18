@@ -147,7 +147,7 @@ export default function BusinessCase() {
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
-        breadcrumbs={["Agent Workflows", "Business Cases"]}
+        breadcrumbs={[{ label: "Agent Workflows" }, { label: "Business Cases" }]}
         title={businessCase.title || "Business Case"}
         subtitle={`Status: ${businessCase.status} · ${businessCase.created_at ? new Date(businessCase.created_at).toLocaleDateString() : 'Unknown'}`}
         actions={

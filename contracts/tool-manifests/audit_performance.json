@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "audit_performance",
+  "version": "1.0.0",
+  "description": "Performance engineering audit including load test validation, database query optimization, cache efficiency analysis, and frontend Core Web Vitals monitoring",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "audit_scope": {
+        "type": "string",
+        "enum": ["all", "load_testing", "database", "cache", "frontend", "api_latency"],
+        "default": "all",
+        "description": "Specific performance areas to audit"
+      },
+      "layers": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["L1", "L2", "L3", "L4", "L5", "L6", "frontend"]
+        },
+        "default": ["L1", "L2", "L3", "L4", "frontend"],
+        "description": "Layers to include in performance audit"
+      },
+      "run_load_tests": {
+        "type": "boolean",
+        "default": false,
+        "description": "Execute k6 load tests as part of audit"
+      },
+      "load_test_duration": {
+        "type": "string",
+        "default": "2m",
+        "description": "Duration for load test execution"
+      },
+      "check_slo_compliance": {
+        "type": "boolean",
+        "default": true,
+        "description": "Validate SLO compliance from metrics"
+      },
+      "slo_lookback_days": {
+        "type": "integer",
+        "default": 7,
+        "minimum": 1,
+        "maximum": 30,
+        "description": "Days of historical SLO data to analyze"
+      },
+      "detect_regressions": {
+        "type": "boolean",
+        "default": true,
+        "description": "Compare against baseline to detect regressions"
+      },
+      "baseline_comparison_window": {
+        "type": "string",
+        "default": "7d",
+        "description": "Time window for baseline comparison"
+      },
+      "severity_threshold": {
+        "type": "string",
+        "enum": ["critical", "high", "medium", "low"],
+        "default": "medium",
+        "description": "Minimum severity level to report"
+      },
+      "output_format": {
+        "type": "string",
+        "enum": ["markdown", "json", "sarif"],
+        "default": "markdown",
+        "description": "Output format for audit report"
+      },
+      "fail_on_critical": {
+        "type": "boolean",
+        "default": true,
+        "description": "Return non-zero exit code if critical findings detected"
+      }
+    },
+    "required": []
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "summary": {
+        "type": "object",
+        "properties": {
+          "overall_grade": { "type": "string", "enum": ["A", "B", "C", "D", "F"] },
+          "total_findings": { "type": "integer" },
+          "critical_count": { "type": "integer" },
+          "high_count": { "type": "integer" },
+          "medium_count": { "type": "integer" },
+          "low_count": { "type": "integer" },
+          "slo_compliance_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+          "regressions_detected": { "type": "integer" },
+          "performance_score": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      },
+      "slo_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "slo_name": { "type": "string" },
+            "target": { "type": "number" },
+            "current": { "type": "number" },
+            "compliant": { "type": "boolean" },
+            "error_budget_remaining_pct": { "type": "number" },
+            "trend": { "type": "string", "enum": ["improving", "stable", "degrading"] },
+            "severity": { "type": "string" }
+          }
+        }
+      },
+      "load_test_results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "test_name": { "type": "string" },
+            "scenario": { "type": "string" },
+            "duration": { "type": "string" },
+            "vus": { "type": "integer" },
+            "requests_total": { "type": "integer" },
+            "requests_per_sec": { "type": "number" },
+            "error_rate_pct": { "type": "number" },
+            "p50_latency_ms": { "type": "number" },
+            "p95_latency_ms": { "type": "number" },
+            "p99_latency_ms": { "type": "number" },
+            "passed": { "type": "boolean" },
+            "findings": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "database_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "layer": { "type": "string" },
+            "query_pattern": { "type": "string" },
+            "avg_execution_time_ms": { "type": "number" },
+            "calls_per_minute": { "type": "number" },
+            "index_usage_pct": { "type": "number" },
+            "severity": { "type": "string" },
+            "recommendation": { "type": "string" }
+          }
+        }
+      },
+      "cache_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "cache_name": { "type": "string" },
+            "hit_rate_pct": { "type": "number" },
+            "miss_rate_pct": { "type": "number" },
+            "eviction_rate": { "type": "number" },
+            "memory_usage_bytes": { "type": "integer" },
+            "severity": { "type": "string" },
+            "optimization": { "type": "string" }
+          }
+        }
+      },
+      "frontend_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "metric": { "type": "string", "enum": ["LCP", "FID", "CLS", "TTFB", "FCP"] },
+            "value": { "type": "number" },
+            "target": { "type": "number" },
+            "grade": { "type": "string", "enum": ["good", "needs_improvement", "poor"] },
+            "page": { "type": "string" },
+            "recommendation": { "type": "string" }
+          }
+        }
+      },
+      "regressions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "metric": { "type": "string" },
+            "baseline_value": { "type": "number" },
+            "current_value": { "type": "number" },
+            "change_pct": { "type": "number" },
+            "severity": { "type": "string" },
+            "likely_cause": { "type": "string" }
+          }
+        }
+      },
+      "recommendations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "priority": { "type": "integer", "minimum": 1, "maximum": 5 },
+            "category": { "type": "string" },
+            "description": { "type": "string" },
+            "expected_impact": { "type": "string" },
+            "effort": { "type": "string", "enum": ["low", "medium", "high"] }
+          }
+        }
+      }
+    }
+  }
+}

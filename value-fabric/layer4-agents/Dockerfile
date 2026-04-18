@@ -11,8 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies to system site-packages
-COPY layer4-agents/requirements.lock .
-RUN pip install --no-cache-dir -r requirements.lock
+COPY layer4-agents/pyproject.toml .
+COPY layer4-agents/README.md .
+RUN mkdir -p src && touch src/__init__.py && pip install --no-cache-dir . && rm -rf src README.md pyproject.toml
 
 # Stage 2: Runtime - minimal image with only runtime libraries
 FROM python:3.11.11-slim-bookworm AS runtime

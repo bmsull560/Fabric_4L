@@ -213,3 +213,84 @@ export const parseExtractionJob = (value: unknown): ApiExtractionJobDto => {
     configuration: isRecord(value.configuration) ? { url: asString(value.configuration.url) } : undefined,
   };
 };
+
+// =============================================================================
+// INGESTION JOB DETAIL DTOs
+// =============================================================================
+
+export interface ApiJobProgressDto {
+  total_pages?: number;
+  processed_pages: number;
+  failed_pages: number;
+  current_url?: string;
+  current_stage: string;
+  percent_complete: number;
+}
+
+export interface ApiJobResultsDto {
+  raw_content_count: number;
+  extracted_record_count: number;
+  storage_bytes_used: number;
+  output_location?: string;
+}
+
+export interface ApiJobResourcesDto {
+  browser_sessions_used: number;
+  proxy_requests_made: number;
+  llm_tokens_consumed: number;
+  compute_time_ms: number;
+}
+
+export interface ApiJobStageDto {
+  stage: string;
+  status: string;
+  started_at?: string;
+  completed_at?: string;
+  duration_ms?: number;
+  error_message?: string;
+}
+
+export interface ApiJobErrorDto {
+  id: string;
+  stage: string;
+  error_code: string;
+  error_message: string;
+  url?: string;
+  retryable: boolean;
+  retry_count: number;
+  occurred_at: string;
+  resolved_at?: string;
+}
+
+export interface ApiJobDetailDto {
+  id: string;
+  target_id: string;
+  organization_id: string;
+  configuration: Record<string, unknown>;
+  status: string;
+  priority: number;
+  scheduled_at?: string;
+  started_at?: string;
+  completed_at?: string;
+  updated_at?: string;
+  estimated_duration_ms?: number;
+  progress: ApiJobProgressDto;
+  results: ApiJobResultsDto;
+  resources: ApiJobResourcesDto;
+  triggered_by: string;
+  correlation_id?: string;
+  created_at: string;
+  created_by: string;
+  stages: ApiJobStageDto[];
+  errors: ApiJobErrorDto[];
+}
+
+export interface ApiComplianceLogDto {
+  id: string;
+  event_type: string;
+  severity: string;
+  request_url?: string;
+  request_timestamp: string;
+  response_action_taken?: string;
+  created_at: string;
+}

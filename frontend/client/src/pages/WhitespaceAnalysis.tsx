@@ -140,8 +140,8 @@ const STATUS_CONFIG: Record<PenetrationStatus, {
   },
   not_applicable: {
     icon: null,
-    bgColor: 'bg-neutral-100',
-    borderColor: 'border-neutral-200',
+    bgColor: 'bg-muted/30',
+    borderColor: 'border-border',
     label: 'N/A',
   },
 };
@@ -180,26 +180,26 @@ function MatrixView({
       <table className="w-full border-collapse">
         <thead>
           <tr>
-            <th className="sticky left-0 bg-white z-10 p-3 text-left text-[11px] font-semibold text-neutral-600 border-b border-neutral-200 min-w-[200px]">
+            <th className="sticky left-0 bg-card z-10 p-3 text-left text-[11px] font-semibold text-muted-foreground border-b border-border min-w-[200px]">
               Account
             </th>
-            <th className="p-3 text-left text-[11px] font-semibold text-neutral-600 border-b border-neutral-200">
+            <th className="p-3 text-left text-[11px] font-semibold text-muted-foreground border-b border-border">
               Industry
             </th>
-            <th className="p-3 text-left text-[11px] font-semibold text-neutral-600 border-b border-neutral-200">
+            <th className="p-3 text-left text-[11px] font-semibold text-muted-foreground border-b border-border">
               ARR
             </th>
             {products.map(product => (
-              <th key={product.id} className="p-2 text-center text-[10px] font-medium text-neutral-500 border-b border-neutral-200 min-w-[60px]">
+              <th key={product.id} className="p-2 text-center text-[10px] font-medium text-muted-foreground border-b border-border min-w-[60px]">
                 <div className="rotate-180 [writing-mode:vertical-lr] whitespace-nowrap">
                   {product.name}
                 </div>
               </th>
             ))}
-            <th className="p-3 text-right text-[11px] font-semibold text-neutral-600 border-b border-neutral-200">
+            <th className="p-3 text-right text-[11px] font-semibold text-muted-foreground border-b border-border">
               Penetration
             </th>
-            <th className="p-3 text-right text-[11px] font-semibold text-neutral-600 border-b border-neutral-200">
+            <th className="p-3 text-right text-[11px] font-semibold text-muted-foreground border-b border-border">
               Whitespace
             </th>
           </tr>
@@ -208,28 +208,28 @@ function MatrixView({
           {accounts.map(account => (
             <tr
               key={account.accountId}
-              className="hover:bg-neutral-50 cursor-pointer"
+              className="hover:bg-muted/20 cursor-pointer"
               onClick={() => onAccountClick(account.accountId)}
             >
-              <td className="sticky left-0 bg-white p-3 border-b border-neutral-100">
-                <div className="font-medium text-[13px] text-neutral-800">{account.accountName}</div>
-                <div className="text-[10px] text-neutral-400">{account.region}</div>
+              <td className="sticky left-0 bg-card p-3 border-b border-border/50">
+                <div className="font-medium text-[13px] text-foreground">{account.accountName}</div>
+                <div className="text-[10px] text-muted-foreground/60">{account.region}</div>
               </td>
-              <td className="p-3 border-b border-neutral-100 text-[12px] text-neutral-600">
+              <td className="p-3 border-b border-border/50 text-[12px] text-muted-foreground">
                 {account.industry}
               </td>
-              <td className="p-3 border-b border-neutral-100 text-[12px] font-medium text-neutral-700">
+              <td className="p-3 border-b border-border/50 text-[12px] font-medium text-muted-foreground">
                 {account.arr}
               </td>
               {products.map(product => (
-                <td key={product.id} className="p-1 border-b border-neutral-100">
+                <td key={product.id} className="p-1 border-b border-border/50">
                   <PenetrationCell
                     status={account.penetration[product.id] || 'not_applicable'}
                   />
                 </td>
               ))}
-              <td className="p-3 border-b border-neutral-100 text-right">
-                <div className="text-[14px] font-bold text-neutral-800">{account.penetrationRate}%</div>
+              <td className="p-3 border-b border-border/50 text-right">
+                <div className="text-[14px] font-bold text-foreground">{account.penetrationRate}%</div>
                 <div className="w-16 h-1.5 bg-neutral-200 rounded-full mt-1 ml-auto overflow-hidden">
                   <div
                     className={cn(
@@ -241,7 +241,7 @@ function MatrixView({
                   />
                 </div>
               </td>
-              <td className="p-3 border-b border-neutral-100 text-right">
+              <td className="p-3 border-b border-border/50 text-right">
                 <span className="text-[14px] font-bold text-emerald-600">{account.totalWhitespace}</span>
               </td>
             </tr>
@@ -304,8 +304,8 @@ function SummaryView({
   return (
     <div className="grid grid-cols-2 gap-6">
       {/* Product Penetration */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-4">
-        <h3 className="text-[14px] font-semibold text-neutral-800 mb-4 flex items-center gap-2">
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="text-[14px] font-semibold text-foreground mb-4 flex items-center gap-2">
           <BarChart3 size={16} className="text-blue-500" />
           Product Penetration
         </h3>
@@ -314,16 +314,16 @@ function SummaryView({
             <div key={stat.id} className="flex items-center gap-3">
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[12px] font-medium text-neutral-700">{stat.name}</span>
-                  <span className="text-[12px] text-neutral-500">{stat.penetrationRate}%</span>
+                  <span className="text-[12px] font-medium text-muted-foreground">{stat.name}</span>
+                  <span className="text-[12px] text-muted-foreground">{stat.penetrationRate}%</span>
                 </div>
-                <div className="h-2 bg-neutral-100 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-500 rounded-full transition-all"
                     style={{ width: `${stat.penetrationRate}%` }}
                   />
                 </div>
-                <div className="flex items-center gap-3 mt-1 text-[10px] text-neutral-400">
+                <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground/60">
                   <span className="text-emerald-600">{stat.adopted} adopted</span>
                   <span className="text-amber-600">{stat.partial} partial</span>
                   <span className="text-blue-600">{stat.opportunity} whitespace</span>
@@ -335,20 +335,20 @@ function SummaryView({
       </div>
 
       {/* Industry Breakdown */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-4">
-        <h3 className="text-[14px] font-semibold text-neutral-800 mb-4 flex items-center gap-2">
+      <div className="bg-card border border-border rounded-xl p-4">
+        <h3 className="text-[14px] font-semibold text-foreground mb-4 flex items-center gap-2">
           <PieChart size={16} className="text-violet-500" />
           By Industry
         </h3>
         <div className="space-y-3">
           {industryStats.map(stat => (
-            <div key={stat.industry} className="flex items-center justify-between p-2 bg-neutral-50 rounded-lg">
+            <div key={stat.industry} className="flex items-center justify-between p-2 bg-muted/20 rounded-lg">
               <div>
-                <span className="text-[12px] font-medium text-neutral-700">{stat.industry}</span>
-                <span className="text-[10px] text-neutral-400 ml-2">{stat.accountCount} accounts</span>
+                <span className="text-[12px] font-medium text-muted-foreground">{stat.industry}</span>
+                <span className="text-[10px] text-muted-foreground/60 ml-2">{stat.accountCount} accounts</span>
               </div>
               <div className="text-right">
-                <div className="text-[12px] font-medium text-neutral-800">{stat.avgPenetration}% penetration</div>
+                <div className="text-[12px] font-medium text-foreground">{stat.avgPenetration}% penetration</div>
                 <div className="text-[10px] text-emerald-600">{stat.totalWhitespace} whitespace</div>
               </div>
             </div>
@@ -458,20 +458,20 @@ function WhitespaceAnalysisContent() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Total Accounts</p>
-          <p className="text-[22px] font-extrabold text-neutral-800">{stats.totalAccounts}</p>
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Accounts</p>
+          <p className="text-[22px] font-extrabold text-foreground">{stats.totalAccounts}</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Total Whitespace</p>
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Whitespace</p>
           <p className="text-[22px] font-extrabold text-emerald-600">${(stats.totalWhitespace / 1000000).toFixed(1)}M</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">Avg Penetration</p>
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Avg Penetration</p>
           <p className="text-[22px] font-extrabold text-blue-600">{stats.avgPenetration}%</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-xl px-4 py-3">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">High Penetration</p>
+        <div className="bg-card border border-border rounded-xl px-4 py-3">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">High Penetration</p>
           <p className="text-[22px] font-extrabold text-violet-600">{stats.highPenetration}</p>
         </div>
       </div>
@@ -479,21 +479,21 @@ function WhitespaceAnalysisContent() {
       {/* Filters & View Toggle */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2">
-            <Search size={14} className="text-neutral-400" />
+          <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+            <Search size={14} className="text-muted-foreground/60" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search accounts..."
-              className="text-[13px] bg-transparent outline-none text-neutral-700 w-48"
+              className="text-[13px] bg-transparent outline-none text-muted-foreground w-48"
             />
           </div>
 
           <select
             value={industryFilter}
             onChange={(e) => setIndustryFilter(e.target.value)}
-            className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+            className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
           >
             <option value="all">All Industries</option>
             {industries.map(ind => (
@@ -504,7 +504,7 @@ function WhitespaceAnalysisContent() {
           <select
             value={regionFilter}
             onChange={(e) => setRegionFilter(e.target.value)}
-            className="text-[12px] px-3 py-2 border border-neutral-200 rounded-lg bg-white outline-none"
+            className="text-[12px] px-3 py-2 border border-border rounded-lg bg-card outline-none"
           >
             <option value="all">All Regions</option>
             {regions.map(reg => (
@@ -513,14 +513,14 @@ function WhitespaceAnalysisContent() {
           </select>
         </div>
 
-        <div className="flex items-center gap-1 bg-neutral-100 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-muted/30 rounded-lg p-1">
           <button
             onClick={() => setViewMode('matrix')}
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-medium transition-all",
               viewMode === 'matrix'
-                ? "bg-white text-neutral-800 shadow-sm"
-                : "text-neutral-500 hover:text-neutral-700"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-muted-foreground"
             )}
           >
             <Grid3X3 size={14} />
@@ -531,8 +531,8 @@ function WhitespaceAnalysisContent() {
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-medium transition-all",
               viewMode === 'summary'
-                ? "bg-white text-neutral-800 shadow-sm"
-                : "text-neutral-500 hover:text-neutral-700"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-muted-foreground"
             )}
           >
             <BarChart3 size={14} />
@@ -542,7 +542,7 @@ function WhitespaceAnalysisContent() {
       </div>
 
       {/* Content */}
-      <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
         {viewMode === 'matrix' ? (
           <MatrixView
             accounts={filteredAccounts}
@@ -557,7 +557,7 @@ function WhitespaceAnalysisContent() {
       </div>
 
       {filteredAccounts.length === 0 && (
-        <div className="text-center py-12 text-neutral-400">
+        <div className="text-center py-12 text-muted-foreground/60">
           <Building2 size={48} className="mx-auto mb-4 text-neutral-300" />
           <p className="text-[14px] font-medium">No accounts match your filters</p>
           <p className="text-[12px] mt-1">Adjust filters to see whitespace analysis</p>

@@ -36,6 +36,11 @@ class StripeNotConfiguredError(Exception):
     pass
 
 
+class StripeError(Exception):
+    """Raised when a Stripe API call fails."""
+    pass
+
+
 def get_stripe() -> Any:
     """Get configured Stripe module.
 

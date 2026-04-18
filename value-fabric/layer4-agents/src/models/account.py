@@ -143,6 +143,10 @@ class Account(Base):
         String(100), nullable=True, comment="Industry classification"
     )
 
+    region: Mapped[str | None] = mapped_column(
+        String(100), nullable=True, comment="Geographic region (state/country from CRM)"
+    )
+
     company_size: Mapped[int | None] = mapped_column(
         Integer, nullable=True, comment="Employee count"
     )
@@ -179,6 +183,10 @@ class Account(Base):
         String(50),
         nullable=True,
         comment="Account stage: prospect, qualified, opportunity, customer",
+    )
+
+    segment: Mapped[str | None] = mapped_column(
+        String(100), nullable=True, comment="Account segment (type from CRM: Customer, Partner, etc.)"
     )
 
     employees: Mapped[int | None] = mapped_column(
@@ -248,6 +256,8 @@ class Account(Base):
         Index("ix_accounts_domain", "domain"),
         Index("ix_accounts_owner_id", "owner_id"),
         Index("ix_accounts_last_synced_at", "last_synced_at"),
+        Index("ix_accounts_region", "region"),
+        Index("ix_accounts_segment", "segment"),
         # Composite index for list queries: synced accounts by update time
         Index("ix_accounts_provider_sync_updated", "provider", "sync_status", "updated_at"),
     )

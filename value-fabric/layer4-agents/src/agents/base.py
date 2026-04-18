@@ -10,7 +10,26 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Any
 
-from shared.testability import Clock, IDGenerator, SystemClock, UUIDGenerator
+try:
+    from shared.testability import Clock, IDGenerator, SystemClock, UUIDGenerator
+except ImportError:
+    # Fallback implementations when shared package unavailable
+    class Clock:
+        @staticmethod
+        def now() -> datetime:
+            return datetime.now()
+    
+    class SystemClock(Clock):
+        pass
+    
+    class IDGenerator:
+        @staticmethod
+        def generate() -> str:
+            import uuid
+            return str(uuid.uuid4())
+    
+    class UUIDGenerator(IDGenerator):
+        pass
 
 
 class AgentStatus(Enum):

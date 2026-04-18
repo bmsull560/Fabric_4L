@@ -12,6 +12,8 @@ export interface Account {
   domain: string;
   industry?: string;
   stage?: string;
+  region?: string;
+  segment?: string;
   owner_id?: string;
   owner_name?: string;
   provider: CRMProvider;
@@ -94,6 +96,8 @@ export interface AccountFilters {
   provider?: CRMProvider | 'all';
   stage?: string;
   industry?: string;
+  region?: string;
+  segment?: string;
   owner_id?: string;
   sync_status?: SyncStatus | 'all';
   search?: string;
@@ -122,6 +126,8 @@ async function fetchAccounts(filters: AccountFilters): Promise<AccountListRespon
   if (filters.provider && filters.provider !== 'all') params.set('provider', filters.provider);
   if (filters.stage) params.set('stage', filters.stage);
   if (filters.industry) params.set('industry', filters.industry);
+  if (filters.region) params.set('region', filters.region);
+  if (filters.segment) params.set('segment', filters.segment);
   if (filters.owner_id) params.set('owner_id', filters.owner_id);
   if (filters.sync_status && filters.sync_status !== 'all') params.set('sync_status', filters.sync_status);
   if (filters.search) params.set('q', filters.search);

@@ -13,10 +13,10 @@ from pydantic import BaseModel, Field, field_validator
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ....database import get_db
-from ....models.account import CRMProvider
-from ....models.integration import IntegrationStatus
-from ....services.integration_service import (
+from ...database import get_db
+from ...models.account import CRMProvider
+from ...models.integration import IntegrationStatus
+from ...services.integration_service import (
     IntegrationNotFoundError,
     IntegrationService,
     IntegrationValidationError,

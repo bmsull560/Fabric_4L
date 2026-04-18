@@ -72,9 +72,11 @@ class AccountListItemSchema(BaseModel):
     name: str
     domain: str | None = None
     industry: str | None = None
+    region: str | None = None
     company_size: int | None = None
     owner_name: str | None = None
     stage: str | None = None
+    segment: str | None = None
     sync_status: SyncStatus
     last_synced_at: datetime | None = None
     updated_at: datetime
@@ -102,6 +104,8 @@ class AccountSearchRequest(BaseModel):
     provider: CRMProvider | None = None
     stage: str | None = None
     industry: str | None = None
+    region: str | None = None
+    segment: str | None = None
     owner_id: str | None = None
     sync_status: SyncStatus | None = None
 
@@ -131,6 +135,7 @@ class AccountDetailSchema(BaseModel):
     name: str
     domain: str | None = None
     industry: str | None = None
+    region: str | None = None
     company_size: int | None = None
     annual_revenue: float | None = None
     headquarters: str | None = None
@@ -141,6 +146,7 @@ class AccountDetailSchema(BaseModel):
     owner_name: str | None = None
     owner_email: str | None = None
     stage: str | None = None
+    segment: str | None = None
 
     # Sync metadata
     created_at: datetime
@@ -233,5 +239,7 @@ class AccountFilterOptionsResponse(BaseModel):
 
     industries: list[str]
     stages: list[str]
+    regions: list[str]
+    segments: list[str]
     providers: list[CRMProvider]
     owners: list[dict[str, str]]  # [{"id": "...", "name": "..."}]

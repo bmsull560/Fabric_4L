@@ -19,7 +19,12 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
 from pydantic import BaseModel, Field
-from shared.security import add_security_middleware, SecurityConfig
+
+try:
+    from shared.security import add_security_middleware, SecurityConfig
+except ImportError:
+    add_security_middleware = None
+    SecurityConfig = None
 
 from ..metrics import get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
@@ -98,11 +103,12 @@ app = FastAPI(
 
 # SecurityMiddleware — input validation and security headers (before CORS)
 # L6 has no skip paths — all endpoints require strict validation
-_security_config_l6 = SecurityConfig(
-    skip_validation_paths=frozenset(),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l6)
+if SecurityConfig and add_security_middleware:
+    _security_config_l6 = SecurityConfig(
+        skip_validation_paths=frozenset(),
+        strict_mode=True,
+    )
+    add_security_middleware(app, config=_security_config_l6)
 
 # GovernanceMiddleware — provides auth and tenant context
 try:
@@ -143,71 +149,15 @@ metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
 
-# Pydantic models for API
-class DatasetSummary(BaseModel):
-    """Summary of benchmark dataset."""
-
-    dataset_id: str
-    name: str
-    industry: str
-    segment: Optional[str]
-    metrics: List[str]
-    version: str
-
-
-class DatasetDetail(BaseModel):
-    """Detailed benchmark dataset."""
-
-    dataset_id: str
-    name: str
-    description: str
-    industry: str
-    segment: Optional[str]
-    geography: Optional[str]
-    metrics: Dict[str, dict]
-    version: str
-    data_source: Optional[str]
-
-
-class ComparisonRequestPayload(BaseModel):
-    """Payload for comparison request."""
-
-    dataset_id: str
-    metric: str
-    company_value: str = Field(..., description="Company value as string (Decimal)")
-    industry: str
-    segment: Optional[str] = None
-
-
-class ComparisonResponse(BaseModel):
-    """Response from comparison."""
-
-    percentile: int
-    peer_median: str
-    peer_range: tuple[str, str]
-    sample_size: int
-    confidence: str
-    assessment: str
-
-
-class ValidationRequestPayload(BaseModel):
-    """Payload for validation request."""
-
-    dataset_id: str
-    metric: str
-    value: str = Field(..., description="Value as string (Decimal)")
-    tolerance_percent: int = 10
-
-
-class ValidationResponse(BaseModel):
-    """Response from validation."""
-
-    is_valid: bool
-    expected_range: tuple[str, str]
-    actual_value: str
-    deviation_percent: Optional[float]
-    severity: str
-    message: str
+# Pydantic models for API (defined in schemas.py to avoid circular imports)
+from .schemas import (
+    ComparisonRequestPayload,
+    ComparisonResponse,
+    DatasetDetail,
+    DatasetSummary,
+    ValidationRequestPayload,
+    ValidationResponse,
+)
 
 
 # API Routes

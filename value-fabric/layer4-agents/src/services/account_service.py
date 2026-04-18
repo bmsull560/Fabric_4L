@@ -43,6 +43,8 @@ class AccountService:
         provider: CRMProvider | None = None,
         stage: str | None = None,
         industry: str | None = None,
+        region: str | None = None,
+        segment: str | None = None,
         owner_id: str | None = None,
         sync_status: SyncStatus | None = None,
         page: int = 1,
@@ -67,6 +69,10 @@ class AccountService:
             filters.append(Account.stage == stage)
         if industry:
             filters.append(Account.industry == industry)
+        if region:
+            filters.append(Account.region == region)
+        if segment:
+            filters.append(Account.segment == segment)
         if owner_id:
             filters.append(Account.owner_id == owner_id)
         if sync_status:
@@ -102,6 +108,8 @@ class AccountService:
         provider: CRMProvider | None = None,
         stage: str | None = None,
         industry: str | None = None,
+        region: str | None = None,
+        segment: str | None = None,
         owner_id: str | None = None,
         sync_status: SyncStatus | None = None,
         page: int = 1,
@@ -133,6 +141,10 @@ class AccountService:
             filters.append(Account.stage == stage)
         if industry:
             filters.append(Account.industry == industry)
+        if region:
+            filters.append(Account.region == region)
+        if segment:
+            filters.append(Account.segment == segment)
         if owner_id:
             filters.append(Account.owner_id == owner_id)
         if sync_status:
@@ -354,6 +366,18 @@ class AccountService:
         )
         stages = [row[0] for row in stage_result.all() if row[0]]
 
+        # Get distinct regions
+        region_result = await self.db.execute(
+            select(Account.region).where(Account.region.isnot(None)).distinct()
+        )
+        regions = [row[0] for row in region_result.all() if row[0]]
+
+        # Get distinct segments
+        segment_result = await self.db.execute(
+            select(Account.segment).where(Account.segment.isnot(None)).distinct()
+        )
+        segments = [row[0] for row in segment_result.all() if row[0]]
+
         # Get owners
         owner_result = await self.db.execute(
             select(Account.owner_id, Account.owner_name)
@@ -367,6 +391,8 @@ class AccountService:
         return {
             "industries": industries,
             "stages": stages,
+            "regions": regions,
+            "segments": segments,
             "providers": [p.value for p in CRMProvider],
             "owners": owners,
         }

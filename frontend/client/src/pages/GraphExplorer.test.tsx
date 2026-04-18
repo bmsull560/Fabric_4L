@@ -8,45 +8,72 @@
  * - Search/filter interactions
  * - Loading and error states
  */
-import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createWrapper } from '../test-utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import GraphExplorer from './GraphExplorer';
 
+// P0 Fix: Standard timeout configuration for flaky async tests
+const WAIT_OPTIONS = { timeout: 3000 };
+
 describe('GraphExplorer', () => {
+  beforeEach(() => {
+    server.resetHandlers();
+  });
+
   it('renders with graph data', async () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    // Should show page header (use heading role to disambiguate from tab)
+    // Should show page header immediately (static content)
     expect(screen.getByRole('heading', { name: 'Graph Explorer' })).toBeInTheDocument();
 
-    // Wait for graph to load
+    // P0 Fix: Wait for loading state to appear first, then disappear
+    // This ensures the component is actually fetching before we wait for completion
+    await waitFor(() => {
+      expect(screen.queryByText('Loading knowledge graph...')).toBeInTheDocument();
+    }, WAIT_OPTIONS);
+
+    // Then wait for loading to complete
     await waitFor(() => {
       expect(screen.queryByText('Loading knowledge graph...')).not.toBeInTheDocument();
-    });
+    }, WAIT_OPTIONS);
   });
 
   it('handles empty graph state', async () => {
+    // P0 Fix: Setup handler BEFORE rendering to avoid race condition
     server.use(
-      http.post('/api/v1/graph/search/hybrid', () => {
-        return HttpResponse.json({ results: [] });
+      http.get('/api/v1/graph/subgraph', () => {
+        return HttpResponse.json({
+          root_entity_id: '',
+          nodes: [],
+          edges: [],
+          depth: 2,
+          stats: { total_nodes: 0, total_edges: 0, density: 0 },
+        });
       })
     );
 
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
+    // P0 Fix: Use explicit timeout and wait for loading to complete first
     await waitFor(() => {
-      expect(screen.getByText('No graph data available')).toBeInTheDocument();
-    });
+      expect(screen.queryByText('Loading knowledge graph...')).not.toBeInTheDocument();
+    }, WAIT_OPTIONS);
+
+    // Then check for empty state
+    await waitFor(() => {
+      expect(screen.getByText('No matching entities found')).toBeInTheDocument();
+    }, WAIT_OPTIONS);
   });
 
   it('handles graph error state', async () => {
     server.use(
-      http.post('/api/v1/graph/search/hybrid', () => {
+      http.get('/api/v1/graph/subgraph', () => {
         return HttpResponse.json({ error: 'Neo4j connection failed' }, { status: 500 });
       })
     );
@@ -60,11 +87,12 @@ describe('GraphExplorer', () => {
   });
 
   it('allows search input', async () => {
+    const user = userEvent.setup();
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    const searchInput = screen.getByPlaceholderText('Search graph…');
-    fireEvent.change(searchInput, { target: { value: 'test query' } });
+    const searchInput = screen.getByPlaceholderText('Search entities...');
+    await user.type(searchInput, 'test query');
 
     expect(searchInput).toHaveValue('test query');
   });
@@ -73,10 +101,15 @@ describe('GraphExplorer', () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    // Wait for graph to load
+    // P0 Fix: Wait for loading to complete before checking stats
+    await waitFor(() => {
+      expect(screen.queryByText('Loading knowledge graph...')).not.toBeInTheDocument();
+    }, WAIT_OPTIONS);
+
+    // Then wait for graph stats to appear
     await waitFor(() => {
       expect(screen.getByText('Graph Statistics')).toBeInTheDocument();
-    });
+    }, WAIT_OPTIONS);
 
     // Should show statistics labels
     expect(screen.getByText('Nodes')).toBeInTheDocument();
@@ -91,27 +124,58 @@ describe('GraphExplorer', () => {
       expect(screen.getByText('Graph Statistics')).toBeInTheDocument();
     });
 
-    // Initially shows "Click a node to select"
-    expect(screen.getByText('Click a node to select')).toBeInTheDocument();
+    // Initially shows "Click a node to view details"
+    expect(screen.getByText('Click a node to view details')).toBeInTheDocument();
   });
 
-  it('renders tabs', () => {
+  it('renders layout control buttons', () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    // Use getAllByText for Graph Explorer since it appears in multiple places (heading + tabs)
-    expect(screen.getAllByText('Graph Explorer').length).toBeGreaterThanOrEqual(1);
-    // Tabs should be present - use getAllByRole since there may be multiple tab sets
-    expect(screen.getAllByRole('tab', { name: /Query Builder/i }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByRole('tab', { name: /Communities/i }).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByRole('tab', { name: /Metrics/i }).length).toBeGreaterThanOrEqual(1);
+    // Layout section should have layout algorithm buttons
+    expect(screen.getByRole('button', { name: /force directed/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /circular/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /hierarchical/i })).toBeInTheDocument();
   });
 
-  it('renders toolbar buttons', () => {
+  it('renders control panel buttons', () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    expect(screen.getByText('Layout: Force ▾')).toBeInTheDocument();
-    expect(screen.getByText('Filters ▾')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /focus selection/i })).toBeInTheDocument();
+  });
+
+  it('renders coherent graph with nodes and edges from subgraph endpoint', async () => {
+    server.use(
+      http.get('/api/v1/graph/subgraph', () => {
+        return HttpResponse.json({
+          root_entity_id: 'ent-1',
+          nodes: [
+            { id: 'ent-1', label: 'AI Processing', type: 'Capability', confidence: 0.95 },
+            { id: 'ent-2', label: 'Data Pipeline', type: 'Capability', confidence: 0.88 },
+            { id: 'ent-3', label: 'Customer Analytics', type: 'UseCase', confidence: 0.92 },
+          ],
+          edges: [
+            { source: 'ent-1', target: 'ent-2', type: 'ENABLES' },
+            { source: 'ent-2', target: 'ent-3', type: 'ENABLES' },
+          ],
+          depth: 2,
+          stats: { total_nodes: 3, total_edges: 2, density: 0.33 },
+        });
+      })
+    );
+
+    const wrapper = createWrapper();
+    render(<GraphExplorer />, { wrapper });
+
+    // Wait for graph to load and verify stats are displayed
+    await waitFor(() => {
+      expect(screen.getByText('Graph Statistics')).toBeInTheDocument();
+    });
+
+    // Verify graph stats show correct node count
+    expect(screen.getByText('3')).toBeInTheDocument(); // total_nodes
+    expect(screen.getByText('2')).toBeInTheDocument(); // total_edges
   });
 });

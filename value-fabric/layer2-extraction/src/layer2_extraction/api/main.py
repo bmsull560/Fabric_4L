@@ -42,6 +42,7 @@ from layer2_extraction.extraction.chunker import chunk_markdown
 from layer2_extraction.extraction.deduplicator import deduplicate_entities
 from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
 from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
+from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store
 from layer2_extraction.integration.pending_ingestion_store import (
     PendingIngestionRecord,
     PendingIngestionStore,
@@ -59,7 +60,12 @@ from layer2_extraction.output.provenance import (
 )
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
-from shared.security import add_security_middleware, SecurityConfig
+
+try:
+    from shared.security import add_security_middleware, SecurityConfig
+except ImportError:
+    add_security_middleware = None
+    SecurityConfig = None
 
 logger = logging.getLogger(__name__)
 
@@ -104,15 +110,16 @@ app.add_middleware(
 )
 
 # SecurityMiddleware — input validation and security headers
-_security_config_l2 = SecurityConfig(
-    skip_validation_paths=frozenset({
-        "/v1/extract",
-        "/v1/extract/batch",
-        "/v1/nl-query",
-    }),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l2)
+if SecurityConfig and add_security_middleware:
+    _security_config_l2 = SecurityConfig(
+        skip_validation_paths=frozenset({
+            "/v1/extract",
+            "/v1/extract/batch",
+            "/v1/nl-query",
+        }),
+        strict_mode=True,
+    )
+    add_security_middleware(app, config=_security_config_l2)
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
 try:
@@ -238,23 +245,6 @@ class ExtractAndIngestResponse(BaseModel):
 
 
 @dataclass
-class PipelineJob:
-    """In-memory pipeline job state for external status contract."""
-
-    job_id: str
-    extraction_status: str
-    ingestion_status: str
-    overall_status: str
-    entities_extracted: int
-    relationships_extracted: int
-    retry_count: int
-    last_error: str | None
-    next_retry_at: datetime | None
-    started_at: datetime
-    completed_at: datetime | None
-
-
-@dataclass
 class ExtractionArtifacts:
     """Outputs from extraction pipeline used by ingestion step."""
 
@@ -262,7 +252,8 @@ class ExtractionArtifacts:
     relationships: list[Relationship]
 
 
-PIPELINE_JOBS: dict[str, PipelineJob] = {}
+# Global job store (Redis-backed if configured, otherwise in-memory)
+job_store: JobStore = build_job_store()
 RETRY_POLL_SECONDS = int(os.getenv("INGESTION_RETRY_POLL_SECONDS", "30"))
 RETRY_BASE_SECONDS = int(os.getenv("INGESTION_RETRY_BASE_SECONDS", "60"))
 MAX_INGESTION_RETRIES = int(os.getenv("INGESTION_MAX_RETRIES", "5"))
@@ -284,6 +275,8 @@ except Exception as exc:
 def _compute_overall_status(extraction_status: str, ingestion_status: str) -> str:
     if extraction_status == "failed" or ingestion_status == "failed":
         return "failed"
+    if extraction_status == "pending" and ingestion_status == "pending":
+        return "pending"
     if extraction_status in {"pending", "running"}:
         return "running"
     if extraction_status == "completed" and ingestion_status in {"pending", "queued"}:
@@ -295,7 +288,7 @@ def _compute_overall_status(extraction_status: str, ingestion_status: str) -> st
     return "pending"
 
 
-def _set_pipeline_job(
+async def _set_pipeline_job(
     job_id: str,
     extraction_status: str | None = None,
     ingestion_status: str | None = None,
@@ -306,7 +299,9 @@ def _set_pipeline_job(
     next_retry_at: object = _UNSET,
     completed_at: datetime | None = None,
 ) -> None:
-    job = PIPELINE_JOBS[job_id]
+    job = await job_store.get(job_id)
+    if not job:
+        return
     if extraction_status is not None:
         job.extraction_status = extraction_status
     if ingestion_status is not None:
@@ -322,14 +317,15 @@ def _set_pipeline_job(
     if next_retry_at is not _UNSET:
         job.next_retry_at = next_retry_at
     if completed_at is not None:
-        job.completed_at = completed_at
-    job.overall_status = _compute_overall_status(job.extraction_status, job.ingestion_status)
+        job.completed_at = completed_at.isoformat() if completed_at else None
+    # Persist to job store
+    await job_store.set(job)
 
 
 def _pipeline_response(job: PipelineJob) -> ExtractionStatusResponse:
     return ExtractionStatusResponse(
         job_id=job.job_id,
-        overall_status=job.overall_status,
+        overall_status=_compute_overall_status(job.extraction_status, job.ingestion_status),
         extraction_status=job.extraction_status,
         ingestion_status=job.ingestion_status,
         entities_extracted=job.entities_extracted,
@@ -337,8 +333,8 @@ def _pipeline_response(job: PipelineJob) -> ExtractionStatusResponse:
         retry_count=job.retry_count,
         last_error=job.last_error,
         next_retry_at=job.next_retry_at,
-        started_at=job.started_at,
-        completed_at=job.completed_at,
+        started_at=datetime.fromisoformat(job.created_at) if job.created_at else None,
+        completed_at=datetime.fromisoformat(job.completed_at) if job.completed_at else None,
     )
 
 
@@ -377,7 +373,7 @@ async def _queue_for_retry(
         last_error=last_error,
     )
 
-    _set_pipeline_job(
+    await _set_pipeline_job(
         job_id,
         ingestion_status="queued",
         retry_count=retry_count,
@@ -389,13 +385,15 @@ async def _queue_for_retry(
 async def _attempt_ingestion(job_id: str, source_url: str, artifacts: ExtractionArtifacts) -> bool:
     client = Layer3KnowledgeClient()
     try:
-        _set_pipeline_job(job_id, ingestion_status="running", next_retry_at=None)
+        job = await job_store.get(job_id)
+        current_retry = job.retry_count if job else 0
+        await _set_pipeline_job(job_id, ingestion_status="running", next_retry_at=None)
 
         # Broadcast ingestion start
         await _ws_manager.broadcast_ingestion_status(
             job_id=job_id,
             status="running",
-            retry_count=PIPELINE_JOBS[job_id].retry_count,
+            retry_count=current_retry,
             max_retries=MAX_INGESTION_RETRIES,
         )
 
@@ -406,7 +404,7 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
             relationships=artifacts.relationships,
         )
         if response.success:
-            _set_pipeline_job(
+            await _set_pipeline_job(
                 job_id,
                 ingestion_status="completed",
                 last_error=None,
@@ -414,18 +412,22 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
                 completed_at=datetime.utcnow(),
             )
 
+            # Get updated job for retry count
+            updated_job = await job_store.get(job_id)
+            final_retry = updated_job.retry_count if updated_job else 0
+
             # Broadcast ingestion success
             await _ws_manager.broadcast_ingestion_status(
                 job_id=job_id,
                 status="completed",
-                retry_count=PIPELINE_JOBS[job_id].retry_count,
+                retry_count=final_retry,
                 max_retries=MAX_INGESTION_RETRIES,
                 entities_loaded=response.entities_loaded,
                 relationships_loaded=response.relationships_loaded,
             )
 
             # Broadcast overall pipeline completion
-            job = PIPELINE_JOBS[job_id]
+            job = await job_store.get(job_id)
             await _ws_manager.broadcast_pipeline_complete(
                 job_id=job_id,
                 status="completed",
@@ -438,7 +440,8 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
             await pending_ingestion_store.complete(job_id)
             return True
 
-        retry_count = PIPELINE_JOBS[job_id].retry_count + 1
+        job = await job_store.get(job_id)
+        retry_count = (job.retry_count + 1) if job else 1
 
         # Broadcast ingestion failure with retry
         await _ws_manager.broadcast_ingestion_status(
@@ -465,19 +468,20 @@ async def _process_pending_ingestions() -> None:
     now = datetime.utcnow()
     records: list[PendingIngestionRecord] = await pending_ingestion_store.get_due(now)
     for record in records:
-        if record.job_id not in PIPELINE_JOBS:
-            PIPELINE_JOBS[record.job_id] = PipelineJob(
-                job_id=record.job_id,
-                extraction_status="completed",
-                ingestion_status="queued",
-                overall_status="partial",
-                entities_extracted=0,
-                relationships_extracted=0,
-                retry_count=record.retry_count,
-                last_error=record.last_error,
-                next_retry_at=record.next_retry_at,
-                started_at=datetime.utcnow(),
-                completed_at=None,
+        if not await job_store.exists(record.job_id):
+            await job_store.set(
+                PipelineJob(
+                    job_id=record.job_id,
+                    extraction_status="completed",
+                    ingestion_status="queued",
+                    created_at=datetime.utcnow().isoformat(),
+                    entities_extracted=0,
+                    relationships_extracted=0,
+                    retry_count=record.retry_count,
+                    last_error=record.last_error,
+                    next_retry_at=record.next_retry_at.isoformat() if record.next_retry_at else None,
+                    completed_at=None,
+                )
             )
 
         artifacts = _deserialize_artifacts(record.extraction_result_json, record.relationships_json)
@@ -491,7 +495,7 @@ async def _process_pending_ingestions() -> None:
             retry_count = record.retry_count + 1
             if retry_count >= record.max_retries:
                 await pending_ingestion_store.complete(record.job_id)
-                _set_pipeline_job(
+                await _set_pipeline_job(
                     record.job_id,
                     ingestion_status="failed",
                     retry_count=retry_count,
@@ -510,7 +514,7 @@ async def _process_pending_ingestions() -> None:
                     last_error="Layer 3 unavailable",
                     next_retry_at=next_retry_at,
                 )
-                _set_pipeline_job(
+                await _set_pipeline_job(
                     record.job_id,
                     ingestion_status="queued",
                     retry_count=retry_count,
@@ -523,11 +527,11 @@ async def _process_pending_ingestions() -> None:
         if not success:
             metadata = await pending_ingestion_store.get_retry_metadata(record.job_id)
             if metadata:
-                _set_pipeline_job(
+                job = await job_store.get(record.job_id)
+                current_retry = job.retry_count if job else 0
+                await _set_pipeline_job(
                     record.job_id,
-                    retry_count=metadata.get(
-                        "retry_count", PIPELINE_JOBS[record.job_id].retry_count
-                    ),
+                    retry_count=metadata.get("retry_count", current_retry),
                     last_error=metadata.get("last_error"),
                     next_retry_at=(
                         datetime.fromisoformat(metadata["next_retry_at"])
@@ -599,22 +603,23 @@ async def run_extraction(
         activity_id=job_id, source_url=source_url, content_hash=content_hash
     )
 
-    if job_id not in PIPELINE_JOBS:
-        PIPELINE_JOBS[job_id] = PipelineJob(
-            job_id=job_id,
-            extraction_status="pending",
-            ingestion_status="skipped",
-            overall_status="pending",
-            entities_extracted=0,
-            relationships_extracted=0,
-            retry_count=0,
-            last_error=None,
-            next_retry_at=None,
-            started_at=datetime.utcnow(),
-            completed_at=None,
+    if not await job_store.exists(job_id):
+        await job_store.set(
+            PipelineJob(
+                job_id=job_id,
+                extraction_status="pending",
+                ingestion_status="skipped",
+                created_at=datetime.utcnow().isoformat(),
+                entities_extracted=0,
+                relationships_extracted=0,
+                retry_count=0,
+                last_error=None,
+                next_retry_at=None,
+                completed_at=None,
+            )
         )
 
-    _set_pipeline_job(job_id, extraction_status="running")
+    await _set_pipeline_job(job_id, extraction_status="running")
 
     # Broadcast pipeline start
     await _ws_manager.broadcast_stage_start(
@@ -959,7 +964,8 @@ async def run_extract_and_ingest(
         await client.close()
 
     if not healthy:
-        retry_count = PIPELINE_JOBS[job_id].retry_count + 1
+        job = await job_store.get(job_id)
+        retry_count = (job.retry_count + 1) if job else 1
 
         # Broadcast ingestion queued for retry
         await _ws_manager.broadcast_ingestion_status(
@@ -1104,18 +1110,19 @@ async def extract(request: ExtractRequest, background_tasks: BackgroundTasks):
     """
     job_id = str(uuid4())
 
-    PIPELINE_JOBS[job_id] = PipelineJob(
-        job_id=job_id,
-        extraction_status="pending",
-        ingestion_status="skipped",
-        overall_status="pending",
-        entities_extracted=0,
-        relationships_extracted=0,
-        retry_count=0,
-        last_error=None,
-        next_retry_at=None,
-        started_at=datetime.utcnow(),
-        completed_at=None,
+    await job_store.set(
+        PipelineJob(
+            job_id=job_id,
+            extraction_status="pending",
+            ingestion_status="skipped",
+            created_at=datetime.utcnow().isoformat(),
+            entities_extracted=0,
+            relationships_extracted=0,
+            retry_count=0,
+            last_error=None,
+            next_retry_at=None,
+            completed_at=None,
+        )
     )
 
     # Queue extraction as background task
@@ -1139,18 +1146,19 @@ async def extract_and_ingest(
     """Start a combined extraction and ingestion pipeline job."""
     job_id = str(uuid4())
 
-    PIPELINE_JOBS[job_id] = PipelineJob(
-        job_id=job_id,
-        extraction_status="pending",
-        ingestion_status="pending",
-        overall_status="pending",
-        entities_extracted=0,
-        relationships_extracted=0,
-        retry_count=0,
-        last_error=None,
-        next_retry_at=None,
-        started_at=datetime.utcnow(),
-        completed_at=None,
+    await job_store.set(
+        PipelineJob(
+            job_id=job_id,
+            extraction_status="pending",
+            ingestion_status="pending",
+            created_at=datetime.utcnow().isoformat(),
+            entities_extracted=0,
+            relationships_extracted=0,
+            retry_count=0,
+            last_error=None,
+            next_retry_at=None,
+            completed_at=None,
+        )
     )
 
     background_tasks.add_task(
@@ -1172,7 +1180,7 @@ async def extract_and_ingest(
 
 async def get_extraction_status(job_id: str):
     """Get status of a combined extraction and ingestion job."""
-    job = PIPELINE_JOBS.get(job_id)
+    job = await job_store.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
@@ -1276,7 +1284,7 @@ async def _job_event_generator(job_id: str):
     sent_entities: set[str] = set()
 
     while True:
-        job = PIPELINE_JOBS.get(job_id)
+        job = await job_store.get(job_id)
 
         if not job:
             # Job not found - send error and close
@@ -1390,7 +1398,7 @@ async def stream_job_events(job_id: str):
     Returns:
         StreamingResponse with text/event-stream content type
     """
-    if job_id not in PIPELINE_JOBS:
+    if not await job_store.exists(job_id):
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
 
     return StreamingResponse(

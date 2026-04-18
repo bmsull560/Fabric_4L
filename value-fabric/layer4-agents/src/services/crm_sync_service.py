@@ -215,12 +215,14 @@ class CRMSyncService:
         profile = result.profile
         account.name = profile.get("name", account.name)
         account.industry = profile.get("industry", account.industry)
+        account.region = profile.get("region", account.region)
         account.company_size = profile.get("company_size", account.company_size)
         account.annual_revenue = profile.get("annual_revenue", account.annual_revenue)
         account.headquarters = profile.get("headquarters", account.headquarters)
         account.website = profile.get("website", account.website)
         account.domain = profile.get("domain", account.domain)
         account.employees = profile.get("employees", account.employees)
+        account.segment = profile.get("segment", account.segment)
 
         # Update opportunities
         if result.opportunities:

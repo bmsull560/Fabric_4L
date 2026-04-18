@@ -84,11 +84,13 @@ class GetProspectDataTool(BaseTool):
                     "id": prospect_id,
                     "name": data.get("Name"),
                     "industry": data.get("Industry"),
+                    "region": data.get("BillingState") or data.get("BillingCountry"),
                     "company_size": data.get("NumberOfEmployees"),
                     "annual_revenue": data.get("AnnualRevenue"),
                     "website": data.get("Website"),
                     "headquarters": f"{data.get('BillingCity', '')}, {data.get('BillingState', '')}",
                     "employees": data.get("NumberOfEmployees"),
+                    "segment": data.get("Type"),
                 }
 
         # Fetch opportunities
@@ -151,12 +153,14 @@ class GetProspectDataTool(BaseTool):
                     "id": prospect_id,
                     "name": props.get("name"),
                     "industry": props.get("industry"),
+                    "region": props.get("state") or props.get("country"),
                     "company_size": props.get("numberofemployees"),
                     "annual_revenue": props.get("annualrevenue"),
                     "website": props.get("website"),
                     "headquarters": props.get("address"),
                     "employees": props.get("numberofemployees"),
                     "domain": props.get("domain"),
+                    "segment": props.get("type") or props.get("hs_lead_status"),
                 }
 
         # Fetch opportunities (deals) associated with company

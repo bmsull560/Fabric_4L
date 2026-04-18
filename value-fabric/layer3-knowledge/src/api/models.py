@@ -386,6 +386,266 @@ class EntityContextResponse(BaseModel):
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# Canonical Entity Models (Entity Browser Contract)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+EntityStatus = Literal["validated", "pending", "draft", "deprecated"]
+ConfidenceLabel = Literal["high", "medium", "low"]
+
+
+class EntitySummary(BaseModel):
+    """Canonical entity summary for browser table views.
+
+    Optimized for: Fast list rendering, filtering, sorting.
+    Provides explicit, authoritative fields for UI consumption.
+    """
+
+    id: constr(min_length=1, max_length=255) = Field(
+        ..., description="Canonical entity identifier (stable UUID)"
+    )
+    name: constr(min_length=1, max_length=500) = Field(
+        ..., description="Human-readable entity name"
+    )
+    entity_type: EntityType = Field(..., description="Entity classification from ontology")
+
+    # Authoritative business fields (not inferred by UI)
+    domain: constr(max_length=100) | None = Field(
+        None, description="Business domain/vertical (e.g., 'Finance', 'Healthcare')"
+    )
+    status: EntityStatus = Field(
+        ..., description="Entity lifecycle status: validated, pending, draft, deprecated"
+    )
+
+    # Confidence with explicit semantics
+    confidence: confloat(ge=0.0, le=1.0) = Field(
+        ..., description="Extraction confidence score (0.0 to 1.0)"
+    )
+    confidence_label: ConfidenceLabel = Field(
+        ..., description="Human-readable confidence tier derived from score"
+    )
+
+    # Metadata for display
+    description: constr(max_length=1000) | None = Field(
+        None, description="Brief entity description"
+    )
+    updated_at: datetime = Field(
+        ..., description="Last modification timestamp (ISO 8601)"
+    )
+
+    # Provenance (for UI attribution)
+    source_name: constr(max_length=255) | None = Field(
+        None, description="Source system where entity was extracted"
+    )
+    extraction_job_id: constr(max_length=255) | None = Field(
+        None, description="Originating extraction job ID"
+    )
+
+    @field_validator("confidence_label")
+    @classmethod
+    def derive_confidence_label(cls, v: str | None, info) -> str:
+        """Derive confidence label from confidence score if not provided."""
+        if v is not None:
+            return v
+        confidence = info.data.get("confidence", 0.0)
+        if confidence >= 0.9:
+            return "high"
+        if confidence >= 0.7:
+            return "medium"
+        return "low"
+
+    @field_validator("status")
+    @classmethod
+    def derive_status(cls, v: str | None, info) -> str:
+        """Derive status from confidence if not explicitly provided."""
+        if v is not None:
+            return v
+        confidence = info.data.get("confidence", 0.0)
+        if confidence >= 0.9:
+            return "validated"
+        if confidence >= 0.7:
+            return "pending"
+        return "draft"
+
+
+class RelationshipPreview(BaseModel):
+    """Lightweight relationship for preview lists in entity detail."""
+
+    relationship_type: constr(min_length=1, max_length=100) = Field(
+        ..., description="Type of relationship (e.g., ENABLES, DEPENDS_ON)"
+    )
+    target_entity_id: constr(min_length=1, max_length=255) = Field(
+        ..., description="ID of related entity"
+    )
+    target_entity_name: constr(min_length=1, max_length=500) = Field(
+        ..., description="Name of related entity"
+    )
+    target_entity_type: EntityType = Field(..., description="Type of related entity")
+
+
+class EntityRelationships(BaseModel):
+    """Relationship counts and samples for quick navigation."""
+
+    total_count: conint(ge=0) = Field(0, description="Total relationships (in + out)")
+    incoming: list[RelationshipPreview] = Field(
+        default_factory=list, max_length=5, description="Sample of incoming relationships"
+    )
+    outgoing: list[RelationshipPreview] = Field(
+        default_factory=list, max_length=5, description="Sample of outgoing relationships"
+    )
+
+
+class ProvenanceEvent(BaseModel):
+    """Single event in entity provenance chain."""
+
+    event_type: Literal["extracted", "validated", "modified", "merged", "deprecated"] = Field(
+        ..., description="Type of provenance event"
+    )
+    timestamp: datetime = Field(..., description="When the event occurred")
+    actor: constr(min_length=1, max_length=255) = Field(
+        ..., description="User ID, system component, or job ID that performed the action"
+    )
+    details: dict[str, Any] = Field(
+        default_factory=dict, description="Additional event-specific data"
+    )
+
+
+class EntityDetail(BaseModel):
+    """Canonical entity detail for inspection/drawer views.
+
+    Extends EntitySummary with relationships and full provenance.
+    Optimized for: Deep inspection, relationship navigation.
+    """
+
+    # ═════════════════════════════════════════════════════════════════════════
+    # All EntitySummary fields (ensuring consistency between summary/detail)
+    # ═════════════════════════════════════════════════════════════════════════
+    id: constr(min_length=1, max_length=255) = Field(..., description="Entity ID")
+    name: constr(min_length=1, max_length=500) = Field(..., description="Entity name")
+    entity_type: EntityType = Field(..., description="Entity type")
+    domain: constr(max_length=100) | None = Field(None, description="Business domain")
+    status: EntityStatus = Field(..., description="Lifecycle status")
+    confidence: confloat(ge=0.0, le=1.0) = Field(..., description="Confidence 0-1")
+    confidence_label: ConfidenceLabel = Field(..., description="Confidence tier")
+    description: constr(max_length=1000) | None = Field(None, description="Description")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+    source_name: constr(max_length=255) | None = Field(None, description="Source system")
+    extraction_job_id: constr(max_length=255) | None = Field(
+        None, description="Extraction job ID"
+    )
+
+    # ═════════════════════════════════════════════════════════════════════════
+    # Extended fields for detail view
+    # ═════════════════════════════════════════════════════════════════════════
+    created_at: datetime = Field(..., description="Entity creation timestamp")
+    created_by: constr(max_length=255) | None = Field(
+        None, description="User or system that created the entity"
+    )
+
+    # Full provenance chain
+    provenance: list[ProvenanceEvent] = Field(
+        default_factory=list, description="Audit trail of entity changes"
+    )
+
+    # Relationships (for graph navigation)
+    relationships: EntityRelationships = Field(
+        default_factory=lambda: EntityRelationships(),
+        description="Related entities and relationship counts"
+    )
+
+    # Raw properties (for advanced inspection)
+    properties: dict[str, Any] = Field(
+        default_factory=dict, description="Raw extracted properties (internal use)"
+    )
+
+    # Validation state
+    validation_errors: list[constr(max_length=500)] = Field(
+        default_factory=list, description="Schema validation errors if any"
+    )
+    last_validated_at: datetime | None = Field(
+        None, description="When entity was last validated"
+    )
+
+
+class EntityFilterRequest(BaseModel):
+    """Server-backed entity filtering request.
+
+    The API applies these filters natively in Neo4j Cypher queries.
+    This eliminates the need for client-side filtering of large result sets.
+    """
+
+    # Text search (across name, description, properties)
+    search_text: constr(max_length=200) | None = Field(
+        None, description="Search across name, description, and properties"
+    )
+
+    # Exact match filters (AND logic between different filter types)
+    entity_types: list[EntityType] | None = Field(
+        None, description="Include only these entity types"
+    )
+    domains: list[constr(max_length=100)] | None = Field(
+        None, description="Include only these domains"
+    )
+    statuses: list[EntityStatus] | None = Field(
+        None, description="Include only these lifecycle statuses"
+    )
+
+    # Confidence range
+    min_confidence: confloat(ge=0.0, le=1.0) | None = Field(
+        None, description="Minimum confidence score (inclusive)"
+    )
+    max_confidence: confloat(ge=0.0, le=1.0) | None = Field(
+        None, description="Maximum confidence score (inclusive)"
+    )
+
+    # Provenance filters
+    source_names: list[constr(max_length=255)] | None = Field(
+        None, description="Filter by source systems"
+    )
+    extraction_job_ids: list[constr(max_length=255)] | None = Field(
+        None, description="Filter by originating extraction job"
+    )
+
+    # Time range
+    updated_after: datetime | None = Field(None, description="Updated after this time")
+    updated_before: datetime | None = Field(None, description="Updated before this time")
+
+    # Pagination and sorting
+    limit: conint(ge=1, le=500) = Field(50, description="Max results to return")
+    offset: conint(ge=0) = Field(0, description="Results to skip (for pagination)")
+    sort_by: Literal["name", "updated_at", "confidence", "entity_type", "status"] = Field(
+        "updated_at", description="Field to sort by"
+    )
+    sort_order: Literal["asc", "desc"] = Field(
+        "desc", description="Sort direction (ascending or descending)"
+    )
+
+
+class EntityListResponse(BaseModel):
+    """Paginated list of entity summaries with filter metadata."""
+
+    results: list[EntitySummary] = Field(..., description="Entity summaries")
+    total_count: conint(ge=0) = Field(..., description="Total entities in database")
+    filtered_count: conint(ge=0) = Field(
+        ..., description="Entities matching filters (before pagination)"
+    )
+
+    # Pagination metadata
+    limit: conint(ge=1) = Field(..., description="Limit applied to this query")
+    offset: conint(ge=0) = Field(..., description="Offset applied to this query")
+    has_more: bool = Field(..., description="Whether more results available")
+
+    # Available filter values (for UI dropdown population)
+    available_domains: list[str] = Field(
+        default_factory=list, description="Domains present in current filtered set"
+    )
+    available_sources: list[str] = Field(
+        default_factory=list, description="Source names present in current filtered set"
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+
 class ValueTreeTraversal(BaseModel):
     entity_id: str
     direction: str = Field(default="both", description="up, down, or both")

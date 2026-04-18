@@ -342,7 +342,7 @@ export default function InteractiveBusinessCase() {
     return (
       <div className="p-6 max-w-5xl">
         <PageHeader
-          breadcrumbs={["Agent Workflows", "Business Cases", "Interactive Explorer"]}
+          breadcrumbs={[{ label: "Agent Workflows" }, { label: "Business Cases" }, { label: "Interactive Explorer" }]}
           title="Interactive Explorer"
           subtitle="AI-powered what-if analysis"
         />
@@ -370,7 +370,7 @@ export default function InteractiveBusinessCase() {
     return (
       <div className="p-6 max-w-5xl">
         <PageHeader
-          breadcrumbs={["Agent Workflows", "Business Cases", "Interactive Explorer"]}
+          breadcrumbs={[{ label: "Agent Workflows" }, { label: "Business Cases" }, { label: "Interactive Explorer" }]}
           title="Loading..."
           subtitle=""
         />
@@ -405,7 +405,7 @@ export default function InteractiveBusinessCase() {
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
-        breadcrumbs={["Agent Workflows", "Business Cases", "Interactive Explorer"]}
+        breadcrumbs={[{ label: "Agent Workflows" }, { label: "Business Cases" }, { label: "Interactive Explorer" }]}
         title={businessCase.title || "Interactive Business Case"}
         subtitle={`Explore "what-if" scenarios with AI-generated controls · ${new Date(businessCase.created_at || '').toLocaleDateString()}`}
         actions={

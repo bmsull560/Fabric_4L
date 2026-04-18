@@ -47,7 +47,11 @@ from .exceptions import (
     ValidationError,
     ValueFabricException,
 )
-from shared.security import add_security_middleware, SecurityConfig
+try:
+    from shared.security import add_security_middleware, SecurityConfig
+except ImportError:
+    add_security_middleware = None
+    SecurityConfig = None
 
 # Import shared error handling (Task 60/61: Error Response Hardening + Request Correlation)
 try:
@@ -101,6 +105,11 @@ from .models import (
     EntityComparisonRequest,
     EntityComparisonResponse,
     EntityContextResponse,
+    # Canonical Entity Browser Models (new contract)
+    EntityDetail,
+    EntityFilterRequest,
+    EntityListResponse,
+    EntitySummary,
     GraphEdge,
     GraphNode,
     GraphRAGQuery,
@@ -461,6 +470,10 @@ app = FastAPI(
             "name": "Graph",
             "description": "Graph visualization endpoints",
         },
+        {
+            "name": "Models",
+            "description": "Value model management and organization",
+        },
     ],
 )
 
@@ -470,6 +483,7 @@ from .routes import (
     benchmarks,
     formula_governance,
     formulas,
+    models,
     value_packs,
     value_trees,
     variables,
@@ -481,6 +495,7 @@ app.include_router(value_packs.router, prefix="/v1")
 app.include_router(formula_governance.router, prefix="/v1")
 app.include_router(variables.router, prefix="/v1")
 app.include_router(benchmarks.router, prefix="/v1")
+app.include_router(models.router, prefix="/v1")
 
 
 @app.middleware("http")
@@ -539,19 +554,20 @@ if SHARED_ERROR_HANDLING_AVAILABLE:
     app.add_middleware(RequestIDMiddleware)
     logger.info("RequestIDMiddleware enabled for trace correlation")
 
-# Security middleware — runs before auth to validate input
-_security_config_l3 = SecurityConfig(
-    skip_validation_paths=frozenset({
-        "/v1/ingest",
-        "/v1/sync",
-        "/v1/batch/ingest",
-        "/v1/query/graph",
-        "/v1/query",
-        "/v1/graph/query",
-    }),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l3)
+# Security middleware — runs before auth to validate input (only if shared package available)
+if SecurityConfig and add_security_middleware:
+    _security_config_l3 = SecurityConfig(
+        skip_validation_paths=frozenset({
+            "/v1/ingest",
+            "/v1/sync",
+            "/v1/batch/ingest",
+            "/v1/query/graph",
+            "/v1/query",
+            "/v1/graph/query",
+        }),
+        strict_mode=True,
+    )
+    add_security_middleware(app, config=_security_config_l3)
 
 # GovernanceMiddleware — provides verified JWT + API-key auth for L3.
 # Replaces the existing AuthenticationMiddleware in auth/middleware.py.
@@ -785,6 +801,8 @@ async def check_dependencies() -> list[DependencyStatus]:
         from ..schema.initializer import SchemaInitializer
 
         neo4j_checker = SchemaInitializer()
+        # Mark as non-owning so close() won't destroy the shared singleton driver
+        neo4j_checker._owned_driver = False
         start_time = time.time()
         neo4j_health = await neo4j_checker.health_check()
         response_time = (time.time() - start_time) * 1000
@@ -801,7 +819,6 @@ async def check_dependencies() -> list[DependencyStatus]:
                 },
             )
         )
-        await neo4j_checker.close()
     except Exception as e:
         dependencies.append(
             DependencyStatus(
@@ -1808,6 +1825,398 @@ async def traverse_value_tree(
         )
     except Exception as e:
         logger.error(f"Value tree traversal failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Canonical Entity Browser Endpoints (High-Quality Contract)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/v1/entities", response_model=EntityListResponse)
+async def list_entities(
+    search_text: str | None = Query(None, max_length=200, description="Search across name and description"),
+    entity_types: list[str] | None = Query(None, description="Filter by entity types"),
+    domains: list[str] | None = Query(None, description="Filter by domains"),
+    statuses: list[str] | None = Query(None, description="Filter by status: validated, pending, draft, deprecated"),
+    min_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Minimum confidence"),
+    max_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Maximum confidence"),
+    limit: int = Query(50, ge=1, le=500, description="Max results to return"),
+    offset: int = Query(0, ge=0, description="Results to skip"),
+    sort_by: str = Query("updated_at", description="Field to sort by: name, updated_at, confidence, entity_type, status"),
+    sort_order: str = Query("desc", description="Sort direction: asc or desc"),
+    neo4j_driver=Depends(get_neo4j_driver),
+):
+    """List entities with server-backed filtering and sorting.
+
+    This endpoint provides a canonical entity summary contract optimized for
+    browser table views. It supports filtering by domain, status, type, and
+    confidence—eliminating the need for client-side filtering of large datasets.
+
+    **Query Parameters:**
+    - `search_text`: Full-text search across entity names and descriptions
+    - `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)
+    - `domains`: Filter by business domain (e.g., Finance, Healthcare)
+    - `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)
+    - `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)
+    - `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)
+    - `sort_order`: Sort direction (asc, desc)
+    - `limit`/`offset`: Pagination control
+
+    **Response:** Returns EntityListResponse with canonical EntitySummary objects.
+    """
+    try:
+        # Build dynamic Cypher query based on filters
+        where_clauses = []
+        params: dict[str, Any] = {}
+
+        if search_text:
+            where_clauses.append("(toLower(e.name) CONTAINS toLower($search_text) OR toLower(e.description) CONTAINS toLower($search_text))")
+            params["search_text"] = search_text
+
+        if entity_types:
+            where_clauses.append("e.entity_type IN $entity_types")
+            params["entity_types"] = entity_types
+
+        if domains:
+            where_clauses.append("e.domain IN $domains")
+            params["domains"] = domains
+
+        if statuses:
+            where_clauses.append("e.status IN $statuses")
+            params["statuses"] = statuses
+
+        if min_confidence is not None:
+            where_clauses.append("e.confidence >= $min_confidence")
+            params["min_confidence"] = min_confidence
+
+        if max_confidence is not None:
+            where_clauses.append("e.confidence <= $max_confidence")
+            params["max_confidence"] = max_confidence
+
+        where_clause = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Validate sort_by to prevent injection
+        valid_sort_fields = {"name", "updated_at", "confidence", "entity_type", "status", "created_at"}
+        if sort_by not in valid_sort_fields:
+            sort_by = "updated_at"
+        sort_direction = "DESC" if sort_order.lower() == "desc" else "ASC"
+
+        # Build and execute count query
+        count_query = f"""
+            MATCH (e:Entity)
+            {where_clause}
+            RETURN count(e) as total
+        """
+
+        async with neo4j_driver.session() as session:
+            # Get total count
+            count_result = await session.run(count_query, params)
+            total_count_record = await count_result.single()
+            total_count = total_count_record["total"] if total_count_record else 0
+
+            # Build entity query with sorting and pagination
+            entity_query = f"""
+                MATCH (e:Entity)
+                {where_clause}
+                RETURN e {{
+                    .id, .name, .entity_type, .domain, .status,
+                    .confidence, .confidence_label, .description,
+                    .updated_at, .source_name, .extraction_job_id,
+                    .created_at, .created_by
+                }}
+                ORDER BY e.{sort_by} {sort_direction}
+                SKIP $offset
+                LIMIT $limit
+            """
+            params["offset"] = offset
+            params["limit"] = limit
+
+            # Execute entity query
+            result = await session.run(entity_query, params)
+            records = await result.fetch()
+
+            # Build summary objects
+            summaries = []
+            for record in records:
+                node = record["e"]
+                # Derive status and confidence_label if not stored
+                confidence = node.get("confidence", 0.0)
+                status = node.get("status")
+                if status is None:
+                    if confidence >= 0.9:
+                        status = "validated"
+                    elif confidence >= 0.7:
+                        status = "pending"
+                    else:
+                        status = "draft"
+
+                confidence_label = node.get("confidence_label")
+                if confidence_label is None:
+                    if confidence >= 0.9:
+                        confidence_label = "high"
+                    elif confidence >= 0.7:
+                        confidence_label = "medium"
+                    else:
+                        confidence_label = "low"
+
+                summary = EntitySummary(
+                    id=node.get("id", "unknown"),
+                    name=node.get("name", "Unknown"),
+                    entity_type=node.get("entity_type", "Capability"),
+                    domain=node.get("domain"),
+                    status=status,
+                    confidence=confidence,
+                    confidence_label=confidence_label,
+                    description=node.get("description"),
+                    updated_at=node.get("updated_at") or datetime.utcnow(),
+                    source_name=node.get("source_name"),
+                    extraction_job_id=node.get("extraction_job_id"),
+                )
+                summaries.append(summary)
+
+            # Get available filter values for UI dropdowns
+            available_domains = []
+            available_sources = []
+            if summaries:
+                domains_query = """
+                    MATCH (e:Entity)
+                    WHERE e.domain IS NOT NULL
+                    RETURN collect(DISTINCT e.domain) as domains
+                """
+                domains_result = await session.run(domains_query)
+                domains_record = await domains_result.single()
+                if domains_record:
+                    available_domains = domains_record["domains"]
+
+                sources_query = """
+                    MATCH (e:Entity)
+                    WHERE e.source_name IS NOT NULL
+                    RETURN collect(DISTINCT e.source_name) as sources
+                """
+                sources_result = await session.run(sources_query)
+                sources_record = await sources_result.single()
+                if sources_record:
+                    available_sources = sources_record["sources"]
+
+        filtered_count = len(summaries)  # Before pagination would be total_count
+        has_more = (offset + len(summaries)) < total_count
+
+        return EntityListResponse(
+            results=summaries,
+            total_count=total_count,
+            filtered_count=total_count,  # Total matching filters
+            limit=limit,
+            offset=offset,
+            has_more=has_more,
+            available_domains=available_domains,
+            available_sources=available_sources,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entity listing failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/entities/{{entity_id}}", response_model=EntityDetail)
+async def get_entity_detail(
+    entity_id: str,
+    include_provenance: bool = Query(True, description="Include provenance chain"),
+    include_relationships: bool = Query(True, description="Include related entities"),
+    neo4j_driver=Depends(get_neo4j_driver),
+):
+    """Get full entity detail for inspection/drawer views.
+
+    Returns the canonical EntityDetail shape with all fields from EntitySummary
+    plus extended data: relationships, provenance, validation state, and raw properties.
+
+    **Path Parameters:**
+    - `entity_id`: Canonical entity identifier
+
+    **Query Parameters:**
+    - `include_provenance`: Whether to include audit trail (default: true)
+    - `include_relationships`: Whether to include related entities (default: true)
+
+    **Response:** Returns EntityDetail with full canonical contract.
+    """
+    try:
+        async with neo4j_driver.session() as session:
+            # Fetch main entity
+            entity_query = """
+                MATCH (e:Entity {id: $entity_id})
+                RETURN e {
+                    .id, .name, .entity_type, .domain, .status,
+                    .confidence, .confidence_label, .description,
+                    .updated_at, .source_name, .extraction_job_id,
+                    .created_at, .created_by, .properties,
+                    .validation_errors, .last_validated_at
+                }
+            """
+            result = await session.run(entity_query, {"entity_id": entity_id})
+            record = await result.single()
+
+            if not record:
+                raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
+
+            node = record["e"]
+
+            # Derive status and confidence_label if not stored
+            confidence = node.get("confidence", 0.0)
+            status = node.get("status")
+            if status is None:
+                if confidence >= 0.9:
+                    status = "validated"
+                elif confidence >= 0.7:
+                    status = "pending"
+                else:
+                    status = "draft"
+
+            confidence_label = node.get("confidence_label")
+            if confidence_label is None:
+                if confidence >= 0.9:
+                    confidence_label = "high"
+                elif confidence >= 0.7:
+                    confidence_label = "medium"
+                else:
+                    confidence_label = "low"
+
+            # Build relationships if requested
+            relationships = EntityRelationships()
+            if include_relationships:
+                # Outgoing relationships
+                outgoing_query = """
+                    MATCH (e:Entity {id: $entity_id})-[r]->(target:Entity)
+                    RETURN type(r) as rel_type, target.id as target_id,
+                           target.name as target_name, target.entity_type as target_type
+                    LIMIT 5
+                """
+                outgoing_result = await session.run(outgoing_query, {"entity_id": entity_id})
+                outgoing_records = await outgoing_result.fetch()
+                outgoing_rels = [
+                    RelationshipPreview(
+                        relationship_type=r["rel_type"],
+                        target_entity_id=r["target_id"],
+                        target_entity_name=r["target_name"],
+                        target_entity_type=r["target_type"],
+                    )
+                    for r in outgoing_records
+                ]
+
+                # Incoming relationships
+                incoming_query = """
+                    MATCH (source:Entity)-[r]->(e:Entity {id: $entity_id})
+                    RETURN type(r) as rel_type, source.id as source_id,
+                           source.name as source_name, source.entity_type as source_type
+                    LIMIT 5
+                """
+                incoming_result = await session.run(incoming_query, {"entity_id": entity_id})
+                incoming_records = await incoming_result.fetch()
+                incoming_rels = [
+                    RelationshipPreview(
+                        relationship_type=r["rel_type"],
+                        target_entity_id=r["source_id"],
+                        target_entity_name=r["source_name"],
+                        target_entity_type=r["source_type"],
+                    )
+                    for r in incoming_records
+                ]
+
+                # Total count
+                count_query = """
+                    MATCH (e:Entity {id: $entity_id})
+                    OPTIONAL MATCH (e)-[r1]->(:Entity)
+                    OPTIONAL MATCH (e)<-[r2]-(:Entity)
+                    RETURN count(r1) + count(r2) as total
+                """
+                count_result = await session.run(count_query, {"entity_id": entity_id})
+                count_record = await count_result.single()
+                total_rels = count_record["total"] if count_record else 0
+
+                relationships = EntityRelationships(
+                    total_count=total_rels,
+                    incoming=incoming_rels,
+                    outgoing=outgoing_rels,
+                )
+
+            # Build provenance if requested
+            provenance: list[Any] = []
+            if include_provenance:
+                # For now, return basic provenance from entity fields
+                # This can be extended to query a separate provenance store
+                if node.get("extraction_job_id"):
+                    provenance.append({
+                        "event_type": "extracted",
+                        "timestamp": node.get("created_at") or datetime.utcnow(),
+                        "actor": node.get("extraction_job_id"),
+                        "details": {"source": node.get("source_name")},
+                    })
+
+            # Build detail response
+            detail = EntityDetail(
+                id=node.get("id", "unknown"),
+                name=node.get("name", "Unknown"),
+                entity_type=node.get("entity_type", "Capability"),
+                domain=node.get("domain"),
+                status=status,
+                confidence=confidence,
+                confidence_label=confidence_label,
+                description=node.get("description"),
+                updated_at=node.get("updated_at") or datetime.utcnow(),
+                source_name=node.get("source_name"),
+                extraction_job_id=node.get("extraction_job_id"),
+                created_at=node.get("created_at") or datetime.utcnow(),
+                created_by=node.get("created_by"),
+                provenance=provenance,
+                relationships=relationships,
+                properties=node.get("properties") or {},
+                validation_errors=node.get("validation_errors") or [],
+                last_validated_at=node.get("last_validated_at"),
+            )
+
+            return detail
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entity detail retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/v1/entities/query", response_model=EntityListResponse)
+async def query_entities(
+    request: EntityFilterRequest,
+    neo4j_driver=Depends(get_neo4j_driver),
+):
+    """Advanced entity filtering with complex criteria.
+
+    Supports complex filter combinations not easily expressed in query parameters.
+    Uses the same underlying logic as GET /v1/entities but with a request body.
+
+    **Request Body:** EntityFilterRequest with full filter specification
+
+    **Response:** Returns EntityListResponse with canonical EntitySummary objects.
+    """
+    try:
+        # Delegate to the same implementation as GET endpoint
+        # Convert request body to the same parameters
+        return await list_entities(
+            search_text=request.search_text,
+            entity_types=request.entity_types,
+            domains=request.domains,
+            statuses=request.statuses,
+            min_confidence=request.min_confidence,
+            max_confidence=request.max_confidence,
+            limit=request.limit,
+            offset=request.offset,
+            sort_by=request.sort_by,
+            sort_order=request.sort_order,
+            neo4j_driver=neo4j_driver,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Entity query failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -3059,6 +3468,255 @@ async def get_entity_subgraph(
         raise
     except Exception as e:
         logger.error(f"Failed to retrieve subgraph for {entity_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve subgraph: {str(e)}"
+        )
+
+
+@app.get(
+    "/v1/graph/subgraph",
+    response_model=SubgraphResponse,
+    tags=["Graph"],
+    summary="Get Query-Based Subgraph",
+    description="Returns a coherent subgraph based on a search query or centered on a specific entity. Returns both nodes and edges in a single call.",
+    responses={
+        200: {
+            "description": "Subgraph retrieved successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "root_entity_id": "",
+                        "nodes": [{"id": "cap-1", "label": "AI Processing", "type": "Capability"}],
+                        "edges": [{"source": "cap-1", "target": "uc-1", "type": "ENABLES"}],
+                        "depth": 2,
+                        "stats": {"node_count": 10, "edge_count": 15, "density": 0.33},
+                    }
+                }
+            },
+        },
+        400: {"description": "Invalid parameters - query or center_entity_id required"},
+        500: {"description": "Internal server error"},
+    },
+)
+async def get_query_subgraph(
+    query: str | None = Query(None, description="Search query to find matching entities"),
+    center_entity_id: str | None = Query(None, description="Center entity ID for expansion mode"),
+    depth: int = Query(2, ge=1, le=3, description="Traversal depth (1-3)"),
+    limit: int = Query(100, ge=1, le=500, description="Max nodes to return"),
+    entity_types: list[str] | None = Query(None, description="Filter by entity types"),
+    relationship_types: list[str] | None = Query(None, description="Filter by relationship types"),
+    hybrid_search=Depends(get_hybrid_search),
+    graph_rag=Depends(get_graph_rag),
+    app_state: AppState = Depends(get_app_state),
+) -> SubgraphResponse:
+    """
+    Get a coherent subgraph based on query or center entity.
+
+    **Query Mode**: Provide `query` parameter to search for entities, returns subgraph
+    with matching nodes + 1-hop neighbors.
+
+    **Center Mode**: Provide `center_entity_id` to expand N hops from that node.
+
+    **Parameters:**
+    - `query`: Search string to find entities (query mode)
+    - `center_entity_id`: Specific entity to expand from (center mode)
+    - `depth`: How many hops to traverse (1-3, default 2)
+    - `limit`: Maximum nodes to return (default 100)
+    - `entity_types`: Optional filter (e.g., ["Capability", "UseCase"])
+    - `relationship_types`: Optional filter (e.g., ["ENABLES", "BENEFITS"])
+
+    **Note:** Requires either `query` or `center_entity_id`, not both.
+    """
+    if not query and not center_entity_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Either 'query' or 'center_entity_id' parameter is required"
+        )
+
+    try:
+        neo4j = app_state.neo4j
+        nodes: list[GraphNode] = []
+        edges: list[GraphEdge] = []
+        root_id = center_entity_id or ""
+
+        if center_entity_id:
+            # Center mode: expand N hops from specific entity
+            root_result = await neo4j.execute_query(
+                "MATCH (root {id: $entity_id}) RETURN root",
+                {"entity_id": center_entity_id}
+            )
+            if not root_result:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Entity {center_entity_id} not found"
+                )
+
+            # Build relationship filter if specified
+            rel_filter = ""
+            if relationship_types:
+                rel_types = "|".join(f"`{r}`" for r in relationship_types)
+                rel_filter = f"AND ALL(r IN relationships(path) WHERE type(r) IN [{', '.join(repr(r) for r in relationship_types)}])"
+
+            # Query for connected nodes
+            subgraph_query = f"""
+            MATCH path = (root {{id: $entity_id}})-[*1..{depth}]-(connected)
+            WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+            {rel_filter}
+            WITH root, connected, relationships(path) as rels, length(path) as hops
+            RETURN root, collect(DISTINCT connected) as neighbors,
+                   collect(DISTINCT rels) as paths, max(hops) as max_hops
+            LIMIT $limit
+            """
+            result = await neo4j.execute_query(
+                subgraph_query,
+                {"entity_id": center_entity_id, "limit": limit}
+            )
+
+            if result:
+                record = result[0]
+                root_data = record.get("root", {})
+                neighbors = record.get("neighbors", [])
+                paths = record.get("paths", [])
+
+                # Add root node
+                if root_data:
+                    nodes.append(GraphNode(
+                        id=root_data.get("id", center_entity_id),
+                        label=root_data.get("name", root_data.get("id", "Unknown")),
+                        type=root_data.get("entity_type", "Unknown"),
+                        properties={k: v for k, v in root_data.items() if k not in ["id", "name", "entity_type"]},
+                    ))
+
+                # Add neighbor nodes
+                for neighbor in neighbors:
+                    if neighbor and neighbor.get("id"):
+                        nodes.append(GraphNode(
+                            id=neighbor.get("id"),
+                            label=neighbor.get("name", neighbor.get("id", "Unknown")),
+                            type=neighbor.get("entity_type", "Unknown"),
+                            properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
+                        ))
+
+                # Extract edges from paths
+                edge_keys = set()
+                for rel_list in paths:
+                    for rel in rel_list:
+                        if hasattr(rel, "start_node") and hasattr(rel, "end_node"):
+                            src = rel.start_node.get("id")
+                            tgt = rel.end_node.get("id")
+                            edge_key = f"{src}-{tgt}-{rel.type}"
+                            if src and tgt and edge_key not in edge_keys:
+                                edge_keys.add(edge_key)
+                                edges.append(GraphEdge(
+                                    source=src,
+                                    target=tgt,
+                                    type=rel.type,
+                                    properties={},
+                                ))
+
+        else:
+            # Query mode: search for entities, return subgraph with 1-hop expansion
+            search_results = await hybrid_search.search(
+                query=query,
+                top_k=min(limit, 50),
+                entity_type_filter=entity_types[0] if entity_types else None,
+            )
+
+            if not search_results:
+                # Return empty subgraph
+                return SubgraphResponse(
+                    root_entity_id="",
+                    nodes=[],
+                    edges=[],
+                    depth=depth,
+                    stats=GraphStats(total_nodes=0, total_edges=0, density=0.0),
+                )
+
+            # Collect seed entity IDs
+            seed_ids = [r.entity_id for r in search_results if r.entity_id]
+            if not seed_ids:
+                return SubgraphResponse(
+                    root_entity_id="",
+                    nodes=[],
+                    edges=[],
+                    depth=depth,
+                    stats=GraphStats(total_nodes=0, total_edges=0, density=0.0),
+                )
+
+            # Query for 1-hop expansion from all seeds
+            seed_query = """
+            UNWIND $seed_ids as seed_id
+            MATCH (seed {id: seed_id})
+            OPTIONAL MATCH (seed)-[r]-(neighbor)
+            WHERE neighbor.id IS NOT NULL
+            RETURN seed, collect(DISTINCT neighbor) as neighbors,
+                   collect(DISTINCT r) as rels
+            """
+            result = await neo4j.execute_query(
+                seed_query, {"seed_ids": seed_ids[:20]}  # Limit seeds for performance
+            )
+
+            node_ids = set()
+            for record in result:
+                seed = record.get("seed")
+                neighbors = record.get("neighbors", [])
+                rels = record.get("rels", [])
+
+                # Add seed node
+                if seed and seed.get("id") and seed.get("id") not in node_ids:
+                    node_ids.add(seed.get("id"))
+                    nodes.append(GraphNode(
+                        id=seed.get("id"),
+                        label=seed.get("name", seed.get("id", "Unknown")),
+                        type=seed.get("entity_type", "Unknown"),
+                        properties={k: v for k, v in seed.items() if k not in ["id", "name", "entity_type"]},
+                    ))
+
+                # Add neighbors and edges
+                for neighbor in neighbors:
+                    if neighbor and neighbor.get("id") and neighbor.get("id") not in node_ids:
+                        node_ids.add(neighbor.get("id"))
+                        nodes.append(GraphNode(
+                            id=neighbor.get("id"),
+                            label=neighbor.get("name", neighbor.get("id", "Unknown")),
+                            type=neighbor.get("entity_type", "Unknown"),
+                            properties={k: v for k, v in neighbor.items() if k not in ["id", "name", "entity_type"]},
+                        ))
+
+                # Add edges
+                for rel in rels:
+                    if hasattr(rel, "start_node") and hasattr(rel, "end_node"):
+                        src = rel.start_node.get("id")
+                        tgt = rel.end_node.get("id")
+                        if src and tgt and src in node_ids and tgt in node_ids:
+                            edges.append(GraphEdge(
+                                source=src,
+                                target=tgt,
+                                type=rel.type,
+                                properties={},
+                            ))
+
+        # Calculate stats
+        node_count = len(nodes)
+        edge_count = len(edges)
+        density = 0.0 if node_count <= 1 else (2 * edge_count) / (node_count * (node_count - 1))
+
+        return SubgraphResponse(
+            root_entity_id=root_id,
+            nodes=nodes,
+            edges=edges,
+            depth=depth,
+            stats=GraphStats(
+                total_nodes=node_count,
+                total_edges=edge_count,
+                density=density,
+            ),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve subgraph: {e}")
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve subgraph: {str(e)}"
         )

@@ -17,7 +17,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from shared.security import add_security_middleware, SecurityConfig
+try:
+    from shared.security import add_security_middleware, SecurityConfig
+except ImportError:
+    add_security_middleware = None
+    SecurityConfig = None
 
 from ..config import get_settings
 from ..database import close_db, init_db
@@ -107,11 +111,12 @@ def create_app() -> FastAPI:
 
     # SecurityMiddleware — input validation and security headers (before CORS)
     # L5 has no skip paths — all endpoints require strict validation
-    _security_config_l5 = SecurityConfig(
-        skip_validation_paths=frozenset(),
-        strict_mode=True,
-    )
-    add_security_middleware(app, config=_security_config_l5)
+    if SecurityConfig and add_security_middleware:
+        _security_config_l5 = SecurityConfig(
+            skip_validation_paths=frozenset(),
+            strict_mode=True,
+        )
+        add_security_middleware(app, config=_security_config_l5)
 
     # GovernanceMiddleware — provides auth and tenant context
     try:

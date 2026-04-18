@@ -54,7 +54,7 @@ export default function OntologyBrowser() {
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
-        breadcrumbs={["Ontology", "Entity Browser"]}
+        breadcrumbs={[{ label: "Ontology" }, { label: "Entity Browser" }]}
         title="Entity Browser"
         subtitle="Browse and manage extracted ontology entities across all domains."
         actions={<Btn variant="primary"><Plus size={12}/> New Entity</Btn>}

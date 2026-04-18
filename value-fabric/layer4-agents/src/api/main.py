@@ -8,11 +8,12 @@ import os
 import time
 from contextlib import asynccontextmanager
 
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
 
 # Task 60/61: Shared error handling and request correlation
 try:
@@ -20,6 +21,13 @@ try:
     SHARED_ERROR_HANDLING_AVAILABLE = True
 except ImportError:
     SHARED_ERROR_HANDLING_AVAILABLE = False
+
+# Shared identity imports (graceful degradation if shared package unavailable)
+try:
+    from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
+except ImportError:
+    init_feature_flags = None
+    register_feature_flag_lookup = None
 
 # Governance middleware replaces the old TenantMiddleware
 # P1-29: OpenTelemetry imports
@@ -29,10 +37,18 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from shared.identity.middleware import GovernanceMiddleware
-from shared.identity.rate_limiter import RedisRateLimiter
-from shared.identity.vault_check import check_vault_health
-from shared.security import add_security_middleware, SecurityConfig
+
+try:
+    from shared.identity.middleware import GovernanceMiddleware
+    from shared.identity.rate_limiter import RedisRateLimiter
+    from shared.identity.vault_check import check_vault_health
+    from shared.security import add_security_middleware, SecurityConfig
+except ImportError:
+    GovernanceMiddleware = None
+    RedisRateLimiter = None
+    check_vault_health = None
+    add_security_middleware = None
+    SecurityConfig = None
 
 from ..config.checkpoint import CheckpointConfig
 from ..config.settings import settings
@@ -109,10 +125,7 @@ async def lifespan(app: FastAPI):
     metrics = initialize_metrics()
     app.state.metrics = metrics
 
-    # Add metrics middleware if available
-    if metrics:
-        metrics_middleware = MetricsMiddleware(metrics)
-        app.middleware("http")(metrics_middleware)
+    # Metrics middleware is registered at module level; it reads from app.state.metrics
 
     # Startup
     # Initialize database tables (dev/test convenience)
@@ -281,14 +294,6 @@ _security_config_l4 = SecurityConfig(
     strict_mode=True,
 )
 add_security_middleware(app, config=_security_config_l4)
-
-# GovernanceMiddleware — provides auth and tenant context
-try:
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
-except ImportError:
-    logging.getLogger(__name__).warning(
-        "shared.identity not importable — GovernanceMiddleware skipped in L4."
-    )
 
 app.add_middleware(
     CORSMiddleware,

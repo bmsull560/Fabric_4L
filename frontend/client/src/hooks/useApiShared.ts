@@ -118,6 +118,13 @@ export class PlatformSettingsApiError extends BaseApiError {
   }
 }
 
+export class SourceApiError extends BaseApiError {
+  constructor(message: string, statusCode?: number, responseData?: unknown) {
+    super(message, statusCode, responseData);
+    this.name = 'SourceApiError';
+  }
+}
+
 export type ApiErrorClass =
   | typeof FormulaApiError
   | typeof BenchmarkApiError
@@ -127,6 +134,7 @@ export type ApiErrorClass =
   | typeof FormulaDependentsApiError
   | typeof BusinessCaseApiError
   | typeof PlatformSettingsApiError
+  | typeof SourceApiError
   | typeof BaseApiError;
 
 // ── Error wrapper ─────────────────────────────────────────────────────────────

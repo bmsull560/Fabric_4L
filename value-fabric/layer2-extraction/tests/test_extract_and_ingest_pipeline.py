@@ -198,10 +198,11 @@ def request_payload() -> dict:
 
 
 @pytest.fixture(autouse=True)
-def reset_pipeline_state() -> None:
-    api_main.PIPELINE_JOBS.clear()
+def reset_pipeline_state(monkeypatch: pytest.MonkeyPatch) -> None:
+    from layer2_extraction.integration.job_store import InMemoryJobStore
+    test_job_store = InMemoryJobStore()
+    monkeypatch.setattr(api_main, "job_store", test_job_store)
     yield
-    api_main.PIPELINE_JOBS.clear()
 
 
 @pytest.fixture
@@ -269,21 +270,21 @@ async def test_status_endpoint_reports_staged_pipeline_transitions(
     kickoff = await async_client.post("/v1/extract-and-ingest", json=request_payload())
     job_id = kickoff.json()["job_id"]
 
-    api_main._set_pipeline_job(job_id, extraction_status="running", ingestion_status="pending")
+    await api_main._set_pipeline_job(job_id, extraction_status="running", ingestion_status="pending")
     running = await async_client.get(f"/v1/extract/status/{job_id}")
     running_body = running.json()
     assert running_body["overall_status"] == "running"
     assert running_body["extraction_status"] == "running"
     assert running_body["ingestion_status"] == "pending"
 
-    api_main._set_pipeline_job(job_id, extraction_status="completed", ingestion_status="queued")
+    await api_main._set_pipeline_job(job_id, extraction_status="completed", ingestion_status="queued")
     queued = await async_client.get(f"/v1/extract/status/{job_id}")
     queued_body = queued.json()
     assert queued_body["overall_status"] == "partial"
     assert queued_body["extraction_status"] == "completed"
     assert queued_body["ingestion_status"] == "queued"
 
-    api_main._set_pipeline_job(
+    await api_main._set_pipeline_job(
         job_id,
         ingestion_status="completed",
         completed_at=real_datetime(2026, 1, 1, 0, 3, 0),
@@ -312,7 +313,7 @@ async def test_l3_unavailable_queues_retry_and_persists(
         config: dict,
         mark_pipeline_complete: bool = True,
     ) -> api_main.ExtractionArtifacts:
-        api_main._set_pipeline_job(
+        await api_main._set_pipeline_job(
             job_id,
             extraction_status="completed",
             entities_extracted=2,
@@ -368,7 +369,7 @@ async def test_retry_success_marks_completed_and_clears_queue(
         config: dict,
         mark_pipeline_complete: bool = True,
     ) -> api_main.ExtractionArtifacts:
-        api_main._set_pipeline_job(
+        await api_main._set_pipeline_job(
             job_id,
             extraction_status="completed",
             entities_extracted=2,
@@ -506,7 +507,7 @@ async def test_cross_layer_extract_ingest_status_flow(
     ) -> api_main.ExtractionArtifacts:
         artifacts = build_artifacts(job_id, source_url)
         # Set pipeline job state to completed for extraction
-        api_main._set_pipeline_job(
+        await api_main._set_pipeline_job(
             job_id,
             extraction_status="completed",
             entities_extracted=len(artifacts.result.capabilities) + len(artifacts.result.use_cases),

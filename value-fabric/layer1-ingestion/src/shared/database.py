@@ -22,6 +22,14 @@ engine = create_engine(
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Redis client (used by health checks and rate limiting)
+redis_client = None
+try:
+    import redis
+    redis_client = redis.Redis.from_url(settings.redis_url, decode_responses=True)
+except Exception:
+    pass
+
 
 class TenantContextError(Exception):
     """Raised when tenant context is missing or invalid in fail-safe mode."""

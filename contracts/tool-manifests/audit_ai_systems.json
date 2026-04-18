@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "audit_ai_systems",
+  "version": "1.0.0",
+  "description": "Comprehensive audit of AI/ML systems including prompt injection detection, model governance validation, RAG architecture review, and LLM cost anomaly detection",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "audit_scope": {
+        "type": "string",
+        "enum": ["all", "prompt_security", "model_governance", "rag_architecture", "llm_costs", "agent_orchestration"],
+        "default": "all",
+        "description": "Specific AI/ML audit areas to evaluate"
+      },
+      "layers": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": ["L1", "L2", "L3", "L4", "L5", "L6"]
+        },
+        "default": ["L2", "L4"],
+        "description": "Layers to audit (L2 contains LLM extraction, L4 contains agent orchestration)"
+      },
+      "prompt_paths": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": [
+          "value-fabric/layer2-extraction/src/layer2_extraction/extraction/prompts/"
+        ],
+        "description": "Paths to prompt files for injection vulnerability scanning"
+      },
+      "severity_threshold": {
+        "type": "string",
+        "enum": ["critical", "high", "medium", "low"],
+        "default": "medium",
+        "description": "Minimum severity level to include in report"
+      },
+      "include_cost_analysis": {
+        "type": "boolean",
+        "default": true,
+        "description": "Include LLM cost anomaly detection in audit"
+      },
+      "check_model_registry": {
+        "type": "boolean",
+        "default": true,
+        "description": "Validate model registry entries and versioning"
+      },
+      "output_format": {
+        "type": "string",
+        "enum": ["markdown", "json", "sarif"],
+        "default": "markdown",
+        "description": "Output format for audit report"
+      },
+      "fail_on_critical": {
+        "type": "boolean",
+        "default": true,
+        "description": "Return non-zero exit code if critical findings detected"
+      }
+    },
+    "required": []
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "summary": {
+        "type": "object",
+        "properties": {
+          "total_findings": { "type": "integer" },
+          "critical_count": { "type": "integer" },
+          "high_count": { "type": "integer" },
+          "medium_count": { "type": "integer" },
+          "low_count": { "type": "integer" },
+          "audit_scope": { "type": "string" },
+          "layers_audited": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "prompt_security_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string" },
+            "line": { "type": "integer" },
+            "severity": { "type": "string" },
+            "category": { "type": "string" },
+            "description": { "type": "string" },
+            "remediation": { "type": "string" },
+            "pattern_detected": { "type": "string" }
+          }
+        }
+      },
+      "model_governance_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "model_id": { "type": "string" },
+            "severity": { "type": "string" },
+            "issue": { "type": "string" },
+            "recommendation": { "type": "string" }
+          }
+        }
+      },
+      "rag_architecture_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "component": { "type": "string" },
+            "severity": { "type": "string" },
+            "metric": { "type": "string" },
+            "current_value": { "type": "number" },
+            "threshold": { "type": "number" },
+            "recommendation": { "type": "string" }
+          }
+        }
+      },
+      "llm_cost_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "layer": { "type": "string" },
+            "cost_per_hour": { "type": "number" },
+            "trend": { "type": "string" },
+            "anomaly_detected": { "type": "boolean" },
+            "recommendation": { "type": "string" }
+          }
+        }
+      },
+      "agent_orchestration_findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "workflow_id": { "type": "string" },
+            "checkpoint_reliability": { "type": "number" },
+            "failure_recovery_rate": { "type": "number" },
+            "issues": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      },
+      "recommendations": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    }
+  }
+}

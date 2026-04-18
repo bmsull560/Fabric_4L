@@ -109,7 +109,7 @@ class Settings(BaseSettings):
     )
     max_pipeline_retries: int = Field(default=3, description="Max retries per pipeline stage")
 
-    model_config = ConfigDict(env_prefix="LAYER1_", case_sensitive=False)
+    model_config = ConfigDict(case_sensitive=False)
 
 
 # Global settings instance
