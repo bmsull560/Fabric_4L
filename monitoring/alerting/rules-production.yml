@@ -1,0 +1,304 @@
+# Production Alert Rules for Fabric_4L
+# Grouped by severity and service
+
+groups:
+  # ==========================================
+  # Critical Alerts (Immediate Response Required)
+  # ==========================================
+  - name: critical-alerts
+    interval: 30s
+    rules:
+      # High Error Rate - 5% errors over 5 minutes
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (layer)
+            / sum(rate(http_requests_total[5m])) by (layer)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "High error rate in {{ $labels.layer }}"
+          description: "Error rate is {{ $value | humanizePercentage }} over 5m"
+          runbook_url: "https://wiki.internal/runbooks/high-error-rate"
+
+      # Service Down - No requests for 2 minutes
+      - alert: ServiceDown
+        expr: |
+          sum(rate(http_requests_total[2m])) by (layer) == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "{{ $labels.layer }} appears to be down"
+          description: "No HTTP requests in the last 2 minutes"
+
+      # Pod CrashLoopBackOff
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod has restarted {{ $value }} times in 15m"
+
+      # Critical LLM Cost Spike
+      - alert: CriticalLLMCost
+        expr: |
+          sum(increase(llm_cost_total[1h])) > 100
+        for: 5m
+        labels:
+          severity: critical
+          team: finops
+        annotations:
+          summary: "CRITICAL: Excessive LLM cost"
+          description: "LLM cost is ${{ $value }} in the last hour"
+
+      # Database Connection Pool Exhausted
+      - alert: DatabasePoolExhausted
+        expr: |
+          (database_pool_active / database_pool_max) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Database connection pool exhausted"
+          description: "{{ $value | humanizePercentage }} of connections in use"
+
+  # ==========================================
+  # Warning Alerts (Attention Required)
+  # ==========================================
+  - name: warning-alerts
+    interval: 1m
+    rules:
+      # High Latency - p99 > 2 seconds
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, layer)
+          ) > 2.0
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High latency in {{ $labels.layer }}"
+          description: "p99 latency is {{ $value }}s"
+
+      # Elevated Error Rate - 1% errors over 10 minutes
+      - alert: ElevatedErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[10m])) by (layer)
+            / sum(rate(http_requests_total[10m])) by (layer)
+          ) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Elevated error rate in {{ $labels.layer }}"
+          description: "Error rate is {{ $value | humanizePercentage }} over 10m"
+
+      # LLM Cost Warning
+      - alert: HighLLMCost
+        expr: |
+          sum(increase(llm_cost_total[1h])) > 50
+        for: 15m
+        labels:
+          severity: warning
+          team: finops
+        annotations:
+          summary: "High LLM cost rate"
+          description: "LLM cost is ${{ $value }} in the last hour"
+
+      # Celery Queue Backlog
+      - alert: CeleryQueueBacklog
+        expr: |
+          celery_queue_length > 100
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Celery queue backlog"
+          description: "Queue {{ $labels.queue_name }} has {{ $value }} pending tasks"
+
+      # Worker Concurrency High
+      - alert: CeleryWorkerOverload
+        expr: |
+          celery_worker_prefetched_tasks / celery_worker_concurrency > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Celery worker {{ $labels.worker_name }} overloaded"
+          description: "Worker has {{ $value | humanizePercentage }} of capacity in use"
+
+      # Memory Usage High
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            container_memory_working_set_bytes{container!=""}
+            / container_spec_memory_limit_bytes{container!=""}
+          ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High memory usage in {{ $labels.pod }}"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # CPU Usage High
+      - alert: HighCPUUsage
+        expr: |
+          (
+            rate(container_cpu_usage_seconds_total{container!=""}[5m])
+          ) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High CPU usage in {{ $labels.pod }}"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+
+  # ==========================================
+  # Resource Alerts
+  # ==========================================
+  - name: resource-alerts
+    interval: 5m
+    rules:
+      # Disk Space Low (< 15%)
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"}
+          ) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Disk space low on {{ $labels.instance }}"
+          description: "{{ $value | humanizePercentage }} disk space remaining"
+
+      # Disk Space Warning (< 25%)
+      - alert: DiskSpaceWarning
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"}
+          ) < 0.25
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Disk space warning on {{ $labels.instance }}"
+          description: "{{ $value | humanizePercentage }} disk space remaining"
+
+      # Inode Exhaustion
+      - alert: InodesExhausted
+        expr: |
+          (
+            node_filesystem_files_free{mountpoint="/"}
+            / node_filesystem_files{mountpoint="/"}
+          ) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Inode exhaustion on {{ $labels.instance }}"
+          description: "{{ $value | humanizePercentage }} inodes remaining"
+
+      # Network Saturation
+      - alert: NetworkSaturation
+        expr: |
+          rate(node_network_receive_bytes_total[5m]) > 100000000  # 100 MB/s
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High network traffic on {{ $labels.instance }}"
+          description: "Receiving {{ $value | humanize }}B/s"
+
+  # ==========================================
+  # SLO-based Alerts
+  # ==========================================
+  - name: slo-alerts
+    interval: 1m
+    rules:
+      # Availability SLO: 99.9%
+      # Burn rate alerts based on error budget
+      - alert: ErrorBudgetBurn5x
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[1h]))
+          / sum(rate(http_requests_total[1h]))
+          > 0.0144  # 14.4% error rate = 5x burn rate
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+          long: 1h
+          short: 5m
+        annotations:
+          summary: "Fast error budget burn (5x)"
+          description: "Error rate {{ $value | humanizePercentage }} - will exhaust 30-day budget in 6 hours"
+
+      - alert: ErrorBudgetBurn2x
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[6h]))
+          / sum(rate(http_requests_total[6h]))
+          > 0.00576  # 5.76% error rate = 2x burn rate
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+          long: 6h
+          short: 30m
+        annotations:
+          summary: "Moderate error budget burn (2x)"
+          description: "Error rate {{ $value | humanizePercentage }} - will exhaust 30-day budget in 3 days"
+
+  # ==========================================
+  # Business Alerts
+  # ==========================================
+  - name: business-alerts
+    interval: 5m
+    rules:
+      # Ingestion Volume Drop
+      - alert: IngestionVolumeDrop
+        expr: |
+          rate(ingested_documents_total[1h]) < 0.5 * rate(ingested_documents_total[1h] offset 1d)
+        for: 30m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "Ingestion volume dropped"
+          description: "Ingestion is {{ $value | humanizePercentage }} of yesterday's rate"
+
+      # Ground Truth Evaluation Failures
+      - alert: GroundTruthEvaluationsFailing
+        expr: |
+          rate(evaluation_failures_total[1h]) > 0.1
+        for: 15m
+        labels:
+          severity: warning
+          team: ml
+        annotations:
+          summary: "Ground truth evaluations failing"
+          description: "{{ $value | humanizePercentage }} of evaluations failing"

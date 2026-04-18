@@ -303,26 +303,83 @@ services:
     volumes:
       - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ../monitoring/alerting/rules.yml:/etc/prometheus/alerting/rules.yml:ro
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+
+  # Celery Worker for Layer 1
+  layer1-celery-worker:
+    build:
+      context: ./layer1-ingestion
+      dockerfile: Dockerfile
+    container_name: value-fabric-layer1-celery-worker
+    command: celery -A layer1_ingestion.src.shared.tasks worker --loglevel=info --concurrency=4 -Q celery,ingestion,processing
+    environment:
+      - DATABASE_URL=postgresql://layer1:layer1pass@postgres:5432/layer1_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
+      - PYTHONPATH=/app
     depends_on:
-      layer1-ingestion:
+      postgres:
         condition: service_healthy
-      layer2-extraction:
+      redis:
         condition: service_healthy
-      layer3-knowledge:
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "celery", "-A", "layer1_ingestion.src.shared.tasks", "inspect", "--timeout", "5"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Celery Beat for Scheduled Tasks
+  layer1-celery-beat:
+    build:
+      context: ./layer1-ingestion
+      dockerfile: Dockerfile
+    container_name: value-fabric-layer1-celery-beat
+    command: celery -A layer1_ingestion.src.shared.tasks beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://layer1:layer1pass@postgres:5432/layer1_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
+      - PYTHONPATH=/app
+    depends_on:
+      postgres:
         condition: service_healthy
-      layer4-agents:
+      redis:
         condition: service_healthy
-      layer5-ground-truth:
+      layer1-celery-worker:
+        condition: service_started
+    networks:
+      - value-fabric-network
+    restart: unless-stopped
+
+  # Flower - Celery Monitoring UI
+  flower:
+    build:
+      context: ./layer1-ingestion
+      dockerfile: Dockerfile
+    container_name: value-fabric-flower
+    command: celery -A layer1_ingestion.src.shared.tasks flower --port=5555
+    environment:
+      - DATABASE_URL=postgresql://layer1:layer1pass@postgres:5432/layer1_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret}
+      - PYTHONPATH=/app
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
         condition: service_healthy
-      layer6-benchmarks:
-        condition: service_healthy
-      alertmanager:
+      layer1-celery-worker:
         condition: service_started
     networks:
       - value-fabric-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/healthy"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:5555/flower/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -337,7 +394,7 @@ services:
       - "9093:9093"
     volumes:
       - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - ../monitoring/alertmanager/templates:/etc/alertmanager/templates:ro
+      - alertmanager-data:/alertmanager
     networks:
       - value-fabric-network
     restart: unless-stopped
@@ -454,13 +511,14 @@ services:
       retries: 5
 
 volumes:
-  redis-data:
   postgres-data:
+  redis-data:
   neo4j-data:
   neo4j-logs:
   rdf-output:
   ground-truth-data:
   grafana-data:
+  alertmanager-data:
 
 networks:
   value-fabric-network:

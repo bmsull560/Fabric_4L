@@ -75,13 +75,23 @@ jobs:
         run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+        run: |
+          pip install pytest-json-report
+          pytest tests/ -v --tb=short \
+            --cov=src --cov-report=xml:layer1-coverage.xml \
+            --junitxml=layer1-junit.xml \
+            --json-report --json-report-file=layer1-results.json \
+            --cov-fail-under=80
 
-      - name: Upload coverage artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-layer1
-          path: value-fabric/layer1-ingestion/coverage.xml
+          name: test-results-layer1-ingestion
+          path: |
+            value-fabric/layer1-ingestion/layer1-junit.xml
+            value-fabric/layer1-ingestion/layer1-results.json
+            value-fabric/layer1-ingestion/layer1-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -124,13 +134,23 @@ jobs:
         run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+        run: |
+          pip install pytest-json-report
+          pytest tests/ -v --tb=short \
+            --cov=src --cov-report=xml:layer2-coverage.xml \
+            --junitxml=layer2-junit.xml \
+            --json-report --json-report-file=layer2-results.json \
+            --cov-fail-under=80
 
-      - name: Upload coverage artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-layer2
-          path: value-fabric/layer2-extraction/coverage.xml
+          name: test-results-layer2-extraction
+          path: |
+            value-fabric/layer2-extraction/layer2-junit.xml
+            value-fabric/layer2-extraction/layer2-results.json
+            value-fabric/layer2-extraction/layer2-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -173,13 +193,23 @@ jobs:
         run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+        run: |
+          pip install pytest-json-report
+          pytest tests/ -v --tb=short \
+            --cov=src --cov-report=xml:layer3-coverage.xml \
+            --junitxml=layer3-junit.xml \
+            --json-report --json-report-file=layer3-results.json \
+            --cov-fail-under=80
 
-      - name: Upload coverage artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-layer3
-          path: value-fabric/layer3-knowledge/coverage.xml
+          name: test-results-layer3-knowledge
+          path: |
+            value-fabric/layer3-knowledge/layer3-junit.xml
+            value-fabric/layer3-knowledge/layer3-results.json
+            value-fabric/layer3-knowledge/layer3-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -222,13 +252,23 @@ jobs:
         run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+        run: |
+          pip install pytest-json-report
+          pytest tests/ -v --tb=short \
+            --cov=src --cov-report=xml:layer4-coverage.xml \
+            --junitxml=layer4-junit.xml \
+            --json-report --json-report-file=layer4-results.json \
+            --cov-fail-under=80
 
-      - name: Upload coverage artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-layer4
-          path: value-fabric/layer4-agents/coverage.xml
+          name: test-results-layer4-agents
+          path: |
+            value-fabric/layer4-agents/layer4-junit.xml
+            value-fabric/layer4-agents/layer4-results.json
+            value-fabric/layer4-agents/layer4-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -271,13 +311,23 @@ jobs:
         run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+        run: |
+          pip install pytest-json-report
+          pytest tests/ -v --tb=short \
+            --cov=src --cov-report=xml:layer5-coverage.xml \
+            --junitxml=layer5-junit.xml \
+            --json-report --json-report-file=layer5-results.json \
+            --cov-fail-under=80
 
-      - name: Upload coverage artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-layer5
-          path: value-fabric/layer5-ground-truth/coverage.xml
+          name: test-results-layer5-ground-truth
+          path: |
+            value-fabric/layer5-ground-truth/layer5-junit.xml
+            value-fabric/layer5-ground-truth/layer5-results.json
+            value-fabric/layer5-ground-truth/layer5-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -320,13 +370,23 @@ jobs:
         run: mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
-        run: pytest tests/ -v --tb=short --cov=src --cov-report=xml --cov-fail-under=80
+        run: |
+          pip install pytest-json-report
+          pytest tests/ -v --tb=short \
+            --cov=src --cov-report=xml:layer6-coverage.xml \
+            --junitxml=layer6-junit.xml \
+            --json-report --json-report-file=layer6-results.json \
+            --cov-fail-under=80
 
-      - name: Upload coverage artifact
+      - name: Upload test results
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: coverage-layer6
-          path: value-fabric/layer6-benchmarks/coverage.xml
+          name: test-results-layer6-benchmarks
+          path: |
+            value-fabric/layer6-benchmarks/layer6-junit.xml
+            value-fabric/layer6-benchmarks/layer6-results.json
+            value-fabric/layer6-benchmarks/layer6-coverage.xml
           retention-days: 14
 
       - name: Security scan with bandit
@@ -376,7 +436,18 @@ jobs:
         run: pnpm run build
 
       - name: Test
-        run: pnpm test
+        run: pnpm test -- --reporter=junit --outputFile=frontend-junit.xml --reporter=default --coverage
+        continue-on-error: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-frontend
+          path: |
+            frontend/frontend-junit.xml
+            frontend/coverage/
+          retention-days: 14
 
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium

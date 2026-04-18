@@ -1,0 +1,254 @@
+# Layer 1 Celery Worker and Beat Deployments
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: layer1-celery-worker
+  namespace: value-fabric
+  labels:
+    app: layer1-celery-worker
+    layer: "1"
+    component: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: layer1-celery-worker
+  template:
+    metadata:
+      labels:
+        app: layer1-celery-worker
+        layer: "1"
+        component: worker
+    spec:
+      serviceAccountName: layer1-sa
+      containers:
+      - name: celery-worker
+        image: ghcr.io/bmsull560/fabric_4l/layer1-ingestion:latest
+        command: ["celery"]
+        args:
+          - "-A"
+          - "layer1_ingestion.src.shared.tasks"
+          - "worker"
+          - "--loglevel=info"
+          - "--concurrency=4"
+          - "-Q"
+          - "celery,ingestion,processing"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: database_url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: redis_url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: jwt_secret
+        - name: PYTHONPATH
+          value: "/app"
+        - name: C_FORCE_ROOT
+          value: "true"  # Allow Celery to run as root in container
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - celery
+            - -A
+            - layer1_ingestion.src.shared.tasks
+            - inspect
+            - --timeout
+            - "5"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+              - celery
+              - -A
+              - layer1_ingestion.src.shared.tasks
+              - inspect
+              - --timeout
+              - "5"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: layer1-celery-beat
+  namespace: value-fabric
+  labels:
+    app: layer1-celery-beat
+    layer: "1"
+    component: scheduler
+spec:
+  replicas: 1  # Only one scheduler
+  selector:
+    matchLabels:
+      app: layer1-celery-beat
+  template:
+    metadata:
+      labels:
+        app: layer1-celery-beat
+        layer: "1"
+        component: scheduler
+    spec:
+      serviceAccountName: layer1-sa
+      containers:
+      - name: celery-beat
+        image: ghcr.io/bmsull560/fabric_4l/layer1-ingestion:latest
+        command: ["celery"]
+        args:
+          - "-A"
+          - "layer1_ingestion.src.shared.tasks"
+          - "beat"
+          - "--loglevel=info"
+          - "--scheduler"
+          - "redbeat.RedBeatScheduler"  # Use Redis for distributed locking
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: database_url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: redis_url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: jwt_secret
+        - name: PYTHONPATH
+          value: "/app"
+        - name: C_FORCE_ROOT
+          value: "true"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flower
+  namespace: value-fabric
+  labels:
+    app: flower
+    layer: "1"
+spec:
+  selector:
+    app: flower
+  ports:
+  - port: 5555
+    targetPort: 5555
+    name: http
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flower
+  namespace: value-fabric
+  labels:
+    app: flower
+    layer: "1"
+    component: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flower
+  template:
+    metadata:
+      labels:
+        app: flower
+        layer: "1"
+        component: monitoring
+    spec:
+      serviceAccountName: layer1-sa
+      containers:
+      - name: flower
+        image: ghcr.io/bmsull560/fabric_4l/layer1-ingestion:latest
+        command: ["celery"]
+        args:
+          - "-A"
+          - "layer1_ingestion.src.shared.tasks"
+          - "flower"
+          - "--port=5555"
+          - "--url_prefix=/flower"
+          - "--basic_auth=admin:admin"  # Change in production
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: database_url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: layer1-secrets
+              key: redis_url
+        - name: PYTHONPATH
+          value: "/app"
+        - name: C_FORCE_ROOT
+          value: "true"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /flower/
+            port: 5555
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /flower/
+            port: 5555
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flower-ingress
+  namespace: value-fabric
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: flower.fabric.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: flower
+            port:
+              number: 5555

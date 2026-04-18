@@ -1,0 +1,275 @@
+# Vault Integration Workflow
+# Centralized secrets management using HashiCorp Vault with OIDC authentication
+# Replaces hardcoded secrets with dynamic secret injection
+name: Vault Integration
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment for secrets'
+        required: true
+        type: string
+      secrets_path:
+        description: 'Vault secrets path'
+        required: false
+        type: string
+        default: 'secret/data/fabric'
+    secrets:
+      VAULT_ADDR:
+        required: true
+      VAULT_ROLE:
+        required: true
+    outputs:
+      secrets_injected:
+        description: 'Whether secrets were successfully injected'
+        value: ${{ jobs.fetch-secrets.outputs.success }}
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
+
+env:
+  VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+  VAULT_ROLE: ${{ secrets.VAULT_ROLE }}
+
+jobs:
+  # ============================================================================
+  # Authenticate to Vault via OIDC
+  # ============================================================================
+  vault-auth:
+    name: Vault OIDC Authentication
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      vault_token: ${{ steps.vault-login.outputs.vault_token }}
+      auth_success: ${{ steps.vault-login.outputs.success }}
+    steps:
+      - name: Import Secrets from Vault
+        id: vault-login
+        uses: hashicorp/vault-action@v2.8.0
+        with:
+          url: ${{ env.VAULT_ADDR }}
+          method: jwt
+          role: ${{ env.VAULT_ROLE }}
+          jwtGithubAudience: sigstore
+          exportToken: true
+          secrets: |
+            secret/data/ci/common VAULT_ADDR | VAULT_ADDR;
+        env:
+          VAULT_AUTH_ROLE: ${{ env.VAULT_ROLE }}
+
+      - name: Verify Vault connection
+        run: |
+          vault status
+          vault token lookup
+          echo "✅ Successfully authenticated to Vault at $VAULT_ADDR"
+
+  # ============================================================================
+  # Fetch Environment Secrets
+  # ============================================================================
+  fetch-secrets:
+    name: Fetch Environment Secrets
+    runs-on: ubuntu-latest
+    needs: vault-auth
+    if: needs.vault-auth.outputs.auth_success == 'true'
+    outputs:
+      success: ${{ steps.fetch.outputs.success }}
+      secrets_hash: ${{ steps.fetch.outputs.secrets_hash }}
+    steps:
+      - name: Install Vault CLI and jq
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install -y vault
+
+      - name: Configure Vault token
+        run: |
+          echo "::add-mask::${{ needs.vault-auth.outputs.vault_token }}"
+          echo "VAULT_TOKEN=${{ needs.vault-auth.outputs.vault_token }}" >> $GITHUB_ENV
+
+      - name: Fetch secrets from Vault
+        id: fetch
+        run: |
+          SECRETS_PATH="${{ inputs.secrets_path }}"
+          ENVIRONMENT="${{ inputs.environment }}"
+          
+          echo "🔐 Fetching secrets for $ENVIRONMENT from $SECRETS_PATH"
+          
+          # Define required secrets per environment
+          case $ENVIRONMENT in
+            dev)
+              SECRET_KEYS=("database_url" "redis_url" "neo4j_url" "openai_api_key" "jwt_secret")
+              ;;
+            staging)
+              SECRET_KEYS=("database_url" "redis_url" "neo4j_url" "openai_api_key" "jwt_secret" "sentry_dsn")
+              ;;
+            production)
+              SECRET_KEYS=("database_url" "redis_url" "neo4j_url" "openai_api_key" "jwt_secret" "sentry_dsn" "stripe_key")
+              ;;
+            *)
+              echo "❌ Unknown environment: $ENVIRONMENT"
+              exit 1
+              ;;
+          esac
+          
+          # Fetch each secret
+          SECRETS_JSON="{}"
+          for key in "${SECRET_KEYS[@]}"; do
+            echo "Fetching secret: $key"
+            
+            # Attempt to fetch from Vault
+            secret_value=$(vault kv get -format=json "${SECRETS_PATH}/${key}" 2>/dev/null || echo "null")
+            
+            if [ "$secret_value" != "null" ]; then
+              value=$(echo "$secret_value" | jq -r '.data.data.value // .data.data.'"$key"' // empty')
+              if [ -n "$value" ]; then
+                SECRETS_JSON=$(echo "$SECRETS_JSON" | jq --arg key "$key" --arg value "$value" '. + {($key): $value}')
+                
+                # Mask the secret in logs
+                echo "::add-mask::$value"
+                
+                # Export as environment variable
+                echo "${key^^}=$value" >> $GITHUB_ENV
+                echo "✅ Loaded secret: $key"
+              else
+                echo "⚠️ Secret $key exists but has empty value"
+              fi
+            else
+              echo "⚠️ Secret not found: $key"
+            fi
+          done
+          
+          # Output secrets summary (values masked)
+          echo "secrets_loaded=$(echo "$SECRETS_JSON" | jq -r 'keys | length')" >> $GITHUB_OUTPUT
+          echo "success=true" >> $GITHUB_OUTPUT
+          
+          # Create hash for cache invalidation
+          secrets_hash=$(echo "$SECRETS_JSON" | sha256sum | cut -d' ' -f1)
+          echo "secrets_hash=$secrets_hash" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "✅ Successfully loaded $(echo "$SECRETS_JSON" | jq -r 'keys | length') secrets"
+
+      - name: Validate required secrets
+        run: |
+          REQUIRED_SECRETS=("DATABASE_URL" "REDIS_URL" "JWT_SECRET")
+          MISSING=()
+          
+          for secret in "${REQUIRED_SECRETS[@]}"; do
+            if [ -z "${!secret}" ]; then
+              MISSING+=("$secret")
+            fi
+          done
+          
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "❌ Missing required secrets:"
+            for secret in "${MISSING[@]}"; do
+              echo "  - $secret"
+            done
+            exit 1
+          fi
+          
+          echo "✅ All required secrets validated"
+
+  # ============================================================================
+  # Rotate Dynamic Secrets
+  # ============================================================================
+  rotate-dynamic-secrets:
+    name: Rotate Dynamic Secrets
+    runs-on: ubuntu-latest
+    needs: [vault-auth, fetch-secrets]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.rotate == 'true'
+    steps:
+      - name: Install Vault CLI and jq
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install -y vault
+
+      - name: Rotate database credentials
+        run: |
+          echo "🔄 Rotating dynamic database credentials..."
+          
+          # Rotate PostgreSQL credentials
+          vault write -f database/rotate-role/${{ inputs.environment }}-postgres
+          
+          # Rotate Redis credentials  
+          vault write -f database/rotate-role/${{ inputs.environment }}-redis
+          
+          echo "✅ Credentials rotated successfully"
+          echo "⚠️ Services must be restarted to pick up new credentials"
+
+  # ============================================================================
+  # Audit Secret Access
+  # ============================================================================
+  audit-access:
+    name: Audit Secret Access
+    runs-on: ubuntu-latest
+    needs: [vault-auth, fetch-secrets]
+    if: always()
+    steps:
+      - name: Log secret access
+        run: |
+          # Log access for compliance auditing
+          echo "{\"timestamp\": \"$(date -Iseconds)\", \"actor\": \"${{ github.actor }}\", \"workflow\": \"${{ github.workflow }}\", \"run_id\": ${{ github.run_id }}, \"environment\": \"${{ inputs.environment }}\", \"secrets_hash\": \"${{ needs.fetch-secrets.outputs.secrets_hash }}\"}" | \
+          jq '.' > /tmp/audit-log.json
+          
+          # In production, send to audit log system
+          # curl -X POST https://audit.fabric.internal/logs -d @/tmp/audit-log.json
+          
+          echo "✅ Audit log created"
+
+  # ============================================================================
+  # Export Secrets for Downstream Jobs
+  # ============================================================================
+  export-secrets:
+    name: Export Secrets
+    runs-on: ubuntu-latest
+    needs: fetch-secrets
+    steps:
+      - name: Write secrets to GITHUB_ENV
+        run: |
+          # Make secrets available to downstream jobs via job outputs
+          # Only export non-sensitive metadata
+          
+          echo "secrets_available=true" >> $GITHUB_OUTPUT
+          echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # Reusable Workflow Outputs
+  # ============================================================================
+  outputs:
+    success: ${{ jobs.fetch-secrets.outputs.success }}
+    secrets_hash: ${{ jobs.fetch-secrets.outputs.secrets_hash }}
+    environment: ${{ inputs.environment }}
+
+# ============================================================================
+# Usage Examples
+# ============================================================================
+# 
+# 1. In another workflow, call this reusable workflow:
+#
+# jobs:
+#   deploy:
+#     uses: ./.github/workflows/vault-integration.yml
+#     with:
+#       environment: staging
+#       secrets_path: secret/data/fabric/staging
+#     secrets:
+#       VAULT_ADDR: ${{ secrets.VAULT_ADDR }}
+#       VAULT_ROLE: ${{ secrets.VAULT_ROLE_STAGING }}
+#
+# 2. Then use the secrets in subsequent jobs:
+#
+#   build:
+#     needs: [deploy]
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Build with secrets
+#         run: |
+#           echo "DATABASE_URL is set: $([ -n "$DATABASE_URL" ] && echo 'YES' || echo 'NO')"
+#           # Secrets are automatically available as env vars
+#
