@@ -30,8 +30,11 @@ RUN pip install --no-cache-dir \
     prometheus-client>=0.21.0 \
     psutil>=6.0.0
 
+# Copy shared package
+COPY shared/ ./shared/
+
 # Copy application code
-COPY src/ ./src/
+COPY layer2-extraction/src/ ./src/
 
 # Set PYTHONPATH so imports work
 ENV PYTHONPATH=/app

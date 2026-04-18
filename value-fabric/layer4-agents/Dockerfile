@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies to system site-packages
-COPY requirements.lock .
+COPY layer4-agents/requirements.lock .
 RUN pip install --no-cache-dir -r requirements.lock
 
 # Stage 2: Runtime - minimal image with only runtime libraries
@@ -33,10 +33,13 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Ensure PATH includes local bin
 ENV PATH=/usr/local/bin:$PATH
-ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app/src
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app
+
+# Copy shared package
+COPY shared/ ./shared/
 
 # Copy source code
-COPY src/ ./src/
+COPY layer4-agents/src/ ./src/
 
 # Change ownership
 RUN chown -R appuser:appgroup /app /home/appuser

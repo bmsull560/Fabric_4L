@@ -4,8 +4,8 @@ services:
   # Layer 1: Data Ingestion Service
   layer1-ingestion:
     build:
-      context: ./layer1-ingestion
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer1-ingestion/Dockerfile
     container_name: value-fabric-layer1
     ports:
       - "8001:8000"
@@ -44,8 +44,8 @@ services:
   # Layer 2: Extraction Pipeline
   layer2-extraction:
     build:
-      context: ./layer2-extraction
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer2-extraction/Dockerfile
     container_name: value-fabric-layer2
     ports:
       - "8002:8000"
@@ -111,8 +111,8 @@ services:
   # Layer 3 Knowledge Graph API
   layer3-knowledge:
     build:
-      context: ./layer3-knowledge
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer3-knowledge/Dockerfile
     container_name: value-fabric-layer3
     ports:
       - "8003:8001"
@@ -148,8 +148,8 @@ services:
   # Layer 4: Agentic Workflow Engine
   layer4-agents:
     build:
-      context: ./layer4-agents
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer4-agents/Dockerfile
     container_name: value-fabric-layer4
     ports:
       - "8004:8000"
@@ -200,8 +200,8 @@ services:
   # Layer 5: Ground Truth Service
   layer5-ground-truth:
     build:
-      context: ./layer5-ground-truth
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer5-ground-truth/Dockerfile
     container_name: value-fabric-layer5
     ports:
       - "8005:8005"
@@ -246,8 +246,8 @@ services:
   # Layer 5 Alembic migration runner (one-shot: runs migrations then exits)
   layer5-migrate:
     build:
-      context: ./layer5-ground-truth
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer5-ground-truth/Dockerfile
     container_name: value-fabric-layer5-migrate
     command: alembic upgrade head
     environment:
@@ -262,8 +262,8 @@ services:
   # Layer 6: Benchmark Service
   layer6-benchmarks:
     build:
-      context: ./layer6-benchmarks
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./layer6-benchmarks/Dockerfile
     container_name: value-fabric-layer6
     ports:
       - "8006:8006"

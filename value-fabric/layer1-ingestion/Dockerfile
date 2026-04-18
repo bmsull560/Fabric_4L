@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies to system site-packages
-COPY requirements.txt .
+COPY layer1-ingestion/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright browsers
@@ -55,16 +55,19 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 ENV PATH=/usr/local/bin:$PATH
-ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app/src
+ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages:/app
 
 # Copy Playwright browsers from builder
 COPY --from=builder /root/.cache/ms-playwright /home/appuser/.cache/ms-playwright
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/appuser/.cache/ms-playwright
 
+# Copy shared package
+COPY shared/ ./shared/
+
 # Copy application code
-COPY src/ ./src/
-COPY alembic.ini .
-COPY migrations/ ./migrations/
+COPY layer1-ingestion/src/ ./src/
+COPY layer1-ingestion/alembic.ini .
+COPY layer1-ingestion/migrations/ ./migrations/
 
 # Change ownership
 RUN chown -R appuser:appgroup /app /home/appuser

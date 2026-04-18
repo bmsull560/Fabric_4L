@@ -16,8 +16,14 @@ RUN pip install --no-cache-dir \
     httpx>=0.27.0 \
     prometheus-client>=0.21.0
 
+# Copy shared package
+COPY shared/ ./shared/
+
 # Copy source code
-COPY src/ ./src/
+COPY layer6-benchmarks/src/ ./src/
+
+# Set PYTHONPATH so imports work
+ENV PYTHONPATH=/app
 
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app

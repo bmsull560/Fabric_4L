@@ -37,8 +37,11 @@ RUN pip install --no-cache-dir \
     redis>=5.2.0 \
     psutil>=6.0.0
 
+# Copy shared package
+COPY shared/ ./shared/
+
 # Copy application code
-COPY src/ ./src/
+COPY layer3-knowledge/src/ ./src/
 
 # Set PYTHONPATH so imports work
 ENV PYTHONPATH=/app
