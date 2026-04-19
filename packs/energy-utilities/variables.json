@@ -8,13 +8,35 @@
       "description": "Savings from reduced SAIDI/SAIFI and faster restoration",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 500000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 500000000
+      },
       "default_value": 40000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 500000000 }],
-      "industry_benchmarks": { "high": 100000000, "typical": 40000000, "low": 10000000 },
-      "tags": ["outage", "savings", "reliability", "saidi"],
-      "used_in_formulas": ["eu-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500000000
+        }
+      ],
+      "industry_benchmarks": {
+        "high": 100000000,
+        "typical": 40000000,
+        "low": 10000000
+      },
+      "tags": [
+        "outage",
+        "savings",
+        "reliability",
+        "saidi"
+      ],
+      "used_in_formulas": [
+        "eu-f-001"
+      ],
+      "canonicalName": "Outage_Cost_Savings",
+      "name": "Annual Outage Cost Savings"
     },
     {
       "variable_id": "eu-var-002",
@@ -23,12 +45,30 @@
       "description": "Savings from automated switching, remote monitoring, reduced truck rolls",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["operations", "savings", "automation", "efficiency"],
-      "used_in_formulas": ["eu-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "operations",
+        "savings",
+        "automation",
+        "efficiency"
+      ],
+      "used_in_formulas": [
+        "eu-f-001"
+      ],
+      "canonicalName": "Operational_Savings",
+      "name": "Annual Operational Savings"
     },
     {
       "variable_id": "eu-var-003",
@@ -37,12 +77,30 @@
       "description": "Value from deferring traditional infrastructure investments",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 500000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 500000000
+      },
       "default_value": 50000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 500000000 }],
-      "tags": ["capex", "deferral", "infrastructure", "planning"],
-      "used_in_formulas": ["eu-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 500000000
+        }
+      ],
+      "tags": [
+        "capex",
+        "deferral",
+        "infrastructure",
+        "planning"
+      ],
+      "used_in_formulas": [
+        "eu-f-001"
+      ],
+      "canonicalName": "Deferred_Capex_Value",
+      "name": "Deferred Capital Expenditure Value"
     },
     {
       "variable_id": "eu-var-004",
@@ -51,12 +109,30 @@
       "description": "Annual operations and maintenance of smart grid infrastructure",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 20000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["smart-grid", "cost", "operations", "maintenance"],
-      "used_in_formulas": ["eu-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "smart-grid",
+        "cost",
+        "operations",
+        "maintenance"
+      ],
+      "used_in_formulas": [
+        "eu-f-001"
+      ],
+      "canonicalName": "Annual_Smart_Grid_Cost",
+      "name": "Annual Smart Grid Operating Cost"
     },
     {
       "variable_id": "eu-var-005",
@@ -65,12 +141,30 @@
       "description": "Total capital invested in smart grid deployment",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 2000000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 2000000000
+      },
       "default_value": 200000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 2000000000 }],
-      "tags": ["investment", "capex", "smart-grid", "capital"],
-      "used_in_formulas": ["eu-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 2000000000
+        }
+      ],
+      "tags": [
+        "investment",
+        "capex",
+        "smart-grid",
+        "capital"
+      ],
+      "used_in_formulas": [
+        "eu-f-001"
+      ],
+      "canonicalName": "Cumulative_Investment",
+      "name": "Cumulative Smart Grid Investment"
     },
     {
       "variable_id": "eu-var-006",
@@ -79,12 +173,30 @@
       "description": "Annual revenue from selling renewable energy credits",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 200000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 200000000
+      },
       "default_value": 25000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 200000000 }],
-      "tags": ["renewable", "rec", "revenue", "markets"],
-      "used_in_formulas": ["eu-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 200000000
+        }
+      ],
+      "tags": [
+        "renewable",
+        "rec",
+        "revenue",
+        "markets"
+      ],
+      "used_in_formulas": [
+        "eu-f-002"
+      ],
+      "canonicalName": "REC_Revenue",
+      "name": "Renewable Energy Credit Revenue"
     },
     {
       "variable_id": "eu-var-007",
@@ -93,12 +205,30 @@
       "description": "Value of carbon credits generated from renewable generation",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["carbon", "credits", "environmental", "renewable"],
-      "used_in_formulas": ["eu-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "carbon",
+        "credits",
+        "environmental",
+        "renewable"
+      ],
+      "used_in_formulas": [
+        "eu-f-002"
+      ],
+      "canonicalName": "Carbon_Credit_Value",
+      "name": "Carbon Credit Value"
     },
     {
       "variable_id": "eu-var-008",
@@ -107,12 +237,30 @@
       "description": "Reduced fossil fuel purchases due to renewable generation",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 300000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 300000000
+      },
       "default_value": 80000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 300000000 }],
-      "tags": ["fuel", "savings", "renewable", "operations"],
-      "used_in_formulas": ["eu-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 300000000
+        }
+      ],
+      "tags": [
+        "fuel",
+        "savings",
+        "renewable",
+        "operations"
+      ],
+      "used_in_formulas": [
+        "eu-f-002"
+      ],
+      "canonicalName": "Fuel_Cost_Savings",
+      "name": "Fuel Cost Savings"
     },
     {
       "variable_id": "eu-var-009",
@@ -121,12 +269,30 @@
       "description": "Avoided capacity market payments from demand reduction",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 20000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["capacity", "markets", "avoidance", "payments"],
-      "used_in_formulas": ["eu-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "capacity",
+        "markets",
+        "avoidance",
+        "payments"
+      ],
+      "used_in_formulas": [
+        "eu-f-002"
+      ],
+      "canonicalName": "Capacity_Payment_Avoidance",
+      "name": "Capacity Payment Avoidance"
     },
     {
       "variable_id": "eu-var-010",
@@ -135,12 +301,30 @@
       "description": "Grid integration, storage, and balancing costs",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 30000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["integration", "costs", "renewable", "grid"],
-      "used_in_formulas": ["eu-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "integration",
+        "costs",
+        "renewable",
+        "grid"
+      ],
+      "used_in_formulas": [
+        "eu-f-002"
+      ],
+      "canonicalName": "Integration_Costs",
+      "name": "Renewable Integration Costs"
     },
     {
       "variable_id": "eu-var-011",
@@ -149,12 +333,30 @@
       "description": "Revenue from capacity market participation",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["capacity", "markets", "revenue", "demand-response"],
-      "used_in_formulas": ["eu-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "capacity",
+        "markets",
+        "revenue",
+        "demand-response"
+      ],
+      "used_in_formulas": [
+        "eu-f-003"
+      ],
+      "canonicalName": "Capacity_Market_Revenue",
+      "name": "Capacity Market Revenue"
     },
     {
       "variable_id": "eu-var-012",
@@ -163,12 +365,30 @@
       "description": "Revenue from energy market demand reduction",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 10000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["energy", "markets", "revenue", "demand-response"],
-      "used_in_formulas": ["eu-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "energy",
+        "markets",
+        "revenue",
+        "demand-response"
+      ],
+      "used_in_formulas": [
+        "eu-f-003"
+      ],
+      "canonicalName": "Energy_Market_Revenue",
+      "name": "Energy Market Revenue"
     },
     {
       "variable_id": "eu-var-013",
@@ -177,12 +397,30 @@
       "description": "Revenue from frequency regulation and reserves",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["ancillary", "services", "revenue", "frequency"],
-      "used_in_formulas": ["eu-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "ancillary",
+        "services",
+        "revenue",
+        "frequency"
+      ],
+      "used_in_formulas": [
+        "eu-f-003"
+      ],
+      "canonicalName": "Ancillary_Services_Revenue",
+      "name": "Ancillary Services Revenue"
     },
     {
       "variable_id": "eu-var-014",
@@ -191,12 +429,30 @@
       "description": "Deferred transmission and distribution investment",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 200000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 200000000
+      },
       "default_value": 30000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 200000000 }],
-      "tags": ["infrastructure", "deferral", "peak", "td"],
-      "used_in_formulas": ["eu-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 200000000
+        }
+      ],
+      "tags": [
+        "infrastructure",
+        "deferral",
+        "peak",
+        "td"
+      ],
+      "used_in_formulas": [
+        "eu-f-003"
+      ],
+      "canonicalName": "Infrastructure_Deferral",
+      "name": "Peak Infrastructure Deferral Value"
     },
     {
       "variable_id": "eu-var-015",
@@ -205,12 +461,30 @@
       "description": "Annual program management and technology costs",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["operating", "costs", "demand-response", "program"],
-      "used_in_formulas": ["eu-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "operating",
+        "costs",
+        "demand-response",
+        "program"
+      ],
+      "used_in_formulas": [
+        "eu-f-003"
+      ],
+      "canonicalName": "Program_Operating_Cost",
+      "name": "Demand Response Operating Cost"
     },
     {
       "variable_id": "eu-var-016",
@@ -219,12 +493,30 @@
       "description": "Cost avoidance from preventing catastrophic failures",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 20000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["failure", "avoidance", "predictive", "maintenance"],
-      "used_in_formulas": ["eu-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "failure",
+        "avoidance",
+        "predictive",
+        "maintenance"
+      ],
+      "used_in_formulas": [
+        "eu-f-004"
+      ],
+      "canonicalName": "Avoided_Failure_Cost",
+      "name": "Avoided Failure Cost"
     },
     {
       "variable_id": "eu-var-017",
@@ -233,12 +525,30 @@
       "description": "Value from extending asset useful life",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 10000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["life", "extension", "asset", "value"],
-      "used_in_formulas": ["eu-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "life",
+        "extension",
+        "asset",
+        "value"
+      ],
+      "used_in_formulas": [
+        "eu-f-004"
+      ],
+      "canonicalName": "Extended_Life_Value",
+      "name": "Asset Life Extension Value"
     },
     {
       "variable_id": "eu-var-018",
@@ -247,12 +557,30 @@
       "description": "Savings from optimized maintenance scheduling and reduced emergency repairs",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["maintenance", "savings", "operations", "optimization"],
-      "used_in_formulas": ["eu-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "maintenance",
+        "savings",
+        "operations",
+        "optimization"
+      ],
+      "used_in_formulas": [
+        "eu-f-004"
+      ],
+      "canonicalName": "OMS_Savings",
+      "name": "Operations and Maintenance Savings"
     },
     {
       "variable_id": "eu-var-019",
@@ -261,12 +589,30 @@
       "description": "Annual investment in sensors, analytics, and maintenance systems",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 12000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["investment", "predictive", "maintenance", "sensors"],
-      "used_in_formulas": ["eu-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "investment",
+        "predictive",
+        "maintenance",
+        "sensors"
+      ],
+      "used_in_formulas": [
+        "eu-f-004"
+      ],
+      "canonicalName": "Predictive_Maintenance_Investment",
+      "name": "Predictive Maintenance Investment"
     },
     {
       "variable_id": "eu-var-020",
@@ -275,12 +621,30 @@
       "description": "Revenue from buying low and selling high",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["arbitrage", "revenue", "energy", "storage"],
-      "used_in_formulas": ["eu-f-005"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "arbitrage",
+        "revenue",
+        "energy",
+        "storage"
+      ],
+      "used_in_formulas": [
+        "eu-f-005"
+      ],
+      "canonicalName": "Arbitrage_Revenue",
+      "name": "Energy Arbitrage Revenue"
     },
     {
       "variable_id": "eu-var-021",
@@ -289,12 +653,30 @@
       "description": "Annual operations and maintenance costs for energy storage",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 15000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 15000000
+      },
       "default_value": 4000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 15000000 }],
-      "tags": ["storage", "om", "costs", "battery"],
-      "used_in_formulas": ["eu-f-005"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 15000000
+        }
+      ],
+      "tags": [
+        "storage",
+        "om",
+        "costs",
+        "battery"
+      ],
+      "used_in_formulas": [
+        "eu-f-005"
+      ],
+      "canonicalName": "Storage_OM_Cost",
+      "name": "Storage O&M Cost"
     },
     {
       "variable_id": "eu-var-022",
@@ -303,12 +685,30 @@
       "description": "Revenue from EV charging sessions",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 12000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["charging", "revenue", "ev", "emobility"],
-      "used_in_formulas": ["eu-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "charging",
+        "revenue",
+        "ev",
+        "emobility"
+      ],
+      "used_in_formulas": [
+        "eu-f-007"
+      ],
+      "canonicalName": "Charging_Revenue",
+      "name": "Annual Charging Revenue"
     },
     {
       "variable_id": "eu-var-023",
@@ -317,12 +717,30 @@
       "description": "Annual amortized capital and operating costs",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["infrastructure", "costs", "ev", "capital"],
-      "used_in_formulas": ["eu-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "infrastructure",
+        "costs",
+        "ev",
+        "capital"
+      ],
+      "used_in_formulas": [
+        "eu-f-007"
+      ],
+      "canonicalName": "Infrastructure_Cost",
+      "name": "EV Infrastructure Annual Cost"
     }
   ]
 }

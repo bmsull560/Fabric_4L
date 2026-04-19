@@ -93,11 +93,11 @@
       },
       "expression": {
         "format": "STRING_EXPRESSION",
-        "string": "Additional_Customers_Acquired * First_Year_Revenue_Per_Customer + Operational_Cost_Savings - Digital_Onboarding_Investment",
+        "string": "Additional_Customers_Acquired * First_Year_Revenue_Per_Customer + Operational_Savings - Digital_Onboarding_Investment",
         "variables": [
           "Additional_Customers_Acquired",
           "First_Year_Revenue_Per_Customer",
-          "Operational_Cost_Savings",
+          "Operational_Savings",
           "Digital_Onboarding_Investment"
         ]
       },
@@ -129,7 +129,7 @@
           "description": "Average revenue generated from new customer in first year"
         },
         {
-          "name": "Operational_Cost_Savings",
+          "name": "Operational_Savings",
           "display_name": "Operational Cost Savings",
           "type": "currency",
           "unit": "USD",

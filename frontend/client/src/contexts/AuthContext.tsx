@@ -1,24 +1,23 @@
 /**
- * Auth Context — OIDC Authentication State Management
- * 
+ * Auth Context — Contract-Based OIDC Authentication State Management
+ *
+ * Architecture: AuthContext → AuthClient (contract boundary) → HTTP API → IdP
+ *
  * Manages:
  * - JWT token storage (memory + localStorage for refresh)
  * - User info (id, email, role, tenant)
- * - Login/logout flows
- * - Token refresh
+ * - Login/logout flows via AuthClient
+ * - Token refresh via AuthClient
  * - 401 redirect handling
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useUserTierStore } from '../stores/userTierStore';
+import { authClient, AuthClient } from '../services/authClient';
+import { type UserInfo, AuthError, AuthErrorCategory } from '../schemas/auth';
 
-export interface UserInfo {
-  id: string;
-  email: string;
-  role: string;
-  tenantId: string;
-  tenantSlug: string;
-}
+// Re-export UserInfo for backward compatibility
+export type { UserInfo } from '../schemas/auth';
 
 interface AuthContextType {
   // State
@@ -26,7 +25,7 @@ interface AuthContextType {
   isLoading: boolean;
   user: UserInfo | null;
   accessToken: string | null;
-  
+
   // Actions
   initiateLogin: (tenantSlug: string) => Promise<void>;
   handleCallback: (code: string, state: string) => Promise<boolean>;
@@ -37,225 +36,197 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Constants
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
-const L4_PREFIX = import.meta.env.VITE_L4_PREFIX || '/agents';
-const TOKEN_EXPIRY_BUFFER_MS = 60_000; // 1 minute buffer before actual expiry
+// Auth state machine states
+type AuthState = 'idle' | 'loading' | 'authenticated' | 'error';
 
-/**
- * Validate JWT structure without verifying signature.
- * Checks that token has 3 parts (header.payload.signature) and parsable JSON.
- */
-function isValidJwtStructure(token: string): boolean {
-  const parts = token.split('.');
-  if (parts.length !== 3) return false;
-  
-  try {
-    // Try to parse header and payload as base64url
-    atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'));
-    atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-    return true;
-  } catch {
-    return false;
-  }
+interface AuthStateMachine {
+  state: AuthState;
+  user: UserInfo | null;
+  accessToken: string | null;
+  error: AuthError | null;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  // Use state machine pattern for clear transitions
+  const [authState, setAuthState] = useState<AuthStateMachine>({
+    state: 'idle',
+    user: null,
+    accessToken: null,
+    error: null,
+  });
+  const [isLoading, setIsLoading] = useState(true); // Separate loading for UI
 
   // Initialize auth state from storage on mount
   useEffect(() => {
     const initAuth = () => {
+      const session = authClient.getCurrentSession();
       const storedToken = localStorage.getItem('accessToken');
-      const storedUser = localStorage.getItem('userInfo');
-      
-      if (storedToken && storedUser) {
-        try {
-          const userInfo = JSON.parse(storedUser) as UserInfo;
-          setAccessToken(storedToken);
-          setUser(userInfo);
-          setIsAuthenticated(true);
-          
-          // Synchronize restored role with userTierStore
-          useUserTierStore.getState().setUserRole(userInfo.role);
-        } catch (e) {
-          // Invalid stored data, clear it
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('userInfo');
-        }
+
+      if (storedToken && session) {
+        setAuthState({
+          state: 'authenticated',
+          user: session,
+          accessToken: storedToken,
+          error: null,
+        });
+
+        // Synchronize restored role with userTierStore
+        useUserTierStore.getState().setUserRole(session.role);
+      } else {
+        // Clear any partial/invalid data
+        authClient.clearSession();
+        setAuthState({
+          state: 'idle',
+          user: null,
+          accessToken: null,
+          error: null,
+        });
       }
-      
+
       setIsLoading(false);
     };
-    
+
     initAuth();
   }, []);
 
   /**
    * Step 1: Initiate OIDC login flow
-   * Calls backend to get authorization URL, then redirects browser to IdP
+   * Delegates to AuthClient for contract-validated exchange
    */
   const initiateLogin = useCallback(async (tenantSlug: string) => {
     // Set loading state synchronously before async operations
     setIsLoading(true);
-    
-    // Build callback URL (must match backend redirect_uri)
-    const callbackUrl = `${window.location.origin}/login/callback`;
-    
-    // Call backend to initiate OIDC flow
-    const response = await fetch(
-      `${API_BASE}${L4_PREFIX}/auth/oidc/${tenantSlug}/login?redirect_uri=${encodeURIComponent(callbackUrl)}`
-    );
-    
-    if (!response.ok) {
+    setAuthState(prev => ({ ...prev, state: 'loading' }));
+
+    try {
+      const callbackUrl = `${window.location.origin}/login/callback`;
+      const result = await authClient.initiateLogin(tenantSlug, callbackUrl);
+
+      // Store state for verification on callback
+      sessionStorage.setItem('oidcState', result.state);
+      sessionStorage.setItem('oidcTenantSlug', tenantSlug);
+
+      // Redirect to IdP (this will unload the page)
+      window.location.href = result.authorization_url;
+    } catch (error) {
       setIsLoading(false);
-      const errorData = await response.json().catch(() => ({ detail: 'Failed to initiate login' }));
-      throw new Error(errorData.detail || 'Failed to initiate login');
+      setAuthState(prev => ({
+        ...prev,
+        state: 'error',
+        error: error instanceof AuthError ? error : new AuthError(
+          String(error),
+          AuthErrorCategory.AUTHENTICATION
+        ),
+      }));
+      throw error;
     }
-    
-    const { authorization_url, state } = await response.json();
-    
-    // Store state for verification on callback
-    sessionStorage.setItem('oidcState', state);
-    sessionStorage.setItem('oidcTenantSlug', tenantSlug);
-    
-    // Redirect to IdP (this will unload the page, so no need to set loading false)
-    window.location.href = authorization_url;
   }, []);
 
   /**
    * Step 2: Handle OIDC callback
-   * Backend exchanges code for tokens and returns JWT
+   * Delegates token exchange to AuthClient with schema validation
    */
   const handleCallback = useCallback(async (code: string, state: string): Promise<boolean> => {
+    setAuthState(prev => ({ ...prev, state: 'loading' }));
+
     try {
       // Verify state matches what we stored
       const storedState = sessionStorage.getItem('oidcState');
       if (state !== storedState) {
         throw new Error('Invalid state parameter');
       }
-      
-      // Call backend callback endpoint
-      const response = await fetch(
-        `${API_BASE}${L4_PREFIX}/auth/oidc/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
-      );
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Authentication failed' }));
-        throw new Error(errorData.detail || 'Authentication failed');
-      }
-      
-      const data = await response.json();
-      
-      // Safely extract fields with defaults
-      const access_token = data?.access_token;
-      const user_id = data?.user_id;
-      const email = data?.email;
-      const role = data?.role;
-      
-      if (!access_token) {
-        throw new Error('No access token received from authentication server');
-      }
-      
+
+      // Use AuthClient for contract-validated token exchange
+      const tokenResponse = await authClient.exchangeCodeForTokens(code, state);
+
       const tenantSlug = sessionStorage.getItem('oidcTenantSlug') || 'default';
-      
-      // Build user info
+
+      // Build validated user info
       const userInfo: UserInfo = {
-        id: user_id || 'unknown',
-        email: email || 'unknown@example.com',
-        role: role || 'standard',
-        tenantId: tenantSlug, // Backend uses slug as tenant identifier
+        id: tokenResponse.user_id,
+        email: tokenResponse.email,
+        role: tokenResponse.role,
+        tenantId: tenantSlug,
         tenantSlug,
       };
-      
-      // Store auth data
-      setAccessToken(access_token);
-      setUser(userInfo);
-      setIsAuthenticated(true);
-      
-      localStorage.setItem('accessToken', access_token);
-      localStorage.setItem('userInfo', JSON.stringify(userInfo));
-      localStorage.setItem('tenantId', tenantSlug);
 
-      // Synchronize role with userTierStore so tier/permissions reflect the OIDC role
-      useUserTierStore.getState().setUserRole(role || 'standard');
-      
+      // Persist session via AuthClient
+      authClient.persistSession(tokenResponse.access_token, userInfo, tenantSlug);
+
+      // Update auth state machine
+      setAuthState({
+        state: 'authenticated',
+        user: userInfo,
+        accessToken: tokenResponse.access_token,
+        error: null,
+      });
+
+      // Synchronize role with userTierStore
+      useUserTierStore.getState().setUserRole(tokenResponse.role);
+
       // Clean up session storage
-      sessionStorage.removeItem('oidcState');
-      sessionStorage.removeItem('oidcTenantSlug');
-      
+      authClient.clearOidcState();
+
       return true;
     } catch (error) {
-      console.error('Callback handling failed:', error);
       // Clean up on failure
-      sessionStorage.removeItem('oidcState');
-      sessionStorage.removeItem('oidcTenantSlug');
+      authClient.clearOidcState();
+
+      setAuthState({
+        state: 'error',
+        user: null,
+        accessToken: null,
+        error: error instanceof AuthError ? error : new AuthError(
+          String(error),
+          AuthErrorCategory.AUTHENTICATION
+        ),
+      });
+
       return false;
     }
   }, []);
 
   /**
-   * Logout — clear all auth state
+   * Logout — clear all auth state via AuthClient
    */
   const logout = useCallback(() => {
-    setAccessToken(null);
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('userInfo');
-    localStorage.removeItem('tenantId');
-    sessionStorage.removeItem('oidcState');
-    sessionStorage.removeItem('oidcTenantSlug');
+    authClient.clearSession();
+    authClient.clearOidcState();
+
+    setAuthState({
+      state: 'idle',
+      user: null,
+      accessToken: null,
+      error: null,
+    });
 
     // Reset userTierStore to default state
     const tierStore = useUserTierStore.getState();
     tierStore.setTier('standard');
     tierStore.disableAdvancedMode();
-    
+
     // Redirect to login
     window.location.href = '/login';
   }, []);
 
   /**
-   * Token refresh — placeholder for future refresh token implementation
+   * Token refresh — delegates to AuthClient
    */
   const refreshToken = useCallback(async (): Promise<boolean> => {
-    // Currently tokens are 1-hour JWTs. In future, implement refresh token flow.
-    // For now, just check if token is still valid
-    const token = localStorage.getItem('accessToken');
-    if (!token) return false;
-    
-    // Validate JWT structure first
-    if (!isValidJwtStructure(token)) {
-      console.error('Invalid token structure');
-      logout();
-      return false;
+    const isValid = await authClient.refreshToken();
+
+    if (!isValid) {
+      // Session expired or invalid, clear state
+      setAuthState({
+        state: 'idle',
+        user: null,
+        accessToken: null,
+        error: null,
+      });
     }
-    
-    // Check expiry (JWTs have exp claim)
-    try {
-      // base64url decode with proper padding
-      const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      const padding = '='.repeat((4 - base64.length % 4) % 4);
-      const payload = JSON.parse(atob(base64 + padding));
-      
-      const exp = payload.exp * 1000; // Convert to milliseconds
-      if (Date.now() >= exp - TOKEN_EXPIRY_BUFFER_MS) {
-        // Token expired or expiring soon, logout
-        logout();
-        return false;
-      }
-      return true;
-    } catch (e) {
-      console.error('Failed to parse token payload:', e);
-      logout();
-      return false;
-    }
-  }, [logout]);
+
+    return isValid;
+  }, []);
 
   /**
    * Development bypass — creates mock auth state without credentials
@@ -266,7 +237,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('devBypass only available in development mode');
       return;
     }
-    
+
     const mockUser: UserInfo = {
       id: 'dev-user-001',
       email: 'dev@value-fabric.com',
@@ -274,35 +245,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenantId: 'dev-tenant',
       tenantSlug: 'development',
     };
-    
+
     // Create a mock JWT token (valid structure but not verified)
     const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
-      btoa(JSON.stringify({ 
-        sub: mockUser.id, 
-        email: mockUser.email, 
+      btoa(JSON.stringify({
+        sub: mockUser.id,
+        email: mockUser.email,
         role: mockUser.role,
         exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour expiry
-      })) + 
+      })) +
       '.mock-signature';
-    
-    setAccessToken(mockToken);
-    setUser(mockUser);
-    setIsAuthenticated(true);
-    
-    localStorage.setItem('accessToken', mockToken);
-    localStorage.setItem('userInfo', JSON.stringify(mockUser));
-    localStorage.setItem('tenantId', mockUser.tenantSlug);
-    
+
+    authClient.persistSession(mockToken, mockUser, mockUser.tenantSlug);
+
+    setAuthState({
+      state: 'authenticated',
+      user: mockUser,
+      accessToken: mockToken,
+      error: null,
+    });
+
     useUserTierStore.getState().setUserRole(mockUser.role);
-    
+
     console.log('[DEV] Authentication bypassed — logged in as', mockUser.email);
   }, []);
 
   const value: AuthContextType = {
-    isAuthenticated,
+    isAuthenticated: authState.state === 'authenticated',
     isLoading,
-    user,
-    accessToken,
+    user: authState.user,
+    accessToken: authState.accessToken,
     initiateLogin,
     handleCallback,
     logout,

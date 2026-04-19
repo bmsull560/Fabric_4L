@@ -8,12 +8,30 @@
       "description": "Savings from model compression, quantization, and optimized serving",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 5000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["inference", "savings", "mlops", "serving"],
-      "used_in_formulas": ["ai-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "inference",
+        "savings",
+        "mlops",
+        "serving"
+      ],
+      "used_in_formulas": [
+        "ai-f-001"
+      ],
+      "canonicalName": "Inference_Cost_Savings",
+      "name": "Annual Inference Cost Savings"
     },
     {
       "variable_id": "ai-var-002",
@@ -22,12 +40,30 @@
       "description": "Value from reduced performance degradation through automated monitoring",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["drift", "monitoring", "mlops", "value"],
-      "used_in_formulas": ["ai-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "drift",
+        "monitoring",
+        "mlops",
+        "value"
+      ],
+      "used_in_formulas": [
+        "ai-f-001"
+      ],
+      "canonicalName": "Drift_Reduction_Value",
+      "name": "Model Drift Reduction Value"
     },
     {
       "variable_id": "ai-var-003",
@@ -36,12 +72,30 @@
       "description": "Value from faster model deployment and revenue acceleration",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 12000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["velocity", "deployment", "mlops", "time-to-market"],
-      "used_in_formulas": ["ai-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "velocity",
+        "deployment",
+        "mlops",
+        "time-to-market"
+      ],
+      "used_in_formulas": [
+        "ai-f-001"
+      ],
+      "canonicalName": "Velocity_Value",
+      "name": "Time-to-Production Value"
     },
     {
       "variable_id": "ai-var-004",
@@ -50,12 +104,30 @@
       "description": "Annual investment in ML platform, tools, and infrastructure",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["mlops", "investment", "platform", "infrastructure"],
-      "used_in_formulas": ["ai-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "mlops",
+        "investment",
+        "platform",
+        "infrastructure"
+      ],
+      "used_in_formulas": [
+        "ai-f-001"
+      ],
+      "canonicalName": "MLOps_Investment",
+      "name": "MLOps Platform Investment"
     },
     {
       "variable_id": "ai-var-005",
@@ -64,12 +136,30 @@
       "description": "Value from code generation, testing, and documentation assistance",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 30000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["developer", "productivity", "llm", "code-generation"],
-      "used_in_formulas": ["ai-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "developer",
+        "productivity",
+        "llm",
+        "code-generation"
+      ],
+      "used_in_formulas": [
+        "ai-f-002"
+      ],
+      "canonicalName": "Developer_Productivity_Value",
+      "name": "Developer Productivity Value"
     },
     {
       "variable_id": "ai-var-006",
@@ -78,12 +168,30 @@
       "description": "Annual cost of LLM API, fine-tuning, and infrastructure",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["llm", "platform", "cost", "api"],
-      "used_in_formulas": ["ai-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "llm",
+        "platform",
+        "cost",
+        "api"
+      ],
+      "used_in_formulas": [
+        "ai-f-002"
+      ],
+      "canonicalName": "LLM_Platform_Cost",
+      "name": "LLM Platform Annual Cost"
     },
     {
       "variable_id": "ai-var-007",
@@ -92,12 +200,30 @@
       "description": "Value from reduced redundant feature engineering across teams",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["feature-store", "reuse", "value", "data-engineering"],
-      "used_in_formulas": ["ai-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "feature-store",
+        "reuse",
+        "value",
+        "data-engineering"
+      ],
+      "used_in_formulas": [
+        "ai-f-003"
+      ],
+      "canonicalName": "Feature_Reuse_Value",
+      "name": "Feature Store Reuse Value"
     },
     {
       "variable_id": "ai-var-008",
@@ -106,12 +232,30 @@
       "description": "Annual investment in feature store, data quality, and data infrastructure",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 6000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["data", "platform", "investment", "feature-store"],
-      "used_in_formulas": ["ai-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "data",
+        "platform",
+        "investment",
+        "feature-store"
+      ],
+      "used_in_formulas": [
+        "ai-f-003"
+      ],
+      "canonicalName": "Data_Platform_Investment",
+      "name": "AI Data Platform Investment"
     },
     {
       "variable_id": "ai-var-009",
@@ -120,12 +264,30 @@
       "description": "Reduced manual inspection labor through automated visual inspection",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 20000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
       "default_value": 5000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 20000000 }],
-      "tags": ["inspection", "savings", "computer-vision", "labor"],
-      "used_in_formulas": ["ai-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": [
+        "inspection",
+        "savings",
+        "computer-vision",
+        "labor"
+      ],
+      "used_in_formulas": [
+        "ai-f-004"
+      ],
+      "canonicalName": "Quality_Inspection_Savings",
+      "name": "Quality Inspection Labor Savings"
     },
     {
       "variable_id": "ai-var-010",
@@ -134,12 +296,30 @@
       "description": "Annual cost of cameras, compute, ML models, and maintenance",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 15000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 15000000
+      },
       "default_value": 4000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 15000000 }],
-      "tags": ["vision", "system", "cost", "hardware"],
-      "used_in_formulas": ["ai-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 15000000
+        }
+      ],
+      "tags": [
+        "vision",
+        "system",
+        "cost",
+        "hardware"
+      ],
+      "used_in_formulas": [
+        "ai-f-004"
+      ],
+      "canonicalName": "Vision_System_Cost",
+      "name": "Computer Vision System Cost"
     },
     {
       "variable_id": "ai-var-011",
@@ -148,12 +328,30 @@
       "description": "Avoided regulatory fines and compliance costs from AI governance",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 10000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
       "default_value": 2000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 10000000 }],
-      "tags": ["regulatory", "risk", "avoidance", "governance"],
-      "used_in_formulas": ["ai-f-006"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": [
+        "regulatory",
+        "risk",
+        "avoidance",
+        "governance"
+      ],
+      "used_in_formulas": [
+        "ai-f-006"
+      ],
+      "canonicalName": "Regulatory_Risk_Avoidance",
+      "name": "Regulatory Risk Avoidance"
     },
     {
       "variable_id": "ai-var-012",
@@ -162,12 +360,30 @@
       "description": "Annual investment in bias detection, explainability, and governance tools",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 8000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 8000000
+      },
       "default_value": 2000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 8000000 }],
-      "tags": ["governance", "platform", "cost", "responsible-ai"],
-      "used_in_formulas": ["ai-f-006"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 8000000
+        }
+      ],
+      "tags": [
+        "governance",
+        "platform",
+        "cost",
+        "responsible-ai"
+      ],
+      "used_in_formulas": [
+        "ai-f-006"
+      ],
+      "canonicalName": "Governance_Platform_Cost",
+      "name": "AI Governance Platform Cost"
     },
     {
       "variable_id": "ai-var-013",
@@ -176,12 +392,30 @@
       "description": "Value from improved productivity of AI-trained employees",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["productivity", "lift", "training", "upskilling"],
-      "used_in_formulas": ["ai-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "productivity",
+        "lift",
+        "training",
+        "upskilling"
+      ],
+      "used_in_formulas": [
+        "ai-f-007"
+      ],
+      "canonicalName": "Productivity_Lift_Value",
+      "name": "AI Skills Productivity Lift"
     },
     {
       "variable_id": "ai-var-014",
@@ -190,12 +424,30 @@
       "description": "Annual investment in AI training, certifications, and development",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 20000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
       "default_value": 5000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 20000000 }],
-      "tags": ["training", "investment", "development", "upskilling"],
-      "used_in_formulas": ["ai-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": [
+        "training",
+        "investment",
+        "development",
+        "upskilling"
+      ],
+      "used_in_formulas": [
+        "ai-f-007"
+      ],
+      "canonicalName": "Training_Investment",
+      "name": "AI Training Program Investment"
     }
   ]
 }

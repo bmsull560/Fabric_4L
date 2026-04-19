@@ -11,7 +11,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
-import { http, HttpResponse, delay } from 'msw';
 import { createWrapper } from '../test-utils';
 import { server } from '../../../test/mocks/server';
 import { AuthProvider, useAuthContext, type UserInfo } from './AuthContext';
@@ -52,7 +51,7 @@ function TestComponent() {
       </button>
       <button
         data-testid="callback-btn"
-        onClick={() => auth.handleCallback('test-code', 'test-state')}
+        onClick={() => auth.handleCallback('test-code', 'oidc-state-123')}
       >
         Handle Callback
       </button>
@@ -170,15 +169,8 @@ describe('AuthProvider', () => {
 
   describe('initiateLogin', () => {
     it('calls backend login endpoint and redirects to IdP', async () => {
-      // Set up MSW handler for OIDC login
-      server.use(
-        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
-          return HttpResponse.json({
-            authorization_url: 'https://idp.example.com/auth?client_id=test',
-            state: 'oidc-state-123',
-          });
-        })
-      );
+      // Default MSW handler in handlers.ts returns valid LoginInitiationResponse
+      // No need to override - uses contract boundary
 
       const wrapper = createWrapper();
       render(
@@ -202,22 +194,11 @@ describe('AuthProvider', () => {
 
       // Verify redirect happened
       await waitFor(() => {
-        expect(window.location.href).toBe('https://idp.example.com/auth?client_id=test');
+        expect(window.location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
       });
     });
 
     it('shows loading state during login', async () => {
-      // Set up MSW handler with delay to verify loading state
-      server.use(
-        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
-          await delay(50);
-          return HttpResponse.json({
-            authorization_url: 'https://idp.example.com/auth',
-            state: 'state-123',
-          });
-        })
-      );
-
       const wrapper = createWrapper();
       render(
         <AuthProvider>
@@ -226,35 +207,28 @@ describe('AuthProvider', () => {
         { wrapper }
       );
 
+      // Wait for initial ready state
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('ready');
       });
 
-      // Click login
+      // Click login - this triggers setIsLoading(true) synchronously
       act(() => {
         screen.getByTestId('login-btn').click();
       });
 
-      // Should be loading immediately after click
-      expect(screen.getByTestId('loading')).toHaveTextContent('loading');
+      // Should immediately show loading state (set synchronously before async call)
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('loading');
+      });
 
       // Wait for the async operation to complete (and redirect)
       await waitFor(() => {
-        expect(window.location.href).toBe('https://idp.example.com/auth');
+        expect(window.location.href).toBe('https://idp.example.com/auth?client_id=test&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Flogin%2Fcallback&state=oidc-state-123');
       });
     });
 
     it('throws error when login initiation fails', async () => {
-      // Set up MSW handler to return error
-      server.use(
-        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
-          return new HttpResponse(
-            JSON.stringify({ detail: 'Tenant not found' }),
-            { status: 404 }
-          );
-        })
-      );
-
       // Component that exposes initiateLogin for direct testing
       function LoginTrigger() {
         const auth = useAuthContext();
@@ -265,7 +239,8 @@ describe('AuthProvider', () => {
               data-testid="trigger-login"
               onClick={async () => {
                 try {
-                  await auth.initiateLogin('test-tenant');
+                  // Use error-tenant which returns 404 in MSW handler
+                  await auth.initiateLogin('error-tenant');
                 } catch (e) {
                   setError((e as Error).message);
                 }
@@ -285,6 +260,10 @@ describe('AuthProvider', () => {
         </AuthProvider>,
         { wrapper }
       );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
+      });
 
       await act(async () => {
         screen.getByTestId('trigger-login').click();
@@ -296,13 +275,6 @@ describe('AuthProvider', () => {
     });
 
     it('throws error when network fails', async () => {
-      // Set up MSW handler to simulate network error
-      server.use(
-        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/test-tenant/login`, async () => {
-          return HttpResponse.error();
-        })
-      );
-
       // Component that exposes initiateLogin for direct testing
       function LoginTrigger() {
         const auth = useAuthContext();
@@ -313,7 +285,7 @@ describe('AuthProvider', () => {
               data-testid="trigger-login"
               onClick={async () => {
                 try {
-                  await auth.initiateLogin('test-tenant');
+                  await auth.initiateLogin('network-error');
                 } catch (e) {
                   setError((e as Error).message);
                 }
@@ -334,12 +306,16 @@ describe('AuthProvider', () => {
         { wrapper }
       );
 
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
+      });
+
       await act(async () => {
         screen.getByTestId('trigger-login').click();
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('login-error')).toHaveTextContent('Failed to fetch');
+        expect(screen.getByTestId('login-error')).toHaveTextContent('Failed to connect to authentication service');
       });
     });
   });
@@ -347,30 +323,14 @@ describe('AuthProvider', () => {
   describe('handleCallback', () => {
     beforeEach(() => {
       // Set state to match what TestComponent callback button uses
-      sessionStorage.setItem('oidcState', 'test-state');
+      // Must match the default MSW handler's expected state pattern
+      sessionStorage.setItem('oidcState', 'oidc-state-123');
       sessionStorage.setItem('oidcTenantSlug', 'test-tenant');
     });
 
     it('exchanges code for tokens and sets auth state', async () => {
-      // Set up MSW handler for OIDC callback
-      server.use(
-        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/callback`, async ({ request }) => {
-          const url = new URL(request.url);
-          const code = url.searchParams.get('code');
-          const state = url.searchParams.get('state');
-
-          // Verify query params
-          expect(code).toBe('test-code');
-          expect(state).toBe('test-state');
-
-          return HttpResponse.json({
-            access_token: 'new-access-token',
-            user_id: 'user-456',
-            email: 'newuser@example.com',
-            role: 'advanced',
-          });
-        })
-      );
+      // Default MSW handler in handlers.ts returns valid TokenResponse
+      // No need to override - uses contract boundary
 
       const wrapper = createWrapper();
       render(
@@ -388,7 +348,7 @@ describe('AuthProvider', () => {
         screen.getByTestId('callback-btn').click();
       });
 
-      // Verify auth state updated
+      // Verify auth state updated based on contract response
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
         expect(screen.getByTestId('user-email')).toHaveTextContent('newuser@example.com');
@@ -445,17 +405,8 @@ describe('AuthProvider', () => {
     });
 
     it('returns false when callback endpoint returns error', async () => {
-      // Set up MSW handler to return error
-      server.use(
-        http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/callback`, async () => {
-          return new HttpResponse(
-            JSON.stringify({ detail: 'Invalid authorization code' }),
-            { status: 400 }
-          );
-        })
-      );
-
       // Component that captures handleCallback result
+      // Uses 'invalid-code' to trigger error response in MSW handler
       function CallbackWithResult() {
         const auth = useAuthContext();
         const [callbackResult, setCallbackResult] = React.useState<boolean | null>(null);
@@ -464,7 +415,7 @@ describe('AuthProvider', () => {
             <button
               data-testid="callback-result-btn"
               onClick={async () => {
-                const result = await auth.handleCallback('test-code', 'test-state');
+                const result = await auth.handleCallback('invalid-code', 'oidc-state-123');
                 setCallbackResult(result);
               }}
             >

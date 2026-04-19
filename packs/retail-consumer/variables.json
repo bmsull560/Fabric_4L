@@ -8,12 +8,31 @@
       "description": "Additional revenue from omnichannel customers and basket size increase",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 1000000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
       "default_value": 50000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 1000000000 }],
-      "tags": ["omnichannel", "revenue", "fulfillment", "incremental"],
-      "used_in_formulas": ["rc-f-001", "rc-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 1000000000
+        }
+      ],
+      "tags": [
+        "omnichannel",
+        "revenue",
+        "fulfillment",
+        "incremental"
+      ],
+      "used_in_formulas": [
+        "rc-f-001",
+        "rc-f-004"
+      ],
+      "canonicalName": "Incremental_Revenue",
+      "name": "Incremental Revenue from Omnichannel"
     },
     {
       "variable_id": "rc-var-002",
@@ -22,12 +41,30 @@
       "description": "Savings from store-based fulfillment vs distribution center",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["fulfillment", "savings", "store", "avoidance"],
-      "used_in_formulas": ["rc-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "fulfillment",
+        "savings",
+        "store",
+        "avoidance"
+      ],
+      "used_in_formulas": [
+        "rc-f-001"
+      ],
+      "canonicalName": "Cost_Avoidance",
+      "name": "Fulfillment Cost Avoidance"
     },
     {
       "variable_id": "rc-var-003",
@@ -36,12 +73,30 @@
       "description": "Additional costs from same-day and expedited fulfillment",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 20000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["fulfillment", "costs", "inflation", "same-day"],
-      "used_in_formulas": ["rc-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "fulfillment",
+        "costs",
+        "inflation",
+        "same-day"
+      ],
+      "used_in_formulas": [
+        "rc-f-001"
+      ],
+      "canonicalName": "Fulfillment_Cost_Inflation",
+      "name": "Fulfillment Cost Inflation"
     },
     {
       "variable_id": "rc-var-004",
@@ -50,12 +105,30 @@
       "description": "Annual investment in OMS, inventory visibility, and store fulfillment",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 200000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 200000000
+      },
       "default_value": 30000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 200000000 }],
-      "tags": ["omnichannel", "investment", "platform", "oms"],
-      "used_in_formulas": ["rc-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 200000000
+        }
+      ],
+      "tags": [
+        "omnichannel",
+        "investment",
+        "platform",
+        "oms"
+      ],
+      "used_in_formulas": [
+        "rc-f-001"
+      ],
+      "canonicalName": "Omnichannel_Investment",
+      "name": "Omnichannel Platform Investment"
     },
     {
       "variable_id": "rc-var-005",
@@ -64,12 +137,30 @@
       "description": "Value from optimized everyday pricing and promotions",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 25000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["pricing", "margin", "optimization", "value"],
-      "used_in_formulas": ["rc-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "pricing",
+        "margin",
+        "optimization",
+        "value"
+      ],
+      "used_in_formulas": [
+        "rc-f-002"
+      ],
+      "canonicalName": "Margin_Improvement_Value",
+      "name": "Margin Improvement Value"
     },
     {
       "variable_id": "rc-var-006",
@@ -78,12 +169,30 @@
       "description": "Reduced end-of-season markdowns through better pricing",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["pricing", "markdown", "reduction", "inventory"],
-      "used_in_formulas": ["rc-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "pricing",
+        "markdown",
+        "reduction",
+        "inventory"
+      ],
+      "used_in_formulas": [
+        "rc-f-002"
+      ],
+      "canonicalName": "Markdown_Reduction_Value",
+      "name": "Markdown Reduction Value"
     },
     {
       "variable_id": "rc-var-007",
@@ -92,12 +201,30 @@
       "description": "Annual cost of pricing optimization platform and team",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 5000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["pricing", "platform", "cost", "optimization"],
-      "used_in_formulas": ["rc-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "pricing",
+        "platform",
+        "cost",
+        "optimization"
+      ],
+      "used_in_formulas": [
+        "rc-f-002"
+      ],
+      "canonicalName": "Pricing_Platform_Cost",
+      "name": "Dynamic Pricing Platform Cost"
     },
     {
       "variable_id": "rc-var-007b",
@@ -106,12 +233,30 @@
       "description": "Value from competitive price positioning and win rate improvement",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 10000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["pricing", "competitive", "position", "win-rate"],
-      "used_in_formulas": ["rc-f-002"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "pricing",
+        "competitive",
+        "position",
+        "win-rate"
+      ],
+      "used_in_formulas": [
+        "rc-f-002"
+      ],
+      "canonicalName": "Competitive_Position_Value",
+      "name": "Competitive Position Value"
     },
     {
       "variable_id": "rc-var-008",
@@ -120,12 +265,30 @@
       "description": "Recovered sales from reduced stockouts through better forecasting",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 20000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["inventory", "stockout", "recovery", "sales"],
-      "used_in_formulas": ["rc-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "inventory",
+        "stockout",
+        "recovery",
+        "sales"
+      ],
+      "used_in_formulas": [
+        "rc-f-003"
+      ],
+      "canonicalName": "Stockout_Recovery",
+      "name": "Stockout Recovery Value"
     },
     {
       "variable_id": "rc-var-009",
@@ -134,12 +297,30 @@
       "description": "Inventory reduction value and working capital improvement",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 15000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["inventory", "working-capital", "benefit", "cash"],
-      "used_in_formulas": ["rc-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "inventory",
+        "working-capital",
+        "benefit",
+        "cash"
+      ],
+      "used_in_formulas": [
+        "rc-f-003"
+      ],
+      "canonicalName": "Working_Capital_Benefit",
+      "name": "Working Capital Benefit"
     },
     {
       "variable_id": "rc-var-010",
@@ -148,12 +329,30 @@
       "description": "Reduced write-offs from better demand forecasting",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["inventory", "obsolescence", "write-offs", "forecasting"],
-      "used_in_formulas": ["rc-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "inventory",
+        "obsolescence",
+        "write-offs",
+        "forecasting"
+      ],
+      "used_in_formulas": [
+        "rc-f-003"
+      ],
+      "canonicalName": "Obsolescence_Reduction",
+      "name": "Obsolescence Reduction"
     },
     {
       "variable_id": "rc-var-011",
@@ -162,12 +361,30 @@
       "description": "Annual investment in forecasting and inventory optimization platform",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 20000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
       "default_value": 6000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 20000000 }],
-      "tags": ["inventory", "optimization", "investment", "forecasting"],
-      "used_in_formulas": ["rc-f-003"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": [
+        "inventory",
+        "optimization",
+        "investment",
+        "forecasting"
+      ],
+      "used_in_formulas": [
+        "rc-f-003"
+      ],
+      "canonicalName": "Optimization_Investment",
+      "name": "Inventory Optimization Investment"
     },
     {
       "variable_id": "rc-var-012",
@@ -176,12 +393,30 @@
       "description": "Reduced marketing spend for same results through personalization",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 10000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["marketing", "efficiency", "personalization", "spend"],
-      "used_in_formulas": ["rc-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "marketing",
+        "efficiency",
+        "personalization",
+        "spend"
+      ],
+      "used_in_formulas": [
+        "rc-f-004"
+      ],
+      "canonicalName": "Marketing_Spend_Efficiency",
+      "name": "Marketing Spend Efficiency"
     },
     {
       "variable_id": "rc-var-013",
@@ -190,12 +425,30 @@
       "description": "CLV increase from personalization and improved retention",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 25000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["clv", "personalization", "retention", "lift"],
-      "used_in_formulas": ["rc-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "clv",
+        "personalization",
+        "retention",
+        "lift"
+      ],
+      "used_in_formulas": [
+        "rc-f-004"
+      ],
+      "canonicalName": "Customer_Lifetime_Value_Lift",
+      "name": "Customer Lifetime Value Lift"
     },
     {
       "variable_id": "rc-var-013b",
@@ -204,12 +457,30 @@
       "description": "Annual investment in CDP, personalization engine, and data",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["personalization", "investment", "cdp", "platform"],
-      "used_in_formulas": ["rc-f-004"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "personalization",
+        "investment",
+        "cdp",
+        "platform"
+      ],
+      "used_in_formulas": [
+        "rc-f-004"
+      ],
+      "canonicalName": "Personalization_Investment",
+      "name": "Personalization Platform Investment"
     },
     {
       "variable_id": "rc-var-014",
@@ -218,12 +489,30 @@
       "description": "Reduced labor costs from optimized scheduling and task automation",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 20000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["labor", "store", "savings", "scheduling"],
-      "used_in_formulas": ["rc-f-005"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "labor",
+        "store",
+        "savings",
+        "scheduling"
+      ],
+      "used_in_formulas": [
+        "rc-f-005"
+      ],
+      "canonicalName": "Store_Labor_Savings",
+      "name": "Store Labor Savings"
     },
     {
       "variable_id": "rc-var-014b",
@@ -232,12 +521,30 @@
       "description": "Reduced overtime and optimized scheduling savings",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 30000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 30000000
+      },
       "default_value": 10000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 30000000 }],
-      "tags": ["labor", "savings", "overtime", "scheduling"],
-      "used_in_formulas": ["rc-f-005"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 30000000
+        }
+      ],
+      "tags": [
+        "labor",
+        "savings",
+        "overtime",
+        "scheduling"
+      ],
+      "used_in_formulas": [
+        "rc-f-005"
+      ],
+      "canonicalName": "Labor_Cost_Savings",
+      "name": "Labor Cost Savings"
     },
     {
       "variable_id": "rc-var-014c",
@@ -246,12 +553,30 @@
       "description": "Value from reduced wait times and improved service levels",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 20000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
       "default_value": 8000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 20000000 }],
-      "tags": ["service", "improvement", "customer", "value"],
-      "used_in_formulas": ["rc-f-005"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": [
+        "service",
+        "improvement",
+        "customer",
+        "value"
+      ],
+      "used_in_formulas": [
+        "rc-f-005"
+      ],
+      "canonicalName": "Service_Improvement_Value",
+      "name": "Customer Service Improvement Value"
     },
     {
       "variable_id": "rc-var-014d",
@@ -260,12 +585,30 @@
       "description": "Savings from reduced recruiting and training costs",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 10000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
       "default_value": 4000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 10000000 }],
-      "tags": ["turnover", "retention", "hr", "savings"],
-      "used_in_formulas": ["rc-f-005"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": [
+        "turnover",
+        "retention",
+        "hr",
+        "savings"
+      ],
+      "used_in_formulas": [
+        "rc-f-005"
+      ],
+      "canonicalName": "Turnover_Reduction_Value",
+      "name": "Employee Turnover Reduction Value"
     },
     {
       "variable_id": "rc-var-014e",
@@ -274,12 +617,30 @@
       "description": "Annual investment in WFM software and implementation",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 15000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 15000000
+      },
       "default_value": 3000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 15000000 }],
-      "tags": ["wfm", "investment", "workforce", "software"],
-      "used_in_formulas": ["rc-f-005"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 15000000
+        }
+      ],
+      "tags": [
+        "wfm",
+        "investment",
+        "workforce",
+        "software"
+      ],
+      "used_in_formulas": [
+        "rc-f-005"
+      ],
+      "canonicalName": "WFM_Investment",
+      "name": "Workforce Management Investment"
     },
     {
       "variable_id": "rc-var-015b",
@@ -288,12 +649,30 @@
       "description": "Prevented return fraud, coupon abuse, and payment fraud",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 20000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
       "default_value": 5000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 20000000 }],
-      "tags": ["fraud", "prevention", "abuse", "value"],
-      "used_in_formulas": ["rc-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": [
+        "fraud",
+        "prevention",
+        "abuse",
+        "value"
+      ],
+      "used_in_formulas": [
+        "rc-f-007"
+      ],
+      "canonicalName": "Fraud_Prevention_Value",
+      "name": "Fraud and Abuse Prevention Value"
     },
     {
       "variable_id": "rc-var-015c",
@@ -302,12 +681,30 @@
       "description": "Reduced operational errors and supply chain losses",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 15000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 15000000
+      },
       "default_value": 3000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 15000000 }],
-      "tags": ["process", "loss", "prevention", "savings"],
-      "used_in_formulas": ["rc-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 15000000
+        }
+      ],
+      "tags": [
+        "process",
+        "loss",
+        "prevention",
+        "savings"
+      ],
+      "used_in_formulas": [
+        "rc-f-007"
+      ],
+      "canonicalName": "Process_Loss_Savings",
+      "name": "Process Loss Prevention Savings"
     },
     {
       "variable_id": "rc-var-015d",
@@ -316,12 +713,30 @@
       "description": "Annual investment in LP analytics, cameras, and systems",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 15000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 15000000
+      },
       "default_value": 4000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 15000000 }],
-      "tags": ["lp", "analytics", "investment", "cameras"],
-      "used_in_formulas": ["rc-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 15000000
+        }
+      ],
+      "tags": [
+        "lp",
+        "analytics",
+        "investment",
+        "cameras"
+      ],
+      "used_in_formulas": [
+        "rc-f-007"
+      ],
+      "canonicalName": "LP_Analytics_Investment",
+      "name": "Loss Prevention Analytics Investment"
     },
     {
       "variable_id": "rc-var-016",
@@ -330,12 +745,30 @@
       "description": "Value from improved conversion with visual search users",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 20000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 20000000
+      },
       "default_value": 6000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 20000000 }],
-      "tags": ["conversion", "uplift", "visual-search", "value"],
-      "used_in_formulas": ["rc-f-006"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 20000000
+        }
+      ],
+      "tags": [
+        "conversion",
+        "uplift",
+        "visual-search",
+        "value"
+      ],
+      "used_in_formulas": [
+        "rc-f-006"
+      ],
+      "canonicalName": "Conversion_Uplift_Value",
+      "name": "Conversion Rate Uplift Value"
     },
     {
       "variable_id": "rc-var-017",
@@ -344,12 +777,30 @@
       "description": "Recovered sales from customers who would have abandoned",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 15000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 15000000
+      },
       "default_value": 4000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 15000000 }],
-      "tags": ["search", "recovery", "abandonment", "value"],
-      "used_in_formulas": ["rc-f-006"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 15000000
+        }
+      ],
+      "tags": [
+        "search",
+        "recovery",
+        "abandonment",
+        "value"
+      ],
+      "used_in_formulas": [
+        "rc-f-006"
+      ],
+      "canonicalName": "Search_Recovery_Value",
+      "name": "Search Abandonment Recovery Value"
     },
     {
       "variable_id": "rc-var-018",
@@ -358,12 +809,30 @@
       "description": "Additional sales from 'complete the look' recommendations",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 10000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
       "default_value": 3000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 10000000 }],
-      "tags": ["cross-sell", "uplift", "recommendations", "value"],
-      "used_in_formulas": ["rc-f-006"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": [
+        "cross-sell",
+        "uplift",
+        "recommendations",
+        "value"
+      ],
+      "used_in_formulas": [
+        "rc-f-006"
+      ],
+      "canonicalName": "Cross_Sell_Uplift",
+      "name": "Cross-sell Uplift Value"
     },
     {
       "variable_id": "rc-var-019",
@@ -372,12 +841,30 @@
       "description": "Annual investment in visual search technology",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 10000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
       "default_value": 2500000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 10000000 }],
-      "tags": ["visual-ai", "investment", "search", "technology"],
-      "used_in_formulas": ["rc-f-006"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 10000000
+        }
+      ],
+      "tags": [
+        "visual-ai",
+        "investment",
+        "search",
+        "technology"
+      ],
+      "used_in_formulas": [
+        "rc-f-006"
+      ],
+      "canonicalName": "Visual_AI_Investment",
+      "name": "Visual AI Platform Investment"
     },
     {
       "variable_id": "rc-var-020",
@@ -386,12 +873,30 @@
       "description": "Value from reduced theft, damage, and administrative error",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 50000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
       "default_value": 12000000,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 50000000 }],
-      "tags": ["shrink", "loss-prevention", "theft", "value"],
-      "used_in_formulas": ["rc-f-007"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "shrink",
+        "loss-prevention",
+        "theft",
+        "value"
+      ],
+      "used_in_formulas": [
+        "rc-f-007"
+      ],
+      "canonicalName": "Shrink_Reduction_Value",
+      "name": "Shrink Reduction Value"
     }
   ]
 }

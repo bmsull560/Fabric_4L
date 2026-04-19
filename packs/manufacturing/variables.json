@@ -16,7 +16,11 @@
       "source_type": "DERIVED",
       "derivation": {
         "formula": "(Availability * Performance * Quality) / 10000",
-        "components": ["Availability", "Performance", "Quality_Rate"]
+        "components": [
+          "Availability",
+          "Performance",
+          "Quality_Rate"
+        ]
       },
       "source_binding": {
         "system": "MES",
@@ -38,13 +42,22 @@
           "error_message": "OEE change exceeds normal variance"
         }
       ],
-      "tags": ["oee", "efficiency", "kpi", "realtime"],
+      "tags": [
+        "oee",
+        "efficiency",
+        "kpi",
+        "realtime"
+      ],
       "industry_benchmarks": {
         "world_class": 85,
         "average": 60,
         "poor": 40
       },
-      "used_in_formulas": ["mfg-f-001"]
+      "used_in_formulas": [
+        "mfg-f-001"
+      ],
+      "canonicalName": "Current_OEE",
+      "name": "Current OEE Percentage"
     },
     {
       "variable_id": "mfg-var-002",
@@ -75,8 +88,16 @@
           "max": 100
         }
       ],
-      "tags": ["availability", "uptime", "downtime"],
-      "used_in_formulas": ["mfg-f-001"]
+      "tags": [
+        "availability",
+        "uptime",
+        "downtime"
+      ],
+      "used_in_formulas": [
+        "mfg-f-001"
+      ],
+      "canonicalName": "Availability",
+      "name": "Equipment Availability"
     },
     {
       "variable_id": "mfg-var-003",
@@ -109,8 +130,16 @@
           "warning_message": "Performance above 105% may indicate data error"
         }
       ],
-      "tags": ["performance", "speed", "throughput"],
-      "used_in_formulas": ["mfg-f-001"]
+      "tags": [
+        "performance",
+        "speed",
+        "throughput"
+      ],
+      "used_in_formulas": [
+        "mfg-f-001"
+      ],
+      "canonicalName": "Performance",
+      "name": "Equipment Performance"
     },
     {
       "variable_id": "mfg-var-004",
@@ -134,8 +163,17 @@
         "attribute": "quality_rate",
         "refresh_frequency": "hourly"
       },
-      "tags": ["quality", "defects", "fpy"],
-      "used_in_formulas": ["mfg-f-001", "mfg-f-007"]
+      "tags": [
+        "quality",
+        "defects",
+        "fpy"
+      ],
+      "used_in_formulas": [
+        "mfg-f-001",
+        "mfg-f-007"
+      ],
+      "canonicalName": "Quality_Rate",
+      "name": "Quality Rate"
     },
     {
       "variable_id": "mfg-var-005",
@@ -172,8 +210,16 @@
         "average": 40,
         "poor": 100
       },
-      "tags": ["downtime", "maintenance", "reliability"],
-      "used_in_formulas": ["mfg-f-002"]
+      "tags": [
+        "downtime",
+        "maintenance",
+        "reliability"
+      ],
+      "used_in_formulas": [
+        "mfg-f-002"
+      ],
+      "canonicalName": "Average_Downtime_Hours_Per_Month",
+      "name": "Monthly Downtime Hours"
     },
     {
       "variable_id": "mfg-var-006",
@@ -196,8 +242,16 @@
         "attribute": "hourly_value",
         "refresh_frequency": "daily"
       },
-      "tags": ["value", "production", "capacity"],
-      "used_in_formulas": ["mfg-f-002"]
+      "tags": [
+        "value",
+        "production",
+        "capacity"
+      ],
+      "used_in_formulas": [
+        "mfg-f-002"
+      ],
+      "canonicalName": "Hourly_Production_Value",
+      "name": "Hourly Production Value"
     },
     {
       "variable_id": "mfg-var-007",
@@ -227,8 +281,16 @@
         "average": 3.0,
         "poor": 10.0
       },
-      "tags": ["defects", "quality", "scrap"],
-      "used_in_formulas": ["mfg-f-003"]
+      "tags": [
+        "defects",
+        "quality",
+        "scrap"
+      ],
+      "used_in_formulas": [
+        "mfg-f-003"
+      ],
+      "canonicalName": "Defect_Rate",
+      "name": "Defect Rate"
     },
     {
       "variable_id": "mfg-var-008",
@@ -257,8 +319,16 @@
         "average": 95,
         "needs_improvement": 85
       },
-      "tags": ["fpy", "quality", "rework"],
-      "used_in_formulas": ["mfg-f-007"]
+      "tags": [
+        "fpy",
+        "quality",
+        "rework"
+      ],
+      "used_in_formulas": [
+        "mfg-f-007"
+      ],
+      "canonicalName": "First_Pass_Yield",
+      "name": "First Pass Yield"
     },
     {
       "variable_id": "mfg-var-009",
@@ -280,8 +350,16 @@
         "query": "SELECT COUNT(*) FROM work_orders WHERE type='emergency' AND year=current_year",
         "refresh_frequency": "daily"
       },
-      "tags": ["maintenance", "emergency", "reliability"],
-      "used_in_formulas": ["mfg-f-002"]
+      "tags": [
+        "maintenance",
+        "emergency",
+        "reliability"
+      ],
+      "used_in_formulas": [
+        "mfg-f-002"
+      ],
+      "canonicalName": "Annual_Emergency_Repairs",
+      "name": "Annual Emergency Repairs"
     },
     {
       "variable_id": "mfg-var-010",
@@ -301,8 +379,17 @@
         "attribute": "annual_production_value",
         "refresh_frequency": "daily"
       },
-      "tags": ["revenue", "production", "value"],
-      "used_in_formulas": ["mfg-f-001", "mfg-f-006"]
+      "tags": [
+        "revenue",
+        "production",
+        "value"
+      ],
+      "used_in_formulas": [
+        "mfg-f-001",
+        "mfg-f-006"
+      ],
+      "canonicalName": "Annual_Production_Value",
+      "name": "Annual Production Value"
     },
     {
       "variable_id": "mfg-var-011",
@@ -322,8 +409,16 @@
         "attribute": "annual_kwh",
         "refresh_frequency": "hourly"
       },
-      "tags": ["energy", "consumption", "sustainability"],
-      "used_in_formulas": ["mfg-f-004"]
+      "tags": [
+        "energy",
+        "consumption",
+        "sustainability"
+      ],
+      "used_in_formulas": [
+        "mfg-f-004"
+      ],
+      "canonicalName": "Current_Annual_kWh",
+      "name": "Current Annual Energy Use"
     },
     {
       "variable_id": "mfg-var-012",
@@ -345,8 +440,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["predictive-maintenance", "cost", "investment"],
-      "used_in_formulas": ["mfg-f-005"]
+      "tags": [
+        "predictive-maintenance",
+        "cost",
+        "investment"
+      ],
+      "used_in_formulas": [
+        "mfg-f-005"
+      ],
+      "canonicalName": "PdM_Program_Cost",
+      "name": "PdM Program Annual Cost"
     },
     {
       "variable_id": "mfg-var-013",
@@ -373,8 +476,16 @@
         "attribute": "avoided_downtime_value",
         "refresh_frequency": "daily"
       },
-      "tags": ["predictive-maintenance", "value", "avoided-cost"],
-      "used_in_formulas": ["mfg-f-005"]
+      "tags": [
+        "predictive-maintenance",
+        "value",
+        "avoided-cost"
+      ],
+      "used_in_formulas": [
+        "mfg-f-005"
+      ],
+      "canonicalName": "Avoided_Downtime_Value",
+      "name": "Avoided Downtime Value"
     },
     {
       "variable_id": "mfg-var-014",
@@ -399,8 +510,16 @@
         "attribute": "throughput_rate",
         "refresh_frequency": "realtime"
       },
-      "tags": ["throughput", "production", "rate"],
-      "used_in_formulas": ["mfg-f-006"]
+      "tags": [
+        "throughput",
+        "production",
+        "rate"
+      ],
+      "used_in_formulas": [
+        "mfg-f-006"
+      ],
+      "canonicalName": "Throughput_Units_Per_Hour",
+      "name": "Throughput Rate"
     },
     {
       "variable_id": "mfg-var-015",
@@ -423,8 +542,16 @@
         "attribute": "standard_cost",
         "refresh_frequency": "daily"
       },
-      "tags": ["scrap", "cost", "quality"],
-      "used_in_formulas": ["mfg-f-003"]
+      "tags": [
+        "scrap",
+        "cost",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "mfg-f-003"
+      ],
+      "canonicalName": "Scrap_Cost_Per_Unit",
+      "name": "Scrap Cost Per Unit"
     },
     {
       "variable_id": "mfg-var-016",
@@ -433,12 +560,29 @@
       "description": "OEE percentage before improvement initiative began",
       "data_type": "PERCENTAGE",
       "unit_of_measure": "%",
-      "valid_range": { "min": 0, "max": 100 },
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
       "default_value": 60.0,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100 }],
-      "tags": ["oee", "baseline", "reference"],
-      "used_in_formulas": ["mfg-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
+      "tags": [
+        "oee",
+        "baseline",
+        "reference"
+      ],
+      "used_in_formulas": [
+        "mfg-f-001"
+      ],
+      "canonicalName": "Baseline_OEE",
+      "name": "Baseline OEE"
     },
     {
       "variable_id": "mfg-var-017",
@@ -447,7 +591,10 @@
       "description": "Gross margin as percentage of revenue",
       "data_type": "PERCENTAGE",
       "unit_of_measure": "%",
-      "valid_range": { "min": 0, "max": 100 },
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
       "default_value": 25.0,
       "source_type": "LOOKUP",
       "source_binding": {
@@ -456,8 +603,16 @@
         "attribute": "gross_margin_percent",
         "refresh_frequency": "daily"
       },
-      "tags": ["margin", "financial", "profitability"],
-      "used_in_formulas": ["mfg-f-001"]
+      "tags": [
+        "margin",
+        "financial",
+        "profitability"
+      ],
+      "used_in_formulas": [
+        "mfg-f-001"
+      ],
+      "canonicalName": "Margin_Percentage",
+      "name": "Gross Margin Percentage"
     },
     {
       "variable_id": "mfg-var-018",
@@ -466,12 +621,29 @@
       "description": "Annual cost of improvement program including software, hardware, and services",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 500000.0,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100000000 }],
-      "tags": ["cost", "investment", "implementation"],
-      "used_in_formulas": ["mfg-f-001"]
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100000000
+        }
+      ],
+      "tags": [
+        "cost",
+        "investment",
+        "implementation"
+      ],
+      "used_in_formulas": [
+        "mfg-f-001"
+      ],
+      "canonicalName": "Annual_Implementation_Cost",
+      "name": "Annual Implementation Cost"
     },
     {
       "variable_id": "mfg-var-019",
@@ -480,7 +652,10 @@
       "description": "Average cost per emergency repair including parts, labor, and downtime impact",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 1000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 1000000
+      },
       "default_value": 25000.0,
       "source_type": "DERIVED",
       "derivation": {
@@ -493,8 +668,16 @@
         "attribute": "total_cost",
         "refresh_frequency": "daily"
       },
-      "tags": ["maintenance", "emergency", "cost"],
-      "used_in_formulas": ["mfg-f-002"]
+      "tags": [
+        "maintenance",
+        "emergency",
+        "cost"
+      ],
+      "used_in_formulas": [
+        "mfg-f-002"
+      ],
+      "canonicalName": "Avg_Emergency_Repair_Cost",
+      "name": "Average Emergency Repair Cost"
     },
     {
       "variable_id": "mfg-var-020",
@@ -503,7 +686,10 @@
       "description": "Total number of units produced per year",
       "data_type": "INTEGER",
       "unit_of_measure": "units",
-      "valid_range": { "min": 0, "max": 1000000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
       "default_value": 100000,
       "source_type": "LOOKUP",
       "source_binding": {
@@ -512,8 +698,16 @@
         "attribute": "annual_units",
         "refresh_frequency": "daily"
       },
-      "tags": ["production", "volume", "output"],
-      "used_in_formulas": ["mfg-f-003"]
+      "tags": [
+        "production",
+        "volume",
+        "output"
+      ],
+      "used_in_formulas": [
+        "mfg-f-003"
+      ],
+      "canonicalName": "Annual_Units_Produced",
+      "name": "Annual Production Volume"
     },
     {
       "variable_id": "mfg-var-021",
@@ -522,7 +716,10 @@
       "description": "Average cost to rework a defective unit back to spec",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
       "default_value": 30.0,
       "source_type": "DERIVED",
       "derivation": {
@@ -534,8 +731,16 @@
         "attribute": "average_cost",
         "refresh_frequency": "daily"
       },
-      "tags": ["rework", "quality", "cost"],
-      "used_in_formulas": ["mfg-f-003"]
+      "tags": [
+        "rework",
+        "quality",
+        "cost"
+      ],
+      "used_in_formulas": [
+        "mfg-f-003"
+      ],
+      "canonicalName": "Rework_Cost_Per_Unit",
+      "name": "Rework Cost Per Unit"
     },
     {
       "variable_id": "mfg-var-022",
@@ -544,7 +749,10 @@
       "description": "Percentage of defective units that are reworked (vs scrapped)",
       "data_type": "PERCENTAGE",
       "unit_of_measure": "%",
-      "valid_range": { "min": 0, "max": 100 },
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
       "default_value": 60.0,
       "source_type": "LOOKUP",
       "source_binding": {
@@ -553,8 +761,16 @@
         "attribute": "rework_rate",
         "refresh_frequency": "daily"
       },
-      "tags": ["rework", "quality", "rate"],
-      "used_in_formulas": ["mfg-f-003"]
+      "tags": [
+        "rework",
+        "quality",
+        "rate"
+      ],
+      "used_in_formulas": [
+        "mfg-f-003"
+      ],
+      "canonicalName": "Rework_Rate",
+      "name": "Rework Rate"
     },
     {
       "variable_id": "mfg-var-023",
@@ -563,7 +779,10 @@
       "description": "Total annual warranty claims and returns cost",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 100000.0,
       "source_type": "LOOKUP",
       "source_binding": {
@@ -572,8 +791,16 @@
         "attribute": "annual_total",
         "refresh_frequency": "monthly"
       },
-      "tags": ["warranty", "quality", "cost"],
-      "used_in_formulas": ["mfg-f-003"]
+      "tags": [
+        "warranty",
+        "quality",
+        "cost"
+      ],
+      "used_in_formulas": [
+        "mfg-f-003"
+      ],
+      "canonicalName": "Annual_Warranty_Costs",
+      "name": "Annual Warranty Costs"
     },
     {
       "variable_id": "mfg-var-024",
@@ -582,7 +809,10 @@
       "description": "Annual energy consumption before efficiency improvements",
       "data_type": "FLOAT",
       "unit_of_measure": "kWh",
-      "valid_range": { "min": 0, "max": 1000000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
       "default_value": 5000000.0,
       "source_type": "LOOKUP",
       "source_binding": {
@@ -591,8 +821,16 @@
         "attribute": "baseline_annual_kwh",
         "refresh_frequency": "monthly"
       },
-      "tags": ["energy", "baseline", "consumption"],
-      "used_in_formulas": ["mfg-f-004"]
+      "tags": [
+        "energy",
+        "baseline",
+        "consumption"
+      ],
+      "used_in_formulas": [
+        "mfg-f-004"
+      ],
+      "canonicalName": "Baseline_Annual_kWh",
+      "name": "Baseline Annual Energy Use"
     },
     {
       "variable_id": "mfg-var-025",
@@ -601,7 +839,10 @@
       "description": "Cost per kilowatt-hour including generation and delivery",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD/kWh",
-      "valid_range": { "min": 0.01, "max": 1.0 },
+      "valid_range": {
+        "min": 0.01,
+        "max": 1.0
+      },
       "default_value": 0.12,
       "source_type": "LOOKUP",
       "source_binding": {
@@ -610,8 +851,16 @@
         "attribute": "average_rate",
         "refresh_frequency": "monthly"
       },
-      "tags": ["energy", "cost", "utility"],
-      "used_in_formulas": ["mfg-f-004"]
+      "tags": [
+        "energy",
+        "cost",
+        "utility"
+      ],
+      "used_in_formulas": [
+        "mfg-f-004"
+      ],
+      "canonicalName": "Average_kWh_Rate",
+      "name": "Average Electricity Rate"
     },
     {
       "variable_id": "mfg-var-026",
@@ -620,14 +869,25 @@
       "description": "Annual savings from peak demand reduction charges",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 10000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
       "default_value": 0.0,
       "source_type": "DERIVED",
       "derivation": {
         "formula": "Baseline_Peak_kW * Reduction_Percent * Demand_Charge_Rate * 12"
       },
-      "tags": ["energy", "demand", "savings"],
-      "used_in_formulas": ["mfg-f-004"]
+      "tags": [
+        "energy",
+        "demand",
+        "savings"
+      ],
+      "used_in_formulas": [
+        "mfg-f-004"
+      ],
+      "canonicalName": "Peak_Demand_Savings",
+      "name": "Peak Demand Savings"
     },
     {
       "variable_id": "mfg-var-027",
@@ -636,7 +896,10 @@
       "description": "Savings from planned vs emergency maintenance and extended equipment life",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 100000.0,
       "source_type": "DERIVED",
       "derivation": {
@@ -648,8 +911,16 @@
         "attribute": "cost_savings",
         "refresh_frequency": "monthly"
       },
-      "tags": ["maintenance", "savings", "predictive"],
-      "used_in_formulas": ["mfg-f-005"]
+      "tags": [
+        "maintenance",
+        "savings",
+        "predictive"
+      ],
+      "used_in_formulas": [
+        "mfg-f-005"
+      ],
+      "canonicalName": "Maintenance_Cost_Savings",
+      "name": "Maintenance Cost Savings"
     },
     {
       "variable_id": "mfg-var-028",
@@ -658,7 +929,10 @@
       "description": "Extra units produced due to throughput improvements without new equipment",
       "data_type": "INTEGER",
       "unit_of_measure": "units",
-      "valid_range": { "min": 0, "max": 10000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 10000000
+      },
       "default_value": 5000,
       "source_type": "DERIVED",
       "derivation": {
@@ -670,8 +944,16 @@
         "attribute": "additional_capacity",
         "refresh_frequency": "daily"
       },
-      "tags": ["throughput", "capacity", "production"],
-      "used_in_formulas": ["mfg-f-006"]
+      "tags": [
+        "throughput",
+        "capacity",
+        "production"
+      ],
+      "used_in_formulas": [
+        "mfg-f-006"
+      ],
+      "canonicalName": "Additional_Units_Per_Year",
+      "name": "Additional Annual Production"
     },
     {
       "variable_id": "mfg-var-029",
@@ -680,7 +962,10 @@
       "description": "Profit margin per unit sold",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
       "default_value": 100.0,
       "source_type": "DERIVED",
       "derivation": {
@@ -692,8 +977,16 @@
         "attribute": "unit_margin",
         "refresh_frequency": "daily"
       },
-      "tags": ["margin", "profit", "unit-economics"],
-      "used_in_formulas": ["mfg-f-006"]
+      "tags": [
+        "margin",
+        "profit",
+        "unit-economics"
+      ],
+      "used_in_formulas": [
+        "mfg-f-006"
+      ],
+      "canonicalName": "Unit_Margin",
+      "name": "Margin Per Unit"
     },
     {
       "variable_id": "mfg-var-030",
@@ -702,14 +995,25 @@
       "description": "Additional operating costs from higher production (materials, labor, energy)",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000000
+      },
       "default_value": 200000.0,
       "source_type": "DERIVED",
       "derivation": {
         "formula": "Additional_Units * Variable_Cost_Per_Unit"
       },
-      "tags": ["cost", "operating", "variable"],
-      "used_in_formulas": ["mfg-f-006"]
+      "tags": [
+        "cost",
+        "operating",
+        "variable"
+      ],
+      "used_in_formulas": [
+        "mfg-f-006"
+      ],
+      "canonicalName": "Incremental_Operating_Cost",
+      "name": "Incremental Operating Cost"
     },
     {
       "variable_id": "mfg-var-031",
@@ -718,17 +1022,34 @@
       "description": "Target First Pass Yield percentage after quality improvements",
       "data_type": "PERCENTAGE",
       "unit_of_measure": "%",
-      "valid_range": { "min": 0, "max": 100 },
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
       "default_value": 98.0,
       "source_type": "USER_INPUT",
-      "validation_rules": [{ "type": "range", "min": 0, "max": 100 }],
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 100
+        }
+      ],
       "industry_benchmarks": {
         "world_class": 99,
         "average": 95,
         "needs_improvement": 85
       },
-      "tags": ["fpy", "target", "quality"],
-      "used_in_formulas": ["mfg-f-007"]
+      "tags": [
+        "fpy",
+        "target",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "mfg-f-007"
+      ],
+      "canonicalName": "Target_FPY",
+      "name": "Target First Pass Yield"
     },
     {
       "variable_id": "mfg-var-032",
@@ -737,7 +1058,10 @@
       "description": "Current First Pass Yield percentage before improvements",
       "data_type": "PERCENTAGE",
       "unit_of_measure": "%",
-      "valid_range": { "min": 0, "max": 100 },
+      "valid_range": {
+        "min": 0,
+        "max": 100
+      },
       "default_value": 92.0,
       "source_type": "DERIVED",
       "derivation": {
@@ -749,8 +1073,16 @@
         "attribute": "first_pass_yield",
         "refresh_frequency": "hourly"
       },
-      "tags": ["fpy", "current", "quality"],
-      "used_in_formulas": ["mfg-f-007"]
+      "tags": [
+        "fpy",
+        "current",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "mfg-f-007"
+      ],
+      "canonicalName": "Current_FPY",
+      "name": "Current First Pass Yield"
     },
     {
       "variable_id": "mfg-var-033",
@@ -759,14 +1091,25 @@
       "description": "Average cost to rework a unit (alias for Rework_Cost_Per_Unit)",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 100000 },
+      "valid_range": {
+        "min": 0,
+        "max": 100000
+      },
       "default_value": 30.0,
       "source_type": "DERIVED",
       "derivation": {
         "formula": "Rework_Cost_Per_Unit"
       },
-      "tags": ["rework", "cost", "quality"],
-      "used_in_formulas": ["mfg-f-007"]
+      "tags": [
+        "rework",
+        "cost",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "mfg-f-007"
+      ],
+      "canonicalName": "Rework_Cost",
+      "name": "Average Rework Cost"
     },
     {
       "variable_id": "mfg-var-034",
@@ -775,14 +1118,25 @@
       "description": "Savings from reduced inspection requirements due to quality improvements",
       "data_type": "CURRENCY",
       "unit_of_measure": "USD",
-      "valid_range": { "min": 0, "max": 1000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 1000000
+      },
       "default_value": 0.0,
       "source_type": "DERIVED",
       "derivation": {
         "formula": "(Baseline_Inspection_Time - Target_Inspection_Time) * Labor_Rate * Annual_Volume"
       },
-      "tags": ["inspection", "savings", "quality"],
-      "used_in_formulas": ["mfg-f-007"]
+      "tags": [
+        "inspection",
+        "savings",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "mfg-f-007"
+      ],
+      "canonicalName": "Inspection_Cost_Savings",
+      "name": "Inspection Cost Savings"
     },
     {
       "variable_id": "mfg-var-035",
@@ -791,7 +1145,10 @@
       "description": "Total units produced annually (alias for Annual_Units_Produced)",
       "data_type": "INTEGER",
       "unit_of_measure": "units",
-      "valid_range": { "min": 0, "max": 1000000000 },
+      "valid_range": {
+        "min": 0,
+        "max": 1000000000
+      },
       "default_value": 100000,
       "source_type": "LOOKUP",
       "source_binding": {
@@ -800,8 +1157,16 @@
         "attribute": "annual_units",
         "refresh_frequency": "daily"
       },
-      "tags": ["production", "volume", "annual"],
-      "used_in_formulas": ["mfg-f-007"]
+      "tags": [
+        "production",
+        "volume",
+        "annual"
+      ],
+      "used_in_formulas": [
+        "mfg-f-007"
+      ],
+      "canonicalName": "Annual_Units",
+      "name": "Annual Production Units"
     }
   ]
 }

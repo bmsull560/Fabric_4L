@@ -27,8 +27,18 @@
           "max": 10000000000
         }
       ],
-      "tags": ["arr", "revenue", "recurring", "saas"],
-      "used_in_formulas": ["sw-f-002", "sw-f-004"]
+      "tags": [
+        "arr",
+        "revenue",
+        "recurring",
+        "saas"
+      ],
+      "used_in_formulas": [
+        "sw-f-002",
+        "sw-f-004"
+      ],
+      "canonicalName": "ARR",
+      "name": "Annual Recurring Revenue"
     },
     {
       "variable_id": "sw-var-002",
@@ -45,7 +55,10 @@
       "source_type": "DERIVED",
       "derivation": {
         "formula": "Total_Sales_Marketing_Spend / New_Customers_Acquired",
-        "components": ["Total_Sales_Marketing_Spend", "New_Customers_Acquired"]
+        "components": [
+          "Total_Sales_Marketing_Spend",
+          "New_Customers_Acquired"
+        ]
       },
       "source_binding": {
         "system": "CRM",
@@ -65,8 +78,17 @@
         "average": 25000,
         "poor": 50000
       },
-      "tags": ["cac", "acquisition", "cost", "sales"],
-      "used_in_formulas": ["sw-f-001"]
+      "tags": [
+        "cac",
+        "acquisition",
+        "cost",
+        "sales"
+      ],
+      "used_in_formulas": [
+        "sw-f-001"
+      ],
+      "canonicalName": "Current_CAC",
+      "name": "Current Customer Acquisition Cost"
     },
     {
       "variable_id": "sw-var-003",
@@ -88,8 +110,16 @@
           "max": 100000
         }
       ],
-      "tags": ["cac", "target", "acquisition"],
-      "used_in_formulas": ["sw-f-001"]
+      "tags": [
+        "cac",
+        "target",
+        "acquisition"
+      ],
+      "used_in_formulas": [
+        "sw-f-001"
+      ],
+      "canonicalName": "Target_CAC",
+      "name": "Target Customer Acquisition Cost"
     },
     {
       "variable_id": "sw-var-004",
@@ -117,8 +147,16 @@
           "max": 100000
         }
       ],
-      "tags": ["customers", "acquisition", "new-logos"],
-      "used_in_formulas": ["sw-f-001"]
+      "tags": [
+        "customers",
+        "acquisition",
+        "new-logos"
+      ],
+      "used_in_formulas": [
+        "sw-f-001"
+      ],
+      "canonicalName": "New_Customers_Per_Year",
+      "name": "Annual New Customer Acquisition"
     },
     {
       "variable_id": "sw-var-005",
@@ -140,8 +178,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["investment", "program", "cost"],
-      "used_in_formulas": ["sw-f-001"]
+      "tags": [
+        "investment",
+        "program",
+        "cost"
+      ],
+      "used_in_formulas": [
+        "sw-f-001"
+      ],
+      "canonicalName": "Program_Investment",
+      "name": "Program Investment"
     },
     {
       "variable_id": "sw-var-006",
@@ -169,8 +215,16 @@
           "max": 10000000000
         }
       ],
-      "tags": ["arr", "beginning", "revenue"],
-      "used_in_formulas": ["sw-f-002"]
+      "tags": [
+        "arr",
+        "beginning",
+        "revenue"
+      ],
+      "used_in_formulas": [
+        "sw-f-002"
+      ],
+      "canonicalName": "Beginning_ARR",
+      "name": "Beginning Annual Recurring Revenue"
     },
     {
       "variable_id": "sw-var-007",
@@ -207,8 +261,17 @@
         "average": 100,
         "poor": 90
       },
-      "tags": ["nrr", "retention", "expansion", "net-revenue"],
-      "used_in_formulas": ["sw-f-002"]
+      "tags": [
+        "nrr",
+        "retention",
+        "expansion",
+        "net-revenue"
+      ],
+      "used_in_formulas": [
+        "sw-f-002"
+      ],
+      "canonicalName": "Current_NRR",
+      "name": "Current Net Revenue Retention"
     },
     {
       "variable_id": "sw-var-008",
@@ -230,8 +293,16 @@
           "max": 150
         }
       ],
-      "tags": ["nrr", "target", "retention"],
-      "used_in_formulas": ["sw-f-002"]
+      "tags": [
+        "nrr",
+        "target",
+        "retention"
+      ],
+      "used_in_formulas": [
+        "sw-f-002"
+      ],
+      "canonicalName": "Target_NRR",
+      "name": "Target Net Revenue Retention"
     },
     {
       "variable_id": "sw-var-009",
@@ -253,8 +324,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["cost", "implementation", "nrr"],
-      "used_in_formulas": ["sw-f-002"]
+      "tags": [
+        "cost",
+        "implementation",
+        "nrr"
+      ],
+      "used_in_formulas": [
+        "sw-f-002"
+      ],
+      "canonicalName": "Implementation_Cost",
+      "name": "Implementation Cost"
     },
     {
       "variable_id": "sw-var-010",
@@ -282,8 +361,17 @@
           "max": 1000000
         }
       ],
-      "tags": ["customers", "count", "active"],
-      "used_in_formulas": ["sw-f-003", "sw-f-007"]
+      "tags": [
+        "customers",
+        "count",
+        "active"
+      ],
+      "used_in_formulas": [
+        "sw-f-003",
+        "sw-f-007"
+      ],
+      "canonicalName": "Total_Customers",
+      "name": "Total Customer Count"
     },
     {
       "variable_id": "sw-var-011",
@@ -320,8 +408,16 @@
         "average": 12,
         "poor": 20
       },
-      "tags": ["churn", "retention", "rate"],
-      "used_in_formulas": ["sw-f-003"]
+      "tags": [
+        "churn",
+        "retention",
+        "rate"
+      ],
+      "used_in_formulas": [
+        "sw-f-003"
+      ],
+      "canonicalName": "Current_Churn_Rate",
+      "name": "Current Annual Churn Rate"
     },
     {
       "variable_id": "sw-var-012",
@@ -343,8 +439,16 @@
           "max": 50
         }
       ],
-      "tags": ["churn", "target", "retention"],
-      "used_in_formulas": ["sw-f-003"]
+      "tags": [
+        "churn",
+        "target",
+        "retention"
+      ],
+      "used_in_formulas": [
+        "sw-f-003"
+      ],
+      "canonicalName": "Target_Churn_Rate",
+      "name": "Target Annual Churn Rate"
     },
     {
       "variable_id": "sw-var-013",
@@ -375,8 +479,16 @@
           "max": 1000000
         }
       ],
-      "tags": ["acv", "contract", "value"],
-      "used_in_formulas": ["sw-f-003"]
+      "tags": [
+        "acv",
+        "contract",
+        "value"
+      ],
+      "used_in_formulas": [
+        "sw-f-003"
+      ],
+      "canonicalName": "ACV",
+      "name": "Average Contract Value"
     },
     {
       "variable_id": "sw-var-014",
@@ -401,8 +513,16 @@
           "max": 20
         }
       ],
-      "tags": ["lifespan", "tenure", "ltv"],
-      "used_in_formulas": ["sw-f-003"]
+      "tags": [
+        "lifespan",
+        "tenure",
+        "ltv"
+      ],
+      "used_in_formulas": [
+        "sw-f-003"
+      ],
+      "canonicalName": "Avg_Customer_Lifespan_Years",
+      "name": "Average Customer Lifespan"
     },
     {
       "variable_id": "sw-var-015",
@@ -424,8 +544,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["retention", "cost", "programs"],
-      "used_in_formulas": ["sw-f-003"]
+      "tags": [
+        "retention",
+        "cost",
+        "programs"
+      ],
+      "used_in_formulas": [
+        "sw-f-003"
+      ],
+      "canonicalName": "Retention_Program_Cost",
+      "name": "Retention Program Cost"
     },
     {
       "variable_id": "sw-var-016",
@@ -462,8 +590,16 @@
         "average": 70,
         "poor": 55
       },
-      "tags": ["gross-margin", "margin", "profitability"],
-      "used_in_formulas": ["sw-f-004"]
+      "tags": [
+        "gross-margin",
+        "margin",
+        "profitability"
+      ],
+      "used_in_formulas": [
+        "sw-f-004"
+      ],
+      "canonicalName": "Current_Gross_Margin",
+      "name": "Current Gross Margin"
     },
     {
       "variable_id": "sw-var-017",
@@ -485,8 +621,16 @@
           "max": 95
         }
       ],
-      "tags": ["gross-margin", "target", "margin"],
-      "used_in_formulas": ["sw-f-004"]
+      "tags": [
+        "gross-margin",
+        "target",
+        "margin"
+      ],
+      "used_in_formulas": [
+        "sw-f-004"
+      ],
+      "canonicalName": "Target_Gross_Margin",
+      "name": "Target Gross Margin"
     },
     {
       "variable_id": "sw-var-018",
@@ -508,8 +652,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["infrastructure", "investment", "optimization"],
-      "used_in_formulas": ["sw-f-004"]
+      "tags": [
+        "infrastructure",
+        "investment",
+        "optimization"
+      ],
+      "used_in_formulas": [
+        "sw-f-004"
+      ],
+      "canonicalName": "Infrastructure_Investment",
+      "name": "Infrastructure Investment"
     },
     {
       "variable_id": "sw-var-019",
@@ -526,7 +678,9 @@
       "source_type": "DERIVED",
       "derivation": {
         "formula": "Developer_Count * Hours_Saved_Per_Dev_Per_Week * 48",
-        "assumptions": ["48 working weeks per year"]
+        "assumptions": [
+          "48 working weeks per year"
+        ]
       },
       "source_binding": {
         "system": "Analytics",
@@ -541,8 +695,16 @@
           "max": 500000
         }
       ],
-      "tags": ["developer-hours", "productivity", "platform"],
-      "used_in_formulas": ["sw-f-005"]
+      "tags": [
+        "developer-hours",
+        "productivity",
+        "platform"
+      ],
+      "used_in_formulas": [
+        "sw-f-005"
+      ],
+      "canonicalName": "Developer_Hours_Saved_Per_Year",
+      "name": "Annual Developer Hours Saved"
     },
     {
       "variable_id": "sw-var-020",
@@ -570,8 +732,16 @@
           "max": 500
         }
       ],
-      "tags": ["developer-cost", "hourly-rate", "loaded-cost"],
-      "used_in_formulas": ["sw-f-005"]
+      "tags": [
+        "developer-cost",
+        "hourly-rate",
+        "loaded-cost"
+      ],
+      "used_in_formulas": [
+        "sw-f-005"
+      ],
+      "canonicalName": "Fully_Loaded_Hourly_Rate",
+      "name": "Fully Loaded Developer Hourly Rate"
     },
     {
       "variable_id": "sw-var-021",
@@ -588,7 +758,9 @@
       "source_type": "DERIVED",
       "derivation": {
         "formula": "Baseline_Cloud_Spend - Current_Cloud_Spend",
-        "assumptions": ["Assumes workload growth is factored in baseline"]
+        "assumptions": [
+          "Assumes workload growth is factored in baseline"
+        ]
       },
       "source_binding": {
         "system": "Cloud_Billing",
@@ -603,8 +775,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["infrastructure", "savings", "cloud"],
-      "used_in_formulas": ["sw-f-005"]
+      "tags": [
+        "infrastructure",
+        "savings",
+        "cloud"
+      ],
+      "used_in_formulas": [
+        "sw-f-005"
+      ],
+      "canonicalName": "Infrastructure_Savings",
+      "name": "Infrastructure Savings"
     },
     {
       "variable_id": "sw-var-022",
@@ -626,8 +806,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["platform", "investment", "engineering"],
-      "used_in_formulas": ["sw-f-005"]
+      "tags": [
+        "platform",
+        "investment",
+        "engineering"
+      ],
+      "used_in_formulas": [
+        "sw-f-005"
+      ],
+      "canonicalName": "Platform_Investment",
+      "name": "Platform Investment"
     },
     {
       "variable_id": "sw-var-023",
@@ -655,8 +843,16 @@
           "max": 1000000
         }
       ],
-      "tags": ["customers", "ai", "eligible"],
-      "used_in_formulas": ["sw-f-006"]
+      "tags": [
+        "customers",
+        "ai",
+        "eligible"
+      ],
+      "used_in_formulas": [
+        "sw-f-006"
+      ],
+      "canonicalName": "Customer_Base",
+      "name": "Eligible Customer Base"
     },
     {
       "variable_id": "sw-var-024",
@@ -684,8 +880,16 @@
           "max": 100
         }
       ],
-      "tags": ["ai", "adoption", "upsell-rate"],
-      "used_in_formulas": ["sw-f-006"]
+      "tags": [
+        "ai",
+        "adoption",
+        "upsell-rate"
+      ],
+      "used_in_formulas": [
+        "sw-f-006"
+      ],
+      "canonicalName": "AI_Upsell_Rate",
+      "name": "AI Feature Adoption Rate"
     },
     {
       "variable_id": "sw-var-025",
@@ -713,8 +917,16 @@
           "max": 10000
         }
       ],
-      "tags": ["ai", "pricing", "premium"],
-      "used_in_formulas": ["sw-f-006"]
+      "tags": [
+        "ai",
+        "pricing",
+        "premium"
+      ],
+      "used_in_formulas": [
+        "sw-f-006"
+      ],
+      "canonicalName": "AI_Premium_Price_Per_Seat",
+      "name": "AI Premium Price Per Seat"
     },
     {
       "variable_id": "sw-var-026",
@@ -745,8 +957,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["ai", "infrastructure", "cost"],
-      "used_in_formulas": ["sw-f-006"]
+      "tags": [
+        "ai",
+        "infrastructure",
+        "cost"
+      ],
+      "used_in_formulas": [
+        "sw-f-006"
+      ],
+      "canonicalName": "AI_Infrastructure_Annual_Cost",
+      "name": "AI Infrastructure Annual Cost"
     },
     {
       "variable_id": "sw-var-027",
@@ -782,8 +1002,16 @@
         "average": 6,
         "poor": 12
       },
-      "tags": ["support", "tickets", "volume"],
-      "used_in_formulas": ["sw-f-007"]
+      "tags": [
+        "support",
+        "tickets",
+        "volume"
+      ],
+      "used_in_formulas": [
+        "sw-f-007"
+      ],
+      "canonicalName": "Current_Tickets_Per_Customer",
+      "name": "Current Support Tickets Per Customer"
     },
     {
       "variable_id": "sw-var-028",
@@ -805,8 +1033,16 @@
           "max": 100
         }
       ],
-      "tags": ["support", "target", "tickets"],
-      "used_in_formulas": ["sw-f-007"]
+      "tags": [
+        "support",
+        "target",
+        "tickets"
+      ],
+      "used_in_formulas": [
+        "sw-f-007"
+      ],
+      "canonicalName": "Target_Tickets_Per_Customer",
+      "name": "Target Support Tickets Per Customer"
     },
     {
       "variable_id": "sw-var-029",
@@ -837,8 +1073,16 @@
           "max": 500
         }
       ],
-      "tags": ["support", "cost", "ticket"],
-      "used_in_formulas": ["sw-f-007"]
+      "tags": [
+        "support",
+        "cost",
+        "ticket"
+      ],
+      "used_in_formulas": [
+        "sw-f-007"
+      ],
+      "canonicalName": "Cost_Per_Support_Ticket",
+      "name": "Cost Per Support Ticket"
     },
     {
       "variable_id": "sw-var-030",
@@ -860,8 +1104,16 @@
           "max": 5000000
         }
       ],
-      "tags": ["self-service", "investment", "support"],
-      "used_in_formulas": ["sw-f-007"]
+      "tags": [
+        "self-service",
+        "investment",
+        "support"
+      ],
+      "used_in_formulas": [
+        "sw-f-007"
+      ],
+      "canonicalName": "Self_Service_Investment",
+      "name": "Self-Service Investment"
     }
   ]
 }

@@ -152,13 +152,13 @@ async def neo4j_edition(neo4j_driver) -> str:
 @pytest_asyncio.fixture
 async def initialized_schema(
     schema_initializer: SchemaInitializer,
-    neo4j_edition: str,
 ) -> None:
-    """Initialize schema before tests, skipping enterprise features on Community."""
-    # On Community edition, skip drop_existing to avoid issues with constraints
-    # Community edition has some limitations with constraint management
-    is_community = neo4j_edition == "community"
-    await schema_initializer.initialize_schema(drop_existing=not is_community)
+    """Initialize schema before tests.
+
+    The schema initializer now automatically detects Neo4j edition and
+    skips Enterprise-only constraints on Community Edition.
+    """
+    await schema_initializer.initialize_schema(drop_existing=True)
 
 
 @pytest_asyncio.fixture
@@ -224,6 +224,41 @@ class TestSchemaInitialization:
         health = await schema_initializer.health_check()
         assert health["status"] == "healthy"
         assert health["database"] == "neo4j"
+
+    async def test_schema_initialization_detects_community_edition(
+        self,
+        schema_initializer: SchemaInitializer,
+        neo4j_edition: str,
+    ):
+        """Test that schema initialization correctly detects and handles Community Edition.
+
+        This test verifies that:
+        1. Edition is detected correctly
+        2. Community edition skips enterprise-only constraints
+        3. Schema verification passes with correct constraint count
+        """
+        # Initialize schema
+        await schema_initializer.initialize_schema(drop_existing=True)
+
+        # Verify schema
+        results = await schema_initializer.verify_schema()
+
+        # Check edition detection
+        assert results["edition"] == neo4j_edition
+        assert results["enterprise_features"] == (neo4j_edition == "enterprise")
+
+        # Verify constraints match edition expectations
+        if neo4j_edition == "community":
+            # Community should have fewer constraints (no TENANT_CONSTRAINTS)
+            from src.schema.constraints import CONSTRAINTS, TENANT_CONSTRAINTS
+            assert results["constraints"]["expected"] == len(CONSTRAINTS)
+        else:
+            # Enterprise should have all constraints
+            from src.schema.constraints import CONSTRAINTS, TENANT_CONSTRAINTS
+            assert results["constraints"]["expected"] == len(CONSTRAINTS) + len(TENANT_CONSTRAINTS)
+
+        # Schema should be valid
+        assert results["valid"] is True
 
 
 @pytest.mark.asyncio

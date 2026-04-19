@@ -13,6 +13,80 @@ const L3_PREFIX = '/graph';  // Layer 3 routes: /v1/graph/variables, /v1/graph/q
 const L4_PREFIX = '/agents';
 const L2_PREFIX = '/extract';
 
+// ===== Auth Mocks (L4) =====
+
+export const authMocks = [
+  // OIDC Login Initiation
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/:tenantSlug/login`, async ({ params, request }) => {
+    await delay(50);
+    const tenantSlug = params.tenantSlug as string;
+    const url = new URL(request.url);
+    const redirectUri = url.searchParams.get('redirect_uri') || 'http://localhost:3000/login/callback';
+
+    // Return deterministic authorization URL with state
+    return HttpResponse.json({
+      authorization_url: `https://idp.example.com/auth?client_id=test&redirect_uri=${encodeURIComponent(redirectUri)}&state=oidc-state-123`,
+      state: 'oidc-state-123',
+    });
+  }),
+
+  // OIDC Callback - Token Exchange
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/callback`, async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const code = url.searchParams.get('code');
+    const state = url.searchParams.get('state');
+
+    // Simulate error cases for testing
+    if (code === 'invalid-code') {
+      return new HttpResponse(
+        JSON.stringify({ detail: 'Invalid authorization code' }),
+        { status: 400 }
+      );
+    }
+
+    if (code === 'network-error') {
+      return HttpResponse.error();
+    }
+
+    // Return valid TokenResponse matching schema contract
+    return HttpResponse.json({
+      access_token: 'new-access-token',
+      refresh_token: 'refresh-token-123',
+      expires_in: 3600,
+      token_type: 'Bearer',
+      user_id: 'user-456',
+      email: 'newuser@example.com',
+      role: 'advanced',
+    });
+  }),
+
+  // Auth error simulation endpoints for contract testing
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/error-tenant/login`, async () => {
+    await delay(50);
+    return new HttpResponse(
+      JSON.stringify({ detail: 'Tenant not found' }),
+      { status: 404 }
+    );
+  }),
+
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/unauthorized/login`, async () => {
+    await delay(50);
+    return new HttpResponse(
+      JSON.stringify({ detail: 'Unauthorized' }),
+      { status: 401 }
+    );
+  }),
+
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/server-error/login`, async () => {
+    await delay(50);
+    return new HttpResponse(
+      JSON.stringify({ detail: 'Internal server error' }),
+      { status: 500 }
+    );
+  }),
+];
+
 // ===== Workflow Mocks (L4) =====
 
 export const workflowMocks = [
@@ -1272,6 +1346,7 @@ export const errorMocks = [
 // ===== Combine all handlers =====
 
 export const handlers = [
+  ...authMocks,
   ...workflowMocks,
   ...jobStreamMocks,
   ...graphMocks,

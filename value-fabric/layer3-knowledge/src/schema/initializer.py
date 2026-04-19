@@ -13,7 +13,7 @@ from neo4j.exceptions import (
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
-from .constraints import CONSTRAINTS, INDEXES
+from .constraints import CONSTRAINTS, INDEXES, TENANT_CONSTRAINTS
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +33,7 @@ class SchemaInitializer:
         self.settings = settings or get_settings()
         self._driver = driver
         self._owned_driver = driver is None
+        self._edition: str | None = None
 
     async def _get_driver(self) -> AsyncDriver:
         """Get or create Neo4j driver via the shared singleton factory."""
@@ -46,6 +47,53 @@ class SchemaInitializer:
             await self._driver.close()
             self._driver = None
 
+    async def _detect_edition(self, session) -> str:
+        """Detect Neo4j edition (community or enterprise).
+
+        Args:
+            session: Neo4j session
+
+        Returns:
+            Edition string: "community", "enterprise", or "unknown"
+        """
+        try:
+            result = await session.run("CALL dbms.components() YIELD edition RETURN edition")
+            record = await result.single()
+            edition = record["edition"].lower() if record else "unknown"
+            return edition
+        except Exception as e:
+            logger.warning(f"Failed to detect Neo4j edition, assuming community: {e}")
+            return "community"
+
+    def _is_enterprise(self, edition: str | None = None) -> bool:
+        """Check if running on Neo4j Enterprise Edition.
+
+        Args:
+            edition: Edition string. If None, uses cached edition from detection.
+
+        Returns:
+            True if Enterprise Edition, False otherwise
+        """
+        ed = edition or self._edition or "community"
+        return ed == "enterprise"
+
+    def _get_constraints_for_edition(self, edition: str | None = None) -> list:
+        """Get constraints appropriate for the Neo4j edition.
+
+        Args:
+            edition: Edition string. If None, uses cached edition.
+
+        Returns:
+            List of constraints to create for this edition
+        """
+        ed = edition or self._edition or "community"
+        if ed == "enterprise":
+            # Enterprise gets all constraints including property existence
+            return CONSTRAINTS + TENANT_CONSTRAINTS
+        else:
+            # Community only gets basic unique constraints
+            return CONSTRAINTS
+
     async def initialize_schema(self, drop_existing: bool = False) -> None:
         """Initialize all schema elements.
 
@@ -55,6 +103,15 @@ class SchemaInitializer:
         driver = await self._get_driver()
 
         async with driver.session(database=self.settings.neo4j_database) as session:
+            # Detect edition first
+            self._edition = await self._detect_edition(session)
+            is_enterprise = self._is_enterprise(self._edition)
+
+            if is_enterprise:
+                logger.info("Neo4j Enterprise Edition detected - will create all constraints")
+            else:
+                logger.info(f"Neo4j {self._edition.capitalize()} Edition detected - skipping Enterprise-only constraints")
+
             if drop_existing:
                 await self._drop_all_constraints_and_indexes(session)
 
@@ -67,8 +124,11 @@ class SchemaInitializer:
             logger.info("Schema initialization complete")
 
     async def _create_constraints(self, session) -> None:
-        """Create all schema constraints."""
-        for constraint in CONSTRAINTS:
+        """Create all schema constraints appropriate for the Neo4j edition."""
+        constraints = self._get_constraints_for_edition(self._edition)
+        skipped = []
+
+        for constraint in constraints:
             try:
                 await session.run(constraint.cypher)
                 logger.info(f"Created constraint: {constraint.name}")
@@ -95,6 +155,11 @@ class SchemaInitializer:
                     f"Unexpected error creating constraint {constraint.name}: {e}"
                 )
                 raise
+
+        # Log skipped enterprise constraints
+        if not self._is_enterprise() and TENANT_CONSTRAINTS:
+            skipped_names = [c.name for c in TENANT_CONSTRAINTS]
+            logger.info(f"Skipped Enterprise-only constraints: {skipped_names}")
 
     async def _create_indexes(self, session) -> None:
         """Create all schema indexes."""
@@ -148,8 +213,15 @@ class SchemaInitializer:
 
     async def _drop_all_constraints_and_indexes(self, session) -> None:
         """Drop all existing constraints and indexes."""
+        # Detect edition if not already cached
+        if self._edition is None:
+            self._edition = await self._detect_edition(session)
+
+        # Get all constraints for this edition (including enterprise if applicable)
+        constraints_to_drop = self._get_constraints_for_edition(self._edition)
+
         # Drop constraints
-        for constraint in CONSTRAINTS:
+        for constraint in constraints_to_drop:
             try:
                 await session.run(constraint.drop_cypher)
                 logger.info(f"Dropped constraint: {constraint.name}")
@@ -201,19 +273,28 @@ class SchemaInitializer:
             Dictionary with verification results.
         """
         driver = await self._get_driver()
-        results = {
-            "constraints": {"expected": len(CONSTRAINTS), "found": 0, "missing": []},
-            "indexes": {"expected": len(INDEXES), "found": 0, "missing": []},
-        }
 
         async with driver.session(database=self.settings.neo4j_database) as session:
+            # Detect edition if not already cached
+            if self._edition is None:
+                self._edition = await self._detect_edition(session)
+
+            expected_constraints = self._get_constraints_for_edition(self._edition)
+
+            results = {
+                "constraints": {"expected": len(expected_constraints), "found": 0, "missing": []},
+                "indexes": {"expected": len(INDEXES), "found": 0, "missing": []},
+                "edition": self._edition,
+                "enterprise_features": self._is_enterprise(),
+            }
+
             # Check constraints
             constraint_records = await session.run("SHOW CONSTRAINTS YIELD name")
             existing_constraints = [
                 record["name"] async for record in constraint_records
             ]
 
-            for constraint in CONSTRAINTS:
+            for constraint in expected_constraints:
                 if constraint.name in existing_constraints:
                     results["constraints"]["found"] += 1
                 else:

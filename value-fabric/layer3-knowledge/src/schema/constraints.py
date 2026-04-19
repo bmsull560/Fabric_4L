@@ -394,3 +394,25 @@ def get_entity_types() -> list[str]:
 def get_relationship_types() -> list[str]:
     """Get all relationship types in the ontology."""
     return RELATIONSHIP_TYPES
+
+
+def get_constraints_for_edition(edition: str = "community") -> list[Constraint]:
+    """Get constraints appropriate for the Neo4j edition.
+
+    This helper allows external code to check which constraints will be
+    created based on the detected Neo4j edition.
+
+    Args:
+        edition: Neo4j edition string ("community", "enterprise", etc.)
+
+    Returns:
+        List of constraints that will be created for this edition.
+        Enterprise Edition gets all constraints including property existence.
+        Community Edition gets only unique constraints.
+    """
+    edition_lower = edition.lower()
+    if edition_lower == "enterprise":
+        return CONSTRAINTS + TENANT_CONSTRAINTS
+    else:
+        # Community and unknown editions get only Community-compatible constraints
+        return CONSTRAINTS

@@ -26,8 +26,16 @@
         "typical": 25000000,
         "low": 5000000
       },
-      "tags": ["fraud", "loss-prevention", "risk"],
-      "used_in_formulas": ["fs-f-001"]
+      "tags": [
+        "fraud",
+        "loss-prevention",
+        "risk"
+      ],
+      "used_in_formulas": [
+        "fs-f-001"
+      ],
+      "canonicalName": "Avoided_Fraud_Losses",
+      "name": "Avoided Fraud Losses"
     },
     {
       "variable_id": "fs-var-002",
@@ -49,8 +57,16 @@
           "max": 20000000
         }
       ],
-      "tags": ["fraud", "false-positives", "efficiency"],
-      "used_in_formulas": ["fs-f-001"]
+      "tags": [
+        "fraud",
+        "false-positives",
+        "efficiency"
+      ],
+      "used_in_formulas": [
+        "fs-f-001"
+      ],
+      "canonicalName": "False_Positive_Savings",
+      "name": "False Positive Reduction Savings"
     },
     {
       "variable_id": "fs-var-003",
@@ -72,8 +88,16 @@
           "max": 50000000
         }
       ],
-      "tags": ["cost", "investment", "platform"],
-      "used_in_formulas": ["fs-f-001"]
+      "tags": [
+        "cost",
+        "investment",
+        "platform"
+      ],
+      "used_in_formulas": [
+        "fs-f-001"
+      ],
+      "canonicalName": "AI_Platform_Cost",
+      "name": "AI Platform Annual Cost"
     },
     {
       "variable_id": "fs-var-004",
@@ -95,8 +119,16 @@
           "max": 50000
         }
       ],
-      "tags": ["customers", "acquisition", "onboarding"],
-      "used_in_formulas": ["fs-f-002"]
+      "tags": [
+        "customers",
+        "acquisition",
+        "onboarding"
+      ],
+      "used_in_formulas": [
+        "fs-f-002"
+      ],
+      "canonicalName": "Additional_Customers_Acquired",
+      "name": "Additional Customers Acquired"
     },
     {
       "variable_id": "fs-var-005",
@@ -118,8 +150,16 @@
           "max": 10000
         }
       ],
-      "tags": ["revenue", "customers", "unit-economics"],
-      "used_in_formulas": ["fs-f-002"]
+      "tags": [
+        "revenue",
+        "customers",
+        "unit-economics"
+      ],
+      "used_in_formulas": [
+        "fs-f-002"
+      ],
+      "canonicalName": "First_Year_Revenue_Per_Customer",
+      "name": "First Year Revenue Per Customer"
     },
     {
       "variable_id": "fs-var-006",
@@ -141,8 +181,17 @@
           "max": 20000000
         }
       ],
-      "tags": ["savings", "operations", "efficiency"],
-      "used_in_formulas": ["fs-f-001", "fs-f-002"]
+      "tags": [
+        "savings",
+        "operations",
+        "efficiency"
+      ],
+      "used_in_formulas": [
+        "fs-f-001",
+        "fs-f-002"
+      ],
+      "canonicalName": "Operational_Savings",
+      "name": "Operational Cost Savings"
     },
     {
       "variable_id": "fs-var-007",
@@ -175,8 +224,16 @@
         "subprime": 0.08,
         "deep_subprime": 0.15
       },
-      "tags": ["credit", "default", "risk"],
-      "used_in_formulas": ["fs-f-003"]
+      "tags": [
+        "credit",
+        "default",
+        "risk"
+      ],
+      "used_in_formulas": [
+        "fs-f-003"
+      ],
+      "canonicalName": "Baseline_Default_Rate",
+      "name": "Baseline Default Rate"
     },
     {
       "variable_id": "fs-var-008",
@@ -198,8 +255,16 @@
           "max": 0.2
         }
       ],
-      "tags": ["credit", "default", "target"],
-      "used_in_formulas": ["fs-f-003"]
+      "tags": [
+        "credit",
+        "default",
+        "target"
+      ],
+      "used_in_formulas": [
+        "fs-f-003"
+      ],
+      "canonicalName": "Target_Default_Rate",
+      "name": "Target Default Rate"
     },
     {
       "variable_id": "fs-var-009",
@@ -227,8 +292,16 @@
           "max": 100000000000
         }
       ],
-      "tags": ["portfolio", "loans", "value"],
-      "used_in_formulas": ["fs-f-003"]
+      "tags": [
+        "portfolio",
+        "loans",
+        "value"
+      ],
+      "used_in_formulas": [
+        "fs-f-003"
+      ],
+      "canonicalName": "Loan_Portfolio_Value",
+      "name": "Loan Portfolio Value"
     },
     {
       "variable_id": "fs-var-010",
@@ -250,8 +323,16 @@
           "max": 20000000
         }
       ],
-      "tags": ["compliance", "fte", "savings"],
-      "used_in_formulas": ["fs-f-004"]
+      "tags": [
+        "compliance",
+        "fte",
+        "savings"
+      ],
+      "used_in_formulas": [
+        "fs-f-004"
+      ],
+      "canonicalName": "FTE_Cost_Savings",
+      "name": "FTE Cost Savings"
     },
     {
       "variable_id": "fs-var-011",
@@ -273,8 +354,16 @@
           "max": 15000000
         }
       ],
-      "tags": ["compliance", "reporting", "velocity"],
-      "used_in_formulas": ["fs-f-004"]
+      "tags": [
+        "compliance",
+        "reporting",
+        "velocity"
+      ],
+      "used_in_formulas": [
+        "fs-f-004"
+      ],
+      "canonicalName": "Report_Acceleration_Value",
+      "name": "Report Acceleration Value"
     },
     {
       "variable_id": "fs-var-012",
@@ -296,8 +385,16 @@
           "max": 500
         }
       ],
-      "tags": ["personalization", "revenue", "segments"],
-      "used_in_formulas": ["fs-f-005"]
+      "tags": [
+        "personalization",
+        "revenue",
+        "segments"
+      ],
+      "used_in_formulas": [
+        "fs-f-005"
+      ],
+      "canonicalName": "Revenue_Per_Segment",
+      "name": "Revenue Per Customer Segment"
     },
     {
       "variable_id": "fs-var-013",
@@ -319,8 +416,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["personalization", "segments", "population"],
-      "used_in_formulas": ["fs-f-005"]
+      "tags": [
+        "personalization",
+        "segments",
+        "population"
+      ],
+      "used_in_formulas": [
+        "fs-f-005"
+      ],
+      "canonicalName": "Segment_Population",
+      "name": "Target Segment Population"
     },
     {
       "variable_id": "fs-var-014",
@@ -348,8 +453,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["trading", "volume", "operations"],
-      "used_in_formulas": ["fs-f-006"]
+      "tags": [
+        "trading",
+        "volume",
+        "operations"
+      ],
+      "used_in_formulas": [
+        "fs-f-006"
+      ],
+      "canonicalName": "Daily_Trade_Volume",
+      "name": "Daily Trade Volume"
     },
     {
       "variable_id": "fs-var-015",
@@ -371,8 +484,16 @@
           "max": 0.5
         }
       ],
-      "tags": ["settlement", "efficiency", "operations"],
-      "used_in_formulas": ["fs-f-006"]
+      "tags": [
+        "settlement",
+        "efficiency",
+        "operations"
+      ],
+      "used_in_formulas": [
+        "fs-f-006"
+      ],
+      "canonicalName": "Settlement_Efficiency_Gain",
+      "name": "Settlement Efficiency Gain"
     },
     {
       "variable_id": "fs-var-016",
@@ -400,8 +521,16 @@
           "max": 10000
         }
       ],
-      "tags": ["advisors", "wealth", "headcount"],
-      "used_in_formulas": ["fs-f-007"]
+      "tags": [
+        "advisors",
+        "wealth",
+        "headcount"
+      ],
+      "used_in_formulas": [
+        "fs-f-007"
+      ],
+      "canonicalName": "Current_Advisors",
+      "name": "Current Number of Advisors"
     },
     {
       "variable_id": "fs-var-017",
@@ -423,8 +552,16 @@
           "max": 100
         }
       ],
-      "tags": ["advisors", "capacity", "productivity"],
-      "used_in_formulas": ["fs-f-007"]
+      "tags": [
+        "advisors",
+        "capacity",
+        "productivity"
+      ],
+      "used_in_formulas": [
+        "fs-f-007"
+      ],
+      "canonicalName": "Advisor_Capacity_Increase",
+      "name": "Advisor Capacity Increase"
     },
     {
       "variable_id": "fs-var-018",
@@ -446,8 +583,48 @@
           "max": 50000
         }
       ],
-      "tags": ["revenue", "clients", "wealth"],
-      "used_in_formulas": ["fs-f-007"]
+      "tags": [
+        "revenue",
+        "clients",
+        "wealth"
+      ],
+      "used_in_formulas": [
+        "fs-f-007"
+      ],
+      "canonicalName": "Revenue_Per_Client",
+      "name": "Revenue Per Client"
+    },
+    {
+      "variable_id": "fs-var-019",
+      "variable_name": "Digital_Onboarding_Investment",
+      "display_name": "Digital Onboarding Platform Investment",
+      "description": "Annual investment in digital onboarding platform and operations",
+      "data_type": "CURRENCY",
+      "unit_of_measure": "USD",
+      "valid_range": {
+        "min": 0,
+        "max": 50000000
+      },
+      "default_value": 8000000,
+      "source_type": "USER_INPUT",
+      "validation_rules": [
+        {
+          "type": "range",
+          "min": 0,
+          "max": 50000000
+        }
+      ],
+      "tags": [
+        "onboarding",
+        "investment",
+        "digital",
+        "platform"
+      ],
+      "used_in_formulas": [
+        "fs-f-002"
+      ],
+      "canonicalName": "Digital_Onboarding_Investment",
+      "name": "Digital Onboarding Platform Investment"
     }
   ]
 }

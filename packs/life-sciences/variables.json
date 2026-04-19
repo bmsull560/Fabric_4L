@@ -32,8 +32,16 @@
         "average": 72,
         "slow": 108
       },
-      "tags": ["timeline", "development", "time-to-market"],
-      "used_in_formulas": ["ls-f-001"]
+      "tags": [
+        "timeline",
+        "development",
+        "time-to-market"
+      ],
+      "used_in_formulas": [
+        "ls-f-001"
+      ],
+      "canonicalName": "Current_Timeline_Months",
+      "name": "Current Development Timeline"
     },
     {
       "variable_id": "ls-var-002",
@@ -55,8 +63,16 @@
           "max": 180
         }
       ],
-      "tags": ["timeline", "target", "acceleration"],
-      "used_in_formulas": ["ls-f-001"]
+      "tags": [
+        "timeline",
+        "target",
+        "acceleration"
+      ],
+      "used_in_formulas": [
+        "ls-f-001"
+      ],
+      "canonicalName": "Target_Timeline_Months",
+      "name": "Target Development Timeline"
     },
     {
       "variable_id": "ls-var-003",
@@ -84,8 +100,17 @@
           "max": 10000000000
         }
       ],
-      "tags": ["revenue", "forecast", "peak"],
-      "used_in_formulas": ["ls-f-001", "ls-f-004"]
+      "tags": [
+        "revenue",
+        "forecast",
+        "peak"
+      ],
+      "used_in_formulas": [
+        "ls-f-001",
+        "ls-f-004"
+      ],
+      "canonicalName": "Peak_Annual_Revenue",
+      "name": "Peak Annual Revenue Forecast"
     },
     {
       "variable_id": "ls-var-004",
@@ -107,8 +132,16 @@
           "max": 1.0
         }
       ],
-      "tags": ["npv", "discount", "finance"],
-      "used_in_formulas": ["ls-f-001"]
+      "tags": [
+        "npv",
+        "discount",
+        "finance"
+      ],
+      "used_in_formulas": [
+        "ls-f-001"
+      ],
+      "canonicalName": "NPV_Discount_Factor",
+      "name": "NPV Discount Factor"
     },
     {
       "variable_id": "ls-var-005",
@@ -130,8 +163,16 @@
           "max": 100000000
         }
       ],
-      "tags": ["acceleration", "cost", "investment"],
-      "used_in_formulas": ["ls-f-001"]
+      "tags": [
+        "acceleration",
+        "cost",
+        "investment"
+      ],
+      "used_in_formulas": [
+        "ls-f-001"
+      ],
+      "canonicalName": "Acceleration_Program_Cost",
+      "name": "Timeline Acceleration Program Cost"
     },
     {
       "variable_id": "ls-var-006",
@@ -167,8 +208,16 @@
         "average": 30000,
         "expensive": 50000
       },
-      "tags": ["recruitment", "cost", "patient"],
-      "used_in_formulas": ["ls-f-002"]
+      "tags": [
+        "recruitment",
+        "cost",
+        "patient"
+      ],
+      "used_in_formulas": [
+        "ls-f-002"
+      ],
+      "canonicalName": "Current_Cost_Per_Patient",
+      "name": "Current Recruitment Cost Per Patient"
     },
     {
       "variable_id": "ls-var-007",
@@ -190,8 +239,16 @@
           "max": 100000
         }
       ],
-      "tags": ["recruitment", "target", "cost"],
-      "used_in_formulas": ["ls-f-002"]
+      "tags": [
+        "recruitment",
+        "target",
+        "cost"
+      ],
+      "used_in_formulas": [
+        "ls-f-002"
+      ],
+      "canonicalName": "Target_Cost_Per_Patient",
+      "name": "Target Recruitment Cost Per Patient"
     },
     {
       "variable_id": "ls-var-008",
@@ -219,8 +276,16 @@
           "max": 100000
         }
       ],
-      "tags": ["patients", "enrollment", "required"],
-      "used_in_formulas": ["ls-f-002"]
+      "tags": [
+        "patients",
+        "enrollment",
+        "required"
+      ],
+      "used_in_formulas": [
+        "ls-f-002"
+      ],
+      "canonicalName": "Required_Patients",
+      "name": "Total Required Patient Enrollment"
     },
     {
       "variable_id": "ls-var-009",
@@ -242,8 +307,16 @@
           "max": 20000000
         }
       ],
-      "tags": ["recruitment", "digital", "investment"],
-      "used_in_formulas": ["ls-f-002"]
+      "tags": [
+        "recruitment",
+        "digital",
+        "investment"
+      ],
+      "used_in_formulas": [
+        "ls-f-002"
+      ],
+      "canonicalName": "Digital_Recruitment_Investment",
+      "name": "Digital Recruitment Investment"
     },
     {
       "variable_id": "ls-var-010",
@@ -276,8 +349,16 @@
         "average": 15,
         "poor": 8
       },
-      "tags": ["success-rate", "probability", "pos"],
-      "used_in_formulas": ["ls-f-003"]
+      "tags": [
+        "success-rate",
+        "probability",
+        "pos"
+      ],
+      "used_in_formulas": [
+        "ls-f-003"
+      ],
+      "canonicalName": "Baseline_Success_Rate",
+      "name": "Baseline Probability of Success"
     },
     {
       "variable_id": "ls-var-011",
@@ -299,8 +380,16 @@
           "max": 60
         }
       ],
-      "tags": ["success-rate", "improved", "target"],
-      "used_in_formulas": ["ls-f-003"]
+      "tags": [
+        "success-rate",
+        "improved",
+        "target"
+      ],
+      "used_in_formulas": [
+        "ls-f-003"
+      ],
+      "canonicalName": "Improved_Success_Rate",
+      "name": "Improved Probability of Success"
     },
     {
       "variable_id": "ls-var-012",
@@ -327,8 +416,16 @@
           "max": 100000000000
         }
       ],
-      "tags": ["pipeline", "npv", "risk-adjusted"],
-      "used_in_formulas": ["ls-f-003"]
+      "tags": [
+        "pipeline",
+        "npv",
+        "risk-adjusted"
+      ],
+      "used_in_formulas": [
+        "ls-f-003"
+      ],
+      "canonicalName": "Pipeline_Risk_Adjusted_NPV",
+      "name": "Pipeline Risk-Adjusted NPV"
     },
     {
       "variable_id": "ls-var-013",
@@ -350,8 +447,16 @@
           "max": 500000000
         }
       ],
-      "tags": ["rd", "investment", "analytics"],
-      "used_in_formulas": ["ls-f-003"]
+      "tags": [
+        "rd",
+        "investment",
+        "analytics"
+      ],
+      "used_in_formulas": [
+        "ls-f-003"
+      ],
+      "canonicalName": "Additional_R&D_Investment",
+      "name": "Additional R&D Investment"
     },
     {
       "variable_id": "ls-var-014",
@@ -379,8 +484,16 @@
           "max": 36
         }
       ],
-      "tags": ["regulatory", "review", "baseline"],
-      "used_in_formulas": ["ls-f-004"]
+      "tags": [
+        "regulatory",
+        "review",
+        "baseline"
+      ],
+      "used_in_formulas": [
+        "ls-f-004"
+      ],
+      "canonicalName": "Baseline_Review_Months",
+      "name": "Baseline Regulatory Review Time"
     },
     {
       "variable_id": "ls-var-015",
@@ -402,8 +515,16 @@
           "max": 36
         }
       ],
-      "tags": ["regulatory", "review", "target"],
-      "used_in_formulas": ["ls-f-004"]
+      "tags": [
+        "regulatory",
+        "review",
+        "target"
+      ],
+      "used_in_formulas": [
+        "ls-f-004"
+      ],
+      "canonicalName": "Target_Review_Months",
+      "name": "Target Regulatory Review Time"
     },
     {
       "variable_id": "ls-var-016",
@@ -425,8 +546,16 @@
           "max": 1.0
         }
       ],
-      "tags": ["npv", "factor", "discount"],
-      "used_in_formulas": ["ls-f-004"]
+      "tags": [
+        "npv",
+        "factor",
+        "discount"
+      ],
+      "used_in_formulas": [
+        "ls-f-004"
+      ],
+      "canonicalName": "NPV_Factor",
+      "name": "NPV Discount Factor"
     },
     {
       "variable_id": "ls-var-017",
@@ -451,8 +580,16 @@
           "max": 10000000
         }
       ],
-      "tags": ["fte", "savings", "efficiency"],
-      "used_in_formulas": ["ls-f-004"]
+      "tags": [
+        "fte",
+        "savings",
+        "efficiency"
+      ],
+      "used_in_formulas": [
+        "ls-f-004"
+      ],
+      "canonicalName": "FTE_Efficiency_Savings",
+      "name": "FTE Efficiency Savings"
     },
     {
       "variable_id": "ls-var-018",
@@ -474,8 +611,16 @@
           "max": 50000000
         }
       ],
-      "tags": ["ectd", "regulatory", "investment"],
-      "used_in_formulas": ["ls-f-004"]
+      "tags": [
+        "ectd",
+        "regulatory",
+        "investment"
+      ],
+      "used_in_formulas": [
+        "ls-f-004"
+      ],
+      "canonicalName": "eCTD_Investment",
+      "name": "eCTD and Regulatory Systems Investment"
     },
     {
       "variable_id": "ls-var-019",
@@ -511,8 +656,16 @@
         "good": 85,
         "average": 75
       },
-      "tags": ["yield", "manufacturing", "batch"],
-      "used_in_formulas": ["ls-f-005"]
+      "tags": [
+        "yield",
+        "manufacturing",
+        "batch"
+      ],
+      "used_in_formulas": [
+        "ls-f-005"
+      ],
+      "canonicalName": "Current_Yield_Percent",
+      "name": "Current Manufacturing Yield"
     },
     {
       "variable_id": "ls-var-020",
@@ -534,8 +687,16 @@
           "max": 99
         }
       ],
-      "tags": ["yield", "target", "manufacturing"],
-      "used_in_formulas": ["ls-f-005"]
+      "tags": [
+        "yield",
+        "target",
+        "manufacturing"
+      ],
+      "used_in_formulas": [
+        "ls-f-005"
+      ],
+      "canonicalName": "Target_Yield_Percent",
+      "name": "Target Manufacturing Yield"
     },
     {
       "variable_id": "ls-var-021",
@@ -563,8 +724,17 @@
           "max": 10000
         }
       ],
-      "tags": ["batches", "annual", "production"],
-      "used_in_formulas": ["ls-f-005", "ls-f-006"]
+      "tags": [
+        "batches",
+        "annual",
+        "production"
+      ],
+      "used_in_formulas": [
+        "ls-f-005",
+        "ls-f-006"
+      ],
+      "canonicalName": "Annual_Batch_Count",
+      "name": "Annual Batch Count"
     },
     {
       "variable_id": "ls-var-022",
@@ -595,8 +765,16 @@
           "max": 100000000
         }
       ],
-      "tags": ["batch", "value", "revenue"],
-      "used_in_formulas": ["ls-f-005"]
+      "tags": [
+        "batch",
+        "value",
+        "revenue"
+      ],
+      "used_in_formulas": [
+        "ls-f-005"
+      ],
+      "canonicalName": "Batch_Product_Value",
+      "name": "Value Per Successful Batch"
     },
     {
       "variable_id": "ls-var-023",
@@ -618,8 +796,16 @@
           "max": 50000000
         }
       ],
-      "tags": ["process", "optimization", "investment"],
-      "used_in_formulas": ["ls-f-005"]
+      "tags": [
+        "process",
+        "optimization",
+        "investment"
+      ],
+      "used_in_formulas": [
+        "ls-f-005"
+      ],
+      "canonicalName": "Process_Optimization_Investment",
+      "name": "Process Optimization Investment"
     },
     {
       "variable_id": "ls-var-024",
@@ -655,8 +841,16 @@
         "average": 8,
         "poor": 15
       },
-      "tags": ["deviation", "rate", "quality"],
-      "used_in_formulas": ["ls-f-006"]
+      "tags": [
+        "deviation",
+        "rate",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "ls-f-006"
+      ],
+      "canonicalName": "Current_Deviation_Rate",
+      "name": "Current Deviation Rate"
     },
     {
       "variable_id": "ls-var-025",
@@ -678,8 +872,16 @@
           "max": 50
         }
       ],
-      "tags": ["deviation", "target", "quality"],
-      "used_in_formulas": ["ls-f-006"]
+      "tags": [
+        "deviation",
+        "target",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "ls-f-006"
+      ],
+      "canonicalName": "Target_Deviation_Rate",
+      "name": "Target Deviation Rate"
     },
     {
       "variable_id": "ls-var-026",
@@ -710,8 +912,16 @@
           "max": 500000
         }
       ],
-      "tags": ["investigation", "cost", "quality"],
-      "used_in_formulas": ["ls-f-006"]
+      "tags": [
+        "investigation",
+        "cost",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "ls-f-006"
+      ],
+      "canonicalName": "Avg_Investigation_Cost",
+      "name": "Average Investigation Cost"
     },
     {
       "variable_id": "ls-var-027",
@@ -733,8 +943,16 @@
           "max": 10
         }
       ],
-      "tags": ["recall", "probability", "risk"],
-      "used_in_formulas": ["ls-f-006"]
+      "tags": [
+        "recall",
+        "probability",
+        "risk"
+      ],
+      "used_in_formulas": [
+        "ls-f-006"
+      ],
+      "canonicalName": "Avoided_Recall_Probability",
+      "name": "Avoided Recall Probability"
     },
     {
       "variable_id": "ls-var-028",
@@ -765,8 +983,16 @@
           "max": 1000000000
         }
       ],
-      "tags": ["recall", "cost", "risk"],
-      "used_in_formulas": ["ls-f-006"]
+      "tags": [
+        "recall",
+        "cost",
+        "risk"
+      ],
+      "used_in_formulas": [
+        "ls-f-006"
+      ],
+      "canonicalName": "Potential_Recall_Cost",
+      "name": "Potential Recall Cost"
     },
     {
       "variable_id": "ls-var-029",
@@ -788,8 +1014,16 @@
           "max": 50000000
         }
       ],
-      "tags": ["qms", "investment", "quality"],
-      "used_in_formulas": ["ls-f-006"]
+      "tags": [
+        "qms",
+        "investment",
+        "quality"
+      ],
+      "used_in_formulas": [
+        "ls-f-006"
+      ],
+      "canonicalName": "QMS_Investment",
+      "name": "QMS Investment"
     },
     {
       "variable_id": "ls-var-030",
@@ -817,8 +1051,16 @@
           "max": 1000000000
         }
       ],
-      "tags": ["label", "expansion", "npv"],
-      "used_in_formulas": ["ls-f-007"]
+      "tags": [
+        "label",
+        "expansion",
+        "npv"
+      ],
+      "used_in_formulas": [
+        "ls-f-007"
+      ],
+      "canonicalName": "Label_Expansion_NPV",
+      "name": "Label Expansion NPV"
     },
     {
       "variable_id": "ls-var-031",
@@ -840,8 +1082,16 @@
           "max": 100
         }
       ],
-      "tags": ["rwe", "success", "probability"],
-      "used_in_formulas": ["ls-f-007"]
+      "tags": [
+        "rwe",
+        "success",
+        "probability"
+      ],
+      "used_in_formulas": [
+        "ls-f-007"
+      ],
+      "canonicalName": "RWE_Success_Probability",
+      "name": "RWE Success Probability"
     },
     {
       "variable_id": "ls-var-032",
@@ -863,8 +1113,16 @@
           "max": 500000000
         }
       ],
-      "tags": ["hta", "value", "reimbursement"],
-      "used_in_formulas": ["ls-f-007"]
+      "tags": [
+        "hta",
+        "value",
+        "reimbursement"
+      ],
+      "used_in_formulas": [
+        "ls-f-007"
+      ],
+      "canonicalName": "HTA_Advancement_Value",
+      "name": "HTA Advancement Value"
     },
     {
       "variable_id": "ls-var-033",
@@ -886,8 +1144,16 @@
           "max": 50000000
         }
       ],
-      "tags": ["rwe", "cost", "program"],
-      "used_in_formulas": ["ls-f-007"]
+      "tags": [
+        "rwe",
+        "cost",
+        "program"
+      ],
+      "used_in_formulas": [
+        "ls-f-007"
+      ],
+      "canonicalName": "RWE_Program_Annual_Cost",
+      "name": "RWE Program Annual Cost"
     }
   ]
 }

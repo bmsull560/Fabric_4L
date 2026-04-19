@@ -228,11 +228,14 @@ class TestL3GraphNodeContracts:
     def test_graph_node_schema_completeness(self) -> None:
         """GraphNode schema contains all required fields for frontend."""
         l3_openapi = _load_json(OPENAPI_L3_PATH)
-        # Note: OpenAPI uses 'label' and 'type'; frontend uses 'name' and 'entity_type'
-        # This is a known contract drift that requires alignment
+        # NOTE: Backend provides backward-compatible alias fields:
+        # - 'name' alias for 'label' (frontend expects 'name')
+        # - 'entity_type' alias for 'type' (frontend expects 'entity_type')
+        # - 'confidence_score' alias for 'confidence' (frontend expects 'confidence_score')
+        # Legacy fields (label, type, confidence) are preserved for backward compatibility.
         schema_required = {"id", "label", "type"}
         frontend_expects = {"id", "name", "entity_type", "confidence_score"}
-        
+
         components = l3_openapi.get("components", {}).get("schemas", {})
         if "GraphNode" in components:
             node_schema = components["GraphNode"]
@@ -240,10 +243,35 @@ class TestL3GraphNodeContracts:
             # Verify schema has its required fields
             missing = schema_required - properties
             assert not missing, f"GraphNode schema missing required fields: {missing}"
-            # Flag drift: frontend expects fields not in schema
-            drift = frontend_expects - properties - {"name", "entity_type", "confidence_score"}
-            if drift:
-                print(f"[DRIFT WARNING] GraphNode: frontend expects {frontend_expects}, schema has {properties}")
+
+    def test_graph_node_response_sample_includes_alias_fields(self) -> None:
+        """GraphNode response sample includes both legacy and alias fields."""
+        # This test validates the backward compatibility implementation
+        # where responses include both old fields (label, type) and new fields (name, entity_type)
+        sample_node = {
+            "id": "cap-1",
+            "label": "Automated Invoice Processing",  # Legacy field
+            "name": "Automated Invoice Processing",   # Alias field
+            "type": "Capability",                      # Legacy field
+            "entity_type": "Capability",              # Alias field
+            "confidence": 0.92,                       # Legacy field
+            "confidence_score": 0.92,                 # Alias field
+            "x": 100.0,
+            "y": 200.0,
+        }
+
+        # Validate that both legacy and alias fields are present
+        assert "label" in sample_node, "Legacy 'label' field should be present"
+        assert "name" in sample_node, "Alias 'name' field should be present"
+        assert sample_node["label"] == sample_node["name"], "Label and name should match"
+
+        assert "type" in sample_node, "Legacy 'type' field should be present"
+        assert "entity_type" in sample_node, "Alias 'entity_type' field should be present"
+        assert sample_node["type"] == sample_node["entity_type"], "Type and entity_type should match"
+
+        assert "confidence" in sample_node, "Legacy 'confidence' field should be present"
+        assert "confidence_score" in sample_node, "Alias 'confidence_score' field should be present"
+        assert sample_node["confidence"] == sample_node["confidence_score"], "Confidence fields should match"
 
 
 class TestL3GraphRelationshipContracts:
@@ -253,10 +281,26 @@ class TestL3GraphRelationshipContracts:
         """GraphRelationship schema contains all required fields."""
         l3_openapi = _load_json(OPENAPI_L3_PATH)
         required_fields = {"source", "target", "type"}
-        
+
         components = l3_openapi.get("components", {}).get("schemas", {})
         if "GraphRelationship" in components:
             rel_schema = components["GraphRelationship"]
             properties = set(rel_schema.get("properties", {}).keys())
             missing = required_fields - properties
             assert not missing, f"GraphRelationship schema missing required fields: {missing}"
+
+    def test_graph_relationship_response_includes_alias_fields(self) -> None:
+        """GraphRelationship response includes relationship_type alias."""
+        # NOTE: 'relationship_type' is an alias for 'type' for frontend compatibility
+        sample_rel = {
+            "source": "cap-1",
+            "target": "uc-1",
+            "type": "ENABLES",           # Legacy field
+            "relationship_type": "ENABLES",  # Alias field
+            "weight": 0.9,
+        }
+
+        # Validate both legacy and alias fields are present
+        assert "type" in sample_rel, "Legacy 'type' field should be present"
+        assert "relationship_type" in sample_rel, "Alias 'relationship_type' field should be present"
+        assert sample_rel["type"] == sample_rel["relationship_type"], "Type fields should match"

@@ -16,7 +16,12 @@
       "variable_count": 33,
       "entity_count": 13,
       "path": "packs/life-sciences",
-      "tags": ["clinical-trials", "regulatory", "manufacturing", "rnd"],
+      "tags": [
+        "clinical-trials",
+        "regulatory",
+        "manufacturing",
+        "rnd"
+      ],
       "created_at": "2026-04-15"
     },
     {
@@ -28,10 +33,15 @@
       "status": "published",
       "version": "1.0.0",
       "formula_count": 7,
-      "variable_count": 28,
+      "variable_count": 35,
       "entity_count": 13,
       "path": "packs/manufacturing",
-      "tags": ["oee", "quality", "maintenance", "energy"],
+      "tags": [
+        "oee",
+        "quality",
+        "maintenance",
+        "energy"
+      ],
       "created_at": "2026-04-15"
     },
     {
@@ -46,7 +56,12 @@
       "variable_count": 30,
       "entity_count": 13,
       "path": "packs/software",
-      "tags": ["saas", "acquisition", "retention", "platform-engineering"],
+      "tags": [
+        "saas",
+        "acquisition",
+        "retention",
+        "platform-engineering"
+      ],
       "created_at": "2026-04-15"
     },
     {
@@ -58,10 +73,16 @@
       "status": "published",
       "version": "1.0.0",
       "formula_count": 7,
-      "variable_count": 18,
+      "variable_count": 19,
       "entity_count": 13,
       "path": "packs/financial-services",
-      "tags": ["fraud-detection", "digital-onboarding", "credit-risk", "compliance", "wealth-management"],
+      "tags": [
+        "fraud-detection",
+        "digital-onboarding",
+        "credit-risk",
+        "compliance",
+        "wealth-management"
+      ],
       "created_at": "2026-04-15"
     },
     {
@@ -76,7 +97,13 @@
       "variable_count": 23,
       "entity_count": 13,
       "path": "packs/energy-utilities",
-      "tags": ["smart-grid", "renewable-energy", "demand-response", "asset-management", "ev-charging"],
+      "tags": [
+        "smart-grid",
+        "renewable-energy",
+        "demand-response",
+        "asset-management",
+        "ev-charging"
+      ],
       "created_at": "2026-04-15"
     },
     {
@@ -88,10 +115,16 @@
       "status": "published",
       "version": "1.0.0",
       "formula_count": 7,
-      "variable_count": 15,
+      "variable_count": 28,
       "entity_count": 13,
       "path": "packs/retail-consumer",
-      "tags": ["omnichannel", "pricing", "inventory", "personalization", "labor-optimization"],
+      "tags": [
+        "omnichannel",
+        "pricing",
+        "inventory",
+        "personalization",
+        "labor-optimization"
+      ],
       "created_at": "2026-04-15"
     },
     {
@@ -106,18 +139,42 @@
       "variable_count": 14,
       "entity_count": 13,
       "path": "packs/ai-technology",
-      "tags": ["mlops", "generative-ai", "computer-vision", "ai-governance", "talent-development"],
+      "tags": [
+        "mlops",
+        "generative-ai",
+        "computer-vision",
+        "ai-governance",
+        "talent-development"
+      ],
       "created_at": "2026-04-15"
     }
   ],
   "categories": {
-    "formula_types": ["ROI", "NPV", "IRR", "Payback", "Productivity", "Efficiency", "Cost_Avoidance", "Custom"],
-    "entity_types": ["Capability", "UseCase", "Persona", "ValueDriver"],
-    "relationship_types": ["ENABLES", "BENEFITS", "DRIVES"]
+    "formula_types": [
+      "ROI",
+      "NPV",
+      "IRR",
+      "Payback",
+      "Productivity",
+      "Efficiency",
+      "Cost_Avoidance",
+      "Custom"
+    ],
+    "entity_types": [
+      "Capability",
+      "UseCase",
+      "Persona",
+      "ValueDriver"
+    ],
+    "relationship_types": [
+      "ENABLES",
+      "BENEFITS",
+      "DRIVES"
+    ]
   },
   "statistics": {
     "total_formulas": 49,
-    "total_variables": 161,
+    "total_variables": 181,
     "total_entities": 91,
     "total_relationships": 70
   }

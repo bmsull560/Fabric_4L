@@ -938,15 +938,24 @@ class BatchAnalyticsResponse(BaseModel):
 
 # Graph Models
 class GraphNode(BaseModel):
-    """Node in the knowledge graph."""
+    """Node in the knowledge graph.
+
+    NOTE: This model provides backward-compatible field aliases for frontend contract stability:
+    - 'name' is an alias for 'label' (frontend expects 'name')
+    - 'entity_type' is an alias for 'type' (frontend expects 'entity_type')
+    - 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')
+
+    The legacy fields (label, type, confidence) are preserved for backward compatibility.
+    TODO: Deprecate legacy fields once all consumers migrate to new field names.
+    """
 
     id: str = Field(..., description="Unique node identifier")
-    label: str = Field(..., description="Display label")
+    label: str = Field(..., description="Display label (legacy: use 'name')")
     type: str = Field(
-        ..., description="Node type (Capability, UseCase, Persona, ValueDriver)"
+        ..., description="Node type (legacy: use 'entity_type')"
     )
     confidence: float = Field(
-        default=0.8, ge=0.0, le=1.0, description="Confidence score"
+        default=0.8, ge=0.0, le=1.0, description="Confidence score (legacy: use 'confidence_score')"
     )
     x: float | None = Field(None, description="X position for visualization")
     y: float | None = Field(None, description="Y position for visualization")
@@ -955,17 +964,65 @@ class GraphNode(BaseModel):
         default_factory=dict, description="Additional node properties"
     )
 
+    # ═════════════════════════════════════════════════════════════════════════
+    # Backward-compatible alias fields for frontend contract alignment
+    # ═════════════════════════════════════════════════════════════════════════
+
+    @property
+    def name(self) -> str:
+        """Frontend-compatible alias for 'label'."""
+        return self.label
+
+    @property
+    def entity_type(self) -> str:
+        """Frontend-compatible alias for 'type'."""
+        return self.type
+
+    @property
+    def confidence_score(self) -> float:
+        """Frontend-compatible alias for 'confidence'."""
+        return self.confidence
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        """Override to include computed alias fields in serialization."""
+        data = super().model_dump(**kwargs)
+        # Add alias fields for frontend compatibility
+        data["name"] = self.name
+        data["entity_type"] = self.entity_type
+        data["confidence_score"] = self.confidence_score
+        return data
+
 
 class GraphEdge(BaseModel):
-    """Edge/relationship in the knowledge graph."""
+    """Edge/relationship in the knowledge graph.
+
+    NOTE: Provides backward-compatible alias 'relationship_type' for 'type'.
+    TODO: Deprecate 'type' field once consumers migrate.
+    """
 
     source: str = Field(..., description="Source node ID")
     target: str = Field(..., description="Target node ID")
-    type: str = Field(..., description="Relationship type (ENABLES, BENEFITS, DRIVES)")
+    type: str = Field(..., description="Relationship type/label (legacy: use 'relationship_type')")
     weight: float = Field(default=1.0, ge=0.0, description="Edge weight/strength")
     properties: dict[str, Any] = Field(
         default_factory=dict, description="Additional edge properties"
     )
+
+    # ═════════════════════════════════════════════════════════════════════════
+    # Backward-compatible alias fields
+    # ═════════════════════════════════════════════════════════════════════════
+
+    @property
+    def relationship_type(self) -> str:
+        """Frontend-compatible alias for 'type'."""
+        return self.type
+
+    def model_dump(self, **kwargs) -> dict[str, Any]:
+        """Override to include computed alias fields in serialization."""
+        data = super().model_dump(**kwargs)
+        # Add alias fields for frontend compatibility
+        data["relationship_type"] = self.relationship_type
+        return data
 
 
 class GraphStats(BaseModel):
