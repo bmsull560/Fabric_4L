@@ -609,7 +609,10 @@ async def validate_value(
                         ),
                     )
             except (ValueError, TypeError):
-                pass
+                return ValidateResponse(
+                    is_valid=False,
+                    error=rule.get("errorMessage", "Value must be numeric for range validation"),
+                )
 
         elif rule["ruleType"] == "regex":
             import re

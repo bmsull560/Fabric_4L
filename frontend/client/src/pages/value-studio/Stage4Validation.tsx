@@ -154,12 +154,14 @@ function IssueCard({
       </p>
 
       {issue.description && (
-        <p
-          className="text-[12px] text-foreground mb-3 leading-relaxed"
-          dangerouslySetInnerHTML={{
-            __html: issue.description.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
-          }}
-        />
+        <p className="text-[12px] text-foreground mb-3 leading-relaxed">
+          {issue.description.split(/(\*\*.*?\*\*)/).map((part, i) => {
+            if (part.startsWith("**") && part.endsWith("**")) {
+              return <strong key={i}>{part.slice(2, -2)}</strong>;
+            }
+            return <span key={i}>{part}</span>;
+          })}
+        </p>
       )}
 
       {issue.recommendation && (

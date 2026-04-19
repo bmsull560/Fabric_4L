@@ -600,8 +600,13 @@
       },
       "post": {
         "summary": "Create Pack",
-        "description": "Create a new Value Pack.",
+        "description": "Create a new Value Pack. Requires authentication.",
         "operationId": "create_pack_v1_packs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -694,8 +699,13 @@
       },
       "put": {
         "summary": "Update Pack",
-        "description": "Update a Value Pack.",
+        "description": "Update a Value Pack. Requires authentication.",
         "operationId": "update_pack_v1_packs__pack_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "pack_id",
@@ -744,8 +754,13 @@
     "/v1/packs/{pack_id}/execute": {
       "post": {
         "summary": "Execute Pack",
-        "description": "Execute a Value Pack workflow.\n\nEvaluates all formulas associated with the pack using provided variables\nmerged with formula defaults. Returns calculated values for each formula.",
+        "description": "Execute a Value Pack workflow. Requires authentication.\n\nEvaluates all formulas associated with the pack using provided variables\nmerged with formula defaults. Returns calculated values for each formula.",
         "operationId": "execute_pack_v1_packs__pack_id__execute_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "pack_id",
@@ -794,8 +809,13 @@
     "/v1/packs/{pack_id}/fork": {
       "post": {
         "summary": "Fork Pack",
-        "description": "Fork a Value Pack for customization.",
+        "description": "Fork a Value Pack for customization. Requires authentication.",
         "operationId": "fork_pack_v1_packs__pack_id__fork_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "pack_id",
@@ -844,8 +864,13 @@
     "/v1/packs/{pack_id}/apply": {
       "post": {
         "summary": "Apply Pack",
-        "description": "Apply/Deploy a Value Pack (alias for execute endpoint).",
+        "description": "Apply/Deploy a Value Pack (alias for execute endpoint). Requires authentication.",
         "operationId": "apply_pack_v1_packs__pack_id__apply_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "pack_id",
@@ -1997,6 +2022,11 @@
         "summary": "List Benchmarks",
         "description": "List benchmarks with optional filters.",
         "operationId": "list_benchmarks_v1_benchmarks_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "industry",
@@ -2163,7 +2193,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/benchmarks/{benchmark_id}": {
@@ -2171,6 +2206,11 @@
         "summary": "Get Benchmark",
         "description": "Get a single benchmark by ID.",
         "operationId": "get_benchmark_v1_benchmarks__benchmark_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "benchmark_id",
@@ -2228,6 +2268,11 @@
         "summary": "Update Benchmark Policy",
         "description": "Update a benchmark policy.",
         "operationId": "update_benchmark_policy_v1_benchmarks_policies__policy_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "policy_id",

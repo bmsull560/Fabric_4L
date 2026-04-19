@@ -207,18 +207,18 @@ class BackupConfig(BaseModel):
 class SecurityConfig(BaseModel):
     """Security configuration."""
 
-    cors_origins: list[str] = Field(default=["*"], description="CORS allowed origins")
+    cors_origins: list[str] = Field(default=[], description="CORS allowed origins (empty = same-origin only)")
     cors_methods: list[str] = Field(
         default=["GET", "POST", "PUT", "DELETE"], description="CORS allowed methods"
     )
-    cors_headers: list[str] = Field(default=["*"], description="CORS allowed headers")
-    cors_credentials: bool = Field(default=True, description="CORS allow credentials")
+    cors_headers: list[str] = Field(default=["Content-Type", "Authorization"], description="CORS allowed headers")
+    cors_credentials: bool = Field(default=False, description="CORS allow credentials")
     ssl_verify: bool = Field(default=True, description="Verify SSL certificates")
     max_request_size: int = Field(
         default=10485760, description="Max request size in bytes"
     )
     request_timeout: int = Field(default=30, description="Request timeout in seconds")
-    allowed_hosts: list[str] = Field(default=["*"], description="Allowed hosts")
+    allowed_hosts: list[str] = Field(default=[], description="Allowed hosts (empty = no host header validation)")
     trusted_proxies: list[str] = Field(default=[], description="Trusted proxy IPs")
     rate_limiting_enabled: bool = Field(
         default=True, description="Enable rate limiting"

@@ -518,6 +518,23 @@ app.include_router(models.router, prefix="/v1")
 
 
 @app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """Add security headers to all responses."""
+    response = await call_next(request)
+    # Prevent MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # XSS protection
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # Referrer policy
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # HSTS (uncomment when HTTPS is enforced)
+    # response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+@app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     """Add request ID to logs and response headers."""
     settings = _get_settings_with_fallback()
@@ -1403,7 +1420,7 @@ async def ingest_rdf(
         )
     except Exception as e:
         logger.error(f"Ingestion failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Ingestion failed. Please try again later.")
 
 
 @app.get("/v1/ingest/status/{source_id}", response_model=SyncStatusResponse)
@@ -1529,7 +1546,7 @@ async def graph_rag_legacy_alias(
             )
     except Exception as e:
         logger.error(f"GraphRAG query failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Query processing failed. Please try again later.")
 
 
 @app.post("/v1/query/graph", response_model=GraphRAGResponse)
@@ -1581,7 +1598,7 @@ async def graph_rag_query(
             )
     except Exception as e:
         logger.error(f"GraphRAG query failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Query processing failed. Please try again later.")
 
 
 @app.post("/v1/query/graph/stream")
@@ -1744,7 +1761,7 @@ async def hybrid_search(
             )
     except Exception as e:
         logger.error(f"Search failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Search failed. Please try again later.")
 
 
 # Entity endpoints
@@ -1830,7 +1847,7 @@ async def get_entity_context(
         raise
     except Exception as e:
         logger.error(f"Context retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Context retrieval failed. Please try again later.")
 
 
 @app.post("/v1/entity/traverse", response_model=ValueTreeResponse)
@@ -1853,7 +1870,7 @@ async def traverse_value_tree(
         )
     except Exception as e:
         logger.error(f"Value tree traversal failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Value tree traversal failed. Please try again later.")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2043,7 +2060,7 @@ async def list_entities(
         raise
     except Exception as e:
         logger.error(f"Entity listing failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Entity listing failed. Please try again later.")
 
 
 @app.get("/v1/entities/{{entity_id}}", response_model=EntityDetail)
@@ -2207,7 +2224,7 @@ async def get_entity_detail(
         raise
     except Exception as e:
         logger.error(f"Entity detail retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Entity detail retrieval failed. Please try again later.")
 
 
 @app.post("/v1/entities/query", response_model=EntityListResponse)
@@ -2244,7 +2261,7 @@ async def query_entities(
         raise
     except Exception as e:
         logger.error(f"Entity query failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Query failed. Please try again later.")
 
 
 # Analytics endpoints
@@ -2289,7 +2306,7 @@ async def detect_communities(
         )
     except Exception as e:
         logger.error(f"Community detection failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Community detection failed. Please try again later.")
 
 
 @app.post("/v1/analytics/centrality", response_model=CentralityResponse)
@@ -2330,7 +2347,7 @@ async def calculate_centrality(
         )
     except Exception as e:
         logger.error(f"Centrality calculation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Centrality calculation failed. Please try again later.")
 
 
 @app.post("/v1/analytics/similar", response_model=SimilarityResponse)
@@ -2360,7 +2377,7 @@ async def find_similar_entities(
         )
     except Exception as e:
         logger.error(f"Similarity analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Similarity analysis failed. Please try again later.")
 
 
 @app.post("/v1/analytics/compare", response_model=EntityComparisonResponse)
@@ -2390,7 +2407,7 @@ async def compare_entities(
         raise
     except Exception as e:
         logger.error(f"Entity comparison failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Entity comparison failed. Please try again later.")
 
 
 # Batch Operations Endpoints
@@ -2501,7 +2518,7 @@ async def batch_entity_operations(
 
     except Exception as e:
         logger.error(f"Batch entity operations failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Batch operations failed. Please try again later.")
 
 
 @app.post("/v1/batch/analytics", response_model=BatchAnalyticsResponse)
@@ -2593,7 +2610,7 @@ async def batch_analytics(
 
     except Exception as e:
         logger.error(f"Batch analytics failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Batch analytics failed. Please try again later.")
 
 
 # Helper functions for batch operations
@@ -2721,7 +2738,7 @@ async def value_tree_projection(
         return result.to_dict() if hasattr(result, "to_dict") else result.__dict__
     except Exception as e:
         logger.error(f"Value tree projection failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Value tree projection failed. Please try again later.")
 
 
 @app.post("/v1/agents/whitespace-analysis")
@@ -2735,7 +2752,7 @@ async def whitespace_analysis(
         return result.to_dict() if hasattr(result, "to_dict") else result.__dict__
     except Exception as e:
         logger.error(f"Whitespace analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Whitespace analysis failed. Please try again later.")
 
 
 @app.post("/v1/agents/roi-calculation")
@@ -2749,7 +2766,7 @@ async def roi_calculation(
         return result.to_dict() if hasattr(result, "to_dict") else result.__dict__
     except Exception as e:
         logger.error(f"ROI calculation failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="ROI calculation failed. Please try again later.")
 
 
 @app.post("/v1/agents/narrative-synthesis")
@@ -2763,7 +2780,7 @@ async def narrative_synthesis(
         return result.to_dict() if hasattr(result, "to_dict") else result.__dict__
     except Exception as e:
         logger.error(f"Narrative synthesis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Narrative synthesis failed. Please try again later.")
 
 
 @app.post("/v1/agents/provenance-tracking")
@@ -2777,7 +2794,7 @@ async def provenance_tracking(
         return result.to_dict() if hasattr(result, "to_dict") else result.__dict__
     except Exception as e:
         logger.error(f"Provenance tracking failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Provenance tracking failed. Please try again later.")
 
 
 @app.post("/v1/agents/workflow")
@@ -2881,7 +2898,7 @@ async def agent_workflow(
         raise
     except Exception as e:
         logger.error(f"Agent workflow failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Agent workflow failed. Please try again later.")
 
 
 # =============================================================================
@@ -2986,7 +3003,7 @@ async def get_provenance(
         raise
     except Exception as e:
         logger.error(f"Provenance query failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Provenance query failed. Please try again later.")
 
 
 @app.get(
@@ -3581,7 +3598,12 @@ async def get_query_subgraph(
             # Build relationship filter if specified
             rel_filter = ""
             if relationship_types:
-                rel_filter = f"AND ALL(r IN relationships(path) WHERE type(r) IN [{', '.join(repr(r) for r in relationship_types)}])"
+                # Validate relationship types - only allow uppercase alphanumeric and underscores
+                import re
+                valid_rel_pattern = re.compile(r'^[A-Z_][A-Z0-9_]*$')
+                validated_types = [r for r in relationship_types if valid_rel_pattern.match(r)]
+                if validated_types:
+                    rel_filter = f"AND ALL(r IN relationships(path) WHERE type(r IN [{', '.join(repr(r) for r in validated_types)}]))"
 
             # Query for connected nodes
             subgraph_query = f"""

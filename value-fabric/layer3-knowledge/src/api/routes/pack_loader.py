@@ -4,6 +4,7 @@ Loads domain value packs from JSON files into the formula registry.
 """
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -11,14 +12,20 @@ from typing import Any
 PACKS_DIR = Path(__file__).parent.parent.parent.parent.parent.parent / "packs"
 MANIFEST_FILE = PACKS_DIR / "pack-manifest.json"
 
+# Valid pack ID pattern: alphanumeric with hyphens only
+VALID_PACK_ID_PATTERN = re.compile(r"^[a-zA-Z0-9-]+$")
+
 
 def load_pack_manifest() -> dict[str, Any] | None:
     """Load pack manifest if available."""
     if not MANIFEST_FILE.exists():
         return None
     
-    with open(MANIFEST_FILE) as f:
-        return json.load(f)
+    try:
+        with open(MANIFEST_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, PermissionError, OSError) as e:
+        return None
 
 
 def load_pack_formulas(pack_id: str) -> list[dict]:
@@ -30,17 +37,30 @@ def load_pack_formulas(pack_id: str) -> list[dict]:
     Returns:
         List of formula definitions in Layer 3 format
     """
+    # Validate pack_id to prevent path traversal
+    if not VALID_PACK_ID_PATTERN.match(pack_id):
+        return []
     pack_slug = pack_id.replace("-v1", "")
+    # Additional safety: ensure pack_slug doesn't escape packs directory
+    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug:
+        return []
     formulas_file = PACKS_DIR / pack_slug / "formulas.json"
     
     if not formulas_file.exists():
         return []
     
-    with open(formulas_file) as f:
-        data = json.load(f)
+    try:
+        with open(formulas_file, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, PermissionError, OSError):
+        return []
     
     formulas = []
     for f in data.get("formulas", []):
+        # Skip malformed entries missing required fields
+        required_fields = ["formula_id", "name", "description", "formula_type", "version", "status"]
+        if not all(k in f for k in required_fields):
+            continue
         # Transform to Layer 3 format
         formula = {
             "id": f["formula_id"],
@@ -59,6 +79,7 @@ def load_pack_formulas(pack_id: str) -> list[dict]:
                     "max_value": v.get("valid_range", {}).get("max"),
                 }
                 for v in f.get("required_variables", [])
+                if "name" in v  # Skip variables without name
             ],
             "output_unit": f.get("unit_of_result", "value"),
             "pack_id": pack_id,
@@ -80,17 +101,29 @@ def load_pack_variables(pack_id: str) -> list[dict]:
     Returns:
         List of variable definitions in Layer 3 format
     """
+    # Validate pack_id to prevent path traversal
+    if not VALID_PACK_ID_PATTERN.match(pack_id):
+        return []
     pack_slug = pack_id.replace("-v1", "")
+    # Additional safety: ensure pack_slug doesn't escape packs directory
+    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug:
+        return []
     variables_file = PACKS_DIR / pack_slug / "variables.json"
     
     if not variables_file.exists():
         return []
     
-    with open(variables_file) as f:
-        data = json.load(f)
+    try:
+        with open(variables_file, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, PermissionError, OSError):
+        return []
     
     variables = []
     for v in data.get("variables", []):
+        # Skip malformed entries missing required fields
+        if "variable_name" not in v or "display_name" not in v:
+            continue
         variable = {
             "name": v["variable_name"],
             "display_name": v["display_name"],

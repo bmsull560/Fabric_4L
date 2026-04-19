@@ -295,9 +295,9 @@ class APIKeyManager:
         """
         secret = os.getenv("API_KEY_HMAC_SECRET", "").encode("utf-8")
         if not secret:
-            logger.warning(
-                "API_KEY_HMAC_SECRET is not set. "
-                "Set API_KEY_HMAC_SECRET in production for secure API key hashing."
+            raise RuntimeError(
+                "API_KEY_HMAC_SECRET environment variable is required. "
+                "Set a strong random secret (32+ bytes) for secure API key hashing."
             )
         # HMAC-SHA256 is the industry standard for API credential hashing
         # (used by Stripe, GitHub, AWS). This is NOT password hashing — API keys

@@ -5,9 +5,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { Loader2, AlertCircle, RefreshCw, Search, ZoomIn, ZoomOut, RotateCcw, MousePointer2, Move } from "lucide-react";
 import { PageHeader, Btn, SearchInput, GraphLegend, SectionCard, Tabs } from "@/components/WfPrimitives";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { useSubgraph, useEntityContext, useGraphQuery, useGraphViewState, type GraphNode, type GraphRelationship, type SubgraphResponse } from "@/hooks/useGraphQuery";
 import { getEntityColors } from "@/lib/entity-colors";
+import { cn } from "@/lib/utils";
 
 // Layout constants
 const CANVAS_WIDTH = 640;
@@ -281,55 +282,39 @@ export default function GraphExplorer() {
         {/* Graph Canvas */}
         <div className="flex-1 bg-card border border-border rounded-lg shadow-sm overflow-hidden relative">
           {isLoading && (
-            <div className="p-6" style={{ minHeight: 380 }}>
-              {/* Skeleton loader for graph visualization */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <div className="relative" style={{ height: 320 }}>
-                  {/* Skeleton nodes arranged in a circle pattern */}
-                  <Skeleton className="absolute h-12 w-12 rounded-full" style={{ top: '20%', left: '30%' }} />
-                  <Skeleton className="absolute h-10 w-10 rounded-full" style={{ top: '40%', left: '50%' }} />
-                  <Skeleton className="absolute h-8 w-8 rounded-full" style={{ top: '60%', left: '25%' }} />
-                  <Skeleton className="absolute h-10 w-10 rounded-full" style={{ top: '30%', left: '70%' }} />
-                  <Skeleton className="absolute h-8 w-8 rounded-full" style={{ top: '70%', left: '60%' }} />
-                  <Skeleton className="absolute h-6 w-6 rounded-full" style={{ top: '50%', left: '80%' }} />
-                  {/* Skeleton connection lines */}
-                  <Skeleton className="absolute h-0.5 w-24" style={{ top: '35%', left: '35%', transform: 'rotate(25deg)' }} />
-                  <Skeleton className="absolute h-0.5 w-20" style={{ top: '55%', left: '35%', transform: 'rotate(-30deg)' }} />
-                  <Skeleton className="absolute h-0.5 w-16" style={{ top: '40%', left: '55%', transform: 'rotate(45deg)' }} />
-                  <Skeleton className="absolute h-0.5 w-28" style={{ top: '55%', left: '50%', transform: 'rotate(-10deg)' }} />
-                </div>
-                <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Loading knowledge graph...</span>
-                </div>
-              </div>
+            <div className="flex flex-col items-center justify-center min-h-[380px] gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Loading knowledge graph...</span>
             </div>
           )}
 
           {error && !isLoading && (
-            <div className="flex items-center justify-center" style={{ minHeight: 380 }}>
-              <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                <AlertCircle className="w-8 h-8 text-red-500" />
-                <span className="text-sm text-destructive">{error}</span>
+            <div className="flex items-center justify-center min-h-[380px]">
+              <Empty className="border-0">
+                <EmptyMedia variant="icon">
+                  <AlertCircle className="text-destructive" />
+                </EmptyMedia>
+                <EmptyHeader>
+                  <EmptyTitle className="text-destructive">Error loading graph</EmptyTitle>
+                  <EmptyDescription>{error}</EmptyDescription>
+                </EmptyHeader>
                 <Btn variant="outline" onClick={() => refetchSubgraph()} className="text-xs">
                   <RefreshCw className="w-3 h-3 mr-1" /> Retry
                 </Btn>
-              </div>
+              </Empty>
             </div>
           )}
 
           {!isLoading && !error && graphData.nodes.length === 0 && (
-            <div className="flex items-center justify-center" style={{ minHeight: 380 }}>
-              <div className="flex flex-col items-center gap-3 text-muted-foreground text-center px-8">
-                <span className="text-sm font-medium">No matching entities found</span>
-                <span className="text-xs text-muted-foreground/60 max-w-[200px]">
-                  Try adjusting your search query or filters to see more results
-                </span>
-              </div>
+            <div className="flex items-center justify-center min-h-[380px]">
+              <Empty className="border-0">
+                <EmptyHeader>
+                  <EmptyTitle>No matching entities found</EmptyTitle>
+                  <EmptyDescription>
+                    Try adjusting your search query or filters to see more results
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             </div>
           )}
 
@@ -525,8 +510,7 @@ function GraphVisualization({
   return (
     <svg
       viewBox="0 0 640 460"
-      className={`w-full h-full ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-      style={{ minHeight: 380 }}
+      className={cn("w-full h-full min-h-[380px]", isDragging ? "cursor-grabbing" : "cursor-grab")}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
@@ -535,7 +519,7 @@ function GraphVisualization({
       {/* Grid */}
       <defs>
         <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#f3f4f6" strokeWidth="1"/>
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="hsl(var(--muted))" strokeWidth="1"/>
         </pattern>
       </defs>
       <rect width="640" height="460" fill="url(#grid)"/>
@@ -553,7 +537,7 @@ function GraphVisualization({
             <line
               key={i}
               x1={source.x} y1={source.y} x2={target.x} y2={target.y}
-              stroke="#d1d5db" strokeWidth="1.5"
+              stroke="hsl(var(--border))" strokeWidth="1.5"
             />
           );
         })}
@@ -577,7 +561,7 @@ function GraphVisualization({
               <circle
                 cx={node.x} cy={node.y} r={node.r}
                 fill={c.fill}
-                stroke={isSelected ? "#1d4ed8" : c.stroke}
+                stroke={isSelected ? "hsl(var(--primary))" : c.stroke}
                 strokeWidth={isSelected ? 2.5 : 1.5}
               />
               {lines.map((line, lineIndex) => (
@@ -588,7 +572,7 @@ function GraphVisualization({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fontSize="8"
-                  fontFamily="Inter, sans-serif"
+                  fontFamily="var(--font-sans)"
                   fontWeight="600"
                   fill={c.text}
                 >

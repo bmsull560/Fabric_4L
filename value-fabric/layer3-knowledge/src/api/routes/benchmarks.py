@@ -12,12 +12,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
+from ...auth.api_keys import APIKey
+from ...auth.middleware import get_current_api_key
 from ...db.driver import get_driver
 from ...logging_config import get_logger
 
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+# Pagination limits
+MAX_PAGE_SIZE = 100
+DEFAULT_PAGE_SIZE = 50
 
 
 # ── Pydantic Models ──────────────────────────────────────────────────────────
@@ -74,11 +80,13 @@ async def list_benchmarks(
     status: str | None = Query(None, description="Filter by status"),
     confidence: str | None = Query(None, description="Filter by confidence level"),
     search: str | None = Query(None, description="Search benchmarks by name"),
+    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Maximum results to return"),
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """List benchmarks with optional filters."""
     where_conditions: list[str] = []
-    params: dict[str, Any] = {}
+    params: dict[str, Any] = {"limit": limit}
 
     if industry:
         where_conditions.append("b.industry = $industry")
@@ -138,6 +146,7 @@ async def list_benchmarks(
 @router.get("/benchmarks/policies", response_model=list[BenchmarkPolicy])
 async def list_benchmark_policies(
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """List benchmark policy configurations."""
     query = """
@@ -168,6 +177,7 @@ async def list_benchmark_policies(
 async def get_benchmark(
     benchmark_id: str,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Get a single benchmark by ID."""
     query = """
@@ -209,6 +219,7 @@ async def update_benchmark_policy(
     policy_id: str,
     update: BenchmarkPolicyUpdate,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Update a benchmark policy."""
     # Build SET clauses dynamically from provided fields

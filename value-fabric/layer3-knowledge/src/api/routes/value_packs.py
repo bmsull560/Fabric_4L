@@ -12,6 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
+from ...auth.api_keys import APIKey
+from ...auth.middleware import get_current_api_key
 from ...db.driver import get_driver
 from ...logging_config import get_logger
 from ...api.routes.formulas import evaluate_expression
@@ -441,8 +443,9 @@ async def get_pack(
 async def create_pack(
     request: PackCreateRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Create a new Value Pack."""
+    """Create a new Value Pack. Requires authentication."""
     pack_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
 
@@ -620,8 +623,9 @@ async def update_pack(
     pack_id: str,
     request: PackUpdateRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Update a Value Pack."""
+    """Update a Value Pack. Requires authentication."""
     _validate_pack_id(pack_id)
 
     # Verify pack exists
@@ -733,8 +737,9 @@ async def execute_pack(
     pack_id: str,
     request: PackExecuteRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Execute a Value Pack workflow.
+    """Execute a Value Pack workflow. Requires authentication.
 
     Evaluates all formulas associated with the pack using provided variables
     merged with formula defaults. Returns calculated values for each formula.
@@ -956,8 +961,9 @@ async def fork_pack(
     pack_id: str,
     request: PackForkRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Fork a Value Pack for customization."""
+    """Fork a Value Pack for customization. Requires authentication."""
     _validate_pack_id(pack_id)
 
     # Get original pack properties
@@ -981,8 +987,9 @@ async def apply_pack(
     pack_id: str,
     request: PackExecuteRequest,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
-    """Apply/Deploy a Value Pack (alias for execute endpoint)."""
+    """Apply/Deploy a Value Pack (alias for execute endpoint). Requires authentication."""
     _validate_pack_id(pack_id)
     # NOTE: apply_pack is currently an alias for execute_pack.
     # When execution logic diverges (e.g., deployment vs preview), refactor.

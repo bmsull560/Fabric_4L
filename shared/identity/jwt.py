@@ -11,8 +11,13 @@ import jwt
 
 logger = logging.getLogger(__name__)
 
-# Get secret from environment or use default for development
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-do-not-use-in-production")
+# Get secret from environment - fail closed if not set
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError(
+        "JWT_SECRET environment variable is required. "
+        "Set a strong random secret (32+ bytes)."
+    )
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 

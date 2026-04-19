@@ -721,7 +721,7 @@ def evaluate_expression(expression: str, variables: dict[str, float]) -> float:
 
         result = evaluate_simple(expr)
         return float(result)
-    except Exception as e:
+    except (ValueError, ZeroDivisionError, TypeError) as e:
         raise ValueError(f"Invalid expression: {str(e)}")
 
 
