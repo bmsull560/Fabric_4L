@@ -18,10 +18,26 @@ import EntityBrowser from './EntityBrowser';
 vi.mock('@/hooks/useEntities', () => ({
   useEntities: vi.fn(),
   useEntity: vi.fn(),
+  useEntitySearch: vi.fn().mockReturnValue({ data: null, isLoading: false, error: null }),
+  useEntityFilterOptions: vi.fn().mockReturnValue({ data: null, isLoading: false, error: null }),
+  useCreateEntity: vi.fn().mockReturnValue({ mutate: vi.fn(), isLoading: false }),
 }));
 
 vi.mock('@/stores', () => ({
-  useEntityUIStore: vi.fn(),
+  useEntityUIStore: vi.fn().mockReturnValue({
+    searchQuery: '',
+    selectedType: null,
+    selectedEntityId: null,
+    setSearchQuery: vi.fn(),
+    setSelectedType: vi.fn(),
+    setSelectedEntityId: vi.fn(),
+    clearFilters: vi.fn(),
+  }),
+  useUserTierStore: vi.fn().mockReturnValue({ tier: 'standard', permissions: {} }),
+  useIngestionUIStore: vi.fn().mockReturnValue({}),
+  useIngestionJobsStore: vi.fn().mockReturnValue({}),
+  useOntologyStore: vi.fn().mockReturnValue({}),
+  useNarrativeStore: vi.fn().mockReturnValue({}),
 }));
 
 import { useEntities, useEntity } from '@/hooks/useEntities';
@@ -50,8 +66,19 @@ describe('EntityBrowser Contract Tests', () => {
   };
 
   beforeEach(() => {
-    vi.resetAllMocks();
-    (useEntityUIStore as any).mockReturnValue(mockStore);
+    vi.clearAllMocks();
+    vi.mocked(useEntityUIStore).mockReturnValue(mockStore);
+    vi.mocked(useEntities).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    vi.mocked(useEntity).mockReturnValue({
+      data: null,
+      isLoading: false,
+      error: null,
+    });
   });
 
   describe('API Data Consumption', () => {

@@ -2099,6 +2099,20 @@
               "title": "Search"
             },
             "description": "Search benchmarks by name"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results to return",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum results to return"
           }
         ],
         "requestBody": {

@@ -129,26 +129,26 @@ describe('GraphExplorer', () => {
       expect(screen.getByText('Graph Statistics')).toBeInTheDocument();
     });
 
-    // Initially shows "Click a node to view details"
-    expect(screen.getByText('Click a node to view details')).toBeInTheDocument();
+    // Initially shows empty state with "Select a Node" title
+    expect(screen.getByText('Select a Node')).toBeInTheDocument();
   });
 
-  it('renders layout control buttons', () => {
+  it('renders zoom control buttons', () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    // Layout section should have layout algorithm buttons
-    expect(screen.getByRole('button', { name: /force directed/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /circular/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /hierarchical/i })).toBeInTheDocument();
+    // Zoom controls should have zoom in/out buttons (text is "In" and "Out")
+    expect(screen.getByRole('button', { name: /in/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /out/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reset view/i })).toBeInTheDocument();
   });
 
-  it('renders control panel buttons', () => {
+  it('renders search button', () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    expect(screen.getByRole('button', { name: /export/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /focus selection/i })).toBeInTheDocument();
+    // Search button should be present
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
   it('renders coherent graph with nodes and edges from subgraph endpoint', async () => {

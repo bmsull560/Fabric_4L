@@ -4,6 +4,7 @@ Loads domain value packs from JSON files into the formula registry.
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,11 @@ MANIFEST_FILE = PACKS_DIR / "pack-manifest.json"
 # Valid pack ID pattern: alphanumeric with hyphens only
 VALID_PACK_ID_PATTERN = re.compile(r"^[a-zA-Z0-9-]+$")
 
+# Version suffix pattern: -v followed by digits at end of string
+VERSION_SUFFIX_PATTERN = re.compile(r"-v\d+$")
+
+logger = logging.getLogger(__name__)
+
 
 def load_pack_manifest() -> dict[str, Any] | None:
     """Load pack manifest if available."""
@@ -25,7 +31,27 @@ def load_pack_manifest() -> dict[str, Any] | None:
         with open(MANIFEST_FILE, encoding="utf-8") as f:
             return json.load(f)
     except (json.JSONDecodeError, PermissionError, OSError) as e:
+        logger.warning(f"Failed to load pack manifest: {type(e).__name__}")
         return None
+
+
+def _extract_pack_slug(pack_id: str) -> str | None:
+    """Extract pack slug by removing version suffix.
+    
+    Args:
+        pack_id: Pack identifier (e.g., 'financial-services-v1')
+        
+    Returns:
+        Pack slug (e.g., 'financial-services') or None if invalid
+    """
+    # Remove version suffix (-v1, -v2, etc.)
+    slug = VERSION_SUFFIX_PATTERN.sub("", pack_id)
+    
+    # Validate slug is not empty and doesn't traverse paths
+    if not slug or slug == "." or ".." in slug or "/" in slug or "\\" in slug:
+        return None
+    
+    return slug
 
 
 def load_pack_formulas(pack_id: str) -> list[dict]:
@@ -40,9 +66,11 @@ def load_pack_formulas(pack_id: str) -> list[dict]:
     # Validate pack_id to prevent path traversal
     if not VALID_PACK_ID_PATTERN.match(pack_id):
         return []
-    pack_slug = pack_id.replace("-v1", "")
+    
+    # Extract slug by removing version suffix (e.g., -v1, -v2, -v123)
+    pack_slug = VERSION_SUFFIX_PATTERN.sub("", pack_id)
     # Additional safety: ensure pack_slug doesn't escape packs directory
-    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug:
+    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug or not pack_slug:
         return []
     formulas_file = PACKS_DIR / pack_slug / "formulas.json"
     
@@ -52,9 +80,10 @@ def load_pack_formulas(pack_id: str) -> list[dict]:
     try:
         with open(formulas_file, encoding="utf-8") as f:
             data = json.load(f)
-    except (json.JSONDecodeError, PermissionError, OSError):
+    except (json.JSONDecodeError, PermissionError, OSError) as e:
+        logger.warning(f"Failed to load formulas for pack {pack_id}: {type(e).__name__}")
         return []
-    
+
     formulas = []
     for f in data.get("formulas", []):
         # Skip malformed entries missing required fields
@@ -104,9 +133,11 @@ def load_pack_variables(pack_id: str) -> list[dict]:
     # Validate pack_id to prevent path traversal
     if not VALID_PACK_ID_PATTERN.match(pack_id):
         return []
-    pack_slug = pack_id.replace("-v1", "")
+    
+    # Extract slug by removing version suffix (e.g., -v1, -v2, -v123)
+    pack_slug = VERSION_SUFFIX_PATTERN.sub("", pack_id)
     # Additional safety: ensure pack_slug doesn't escape packs directory
-    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug:
+    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug or not pack_slug:
         return []
     variables_file = PACKS_DIR / pack_slug / "variables.json"
     
@@ -116,9 +147,10 @@ def load_pack_variables(pack_id: str) -> list[dict]:
     try:
         with open(variables_file, encoding="utf-8") as f:
             data = json.load(f)
-    except (json.JSONDecodeError, PermissionError, OSError):
+    except (json.JSONDecodeError, PermissionError, OSError) as e:
+        logger.warning(f"Failed to load variables for pack {pack_id}: {type(e).__name__}")
         return []
-    
+
     variables = []
     for v in data.get("variables", []):
         # Skip malformed entries missing required fields
@@ -238,5 +270,7 @@ def invalidate_cache():
     """Invalidate all caches (useful for reloading)."""
     global _formula_cache, _variable_cache, _pack_cache
     _formula_cache = None
+    _variable_cache = None
+    _pack_cache = None
     _variable_cache = None
     _pack_cache = None

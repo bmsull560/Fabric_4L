@@ -28,18 +28,20 @@ const WHEEL_ZOOM_FACTOR = 0.1;
  * @returns Canvas state, event handlers, and control actions
  *
  * @example
+ * ```tsx
  * const canvas = useGraphCanvas();
  *
  * // In your render:
  * <svg {...canvas.handlers}>
  *   <g transform={`translate(${canvas.view.x}, ${canvas.view.y}) scale(${canvas.view.scale})`}>
- *     {/* graph content */}
+ *     // graph content
  *   </g>
  * </svg>
  *
  * // Control buttons:
  * <button onClick={canvas.actions.zoomIn}>Zoom In</button>
  * <button onClick={canvas.actions.resetView}>Reset</button>
+ * ```
  */
 export function useGraphCanvas(initialView?: Partial<ViewTransform>) {
   const [view, setView] = useState<ViewTransform>({

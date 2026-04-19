@@ -1,5 +1,6 @@
 """Tools API routes."""
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,6 +8,8 @@ from pydantic import BaseModel, Field
 
 from ...tools import create_default_registry
 from ...tools.registry import ToolCategory, ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -251,8 +254,9 @@ async def export_document_tool(
 
     except HTTPException:
         raise
-    except Exception as e:
-        return DocumentExportResponse(success=False, error=str(e))
+    except Exception:
+        logger.exception("Document export failed")
+        return DocumentExportResponse(success=False, error="Document export failed")
 
 
 @router.get("/tools/categories")

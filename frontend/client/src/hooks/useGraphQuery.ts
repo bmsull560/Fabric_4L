@@ -21,6 +21,9 @@ export interface GraphNode {
   confidence_score: number;
   description?: string;
   properties?: Record<string, unknown>;
+  /** Optional layout coordinates (added by calculateLayout) */
+  x?: number;
+  y?: number;
 }
 
 export interface GraphRelationship {

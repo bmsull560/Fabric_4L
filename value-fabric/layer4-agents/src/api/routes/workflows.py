@@ -415,9 +415,9 @@ async def resume_workflow(
         raise HTTPException(status_code=404, detail=str(e))
     except WorkflowExecutionError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error resuming workflow {workflow_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to resume workflow: {str(e)}")
+    except Exception:
+        logger.exception(f"Unexpected error resuming workflow {workflow_id}")
+        raise HTTPException(status_code=500, detail="Failed to resume workflow")
 
 
 @router.post("/workflows/{workflow_id}/pause", response_model=WorkflowPauseResponse)
@@ -479,9 +479,9 @@ async def pause_workflow(
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"Unexpected error pausing workflow {workflow_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to pause workflow: {str(e)}")
+    except Exception:
+        logger.exception(f"Unexpected error pausing workflow {workflow_id}")
+        raise HTTPException(status_code=500, detail="Failed to pause workflow")
 
 
 @router.get("/workflows/types")

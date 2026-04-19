@@ -5,7 +5,7 @@ Delegates calculation logic to the ROI calculation agent.
 """
 
 import re
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -38,7 +38,7 @@ class FormulaEvaluateRequest(BaseModel):
     output_unit: str | None = Field(None, description="Desired output unit")
 
     # Valid expression pattern: alphanumeric, operators, parentheses, underscores
-    VALID_EXPRESSION_PATTERN = re.compile(r"^[a-zA-Z0-9_+\-*/().\s**]+$")
+    VALID_EXPRESSION_PATTERN: ClassVar[re.Pattern] = re.compile(r"^[a-zA-Z0-9_+\-*/().\s**]+$")
 
     @field_validator("expression")
     @classmethod
@@ -784,7 +784,7 @@ def evaluate_simple(expr: str) -> float:
             result = tokens[i - 1] * tokens[i + 1]
             tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
         elif tokens[i] == "/":
-            if tokens[i + 1] == 0:
+            if abs(tokens[i + 1]) < 1e-10:
                 raise ZeroDivisionError("Division by zero in expression")
             result = tokens[i - 1] / tokens[i + 1]
             tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
