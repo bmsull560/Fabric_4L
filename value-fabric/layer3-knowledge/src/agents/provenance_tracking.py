@@ -4,18 +4,25 @@ Implements PROV-O lineage tracking with RDF-star annotations.
 """
 
 import logging
+import re
 import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from uuid import UUID
 
 from neo4j import AsyncDriver
 
 from .base import AgentResult, BaseAgent
 
 logger = logging.getLogger(__name__)
+
+# SECURITY: Valid ID patterns
+_TENANT_SYSTEM = "system"
+_TENANT_ADMIN = "admin"
+_VALID_ENTITY_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_:@#-]{1,256}$")
 
 
 class PROVEntityType(Enum):
@@ -130,6 +137,68 @@ class ProvenanceTrackingAgent(BaseAgent):
         super().__init__("ProvenanceTrackingAgent")
         self._driver = driver
 
+    def _validate_tenant_id(self, tenant_id: str | None) -> str:
+        """Validate and normalize tenant ID.
+
+        SECURITY: Strict validation to prevent tenant confusion attacks.
+        Accepts UUID format or reserved system/admin identifiers.
+
+        Args:
+            tenant_id: Raw tenant identifier from context
+
+        Returns:
+            Normalized tenant ID string
+
+        Raises:
+            ValueError: If tenant_id is invalid format
+        """
+        if tenant_id is None:
+            return _TENANT_SYSTEM
+
+        normalized = str(tenant_id).strip().lower()
+
+        if not normalized:
+            return _TENANT_SYSTEM
+
+        # Allow reserved system identifiers
+        if normalized in (_TENANT_SYSTEM, _TENANT_ADMIN):
+            return normalized
+
+        # Validate UUID format for tenant isolation
+        try:
+            UUID(normalized)
+            return normalized
+        except ValueError as e:
+            raise ValueError(f"Invalid tenant_id format: {tenant_id}. Expected UUID.") from e
+
+    def _validate_entity_id(self, entity_id: str | None) -> str:
+        """Validate entity ID format to prevent injection.
+
+        SECURITY: Entity IDs must follow PROV-O URI-safe patterns.
+
+        Args:
+            entity_id: Entity identifier to validate
+
+        Returns:
+            Validated entity ID
+
+        Raises:
+            ValueError: If entity_id is invalid or contains unsafe characters
+        """
+        if not entity_id:
+            raise ValueError("entity_id is required")
+
+        if not isinstance(entity_id, str):
+            raise ValueError(f"entity_id must be string, got {type(entity_id)}")
+
+        if not _VALID_ENTITY_ID_PATTERN.match(entity_id):
+            raise ValueError(
+                f"Invalid entity_id format: {entity_id}. "
+                "Must be 1-256 characters, alphanumeric with _:@#- only"
+            )
+
+        return entity_id
+
     async def execute(self, context: dict[str, Any]) -> AgentResult:
         """Execute provenance tracking operation.
 
@@ -147,14 +216,36 @@ class ProvenanceTrackingAgent(BaseAgent):
 
         try:
             operation = context.get("operation", "record_entity")
+            raw_tenant_id = context.get("tenant_id")
+
+            # SECURITY: Validate tenant_id format early (fail-fast)
+            try:
+                tenant_id = self._validate_tenant_id(raw_tenant_id)
+            except ValueError as e:
+                return self._create_result(
+                    status="failed",
+                    output={},
+                    execution_time_ms=int((time.time() - start_time) * 1000),
+                    errors=[f"Invalid tenant_id: {e}"],
+                )
 
             if operation == "record_entity":
+                # SECURITY: Validate entity_id
+                try:
+                    entity_id = self._validate_entity_id(context.get("entity_id"))
+                except ValueError as e:
+                    return self._create_result(
+                        status="failed",
+                        output={},
+                        execution_time_ms=int((time.time() - start_time) * 1000),
+                        errors=[str(e)],
+                    )
                 result = await self._record_entity(
                     entity_type=context.get("entity_type", "DOCUMENT"),
-                    entity_id=context.get("entity_id"),
+                    entity_id=entity_id,
                     label=context.get("label"),
                     attributes=context.get("attributes", {}),
-                    tenant_id=context.get("tenant_id", "system"),
+                    tenant_id=tenant_id,
                 )
             elif operation == "record_activity":
                 result = await self._record_activity(
@@ -164,11 +255,22 @@ class ProvenanceTrackingAgent(BaseAgent):
                     attributes=context.get("attributes", {}),
                 )
             elif operation == "record_derivation":
+                # SECURITY: Validate entity_ids
+                try:
+                    derived_id = self._validate_entity_id(context.get("derived_entity_id"))
+                    source_id = self._validate_entity_id(context.get("source_entity_id"))
+                except ValueError as e:
+                    return self._create_result(
+                        status="failed",
+                        output={},
+                        execution_time_ms=int((time.time() - start_time) * 1000),
+                        errors=[str(e)],
+                    )
                 result = await self._record_derivation(
-                    derived_entity_id=context.get("derived_entity_id"),
-                    source_entity_id=context.get("source_entity_id"),
+                    derived_entity_id=derived_id,
+                    source_entity_id=source_id,
                     derivation_type=context.get("derivation_type", "wasDerivedFrom"),
-                    tenant_id=context.get("tenant_id", "system"),
+                    tenant_id=tenant_id,
                 )
             elif operation == "create_decision_trace":
                 result = await self._create_decision_trace(
@@ -177,12 +279,22 @@ class ProvenanceTrackingAgent(BaseAgent):
                     output_type=context.get("output_type"),
                     output_id=context.get("output_id"),
                     steps=context.get("steps", []),
-                    tenant_id=context.get("tenant_id", "system"),
+                    tenant_id=tenant_id,
                 )
             elif operation == "query_lineage":
+                # SECURITY: Validate entity_id
+                try:
+                    entity_id = self._validate_entity_id(context.get("entity_id"))
+                except ValueError as e:
+                    return self._create_result(
+                        status="failed",
+                        output={},
+                        execution_time_ms=int((time.time() - start_time) * 1000),
+                        errors=[str(e)],
+                    )
                 result = await self._query_lineage(
-                    entity_id=context.get("entity_id"),
-                    tenant_id=context.get("tenant_id", "system"),
+                    entity_id=entity_id,
+                    tenant_id=tenant_id,
                 )
             else:
                 return self._create_result(

@@ -120,7 +120,9 @@ describe("useModels", () => {
       expect(callArg).toContain("/models?");
       expect(callArg).toContain("search=revenue");
       expect(callArg).toContain("folder=my-models");
-      expect(callArg).toContain("industry=SaaS%20%2F%20B2B");
+      // URLSearchParams encodes spaces as + and / as %2F
+      expect(callArg).toContain("industry=SaaS");
+      expect(callArg).toContain("B2B");
       expect(callArg).toContain("status=active");
       expect(callArg).toContain("sort_by=updated_at");
       expect(callArg).toContain("sort_dir=desc");

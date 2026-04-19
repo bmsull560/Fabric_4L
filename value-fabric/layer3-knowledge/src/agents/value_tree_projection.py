@@ -7,16 +7,23 @@ Implements value tree traversal and projection algorithms for:
 """
 
 import logging
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from neo4j import AsyncDriver
 
 from .base import AgentResult, BaseAgent
 
 logger = logging.getLogger(__name__)
+
+# SECURITY: Valid tenant ID patterns
+_TENANT_SYSTEM = "system"
+_TENANT_ADMIN = "admin"
+_VALID_NODE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
 
 
 @dataclass
@@ -67,6 +74,68 @@ class ValueTreeProjectionAgent(BaseAgent):
         super().__init__("ValueTreeProjectionAgent")
         self._driver = driver
 
+    def _validate_tenant_id(self, tenant_id: str | None) -> str:
+        """Validate and normalize tenant ID.
+
+        SECURITY: Strict validation to prevent tenant confusion attacks.
+        Accepts UUID format or reserved system/admin identifiers.
+
+        Args:
+            tenant_id: Raw tenant identifier from context
+
+        Returns:
+            Normalized tenant ID string
+
+        Raises:
+            ValueError: If tenant_id is invalid format
+        """
+        if tenant_id is None:
+            return _TENANT_SYSTEM
+
+        normalized = str(tenant_id).strip().lower()
+
+        if not normalized:
+            return _TENANT_SYSTEM
+
+        # Allow reserved system identifiers
+        if normalized in (_TENANT_SYSTEM, _TENANT_ADMIN):
+            return normalized
+
+        # Validate UUID format for tenant isolation
+        try:
+            UUID(normalized)
+            return normalized
+        except ValueError as e:
+            raise ValueError(f"Invalid tenant_id format: {tenant_id}. Expected UUID.") from e
+
+    def _validate_node_id(self, node_id: str) -> str:
+        """Validate node ID format to prevent injection.
+
+        SECURITY: Node IDs must be alphanumeric with limited special chars.
+
+        Args:
+            node_id: Node identifier to validate
+
+        Returns:
+            Validated node ID
+
+        Raises:
+            ValueError: If node_id contains invalid characters
+        """
+        if not node_id:
+            raise ValueError("node_id is required")
+
+        if not isinstance(node_id, str):
+            raise ValueError(f"node_id must be string, got {type(node_id)}")
+
+        if not _VALID_NODE_ID_PATTERN.match(node_id):
+            raise ValueError(
+                f"Invalid node_id format: {node_id}. "
+                "Must be 1-128 alphanumeric characters with - or _ only"
+            )
+
+        return node_id
+
     async def execute(self, context: dict[str, Any]) -> AgentResult:
         """Execute value tree projection.
 
@@ -88,20 +157,34 @@ class ValueTreeProjectionAgent(BaseAgent):
             start_node_id = context.get("start_node_id")
             max_hops = context.get("max_hops", 5)
             min_confidence = context.get("min_confidence", 0.7)
-            tenant_id = context.get("tenant_id", "system")
+            raw_tenant_id = context.get("tenant_id")
 
-            if not start_node_id:
+            # SECURITY: Validate tenant_id format
+            try:
+                tenant_id = self._validate_tenant_id(raw_tenant_id)
+            except ValueError as e:
                 return self._create_result(
                     status="failed",
                     output={},
                     execution_time_ms=int((time.time() - start_time) * 1000),
-                    errors=["start_node_id is required"],
+                    errors=[f"Invalid tenant_id: {e}"],
+                )
+
+            # SECURITY: Validate node_id format
+            try:
+                validated_node_id = self._validate_node_id(start_node_id)
+            except ValueError as e:
+                return self._create_result(
+                    status="failed",
+                    output={},
+                    execution_time_ms=int((time.time() - start_time) * 1000),
+                    errors=[str(e)],
                 )
 
             if operation == "upward_traversal":
-                result = await self._upward_traversal(start_node_id, max_hops, tenant_id)
+                result = await self._upward_traversal(validated_node_id, max_hops, tenant_id)
             elif operation == "downward_traversal":
-                result = await self._downward_traversal(start_node_id, max_hops, tenant_id)
+                result = await self._downward_traversal(validated_node_id, max_hops, tenant_id)
             elif operation == "semantic_match":
                 query_text = context.get("query_text", "")
                 result = await self._semantic_match(query_text, min_confidence, tenant_id)

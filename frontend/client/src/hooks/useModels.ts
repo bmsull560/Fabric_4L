@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
+import { BaseApiError, STALE_TIME, RETRY_CONFIG, withApiError } from './useApiShared';
 
 // ── Error class ──────────────────────────────────────────────────────────────
 
@@ -172,7 +172,7 @@ async function fetchFolders(): Promise<ModelFolder[]> {
 export function useModels(filters: ModelFilters = {}) {
   return useQuery<ValueModel[], ModelApiError>({
     queryKey: QK.models.list(filters),
-    queryFn: () => fetchModels(filters),
+    queryFn: () => withApiError(fetchModels(filters), ModelApiError),
     staleTime: STALE_TIME.list,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
@@ -183,7 +183,7 @@ export function useModels(filters: ModelFilters = {}) {
 export function useModelFolders() {
   return useQuery<ModelFolder[], ModelApiError>({
     queryKey: QK.models.folders(),
-    queryFn: fetchFolders,
+    queryFn: () => withApiError(fetchFolders(), ModelApiError),
     staleTime: STALE_TIME.reference,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,

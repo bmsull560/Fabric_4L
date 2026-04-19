@@ -46,7 +46,7 @@ export const GraphNodeSchema = z.object({
   entity_type: z.string(),
   confidence_score: z.number().min(0).max(1).default(0.8),
   description: z.string().optional(),
-  properties: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const GraphEdgeSchema = z.object({
@@ -54,7 +54,7 @@ export const GraphEdgeSchema = z.object({
   target: z.string(),
   type: z.string(),
   confidence: z.number().min(0).max(1).optional(),
-  properties: z.record(z.unknown()).optional(),
+  properties: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const SubgraphResponseSchema = z.object({

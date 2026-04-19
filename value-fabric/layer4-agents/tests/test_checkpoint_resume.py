@@ -233,8 +233,9 @@ class TestCheckpointConfiguration:
         persistence failures gracefully.
         """
         # When database is unavailable, should raise CheckpointConnectionError
+        import asyncpg
         with patch("src.config.checkpoint.asyncpg.connect") as mock_connect:
-            mock_connect.side_effect = Exception("Database unavailable")
+            mock_connect.side_effect = asyncpg.PostgresError("Database unavailable")
             
             with pytest.raises(CheckpointConnectionError) as exc_info:
                 async with CheckpointConfig.get_saver() as _:

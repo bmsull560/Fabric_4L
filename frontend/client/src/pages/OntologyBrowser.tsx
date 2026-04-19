@@ -28,8 +28,9 @@ const mapEntityType = (type: string): EntityType => {
 export default function OntologyBrowser() {
   const [activeTab, setActiveTab] = useState("Entity Browser");
 
-  // Server state: React Query
-  const { data: entities = [], isLoading, error, refetch } = useEntities();
+  // Server state: React Query - returns EntityListResponse with results array
+  const { data: response, isLoading, error, refetch } = useEntities();
+  const entities = response?.results ?? [];
 
   // UI state: Zustand
   const { searchQuery, selectedType, setSearchQuery, setSelectedType, clearFilters } = useEntityUIStore();
@@ -47,9 +48,11 @@ export default function OntologyBrowser() {
     return result;
   }, [entities, searchQuery, selectedType]);
 
-  const errorMessage = error
-    ? (error as any).response?.data?.detail || (error as Error).message
-    : null;
+  const errorMessage = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error && 'response' in error
+      ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      : 'An unexpected error occurred';
 
   return (
     <div className="p-6 max-w-5xl">
@@ -121,7 +124,7 @@ export default function OntologyBrowser() {
             ])}
           />
         )}
-        {filteredEntities.length === 0 && !isLoading && (
+        {!isLoading && filteredEntities.length === 0 && (
           <div className="text-center p-8 text-neutral-500">
             {searchQuery || selectedType ? 'No entities match your filters.' : 'No entities found.'}
           </div>

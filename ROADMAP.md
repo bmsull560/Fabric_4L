@@ -2715,3 +2715,65 @@ Task 45 (Feature Flags)   ──► (unblocks safe rollout) Task 48 (SDK/CLI)
 | 48 | SDK / CLI | P1 | 2 weeks |
 
 **Total estimated Phase 3 effort: ~11 weeks (parallelizable across 2-3 engineers)**
+
+---
+
+## Launch Readiness Assessment - 2026-04-19
+
+**Overall Readiness: ~82%**
+
+| Layer | Current | Target | Gap | Status |
+|-------|---------|--------|-----|--------|
+| L1 Ingestion | ~85% | 90% | 5% | ✅ Advanced - Celery/Redis wired |
+| L2 Extraction | ~90% | 95% | 5% | ✅ Advanced - LLM integration complete |
+| L3 Knowledge | ~88% | 90% | 2% | ✅ Advanced - Vector E2E verified |
+| L4 Agents | ~85% | 85% | 0% | ✅ Production - Checkpoint/resume complete |
+| L5 Ground Truth | 100% | 100% | 0% | ✅ Production Ready |
+| L6 Benchmarks | ~90% | 90% | 0% | ✅ Advanced - APIs operational |
+| Frontend | ~90% | 85% | -5% | ✅ Exceeds target - Core screens API-wired |
+| DevOps/Infra | ~75% | 80% | 5% | 🟡 K8s manifests exist, monitoring partial |
+
+### Executive Summary
+
+The platform has achieved substantial production readiness. All Phase 1 (Tasks 25-36) and Phase 2 (Tasks 37-39, 51-52) tasks are complete.
+
+**Recent Fixes (2026-04-18):**
+- ✅ Layer 2 Dockerfile import path fixed
+- ✅ Layer 2 healthcheck endpoint corrected
+- ✅ All services recovering after root cause fix
+
+### Top 5 Risks Blocking Full Production
+
+| Rank | Risk | Layer | Status |
+|------|------|-------|--------|
+| **1** | **Frontend AuthContext Tests Failing** | Frontend | 🔴 5 errors in OIDC handling |
+| **2** | **Model Registry Missing** | L5 | 🔴 No LLM versioning (Task 41) |
+| **3** | **Vault Integration Unwired** | Infra | 🔴 `vault.example.com` placeholder |
+| **4** | **Incident Runbooks Absent** | Ops | 🔴 No runbook files exist |
+| **5** | **Alertmanager Unconfigured** | Monitoring | 🟡 Alerts fire to void |
+
+### Launch Checklist Status
+
+| Criterion | Status |
+|-----------|--------|
+| End-to-end workflow | ✅ Smoke gate operational |
+| All APIs responding | ✅ L1-L6 health checks passing |
+| Frontend showing real data | ✅ 90%+ screens API-wired |
+| Tests >80% coverage | ✅ CI enforcement active |
+| Docker deployment | ✅ docker-compose full stack |
+| **Monitoring** | 🟡 Prometheus exists, Alertmanager pending |
+| **SSO/OIDC** | ❌ Not implemented (Task 40) |
+| **Model Governance** | ❌ No registry (Task 41) |
+| **Incident Runbooks** | ❌ None exist (Task 43) |
+| **Vault Integration** | ❌ Template only (Task 42) |
+
+**Met:** 6/10 production survivability criteria
+
+### Recommended Sprint Sequence
+
+1. **Sprint 1 (1 week):** Frontend Auth Stabilization - Fix AuthContext tests
+2. **Sprint 2 (2 weeks):** Model Registry + Vault Wiring
+3. **Sprint 3 (1 week):** Runbooks + Alertmanager
+4. **Sprint 4 (2 weeks):** Enterprise Features (flags, rate limiting, SDK)
+
+**Go/No-Go Target:** After Sprint 3 = 95%+ readiness

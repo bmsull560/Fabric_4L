@@ -44,9 +44,9 @@ describe('GraphExplorer', () => {
   });
 
   it('handles empty graph state', async () => {
-    // Override default handler to return empty graph
+    // P0 Fix: Override handler BEFORE rendering with no delay for deterministic response
     server.use(
-      http.get('/api/v1/graph/subgraph', () => {
+      http.get('/api/v1/graph/subgraph', async () => {
         return HttpResponse.json({
           root_entity_id: '',
           nodes: [],
@@ -57,6 +57,7 @@ describe('GraphExplorer', () => {
       })
     );
 
+    // Now render after mock is set up
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 

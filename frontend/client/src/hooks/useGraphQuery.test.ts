@@ -23,6 +23,11 @@ beforeEach(() => {
   server.resetHandlers();
 });
 
+// Shared mock data factory for GraphNode consistency
+const createMockNode = (id: string, name: string, entity_type: string, confidence_score: number) => ({
+  id, name, entity_type, confidence_score
+});
+
 describe('useGraphQuery', () => {
   it('executes graph query successfully', async () => {
     const wrapper = createWrapper();
@@ -159,8 +164,8 @@ describe('useFullGraph', () => {
         return HttpResponse.json({
           root_entity_id: '',
           nodes: [
-            { id: 'ent-1', label: 'Entity One', type: 'Capability', confidence: 0.95 },
-            { id: 'ent-2', label: 'Entity Two', type: 'UseCase', confidence: 0.88 },
+            createMockNode('ent-1', 'Entity One', 'Capability', 0.95),
+            createMockNode('ent-2', 'Entity Two', 'UseCase', 0.88),
           ],
           edges: [
             { source: 'ent-1', target: 'ent-2', type: 'ENABLES' },

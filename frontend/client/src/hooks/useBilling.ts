@@ -79,7 +79,9 @@ export function useBilling(customerId: string) {
     },
     onError: (error) => {
       setCheckoutError(error instanceof Error ? error : new Error(String(error)));
-      console.error('Checkout mutation failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Checkout mutation failed:', error);
+      }
     },
   });
 
@@ -96,7 +98,9 @@ export function useBilling(customerId: string) {
     },
     onError: (error) => {
       setPortalError(error instanceof Error ? error : new Error(String(error)));
-      console.error('Portal mutation failed:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Portal mutation failed:', error);
+      }
     },
   });
 

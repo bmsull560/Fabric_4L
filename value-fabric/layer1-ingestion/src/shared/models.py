@@ -148,6 +148,18 @@ class RetryBackoff(str, PyEnum):
     EXPONENTIAL = "exponential"
 
 
+class CrawlPath(str, PyEnum):
+    """Ingestion path selection for a scraping target.
+
+    Controls whether the crawler uses HTTPX fast path,
+    Playwright browser automation, or hybrid fallback.
+    """
+
+    FAST = "fast"  # HTTPX only - fastest for static content
+    BROWSER = "browser"  # Playwright only - handles dynamic content
+    FAST_WITH_FALLBACK = "fast_fallback"  # HTTPX first, browser if quality fails
+
+
 class AuthenticationType(str, PyEnum):
     """Authentication types for targets."""
 
@@ -896,4 +908,67 @@ def create_proxy_pool(
         name=name,
         proxies=proxies or [],
         rotation_strategy=rotation_strategy.value,
+    )
+
+
+# =============================================================================
+# CRAWL DECISION MODEL (for Smart Router)
+# =============================================================================
+
+
+class CrawlDecision(Base):
+    """Canonical record of crawl routing decisions.
+
+    Stores immutable history of routing decisions, quality assessments,
+    and execution outcomes for debugging, metrics, and optimization.
+    """
+
+    __tablename__ = "crawl_decisions"
+
+    # Primary key
+    decision_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Foreign keys
+    job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True, index=True)
+
+    # Request context
+    url = Column(Text, nullable=False)
+    domain = Column(String(255), nullable=False, index=True)
+    requested_path = Column(String(20), nullable=False)  # fast/browser/fast_fallback
+
+    # Routing decision
+    router_decision = Column(String(20), nullable=False)  # What router chose
+    router_rule = Column(String(50), nullable=False, index=True)  # Which rule triggered
+
+    # Quality evaluation
+    quality_passed = Column(Boolean, nullable=True)
+    quality_checks = Column(JSONB, nullable=True)  # Dict of check_name -> bool
+    fallback_reason = Column(String(50), nullable=True, index=True)
+
+    # Execution outcome
+    final_path = Column(String(20), nullable=False)  # What actually executed
+    status_code = Column(Integer, nullable=True)
+
+    # Performance metrics
+    fast_duration_ms = Column(Integer, nullable=False, default=0)
+    browser_duration_ms = Column(Integer, nullable=True)
+    fetch_time_ms = Column(Integer, nullable=False, default=0)
+    bytes_transferred = Column(Integer, nullable=False, default=0)
+
+    # Content analysis
+    spa_detected = Column(Boolean, nullable=False, default=False)
+    text_length = Column(Integer, nullable=False, default=0)
+
+    # Error tracking
+    error_type = Column(String(50), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime(timezone=True), nullable=False, default=func.now(), index=True)
+
+    # Indexes for common queries
+    __table_args__ = (
+        Index("idx_crawl_decisions_job_created", "job_id", "created_at"),
+        Index("idx_crawl_decisions_domain_created", "domain", "created_at"),
     )

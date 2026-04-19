@@ -255,3 +255,175 @@ class CrawlMetrics:
             "crawl.rate_limit_delays": self._rate_limit_delays,
             "crawl.blocked_resources": self._blocked_resources_count,
         }
+
+
+class ExecutionMetrics:
+    """Metrics collector for hybrid HTTPX/Browser execution paths.
+
+    Tracks key metrics for the smart routing system:
+    - Path selection distribution (FAST vs BROWSER vs FALLBACK)
+    - Fallback rates and reasons
+    - Performance comparison between paths
+    - SPA detection effectiveness
+
+    Integrates with ExecutionLogger for cost attribution hooks.
+    """
+
+    def __init__(self):
+        self._fast_path_count = 0
+        self._browser_path_count = 0
+        self._fallback_count = 0
+        self._spa_detected_count = 0
+        self._quality_failures = 0
+        self._fast_path_duration_ms = 0
+        self._browser_path_duration_ms = 0
+        self._fallback_reasons: dict[str, int] = {}
+
+    def record_fast_path(
+        self,
+        duration_ms: int,
+        spa_detected: bool = False,
+        quality_passed: bool = True,
+    ) -> None:
+        """Record a successful fast path execution.
+
+        Args:
+            duration_ms: Time spent in HTTPX fetch
+            spa_detected: Whether SPA was detected (but quality passed anyway)
+            quality_passed: Whether quality gate passed
+        """
+        self._fast_path_count += 1
+        self._fast_path_duration_ms += duration_ms
+
+        if spa_detected:
+            self._spa_detected_count += 1
+
+        if not quality_passed:
+            self._quality_failures += 1
+
+        logger.info(
+            "execution_fast_path",
+            duration_ms=duration_ms,
+            spa_detected=spa_detected,
+            quality_passed=quality_passed,
+        )
+
+    def record_browser_path(
+        self,
+        duration_ms: int,
+        reason: str = "direct",
+    ) -> None:
+        """Record a browser path execution.
+
+        Args:
+            duration_ms: Time spent in browser automation
+            reason: Why browser path was selected (e.g., "target_override", "spa_detected")
+        """
+        self._browser_path_count += 1
+        self._browser_path_duration_ms += duration_ms
+
+        logger.info(
+            "execution_browser_path",
+            duration_ms=duration_ms,
+            reason=reason,
+        )
+
+    def record_fallback(
+        self,
+        fast_duration_ms: int,
+        browser_duration_ms: int,
+        reason: str,
+    ) -> None:
+        """Record a fast → browser fallback.
+
+        Args:
+            fast_duration_ms: Time spent in failed fast attempt
+            browser_duration_ms: Time spent in browser fallback
+            reason: Why fallback occurred (e.g., "no_spa", "text_length")
+        """
+        self._fallback_count += 1
+        self._fast_path_duration_ms += fast_duration_ms
+        self._browser_path_duration_ms += browser_duration_ms
+
+        # Track fallback reasons
+        self._fallback_reasons[reason] = self._fallback_reasons.get(reason, 0) + 1
+
+        logger.info(
+            "execution_fallback",
+            fast_duration_ms=fast_duration_ms,
+            browser_duration_ms=browser_duration_ms,
+            total_duration_ms=fast_duration_ms + browser_duration_ms,
+            reason=reason,
+        )
+
+    @property
+    def fast_path_count(self) -> int:
+        return self._fast_path_count
+
+    @property
+    def browser_path_count(self) -> int:
+        return self._browser_path_count
+
+    @property
+    def fallback_count(self) -> int:
+        return self._fallback_count
+
+    @property
+    def total_executions(self) -> int:
+        return self._fast_path_count + self._browser_path_count + self._fallback_count
+
+    @property
+    def fallback_rate(self) -> float:
+        """Percentage of attempts that required fallback."""
+        attempts = self._fast_path_count + self._fallback_count
+        if attempts == 0:
+            return 0.0
+        return self._fallback_count / attempts
+
+    @property
+    def fast_path_rate(self) -> float:
+        """Percentage of executions using fast path."""
+        total = self.total_executions
+        if total == 0:
+            return 0.0
+        return self._fast_path_count / total
+
+    @property
+    def avg_fast_path_duration_ms(self) -> float:
+        if self._fast_path_count == 0:
+            return 0.0
+        return self._fast_path_duration_ms / self._fast_path_count
+
+    @property
+    def avg_browser_path_duration_ms(self) -> float:
+        browser_count = self._browser_path_count + self._fallback_count
+        if browser_count == 0:
+            return 0.0
+        return self._browser_path_duration_ms / browser_count
+
+    @property
+    def spa_detection_rate(self) -> float:
+        """Percentage of fast path attempts where SPA was detected."""
+        if self._fast_path_count == 0:
+            return 0.0
+        return self._spa_detected_count / self._fast_path_count
+
+    def get_fallback_breakdown(self) -> dict[str, int]:
+        """Get count of fallback by reason."""
+        return self._fallback_reasons.copy()
+
+    def to_dict(self) -> dict:
+        """Export metrics as dictionary for telemetry."""
+        return {
+            "execution.fast_path.count": self._fast_path_count,
+            "execution.browser_path.count": self._browser_path_count,
+            "execution.fallback.count": self._fallback_count,
+            "execution.fast_path.rate": self.fast_path_rate,
+            "execution.fallback.rate": self.fallback_rate,
+            "execution.avg_fast_duration_ms": self.avg_fast_path_duration_ms,
+            "execution.avg_browser_duration_ms": self.avg_browser_path_duration_ms,
+            "execution.spa_detection.rate": self.spa_detection_rate,
+            "execution.spa_detection.count": self._spa_detected_count,
+            "execution.quality_failures": self._quality_failures,
+            "execution.fallback_reasons": self._fallback_reasons,
+        }

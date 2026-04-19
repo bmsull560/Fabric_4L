@@ -28,7 +28,7 @@ import { EntityBadge } from "@/components/WfPrimitives";
 import type { EntityType } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useValueTree } from "@/hooks/useValueTrees";
-import { useEntities } from "@/hooks/useEntities";
+import { useEntities, type Entity } from "@/hooks/useEntities";
 import type { ValueTreeNode, ValueTreeEdge } from "@/api/valueTrees";
 
 // Types for UI tree rendering
@@ -120,7 +120,7 @@ function TreeNodeView({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
         <div className="flex flex-col items-center">
           <div className="w-px h-4 bg-neutral-300"/>
           <div className="flex gap-4 items-start">
-            {node.children!.map((child, i) => (
+            {node.children!.map((child) => (
               <div key={child.id} className="flex flex-col items-center">
                 <div className="w-px h-4 bg-neutral-300"/>
                 <TreeNodeView node={child} depth={depth + 1}/>
@@ -218,8 +218,9 @@ export default function ValueTreeExplorer() {
     maxDepth: 4 
   });
 
-  // Fetch available entities for selection
-  const { data: entities = [], isLoading: entitiesLoading } = useEntities();
+  // Fetch available entities for selection - returns EntityListResponse with results array
+  const { data: entitiesResponse, isLoading: entitiesLoading } = useEntities();
+  const entities = entitiesResponse?.results ?? [];
 
   // Build hierarchical tree for rendering
   const tree = useMemo(() => {
@@ -246,7 +247,7 @@ export default function ValueTreeExplorer() {
 
   // Filter entities that could be tree roots (ValueDrivers or Capabilities)
   const rootCandidates = useMemo(() => {
-    return entities.filter(entity => 
+    return entities.filter((entity: Entity) => 
       entity.type === 'ValueDriver' || entity.type === 'Capability' || entity.type === 'UseCase'
     );
   }, [entities]);
@@ -292,7 +293,7 @@ export default function ValueTreeExplorer() {
                         </a>
                       </div>
                     ) : (
-                      rootCandidates.map(entity => (
+                      rootCandidates.map((entity: Entity) => (
                         <button
                           key={entity.id}
                           onClick={() => handleSelectEntity(entity.id)}

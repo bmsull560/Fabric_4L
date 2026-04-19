@@ -305,7 +305,7 @@ export function useSubgraph(options: {
       params.set('depth', depth.toString());
       params.set('limit', limit.toString());
 
-      const response = await apiClient.get('l3', `/v1/graph/subgraph?${params.toString()}`);
+      const response = await apiClient.get('l3', `/subgraph?${params.toString()}`);
 
       // Validate response with Zod schema
       const validated = validateOrThrow(SubgraphResponseSchema, response.data, 'SubgraphResponse');
