@@ -45,6 +45,16 @@ TEST_ORG_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
 
 # ---------------------------------------------------------------------------
+# Organization ID fixture for model registry tests
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def organization_id() -> str:
+    """Return test organization ID as string for model registry tests."""
+    return str(TEST_ORG_ID)
+
+
+# ---------------------------------------------------------------------------
 # Engine — created once per session
 # ---------------------------------------------------------------------------
 
@@ -109,6 +119,7 @@ async def client(db) -> AsyncGenerator[AsyncClient, None]:
     Provide an httpx.AsyncClient that overrides the get_db dependency
     to use the test session.
     """
+    from layer5_ground_truth.api.auth import TokenClaims, get_current_user
     from layer5_ground_truth.database import get_db
 
     app = create_app()
@@ -116,7 +127,16 @@ async def client(db) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db():
         yield db
 
+    def override_get_current_user():
+        """Return test user with organization_id for auth bypass."""
+        return TokenClaims(
+            organization_id=TEST_ORG_ID,
+            user_id="test-user",
+            roles=["admin"],
+        )
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -125,6 +145,25 @@ async def client(db) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+# ---------------------------------------------------------------------------
+# Async client alias and auth headers for model registry tests
+# ---------------------------------------------------------------------------
+
+@pytest_asyncio.fixture
+async def async_client(client) -> AsyncGenerator[AsyncClient, None]:
+    """Alias for client fixture - model registry tests expect async_client."""
+    yield client
+
+
+@pytest.fixture
+def auth_headers() -> dict:
+    """Return authentication headers for API tests."""
+    return {
+        "Authorization": "Bearer test-token",
+        "Content-Type": "application/json",
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ variables when the registry is unavailable.
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -62,6 +63,7 @@ class ModelRegistryClient:
         self.timeout = timeout
         self.cache_ttl_seconds = cache_ttl_seconds
         self._cache: dict[str, CachedModel] = {}
+        self._cache_lock = threading.Lock()
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -81,30 +83,32 @@ class ModelRegistryClient:
 
     def _get_cached(self, tenant_id: str, provider: str) -> str | None:
         """Get cached model if not expired."""
-        key = self._cache_key(tenant_id, provider)
-        cached = self._cache.get(key)
-        if cached and not cached.is_expired():
-            return cached.model_name
-        return None
+        with self._cache_lock:
+            key = self._cache_key(tenant_id, provider)
+            cached = self._cache.get(key)
+            if cached and not cached.is_expired():
+                return cached.model_name
+            return None
 
     def _set_cached(self, tenant_id: str, provider: str, model_name: str) -> None:
         """Cache model resolution result with LRU eviction."""
-        # Evict oldest entries if cache is at max size
-        if len(self._cache) >= self._MAX_CACHE_SIZE:
-            # Remove oldest 20% of entries (LRU approximation)
-            entries_to_remove = max(1, self._MAX_CACHE_SIZE // 5)
-            oldest_keys = sorted(
-                self._cache.keys(),
-                key=lambda k: self._cache[k].cached_at
-            )[:entries_to_remove]
-            for key in oldest_keys:
-                del self._cache[key]
+        with self._cache_lock:
+            # Evict oldest entries if cache is at max size
+            if len(self._cache) >= self._MAX_CACHE_SIZE:
+                # Remove oldest 20% of entries (LRU approximation)
+                entries_to_remove = max(1, self._MAX_CACHE_SIZE // 5)
+                oldest_keys = sorted(
+                    self._cache.keys(),
+                    key=lambda k: self._cache[k].cached_at
+                )[:entries_to_remove]
+                for key in oldest_keys:
+                    del self._cache[key]
 
-        key = self._cache_key(tenant_id, provider)
-        self._cache[key] = CachedModel(
-            model_name=model_name,
-            ttl_seconds=self.cache_ttl_seconds,
-        )
+            key = self._cache_key(tenant_id, provider)
+            self._cache[key] = CachedModel(
+                model_name=model_name,
+                ttl_seconds=self.cache_ttl_seconds,
+            )
 
     def _get_fallback_model(self, provider: str) -> str:
         """Get fallback model from environment variables."""

@@ -198,7 +198,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             AuthErrorCategory.SSO_PROVIDER_ERROR
           );
         } else {
-          const message = String(error).trim();
+          const message = error ? String(error).trim() : '';
           authError = new AuthError(
             message && message !== 'undefined' && message !== 'null'
               ? message
@@ -280,8 +280,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Create a mock JWT token (valid structure but not verified)
+    // Use base64url encoding (RFC 7519) instead of standard base64
+    const base64url = (str: string): string => {
+      return btoa(str)
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+    };
+
     const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +
-      btoa(JSON.stringify({
+      base64url(JSON.stringify({
         sub: mockUser.id,
         email: mockUser.email,
         role: mockUser.role,

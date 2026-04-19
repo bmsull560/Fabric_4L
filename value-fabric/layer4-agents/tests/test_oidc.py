@@ -70,6 +70,12 @@ class TestClaimMapping:
 class TestOIDCClient:
     """Tests for OIDCClient discovery and token verification."""
 
+    @pytest.fixture(autouse=True)
+    def _clear_jwks_cache(self) -> None:
+        """Clear JWKS cache to ensure test isolation."""
+        from shared.identity.oidc import _JWKS_CACHE
+        _JWKS_CACHE.clear()
+
     @pytest.mark.asyncio
     async def test_discover(self) -> None:
         client = OIDCClient(http_client=MagicMock())

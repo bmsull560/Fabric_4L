@@ -15,25 +15,31 @@ import uuid
 from datetime import UTC, datetime
 from uuid import UUID
 
-from shared.identity.hashing import (
-    extract_key_prefix,
-    generate_api_key,
-    hash_api_key,
-)
-from shared.identity.models import (
-    APIKeyCreateRequest,
-    APIKeyCreateResponse,
-    APIKeyModel,
-    TenantCreateRequest,
-    TenantModel,
-    TenantStatus,
-    TenantUpdateRequest,
-    UserInviteRequest,
-    UserModel,
-    UserStatus,
-    UserUpdateRequest,
-)
-from shared.identity.permissions import ROLE_PERMISSIONS
+try:
+    from shared.identity.hashing import (
+        extract_key_prefix,
+        generate_api_key,
+        hash_api_key,
+    )
+    from shared.identity.models import (
+        APIKeyCreateRequest,
+        APIKeyCreateResponse,
+        APIKeyModel,
+        TenantCreateRequest,
+        TenantModel,
+        TenantStatus,
+        TenantUpdateRequest,
+        UserInviteRequest,
+        UserModel,
+        UserStatus,
+        UserUpdateRequest,
+    )
+    from shared.identity.permissions import ROLE_PERMISSIONS
+except ImportError as e:
+    raise RuntimeError(
+        "shared.identity package is required for tenant management. "
+        "Install the shared package or set PYTHONPATH to include value-fabric/shared"
+    ) from e
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

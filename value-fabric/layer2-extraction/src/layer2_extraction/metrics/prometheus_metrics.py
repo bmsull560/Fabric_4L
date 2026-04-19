@@ -2,6 +2,7 @@
 
 import time
 from typing import Any
+from collections import defaultdict
 
 try:
     from prometheus_client import (
@@ -148,12 +149,15 @@ class PrometheusMetrics:
         )
 
         # LLM cost tracking (Task 85)
-        self._metrics["llm_cost_usd_total"] = Counter(
+        # Using Gauge instead of Counter for float values to avoid precision issues
+        self._metrics["llm_cost_usd_total"] = Gauge(
             "vf_llm_cost_usd_total",
             "Total LLM API cost in USD",
             ["provider", "model", "tenant_id"],
             registry=self.config.registry,
         )
+        # Track accumulated costs per label combination for Gauge updates
+        self._accumulated_costs: dict[tuple[str, str, str], float] = defaultdict(float)
 
         # LLM token tracking (Task 85)
         self._metrics["llm_tokens_total"] = Counter(
@@ -218,6 +222,9 @@ class PrometheusMetrics:
     def record_llm_cost(self, provider: str, model: str, tenant_id: str, cost_usd: float) -> None:
         """Record LLM API cost (Task 85).
 
+        Uses Gauge instead of Counter to properly track float values without
+        precision loss. Accumulates costs per label combination.
+
         Args:
             provider: LLM provider name (e.g., 'openai', 'anthropic')
             model: Model name (e.g., 'gpt-4', 'claude-3-opus')
@@ -225,9 +232,11 @@ class PrometheusMetrics:
             cost_usd: Cost in USD
         """
         if self.config.enabled:
+            key = (provider, model, tenant_id or "unknown")
+            self._accumulated_costs[key] += cost_usd
             self._metrics["llm_cost_usd_total"].labels(
                 provider=provider, model=model, tenant_id=tenant_id or "unknown"
-            ).inc(cost_usd)
+            ).set(self._accumulated_costs[key])
 
     def record_llm_tokens(self, provider: str, model: str, token_type: str, count: int) -> None:
         """Record LLM token consumption (Task 85).

@@ -19,7 +19,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "prometheus-client>=0.21.0",
     "psutil>=6.0.0",
-    "infisical-sdk>=2.0.0",
+    "infisicalsdk>=2.0.0",
     "asyncpg>=0.29.0",  # Async PostgreSQL driver
     "alembic>=1.13.0",  # Database migrations
 ]

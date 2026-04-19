@@ -966,7 +966,7 @@ class CrawlDecision(Base):
     error_message = Column(Text, nullable=True)
 
     # Metadata
-    created_at = Column(DateTime(timezone=True), nullable=False, default=func.now(), index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
 
     # Indexes for common queries
     __table_args__ = (

@@ -7,10 +7,16 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import BackgroundTasks
-from shared.audit import AuditEmitter, emit_audit_event
-from shared.audit.models import AuditAction
-from shared.identity.context import RequestContext
-from shared.identity.feature_flags import is_enabled, register_feature_flag_lookup
+try:
+    from shared.audit import AuditEmitter, emit_audit_event
+    from shared.audit.models import AuditAction
+    from shared.identity.context import RequestContext
+    from shared.identity.feature_flags import is_enabled, register_feature_flag_lookup
+except ImportError as e:
+    raise RuntimeError(
+        "shared.audit and shared.identity packages are required for feature flag functionality. "
+        "Install the shared package or set PYTHONPATH to include value-fabric/shared"
+    ) from e
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

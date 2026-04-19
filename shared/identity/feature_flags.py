@@ -92,7 +92,7 @@ def init_feature_flags(flags: dict[str, bool]) -> None:
     """
     global _feature_flags
     _feature_flags = {k: {"enabled": v, "rollout_percentage": 100 if v else 0} for k, v in flags.items()}
-    logger.info(f"Initialized {len(flags)} feature flags")
+    logger.info("Initialized %d feature flags", len(flags))
 
 
 def is_enabled(
@@ -122,7 +122,7 @@ def is_enabled(
             if flag_data is not None:
                 return _should_enable_for_user(flag_data, flag_key, tenant_id, user_id)
         except Exception as e:
-            logger.warning(f"Feature flag lookup failed for {flag_key}: {e}")
+            logger.warning("Feature flag lookup failed for %s: %s", flag_key, e)
 
     # Fall back to global flags (in-memory)
     flag_data = _feature_flags.get(flag_key)

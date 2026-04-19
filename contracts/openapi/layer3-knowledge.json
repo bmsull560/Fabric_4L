@@ -3333,7 +3333,7 @@
     "/v1/search": {
       "post": {
         "summary": "Hybrid Search",
-        "description": "Execute hybrid search combining BM25, vector, and graph signals.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent searches.\n\nNotes:\n- Preferred route: `/v1/search/hybrid`\n- Legacy route retained: `/v1/search` (deprecate later)",
+        "description": "DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.\n\nThis endpoint is deprecated in favor of the canonical entity browser API.\nSunset date: 2026-05-18 (30 days from deprecation).\n\nLegacy behavior: Execute hybrid search combining BM25, vector, and graph signals.\nUses request deduplication to prevent redundant computation.\n\nMigration guide:\n- For entity listing: Use GET /v1/entities with filter parameters\n- For text search: Use search_text query param on /v1/entities\n- For type filtering: Use entity_types query param on /v1/entities",
         "operationId": "hybrid_search_v1_search_post",
         "requestBody": {
           "content": {
@@ -3366,13 +3366,14 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/v1/search/hybrid": {
       "post": {
-        "summary": "Hybrid Search",
-        "description": "Execute hybrid search combining BM25, vector, and graph signals.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent searches.\n\nNotes:\n- Preferred route: `/v1/search/hybrid`\n- Legacy route retained: `/v1/search` (deprecate later)",
+        "summary": "Deprecated: Use GET /v1/entities for entity listing",
+        "description": "DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.\n\nThis endpoint is deprecated in favor of the canonical entity browser API.\nSunset date: 2026-05-18 (30 days from deprecation).\n\nLegacy behavior: Execute hybrid search combining BM25, vector, and graph signals.\nUses request deduplication to prevent redundant computation.\n\nMigration guide:\n- For entity listing: Use GET /v1/entities with filter parameters\n- For text search: Use search_text query param on /v1/entities\n- For type filtering: Use entity_types query param on /v1/entities",
         "operationId": "hybrid_search_v1_search_hybrid_post",
         "requestBody": {
           "content": {
@@ -3405,7 +3406,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/v1/entity/{entity_id}/context": {
@@ -3701,10 +3703,10 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 500,
+              "maximum": 100,
               "minimum": 1,
               "description": "Max results to return",
-              "default": 50,
+              "default": 25,
               "title": "Limit"
             },
             "description": "Max results to return"
@@ -7057,11 +7059,11 @@
           },
           "limit": {
             "type": "integer",
-            "maximum": 500.0,
+            "maximum": 100.0,
             "minimum": 1.0,
             "title": "Limit",
             "description": "Max results to return",
-            "default": 50
+            "default": 25
           },
           "offset": {
             "type": "integer",

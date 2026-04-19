@@ -7,7 +7,13 @@ import os
 from typing import Any
 from uuid import UUID
 
-from shared.audit import AuditAction, emit_audit_event
+try:
+    from shared.audit import AuditAction, emit_audit_event
+except ImportError as e:
+    raise RuntimeError(
+        "shared.audit package is required for audit functionality. "
+        "Install the shared package or set PYTHONPATH to include value-fabric/shared"
+    ) from e
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

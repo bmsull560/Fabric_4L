@@ -17,8 +17,20 @@
 | **Cross-Layer** | 15 | ~80 | 🟡 Partial | N/A |
 
 **Critical Issues:** 3 P0 issues identified  
-**Material Issues:** 8 P1 issues identified  
+**Material Issues:** 11 P1 issues identified  
 **Overall Grade:** B+ (Good, needs targeted fixes)
+
+---
+
+## Audit Phases
+
+| Phase | Status | Date | Notes |
+|-------|--------|------|-------|
+| 1. Discovery | ✅ Complete | 2026-04-19 | Inventory all test files, frameworks, CI integration |
+| 2. Audit | ✅ Complete | 2026-04-19 | Evaluate quality issues per file |
+| 3. Prioritize | ✅ Complete | 2026-04-19 | Rank fixes by impact |
+| 4. Rewrite | ⏳ Pending | - | Execute targeted test rewrites |
+| 5. Validate | ⏳ Pending | - | Verify fixes and run full suite |
 
 ---
 
@@ -149,6 +161,17 @@
 
 **Frontend Unit Result:** All passing after refinement (see `c17623e0` memory)
 
+**Previous Audit Finding:** `TEST_QUALITY_AUDIT.md` in `frontend/` identified 14 failing tests (3.1% failure rate):
+- `GraphExplorer.test.tsx`: 4 failures - brittle text selectors with exact match including dropdown arrows
+- `ValuePacks.test.tsx`: 3 failures - error state assertions expecting text that doesn't appear
+- Other files: 7 failures - brittle selectors, timing issues, implementation-detail assertions
+
+**Key Issues Found:**
+- `document.querySelector('.class')` coupling to implementation
+- `fireEvent` instead of `userEvent` for async interactions
+- Missing MSW handler reset in `beforeEach`
+- Magic strings instead of `getByRole` or `data-testid`
+
 #### E2E Tests (9 files, ~50 tests)
 **Location:** `frontend/e2e/**/*.spec.ts`
 
@@ -173,6 +196,101 @@
 | test_tool_manifests.py | Tool schemas | ✅ PASS |
 
 **Contract Tests:** 100% passing
+
+---
+
+## Rewrite Priority Queue
+
+### P0 - Fix Failing Tests (Immediate)
+| Priority | File | Issue | Effort |
+|----------|------|-------|--------|
+| 1 | `test_checkpoint_resume.py` | Import path issue blocking 12 tests | 2h |
+| 2 | `test_e2e_pipeline.py` | Neo4j Community edition incompatibility | 2h |
+| 3 | `frontend/GraphExplorer.test.tsx` | Brittle text selectors | 1h |
+| 4 | `frontend/ValuePacks.test.tsx` | Error state assertions | 1h |
+
+### P1 - Material Improvements (This Sprint)
+| Priority | File | Issue | Effort |
+|----------|------|-------|--------|
+| 5 | `test_llm_extractor.py` | Tests internals not behavior | 4h |
+| 6 | `test_todo_placeholder_regressions.py` | Weak test naming | 1h |
+| 7 | `test_extraction.py` | Mock LLM instead of requiring API key | 2h |
+| 8 | `test_langgraph_execution.py` | Complex test needs splitting | 8h |
+| 9 | `test_playwright_crawler.py` | Add slow marker for selective run | 1h |
+| 10 | `frontend/hooks/*.test.ts` | Standardize on userEvent | 4h |
+
+### P2 - Polish (Opportunistic)
+| Priority | Task | Effort |
+|----------|------|--------|
+| 11 | Extract common mock factories | 4h |
+| 12 | Add coverage gates to CI | 2h |
+| 13 | Fix datetime.utcnow() warnings | 2h |
+| 14 | Add E2E to CI pipeline | 4h |
+
+---
+
+## Backend Test Quality Deep-Dive
+
+### Layer 3 Knowledge: High-Quality Example
+**File:** `value-fabric/layer3-knowledge/tests/conftest.py` (413 lines)
+
+**Strengths:**
+- ✅ Comprehensive fixtures with `TestSettings` for safe defaults
+- ✅ Proper `mock_app_state` with all AsyncMock dependencies
+- ✅ Both sync (`test_client`) and async (`async_client`) client fixtures
+- ✅ Cleanup with `app.dependency_overrides.clear()` after each test
+- ✅ Sample data fixtures for RDF, search, GraphRAG, ingestion
+- ✅ `TestUtils` class with assertion helpers for common response validation
+- ✅ Consistent use of `pytest_asyncio.fixture` for async fixtures
+
+**Pattern to Emulate:**
+```python
+@pytest_asyncio.fixture
+async def async_client(...) -> AsyncGenerator[AsyncClient, None]:
+    # Setup dependency overrides
+    # Yield client
+    # Cleanup overrides after test
+```
+
+### Layer 3: Exception Tests
+**File:** `value-fabric/layer3-knowledge/tests/test_exceptions.py` (510 lines, 37 test functions)
+
+**Strengths:**
+- ✅ Tests all exception classes in the module
+- ✅ Tests minimal and maximal field scenarios
+- ✅ Tests `to_dict()` serialization
+- ✅ Clear class-based organization (`TestValueFabricException`, `TestValidationError`)
+- ✅ Descriptive test names: `test_exception_with_all_fields`, `test_exception_to_dict_minimal`
+
+### Layer 4: Import Path Fragility
+**File:** `value-fabric/layer4-agents/tests/conftest.py`
+
+**Issues Found:**
+- 🔴 Global `sys.path` mutation at import time (line 16-17)
+- 🔴 Uses `src.X` imports that fail outside specific directories
+- 🔴 No cleanup of `sys.path` after test collection
+
+**Recommended Fix:**
+```python
+# Instead of sys.path manipulation:
+# In pyproject.toml:
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+# Or use editable install:
+# pip install -e value-fabric/layer4-agents
+```
+
+### Test Framework Configuration
+
+| Layer | Framework | Config Location | Coverage Tool |
+|-------|-----------|-----------------|---------------|
+| L1 | pytest | `pyproject.toml` | pytest-cov |
+| L2 | pytest | `pyproject.toml` | pytest-cov |
+| L3 | pytest + pytest-asyncio | `pyproject.toml` | pytest-cov |
+| L4 | pytest + pytest-asyncio | `pyproject.toml` | pytest-cov |
+| L5 | pytest | `pyproject.toml` | pytest-cov |
+| Frontend | Vitest | `vitest.config.ts` | v8 |
 
 ---
 
@@ -372,21 +490,33 @@ pythonpath = ["src"]
 
 ## Recommended Actions
 
-### Immediate (This Sprint)
-1. **Fix L4 import issue** (P0) - 2 hours
-2. **Fix L3 Neo4j edition check** (P0) - 2 hours
-3. **Fix sys.path isolation** (P0) - 1 hour
+### Immediate (This Sprint) - 6 hours
+1. **Fix `test_checkpoint_resume.py` import** (P0) - 2h
+   - Fix: Add `pythonpath = ["src"]` to `pyproject.toml` or use editable install
+2. **Fix `test_e2e_pipeline.py` Neo4j edition** (P0) - 2h
+   - Fix: Add `@pytest.mark.skipif` for Community Edition or make constraints conditional
+3. **Fix Frontend brittle selectors** (P0) - 2h
+   - Files: `GraphExplorer.test.tsx`, `ValuePacks.test.tsx`
+   - Fix: Replace `getByText('Exact Text ▾')` with `getByRole('button', {name: /layout/i})`
 
-### Short Term (Next 2 Sprints)
-4. **Rename weak test names** (P1) - 2 hours
-5. **Mock LLM in L2 tests** (P1) - 4 hours
-6. **Add E2E to CI** (P1) - 4 hours
-7. **Fix deprecation warnings** (P1) - 2 hours
+### Short Term (Next 2 Sprints) - 20 hours
+4. **Refactor `test_llm_extractor.py`** (P1) - 4h
+   - Change from testing internals to testing extraction behavior
+5. **Split `test_langgraph_execution.py`** (P1) - 8h
+   - Split 20 tests / 33KB file into focused modules
+6. **Standardize Frontend on userEvent** (P1) - 4h
+   - Replace `fireEvent` with `userEvent` in all hook tests
+7. **Add MSW handler reset** (P1) - 2h
+   - Add `server.resetHandlers()` to all `beforeEach` blocks
+8. **Fix deprecation warnings** (P1) - 2h
+   - Replace `datetime.utcnow()` with `datetime.now(UTC)` in L1
 
-### Medium Term (Next Quarter)
-8. **Refactor complex L4 tests** (P1) - 8 hours
-9. **Add coverage gates** (P2) - 4 hours
-10. **Parallelize test execution** (P2) - 4 hours
+### Medium Term (Next Quarter) - 14 hours
+9. **Add E2E to CI pipeline** (P1) - 4h
+10. **Extract common mock factories** (P2) - 4h
+11. **Add coverage gates to CI** (P2) - 2h
+12. **Parallelize test execution** (P2) - 4h
+    - Use `pytest-xdist` for layer tests
 
 ---
 

@@ -10,8 +10,20 @@ Validates:
 
 from __future__ import annotations
 
-import pytest
+import os
+import sys
 from uuid import UUID, uuid4
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def clear_rate_limit_buckets():
+    """Clear global rate limit buckets before and after each test."""
+    from shared.identity.middleware import _tenant_rate_limit_buckets
+    _tenant_rate_limit_buckets.clear()
+    yield
+    _tenant_rate_limit_buckets.clear()
 
 
 class TestTenantRateLimiting:
@@ -19,20 +31,14 @@ class TestTenantRateLimiting:
 
     def test_tenant_scope_added_to_enum(self):
         """Verify TENANT scope exists in RateLimitScope enum."""
-        try:
-            from value_fabric.layer3_knowledge.src.rate_limiting.manager import RateLimitScope
-        except ImportError:
-            # Fallback for different package structure
-            import sys
-            sys.path.insert(0, "c:\\Users\\BBB\\Fabric_4L\\value-fabric\\layer3-knowledge\\src")
-            from rate_limiting.manager import RateLimitScope
+        from value_fabric.layer3_knowledge.src.rate_limiting.manager import RateLimitScope
 
         assert hasattr(RateLimitScope, "TENANT")
         assert RateLimitScope.TENANT == "tenant"
 
     def test_tenant_settings_schema_validation(self):
         """Verify tenant settings schema validates rate limits correctly."""
-        from tenants.settings_schema import (
+        from src.tenants.settings_schema import (
             RateLimitSettings,
             TenantSettings,
             get_tenant_rate_limits,
@@ -50,7 +56,7 @@ class TestTenantRateLimiting:
 
     def test_tenant_settings_defaults(self):
         """Verify defaults are applied when settings missing."""
-        from tenants.settings_schema import (
+        from src.tenants.settings_schema import (
             TenantSettings,
             get_tenant_rate_limits,
         )
@@ -146,7 +152,7 @@ class TestTenantRateLimiting:
 
     def test_tenant_settings_serialization(self):
         """Verify tenant settings can be serialized to JSON."""
-        from value_fabric.layer4_agents.src.tenants.settings_schema import TenantSettings
+        from src.tenants.settings_schema import TenantSettings
 
         settings = TenantSettings()
         json_data = settings.to_json()
@@ -184,7 +190,7 @@ class TestRateLimitMiddlewareIntegration:
         # Create middleware
         middleware = GovernanceMiddleware(
             app=MagicMock(),
-            enable_rate_limiting=True,
+            enable_per_tenant_rate_limiting=True,
             tenant_settings_lookup=AsyncMock(return_value={"rate_limits": {"requests_per_minute": 1}}),
         )
 
@@ -224,7 +230,7 @@ class TestRateLimitMiddlewareIntegration:
 
         middleware = GovernanceMiddleware(
             app=MagicMock(),
-            enable_rate_limiting=False,  # Disabled
+            enable_per_tenant_rate_limiting=False,  # Disabled
         )
 
         with patch.object(middleware, "_authenticate", return_value=mock_context):

@@ -86,8 +86,39 @@ vf workflows execute roi_calculator --tenant-id t1 --user-id u1
 # List feature flags
 vf feature-flags list
 
+# Search entities (hybrid: BM25 + vector + graph)
+vf search "AI platform" --limit 5
+
+# Search with entity type filter
+vf search "machine learning" --type Capability
+
 # Get JSON output
 vf tenants list --json
+vf search "query" --json
+```
+
+## Generated Clients
+
+The SDK includes auto-generated clients from OpenAPI specifications:
+
+```python
+from valuefabric.generated import L3Client, L4Client
+from valuefabric.generated.l3 import SearchRequest
+
+# L3 Knowledge Graph client
+l3 = L3Client(base_url="http://localhost:8001", api_key="your-key")
+response = l3.search(SearchRequest(query="AI platform"))
+
+# L4 Agents client  
+l4 = L4Client(base_url="http://localhost:8000", api_key="your-key")
+health = l4.health()
+```
+
+## Regenerating from OpenAPI
+
+```bash
+cd sdk/python
+python scripts/generate_from_openapi.py
 ```
 
 ## Development

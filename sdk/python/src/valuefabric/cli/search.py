@@ -13,8 +13,6 @@ from ..generated.l3 import EntityType, SearchRequest, SearchType
 from ..generated.l3_client import L3Client
 from .config import get_profile_config
 
-app = typer.Typer(help="Hybrid entity search (BM25 + vector + graph)", invoke_without_command=True)
-
 
 def _get_l3_client() -> L3Client:
     """Create L3 client from profile config."""
@@ -104,10 +102,8 @@ def _execute_search(
                f"Processing time: {response.processing_time_ms}ms[/dim]")
 
 
-@app.callback()
-def search(
-    ctx: typer.Context,
-    query: Optional[str] = typer.Argument(None, help="Search query string"),
+def search_command(
+    query: str = typer.Argument(..., help="Search query string"),
     entity_type: Optional[str] = typer.Option(
         None, "--type", "-t", help="Filter by entity type (e.g., Capability, UseCase)"
     ),
@@ -118,12 +114,4 @@ def search(
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ) -> None:
     """Execute hybrid search combining BM25, vector, and graph signals."""
-    if ctx.invoked_subcommand is not None:
-        return
-
-    if query is None:
-        rich_print("[red]Error: Missing QUERY argument[/red]")
-        rich_print("[yellow]Usage: vf search <QUERY> [OPTIONS][/yellow]")
-        raise typer.Exit(1)
-
     _execute_search(query, entity_type, top_k, search_type, json_output)

@@ -466,11 +466,12 @@ class OrchestrationController:
             "scheduler_status": scheduler_status.get("status") if scheduler_status else None,
         }
 
-    async def cancel_workflow(self, workflow_id: str) -> bool:
+    async def cancel_workflow(self, workflow_id: str, reason: str | None = None) -> bool:
         """Cancel a workflow.
 
         Args:
             workflow_id: Workflow to cancel
+            reason: Optional reason for cancellation (logged for audit)
 
         Returns:
             True if cancelled
