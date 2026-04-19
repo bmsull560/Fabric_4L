@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from ...db.driver import get_driver
 from ...logging_config import get_logger
-from ...api.routes.formulas import evaluate_expression, FORMULA_REGISTRY
+from ...api.routes.formulas import evaluate_expression
 from ._utils import increment_patch_version
 
 logger = get_logger(__name__)

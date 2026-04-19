@@ -2026,7 +2026,6 @@ async def list_entities(
                 if sources_record:
                     available_sources = sources_record["sources"]
 
-        filtered_count = len(summaries)  # Before pagination would be total_count
         has_more = (offset + len(summaries)) < total_count
 
         return EntityListResponse(
@@ -3582,7 +3581,6 @@ async def get_query_subgraph(
             # Build relationship filter if specified
             rel_filter = ""
             if relationship_types:
-                rel_types = "|".join(f"`{r}`" for r in relationship_types)
                 rel_filter = f"AND ALL(r IN relationships(path) WHERE type(r) IN [{', '.join(repr(r) for r in relationship_types)}])"
 
             # Query for connected nodes

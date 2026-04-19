@@ -29,9 +29,8 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, relationship
-from sqlalchemy.types import JSON, TypeDecorator
+from sqlalchemy.types import JSON
 
 # Import from truth_object to share the same Base and UUID type
 from .truth_object import Base, UUID

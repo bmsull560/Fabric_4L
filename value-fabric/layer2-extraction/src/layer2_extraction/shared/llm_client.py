@@ -209,7 +209,6 @@ class LLMClient:
                         api_token=self._registry_api_token,
                     )
                     if resolved_model:
-                        effective_model = resolved_model
                         self.model = resolved_model  # Update cached model for subsequent calls
             except Exception as exc:
                 # Log but don't fail - fall back to default model

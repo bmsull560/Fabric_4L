@@ -701,7 +701,6 @@ class CompetitiveIntelArtifact(BaseModel):
         A complete competitive analysis covers all four baselines and has
         at least one economic difference per baseline.
         """
-        covered = {d.category for d in self.economic_differences}
         baselines_covered = len(self.competitive_baselines) >= 2
         has_differences = len(self.economic_differences) >= 4
         return baselines_covered and has_differences

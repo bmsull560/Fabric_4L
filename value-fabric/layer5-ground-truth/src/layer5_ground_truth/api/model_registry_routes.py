@@ -35,7 +35,6 @@ from ..models.model_registry import (
 )
 from .auth import TokenClaims, get_current_user
 from .schemas import (
-    ModelDeploymentCreate,
     ModelDeploymentListResponse,
     ModelDeploymentResponse,
     ModelEvaluationCreate,

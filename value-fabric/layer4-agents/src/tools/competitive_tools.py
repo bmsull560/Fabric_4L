@@ -24,7 +24,6 @@ A competitive fact is only included if it affects:
 from __future__ import annotations
 
 import logging
-from decimal import Decimal
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -36,7 +35,6 @@ from ..contracts.artifacts import (
     ConfidenceScore,
     EconomicDifference,
     EconomicDifferenceCategory,
-    ProofSource,
 )
 from ..models.tool_schemas import ToolCategory
 from .registry import BaseTool

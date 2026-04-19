@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db
 from ...models.account import CRMProvider
-from ...models.integration import IntegrationStatus
 from ...services.integration_service import (
     IntegrationNotFoundError,
     IntegrationService,

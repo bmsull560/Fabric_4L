@@ -25,10 +25,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from ..contracts import (
-    CONFIDENCE_HIGH_THRESHOLD,
-    CONFIDENCE_MEDIUM_THRESHOLD,
-)
 from ..interfaces.variable_registry import (
     IVariableRegistry,
     Variable,

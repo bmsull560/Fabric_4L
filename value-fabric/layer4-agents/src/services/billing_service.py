@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-from ..config.plans import check_entitlement, get_entitlements_response, get_plan
+from ..config.plans import check_entitlement, get_entitlements_response
 from ..models.billing import BillingCustomer, BillingSubscription, BillingWebhookEvent, SubscriptionStatus
 from .stripe_client import get_price_id, get_stripe, StripeNotConfiguredError, StripeError
 

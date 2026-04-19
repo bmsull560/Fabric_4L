@@ -10,10 +10,8 @@ import json
 import logging
 import os
 from dataclasses import asdict, dataclass
-from datetime import datetime
 from typing import Any
 
-from layer2_extraction.models import Relationship, ExtractionResult
 
 logger = logging.getLogger(__name__)
 

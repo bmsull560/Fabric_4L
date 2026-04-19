@@ -7,7 +7,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 try:
     from shared.secrets import load_infisical_secrets
@@ -18,7 +18,6 @@ except ImportError:
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import make_asgi_app
-from pydantic import BaseModel, Field
 
 try:
     from shared.security import add_security_middleware, SecurityConfig
@@ -174,7 +173,6 @@ async def health_check(request: Request = None):
 
     start_time = time.time()
 
-    metrics = get_metrics()
     dataset_count = len(_benchmark_store)
 
     # System metrics

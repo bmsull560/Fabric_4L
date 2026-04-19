@@ -18,19 +18,11 @@ T = TypeVar("T", bound=BaseModel)
 SYSTEM_PROMPT = "You are an enterprise ontology extractor. Be precise and conservative."
 
 from layer2_extraction.models import (
-    BenefitType,
     Capability,
-    DriverType,
-    EnablementType,
     Feature,
-    ImpactLevel,
     Persona,
-    PredicateType,
     Relationship,
-    RoleType,
-    SeniorityLevel,
     UseCase,
-    ValueCategory,
     ValueDriver,
 )
 from layer2_extraction.models.extraction_response import (

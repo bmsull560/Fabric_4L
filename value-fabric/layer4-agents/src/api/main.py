@@ -57,7 +57,7 @@ from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
 from ..feature_flags.api import feature_flags_router
 from ..feature_flags.service import FeatureFlagService
-from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
+from ..metrics import get_metrics, initialize_metrics
 from ..registry.api.routes import router as models_router
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
