@@ -23,20 +23,28 @@ class TestRoutingRules:
         """Create a SmartRouter with default settings."""
         return SmartRouter()
 
-    @pytest.mark.asyncio
-    async def test_rule1_target_override_fast(self, router: SmartRouter) -> None:
+    def test_decide_is_sync_function(self, router: SmartRouter) -> None:
+        """P0 Regression: Verify decide() is synchronous (not async)."""
+        import inspect
+
+        assert not inspect.iscoroutinefunction(router.decide)
+        # Should return immediately without event loop
+        result = router.decide("https://example.com/page.html")
+        assert isinstance(result, RoutingDecision)
+        assert result.route == RouteType.FAST_WITH_FALLBACK
+
+    def test_rule1_target_override_fast(self, router: SmartRouter) -> None:
         """Rule 1: Target mode FAST always routes to fast path."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/solutions/platform",
             target_mode=RouteType.FAST,
         )
         assert decision.route == RouteType.FAST
         assert decision.reason == "target_override_fast"
 
-    @pytest.mark.asyncio
-    async def test_rule1_target_override_browser(self, router: SmartRouter) -> None:
+    def test_rule1_target_override_browser(self, router: SmartRouter) -> None:
         """Rule 1: Target mode BROWSER always routes to browser."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/sitemap.xml",
             target_mode=RouteType.BROWSER,
         )
@@ -44,10 +52,9 @@ class TestRoutingRules:
         assert decision.reason == "target_override_browser"
         assert decision.stagehand_config is not None
 
-    @pytest.mark.asyncio
-    async def test_rule2_static_assets_css(self, router: SmartRouter) -> None:
+    def test_rule2_static_assets_css(self, router: SmartRouter) -> None:
         """Rule 2: CSS files always use fast path."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/assets/style.css",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
@@ -55,28 +62,25 @@ class TestRoutingRules:
         assert decision.reason == "static_asset"
         assert decision.priority == 1  # Low priority for static assets
 
-    @pytest.mark.asyncio
-    async def test_rule2_static_assets_js(self, router: SmartRouter) -> None:
+    def test_rule2_static_assets_js(self, router: SmartRouter) -> None:
         """Rule 2: JS files always use fast path."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/static/app.js",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
         assert decision.route == RouteType.FAST
 
-    @pytest.mark.asyncio
-    async def test_rule2_static_assets_wp_content(self, router: SmartRouter) -> None:
+    def test_rule2_static_assets_wp_content(self, router: SmartRouter) -> None:
         """Rule 2: WordPress uploads use fast path."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/wp-content/uploads/image.png",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
         assert decision.route == RouteType.FAST
 
-    @pytest.mark.asyncio
-    async def test_rule3_sitemap_xml(self, router: SmartRouter) -> None:
+    def test_rule3_sitemap_xml(self, router: SmartRouter) -> None:
         """Rule 3: Sitemap.xml uses fast path with high priority."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/sitemap.xml",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
@@ -84,19 +88,17 @@ class TestRoutingRules:
         assert decision.reason == "sitemap"
         assert decision.priority == 10  # High priority
 
-    @pytest.mark.asyncio
-    async def test_rule3_robots_txt(self, router: SmartRouter) -> None:
+    def test_rule3_robots_txt(self, router: SmartRouter) -> None:
         """Rule 3: Robots.txt uses fast path."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/robots.txt",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
         assert decision.route == RouteType.FAST
 
-    @pytest.mark.asyncio
-    async def test_rule4_previous_crawl_browser(self, router: SmartRouter) -> None:
+    def test_rule4_previous_crawl_browser(self, router: SmartRouter) -> None:
         """Rule 4: Previous browser crawl maintains consistency."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/page",
             target_mode=RouteType.FAST_WITH_FALLBACK,
             previous_route=RouteType.BROWSER,
@@ -104,10 +106,9 @@ class TestRoutingRules:
         assert decision.route == RouteType.BROWSER
         assert decision.reason == "previous_crawl_browser"
 
-    @pytest.mark.asyncio
-    async def test_rule5_dynamic_platform(self, router: SmartRouter) -> None:
+    def test_rule5_dynamic_platform(self, router: SmartRouter) -> None:
         """Rule 5: Platform pages route to browser."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/platform/ai-engine",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
@@ -115,48 +116,43 @@ class TestRoutingRules:
         assert "known_dynamic_page" in decision.reason
         assert decision.stagehand_config is not None
 
-    @pytest.mark.asyncio
-    async def test_rule5_dynamic_pricing(self, router: SmartRouter) -> None:
+    def test_rule5_dynamic_pricing(self, router: SmartRouter) -> None:
         """Rule 5: Pricing pages route to browser."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/pricing",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
         assert decision.route == RouteType.BROWSER
         assert decision.priority == 8  # High priority
 
-    @pytest.mark.asyncio
-    async def test_rule5_dynamic_solutions(self, router: SmartRouter) -> None:
+    def test_rule5_dynamic_solutions(self, router: SmartRouter) -> None:
         """Rule 5: Solutions pages route to browser."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/solutions/marketing",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
         assert decision.route == RouteType.BROWSER
 
-    @pytest.mark.asyncio
-    async def test_rule6_navigation_fragment(self, router: SmartRouter) -> None:
+    def test_rule6_navigation_fragment(self, router: SmartRouter) -> None:
         """Rule 6: URLs with fragments route to browser."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/page#section",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
         assert decision.route == RouteType.BROWSER
         assert decision.reason == "navigation_or_search"
 
-    @pytest.mark.asyncio
-    async def test_rule6_navigation_query(self, router: SmartRouter) -> None:
+    def test_rule6_navigation_query(self, router: SmartRouter) -> None:
         """Rule 6: URLs with query params route to browser."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/search?q=test",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )
         assert decision.route == RouteType.BROWSER
 
-    @pytest.mark.asyncio
-    async def test_rule7_default_fallback(self, router: SmartRouter) -> None:
+    def test_rule7_default_fallback(self, router: SmartRouter) -> None:
         """Rule 7: Default is FAST_WITH_FALLBACK."""
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/some-page",
             target_mode=RouteType.FAST_WITH_FALLBACK,
         )

@@ -743,323 +743,114 @@
       "name": "EV Infrastructure Annual Cost"
     },
     {
-      "variable_id": "en-var-024",
+      "variable_id": "eu-var-024",
       "variable_name": "Capacity_Revenue",
       "display_name": "Capacity Revenue",
-      "description": "Auto-generated variable for Capacity_Revenue",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-005"
-      ],
-      "canonicalName": "Capacity_Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from grid capacity services",
+      "canonicalName": "CapacityRevenue",
       "name": "Capacity Revenue"
     },
     {
-      "variable_id": "en-var-025",
-      "variable_name": "Demand_Charge_Value",
-      "display_name": "Demand Charge Value",
-      "description": "Auto-generated variable for Demand_Charge_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-007"
-      ],
-      "canonicalName": "Demand_Charge_Value",
-      "name": "Demand Charge Value"
-    },
-    {
-      "variable_id": "en-var-026",
-      "variable_name": "Churn_Reduction_Value",
-      "display_name": "Churn Reduction Value",
-      "description": "Auto-generated variable for Churn_Reduction_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-006"
-      ],
-      "canonicalName": "Churn_Reduction_Value",
-      "name": "Churn Reduction Value"
-    },
-    {
-      "variable_id": "en-var-027",
+      "variable_id": "eu-var-025",
       "variable_name": "Ancillary_Revenue",
       "display_name": "Ancillary Revenue",
-      "description": "Auto-generated variable for Ancillary_Revenue",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-005"
-      ],
-      "canonicalName": "Ancillary_Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from ancillary grid services",
+      "canonicalName": "AncillaryRevenue",
       "name": "Ancillary Revenue"
     },
     {
-      "variable_id": "en-var-028",
+      "variable_id": "eu-var-026",
+      "variable_name": "Peak_Shave_Savings",
+      "display_name": "Peak Shave Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost savings from peak demand shaving",
+      "canonicalName": "PeakShaveSavings",
+      "name": "Peak Shave Savings"
+    },
+    {
+      "variable_id": "eu-var-027",
       "variable_name": "Call_Center_Savings",
       "display_name": "Call Center Savings",
-      "description": "Auto-generated variable for Call_Center_Savings",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-006"
-      ],
-      "canonicalName": "Call_Center_Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost savings from reduced call center volume",
+      "canonicalName": "CallCenterSavings",
       "name": "Call Center Savings"
     },
     {
-      "variable_id": "en-var-029",
-      "variable_name": "Platform_Investment",
-      "display_name": "Platform Investment",
-      "description": "Auto-generated variable for Platform_Investment",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-006"
-      ],
-      "canonicalName": "Platform_Investment",
-      "name": "Platform Investment"
-    },
-    {
-      "variable_id": "en-var-030",
-      "variable_name": "Grid_Services_Revenue",
-      "display_name": "Grid Services Revenue",
-      "description": "Auto-generated variable for Grid_Services_Revenue",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-007"
-      ],
-      "canonicalName": "Grid_Services_Revenue",
-      "name": "Grid Services Revenue"
-    },
-    {
-      "variable_id": "en-var-031",
+      "variable_id": "eu-var-028",
       "variable_name": "Payment_Improvement_Value",
       "display_name": "Payment Improvement Value",
-      "description": "Auto-generated variable for Payment_Improvement_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-006"
-      ],
-      "canonicalName": "Payment_Improvement_Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from improved payment collection rates",
+      "canonicalName": "PaymentImprovementValue",
       "name": "Payment Improvement Value"
     },
     {
-      "variable_id": "en-var-032",
+      "variable_id": "eu-var-029",
       "variable_name": "EE_Program_Revenue",
       "display_name": "EE Program Revenue",
-      "description": "Auto-generated variable for EE_Program_Revenue",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-006"
-      ],
-      "canonicalName": "EE_Program_Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from energy efficiency programs",
+      "canonicalName": "EeProgramRevenue",
       "name": "EE Program Revenue"
     },
     {
-      "variable_id": "en-var-033",
+      "variable_id": "eu-var-030",
+      "variable_name": "Churn_Reduction_Value",
+      "display_name": "Churn Reduction Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from reduced customer churn",
+      "canonicalName": "ChurnReductionValue",
+      "name": "Churn Reduction Value"
+    },
+    {
+      "variable_id": "eu-var-031",
+      "variable_name": "Platform_Investment",
+      "display_name": "Platform Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in customer engagement platform",
+      "canonicalName": "PlatformInvestment",
+      "name": "Platform Investment"
+    },
+    {
+      "variable_id": "eu-var-032",
+      "variable_name": "Grid_Services_Revenue",
+      "display_name": "Grid Services Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from distributed energy resource grid services",
+      "canonicalName": "GridServicesRevenue",
+      "name": "Grid Services Revenue"
+    },
+    {
+      "variable_id": "eu-var-033",
       "variable_name": "Customer_Acquisition_Value",
       "display_name": "Customer Acquisition Value",
-      "description": "Auto-generated variable for Customer_Acquisition_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-007"
-      ],
-      "canonicalName": "Customer_Acquisition_Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from new customer acquisition via DER programs",
+      "canonicalName": "CustomerAcquisitionValue",
       "name": "Customer Acquisition Value"
     },
     {
-      "variable_id": "en-var-034",
-      "variable_name": "Peak_Shave_Savings",
-      "display_name": "Peak Shave Savings",
-      "description": "Auto-generated variable for Peak_Shave_Savings",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "eu-f-005"
-      ],
-      "canonicalName": "Peak_Shave_Savings",
-      "name": "Peak Shave Savings"
+      "variable_id": "eu-var-034",
+      "variable_name": "Demand_Charge_Value",
+      "display_name": "Demand Charge Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from demand charge optimization",
+      "canonicalName": "DemandChargeValue",
+      "name": "Demand Charge Value"
     }
   ]
 }

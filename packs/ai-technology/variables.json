@@ -451,409 +451,143 @@
     },
     {
       "variable_id": "ai-var-015",
-      "variable_name": "Knowledge_Worker_Productivity",
-      "display_name": "Knowledge Worker Productivity",
-      "description": "Auto-generated variable for Knowledge_Worker_Productivity",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-005"
-      ],
-      "canonicalName": "Knowledge_Worker_Productivity",
-      "name": "Knowledge Worker Productivity"
+      "variable_name": "Content_Efficiency_Value",
+      "display_name": "Content Efficiency Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from AI-driven content creation efficiency",
+      "canonicalName": "ContentEfficiencyValue",
+      "name": "Content Efficiency Value"
     },
     {
       "variable_id": "ai-var-016",
-      "variable_name": "Process_Optimization_Value",
-      "display_name": "Process Optimization Value",
-      "description": "Auto-generated variable for Process_Optimization_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-004"
-      ],
-      "canonicalName": "Process_Optimization_Value",
-      "name": "Process Optimization Value"
+      "variable_name": "Support_Automation_Value",
+      "display_name": "Support Automation Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from automated customer support",
+      "canonicalName": "SupportAutomationValue",
+      "name": "Support Automation Value"
     },
     {
       "variable_id": "ai-var-017",
-      "variable_name": "Bias_Incident_Avoidance",
-      "display_name": "Bias Incident Avoidance",
-      "description": "Auto-generated variable for Bias_Incident_Avoidance",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-006"
-      ],
-      "canonicalName": "Bias_Incident_Avoidance",
-      "name": "Bias Incident Avoidance"
+      "variable_name": "Quality_Improvement_Value",
+      "display_name": "Quality Improvement Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from AI-driven code quality improvements",
+      "canonicalName": "QualityImprovementValue",
+      "name": "Quality Improvement Value"
     },
     {
       "variable_id": "ai-var-018",
-      "variable_name": "Retention_Savings",
-      "display_name": "Retention Savings",
-      "description": "Auto-generated variable for Retention_Savings",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-007"
-      ],
-      "canonicalName": "Retention_Savings",
-      "name": "Retention Savings"
+      "variable_name": "Velocity_Savings",
+      "display_name": "Velocity Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost savings from increased development velocity",
+      "canonicalName": "VelocitySavings",
+      "name": "Velocity Savings"
     },
     {
       "variable_id": "ai-var-019",
       "variable_name": "Safety_Incident_Avoidance",
       "display_name": "Safety Incident Avoidance",
-      "description": "Auto-generated variable for Safety_Incident_Avoidance",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-004"
-      ],
-      "canonicalName": "Safety_Incident_Avoidance",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost of safety incidents avoided through AI monitoring",
+      "canonicalName": "SafetyIncidentAvoidance",
       "name": "Safety Incident Avoidance"
     },
     {
       "variable_id": "ai-var-020",
-      "variable_name": "Support_Automation_Value",
-      "display_name": "Support Automation Value",
-      "description": "Auto-generated variable for Support_Automation_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-002"
-      ],
-      "canonicalName": "Support_Automation_Value",
-      "name": "Support Automation Value"
+      "variable_name": "Process_Optimization_Value",
+      "display_name": "Process Optimization Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from AI-driven process optimization",
+      "canonicalName": "ProcessOptimizationValue",
+      "name": "Process Optimization Value"
     },
     {
       "variable_id": "ai-var-021",
-      "variable_name": "External_Hiring_Avoidance",
-      "display_name": "External Hiring Avoidance",
-      "description": "Auto-generated variable for External_Hiring_Avoidance",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-007"
-      ],
-      "canonicalName": "External_Hiring_Avoidance",
-      "name": "External Hiring Avoidance"
+      "variable_name": "Knowledge_Worker_Productivity",
+      "display_name": "Knowledge Worker Productivity",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from improved knowledge worker productivity",
+      "canonicalName": "KnowledgeWorkerProductivity",
+      "name": "Knowledge Worker Productivity"
     },
     {
       "variable_id": "ai-var-022",
-      "variable_name": "Search_Platform_Cost",
-      "display_name": "Search Platform Cost",
-      "description": "Auto-generated variable for Search_Platform_Cost",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-005"
-      ],
-      "canonicalName": "Search_Platform_Cost",
-      "name": "Search Platform Cost"
-    },
-    {
-      "variable_id": "ai-var-023",
-      "variable_name": "Approval_Velocity_Value",
-      "display_name": "Approval Velocity Value",
-      "description": "Auto-generated variable for Approval_Velocity_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-006"
-      ],
-      "canonicalName": "Approval_Velocity_Value",
-      "name": "Approval Velocity Value"
-    },
-    {
-      "variable_id": "ai-var-024",
-      "variable_name": "Duplication_Avoidance",
-      "display_name": "Duplication Avoidance",
-      "description": "Auto-generated variable for Duplication_Avoidance",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-005"
-      ],
-      "canonicalName": "Duplication_Avoidance",
-      "name": "Duplication Avoidance"
-    },
-    {
-      "variable_id": "ai-var-025",
-      "variable_name": "Velocity_Savings",
-      "display_name": "Velocity Savings",
-      "description": "Auto-generated variable for Velocity_Savings",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-003"
-      ],
-      "canonicalName": "Velocity_Savings",
-      "name": "Velocity Savings"
-    },
-    {
-      "variable_id": "ai-var-026",
       "variable_name": "Search_Time_Savings",
       "display_name": "Search Time Savings",
-      "description": "Auto-generated variable for Search_Time_Savings",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-005"
-      ],
-      "canonicalName": "Search_Time_Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from reduced time spent searching for information",
+      "canonicalName": "SearchTimeSavings",
       "name": "Search Time Savings"
     },
     {
+      "variable_id": "ai-var-023",
+      "variable_name": "Duplication_Avoidance",
+      "display_name": "Duplication Avoidance",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost savings from avoiding duplicate work",
+      "canonicalName": "DuplicationAvoidance",
+      "name": "Duplication Avoidance"
+    },
+    {
+      "variable_id": "ai-var-024",
+      "variable_name": "Search_Platform_Cost",
+      "display_name": "Search Platform Cost",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual cost of AI-powered search platform",
+      "canonicalName": "SearchPlatformCost",
+      "name": "Search Platform Cost"
+    },
+    {
+      "variable_id": "ai-var-025",
+      "variable_name": "Bias_Incident_Avoidance",
+      "display_name": "Bias Incident Avoidance",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost of bias incidents avoided through AI governance",
+      "canonicalName": "BiasIncidentAvoidance",
+      "name": "Bias Incident Avoidance"
+    },
+    {
+      "variable_id": "ai-var-026",
+      "variable_name": "Approval_Velocity_Value",
+      "display_name": "Approval Velocity Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from faster model approval processes",
+      "canonicalName": "ApprovalVelocityValue",
+      "name": "Approval Velocity Value"
+    },
+    {
       "variable_id": "ai-var-027",
-      "variable_name": "Content_Efficiency_Value",
-      "display_name": "Content Efficiency Value",
-      "description": "Auto-generated variable for Content_Efficiency_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-002"
-      ],
-      "canonicalName": "Content_Efficiency_Value",
-      "name": "Content Efficiency Value"
+      "variable_name": "Retention_Savings",
+      "display_name": "Retention Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost savings from improved talent retention",
+      "canonicalName": "RetentionSavings",
+      "name": "Retention Savings"
     },
     {
       "variable_id": "ai-var-028",
-      "variable_name": "Quality_Improvement_Value",
-      "display_name": "Quality Improvement Value",
-      "description": "Auto-generated variable for Quality_Improvement_Value",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 1000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "auto-generated"
-      ],
-      "used_in_formulas": [
-        "ai-f-003"
-      ],
-      "canonicalName": "Quality_Improvement_Value",
-      "name": "Quality Improvement Value"
+      "variable_name": "External_Hiring_Avoidance",
+      "display_name": "External Hiring Avoidance",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost avoided by upskilling vs external hiring",
+      "canonicalName": "ExternalHiringAvoidance",
+      "name": "External Hiring Avoidance"
     }
   ]
 }

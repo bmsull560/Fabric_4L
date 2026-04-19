@@ -73,7 +73,7 @@
       "status": "published",
       "version": "1.0.0",
       "formula_count": 7,
-      "variable_count": 34,
+      "variable_count": 35,
       "entity_count": 13,
       "path": "packs/financial-services",
       "tags": [
@@ -174,7 +174,7 @@
   },
   "statistics": {
     "total_formulas": 49,
-    "total_variables": 222,
+    "total_variables": 223,
     "total_entities": 91,
     "total_relationships": 70
   }

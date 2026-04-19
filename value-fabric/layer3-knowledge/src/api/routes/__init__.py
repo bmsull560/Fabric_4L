@@ -1,16 +1,28 @@
 """API routes package."""
 
-from . import (
-    _utils,
-    benchmarks,
-    formula_governance,
-    formulas,
-    value_packs,
-    value_trees,
-    variables,
-)
+# pack_loader has no external dependencies and must always be importable.
+# Other routes require neo4j, FastAPI, and agent dependencies — wrap in
+# try/except so lightweight consumers (tests, CI) can import pack_loader
+# without a full runtime environment.
+from . import pack_loader  # Always available — no external deps
+
+try:
+    from . import (
+        _utils,
+        benchmarks,
+        formula_governance,
+        formulas,
+        value_packs,
+        value_trees,
+        variables,
+    )
+    _ROUTES_AVAILABLE = True
+except (ImportError, Exception):
+    _ROUTES_AVAILABLE = False
 
 __all__ = [
+    "pack_loader",
+    "_ROUTES_AVAILABLE",
     "value_trees",
     "formulas",
     "value_packs",

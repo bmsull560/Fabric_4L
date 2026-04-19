@@ -42,6 +42,11 @@ export interface ValuePackFilters {
   search?: string;
 }
 
+/**
+ * Fetch value packs with optional filtering.
+ * @param filters - Optional filters for industry, status, scope, category, or search
+ * @returns Array of value packs matching the filters
+ */
 async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> {
   const params = new URLSearchParams();
   if (filters.industry && filters.industry !== 'all') params.set('industry', filters.industry);
@@ -51,28 +56,58 @@ async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> 
   if (filters.search) params.set('search', filters.search);
 
   const response = await apiClient.get('l3', `/packs?${params.toString()}`);
-  return response.data as ValuePack[];
+  return response.data;
 }
 
+/**
+ * Hook to fetch a list of value packs with optional filtering.
+ * Results are cached for 1 minute (STALE_TIME.stats).
+ *
+ * @param filters - Optional filters for industry, status, scope, category, or search term
+ * @returns React Query result with array of ValuePack objects
+ *
+ * @example
+ * const { data: packs, isLoading } = useValuePacks({ industry: 'SaaS / B2B', status: 'published' });
+ */
 export function useValuePacks(filters: ValuePackFilters = {}) {
   return useQuery<ValuePack[], ValuePackApiError>({
     queryKey: QK.valuePacks.list(filters),
     queryFn: () => withApiError(fetchValuePacks(filters), ValuePackApiError),
-    staleTime: STALE_TIME.stats,      // 1 minute for pack lists
+    staleTime: STALE_TIME.stats,
     retry: RETRY_CONFIG.maxRetries,
     retryDelay: RETRY_CONFIG.retryDelay,
   });
 }
 
+/**
+ * Fetch a single value pack by ID.
+ * @param packId - The unique identifier of the value pack
+ * @returns The value pack details
+ * @throws ValuePackApiError if the pack is not found or request fails
+ */
 async function fetchValuePack(packId: string): Promise<ValuePack> {
   const response = await apiClient.get('l3', `/packs/${packId}`);
-  return response.data as ValuePack;
+  return response.data;
 }
 
+/**
+ * Hook to fetch a single value pack by ID.
+ * Query is disabled when packId is null.
+ * Results are cached for 5 minutes (STALE_TIME.detail).
+ *
+ * @param packId - The unique identifier of the value pack (null disables the query)
+ * @returns React Query result with ValuePack details
+ *
+ * @example
+ * const { data: pack, isLoading } = useValuePack('pack-123');
+ */
 export function useValuePack(packId: string | null) {
   return useQuery<ValuePack, ValuePackApiError>({
     queryKey: QK.valuePacks.detail(packId || ''),
-    queryFn: () => withApiError(fetchValuePack(packId!), ValuePackApiError),
+    queryFn: async () => {
+      if (!packId) throw new ValuePackApiError('Pack ID is required');
+      return withApiError(fetchValuePack(packId), ValuePackApiError);
+    },
     enabled: !!packId,
     staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
@@ -108,7 +143,9 @@ export function useApplyValuePack() {
     },
     onError: (error) => {
       // Log error for monitoring/debugging; UI handles display via error state
-      console.error('[useApplyValuePack] Deployment failed:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[useApplyValuePack] Deployment failed:', error.message);
+      }
     },
   });
 }

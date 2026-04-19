@@ -122,7 +122,7 @@ class SmartRouter:
         self.min_text_length = min_text_length
         self.min_content_ratio = min_content_ratio
 
-    async def decide(
+    def decide(
         self,
         url: str,
         target_mode: RouteType = RouteType.FAST_WITH_FALLBACK,

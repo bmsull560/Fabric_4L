@@ -34,7 +34,7 @@ class TestTargetLevelModes:
 
         router = SmartRouter()
         async with HttpxCrawler() as crawler:
-            decision = await router.decide(
+            decision = router.decide(
                 "https://example.com/platform/product",
                 target_mode=RouteType.FAST,
             )
@@ -73,7 +73,7 @@ class TestTargetLevelModes:
         router = SmartRouter()
         gate = QualityGate()
         async with HttpxCrawler() as crawler:
-            decision = await router.decide(
+            decision = router.decide(
                 "https://example.com/article",
                 target_mode=RouteType.FAST_WITH_FALLBACK,
             )
@@ -94,7 +94,7 @@ class TestPerURLSmartRouting:
         router = SmartRouter()
 
         for ext in [".css", ".js", ".png"]:
-            decision = await router.decide(
+            decision = router.decide(
                 f"https://example.com/assets/file{ext}",
                 target_mode=RouteType.FAST_WITH_FALLBACK,
             )
@@ -128,7 +128,7 @@ class TestPerURLSmartRouting:
         ]
 
         for url in dynamic_urls:
-            decision = await router.decide(
+            decision = router.decide(
                 url,
                 target_mode=RouteType.FAST_WITH_FALLBACK,
             )
@@ -197,7 +197,7 @@ class TestSPADetection:
         router = SmartRouter()
         gate = QualityGate()
         async with HttpxCrawler() as crawler:
-            decision = await router.decide(
+            decision = router.decide(
                 "https://example.com/app",
                 target_mode=RouteType.FAST_WITH_FALLBACK,
             )
@@ -309,7 +309,7 @@ class TestExecutionLogging:
         logger = ExecutionLogger()
         router = SmartRouter()
         async with HttpxCrawler() as crawler:
-            decision = await router.decide(
+            decision = router.decide(
                 "https://example.com/page",
                 target_mode=RouteType.FAST,
             )
@@ -355,7 +355,7 @@ class TestExecutionLogging:
         router = SmartRouter()
         gate = QualityGate()
         async with HttpxCrawler() as crawler:
-            decision = await router.decide(
+            decision = router.decide(
                 "https://example.com/spa",
                 target_mode=RouteType.FAST_WITH_FALLBACK,
             )
@@ -407,7 +407,7 @@ class TestEndToEndPipeline:
 
             results = []
             for url in urls:
-                decision = await router.decide(url, target_mode=RouteType.FAST_WITH_FALLBACK)
+                decision = router.decide(url, target_mode=RouteType.FAST_WITH_FALLBACK)
                 result = await crawler.fetch(url)
                 quality = gate.evaluate(result)
 
@@ -447,7 +447,7 @@ class TestEndToEndPipeline:
         router = SmartRouter()
 
         # When no mode specified or BROWSER explicitly set
-        decision = await router.decide(
+        decision = router.decide(
             "https://example.com/page",
             target_mode=RouteType.BROWSER,
         )

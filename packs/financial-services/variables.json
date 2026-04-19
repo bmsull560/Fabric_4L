@@ -627,496 +627,163 @@
       "name": "Digital Onboarding Platform Investment"
     },
     {
-      "variable_id": "fs-var-020",
-      "variable_name": "Expanded_Lending_Profit",
-      "display_name": "Expanded Lending Profit",
-      "description": "Additional profit from expanded lending to previously underserved segments",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 100000000
-      },
-      "default_value": 5000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100000000
-        }
-      ],
-      "tags": [
-        "lending",
-        "profit",
-        "expansion",
-        "credit"
-      ],
-      "used_in_formulas": [
-        "fs-f-003"
-      ],
-      "canonicalName": "Expanded_Lending_Profit",
-      "name": "Expanded Lending Profit"
+      "variable_id": "fs-var-019",
+      "variable_name": "Operational_Cost_Savings",
+      "display_name": "Operational Cost Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Annual operational cost savings from digital transformation",
+      "canonicalName": "OperationalCostSavings",
+      "name": "Operational Cost Savings"
     },
     {
       "variable_id": "fs-var-021",
-      "variable_name": "Model_Investment",
-      "display_name": "Credit Model Investment",
-      "description": "Annual investment in credit risk models, data, and ML infrastructure",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 20000000
-      },
-      "default_value": 3000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 20000000
-        }
-      ],
-      "tags": [
-        "model",
-        "investment",
-        "credit",
-        "ml"
-      ],
-      "used_in_formulas": [
-        "fs-f-003"
-      ],
-      "canonicalName": "Model_Investment",
-      "name": "Credit Model Investment"
+      "variable_name": "Expanded_Lending_Profit",
+      "display_name": "Expanded Lending Profit",
+      "unit": "USD",
+      "type": "output",
+      "description": "Incremental profit from expanded lending capacity",
+      "canonicalName": "ExpandedLendingProfit",
+      "name": "Expanded Lending Profit"
     },
     {
       "variable_id": "fs-var-022",
-      "variable_name": "Avoided_Findings_Cost",
-      "display_name": "Avoided Regulatory Findings Cost",
-      "description": "Cost avoidance from reduced regulatory findings and enforcement actions",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 50000000
-      },
-      "default_value": 8000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 50000000
-        }
-      ],
-      "tags": [
-        "regulatory",
-        "findings",
-        "compliance",
-        "avoidance"
-      ],
-      "used_in_formulas": [
-        "fs-f-004"
-      ],
-      "canonicalName": "Avoided_Findings_Cost",
-      "name": "Avoided Regulatory Findings Cost"
+      "variable_name": "Model_Investment",
+      "display_name": "Model Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in credit risk model",
+      "canonicalName": "ModelInvestment",
+      "name": "Model Investment"
     },
     {
       "variable_id": "fs-var-023",
-      "variable_name": "Automation_Platform_Cost",
-      "display_name": "Compliance Automation Platform Cost",
-      "description": "Annual cost of compliance automation platform and operations",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 20000000
-      },
-      "default_value": 4000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 20000000
-        }
-      ],
-      "tags": [
-        "compliance",
-        "automation",
-        "platform",
-        "cost"
-      ],
-      "used_in_formulas": [
-        "fs-f-004"
-      ],
-      "canonicalName": "Automation_Platform_Cost",
-      "name": "Compliance Automation Platform Cost"
+      "variable_name": "Avoided_Findings_Cost",
+      "display_name": "Avoided Findings Cost",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost of regulatory findings avoided through automation",
+      "canonicalName": "AvoidedFindingsCost",
+      "name": "Avoided Findings Cost"
     },
     {
       "variable_id": "fs-var-024",
-      "variable_name": "Customer_Base",
-      "display_name": "Active Customer Base",
-      "description": "Number of active customers eligible for personalization",
-      "data_type": "INTEGER",
-      "unit_of_measure": "customers",
-      "valid_range": {
-        "min": 0,
-        "max": 10000000
-      },
-      "default_value": 500000,
-      "source_type": "LOOKUP",
-      "source_binding": {
-        "system": "CRM",
-        "entity": "CustomerSegment",
-        "attribute": "active_count",
-        "refresh_frequency": "daily"
-      },
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 10000000
-        }
-      ],
-      "tags": [
-        "customers",
-        "base",
-        "personalization"
-      ],
-      "used_in_formulas": [
-        "fs-f-005"
-      ],
-      "canonicalName": "Customer_Base",
-      "name": "Active Customer Base"
+      "variable_name": "Automation_Platform_Cost",
+      "display_name": "Automation Platform Cost",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual cost of compliance automation platform",
+      "canonicalName": "AutomationPlatformCost",
+      "name": "Automation Platform Cost"
     },
     {
       "variable_id": "fs-var-025",
-      "variable_name": "Personalization_Uplift_Rate",
-      "display_name": "Personalization Revenue Uplift Rate",
-      "description": "Percentage revenue uplift from personalized offers and recommendations",
-      "data_type": "RATE",
-      "unit_of_measure": "percent",
-      "valid_range": {
-        "min": 0,
-        "max": 0.5
-      },
-      "default_value": 0.05,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 0.5
-        }
-      ],
-      "tags": [
-        "personalization",
-        "uplift",
-        "revenue",
-        "rate"
-      ],
-      "used_in_formulas": [
-        "fs-f-005"
-      ],
-      "canonicalName": "Personalization_Uplift_Rate",
-      "name": "Personalization Revenue Uplift Rate"
+      "variable_name": "Customer_Base",
+      "display_name": "Customer Base",
+      "unit": "count",
+      "type": "input",
+      "description": "Total number of active customers",
+      "canonicalName": "CustomerBase",
+      "name": "Customer Base"
     },
     {
       "variable_id": "fs-var-026",
-      "variable_name": "Avg_Revenue_Per_Customer",
-      "display_name": "Average Revenue Per Customer",
-      "description": "Average annual revenue per customer",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 10000
-      },
-      "default_value": 250,
-      "source_type": "DERIVED",
-      "derivation": {
-        "formula": "Total_Revenue / Customer_Base"
-      },
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 10000
-        }
-      ],
-      "tags": [
-        "revenue",
-        "customer",
-        "average",
-        "arpu"
-      ],
-      "used_in_formulas": [
-        "fs-f-005"
-      ],
-      "canonicalName": "Avg_Revenue_Per_Customer",
-      "name": "Average Revenue Per Customer"
+      "variable_name": "Personalization_Uplift_Rate",
+      "display_name": "Personalization Uplift Rate",
+      "unit": "percentage",
+      "type": "input",
+      "description": "Revenue uplift rate from personalization (%)",
+      "canonicalName": "PersonalizationUpliftRate",
+      "name": "Personalization Uplift Rate"
     },
     {
       "variable_id": "fs-var-027",
-      "variable_name": "Personalization_Platform_Cost",
-      "display_name": "Personalization Platform Cost",
-      "description": "Annual cost of personalization platform and data",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 20000000
-      },
-      "default_value": 5000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 20000000
-        }
-      ],
-      "tags": [
-        "personalization",
-        "platform",
-        "cost"
-      ],
-      "used_in_formulas": [
-        "fs-f-005"
-      ],
-      "canonicalName": "Personalization_Platform_Cost",
-      "name": "Personalization Platform Cost"
+      "variable_name": "Avg_Revenue_Per_Customer",
+      "display_name": "Avg Revenue Per Customer",
+      "unit": "USD",
+      "type": "input",
+      "description": "Average annual revenue per customer",
+      "canonicalName": "AvgRevenuePerCustomer",
+      "name": "Avg Revenue Per Customer"
     },
     {
       "variable_id": "fs-var-028",
-      "variable_name": "Settlement_Failure_Cost_Avoidance",
-      "display_name": "Settlement Failure Cost Avoidance",
-      "description": "Cost avoidance from reduced settlement failures",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 20000000
-      },
-      "default_value": 5000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 20000000
-        }
-      ],
-      "tags": [
-        "settlement",
-        "failure",
-        "avoidance",
-        "operations"
-      ],
-      "used_in_formulas": [
-        "fs-f-006"
-      ],
-      "canonicalName": "Settlement_Failure_Cost_Avoidance",
-      "name": "Settlement Failure Cost Avoidance"
+      "variable_name": "Personalization_Platform_Cost",
+      "display_name": "Personalization Platform Cost",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual cost of personalization platform",
+      "canonicalName": "PersonalizationPlatformCost",
+      "name": "Personalization Platform Cost"
     },
     {
       "variable_id": "fs-var-029",
-      "variable_name": "Capital_Efficiency_Value",
-      "display_name": "Capital Efficiency Value",
-      "description": "Value from improved capital efficiency and reduced funding costs",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 20000000
-      },
-      "default_value": 3000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 20000000
-        }
-      ],
-      "tags": [
-        "capital",
-        "efficiency",
-        "funding",
-        "value"
-      ],
-      "used_in_formulas": [
-        "fs-f-006"
-      ],
-      "canonicalName": "Capital_Efficiency_Value",
-      "name": "Capital Efficiency Value"
+      "variable_name": "Settlement_Failure_Cost_Avoidance",
+      "display_name": "Settlement Failure Cost Avoidance",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost avoided from reduced settlement failures",
+      "canonicalName": "SettlementFailureCostAvoidance",
+      "name": "Settlement Failure Cost Avoidance"
     },
     {
       "variable_id": "fs-var-030",
-      "variable_name": "STP_Investment",
-      "display_name": "Straight-Through Processing Investment",
-      "description": "Annual investment in STP and settlement automation",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 15000000
-      },
-      "default_value": 4000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 15000000
-        }
-      ],
-      "tags": [
-        "stp",
-        "settlement",
-        "investment",
-        "automation"
-      ],
-      "used_in_formulas": [
-        "fs-f-006"
-      ],
-      "canonicalName": "STP_Investment",
-      "name": "Straight-Through Processing Investment"
+      "variable_name": "Capital_Efficiency_Value",
+      "display_name": "Capital Efficiency Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from improved capital efficiency",
+      "canonicalName": "CapitalEfficiencyValue",
+      "name": "Capital Efficiency Value"
     },
     {
       "variable_id": "fs-var-031",
-      "variable_name": "Additional_Clients_Per_Advisor",
-      "display_name": "Additional Clients Per Advisor",
-      "description": "Additional clients each advisor can serve with AI tools",
-      "data_type": "INTEGER",
-      "unit_of_measure": "clients",
-      "valid_range": {
-        "min": 0,
-        "max": 100
-      },
-      "default_value": 25,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 100
-        }
-      ],
-      "tags": [
-        "advisor",
-        "clients",
-        "capacity",
-        "ai"
-      ],
-      "used_in_formulas": [
-        "fs-f-007"
-      ],
-      "canonicalName": "Additional_Clients_Per_Advisor",
-      "name": "Additional Clients Per Advisor"
+      "variable_name": "STP_Investment",
+      "display_name": "STP Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in straight-through processing",
+      "canonicalName": "StpInvestment",
+      "name": "STP Investment"
     },
     {
       "variable_id": "fs-var-032",
-      "variable_name": "Advisor_Count",
-      "display_name": "Advisor Count",
-      "description": "Total number of wealth management advisors",
-      "data_type": "INTEGER",
-      "unit_of_measure": "advisors",
-      "valid_range": {
-        "min": 0,
-        "max": 10000
-      },
-      "default_value": 500,
-      "source_type": "LOOKUP",
-      "source_binding": {
-        "system": "HRIS",
-        "entity": "Employee",
-        "attribute": "headcount",
-        "refresh_frequency": "monthly"
-      },
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 10000
-        }
-      ],
-      "tags": [
-        "advisor",
-        "count",
-        "headcount",
-        "wealth"
-      ],
-      "used_in_formulas": [
-        "fs-f-007"
-      ],
-      "canonicalName": "Advisor_Count",
-      "name": "Advisor Count"
+      "variable_name": "Additional_Clients_Per_Advisor",
+      "display_name": "Additional Clients Per Advisor",
+      "unit": "count",
+      "type": "output",
+      "description": "Additional clients each advisor can serve with AI tools",
+      "canonicalName": "AdditionalClientsPerAdvisor",
+      "name": "Additional Clients Per Advisor"
     },
     {
       "variable_id": "fs-var-033",
-      "variable_name": "Performance_Uplift_Value",
-      "display_name": "Advisor Performance Uplift Value",
-      "description": "Value from improved advisor performance with AI assistance",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 50000000
-      },
-      "default_value": 8000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 50000000
-        }
-      ],
-      "tags": [
-        "advisor",
-        "performance",
-        "uplift",
-        "ai"
-      ],
-      "used_in_formulas": [
-        "fs-f-007"
-      ],
-      "canonicalName": "Performance_Uplift_Value",
-      "name": "Advisor Performance Uplift Value"
+      "variable_name": "Advisor_Count",
+      "display_name": "Advisor Count",
+      "unit": "count",
+      "type": "input",
+      "description": "Total number of financial advisors",
+      "canonicalName": "AdvisorCount",
+      "name": "Advisor Count"
     },
     {
       "variable_id": "fs-var-034",
+      "variable_name": "Performance_Uplift_Value",
+      "display_name": "Performance Uplift Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue value from improved advisor performance",
+      "canonicalName": "PerformanceUpliftValue",
+      "name": "Performance Uplift Value"
+    },
+    {
+      "variable_id": "fs-var-035",
       "variable_name": "AI_Tools_Investment",
       "display_name": "AI Tools Investment",
-      "description": "Annual investment in AI tools for wealth advisors",
-      "data_type": "CURRENCY",
-      "unit_of_measure": "USD",
-      "valid_range": {
-        "min": 0,
-        "max": 15000000
-      },
-      "default_value": 3000000,
-      "source_type": "USER_INPUT",
-      "validation_rules": [
-        {
-          "type": "range",
-          "min": 0,
-          "max": 15000000
-        }
-      ],
-      "tags": [
-        "ai",
-        "tools",
-        "investment",
-        "wealth"
-      ],
-      "used_in_formulas": [
-        "fs-f-007"
-      ],
-      "canonicalName": "AI_Tools_Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in AI tools for advisors",
+      "canonicalName": "AiToolsInvestment",
       "name": "AI Tools Investment"
     }
   ]
