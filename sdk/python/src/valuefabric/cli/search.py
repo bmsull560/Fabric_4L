@@ -13,7 +13,7 @@ from ..generated.l3 import EntityType, SearchRequest, SearchType
 from ..generated.l3_client import L3Client
 from .config import get_profile_config
 
-app = typer.Typer(help="Hybrid entity search (BM25 + vector + graph)")
+app = typer.Typer(help="Hybrid entity search (BM25 + vector + graph)", invoke_without_command=True)
 
 
 def _get_l3_client() -> L3Client:
@@ -25,26 +25,28 @@ def _get_l3_client() -> L3Client:
     return L3Client(base_url=base_url, api_key=api_key, jwt_token=jwt_token)
 
 
-@app.command("hybrid")
-def search_hybrid(
-    query: str = typer.Argument(..., help="Search query string"),
-    entity_type: Optional[str] = typer.Option(
-        None, "--type", "-t", help="Filter by entity type (e.g., Capability, UseCase)"
-    ),
-    top_k: int = typer.Option(10, "--limit", "-l", help="Number of results to return", min=1, max=100),
-    search_type: str = typer.Option(
-        "hybrid", "--search-type", help="Search algorithm (hybrid, vector, bm25, graph)"
-    ),
-    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
+def _execute_search(
+    query: str,
+    entity_type: Optional[str],
+    top_k: int,
+    search_type: str,
+    json_output: bool,
 ) -> None:
-    """Execute hybrid search combining BM25, vector, and graph signals."""
+    """Execute the search and display results."""
     client = _get_l3_client()
 
     # Build request
+    try:
+        search_type_enum = SearchType(search_type.lower())
+    except ValueError:
+        rich_print(f"[red]Invalid search type: {search_type}[/red]")
+        rich_print("[yellow]Valid types: hybrid, vector, bm25, graph[/yellow]")
+        raise typer.Exit(1)
+
     request_kwargs: dict = {
         "query": query,
         "top_k": top_k,
-        "search_type": SearchType(search_type),
+        "search_type": search_type_enum,
     }
 
     if entity_type:
@@ -102,28 +104,26 @@ def search_hybrid(
                f"Processing time: {response.processing_time_ms}ms[/dim]")
 
 
-# Default command is hybrid search
-@app.callback(invoke_without_command=True)
-def search_default(
+@app.callback()
+def search(
     ctx: typer.Context,
     query: Optional[str] = typer.Argument(None, help="Search query string"),
-    entity_type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by entity type"),
-    top_k: int = typer.Option(10, "--limit", "-l", help="Number of results", min=1, max=100),
+    entity_type: Optional[str] = typer.Option(
+        None, "--type", "-t", help="Filter by entity type (e.g., Capability, UseCase)"
+    ),
+    top_k: int = typer.Option(10, "--limit", "-l", help="Number of results to return", min=1, max=100),
+    search_type: str = typer.Option(
+        "hybrid", "--search-type", help="Search algorithm (hybrid, vector, bm25, graph)"
+    ),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
 ) -> None:
-    """Default search command - executes hybrid search."""
+    """Execute hybrid search combining BM25, vector, and graph signals."""
     if ctx.invoked_subcommand is not None:
         return
 
     if query is None:
-        rich_print("[red]Error: Missing argument 'QUERY'[/red]")
+        rich_print("[red]Error: Missing QUERY argument[/red]")
         rich_print("[yellow]Usage: vf search <QUERY> [OPTIONS][/yellow]")
         raise typer.Exit(1)
 
-    # Call the hybrid search command
-    search_hybrid(
-        query=query,
-        entity_type=entity_type,
-        top_k=top_k,
-        json_output=json_output,
-    )
+    _execute_search(query, entity_type, top_k, search_type, json_output)

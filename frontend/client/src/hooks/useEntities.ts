@@ -130,7 +130,7 @@ export function useEntities(filters?: EntityFilters) {
       if (filters?.maxConfidence !== undefined) {
         params.append('max_confidence', filters.maxConfidence.toString());
       }
-      params.append('limit', (filters?.limit ?? 50).toString());
+      params.append('limit', (filters?.limit ?? 25).toString());
       params.append('offset', (filters?.offset ?? 0).toString());
       params.append('sort_by', filters?.sortBy ?? 'updated_at');
       params.append('sort_order', filters?.sortOrder ?? 'desc');
@@ -163,7 +163,7 @@ export function useEntitySearch(query: string) {
     queryFn: async (): Promise<EntityListResponse> => {
       const params = new URLSearchParams({
         search_text: query.trim(),
-        limit: '20',
+        limit: '25',
         sort_by: 'confidence',
         sort_order: 'desc',
       });

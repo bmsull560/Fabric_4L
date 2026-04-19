@@ -21,8 +21,15 @@ from .permissions import get_permissions_for_role
 
 logger = logging.getLogger(__name__)
 
+# Default rate limit constants (Task 84)
+DEFAULT_REQUESTS_PER_MINUTE = 120
+DEFAULT_BURST_CAPACITY = 240
+RATE_LIMIT_WINDOW_SECONDS = 60
+
 # Simple in-memory rate limiter for tenant-scoped requests (Task 84)
 # Maps tenant_id -> (requests_in_window, window_start)
+# WARNING: This is per-process only. For multi-process deployments,
+# use Redis-backed rate limiting via the rate_limiter parameter.
 _tenant_rate_limit_buckets: dict[str, tuple[int, float]] = {}
 
 
@@ -40,6 +47,9 @@ def _check_tenant_rate_limit(
 ) -> tuple[bool, int]:
     """Check if tenant has exceeded rate limit.
 
+    Uses in-memory token bucket per process. For multi-process deployments,
+    configure Redis rate_limiter in middleware for shared state.
+
     Args:
         tenant_id: Tenant identifier
         requests_per_minute: Max requests allowed per minute
@@ -48,18 +58,17 @@ def _check_tenant_rate_limit(
         Tuple of (allowed: bool, retry_after: int)
     """
     now = time.time()
-    window_seconds = 60
 
     count, window_start = _tenant_rate_limit_buckets.get(tenant_id, (0, now))
 
     # Reset window if expired
-    if now - window_start > window_seconds:
+    if now - window_start > RATE_LIMIT_WINDOW_SECONDS:
         count = 0
         window_start = now
 
     # Check limit
     if count >= requests_per_minute:
-        retry_after = int(window_seconds - (now - window_start)) + 1
+        retry_after = int(RATE_LIMIT_WINDOW_SECONDS - (now - window_start)) + 1
         return False, max(1, retry_after)
 
     # Increment and store
@@ -132,22 +141,17 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             Tuple of (allowed: bool, retry_after: int)
         """
         tenant_id_str = str(tenant_id)
-        default_rpm = 120  # Default requests per minute
 
         # Try to get tenant-specific limits from settings
+        rpm = DEFAULT_REQUESTS_PER_MINUTE
         if self.tenant_settings_lookup:
             try:
                 settings = await self.tenant_settings_lookup(tenant_id)
                 if settings:
                     rate_limits = settings.get("rate_limits", {})
-                    rpm = rate_limits.get("requests_per_minute", default_rpm)
-                else:
-                    rpm = default_rpm
+                    rpm = rate_limits.get("requests_per_minute", DEFAULT_REQUESTS_PER_MINUTE)
             except Exception as e:
-                logger.warning(f"Failed to load tenant settings for rate limit: {e}")
-                rpm = default_rpm
-        else:
-            rpm = default_rpm
+                logger.warning("Failed to load tenant settings for rate limit: %s", e)
 
         return _check_tenant_rate_limit(tenant_id_str, rpm)
 

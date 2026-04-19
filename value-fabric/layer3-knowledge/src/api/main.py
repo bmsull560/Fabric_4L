@@ -1684,20 +1684,29 @@ async def _execute_hybrid_search(
     )
 
 
-@app.post("/v1/search/hybrid", response_model=SearchResponse)
-@app.post("/v1/search", response_model=SearchResponse)
+@app.post(
+    "/v1/search/hybrid",
+    response_model=SearchResponse,
+    deprecated=True,
+    summary="Deprecated: Use GET /v1/entities for entity listing",
+)
+@app.post("/v1/search", response_model=SearchResponse, deprecated=True)
 async def hybrid_search(
     request: SearchRequest,
     hybrid_search=Depends(get_hybrid_search),
 ):
-    """Execute hybrid search combining BM25, vector, and graph signals.
+    """DEPRECATED: Use GET /v1/entities for entity listing with server-backed filtering.
 
-    Uses request deduplication to prevent redundant computation for
-    identical concurrent searches.
+    This endpoint is deprecated in favor of the canonical entity browser API.
+    Sunset date: 2026-05-18 (30 days from deprecation).
 
-    Notes:
-    - Preferred route: `/v1/search/hybrid`
-    - Legacy route retained: `/v1/search` (deprecate later)
+    Legacy behavior: Execute hybrid search combining BM25, vector, and graph signals.
+    Uses request deduplication to prevent redundant computation.
+
+    Migration guide:
+    - For entity listing: Use GET /v1/entities with filter parameters
+    - For text search: Use search_text query param on /v1/entities
+    - For type filtering: Use entity_types query param on /v1/entities
     """
     try:
         deduplicator = get_request_deduplicator()
@@ -1859,7 +1868,7 @@ async def list_entities(
     statuses: list[str] | None = Query(None, description="Filter by status: validated, pending, draft, deprecated"),
     min_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Minimum confidence"),
     max_confidence: float | None = Query(None, ge=0.0, le=1.0, description="Maximum confidence"),
-    limit: int = Query(50, ge=1, le=500, description="Max results to return"),
+    limit: int = Query(25, ge=1, le=100, description="Max results to return"),
     offset: int = Query(0, ge=0, description="Results to skip"),
     sort_by: str = Query("updated_at", description="Field to sort by: name, updated_at, confidence, entity_type, status"),
     sort_order: str = Query("desc", description="Sort direction: asc or desc"),

@@ -19,14 +19,20 @@ class TestTenantRateLimiting:
 
     def test_tenant_scope_added_to_enum(self):
         """Verify TENANT scope exists in RateLimitScope enum."""
-        from value_fabric.layer3_knowledge.src.rate_limiting.manager import RateLimitScope
+        try:
+            from value_fabric.layer3_knowledge.src.rate_limiting.manager import RateLimitScope
+        except ImportError:
+            # Fallback for different package structure
+            import sys
+            sys.path.insert(0, "c:\\Users\\BBB\\Fabric_4L\\value-fabric\\layer3-knowledge\\src")
+            from rate_limiting.manager import RateLimitScope
 
         assert hasattr(RateLimitScope, "TENANT")
         assert RateLimitScope.TENANT == "tenant"
 
     def test_tenant_settings_schema_validation(self):
         """Verify tenant settings schema validates rate limits correctly."""
-        from value_fabric.layer4_agents.src.tenants.settings_schema import (
+        from tenants.settings_schema import (
             RateLimitSettings,
             TenantSettings,
             get_tenant_rate_limits,
@@ -44,7 +50,7 @@ class TestTenantRateLimiting:
 
     def test_tenant_settings_defaults(self):
         """Verify defaults are applied when settings missing."""
-        from value_fabric.layer4_agents.src.tenants.settings_schema import (
+        from tenants.settings_schema import (
             TenantSettings,
             get_tenant_rate_limits,
         )

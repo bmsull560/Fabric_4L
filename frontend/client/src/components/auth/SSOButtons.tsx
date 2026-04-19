@@ -12,6 +12,7 @@
  * @deprecatedUntil Task 69 — Keep gated until backend provider matrix is confirmed
  */
 
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -71,26 +72,30 @@ export function SSOButtons({
   enabled = false,
   onProviderSelect,
 }: SSOButtonsProps) {
-  const providers: SSOProvider[] = [
-    {
-      id: "okta",
-      name: "Okta",
-      icon: <OktaIcon />,
-      disabled: !enabled,
-    },
-    {
-      id: "azure",
-      name: "Microsoft Entra ID",
-      icon: <AzureIcon />,
-      disabled: !enabled,
-    },
-    {
-      id: "google",
-      name: "Google",
-      icon: <GoogleIcon />,
-      disabled: !enabled,
-    },
-  ];
+  // Memoize providers to prevent recreation on every render
+  const providers = useMemo<SSOProvider[]>(
+    () => [
+      {
+        id: "okta",
+        name: "Okta",
+        icon: <OktaIcon />,
+        disabled: !enabled,
+      },
+      {
+        id: "azure",
+        name: "Microsoft Entra ID",
+        icon: <AzureIcon />,
+        disabled: !enabled,
+      },
+      {
+        id: "google",
+        name: "Google",
+        icon: <GoogleIcon />,
+        disabled: !enabled,
+      },
+    ],
+    [enabled]
+  );
 
   const handleClick = (providerId: string) => {
     if (!enabled) {

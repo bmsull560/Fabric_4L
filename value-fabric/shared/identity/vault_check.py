@@ -109,6 +109,10 @@ async def check_vault_health(vault_addr: str) -> bool:
         return False
 
 
+# Alias for consistency with layer imports
+is_vault_healthy = check_vault_health
+
+
 async def verify_secret_access(vault_addr: str, paths: List[str]) -> bool:
     """Return True if Vault token can read every path in `paths`."""
     token = os.getenv("VAULT_TOKEN", "")

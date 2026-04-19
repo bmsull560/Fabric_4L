@@ -6,6 +6,7 @@ from .service import (
     deactivate_user,
     delete_tenant,
     get_tenant,
+    get_tenant_settings,
     get_user,
     invite_user,
     list_api_keys,
@@ -23,6 +24,7 @@ __all__ = [
     "deactivate_user",
     "delete_tenant",
     "get_tenant",
+    "get_tenant_settings",  # Task 84: For per-tenant rate limiting
     "get_user",
     "invite_user",
     "list_api_keys",

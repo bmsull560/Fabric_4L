@@ -198,8 +198,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             AuthErrorCategory.SSO_PROVIDER_ERROR
           );
         } else {
+          const message = String(error).trim();
           authError = new AuthError(
-            String(error) || 'Authentication failed. Please try again.',
+            message && message !== 'undefined' && message !== 'null'
+              ? message
+              : 'Authentication failed. Please try again.',
             AuthErrorCategory.AUTHENTICATION
           );
         }

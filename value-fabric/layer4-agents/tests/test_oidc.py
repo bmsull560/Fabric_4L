@@ -16,7 +16,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from shared.identity.oidc import _JWKS_CACHE, OIDCClient, map_role_from_claims
+from shared.identity.oidc import OIDCClient, map_role_from_claims
 
 
 class TestClaimMapping:
@@ -69,10 +69,6 @@ class TestClaimMapping:
 
 class TestOIDCClient:
     """Tests for OIDCClient discovery and token verification."""
-
-    @pytest.fixture(autouse=True)
-    def _clear_jwks_cache(self) -> None:
-        _JWKS_CACHE.clear()
 
     @pytest.mark.asyncio
     async def test_discover(self) -> None:

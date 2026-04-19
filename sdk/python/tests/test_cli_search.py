@@ -40,7 +40,8 @@ class TestSearchCommands:
         """Test that search without query shows error."""
         result = runner.invoke(app, ["search"])
         assert result.exit_code != 0
-        assert "Missing argument" in result.output or "QUERY" in result.output
+        # Typer shows usage error for missing required arguments
+        assert "Usage:" in result.output or "Missing" in result.output or "required" in result.output.lower()
 
     def test_search_success(self, mock_config):
         """Test successful search returns results."""

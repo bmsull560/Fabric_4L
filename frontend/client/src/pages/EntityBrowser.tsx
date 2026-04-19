@@ -60,7 +60,7 @@ export default function EntityBrowser() {
   } = useEntities({
     searchText: searchQuery || undefined,
     entityTypes: selectedType ? [selectedType] : undefined,
-    limit: 50,
+    limit: 25,
     sortBy: 'updated_at',
     sortOrder: 'desc',
   });

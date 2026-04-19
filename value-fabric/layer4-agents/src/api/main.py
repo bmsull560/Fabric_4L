@@ -61,7 +61,7 @@ from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..registry.api.routes import router as models_router
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
-from ..tenants import lookup_api_key_by_hash
+from ..tenants import get_tenant_settings, lookup_api_key_by_hash
 from ..tenants.api import api_keys_router, tenants_router, users_router
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
@@ -259,10 +259,17 @@ if settings.otel_exporter_endpoint:
 # tenant/user/role context from Bearer JWT or X-API-Key.
 # api_key_resolver is wired to the DB-backed lookup so keys are verified
 # against the persistent api_keys table.
+# Task 84: Per-tenant rate limiting with settings from JSONB
 def on_rate_limit_hit(tenant_id: str, scope: str):
     metrics = get_metrics()
     if metrics:
         metrics.increment_rate_limit_hit(tenant_id, scope)
+
+
+async def _tenant_settings_lookup(tenant_id) -> dict | None:
+    """Fetch tenant settings for rate limiting (Task 84)."""
+    async with db_session() as db:
+        return await get_tenant_settings(db, tenant_id)
 
 
 app.add_middleware(
@@ -270,6 +277,8 @@ app.add_middleware(
     api_key_resolver=lookup_api_key_by_hash,
     rate_limiter=getattr(app.state, "rate_limiter", None),
     on_rate_limit_hit=on_rate_limit_hit,
+    tenant_settings_lookup=_tenant_settings_lookup,
+    enable_per_tenant_rate_limiting=True,
 )
 
 # CORS middleware — restrict origins in production via the CORS_ORIGINS env var

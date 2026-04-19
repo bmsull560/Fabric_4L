@@ -611,7 +611,7 @@ class EntityFilterRequest(BaseModel):
     updated_before: datetime | None = Field(None, description="Updated before this time")
 
     # Pagination and sorting
-    limit: conint(ge=1, le=500) = Field(50, description="Max results to return")
+    limit: conint(ge=1, le=100) = Field(25, description="Max results to return")
     offset: conint(ge=0) = Field(0, description="Results to skip (for pagination)")
     sort_by: Literal["name", "updated_at", "confidence", "entity_type", "status"] = Field(
         "updated_at", description="Field to sort by"
