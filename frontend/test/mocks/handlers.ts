@@ -388,12 +388,12 @@ export const graphMocks = [
     const depth = parseInt(url.searchParams.get('depth') || '2', 10);
     const limit = parseInt(url.searchParams.get('limit') || '100', 10);
 
-    // Mock coherent subgraph with nodes AND edges
+    // Mock coherent subgraph with nodes AND edges (matching GraphNodeSchema)
     const nodes = [
-      { id: 'ent-1', label: 'AI Processing', type: 'Capability', confidence: 0.95 },
-      { id: 'ent-2', label: 'Data Pipeline', type: 'Capability', confidence: 0.88 },
-      { id: 'ent-3', label: 'Customer Analytics', type: 'UseCase', confidence: 0.92 },
-      { id: 'ent-4', label: 'Data Scientist', type: 'Persona', confidence: 0.85 },
+      { id: 'ent-1', name: 'AI Processing', entity_type: 'Capability', confidence_score: 0.95 },
+      { id: 'ent-2', name: 'Data Pipeline', entity_type: 'Capability', confidence_score: 0.88 },
+      { id: 'ent-3', name: 'Customer Analytics', entity_type: 'UseCase', confidence_score: 0.92 },
+      { id: 'ent-4', name: 'Data Scientist', entity_type: 'Persona', confidence_score: 0.85 },
     ];
 
     const edges = [

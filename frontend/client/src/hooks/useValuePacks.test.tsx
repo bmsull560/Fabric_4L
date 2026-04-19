@@ -134,7 +134,7 @@ describe("useValuePacks", () => {
         wrapper: createWrapper(),
       });
 
-      await result.current.mutateAsync("pack-1");
+      await result.current.mutateAsync({ packId: "pack-1" });
 
       expect(apiClient.post).toHaveBeenCalledWith(
         "l3",

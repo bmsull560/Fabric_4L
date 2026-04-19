@@ -28,7 +28,7 @@ export const EntitySchema = z.object({
 // ── Entity List Response ─────────────────────────────────────────────────────
 
 export const EntityListResponseSchema = z.object({
-  results: z.array(z.record(z.unknown())), // Raw entities validated per-item by mapper
+  results: z.array(EntitySchema), // Properly typed entities per schema contract
   total_count: z.number().default(0),
   filtered_count: z.number().default(0),
   limit: z.number().default(50),

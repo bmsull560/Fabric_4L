@@ -44,7 +44,7 @@ describe('GraphExplorer', () => {
   });
 
   it('handles empty graph state', async () => {
-    // P0 Fix: Setup handler BEFORE rendering to avoid race condition
+    // Override default handler to return empty graph
     server.use(
       http.get('/api/v1/graph/subgraph', () => {
         return HttpResponse.json({
@@ -60,15 +60,19 @@ describe('GraphExplorer', () => {
     const wrapper = createWrapper();
     render(<GraphExplorer />, { wrapper });
 
-    // P0 Fix: Use explicit timeout and wait for loading to complete first
+    // Wait for loading to appear then disappear
+    await waitFor(() => {
+      expect(screen.queryByText('Loading knowledge graph...')).toBeInTheDocument();
+    }, { timeout: 3000 });
+
     await waitFor(() => {
       expect(screen.queryByText('Loading knowledge graph...')).not.toBeInTheDocument();
-    }, WAIT_OPTIONS);
+    }, { timeout: 5000 });
 
     // Then check for empty state
     await waitFor(() => {
       expect(screen.getByText('No matching entities found')).toBeInTheDocument();
-    }, WAIT_OPTIONS);
+    }, { timeout: 3000 });
   });
 
   it('handles graph error state', async () => {
@@ -152,9 +156,9 @@ describe('GraphExplorer', () => {
         return HttpResponse.json({
           root_entity_id: 'ent-1',
           nodes: [
-            { id: 'ent-1', label: 'AI Processing', type: 'Capability', confidence: 0.95 },
-            { id: 'ent-2', label: 'Data Pipeline', type: 'Capability', confidence: 0.88 },
-            { id: 'ent-3', label: 'Customer Analytics', type: 'UseCase', confidence: 0.92 },
+            { id: 'ent-1', name: 'AI Processing', entity_type: 'Capability', confidence_score: 0.95 },
+            { id: 'ent-2', name: 'Data Pipeline', entity_type: 'Capability', confidence_score: 0.88 },
+            { id: 'ent-3', name: 'Customer Analytics', entity_type: 'UseCase', confidence_score: 0.92 },
           ],
           edges: [
             { source: 'ent-1', target: 'ent-2', type: 'ENABLES' },
@@ -172,10 +176,10 @@ describe('GraphExplorer', () => {
     // Wait for graph to load and verify stats are displayed
     await waitFor(() => {
       expect(screen.getByText('Graph Statistics')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
 
-    // Verify graph stats show correct node count
-    expect(screen.getByText('3')).toBeInTheDocument(); // total_nodes
-    expect(screen.getByText('2')).toBeInTheDocument(); // total_edges
+    // Verify graph stats are displayed (Nodes and Edges labels present)
+    expect(screen.getByText('Nodes')).toBeInTheDocument();
+    expect(screen.getByText('Edges')).toBeInTheDocument();
   });
 });

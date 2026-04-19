@@ -76,6 +76,7 @@ class ValueTreeProjectionAgent(BaseAgent):
                 - start_node_id: Starting node ID
                 - Optional: max_hops (default 5)
                 - Optional: min_confidence (default 0.7)
+                - Optional: tenant_id (default 'system')
 
         Returns:
             AgentResult with projection results
@@ -87,6 +88,7 @@ class ValueTreeProjectionAgent(BaseAgent):
             start_node_id = context.get("start_node_id")
             max_hops = context.get("max_hops", 5)
             min_confidence = context.get("min_confidence", 0.7)
+            tenant_id = context.get("tenant_id", "system")
 
             if not start_node_id:
                 return self._create_result(
@@ -97,12 +99,12 @@ class ValueTreeProjectionAgent(BaseAgent):
                 )
 
             if operation == "upward_traversal":
-                result = await self._upward_traversal(start_node_id, max_hops)
+                result = await self._upward_traversal(start_node_id, max_hops, tenant_id)
             elif operation == "downward_traversal":
-                result = await self._downward_traversal(start_node_id, max_hops)
+                result = await self._downward_traversal(start_node_id, max_hops, tenant_id)
             elif operation == "semantic_match":
                 query_text = context.get("query_text", "")
-                result = await self._semantic_match(query_text, min_confidence)
+                result = await self._semantic_match(query_text, min_confidence, tenant_id)
             else:
                 return self._create_result(
                     status="failed",
@@ -127,7 +129,7 @@ class ValueTreeProjectionAgent(BaseAgent):
             )
 
     async def _upward_traversal(
-        self, start_node_id: str, max_hops: int = 5
+        self, start_node_id: str, max_hops: int = 5, tenant_id: str = "system"
     ) -> dict[str, Any]:
         """Traverse upward from capability to outcomes.
 
@@ -138,6 +140,7 @@ class ValueTreeProjectionAgent(BaseAgent):
         Args:
             start_node_id: Starting node ID
             max_hops: Maximum traversal depth
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with paths and outcomes
@@ -146,8 +149,8 @@ class ValueTreeProjectionAgent(BaseAgent):
             return {"paths": [], "outcomes": [], "error": "No database driver"}
 
         query = """
-        MATCH path = (start {id: $start_id})-[:enables|delivers|impacts|contributesTo|drives*1..$max_hops]->(target)
-        WHERE target:ValueDriver OR target:Outcome OR target:UseCase
+        MATCH path = (start {id: $start_id, tenant_id: $tenant_id})-[:enables|delivers|impacts|contributesTo|drives*1..$max_hops]->(target)
+        WHERE (target:ValueDriver OR target:Outcome OR target:UseCase) AND target.tenant_id = $tenant_id
         RETURN [node in nodes(path) | {id: node.id, name: node.name, type: labels(node)[0]}] as path_nodes,
                [rel in relationships(path) | type(rel)] as path_relationships,
                length(path) as path_length,
@@ -159,7 +162,7 @@ class ValueTreeProjectionAgent(BaseAgent):
 
         async with self._driver.session() as session:
             result = await session.run(
-                query, {"start_id": start_node_id, "max_hops": max_hops}
+                query, {"start_id": start_node_id, "max_hops": max_hops, "tenant_id": tenant_id}
             )
             records = [record async for record in result]
 
@@ -184,13 +187,14 @@ class ValueTreeProjectionAgent(BaseAgent):
         }
 
     async def _downward_traversal(
-        self, start_node_id: str, max_hops: int = 5
+        self, start_node_id: str, max_hops: int = 5, tenant_id: str = "system"
     ) -> dict[str, Any]:
         """Traverse downward from outcome to capabilities.
 
         Args:
             start_node_id: Starting node ID (typically ValueDriver or Outcome)
             max_hops: Maximum traversal depth
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with paths and capabilities
@@ -199,8 +203,8 @@ class ValueTreeProjectionAgent(BaseAgent):
             return {"paths": [], "capabilities": [], "error": "No database driver"}
 
         query = """
-        MATCH path = (start {id: $start_id})<-[:enables|delivers|impacts|contributesTo|drivenBy|requires*1..$max_hops]-(target)
-        WHERE target:Capability
+        MATCH path = (start {id: $start_id, tenant_id: $tenant_id})<-[:enables|delivers|impacts|contributesTo|drivenBy|requires*1..$max_hops]-(target)
+        WHERE target:Capability AND target.tenant_id = $tenant_id
         RETURN [node in nodes(path) | {id: node.id, name: node.name, type: labels(node)[0]}] as path_nodes,
                [rel in relationships(path) | type(rel)] as path_relationships,
                length(path) as path_length,
@@ -212,7 +216,7 @@ class ValueTreeProjectionAgent(BaseAgent):
 
         async with self._driver.session() as session:
             result = await session.run(
-                query, {"start_id": start_node_id, "max_hops": max_hops}
+                query, {"start_id": start_node_id, "max_hops": max_hops, "tenant_id": tenant_id}
             )
             records = [record async for record in result]
 
@@ -237,13 +241,14 @@ class ValueTreeProjectionAgent(BaseAgent):
         }
 
     async def _semantic_match(
-        self, query_text: str, min_confidence: float = 0.7
+        self, query_text: str, min_confidence: float = 0.7, tenant_id: str = "system"
     ) -> dict[str, Any]:
         """Match query text to value tree nodes using semantic similarity.
 
         Args:
             query_text: Text to match
             min_confidence: Minimum similarity score
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with matched nodes and scores

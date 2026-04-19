@@ -73,7 +73,7 @@ function PackCard({ pack, isSelected, onSelect }: PackCardProps) {
       onClick={() => onSelect?.(pack.pack_id)}
       className={`text-left bg-card border rounded-lg shadow-sm hover:shadow-md transition-all cursor-pointer group w-full ${
         isSelected
-          ? "border-blue-500 ring-2 ring-blue-100"
+          ? "border-primary ring-2 ring-primary/10"
           : "border-border hover:border-border/80"
       }`}
     >
@@ -91,7 +91,7 @@ function PackCard({ pack, isSelected, onSelect }: PackCardProps) {
 
       {/* Tags: industry + version */}
       <div className="px-4 pb-3 flex items-center gap-2">
-        <span className="text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
+        <span className="text-[10px] font-medium text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded">
           {pack.industry}
         </span>
         {pack.version && (
@@ -216,11 +216,11 @@ function PackActions({ selectedPackId, onDeploy, isDeploying, error, onClearErro
       <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3">Pack Actions</h4>
 
       {error && (
-        <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-[11px] text-red-700 flex items-start gap-1.5">
+        <div className="mb-3 p-2 bg-destructive/10 border border-destructive/20 rounded text-[11px] text-destructive flex items-start gap-1.5">
           <AlertCircle size={12} className="shrink-0 mt-0.5" />
           <span className="flex-1">{error}</span>
           {onClearError && (
-            <button onClick={onClearError} className="text-red-500 hover:text-red-700 shrink-0">×</button>
+            <button onClick={onClearError} className="text-destructive/70 hover:text-destructive shrink-0">×</button>
           )}
         </div>
       )}
@@ -228,7 +228,7 @@ function PackActions({ selectedPackId, onDeploy, isDeploying, error, onClearErro
       <button
         onClick={() => selectedPackId && onDeploy(selectedPackId)}
         disabled={!selectedPackId || isDeploying}
-        className="w-full text-[12px] font-semibold bg-neutral-900 text-white py-2 px-3 rounded-md hover:bg-neutral-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mb-2"
+        className="w-full text-[12px] font-semibold bg-primary text-primary-foreground py-2 px-3 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 mb-2"
       >
         {isDeploying ? (
           <><Loader2 size={12} className="animate-spin" /> Deploying...</>
@@ -355,11 +355,11 @@ function ValuePacksContent() {
   const handleDeploy = useCallback(async (packId: string) => {
     setDeployError(null);
     try {
-      await applyMutation.mutateAsync(packId);
+      await applyMutation.mutateAsync({ packId });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to deploy pack";
       setDeployError(message);
-      console.error("Failed to deploy pack:", err);
+      // Error already logged by mutation's onError; UI handles display
     }
   }, [applyMutation]);
 
@@ -368,7 +368,7 @@ function ValuePacksContent() {
   }, []);
 
   return (
-    <div className="p-6" style={{ maxWidth: LAYOUT.MAX_WIDTH }}>
+    <div className="p-6 max-w-7xl">
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <PageHeader
@@ -386,7 +386,7 @@ function ValuePacksContent() {
       </div>
 
       {/* Two-column grid: main + sidebar */}
-      <div className="grid gap-5" style={{ gridTemplateColumns: `1fr ${LAYOUT.SIDEBAR_WIDTH}` }}>
+      <div className="grid gap-5 grid-cols-[1fr_280px]">
         {/* ── Left column: filter bar + pack grid + my packs ── */}
         <div className="min-w-0">
           {/* Filter Bar */}
@@ -439,17 +439,17 @@ function ValuePacksContent() {
 
           {/* Error state */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-4 mb-4">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg px-4 py-4 mb-4">
               <div className="flex items-start gap-3">
-                <AlertCircle size={18} className="text-red-500 shrink-0 mt-0.5" />
+                <AlertCircle size={18} className="text-destructive shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-[13px] font-medium text-red-800">Failed to load value packs</p>
-                  <p className="text-[12px] text-red-600 mt-1">
+                  <p className="text-[13px] font-medium text-destructive">Failed to load value packs</p>
+                  <p className="text-[12px] text-destructive/80 mt-1">
                     {error instanceof Error ? error.message : "An unexpected error occurred"}
                   </p>
                   <button
                     onClick={() => refetch()}
-                    className="mt-3 flex items-center gap-1.5 text-[12px] font-medium text-red-700 hover:text-red-800"
+                    className="mt-3 flex items-center gap-1.5 text-[12px] font-medium text-destructive hover:text-destructive/80"
                   >
                     <RefreshCw size={12} /> Try again
                   </button>

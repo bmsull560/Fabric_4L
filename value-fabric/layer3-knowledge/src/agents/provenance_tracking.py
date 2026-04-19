@@ -96,6 +96,7 @@ class DecisionTrace:
     created_at: datetime
     completed_at: datetime | None
     steps: list[DecisionStep]
+    tenant_id: str = "system"
 
 
 class ProvenanceTrackingAgent(BaseAgent):
@@ -153,6 +154,7 @@ class ProvenanceTrackingAgent(BaseAgent):
                     entity_id=context.get("entity_id"),
                     label=context.get("label"),
                     attributes=context.get("attributes", {}),
+                    tenant_id=context.get("tenant_id", "system"),
                 )
             elif operation == "record_activity":
                 result = await self._record_activity(
@@ -166,6 +168,7 @@ class ProvenanceTrackingAgent(BaseAgent):
                     derived_entity_id=context.get("derived_entity_id"),
                     source_entity_id=context.get("source_entity_id"),
                     derivation_type=context.get("derivation_type", "wasDerivedFrom"),
+                    tenant_id=context.get("tenant_id", "system"),
                 )
             elif operation == "create_decision_trace":
                 result = await self._create_decision_trace(
@@ -174,10 +177,12 @@ class ProvenanceTrackingAgent(BaseAgent):
                     output_type=context.get("output_type"),
                     output_id=context.get("output_id"),
                     steps=context.get("steps", []),
+                    tenant_id=context.get("tenant_id", "system"),
                 )
             elif operation == "query_lineage":
                 result = await self._query_lineage(
                     entity_id=context.get("entity_id"),
+                    tenant_id=context.get("tenant_id", "system"),
                 )
             else:
                 return self._create_result(
@@ -208,6 +213,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         entity_id: str,
         label: str,
         attributes: dict[str, Any],
+        tenant_id: str = "system",
     ) -> dict[str, Any]:
         """Record a PROV-O entity.
 
@@ -216,6 +222,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             entity_id: Unique entity ID
             label: Human-readable label
             attributes: Additional entity attributes
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with recorded entity info
@@ -231,6 +238,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             full_id: $full_entity_id,
             label: $label,
             entity_type: $entity_type,
+            tenant_id: $tenant_id,
             generated_at: datetime(),
             attributes: $attributes
         })
@@ -245,6 +253,7 @@ class ProvenanceTrackingAgent(BaseAgent):
                     "full_entity_id": full_entity_id,
                     "label": label,
                     "entity_type": entity_type,
+                    "tenant_id": tenant_id,
                     "attributes": attributes,
                 },
             )
@@ -319,6 +328,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         derived_entity_id: str,
         source_entity_id: str,
         derivation_type: str = "wasDerivedFrom",
+        tenant_id: str = "system",
     ) -> dict[str, Any]:
         """Record a derivation relationship.
 
@@ -326,6 +336,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             derived_entity_id: ID of derived entity
             source_entity_id: ID of source entity
             derivation_type: Type of derivation
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with derivation record
@@ -334,8 +345,8 @@ class ProvenanceTrackingAgent(BaseAgent):
             return {"error": "No database driver"}
 
         query = """
-        MATCH (derived:PROVEntity {entity_id: $derived_id})
-        MATCH (source:PROVEntity {entity_id: $source_id})
+        MATCH (derived:PROVEntity {entity_id: $derived_id, tenant_id: $tenant_id})
+        MATCH (source:PROVEntity {entity_id: $source_id, tenant_id: $tenant_id})
         CREATE (derived)-[r:wasDerivedFrom {
             derivation_type: $derivation_type,
             timestamp: datetime()
@@ -350,6 +361,7 @@ class ProvenanceTrackingAgent(BaseAgent):
                     "derived_id": derived_entity_id,
                     "source_id": source_entity_id,
                     "derivation_type": derivation_type,
+                    "tenant_id": tenant_id,
                 },
             )
             record = await result.single()
@@ -368,6 +380,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         output_type: str,
         output_id: str,
         steps: list[dict[str, Any]],
+        tenant_id: str = "system",
     ) -> dict[str, Any]:
         """Create a decision trace for AI-generated output.
 
@@ -377,6 +390,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             output_type: Type of output generated
             output_id: ID of generated output
             steps: List of decision steps
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with decision trace
@@ -392,6 +406,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             created_at=datetime.utcnow(),
             completed_at=None,
             steps=[],
+            tenant_id=tenant_id,
         )
 
         # Convert step dicts to DecisionStep objects
@@ -459,6 +474,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             workflow_instance_id: $workflow_instance_id,
             output_type: $output_type,
             output_id: $output_id,
+            tenant_id: $tenant_id,
             created_at: datetime($created_at),
             completed_at: datetime($completed_at)
         })
@@ -474,6 +490,7 @@ class ProvenanceTrackingAgent(BaseAgent):
                     "workflow_instance_id": trace.workflow_instance_id,
                     "output_type": trace.output_type,
                     "output_id": trace.output_id,
+                    "tenant_id": trace.tenant_id,
                     "created_at": trace.created_at.isoformat(),
                     "completed_at": trace.completed_at.isoformat()
                     if trace.completed_at
@@ -484,7 +501,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             # Create step nodes and link to trace
             for step in trace.steps:
                 step_query = """
-                MATCH (t:DecisionTrace {trace_id: $trace_id})
+                MATCH (t:DecisionTrace {trace_id: $trace_id, tenant_id: $tenant_id})
                 CREATE (s:DecisionStep {
                     step_id: $step_id,
                     step_type: $step_type,
@@ -492,7 +509,8 @@ class ProvenanceTrackingAgent(BaseAgent):
                     description: $description,
                     confidence: $confidence,
                     agent_id: $agent_id,
-                    llm_model: $llm_model
+                    llm_model: $llm_model,
+                    tenant_id: $tenant_id
                 })
                 CREATE (t)-[:HAS_STEP]->(s)
                 """
@@ -508,14 +526,16 @@ class ProvenanceTrackingAgent(BaseAgent):
                         "confidence": step.confidence,
                         "agent_id": step.agent_id,
                         "llm_model": step.llm_model,
+                        "tenant_id": trace.tenant_id,
                     },
                 )
 
-    async def _query_lineage(self, entity_id: str) -> dict[str, Any]:
+    async def _query_lineage(self, entity_id: str, tenant_id: str = "system") -> dict[str, Any]:
         """Query lineage for an entity.
 
         Args:
             entity_id: Entity ID to query
+            tenant_id: Tenant ID for data isolation
 
         Returns:
             Dict with lineage information
@@ -525,13 +545,15 @@ class ProvenanceTrackingAgent(BaseAgent):
 
         # Query upstream lineage (what this entity was derived from)
         upstream_query = """
-        MATCH path = (e:PROVEntity {entity_id: $entity_id})-[:wasDerivedFrom|wasGeneratedBy|used*1..10]->(source)
+        MATCH path = (e:PROVEntity {entity_id: $entity_id, tenant_id: $tenant_id})-[:wasDerivedFrom|wasGeneratedBy|used*1..10]->(source)
+        WHERE source.tenant_id = $tenant_id
         RETURN [node in nodes(path) | {id: node.entity_id, type: node.entity_type, label: node.label}] as lineage
         """
 
         # Query downstream lineage (what was derived from this entity)
         downstream_query = """
-        MATCH path = (e:PROVEntity {entity_id: $entity_id})<-[:wasDerivedFrom|wasGeneratedBy|used*1..10]-(derived)
+        MATCH path = (e:PROVEntity {entity_id: $entity_id, tenant_id: $tenant_id})<-[:wasDerivedFrom|wasGeneratedBy|used*1..10]-(derived)
+        WHERE derived.tenant_id = $tenant_id
         RETURN [node in nodes(path) | {id: node.entity_id, type: node.entity_type, label: node.label}] as lineage
         """
 
@@ -540,12 +562,12 @@ class ProvenanceTrackingAgent(BaseAgent):
 
         async with self._driver.session() as session:
             # Get upstream
-            result = await session.run(upstream_query, {"entity_id": entity_id})
+            result = await session.run(upstream_query, {"entity_id": entity_id, "tenant_id": tenant_id})
             async for record in result:
                 upstream.extend(record.get("lineage", []))
 
             # Get downstream
-            result = await session.run(downstream_query, {"entity_id": entity_id})
+            result = await session.run(downstream_query, {"entity_id": entity_id, "tenant_id": tenant_id})
             async for record in result:
                 downstream.extend(record.get("lineage", []))
 

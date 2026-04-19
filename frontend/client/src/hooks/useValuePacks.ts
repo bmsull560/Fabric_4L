@@ -80,17 +80,35 @@ export function useValuePack(packId: string | null) {
   });
 }
 
+export interface ApplyValuePackParams {
+  packId: string;
+}
+
+export interface ApplyValuePackResponse {
+  success: boolean;
+  message?: string;
+}
+
+/**
+ * Hook to apply/deploy a value pack to the current tenant.
+ * Invalidates the value packs list query on success.
+ * @returns Mutation object with typed data/error/parameter types
+ */
 export function useApplyValuePack() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (packId: string) => {
+  return useMutation<ApplyValuePackResponse, ValuePackApiError, ApplyValuePackParams>({
+    mutationFn: async ({ packId }) => {
       if (!packId) throw new ValuePackApiError('Pack ID is required');
       const response = await apiClient.post('l3', `/packs/${packId}/apply`, {});
-      return response.data;
+      return response.data as ApplyValuePackResponse;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.valuePacks.all });
+    },
+    onError: (error) => {
+      // Log error for monitoring/debugging; UI handles display via error state
+      console.error('[useApplyValuePack] Deployment failed:', error.message);
     },
   });
 }
