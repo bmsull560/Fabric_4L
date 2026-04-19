@@ -6,12 +6,29 @@ description: Enforce strict boundary discipline between domains, dependencies, a
 
 This workflow ensures the codebase maintains clear separation between internal domains, external dependencies, and system layers to maximize maintainability, testability, and security.
 
+## The Seven Boundary Types
+
+This workflow enforces **seven distinct boundary types** that protect system integrity at different scopes:
+
+| Boundary | Scope | Violation Symptom | Healthy Signal |
+|----------|-------|-------------------|----------------|
+| **Module** | Code organization | Build pulls in internal paths from sibling modules | Module builds independently; imports are internal or from shared, stable packages |
+| **Build** | Build process | Docker context = entire repo; language A build breaks due to language B errors | Each service has its own build; no cross-service dependencies in build step |
+| **Runtime** | Execution | One service crash cascades to downstream failures | Services depend on network contracts only; graceful degradation on dependency failure |
+| **Deployment** | Infrastructure | Cannot roll one layer without rolling others | Each layer is its own Deployment/image; independently rollable |
+| **Data** | Information flow | Shared internal objects between layers; implicit schema assumptions | Well-defined schemas; versioned contracts; explicit data transformation at boundaries |
+| **Dependency** | Package/imports | One service's dependencies pollute another's build | Dependencies limited to declared runtime requirements |
+| **Interface** | API/contracts | Other layers rely on implementation details | Clean HTTP API/message contract; swappable implementations; testable in isolation |
+
 ## When to Use
 
 - Creating new modules, functions, or classes
 - Reviewing code for architectural integrity
 - Refactoring to improve separation of concerns
 - Integrating external APIs or databases
+- **Before fixing build issues (check Build/Dependency boundaries first)**
+- **When a service fails due to unrelated code changes (boundary breach)**
+- **When a build breaks due to errors in a different language stack or module**
 - Before marking a task as complete
 - When code review reveals boundary violations
 - Periodic boundary hardening audits
@@ -62,7 +79,47 @@ This workflow ensures the codebase maintains clear separation between internal d
    - [ ] Sanitize on entry, encode on exit (HTML, SQL, shell context-aware)
    - [ ] Never pass raw user input to system calls, SQL concatenation, or eval
 
-3. **Audit Internal Boundaries**
+3. **Audit System Boundaries (Layer/Service Level)**
+   // turbo
+   Verify the seven architectural boundaries for each layer/service:
+
+   **Build Boundary:**
+   - [ ] Can build service from its own directory without unrelated code
+   - [ ] Docker context narrowed to service directory (not entire monorepo)
+   - [ ] Build steps isolated per service (no cross-service compilation)
+   - [ ] CI pipeline builds layers independently in parallel
+
+   **Module Boundary:**
+   - [ ] Layer is self-contained; no imports from sibling layers' internal paths
+   - [ ] Shared code lives in `shared/` or published packages only
+   - [ ] No references to sibling module internal paths (e.g., importing UI components into API services)
+
+   **Dependency Boundary:**
+   - [ ] Runtime dependencies match declared requirements (no surprise imports)
+   - [ ] Cross-stack packages absent (e.g., UI packages in backend, server packages in frontend)
+   - [ ] Test utilities from other modules not imported in production code
+
+   **Runtime Boundary:**
+   - [ ] Service communicates via network contracts (HTTP/API/messages) only
+   - [ ] No assumptions about other services' process models or threading
+   - [ ] Graceful degradation when dependencies unavailable
+
+   **Deployment Boundary:**
+   - [ ] Each layer is its own Kubernetes Deployment with independent image
+   - [ ] Can roll one layer without affecting others
+   - [ ] Health checks isolated per service
+
+   **Data Boundary:**
+   - [ ] Layer-to-layer communication uses versioned schemas (OpenAPI, JSON Schema)
+   - [ ] Data transformations happen at boundary, not leaked into business logic
+   - [ ] Pipeline stages (L2→L3→L4) have explicit contract definitions
+
+   **Interface Boundary:**
+   - [ ] HTTP API or message contract is the only dependency other layers rely on
+   - [ ] Implementation can be swapped without consumer changes
+   - [ ] Testable with contract tests/mocks in isolation
+
+4. **Audit Internal Boundaries (Code Level)**
    Verify layer and module boundaries:
 
    **Layer Boundaries (Clean Architecture/Hexagonal):**
@@ -75,7 +132,7 @@ This workflow ensures the codebase maintains clear separation between internal d
    - [ ] Cross-module communication via published interfaces only
    - [ ] Event-driven boundaries: Use domain events for loose coupling between bounded contexts
 
-   **Function/Method Boundaries (Single Responsibility):**
+   **Function/Method Boundaries (Single Responsibility):
    - [ ] One Reason to Change: Function does one thing; if "and" appears in name, split it
    - [ ] Limit Side Effects: Pure functions preferred; side effects explicit in naming
    - [ ] Parameter Count: Max 3-4 parameters (use parameter objects beyond this)
@@ -86,6 +143,9 @@ This workflow ensures the codebase maintains clear separation between internal d
    Transform violations into proper boundaries:
 
    **P0 - Critical (Fix Immediately):**
+   - **Build boundary breach**: Service build fails due to unrelated code (cross-language/cross-module errors) → Narrow Docker context, isolate build
+   - **Dependency boundary breach**: Packages from one stack in another service's build (e.g., frontend packages in backend) → Clean up dependencies, remove cross-module imports
+   - **Module boundary breach**: Importing from sibling module's internal paths → Move to shared/ or use public interface only
    - SQL injection or raw queries in business logic → Extract Repository class
    - Raw HTTP calls in domain code → Implement Adapter pattern
    - Input validation after business logic → Move validation to boundary entry
@@ -93,6 +153,8 @@ This workflow ensures the codebase maintains clear separation between internal d
    - Secrets/credentials in logs → Sanitize at boundary
 
    **P1 - High Priority:**
+   - **Runtime boundary fragile**: Service assumes other service's implementation details → Add circuit breaker, use contract testing
+   - **Data boundary implicit**: Shared internal objects between layers → Define explicit schema, add transformation layer
    - Hardcoded strings/numbers in boundary code → Extract constants
    - No retry logic on external calls → Add circuit breaker at adapter
    - Direct dependency instantiation → Inject via constructor
@@ -179,13 +241,21 @@ This workflow ensures the codebase maintains clear separation between internal d
 
 ## Success Criteria (Definition of Done)
 
-- All external dependencies isolated behind interfaces/adapters
-- Input validation occurs at outermost layer with strict patterns
-- Unit tests use test doubles (no real database/HTTP/file system)
-- No P0 or P1 boundary violations remain
-- Boundary documentation complete for all major seams
-- Static analysis passes with no import/boundary violations
-- Code is now swappable (can change DB/API without touching domain logic)
+### System Boundaries (Layer/Service Level)
+- [ ] Each layer builds independently from its own directory
+- [ ] Docker context narrowed; no cross-service build dependencies
+- [ ] No P0 boundary breaches (build/dependency/module/runtime)
+- [ ] Layers deploy independently; failure in one doesn't cascade
+- [ ] Data contracts (OpenAPI/JSON Schema) defined for inter-layer pipelines
+
+### Code Boundaries (Module/Function Level)
+- [ ] All external dependencies isolated behind interfaces/adapters
+- [ ] Input validation occurs at outermost layer with strict patterns
+- [ ] Unit tests use test doubles (no real database/HTTP/file system)
+- [ ] No P0 or P1 boundary violations remain
+- [ ] Boundary documentation complete for all major seams
+- [ ] Static analysis passes with no import/boundary violations
+- [ ] Code is now swappable (can change DB/API without touching domain logic)
 
 ## Concrete Actions Checklist
 
@@ -203,6 +273,16 @@ Use this to ensure direct improvements:
 
 ## Anti-Patterns to Avoid
 
+### System Boundary Anti-Patterns
+- **Don't**: Build a service from the entire monorepo context (violates Build boundary)
+- **Don't**: Allow errors in one language stack to break builds in another (violates Dependency boundary)
+- **Don't**: Import from sibling module internal paths like `../other-module/src/` (violates Module boundary)
+- **Don't**: Assume other service's process model or threading (violates Runtime boundary)
+- **Don't**: Roll all layers together as one unit (violates Deployment boundary)
+- **Don't**: Pass raw internal objects between layers without schema (violates Data boundary)
+- **Don't**: Rely on implementation details of other services (violates Interface boundary)
+
+### Code Boundary Anti-Patterns
 - **Don't**: Mix business logic with database queries or HTTP calls
 - **Don't**: Pass raw user input to system calls or SQL concatenation
 - **Don't**: Use regex without anchors (`/admin/i` instead of `/^admin$/i`)
@@ -221,3 +301,6 @@ Use this to ensure direct improvements:
 "Refactor the file system access to use proper abstraction"
 "Harden input validation boundaries on all entry points"
 "Verify testability of the agent orchestration boundaries"
+"Fix build boundary: narrow Docker context to service directory"
+"Audit data boundaries between pipeline stages for schema contract drift"
+"Restore dependency boundary: remove cross-stack imports from service"

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -200,75 +201,89 @@ class TestPathAlignment:
     URLs that match the backend OpenAPI route definitions.
     """
 
-    def test_l3_layer_prefix_includes_api_version(self) -> None:
-        """L3 layer prefix must include /v1 to align with backend routes.
+    # Expected layer prefixes for drift detection
+    EXPECTED_LAYER_PREFIXES = {
+        'L1': ('VITE_L1_PREFIX', '/v1/ingest'),
+        'L2': ('VITE_L2_PREFIX', '/v1/extract'),
+        'L3': ('VITE_L3_PREFIX', '/v1/graph'),
+        'L4': ('VITE_L4_PREFIX', '/v1/agents'),
+        'L5': ('VITE_L5_PREFIX', '/v1/truths'),
+        'L6': ('VITE_L6_PREFIX', '/v1/benchmarks'),
+    }
 
-        Backend OpenAPI documents routes like /v1/graph/subgraph.
-        Frontend API client builds: API_BASE + L3_PREFIX + endpoint.
-        For alignment: API_BASE=/api, L3_PREFIX=/v1/graph -> /api/v1/graph/subgraph.
-        Ingress should route /api/v1/* to backend /v1/*.
+    def _extract_env_default(self, client_content: str, var_name: str) -> str | None:
+        """Extract fallback default value from TypeScript client code.
+
+        Pattern: import.meta.env.VITE_X || '/default/value'
+        Returns None if pattern not found (forces assertion failure).
         """
-        # Read frontend env example
+        pattern = rf"{re.escape(var_name)}\s*\|\|\s*['\"]([^'\"]+)['\"]"
+        match = re.search(pattern, client_content)
+        return match.group(1) if match else None
+
+    def test_env_example_has_correct_api_base(self) -> None:
+        """VITE_API_BASE must be /api (not /api/v1) to allow layer prefixes to include /v1."""
         env_content = ENV_EXAMPLE_PATH.read_text(encoding="utf-8")
 
-        # Verify VITE_API_BASE is set to /api (not /api/v1)
         assert "VITE_API_BASE=/api" in env_content, (
             "VITE_API_BASE should be /api to allow layer prefixes to include /v1. "
             "This enables proper ingress routing from /api/v1/* to backend /v1/*."
         )
 
-        # Verify L3_PREFIX includes /v1
-        assert "VITE_L3_PREFIX=/v1/graph" in env_content, (
-            "VITE_L3_PREFIX must include /v1 to align with backend OpenAPI routes. "
-            "Backend documents /v1/graph/subgraph, so frontend must call /api/v1/graph/subgraph."
+    def test_env_example_layer_prefixes_include_api_version(self) -> None:
+        """All layer prefixes must include /v1 to align with backend OpenAPI routes."""
+        env_content = ENV_EXAMPLE_PATH.read_text(encoding="utf-8")
+
+        missing_v1 = []
+        for layer_name, (var_name, expected) in self.EXPECTED_LAYER_PREFIXES.items():
+            env_line = f"{var_name}={expected}"
+            if env_line not in env_content:
+                missing_v1.append(f"{layer_name} ({var_name} should be {expected})")
+
+        assert not missing_v1, (
+            f"Layer prefixes missing /v1: {', '.join(missing_v1)}. "
+            "All layer prefixes must include /v1 to align with backend OpenAPI routes."
         )
 
-    def test_frontend_api_client_defaults_match_env_example(self) -> None:
-        """Frontend API client fallback defaults match .env.example configuration."""
+    def test_api_client_defaults_match_env_example(self) -> None:
+        """Frontend API client fallback defaults must match .env.example configuration."""
         client_content = FRONTEND_CLIENT_PATH.read_text(encoding="utf-8")
 
-        # Extract default values from the client code
-        import re
+        # Verify API_BASE default
+        api_base_default = self._extract_env_default(client_content, 'VITE_API_BASE')
+        assert api_base_default is not None, (
+            "Could not find VITE_API_BASE fallback default in client.ts. "
+            "Pattern should be: import.meta.env.VITE_API_BASE || '/api'"
+        )
+        assert api_base_default == "/api", (
+            f"API client default VITE_API_BASE should be '/api', got '{api_base_default}'. "
+            "This must match .env.example for consistent behavior."
+        )
 
-        # Check API_BASE default
-        api_base_match = re.search(r"VITE_API_BASE\s*\|\|\s*['\"]([^'\"]+)['\"]", client_content)
-        if api_base_match:
-            default_base = api_base_match.group(1)
-            assert default_base == "/api", (
-                f"API client default VITE_API_BASE should be '/api', got '{default_base}'. "
-                "This must match .env.example for consistent behavior."
-            )
+        # Verify all layer prefix defaults
+        mismatched = []
+        for layer_name, (var_name, expected) in self.EXPECTED_LAYER_PREFIXES.items():
+            actual = self._extract_env_default(client_content, var_name)
+            if actual is None:
+                mismatched.append(f"{layer_name}: {var_name} fallback not found")
+            elif actual != expected:
+                mismatched.append(f"{layer_name}: expected {expected}, got {actual}")
 
-        # Check L3_PREFIX default
-        l3_match = re.search(r"VITE_L3_PREFIX\s*\|\|\s*['\"]([^'\"]+)['\"]", client_content)
-        if l3_match:
-            default_l3 = l3_match.group(1)
-            assert default_l3 == "/v1/graph", (
-                f"API client default VITE_L3_PREFIX should be '/v1/graph', got '{default_l3}'. "
-                "This must match .env.example and align with backend OpenAPI routes."
-            )
+        assert not mismatched, (
+            f"Layer prefix defaults don't match expected: {'; '.join(mismatched)}. "
+            "Client.ts defaults must align with .env.example configuration."
+        )
 
-    def test_subgraph_path_construction_matches_openapi(self) -> None:
-        """Subgraph endpoint path construction matches OpenAPI route.
-
-        Frontend useSubgraph calls: apiClient.get('l3', '/subgraph').
-        With API_BASE=/api and L3_PREFIX=/v1/graph, this becomes:
-            /api/v1/graph/subgraph.
-
-        Backend OpenAPI has: /v1/graph/subgraph.
-
-        This test verifies the layer mapping is correct for this specific endpoint.
-        """
+    def test_subgraph_endpoint_exists_in_openapi(self) -> None:
+        """Subgraph endpoint must exist in OpenAPI with GET method."""
         l3_openapi = _load_json(OPENAPI_L3_PATH)
         paths = l3_openapi.get("paths", {})
 
-        # Verify the OpenAPI has the subgraph endpoint
         assert "/v1/graph/subgraph" in paths, (
             "Backend OpenAPI must document /v1/graph/subgraph endpoint. "
             "This is required for the Graph Explorer to function."
         )
 
-        # Verify endpoint has GET method
         subgraph_path = paths.get("/v1/graph/subgraph", {})
         assert "get" in subgraph_path, (
             "Subgraph endpoint must support GET method for useSubgraph hook."

@@ -344,7 +344,6 @@ class TestSSEPendingJob:
             await asyncio.sleep(0.6)
             job = await api_main.job_store.get("p-1")
             if job:
-                from layer2_extraction.integration.job_store import PipelineJob
                 updated_job = PipelineJob(
                     job_id=job.job_id,
                     extraction_status="completed",

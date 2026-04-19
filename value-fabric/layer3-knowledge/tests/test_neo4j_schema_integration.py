@@ -227,7 +227,7 @@ class TestNeo4jFailureModes:
         # Verify constraints still exist
         async with neo4j_driver.session() as session:
             result = await session.run(
-                "SHOW CONSTRAINTS YIELD count(*) as count"
+                "SHOW CONSTRAINTS YIELD name RETURN count(*) as count"
             )
             record = await result.single()
             assert record["count"] > 0
@@ -266,7 +266,7 @@ def test_get_tenant_constraints_community_returns_empty() -> None:
 
 def test_get_tenant_constraints_enterprise_returns_all() -> None:
     """P2 Regression: Verify Enterprise Edition gets all tenant constraints."""
-    from src.schema.constraints import get_tenant_constraints, TENANT_CONSTRAINTS
+    from src.schema.constraints import TENANT_CONSTRAINTS, get_tenant_constraints
 
     constraints = get_tenant_constraints("enterprise")
     assert len(constraints) == len(TENANT_CONSTRAINTS)

@@ -16,11 +16,22 @@ import os
 from typing import Any
 
 import httpx
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_BASE_URL = os.getenv("LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005")
 _DEFAULT_TIMEOUT = 30.0
+
+# Retry configuration: 3 attempts with exponential backoff
+_RETRY_WAIT_MIN = 1  # seconds
+_RETRY_WAIT_MAX = 10  # seconds
+_RETRY_STOP_AFTER = 3
 
 
 class Layer5GroundTruthClient:
@@ -66,10 +77,13 @@ class Layer5GroundTruthClient:
         elif tenant_id:
             headers["X-Tenant-ID"] = tenant_id
 
+        # Connection pooling with explicit limits for boundary resilience
+        limits = httpx.Limits(max_connections=20, max_keepalive_connections=10)
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
             headers=headers,
             timeout=timeout,
+            limits=limits,
         )
 
     # ------------------------------------------------------------------
@@ -89,6 +103,12 @@ class Layer5GroundTruthClient:
     # Core: sync approved truths to KG
     # ------------------------------------------------------------------
 
+    @retry(
+        wait=wait_exponential(min=_RETRY_WAIT_MIN, max=_RETRY_WAIT_MAX),
+        stop=stop_after_attempt(_RETRY_STOP_AFTER),
+        retry=retry_if_exception_type((httpx.NetworkError, httpx.TimeoutException)),
+        reraise=False,
+    )
     async def sync_approved_truths(
         self,
         organization_id: str | None = None,
@@ -142,6 +162,12 @@ class Layer5GroundTruthClient:
     # Submit a new TruthObject
     # ------------------------------------------------------------------
 
+    @retry(
+        wait=wait_exponential(min=_RETRY_WAIT_MIN, max=_RETRY_WAIT_MAX),
+        stop=stop_after_attempt(_RETRY_STOP_AFTER),
+        retry=retry_if_exception_type((httpx.NetworkError, httpx.TimeoutException)),
+        reraise=False,
+    )
     async def submit_truth(
         self,
         claim: str,

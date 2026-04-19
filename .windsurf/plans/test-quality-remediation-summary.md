@@ -280,6 +280,47 @@ TypeError: Logger._log() got an unexpected keyword argument 'component'
 
 ---
 
+## Update: 2025-04-19 Contract Test Audit
+
+After implementing drift assessment fixes, the contract tests were audited and refined:
+
+### Files Audited
+
+| File | Score | Status |
+|------|-------|--------|
+| `tests/contract/test_l4_frontend_contract.py` | **31/35** | ✅ No rewrites needed |
+| `tests/contract/test_l3_graph_contract.py` | **31/35** | ✅ No rewrites needed |
+
+### Refinements Applied to `test_l4_frontend_contract.py`
+
+| Issue | Priority | Fix |
+|-------|----------|-----|
+| Silent test pass if regex failed | **P0** | Changed `if match:` to `assert match is not None` with explicit error |
+| Import inside function | P2 | Moved `import re` to module level |
+| Incomplete layer coverage | P2 | Extended from L3 only → all 6 layers (L1-L6) |
+| Code duplication | P2 | Extracted `_extract_env_default()` helper and `EXPECTED_LAYER_PREFIXES` constant |
+| Missing L6 env var | P2 | Added `VITE_L6_PREFIX=/v1/benchmarks` to `.env.example` |
+
+### Validation Results
+
+```
+tests/contract/test_l4_frontend_contract.py::TestPathAlignment::test_env_example_has_correct_api_base PASSED
+tests/contract/test_l4_frontend_contract.py::TestPathAlignment::test_env_example_layer_prefixes_include_api_version PASSED
+tests/contract/test_l4_frontend_contract.py::TestPathAlignment::test_api_client_defaults_match_env_example PASSED
+tests/contract/test_l4_frontend_contract.py::TestPathAlignment::test_subgraph_endpoint_exists_in_openapi PASSED
+
+4 passed in 0.05s
+```
+
+### Quality Improvements
+
+- **Score improved**: Estimated 27/35 → 31/35 (higher coverage, better robustness)
+- **Test count**: +4 new path alignment tests (all passing)
+- **Coverage**: Now validates all 6 layer prefixes across both `.env.example` and `client.ts`
+- **Robustness**: Explicit assertions prevent silent test passes
+
+---
+
 ## Conclusion
 
 The test quality remediation workflow has been fully implemented. Critical fixes applied:
@@ -287,6 +328,7 @@ The test quality remediation workflow has been fully implemented. Critical fixes
 1. **Layer 3 Settings**: Added missing `pinecone_cloud` and `pinecone_region` fields to resolve config test failures
 2. **Layer 3 pytest.ini/conftest.py**: Removed environment variable overrides that interfered with Settings default value tests
 3. **Layer 1 Import Path**: Created root conftest.py to fix `ModuleNotFoundError: No module named 'src'`
+4. **Contract Tests (2025-04-19)**: Refined path alignment tests to cover all 6 layers with explicit assertions
 
 The test suite is now **operational across all backend layers**:
 - **Layer 1**: 23/24 tests passing (collection errors resolved)
@@ -294,5 +336,6 @@ The test suite is now **operational across all backend layers**:
 - **Layer 3**: 180 tests collected, config validation fixed
 - **Layer 4**: 39/41 tests passing
 - **Layer 5**: 51/54 tests passing
+- **Contract Tests**: 4/4 new path alignment tests passing
 
 **Overall Test Health**: ✅ **Good** (backend), **Poor** (frontend - no tests)

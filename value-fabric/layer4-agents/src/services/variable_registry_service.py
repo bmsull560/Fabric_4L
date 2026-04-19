@@ -446,7 +446,13 @@ class Neo4jVariableRegistry(IVariableRegistry):
             import re
 
             pattern = params.get("pattern", ".*")
-            if not re.match(pattern, str(value)):
+            # Ensure pattern has anchors for complete string matching
+            anchored_pattern = pattern
+            if not anchored_pattern.startswith('^'):
+                anchored_pattern = '^' + anchored_pattern
+            if not anchored_pattern.endswith('$'):
+                anchored_pattern = anchored_pattern + '$'
+            if not re.match(anchored_pattern, str(value)):
                 return False, rule.error_message
 
         elif rule.rule_type == "enum":

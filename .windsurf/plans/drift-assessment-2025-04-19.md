@@ -21,6 +21,43 @@
 
 ---
 
+## Refinement Summary (Post-Implementation)
+
+After initial implementation, the contract tests were refined for production quality:
+
+### Issues Fixed
+
+| Priority | Issue | Fix |
+|----------|-------|-----|
+| **P0** | Silent test pass if regex failed | Changed `if match:` to `assert match is not None` with descriptive error message |
+| **P2** | Import inside function | Moved `import re` to module-level imports |
+| **P2** | Incomplete layer coverage | Extended tests to validate all 6 layers (L1-L6), not just L3 |
+| **P2** | Code duplication | Extracted `_extract_env_default()` helper and `EXPECTED_LAYER_PREFIXES` constant |
+| **P2** | Missing L6 in env example | Added `VITE_L6_PREFIX=/v1/benchmarks` to `.env.example` |
+
+### Quality Improvements
+
+1. **Test Method Naming**: Renamed tests for clarity:
+   - `test_l3_layer_prefix_includes_api_version` → `test_env_example_has_correct_api_base`
+   - Split into focused single-purpose tests
+
+2. **Comprehensive Validation**: New tests cover:
+   - All 6 layer prefixes in `.env.example`
+   - All 6 layer defaults in `client.ts`
+   - Clear error messages listing exactly which layers failed
+
+3. **Maintainability**: 
+   - Single source of truth for expected values (`EXPECTED_LAYER_PREFIXES` dict)
+   - Helper method with clear docstring
+   - Consistent assertion patterns
+
+### Files Changed in Refinement
+
+- `tests/contract/test_l4_frontend_contract.py` - Refactored for clarity and completeness
+- `frontend/client/.env.example` - Added missing `VITE_L6_PREFIX`
+
+---
+
 ## OpenAPI Contract Drift
 
 | Route | Issue | Severity | Fix Required |

@@ -49,9 +49,12 @@ class SendNotificationTool(BaseTool):
         self._client = None
 
     def _get_client(self):
-        """Get HTTP client."""
+        """Get HTTP client with connection pooling and timeout configuration."""
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=30.0)
+            # Connection pooling limits for boundary resilience
+            limits = httpx.Limits(max_connections=10, max_keepalive_connections=5)
+            timeout = httpx.Timeout(30.0, connect=10.0)
+            self._client = httpx.AsyncClient(timeout=timeout, limits=limits)
         return self._client
 
     async def execute(self, input_data: SendNotificationInput) -> SendNotificationOutput:

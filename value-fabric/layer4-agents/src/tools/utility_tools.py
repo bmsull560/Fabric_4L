@@ -28,18 +28,26 @@ class ValidateInputTool(BaseTool):
         errors = []
         normalized = {}
 
-        # Mock schema validation for common types
+        # Mock schema validation for common types with structured error context
         if schema_name == "prospect_id":
+            field_path = "prospect_id"
             if "prospect_id" not in data:
-                errors.append("Missing required field: prospect_id")
+                errors.append(f"[{field_path}] Missing required field")
             elif not data["prospect_id"]:
-                errors.append("prospect_id cannot be empty")
+                errors.append(f"[{field_path}] Value cannot be empty")
+            elif not isinstance(data["prospect_id"], str):
+                errors.append(f"[{field_path}] Expected string, got {type(data['prospect_id']).__name__}")
             else:
                 normalized["prospect_id"] = data["prospect_id"].strip()
 
         elif schema_name == "value_drivers":
-            if "value_driver_ids" not in data or not data["value_driver_ids"]:
-                errors.append("At least one value_driver_id is required")
+            field_path = "value_driver_ids"
+            if "value_driver_ids" not in data:
+                errors.append(f"[{field_path}] Missing required field")
+            elif not data["value_driver_ids"]:
+                errors.append(f"[{field_path}] At least one value_driver_id is required")
+            elif not isinstance(data["value_driver_ids"], list):
+                errors.append(f"[{field_path}] Expected list, got {type(data['value_driver_ids']).__name__}")
             else:
                 normalized["value_driver_ids"] = [vid.strip() for vid in data["value_driver_ids"]]
 
@@ -48,11 +56,12 @@ class ValidateInputTool(BaseTool):
                 errors.append("Formula is required")
             else:
                 formula = data["formula"]
-                # Check for invalid characters
-                allowed = set("0123456789+-*/().{}_ ")
+                # Check for invalid characters with expanded operator whitelist
+                # Allows: numbers, basic operators, power (^, **), modulo (%), comparison, whitespace
+                allowed = set("0123456789+-*/().{}_ ^%<>!=&|")
                 invalid = set(formula) - allowed
                 if invalid:
-                    errors.append(f"Invalid characters in formula: {invalid}")
+                    errors.append(f"[formula] Invalid characters: {''.join(sorted(invalid))}. Allowed: 0-9, operators, parentheses, whitespace")
                 else:
                     normalized["formula"] = formula
 
@@ -60,9 +69,16 @@ class ValidateInputTool(BaseTool):
                     normalized["variables"] = data["variables"]
 
         elif schema_name == "email":
+            import re
+
             email = data.get("email", "")
-            if "@" not in email or "." not in email.split("@")[-1]:
-                errors.append("Invalid email format")
+            # RFC-compliant email regex with anchors for strict validation
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not email:
+                errors.append("[email] Value cannot be empty")
+            elif not re.match(email_pattern, email):
+                display_email = email[:50] + "..." if len(email) > 50 else email
+                errors.append(f"[email] Invalid format: expected user@domain.tld, got '{display_email}'")
             else:
                 normalized["email"] = email.lower().strip()
 

@@ -1,4 +1,5 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import axiosRetry from 'axios-retry';
 
 // Base API path - layer prefixes must include /v1 to match backend OpenAPI routes
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
@@ -59,6 +60,17 @@ class ApiClient {
           'Content-Type': 'application/json',
         },
         timeout: 30000,
+      });
+
+      // Configure retry: 3 attempts with exponential delay for transient errors
+      axiosRetry(client, {
+        retries: 3,
+        retryDelay: axiosRetry.exponentialDelay,
+        retryCondition: (error) => {
+          // Retry on network errors and 5xx responses
+          return axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+            (error.response?.status !== undefined && error.response.status >= 500);
+        },
       });
 
       client.interceptors.request.use(
