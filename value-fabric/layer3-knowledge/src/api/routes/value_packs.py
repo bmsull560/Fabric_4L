@@ -6,7 +6,7 @@ Provides endpoints for Value Pack CRUD and execution.
 import re
 import uuid
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from neo4j import AsyncDriver
@@ -671,8 +671,15 @@ async def _get_pack_formulas(
         return records
 
 
+class VariableDefault(TypedDict, total=False):
+    """Schema for formula variable defaults from Neo4j."""
+
+    name: str
+    default_value: float
+
+
 def _merge_variables(
-    formula_defaults: list[dict], user_variables: dict[str, Any]
+    formula_defaults: list[VariableDefault], user_variables: dict[str, Any]
 ) -> dict[str, float]:
     """Merge user-provided variables with formula defaults.
 
@@ -687,13 +694,15 @@ def _merge_variables(
 
     # Add formula defaults first
     for var in formula_defaults:
-        valid_names = {v["variable_name"] for v in var_data.get("variables", []) if v.get("variable_name")}
+        var_name = var.get("name")
+        default = var.get("default_value")
         if var_name and default is not None:
             try:
                 merged[var_name] = float(default)
             except (ValueError, TypeError):
                 logger.warning(
-                    f"Invalid default value for variable '{var_name}': {default!r}. Skipping."
+                    "Invalid default value",
+                    extra={"variable": var_name, "value": default},
                 )
 
     # Override with user-provided values
@@ -703,13 +712,17 @@ def _merge_variables(
         except (ValueError, TypeError):
             if var_name in merged:
                 logger.warning(
-                    f"Invalid user value for variable '{var_name}': {var_value!r}. "
-                    f"Keeping default: {merged[var_name]}."
+                    "Invalid user value, keeping default",
+                    extra={
+                        "variable": var_name,
+                        "user_value": var_value,
+                        "default_value": merged[var_name],
+                    },
                 )
             else:
                 logger.warning(
-                    f"Invalid user value for variable '{var_name}': {var_value!r}. "
-                    f"No default available, skipping."
+                    "Invalid user value, no default available",
+                    extra={"variable": var_name, "user_value": var_value},
                 )
 
     return merged
@@ -785,7 +798,10 @@ async def execute_pack(
             continue
 
         # Build variable context: merge user inputs with formula defaults
-        variable_context = _merge_variables(variables_spec, request.variables)
+        variable_context = _merge_variables(
+            variables_spec,  # type: ignore[arg-type]
+            request.variables,
+        )
 
         try:
             result_value = evaluate_expression(expression, variable_context)

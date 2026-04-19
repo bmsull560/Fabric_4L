@@ -369,11 +369,15 @@ async def lifespan(app: FastAPI):
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
         if vault_addr and check_vault_health:
+            logger.info("L3: Checking Vault connectivity", extra={"vault_addr": vault_addr})
             ok = await check_vault_health(vault_addr)
             if not ok:
-                raise RuntimeError(
-                    "Vault unreachable — cannot start in production without secrets backend"
+                logger.error(
+                    "L3: Vault unreachable — cannot start in production without secrets backend",
+                    extra={"vault_addr": vault_addr}
                 )
+                raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
+            logger.info("L3: Vault connectivity verified")
 
     # Startup
     await init_app_state(app)

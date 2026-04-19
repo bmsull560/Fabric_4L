@@ -8,8 +8,16 @@ These are the most critical security checks that must pass on every PR.
 Full suite in other test files runs on scheduled workflows.
 """
 
+import time
+from typing import Callable
+
+import jwt as jwt_lib
 import pytest
 from fastapi.testclient import TestClient
+
+# Token expiration constants
+TOKEN_EXPIRATION_HOURS = 1
+SECONDS_PER_HOUR = 3600
 
 
 class TestCriticalTenantIsolation:
@@ -24,14 +32,16 @@ class TestCriticalTenantIsolation:
                 "X-Tenant-ID": "tenant-b",  # Attempted spoof
             },
         )
-        assert response.status_code in [403, 401, 200], "Tenant spoof attempt not handled"
 
         if response.status_code == 200:
-            # If allowed, verify data is still from correct tenant
+            # If endpoint allows the request, verify strict tenant isolation at data level
             data = response.json()
             items = data.get("items", [])
             for item in items:
-                assert item.get("tenant_id") == "tenant-a", "Cross-tenant data leakage"
+                assert item.get("tenant_id") != "tenant-b", "Cross-tenant data leakage - tenant-b data visible"
+                assert item.get("tenant_id") == "tenant-a", "Data ownership mismatch"
+        elif response.status_code not in [403, 401]:
+            pytest.fail(f"Unexpected status for tenant spoof attempt: {response.status_code}")
 
     def test_idor_blocked_basic(self, client: TestClient, tenant_a_token, tenant_b_token):
         """Basic IDOR: Tenant B cannot access Tenant A's entity by ID."""
@@ -51,7 +61,10 @@ class TestCriticalTenantIsolation:
                 f"/api/v1/entities/{entity_id}",
                 headers={"Authorization": f"Bearer {tenant_b_token}"},
             )
-            assert idor_response.status_code in [403, 404], "IDOR vulnerability detected"
+            assert idor_response.status_code in [403, 404], (
+                f"IDOR vulnerability detected: Tenant B accessed Tenant A entity "
+                f"with status {idor_response.status_code}"
+            )
 
 
 class TestCriticalRBAC:
@@ -65,7 +78,16 @@ class TestCriticalRBAC:
             "/api/v1/admin/users",
             headers={"Authorization": f"Bearer {standard_user_token}"},
         )
-        assert response.status_code in [403, 401, 404], "Admin endpoint accessible to standard user"
+        # 403 = Forbidden (auth'd but not authorized), 401 = Unauthorized (not auth'd)
+        # 404 is acceptable if endpoint doesn't exist, but 200 means access was granted
+        assert response.status_code != 200, (
+            f"CRITICAL: Admin endpoint accessible to standard user "
+            f"(status {response.status_code})"
+        )
+        assert response.status_code in [403, 401, 404], (
+            f"Expected 403/401/404 for standard user accessing admin endpoint, "
+            f"got {response.status_code}"
+        )
 
     def test_admin_user_can_access_admin_endpoints(
         self, client: TestClient, admin_user_token
@@ -78,10 +100,8 @@ class TestCriticalRBAC:
         # Should not be forbidden - admin should have access (may 404 if not implemented)
         assert response.status_code != 403, "Admin user blocked from admin endpoint"
 
-    def test_jwt_tampering_rejected(self, client: TestClient, jwt_encoder):
+    def test_jwt_tampering_rejected(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """Modified JWT claims are rejected."""
-        import jwt as jwt_lib
-
         # Create valid token
         original = jwt_encoder({
             "sub": "user-123",
@@ -89,8 +109,9 @@ class TestCriticalRBAC:
             "role": "standard",
         })
 
-        # Tamper with it
-        decoded = jwt_lib.decode(original, "test-secret-key", algorithms=["HS256"])
+        # Tamper with it using the known test secret
+        from tests.security.conftest import TEST_JWT_SECRET
+        decoded = jwt_lib.decode(original, TEST_JWT_SECRET, algorithms=["HS256"])
         decoded["role"] = "admin"
         tampered = jwt_lib.encode(decoded, "wrong-secret", algorithm="HS256")
 
@@ -176,10 +197,8 @@ class TestCriticalMisconfiguration:
 class TestCriticalCryptographic:
     """P0: Cryptographic security (smoke tests)."""
 
-    def test_jwt_uses_secure_algorithm(self, client: TestClient, jwt_encoder):
+    def test_jwt_uses_secure_algorithm(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """JWT tokens use secure algorithm."""
-        import jwt as jwt_lib
-
         token = jwt_encoder({"sub": "test", "role": "standard"})
         header = jwt_lib.get_unverified_header(token)
 
@@ -189,15 +208,14 @@ class TestCriticalCryptographic:
 
     def test_expired_token_rejected(self, client: TestClient):
         """Expired JWT tokens are rejected."""
-        import jwt as jwt_lib
-        import time
+        from tests.security.conftest import TEST_JWT_SECRET
 
         expired_token = jwt_lib.encode(
             {
                 "sub": "test",
-                "exp": int(time.time()) - 3600,  # Expired 1 hour ago
+                "exp": int(time.time()) - (TOKEN_EXPIRATION_HOURS * SECONDS_PER_HOUR),
             },
-            "test-secret-key",
+            TEST_JWT_SECRET,
             algorithm="HS256",
         )
 
@@ -228,7 +246,7 @@ class TestCriticalAccessControl:
             assert entity.get("role") != "admin", "Mass assignment: role was set"
             assert entity.get("is_admin") is not True, "Mass assignment: is_admin was set"
 
-    def test_read_only_cannot_write(self, client: TestClient, jwt_encoder):
+    def test_read_only_cannot_write(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """Read-only permission blocks write operations."""
         read_token = jwt_encoder({
             "sub": "read-only",

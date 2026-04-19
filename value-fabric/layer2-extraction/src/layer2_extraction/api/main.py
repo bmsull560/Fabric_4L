@@ -555,24 +555,29 @@ async def _pending_ingestion_retry_loop() -> None:
         await asyncio.sleep(RETRY_POLL_SECONDS)
 
 
+# Vault health check error message (shared across layers)
+_VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production without secrets backend"
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
+    # Production Vault smoke gate (fail fast before starting other resources)
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr and check_vault_health:
+            logger.info("L2: Checking Vault connectivity at %s", vault_addr)
+            ok = await check_vault_health(vault_addr)
+            if not ok:
+                logger.error("L2: %s", _VAULT_UNREACHABLE_ERROR)
+                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
+            logger.info("L2: Vault connectivity verified")
+
     global _retry_task
     if _retry_task is None:
         _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
 
     # Start WebSocket manager for real-time streaming
     await _ws_manager.start()
-
-    # Production Vault smoke gate
-    if os.getenv("ENVIRONMENT", "development") == "production":
-        vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and check_vault_health:
-            ok = await check_vault_health(vault_addr)
-            if not ok:
-                raise RuntimeError(
-                    "Vault unreachable — cannot start in production without secrets backend"
-                )
 
 
 @app.on_event("shutdown")

@@ -9,6 +9,9 @@ on:
       - 'layer4-agents/skills/**'
       - 'layer4-agents/agents/**'
       - 'layer4-agents/prompts/**'
+      - 'layer4-agents/src/registry/**'
+      - 'layer2-extraction/src/integration/model_registry_client.py'
+      - 'layer2-extraction/src/shared/llm_client.py'
       - 'tests/evals/**'
   push:
     branches: [main]
@@ -16,6 +19,9 @@ on:
       - 'layer4-agents/skills/**'
       - 'layer4-agents/agents/**'
       - 'layer4-agents/prompts/**'
+      - 'layer4-agents/src/registry/**'
+      - 'layer2-extraction/src/integration/model_registry_client.py'
+      - 'layer2-extraction/src/shared/llm_client.py'
       - 'tests/evals/**'
   workflow_dispatch:
     inputs:
@@ -668,10 +674,25 @@ jobs:
           git commit -m "chore(evals): update ground truth baseline [skip ci]" || echo "No changes"
           git push || echo "No changes to push"
 
-      - name: Trigger model registry sync
+      - name: Update Model Registry with eval results
+        env:
+          L4_API_URL: ${{ secrets.L4_API_URL || 'http://localhost:8000' }}
+          L4_API_TOKEN: ${{ secrets.L4_API_TOKEN }}
         run: |
-          echo "📤 Syncing validated skills to Model Registry..."
-          # In production, call Model Registry API
-          # curl -X POST https://model-registry.fabric.internal/sync \
-          #   -H "Authorization: Bearer ${{ secrets.MODEL_REGISTRY_TOKEN }}" \
-          #   -d @eval-summary.json
+          echo "📤 Recording evaluation results in Model Registry..."
+          
+          # Extract pass rate from eval summary
+          if [ -f "eval-summary.json" ]; then
+            PASS_RATE=$(python3 -c "import json; print(json.load(open('eval-summary.json')).get('overall_pass_rate', 0))")
+            echo "Evaluation pass rate: $PASS_RATE"
+            
+            # Record eval run in Model Registry
+            # This associates the eval results with the active production model
+            curl -s -X POST "${L4_API_URL}/v1/models/eval-run" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${L4_API_TOKEN}" \
+              -H "X-Tenant-ID: system" \
+              -d @eval-summary.json || echo "⚠️ Model registry sync skipped (L4 unavailable)"
+          else
+            echo "⚠️ No eval-summary.json found, skipping registry sync"
+          fi

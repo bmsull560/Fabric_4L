@@ -79,6 +79,32 @@ def _serialize_entity(entity: dict[str, Any]) -> dict[str, Any]:
     return serialized
 
 
+def _serialize_relationship(rel: Any, include_hops: bool = False, hops: int = 0) -> dict[str, Any]:
+    """Serialize a Neo4j relationship with alias fields.
+
+    Centralizes relationship serialization to ensure consistent alias field
+    handling across all GraphRAG query paths.
+
+    Args:
+        rel: Neo4j relationship object
+        include_hops: Whether to include hops count in output
+        hops: Number of hops (only included if include_hops=True)
+
+    Returns:
+        JSON-serializable relationship dictionary with alias fields
+    """
+    data: dict[str, Any] = {
+        "type": rel.type,
+        "relationship_type": rel.type,  # Frontend alias
+        "source": rel.start_node["id"],
+        "target": rel.end_node["id"],
+        "properties": _serialize_entity(dict(rel)),
+    }
+    if include_hops:
+        data["hops"] = hops
+    return data
+
+
 @dataclass
 class GraphRAGResult:
     """Result from a GraphRAG query."""
@@ -236,15 +262,7 @@ class GraphRAGEngine:
                 rels = path_info["rel"]
                 if isinstance(rels, list):
                     for rel in rels:
-                        relationships.append(
-                            {
-                                "type": rel.type,
-                                "relationship_type": rel.type,  # Frontend alias
-                                "source": rel.start_node["id"],
-                                "target": rel.end_node["id"],
-                                "properties": _serialize_entity(dict(rel)),
-                            }
-                        )
+                        relationships.append(_serialize_relationship(rel))
 
             return {
                 "center": center,
@@ -312,15 +330,7 @@ class GraphRAGEngine:
                 # Convert relationships
                 relationships = []
                 for rel in rels:
-                    relationships.append(
-                        {
-                            "type": rel.type,
-                            "relationship_type": rel.type,  # Frontend alias
-                            "source": rel.start_node["id"],
-                            "target": rel.end_node["id"],
-                            "properties": dict(rel),
-                        }
-                    )
+                    relationships.append(_serialize_relationship(rel))
 
                 paths.append({"nodes": nodes, "relationships": relationships})
 
@@ -475,14 +485,9 @@ class GraphRAGEngine:
 
                 # Add relationships
                 for rel in record["path_rels"]:
-                    rel_data = {
-                        "type": rel.type,
-                        "relationship_type": rel.type,  # Frontend alias
-                        "source": rel.start_node["id"],
-                        "target": rel.end_node["id"],
-                        "properties": _serialize_entity(dict(rel)),
-                        "hops": record["hops"],
-                    }
+                    rel_data = _serialize_relationship(
+                        rel, include_hops=True, hops=record["hops"]
+                    )
                     if rel_data not in all_relationships:
                         all_relationships.append(rel_data)
 
@@ -672,14 +677,9 @@ class GraphRAGEngine:
 
                     # Add relationships
                     for rel in record["path_rels"]:
-                        rel_data = {
-                            "type": rel.type,
-                            "relationship_type": rel.type,  # Frontend alias
-                            "source": rel.start_node["id"],
-                            "target": rel.end_node["id"],
-                            "properties": dict(rel),
-                            "hops": record["hops"],
-                        }
+                        rel_data = _serialize_relationship(
+                            rel, include_hops=True, hops=record["hops"]
+                        )
                         if rel_data not in all_relationships:
                             all_relationships.append(rel_data)
                             hop_relationships.append(rel_data)

@@ -70,11 +70,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
         if vault_addr and check_vault_health:
+            logger.info("L5: Checking Vault connectivity at %s", vault_addr)
             ok = await check_vault_health(vault_addr)
             if not ok:
-                raise RuntimeError(
-                    "Vault unreachable — cannot start in production without secrets backend"
-                )
+                logger.error("L5: Vault unreachable — cannot start in production without secrets backend")
+                raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
+            logger.info("L5: Vault connectivity verified")
 
     yield
 
@@ -118,6 +119,13 @@ def create_app() -> FastAPI:
                 ),
             },
             {
+                "name": "model-registry",
+                "description": (
+                    "LLM model versioning, deployment, and evaluation tracking. "
+                    "Manages model lifecycles with cost attribution and canary releases."
+                ),
+            },
+            {
                 "name": "system",
                 "description": "Health check and operational endpoints.",
             },
@@ -156,8 +164,15 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Mount the API router
+    # Mount the API routers
     app.include_router(router)
+    
+    # Mount the Model Registry router
+    try:
+        from .model_registry_routes import router as model_registry_router
+        app.include_router(model_registry_router)
+    except ImportError:
+        logging.getLogger(__name__).warning("Model Registry router not available")
 
     # Root redirect to docs
     @app.get("/", include_in_schema=False)

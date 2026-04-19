@@ -23,9 +23,14 @@ from ..models.truth_object import (
 )
 
 __all__ = [
+    # Enums
     "ClaimType",
+    "DeploymentEnvironment",
+    "DeploymentStatus",
     "DisputeReason",
     "MaturityLevel",
+    "ModelCapability",
+    "ModelProvider",
     "SourceType",
     "TruthStatus",
     # Request models
@@ -33,6 +38,11 @@ __all__ = [
     "TruthObjectCreate",
     "ValidateRequest",
     "AddSourceRequest",
+    "ModelVersionCreate",
+    "ModelDeploymentCreate",
+    "PromoteModelRequest",
+    "RollbackModelRequest",
+    "ModelEvaluationCreate",
     # Response models
     "TruthSourceResponse",
     "ValidationEventResponse",
@@ -43,6 +53,15 @@ __all__ = [
     "ValidateResponse",
     "HealthResponse",
     "MaturityLadderResponse",
+    "ModelVersionResponse",
+    "ModelVersionSummary",
+    "ModelVersionListResponse",
+    "ModelDeploymentResponse",
+    "ModelDeploymentListResponse",
+    "PromoteModelResponse",
+    "RollbackModelResponse",
+    "ModelEvaluationResponse",
+    "ModelEvaluationListResponse",
 ]
 
 
@@ -416,3 +435,322 @@ class MaturityLadderResponse(BaseModel):
     """Reference endpoint — returns the full maturity ladder definition."""
 
     levels: list[MaturityLevelDetail]
+
+
+# ---------------------------------------------------------------------------
+# Model Registry schemas
+# ---------------------------------------------------------------------------
+
+# Re-export enums
+from ..models.model_registry import (
+    DeploymentEnvironment,
+    DeploymentStatus,
+    ModelCapability,
+    ModelProvider,
+)
+
+
+class ModelVersionCreate(BaseModel):
+    """Schema for registering a new ModelVersion."""
+
+    name: str = Field(
+        ...,
+        max_length=128,
+        description="Model name, e.g., 'gpt-4-turbo'",
+    )
+    provider: ModelProvider = Field(
+        ...,
+        description="LLM provider",
+    )
+    version: str = Field(
+        ...,
+        max_length=64,
+        description="Semver or provider version string",
+    )
+    model_identifier: str = Field(
+        ...,
+        max_length=128,
+        description="Provider's API identifier",
+    )
+    capabilities: list[ModelCapability] = Field(
+        default_factory=list,
+        description="List of supported capabilities",
+    )
+    context_window: int = Field(
+        default=4096,
+        ge=1,
+        description="Maximum context window in tokens",
+    )
+    max_output_tokens: int | None = Field(
+        default=None,
+        ge=1,
+        description="Maximum output tokens",
+    )
+    cost_per_1k_input: float = Field(
+        default=0.0,
+        ge=0,
+        description="Cost per 1,000 input tokens in USD",
+    )
+    cost_per_1k_output: float = Field(
+        default=0.0,
+        ge=0,
+        description="Cost per 1,000 output tokens in USD",
+    )
+    cost_per_1k_cached: float | None = Field(
+        default=None,
+        ge=0,
+        description="Cost per 1,000 cached tokens",
+    )
+    description: str | None = Field(
+        default=None,
+        description="Human-readable description",
+    )
+    extra_metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional provider-specific metadata",
+    )
+
+
+class ModelVersionResponse(BaseModel):
+    """Schema for a ModelVersion in API responses."""
+
+    id: UUID
+    organization_id: UUID
+    name: str
+    provider: str
+    version: str
+    model_identifier: str
+    capabilities: list[str]
+    context_window: int
+    max_output_tokens: int | None
+    cost_per_1k_input: float
+    cost_per_1k_output: float
+    cost_per_1k_cached: float | None
+    is_active: bool
+    is_default: bool
+    description: str | None
+    extra_metadata: dict[str, Any]
+    created_by: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ModelVersionSummary(BaseModel):
+    """Summary view of a ModelVersion for list responses."""
+
+    id: UUID
+    name: str
+    provider: str
+    version: str
+    is_active: bool
+    is_default: bool
+    cost_per_1k_input: float
+    cost_per_1k_output: float
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ModelVersionListResponse(BaseModel):
+    """Paginated list of ModelVersions."""
+
+    items: list[ModelVersionSummary]
+    total: int
+    limit: int
+    offset: int
+    has_more: bool
+
+
+class ModelDeploymentCreate(BaseModel):
+    """Schema for creating a new ModelDeployment."""
+
+    model_version_id: UUID = Field(
+        ...,
+        description="ID of the model version to deploy",
+    )
+    environment: DeploymentEnvironment = Field(
+        ...,
+        description="Target environment",
+    )
+    traffic_percentage: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        description="Traffic percentage for canary (0-100)",
+    )
+    is_default_for_env: bool = Field(
+        default=False,
+        description="Whether this is the default model for this environment",
+    )
+    deployment_notes: str | None = Field(
+        default=None,
+        description="Notes about this deployment",
+    )
+
+
+class ModelDeploymentResponse(BaseModel):
+    """Schema for a ModelDeployment in API responses."""
+
+    id: UUID
+    organization_id: UUID
+    model_version_id: UUID
+    environment: str
+    status: str
+    traffic_percentage: int
+    is_default_for_env: bool
+    deployed_at: datetime | None
+    deployed_by: str | None
+    deployment_notes: str | None
+    error_rate_5m: float | None
+    latency_p50_ms: int | None
+    latency_p99_ms: int | None
+    last_health_check: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ModelDeploymentListResponse(BaseModel):
+    """List of ModelDeployments."""
+
+    items: list[ModelDeploymentResponse]
+    total: int
+
+
+class PromoteModelRequest(BaseModel):
+    """Schema for promoting a model to an environment."""
+
+    environment: DeploymentEnvironment = Field(
+        ...,
+        description="Target environment",
+    )
+    traffic_percentage: int = Field(
+        default=100,
+        ge=0,
+        le=100,
+        description="Traffic percentage (0-100)",
+    )
+    make_default: bool = Field(
+        default=False,
+        description="Whether to make this the default model for the environment",
+    )
+
+
+class PromoteModelResponse(BaseModel):
+    """Response after promoting a model."""
+
+    deployment_id: UUID
+    model_version_id: UUID
+    environment: str
+    status: str
+    traffic_percentage: int
+    is_default_for_env: bool
+    deployed_at: datetime
+    message: str
+
+
+class RollbackModelRequest(BaseModel):
+    """Schema for rolling back a deployment."""
+
+    reason: str = Field(
+        ...,
+        min_length=1,
+        description="Reason for rollback",
+    )
+
+
+class RollbackModelResponse(BaseModel):
+    """Response after rolling back a deployment."""
+
+    deployment_id: UUID
+    previous_status: str
+    new_status: str
+    rolled_back_at: datetime
+    message: str
+
+
+class ModelEvaluationCreate(BaseModel):
+    """Schema for recording a model evaluation."""
+
+    model_version_id: UUID = Field(
+        ...,
+        description="ID of the evaluated model version",
+    )
+    benchmark_name: str = Field(
+        ...,
+        max_length=128,
+        description="Name of the benchmark",
+    )
+    benchmark_version: str | None = Field(
+        default=None,
+        max_length=64,
+        description="Version of the benchmark dataset",
+    )
+    score: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Primary score (0.0-1.0)",
+    )
+    score_details: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Detailed scores by category",
+    )
+    sample_size: int | None = Field(
+        default=None,
+        ge=1,
+        description="Number of samples evaluated",
+    )
+    cost_usd: float | None = Field(
+        default=None,
+        ge=0,
+        description="Total cost of evaluation in USD",
+    )
+    duration_seconds: int | None = Field(
+        default=None,
+        ge=0,
+        description="Duration of evaluation in seconds",
+    )
+    evaluation_config: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Configuration used for evaluation",
+    )
+    notes: str | None = Field(
+        default=None,
+        description="Human notes about the evaluation",
+    )
+    artifact_urls: list[str] = Field(
+        default_factory=list,
+        description="Links to evaluation artifacts",
+    )
+
+
+class ModelEvaluationResponse(BaseModel):
+    """Schema for a ModelEvaluation in API responses."""
+
+    id: UUID
+    organization_id: UUID
+    model_version_id: UUID
+    benchmark_name: str
+    benchmark_version: str | None
+    score: float
+    score_details: dict[str, Any]
+    sample_size: int | None
+    cost_usd: float | None
+    duration_seconds: int | None
+    evaluated_at: datetime
+    evaluated_by: str | None
+    notes: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ModelEvaluationListResponse(BaseModel):
+    """List of ModelEvaluations."""
+
+    items: list[ModelEvaluationResponse]
+    total: int

@@ -143,12 +143,13 @@ async def lifespan(app: FastAPI):
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr:
+        if vault_addr and check_vault_health:
+            logger.info("L4: Checking Vault connectivity at %s", vault_addr)
             ok = await check_vault_health(vault_addr)
             if not ok:
-                raise RuntimeError(
-                    "Vault unreachable — cannot start in production without secrets backend"
-                )
+                logger.error("L4: Vault unreachable — cannot start in production without secrets backend")
+                raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
+            logger.info("L4: Vault connectivity verified")
 
     tool_registry = create_default_registry()
     state_manager = StateManager()  # Add Redis client if configured

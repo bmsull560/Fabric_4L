@@ -937,6 +937,14 @@ class BatchAnalyticsResponse(BaseModel):
 
 
 # Graph Models
+# Mapping of alias field names to their source property names
+GraphNodeAliasMap: dict[str, str] = {
+    "name": "label",
+    "entity_type": "type",
+    "confidence_score": "confidence",
+}
+
+
 class GraphNode(BaseModel):
     """Node in the knowledge graph.
 
@@ -951,9 +959,7 @@ class GraphNode(BaseModel):
 
     id: str = Field(..., description="Unique node identifier")
     label: str = Field(..., description="Display label (legacy: use 'name')")
-    type: str = Field(
-        ..., description="Node type (legacy: use 'entity_type')"
-    )
+    type: str = Field(..., description="Node type (legacy: use 'entity_type')")
     confidence: float = Field(
         default=0.8, ge=0.0, le=1.0, description="Confidence score (legacy: use 'confidence_score')"
     )
@@ -983,14 +989,19 @@ class GraphNode(BaseModel):
         """Frontend-compatible alias for 'confidence'."""
         return self.confidence
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override to include computed alias fields in serialization."""
         data = super().model_dump(**kwargs)
-        # Add alias fields for frontend compatibility
-        data["name"] = self.name
-        data["entity_type"] = self.entity_type
-        data["confidence_score"] = self.confidence_score
+        # Dynamically add alias fields using the mapping
+        for alias, source in GraphNodeAliasMap.items():
+            data[alias] = getattr(self, alias)
         return data
+
+
+# Mapping for GraphEdge alias fields
+GraphEdgeAliasMap: dict[str, str] = {
+    "relationship_type": "type",
+}
 
 
 class GraphEdge(BaseModel):
@@ -1017,11 +1028,12 @@ class GraphEdge(BaseModel):
         """Frontend-compatible alias for 'type'."""
         return self.type
 
-    def model_dump(self, **kwargs) -> dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         """Override to include computed alias fields in serialization."""
         data = super().model_dump(**kwargs)
-        # Add alias fields for frontend compatibility
-        data["relationship_type"] = self.relationship_type
+        # Dynamically add alias fields using the mapping
+        for alias, source in GraphEdgeAliasMap.items():
+            data[alias] = getattr(self, alias)
         return data
 
 

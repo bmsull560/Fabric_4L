@@ -5,6 +5,7 @@ cost tracking, retry logic, and token counting.
 """
 
 import asyncio
+import logging
 import os
 import random
 from dataclasses import dataclass, field
@@ -129,7 +130,7 @@ class LLMClient:
         self.max_retries = max_retries
         self.cost_tracking_enabled = cost_tracking_enabled
         self._cost_records: list[CostRecord] = []
-        self._resolve_model_from_registry = resolve_model_from_registry
+        self._resolve_from_registry_enabled = resolve_model_from_registry
         self._registry_tenant_id = registry_tenant_id
         self._registry_api_token = registry_api_token
 
@@ -186,6 +187,25 @@ class LLMClient:
         Returns:
             Tuple of (response, cost_record)
         """
+        # Resolve model from registry if enabled
+        if self._resolve_model_from_registry and self._registry_tenant_id:
+            try:
+                from ..integration.model_registry_client import ModelRegistryClient
+
+                async with ModelRegistryClient() as client:
+                    resolved_model = await client.resolve_model(
+                        tenant_id=self._registry_tenant_id,
+                        provider=self.provider.value,
+                        api_token=self._registry_api_token,
+                    )
+                    if resolved_model:
+                        self.model = resolved_model
+            except Exception as exc:
+                # Log but don't fail - fall back to default model
+                logging.getLogger(__name__).warning(
+                    f"Failed to resolve model from registry: {exc}. Using default: {self.model}"
+                )
+
         if self.provider == LLMProvider.OPENAI:
             return await self._openai_completion(
                 messages,
@@ -429,13 +449,13 @@ class LLMClient:
             cost_usd=total_cost,
         )
 
-    async def _resolve_model_from_registry(self) -> str | None:
+    async def _resolve_from_registry(self) -> str | None:
         """Resolve model from L4 registry if enabled.
 
         Returns:
             Model name from registry, or None if not enabled/failed
         """
-        if not self._resolve_model_from_registry:
+        if not self._resolve_from_registry_enabled:
             return None
 
         if not self._registry_tenant_id:
@@ -472,8 +492,8 @@ class LLMClient:
         Returns:
             Model name to use for API calls
         """
-        if self._resolve_model_from_registry:
-            registry_model = await self._resolve_model_from_registry()
+        if self._resolve_from_registry_enabled:
+            registry_model = await self._resolve_from_registry()
             if registry_model:
                 return registry_model
         return self.model

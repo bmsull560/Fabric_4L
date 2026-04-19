@@ -63,11 +63,13 @@ class ModelRegistryClient:
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create async HTTP client."""
+        """Get or create async HTTP client with connection pooling."""
         if self._client is None:
+            limits = httpx.Limits(max_keepalive_connections=5, max_connections=10)
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 timeout=self.timeout,
+                limits=limits,
             )
         return self._client
 
@@ -181,10 +183,11 @@ class ModelRegistryClient:
             return None
 
     async def close(self) -> None:
-        """Close HTTP client connections."""
+        """Close HTTP client connections and clear cache."""
         if self._client:
             await self._client.aclose()
             self._client = None
+        self._cache.clear()  # Prevent stale data across client lifecycles
 
     async def __aenter__(self) -> ModelRegistryClient:
         """Async context manager entry."""

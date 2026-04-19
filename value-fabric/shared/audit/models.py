@@ -49,6 +49,7 @@ class AuditAction(str, Enum):
     MODEL_REGISTERED = "model.registered"
     MODEL_PROMOTED = "model.promoted"
     MODEL_DEPRECATED = "model.deprecated"
+    MODEL_EVALUATED = "model.evaluated"
 
     # ── Feature flags ───────────────────────────────────────────────────────
     FEATURE_FLAG_CREATED = "feature_flag.created"

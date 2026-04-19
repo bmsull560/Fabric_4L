@@ -251,33 +251,37 @@ class TestL3GraphNodeContracts:
             assert not missing, f"GraphNode schema missing required fields: {missing}"
 
     def test_graph_node_response_sample_includes_alias_fields(self) -> None:
-        """GraphNode response sample includes both legacy and alias fields."""
-        # This test validates the backward compatibility implementation
-        # where responses include both old fields (label, type) and new fields (name, entity_type)
-        sample_node = {
-            "id": "cap-1",
-            "label": "Automated Invoice Processing",  # Legacy field
-            "name": "Automated Invoice Processing",   # Alias field
-            "type": "Capability",                      # Legacy field
-            "entity_type": "Capability",              # Alias field
-            "confidence": 0.92,                       # Legacy field
-            "confidence_score": 0.92,                 # Alias field
-            "x": 100.0,
-            "y": 200.0,
-        }
+        """GraphNode model_dump includes both legacy and alias fields for frontend compatibility."""
+        # Import and use the actual Pydantic model to test real serialization
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src"))
+        from api.models import GraphNode
 
-        # Validate that both legacy and alias fields are present
-        assert "label" in sample_node, "Legacy 'label' field should be present"
-        assert "name" in sample_node, "Alias 'name' field should be present"
-        assert sample_node["label"] == sample_node["name"], "Label and name should match"
+        # Create a GraphNode instance (uses legacy fields internally)
+        node = GraphNode(
+            id="cap-1",
+            label="Automated Invoice Processing",
+            type="Capability",
+            confidence=0.92,
+            x=100.0,
+            y=200.0,
+        )
 
-        assert "type" in sample_node, "Legacy 'type' field should be present"
-        assert "entity_type" in sample_node, "Alias 'entity_type' field should be present"
-        assert sample_node["type"] == sample_node["entity_type"], "Type and entity_type should match"
+        # Serialize - this should include alias fields via model_dump override
+        serialized = node.model_dump()
 
-        assert "confidence" in sample_node, "Legacy 'confidence' field should be present"
-        assert "confidence_score" in sample_node, "Alias 'confidence_score' field should be present"
-        assert sample_node["confidence"] == sample_node["confidence_score"], "Confidence fields should match"
+        # Validate that both legacy and alias fields are present in serialized output
+        assert "label" in serialized, "Legacy 'label' field should be in serialized output"
+        assert "name" in serialized, "Alias 'name' field should be in serialized output"
+        assert serialized["label"] == serialized["name"], "Label and name should match"
+
+        assert "type" in serialized, "Legacy 'type' field should be in serialized output"
+        assert "entity_type" in serialized, "Alias 'entity_type' field should be in serialized output"
+        assert serialized["type"] == serialized["entity_type"], "Type and entity_type should match"
+
+        assert "confidence" in serialized, "Legacy 'confidence' field should be in serialized output"
+        assert "confidence_score" in serialized, "Alias 'confidence_score' field should be in serialized output"
+        assert serialized["confidence"] == serialized["confidence_score"], "Confidence fields should match"
 
 
 class TestL3GraphRelationshipContracts:
@@ -296,17 +300,25 @@ class TestL3GraphRelationshipContracts:
             assert not missing, f"GraphRelationship schema missing required fields: {missing}"
 
     def test_graph_relationship_response_includes_alias_fields(self) -> None:
-        """GraphRelationship response includes relationship_type alias."""
-        # NOTE: 'relationship_type' is an alias for 'type' for frontend compatibility
-        sample_rel = {
-            "source": "cap-1",
-            "target": "uc-1",
-            "type": "ENABLES",           # Legacy field
-            "relationship_type": "ENABLES",  # Alias field
-            "weight": 0.9,
-        }
+        """GraphEdge model_dump includes relationship_type alias for frontend compatibility."""
+        # Import and use the actual Pydantic model to test real serialization
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src"))
+        from api.models import GraphEdge
 
-        # Validate both legacy and alias fields are present
-        assert "type" in sample_rel, "Legacy 'type' field should be present"
-        assert "relationship_type" in sample_rel, "Alias 'relationship_type' field should be present"
-        assert sample_rel["type"] == sample_rel["relationship_type"], "Type fields should match"
+        # Create a GraphEdge instance (uses legacy 'type' field internally)
+        edge = GraphEdge(
+            source="cap-1",
+            target="uc-1",
+            type="ENABLES",
+            weight=0.9,
+        )
+
+        # Serialize - this should include alias field via model_dump override
+        serialized = edge.model_dump()
+
+        # Validate both legacy and alias fields are present in serialized output
+        assert "type" in serialized, "Legacy 'type' field should be in serialized output"
+        assert "relationship_type" in serialized, "Alias 'relationship_type' field should be in serialized output"
+        assert serialized["type"] == serialized["relationship_type"], "Type fields should match"

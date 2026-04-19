@@ -190,7 +190,7 @@ if _environment == "production" and not _cors_origins_env:
 # Parse CORS origins, filtering out empty strings from trailing commas
 allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
 # Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
-allow_credentials = "*" not in allow_origins
+allow_credentials = "*" not in allow_origins and len(allow_origins) > 0 and allow_origins != ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -243,18 +243,22 @@ if metrics:
     app.middleware("http")(metrics_middleware)
 
 
-# Startup event: Vault health check
+# Vault health check error message
+_VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production without secrets backend"
+
+
 @app.on_event("startup")
 async def startup_event() -> None:
     """Verify Vault connectivity in production."""
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
         if vault_addr and check_vault_health:
+            logger.info("L1: Checking Vault connectivity", vault_addr=vault_addr)
             ok = await check_vault_health(vault_addr)
             if not ok:
-                raise RuntimeError(
-                    "Vault unreachable — cannot start in production without secrets backend"
-                )
+                logger.error("L1: Vault unreachable", vault_addr=vault_addr)
+                raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
+            logger.info("L1: Vault connectivity verified")
 
 
 # Create router for spec-compliant endpoints

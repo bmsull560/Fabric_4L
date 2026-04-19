@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -186,4 +187,68 @@ async def api_get_active_model(
     model = await ModelRegistryService.get_active_production_model(db, ctx.tenant_id, provider)
     if model is None:
         raise HTTPException(status_code=404, detail="No active production model found")
+    return ModelVersionResponse.model_validate(model)
+
+
+class EvalRunRequest(BaseModel):
+    """Request to record an evaluation run against the active model."""
+
+    overall_pass_rate: float = Field(..., ge=0.0, le=1.0, description="Overall evaluation pass rate")
+    total_tests: int = Field(0, ge=0, description="Total number of tests run")
+    passed_tests: int = Field(0, ge=0, description="Number of passing tests")
+    skills_evaluated: int = Field(0, ge=0, description="Number of skills evaluated")
+    details: list[dict] = Field(default_factory=list, description="Per-skill results")
+
+
+@router.post("/eval-run", response_model=ModelVersionResponse)
+async def api_record_eval_run(
+    provider: str = Query(default="openai", min_length=1, max_length=50),
+    request: EvalRunRequest = ...,  # noqa: B008
+    ctx: RequestContext = Depends(
+        require_any_permission(
+            Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
+        )
+    ),
+    db: AsyncSession = Depends(get_db),
+) -> ModelVersionResponse:
+    """Record an evaluation run against the active production model.
+
+    Updates the active model's eval_score and creates an audit trail entry.
+    Called by CI pipeline after evaluation suite completes.
+    """
+    # Find the active production model for this tenant/provider
+    model = await ModelRegistryService.get_active_production_model(db, ctx.tenant_id, provider)
+
+    if model is None:
+        # No active model found - this is expected if evaluations run before
+        # any model is promoted to production. Log warning but don't fail.
+        raise HTTPException(
+            status_code=404,
+            detail=f"No active production model found for provider '{provider}'. "
+            "Register and promote a model first.",
+        )
+
+    # Update the model's evaluation score
+    model.eval_score = request.overall_pass_rate
+    model.eval_run_id = f"ci-{ctx.tenant_id}-{model.model_name}-{datetime.now(UTC).isoformat()}"
+    await db.flush()
+
+    # Audit event
+    from shared.audit import AuditAction, emit_audit_event
+
+    emit_audit_event(
+        AuditAction.MODEL_EVALUATED,
+        tenant_id=ctx.tenant_id,
+        resource_type="ModelVersion",
+        resource_id=str(model.id),
+        details={
+            "provider": provider,
+            "model_name": model.model_name,
+            "eval_score": request.overall_pass_rate,
+            "total_tests": request.total_tests,
+            "passed_tests": request.passed_tests,
+            "skills_evaluated": request.skills_evaluated,
+        },
+    )
+
     return ModelVersionResponse.model_validate(model)
