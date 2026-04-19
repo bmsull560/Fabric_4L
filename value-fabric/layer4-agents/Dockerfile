@@ -1,6 +1,6 @@
 # Multi-stage build for Layer 4: Agentic Workflow Engine
 # Stage 1: Builder - compiles dependencies
-FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS builder
+FROM python:3.14.0-slim-bookworm@sha256:d13fa0424035d290decef3d575cea23d1b7d5952cdf429df8f5542c71e961576 AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ COPY layer4-agents/uv.lock .
 RUN uv sync --frozen --no-install-project
 
 # Stage 2: Runtime - minimal image with only runtime libraries
-FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5 AS runtime
+FROM python:3.14.0-slim-bookworm@sha256:d13fa0424035d290decef3d575cea23d1b7d5952cdf429df8f5542c71e961576 AS runtime
 
 # Install only runtime library (libpq for psycopg2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
