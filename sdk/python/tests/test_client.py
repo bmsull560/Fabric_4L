@@ -179,8 +179,16 @@ def mock_client():
         }),
     })
 
-    client = ValueFabricClient(base_url="https://api.example.com")
+    client = ValueFabricClient(
+        base_url="https://api.example.com",
+        api_key="test-api-key",
+    )
+    # Replace with mock transport for testing
     client._sync_client = httpx.Client(
+        transport=transport,
+        base_url="https://api.example.com",
+    )
+    client._async_client = httpx.AsyncClient(
         transport=transport,
         base_url="https://api.example.com",
     )
@@ -302,7 +310,10 @@ class TestAsyncClient:
                 }
             ]),
         })
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-api-key",
+        )
         client._async_client = httpx.AsyncClient(
             transport=transport,
             base_url="https://api.example.com",

@@ -193,8 +193,8 @@ def _check_tenant_rate_limit(
     with _request_count_lock:
         _request_count += 1
         should_cleanup = _request_count % _cleanup_interval == 0
-    if should_cleanup:
-        _evict_stale_rate_limit_entries(now)
+        if should_cleanup:
+            _evict_stale_rate_limit_entries(now)
 
     with _buckets_lock:
         count, window_start = _tenant_rate_limit_buckets.get(tenant_id, (0, now))

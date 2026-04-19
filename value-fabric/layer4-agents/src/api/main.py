@@ -277,8 +277,7 @@ app.add_middleware(
     api_key_resolver=lookup_api_key_by_hash,
     rate_limiter=getattr(app.state, "rate_limiter", None),
     on_rate_limit_hit=on_rate_limit_hit,
-    tenant_settings_lookup=_tenant_settings_lookup,
-    enable_per_tenant_rate_limiting=True,
+    tenant_settings_resolver=_tenant_settings_lookup,
 )
 
 # CORS middleware — restrict origins in production via the CORS_ORIGINS env var

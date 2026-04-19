@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import toml
 import typer
 from rich import print as rich_print
+
+from ..errors import ConfigurationError
 
 app = typer.Typer(help="Manage CLI configuration")
 
@@ -16,10 +19,38 @@ CONFIG_FILE = CONFIG_DIR / "config.toml"
 DEFAULT_PROFILE = "default"
 
 
+def _check_token_expiration(profile_config: dict, profile_name: str) -> None:
+    """Check if JWT token is expired and warn user.
+
+    Args:
+        profile_config: The profile configuration dict
+        profile_name: Name of the profile being loaded
+    """
+    jwt_expires_at = profile_config.get("jwt_expires_at")
+    if jwt_expires_at:
+        try:
+            exp_timestamp = float(jwt_expires_at)
+            if datetime.now(timezone.utc).timestamp() > exp_timestamp:
+                rich_print(
+                    f"[yellow]Warning: JWT token for profile '{profile_name}' has expired. "
+                    f"Run 'vf auth login' to re-authenticate.[/yellow]"
+                )
+        except (ValueError, TypeError):
+            # Invalid timestamp format, ignore
+            pass
+
+
 def _load_config() -> dict:
     if not CONFIG_FILE.exists():
         return {}
-    return toml.load(CONFIG_FILE)
+    try:
+        return toml.load(CONFIG_FILE)
+    except toml.TomlDecodeError as e:
+        raise ConfigurationError(
+            f"Config file is corrupted: {CONFIG_FILE}\n"
+            f"Parse error: {e}\n"
+            f"You may need to delete it and re-run 'vf config set-url'"
+        ) from e
 
 
 def _save_config(config: dict) -> None:
@@ -36,7 +67,9 @@ def get_active_profile() -> str:
 def get_profile_config(profile: str | None = None) -> dict:
     config = _load_config()
     profile = profile or config.get("active_profile", DEFAULT_PROFILE)
-    return config.get("profiles", {}).get(profile, {})
+    profile_config = config.get("profiles", {}).get(profile, {})
+    _check_token_expiration(profile_config, profile)
+    return profile_config
 
 
 @app.command("set-url")

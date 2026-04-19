@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import sys
+
 import typer
 from rich import print as rich_print
 
 from ..__version__ import __version__
+from ..errors import ConfigurationError
 from .api_keys import app as api_keys_app
 from .auth import app as auth_app
 from .config import app as config_app
@@ -59,7 +62,11 @@ app.command("search", help="Hybrid entity search (BM25 + vector + graph)")(searc
 
 
 def main() -> None:
-    app()
+    try:
+        app()
+    except ConfigurationError as e:
+        rich_print(f"[red]Configuration error:[/red] {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

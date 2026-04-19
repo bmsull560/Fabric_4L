@@ -23,7 +23,7 @@ from .oidc import OIDCClient, map_role_from_claims
 from .oidc_config import OIDCProviderConfig
 from .permissions import Role, ROLE_PERMISSIONS
 from .rate_limiter import RedisRateLimiter
-from .vault_check import check_vault_health
+from .vault_check import check_vault_health, resolve_vault_secret
 
 __all__ = [
     # Context
@@ -67,4 +67,5 @@ __all__ = [
     "RedisRateLimiter",
     # Vault
     "check_vault_health",
+    "resolve_vault_secret",
 ]

@@ -54,18 +54,24 @@ data:
           - targets: ["layer6-benchmarks:8006"]
         metrics_path: "/metrics"
 
+      - job_name: "alertmanager"
+        static_configs:
+          - targets: ["alertmanager:9093"]
+        metrics_path: "/metrics"
+
   rules.yml: |
     groups:
       - name: value-fabric-availability
         rules:
           - alert: ServiceDown
-            expr: up{job=~"layer[1-6]-.*"} == 0
+            expr: up{job=~"layer[1-6]-.*|alertmanager"} == 0
             for: 2m
             labels:
               severity: critical
             annotations:
               summary: "{{ $labels.job }} is down"
               description: "Prometheus cannot scrape {{ $labels.job }} for 2 minutes"
+              runbook_url: "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks/service-down.md"
 
           - alert: DependencyHealthDegraded
             expr: value_fabric_health_status{component=~"database|redis|postgres|neo4j|layer3"} == 0

@@ -22,6 +22,14 @@
 - [ ] `make verify`
 - [ ] `make evals` (required for agent/skill prompt changes)
 
+## Code Quality Checklist
+
+- [ ] No unused imports (ruff F401)
+- [ ] No unused variables (ruff F841)
+- [ ] No `console.log` in production code (without DEV guard)
+- [ ] All TODOs reference a ticket (TODO: TICKET-123 format)
+- [ ] No dead code blocks (commented-out code > 3 lines)
+
 ## Risks / Rollback
 
 - Known risks:

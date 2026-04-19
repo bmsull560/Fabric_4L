@@ -247,6 +247,10 @@ spec:
           secret:
             secretName: alertmanager-secrets
             items:
+              - key: slack_webhook_url
+                path: slack_webhook_url
+              - key: pagerduty_integration_key
+                path: pagerduty_integration_key
               - key: default_webhook_url
                 path: default_webhook_url
               - key: critical_webhook_url

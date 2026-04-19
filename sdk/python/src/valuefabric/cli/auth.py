@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import webbrowser
+from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlencode, urljoin
+from urllib.parse import urlencode, urljoin, urlparse, urlunparse
 from uuid import uuid4
 
 import httpx
+import jwt
 import typer
 from rich import print as rich_print
 from rich.prompt import Prompt
@@ -35,6 +37,19 @@ def _generate_pkce_challenge(verifier: str) -> str:
 
     digest = hashlib.sha256(verifier.encode()).digest()
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+def _is_jwt(token: str) -> bool:
+    """Check if token is a JWT (3 base64url parts separated by dots).
+
+    Args:
+        token: The token string to check
+
+    Returns:
+        True if token appears to be a JWT structure
+    """
+    parts = token.split(".")
+    return len(parts) == 3 and all(p for p in parts)
 
 
 @app.command("login")
@@ -113,13 +128,19 @@ def _login_oidc(base_url: str | None, tenant: str | None) -> None:
     auth_url = urljoin(base_url, f"/api/v1/auth/oidc/{tenant}/login")
     params = {
         "response_type": "code",
-        "client_id": "valuefabric-cli",
-        "redirect_uri": "http://localhost:8080/callback",
+        "client_id": tenant,
+        "redirect_uri": f"{base_url}/auth/callback",
+        "scope": "openid profile email",
         "state": state,
         "code_challenge": code_challenge,
         "code_challenge_method": "S256",
     }
-    full_url = f"{auth_url}?{urlencode(params)}"
+    # Safely construct URL to avoid double query strings
+    parsed = urlparse(urljoin(base_url, f"/api/v1/auth/oidc/{tenant}/login"))
+    full_url = urlunparse((
+        parsed.scheme, parsed.netloc, parsed.path, parsed.params,
+        urlencode(params), parsed.fragment
+    ))
 
     rich_print(f"[dim]Opening browser for authentication...[/dim]")
     webbrowser.open(full_url)
@@ -133,7 +154,7 @@ def _login_oidc(base_url: str | None, tenant: str | None) -> None:
     token = Prompt.ask("\nPaste the authorization code or JWT token from the callback", password=True)
 
     # Exchange code for token or use as-is
-    if len(token) > 100:  # Assume it's a JWT
+    if _is_jwt(token):
         jwt_token = token
     else:
         # Exchange code for token
@@ -154,9 +175,18 @@ def _login_oidc(base_url: str | None, tenant: str | None) -> None:
         rich_print(f"[red]✗ Token validation failed: {e}[/red]")
         raise typer.Exit(1)
 
+    # Extract token expiration for tracking
+    try:
+        decoded = jwt.decode(jwt_token, options={"verify_signature": False})
+        jwt_expires_at = decoded.get("exp")
+    except Exception:
+        jwt_expires_at = None
+
     # Save to config
     config.setdefault("profiles", {}).setdefault("default", {})["base_url"] = base_url
     config["profiles"]["default"]["jwt_token"] = jwt_token
+    if jwt_expires_at:
+        config["profiles"]["default"]["jwt_expires_at"] = jwt_expires_at
     _save_config(config)
     rich_print(f"[green]Credentials saved to {CONFIG_FILE}[/green]")
 

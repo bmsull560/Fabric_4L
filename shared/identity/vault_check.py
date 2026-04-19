@@ -98,3 +98,63 @@ async def check_vault_health(
 ) -> dict[str, Any]:
     """Deprecated: Use get_vault_health() for detailed status or is_vault_healthy() for boolean checks."""
     return await get_vault_health(vault_url, timeout)
+
+
+async def resolve_vault_secret(secret_ref: str) -> str | None:
+    """Resolve a secret from HashiCorp Vault.
+
+    Supports secret references in the format:
+    - "vault:secret/data/path#key" - KV v2 secret
+    - "vault:secret/path#key" - KV v1 secret
+
+    Args:
+        secret_ref: Vault secret reference string
+
+    Returns:
+        Secret value or None if resolution fails
+    """
+    if not secret_ref.startswith("vault:"):
+        return None
+
+    vault_url = os.environ.get("VAULT_ADDR", "http://localhost:8200")
+    vault_token = os.environ.get("VAULT_TOKEN")
+
+    if not vault_token:
+        logger.warning("VAULT_TOKEN not set, cannot resolve vault secret")
+        return None
+
+    # Parse reference: vault:secret/data/path#key
+    ref_parts = secret_ref[6:]  # Remove "vault:" prefix
+    if "#" not in ref_parts:
+        logger.warning(f"Invalid vault secret reference, no key specified: {secret_ref}")
+        return None
+
+    path_parts, key = ref_parts.split("#", 1)
+
+    try:
+        async with httpx.AsyncClient() as client:
+            # Try KV v2 first (path prefixed with 'data/')
+            if "/data/" in path_parts:
+                url = f"{vault_url}/v1/{path_parts}"
+            else:
+                # Assume KV v1
+                url = f"{vault_url}/v1/{path_parts}"
+
+            response = await client.get(
+                url,
+                headers={"X-Vault-Token": vault_token},
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            # KV v2 returns data in data.data, KV v1 in data
+            if "data" in data and isinstance(data["data"], dict) and "data" in data["data"]:
+                # KV v2 format
+                return data["data"]["data"].get(key)
+            else:
+                # KV v1 format
+                return data.get("data", {}).get(key)
+
+    except Exception as e:
+        logger.error(f"Failed to resolve vault secret: {e}")
+        return None

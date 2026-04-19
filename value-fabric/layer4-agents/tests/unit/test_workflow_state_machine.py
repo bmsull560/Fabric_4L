@@ -9,7 +9,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import Mock, AsyncMock, patch
 
-from models.agent_state import (
+from src.models.agent_state import (
     BaseAgentState,
     WorkflowStatus,
     WorkflowType,
@@ -20,9 +20,9 @@ from models.agent_state import (
     WhitespaceInputData,
     BusinessCaseInputData,
 )
-from workflows.base import BaseWorkflow, WorkflowError, NodeExecutionError
-from models.workflow_config import WorkflowConfig, NodeConfig, NodeType, EdgeConfig
-from tools.registry import ToolRegistry
+from src.workflows.base import BaseWorkflow, WorkflowError, NodeExecutionError
+from src.models.workflow_config import WorkflowConfig, NodeConfig, NodeType, EdgeConfig
+from src.tools.registry import ToolRegistry
 
 
 class TestWorkflowStatusTransitions:
@@ -335,6 +335,14 @@ class TestBusinessCaseAgentState:
         assert state.sections_generated[0]["title"] == "Executive Summary"
 
 
+class ConcreteTestWorkflow(BaseWorkflow):
+    """Concrete workflow implementation for testing."""
+
+    def create_initial_state(self, **kwargs):
+        """Create initial state for testing."""
+        return {"test": "state"}
+
+
 class TestBaseWorkflow:
     """Test base workflow functionality."""
 
@@ -343,11 +351,12 @@ class TestBaseWorkflow:
         """Create a mock workflow config."""
         return WorkflowConfig(
             name="test_workflow",
+            description="Test workflow for unit tests",
             workflow_type="test",
             entry_point="start",
             nodes=[
-                NodeConfig(id="start", node_type=NodeType.TOOL, tool_name="test_tool"),
-                NodeConfig(id="end", node_type=NodeType.TOOL, tool_name="end_tool"),
+                NodeConfig(id="start", name="Start Node", node_type=NodeType.TOOL, tool_name="test_tool"),
+                NodeConfig(id="end", name="End Node", node_type=NodeType.TOOL, tool_name="end_tool"),
             ],
             edges=[
                 EdgeConfig(source="start", target="end"),
@@ -364,8 +373,8 @@ class TestBaseWorkflow:
     @pytest.mark.unit
     def test_workflow_initialization(self, mock_config, mock_tool_registry):
         """Workflow can be initialized with config and tools."""
-        workflow = BaseWorkflow(mock_config, mock_tool_registry)
-        
+        workflow = ConcreteTestWorkflow(mock_config, mock_tool_registry)
+
         assert workflow.name == "test_workflow"
         assert workflow.workflow_type == "test"
         assert workflow.config == mock_config

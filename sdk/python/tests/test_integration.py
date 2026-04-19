@@ -45,7 +45,19 @@ class TestClientAuthentication:
     def test_api_key_auth_header(self):
         """API key should be sent in X-API-Key header."""
         route = respx.get("https://api.example.com/health").mock(
-            return_value=Response(200, json={"status": "ok", "version": "1.0.0"})
+            return_value=Response(
+                200,
+                json={
+                    "status": "ok",
+                    "service": "layer4-agents",
+                    "version": "1.0.0",
+                    "timestamp": now(),
+                    "executor_ready": True,
+                    "uptime_seconds": 3600,
+                    "dependencies": [],
+                    "metrics": {},
+                }
+            )
         )
 
         client = ValueFabricClient(
@@ -57,6 +69,7 @@ class TestClientAuthentication:
 
         assert route.called
         request = route.calls[0].request
+        # httpx normalizes headers to lowercase internally
         assert request.headers.get("x-api-key") == "test-api-key-123"
         assert response.status == "ok"
 
@@ -64,7 +77,19 @@ class TestClientAuthentication:
     def test_jwt_auth_header(self):
         """JWT token should be sent in Authorization header."""
         route = respx.get("https://api.example.com/health").mock(
-            return_value=Response(200, json={"status": "ok"})
+            return_value=Response(
+                200,
+                json={
+                    "status": "ok",
+                    "service": "layer4-agents",
+                    "version": "1.0.0",
+                    "timestamp": now(),
+                    "executor_ready": True,
+                    "uptime_seconds": 3600,
+                    "dependencies": [],
+                    "metrics": {},
+                }
+            )
         )
 
         client = ValueFabricClient(
@@ -76,6 +101,7 @@ class TestClientAuthentication:
 
         assert route.called
         request = route.calls[0].request
+        # httpx normalizes headers to lowercase internally
         assert request.headers.get("authorization") == "Bearer test-jwt-token"
 
 
@@ -110,12 +136,15 @@ class TestClientEndpoints:
             return_value=Response(200, json=tenants_data)
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         tenants = list(client.list_tenants())
 
         assert route.called
         assert len(tenants) == 2
-        assert tenants[0].id == "tenant-1"
+        assert str(tenants[0].id) == "550e8400-e29b-41d4-a716-446655440001"
         assert tenants[0].name == "Tenant One"
 
     @respx.mock
@@ -137,7 +166,10 @@ class TestClientEndpoints:
             )
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         health = client.health()
 
         assert route.called
@@ -167,10 +199,11 @@ class TestClientAsync:
             return_value=Response(200, json=tenants_data)
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
-        tenants = []
-        async for tenant in client.alist_tenants():
-            tenants.append(tenant)
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
+        tenants = await client.alist_tenants()
 
         assert route.called
         assert len(tenants) == 1
@@ -195,7 +228,10 @@ class TestClientAsync:
             )
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         health = await client.ahealth()
 
         assert route.called
@@ -212,7 +248,10 @@ class TestErrorHandling:
             return_value=Response(500, json={"error": "Internal Server Error"})
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
 
         # HTTP errors raise HTTPStatusError
         with pytest.raises(Exception):
@@ -225,7 +264,10 @@ class TestErrorHandling:
             return_value=Response(401, json={"error": "Unauthorized"})
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
 
         # 401 raises HTTPStatusError
         with pytest.raises(Exception):
@@ -254,7 +296,10 @@ class TestClientContextManager:
             )
         )
 
-        async with ValueFabricClient(base_url="https://api.example.com") as client:
+        async with ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        ) as client:
             health = await client.ahealth()
             assert health.status == "ok"
 
@@ -266,31 +311,21 @@ class TestWorkflowExecution:
 
     @respx.mock
     def test_execute_workflow(self):
-        """Should execute workflow and return instance."""
+        """Should execute workflow and return dict."""
         route = respx.post("https://api.example.com/v1/workflows").mock(
             return_value=Response(
                 200,
                 json={
                     "workflow_instance_id": "wf-123",
-                    "workflow_type": "roi_calculator",
                     "status": "started",
-                    "tenant_id": "tenant-1",
-                    "user_id": "user-1",
-                    "current_state": None,
-                    "current_node": None,
-                    "progress_percentage": 0.0,
-                    "started_at": None,
-                    "completed_at": None,
-                    "error_count": 0,
-                    "has_output": False,
-                    "results": None,
-                    "priority": None,
-                    "scheduler_status": None,
                 },
             )
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         result = client.execute_workflow(
             workflow_type="roi_calculator",
             tenant_id="tenant-1",
@@ -298,8 +333,8 @@ class TestWorkflowExecution:
         )
 
         assert route.called
-        assert result.workflow_instance_id == "wf-123"
-        assert result.status == "started"
+        assert result["workflow_instance_id"] == "wf-123"
+        assert result["status"] == "started"
 
     @respx.mock
     def test_get_workflow_status(self):
@@ -327,7 +362,10 @@ class TestWorkflowExecution:
             )
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         status = client.get_workflow("wf-123")
 
         assert route.called
@@ -360,7 +398,10 @@ class TestModelRegistry:
             return_value=Response(200, json=models_data)
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         models = list(client.list_models())
 
         assert route.called
@@ -393,7 +434,10 @@ class TestFeatureFlags:
             return_value=Response(200, json=flags_data)
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         flags = list(client.list_feature_flags())
 
         assert route.called
@@ -423,7 +467,10 @@ class TestFeatureFlags:
             )
         )
 
-        client = ValueFabricClient(base_url="https://api.example.com")
+        client = ValueFabricClient(
+            base_url="https://api.example.com",
+            api_key="test-key",
+        )
         flag = client.set_feature_flag("new-ui", enabled=True)
 
         assert route.called

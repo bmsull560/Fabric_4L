@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ..client import ValueFabricClient
+from ..errors import ConfigurationError
 from .config import get_profile_config
 
 console = Console()
@@ -20,8 +21,12 @@ def get_client() -> ValueFabricClient:
     base_url = cfg.get("base_url")
     api_key = cfg.get("api_key")
     if not base_url:
-        raise RuntimeError(
+        raise ConfigurationError(
             "No base_url configured. Run: vf config set-url <url>"
+        )
+    if not api_key:
+        raise ConfigurationError(
+            "No API key configured. Run: vf auth login or vf config set-api-key"
         )
     return ValueFabricClient(base_url=base_url, api_key=api_key)
 

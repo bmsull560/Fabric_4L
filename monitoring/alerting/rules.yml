@@ -5,16 +5,28 @@ groups:
       - alert: HighErrorRate
         expr: |
           (
+            sum(rate(layer1_http_requests_total[5m])) > 0.1
+            and
             sum(rate(layer1_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer1_http_requests_total[5m])) > 0.05
-            or
+          ) or (
+            sum(rate(layer2_http_requests_total[5m])) > 0.1
+            and
             sum(rate(layer2_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer2_http_requests_total[5m])) > 0.05
-            or
+          ) or (
+            sum(rate(value_fabric_http_requests_total[5m])) > 0.1
+            and
             sum(rate(value_fabric_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(value_fabric_http_requests_total[5m])) > 0.05
-            or
+          ) or (
+            sum(rate(layer4_http_requests_total[5m])) > 0.1
+            and
             sum(rate(layer4_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer4_http_requests_total[5m])) > 0.05
-            or
+          ) or (
+            sum(rate(layer5_http_requests_total[5m])) > 0.1
+            and
             sum(rate(layer5_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer5_http_requests_total[5m])) > 0.05
-            or
+          ) or (
+            sum(rate(layer6_http_requests_total[5m])) > 0.1
+            and
             sum(rate(layer6_http_requests_total{status_code=~"5.."}[5m])) / sum(rate(layer6_http_requests_total[5m])) > 0.05
           )
         for: 5m

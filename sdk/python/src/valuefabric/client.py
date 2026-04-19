@@ -5,8 +5,17 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+from httpx import HTTPStatusError, RequestError
 
 from .auth import APIKeyAuth, Auth, JWTAuth
+from .errors import (
+    APIError,
+    AuthenticationError,
+    ConnectionError,
+    NotFoundError,
+    RateLimitError,
+    ValidationError,
+)
 from .models import (
     APIKey,
     APIKeyCreateResult,
@@ -42,6 +51,14 @@ class ValueFabricClient:
         jwt_token: str | None = None,
         timeout: float = 30.0,
     ) -> None:
+        if not base_url.startswith(("http://", "https://")):
+            raise ValueError(
+                f"base_url must start with 'http://' or 'https://', got: {base_url}"
+            )
+        if not api_key and not jwt_token:
+            raise ValueError("Either api_key or jwt_token must be provided")
+        if api_key and jwt_token:
+            raise ValueError("Only one of api_key or jwt_token should be provided")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
@@ -56,18 +73,63 @@ class ValueFabricClient:
             base_url=self.base_url,
             headers=headers,
             timeout=timeout,
-            auth=auth,  # type: ignore[arg-type]
+            auth=auth,
         )
         self._async_client = httpx.AsyncClient(
             base_url=self.base_url,
             headers=headers,
             timeout=timeout,
-            auth=auth,  # type: ignore[arg-type]
+            auth=auth,
         )
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _handle_error(self, error: HTTPStatusError) -> None:
+        """Convert HTTPStatusError to specific SDK exception."""
+        response = error.response
+        status_code = response.status_code
+
+        try:
+            body = response.json()
+        except Exception:
+            body = None
+
+        message = f"API error ({status_code}): {error.request.method} {error.request.url.path}"
+
+        if status_code == 401:
+            raise AuthenticationError(
+                "Authentication failed. Check your API key or JWT token.",
+                response_body=body,
+            ) from error
+        if status_code == 400:
+            detail = body.get("detail", "Request validation failed") if body else "Request validation failed"
+            raise ValidationError(detail, response_body=body) from error
+        if status_code == 404:
+            raise NotFoundError(
+                f"Resource not found: {error.request.url.path}",
+                response_body=body,
+            ) from error
+        if status_code == 429:
+            retry_after = response.headers.get("retry-after")
+            raise RateLimitError(
+                "Rate limit exceeded. Please retry after the specified time.",
+                retry_after=int(retry_after) if retry_after else None,
+                response_body=body,
+            ) from error
+        if status_code >= 500:
+            raise APIError(
+                f"Server error ({status_code}). Please try again later.",
+                status_code=status_code,
+                response_body=body,
+            ) from error
+
+        raise APIError(
+            message,
+            status_code=status_code,
+            response_body=body,
+        ) from error
 
     def _request(
         self,
@@ -77,9 +139,14 @@ class ValueFabricClient:
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        response = self._sync_client.request(method, path, params=params, json=json)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = self._sync_client.request(method, path, params=params, json=json)
+            response.raise_for_status()
+            return response.json()
+        except RequestError as e:
+            raise ConnectionError(f"Failed to connect to {self.base_url}: {e}") from e
+        except HTTPStatusError as e:
+            self._handle_error(e)
 
     async def _arequest(
         self,
@@ -89,9 +156,14 @@ class ValueFabricClient:
         params: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        response = await self._async_client.request(method, path, params=params, json=json)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = await self._async_client.request(method, path, params=params, json=json)
+            response.raise_for_status()
+            return response.json()
+        except RequestError as e:
+            raise ConnectionError(f"Failed to connect to {self.base_url}: {e}") from e
+        except HTTPStatusError as e:
+            self._handle_error(e)
 
     # ------------------------------------------------------------------
     # Tenants

@@ -28,6 +28,12 @@ class SecurityConfig(BaseModel):
     
     # Request limits
     max_body_size: int = Field(default=10 * 1024 * 1024, description="Max request body size (bytes)")
+    max_body_size_bytes: int = Field(default=1_048_576, description="Max body size for validation (bytes)")
+    
+    # Validation settings
+    skip_validation_paths: frozenset[str] = Field(default=frozenset(), description="Paths to skip validation")
+    strict_mode: bool = Field(default=True, description="Strict validation mode")
+    validate_json_bodies: bool = Field(default=True, description="Validate JSON request bodies")
     
     class Config:
         extra = "allow"

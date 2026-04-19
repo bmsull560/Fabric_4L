@@ -74,7 +74,11 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
     - Vault references: "vault:secret/data/path#key"
     - Environment variable references: "ENV_VAR_NAME"
     - Direct values (fallback)
+
+    Raises:
+        ValueError: If client secret cannot be resolved
     """
+    # First try client_secret_ref if provided
     if config.client_secret_ref:
         # Handle Vault references
         if config.client_secret_ref.startswith("vault:"):
@@ -83,13 +87,28 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
             secret = await resolve_vault_secret(config.client_secret_ref)
             if secret:
                 return secret
+            raise ValueError(f"Failed to resolve Vault secret: {config.client_secret_ref}")
         else:
             # Treat as environment variable name
             secret = os.getenv(config.client_secret_ref)
             if secret:
                 return secret
-    # Fallback env var pattern
-    return os.getenv(f"OIDC_CLIENT_SECRET_{config.provider_name.upper()}", "")
+            raise ValueError(f"Environment variable not set: {config.client_secret_ref}")
+
+    # Try fallback env var pattern
+    fallback_key = f"OIDC_CLIENT_SECRET_{config.provider_name.upper()}"
+    secret = os.getenv(fallback_key)
+    if secret:
+        return secret
+
+    # Try direct client_secret field
+    if config.client_secret:
+        return config.client_secret
+
+    raise ValueError(
+        f"No client secret found. Set {fallback_key} environment variable "
+        f"or configure client_secret_ref in tenant settings."
+    )
 
 
 @router.get("/{tenant_slug}/login")

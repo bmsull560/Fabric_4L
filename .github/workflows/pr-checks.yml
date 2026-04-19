@@ -478,7 +478,6 @@ jobs:
 
       - name: Test
         run: pnpm test -- --reporter=junit --outputFile=frontend-junit.xml --reporter=default --coverage
-        continue-on-error: true
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

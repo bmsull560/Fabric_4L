@@ -30,6 +30,8 @@ class AuditAction(str, Enum):
     MODEL_PROMOTED = "model_promoted"
     MODEL_DEPRECATED = "model_deprecated"
     MODEL_EVALUATED = "model_evaluated"
+    OIDC_LOGIN = "oidc_login"
+    OIDC_LOGIN_FAILED = "oidc_login_failed"
 
 
 class AuditOutcome(str, Enum):

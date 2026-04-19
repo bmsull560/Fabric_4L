@@ -26,23 +26,28 @@ except ImportError:
 
 # OpenAI import with graceful fallback
 try:
-    from openai import AsyncOpenAI
+    from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
     from openai.types.chat import ChatCompletion
 
     OPENAI_AVAILABLE = True
+    OPENAI_RETRY_EXCEPTIONS = (APIError, APITimeoutError, RateLimitError)
 except ImportError:
     OPENAI_AVAILABLE = False
     AsyncOpenAI = None
     ChatCompletion = None
+    OPENAI_RETRY_EXCEPTIONS = ()
 
 # Anthropic import with graceful fallback
 try:
-    from anthropic import AsyncAnthropic
+    from anthropic import AsyncAnthropic, APIError as AnthropicAPIError
+    from anthropic import RateLimitError as AnthropicRateLimitError
 
     ANTHROPIC_AVAILABLE = True
+    ANTHROPIC_RETRY_EXCEPTIONS = (AnthropicAPIError, AnthropicRateLimitError)
 except ImportError:
     ANTHROPIC_AVAILABLE = False
     AsyncAnthropic = None
+    ANTHROPIC_RETRY_EXCEPTIONS = ()
 
 
 class LLMProvider(str, Enum):
@@ -297,7 +302,7 @@ class LLMClient:
                 parsed_result = response.choices[0].message.parsed
                 return parsed_result, cost_record
 
-            except Exception as exc:
+            except OPENAI_RETRY_EXCEPTIONS as exc:
                 if attempt == self.max_retries - 1:
                     raise
                 logger = logging.getLogger(__name__)
@@ -306,6 +311,9 @@ class LLMClient:
                     f"OpenAI structured completion failed (attempt {attempt + 1}/{self.max_retries}): {exc}. Retrying in {wait_time:.2f}s..."
                 )
                 await asyncio.sleep(wait_time)
+            except Exception:
+                # Don't retry on unexpected errors (KeyboardInterrupt, SystemExit, etc.)
+                raise
 
         raise RuntimeError("Max retries exceeded for OpenAI structured completion")
 
@@ -327,15 +335,20 @@ class LLMClient:
 
         for attempt in range(self.max_retries):
             try:
-                response = await self._client.chat.completions.create(
-                    model=effective_model,
-                    messages=messages,
-                    temperature=temperature,
-                    tools=tools,
-                    tool_choice=tool_choice,
-                    logprobs=logprobs if logprobs else None,
-                    top_logprobs=top_logprobs if logprobs and top_logprobs else None,
-                )
+                # Build kwargs conditionally to ensure valid API parameters
+                kwargs: dict[str, Any] = {
+                    "model": effective_model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "tools": tools,
+                    "tool_choice": tool_choice,
+                }
+                if logprobs:
+                    kwargs["logprobs"] = True
+                    # top_logprobs must be an integer between 0 and 20
+                    kwargs["top_logprobs"] = max(0, min(20, top_logprobs or 5))
+
+                response = await self._client.chat.completions.create(**kwargs)
 
                 # Calculate cost
                 cost_record = None
@@ -353,7 +366,7 @@ class LLMClient:
 
                 return response, cost_record
 
-            except Exception as exc:
+            except OPENAI_RETRY_EXCEPTIONS as exc:
                 if attempt == self.max_retries - 1:
                     raise
                 logger = logging.getLogger(__name__)
@@ -362,6 +375,9 @@ class LLMClient:
                     f"OpenAI completion failed (attempt {attempt + 1}/{self.max_retries}): {exc}. Retrying in {wait_time:.2f}s..."
                 )
                 await asyncio.sleep(wait_time)
+            except Exception:
+                # Don't retry on unexpected errors (KeyboardInterrupt, SystemExit, etc.)
+                raise
 
         raise RuntimeError("Max retries exceeded for OpenAI completion")
 
@@ -416,7 +432,7 @@ class LLMClient:
 
                 return response, cost_record
 
-            except Exception as exc:
+            except ANTHROPIC_RETRY_EXCEPTIONS as exc:
                 if attempt == self.max_retries - 1:
                     raise
                 logger = logging.getLogger(__name__)
@@ -425,6 +441,9 @@ class LLMClient:
                     f"Anthropic completion failed (attempt {attempt + 1}/{self.max_retries}): {exc}. Retrying in {wait_time:.2f}s..."
                 )
                 await asyncio.sleep(wait_time)
+            except Exception:
+                # Don't retry on unexpected errors (KeyboardInterrupt, SystemExit, etc.)
+                raise
 
         raise RuntimeError("Max retries exceeded for Anthropic completion")
 
