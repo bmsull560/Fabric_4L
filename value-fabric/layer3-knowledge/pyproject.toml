@@ -22,7 +22,7 @@ dependencies = [
     "python-multipart>=0.0.6",
     "httpx>=0.26",
     "numpy>=1.26",
-    "infisical-sdk>=2.0.0",
+    "infisicalsdk>=2.0.0",
     "scikit-learn>=1.4",
     "networkx>=3.2",
 ]

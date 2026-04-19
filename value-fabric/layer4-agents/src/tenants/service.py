@@ -70,6 +70,23 @@ async def get_tenant(db: AsyncSession, tenant_id: UUID) -> TenantModel | None:
     return _tenant_to_model(tenant) if tenant else None
 
 
+async def get_tenant_settings(db: AsyncSession, tenant_id: UUID) -> dict | None:
+    """Get tenant settings JSONB for rate limiting (Task 84).
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+
+    Returns:
+        Tenant settings dict or None if tenant not found
+    """
+    result = await db.execute(
+        select(Tenant.settings).where(Tenant.id == tenant_id)
+    )
+    settings = result.scalar_one_or_none()
+    return settings if settings else {}
+
+
 async def list_tenants(
     db: AsyncSession, *, status: str | None = None, limit: int = 100, offset: int = 0
 ) -> list[TenantModel]:
