@@ -390,7 +390,7 @@ class TestContractValidation:
 
     def test_entity_summary_schema(self):
         """Verify EntitySummary model structure."""
-        from value_fabric.layer3_knowledge.src.api.models import EntitySummary
+        from src.api.models import EntitySummary
         
         # Required fields
         required = ["id", "name", "entity_type", "domain", "status", 
@@ -401,7 +401,7 @@ class TestContractValidation:
 
     def test_entity_detail_schema(self):
         """Verify EntityDetail model structure."""
-        from value_fabric.layer3_knowledge.src.api.models import EntityDetail
+        from src.api.models import EntityDetail
         
         # Extended fields
         extended = ["created_at", "provenance", "relationships", "properties"]
@@ -411,7 +411,7 @@ class TestContractValidation:
 
     def test_entity_status_enum_values(self):
         """Verify status enum contains expected values."""
-        from value_fabric.layer3_knowledge.src.api.models import EntityStatus
+        from src.api.models import EntityStatus
         
         expected = ["validated", "pending", "draft", "deprecated"]
         for status in expected:

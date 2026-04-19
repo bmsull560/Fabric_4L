@@ -158,23 +158,13 @@ class TestPackLoaderIntegration:
     
     def test_pack_loader_imports(self):
         """Pack loader module must be importable."""
-        try:
-            from value_fabric.layer3_knowledge.src.api.routes.pack_loader import (
-                load_pack_manifest,
-                load_pack_formulas,
-                load_pack_variables,
-                get_available_packs,
-            )
-        except ImportError:
-            # Try alternative import path
-            import sys
-            sys.path.insert(0, str(Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src"))
-            from api.routes.pack_loader import (
-                load_pack_manifest,
-                load_pack_formulas,
-                load_pack_variables,
-            )
-    
+        from src.api.routes.pack_loader import (
+            load_pack_manifest,
+            load_pack_formulas,
+            load_pack_variables,
+            get_available_packs,
+        )
+
     def test_pack_loader_formulas(self):
         """Pack loader must return correctly formatted formulas."""
         pytest.importorskip("api.routes.pack_loader", reason="Layer 3 API not available")
