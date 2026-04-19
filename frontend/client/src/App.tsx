@@ -44,6 +44,13 @@ const WhitespaceAnalysis     = lazy(() => import("./pages/WhitespaceAnalysis"));
 const SourceConfiguration    = lazy(() => import("./pages/SourceConfiguration"));
 const NotFound               = lazy(() => import("./pages/NotFound"));
 const Login                  = lazy(() => import("./pages/Login"));
+// ── Value Studio — 6-Stage Pipeline ──────────────────────────────────────────
+const Stage1Discovery        = lazy(() => import("./pages/value-studio/Stage1Discovery"));
+const Stage2Mapping          = lazy(() => import("./pages/value-studio/Stage2Mapping"));
+const Stage3Modeling         = lazy(() => import("./pages/value-studio/Stage3Modeling"));
+const Stage4Validation       = lazy(() => import("./pages/value-studio/Stage4Validation"));
+const Stage5Narrative        = lazy(() => import("./pages/value-studio/Stage5Narrative"));
+const Stage6Tracking         = lazy(() => import("./pages/value-studio/Stage6Tracking"));
 
 // Minimal inline fallback — shown during chunk download (typically <200 ms on broadband)
 function PageLoader() {
@@ -242,7 +249,38 @@ function Router() {
             <Redirect to="/model/value-studio/explorer"/>
           </Route>
           <Route path="/model/value-studio">
-            <Redirect to="/model/value-studio/explorer"/>
+            <Redirect to="/model/value-studio/discovery"/>
+          </Route>
+          {/* ── Value Studio 6-Stage Pipeline ── */}
+          <Route path="/model/value-studio/discovery">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><Stage1Discovery /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/model/value-studio/mapping">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><Stage2Mapping /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/model/value-studio/modeling">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><Stage3Modeling /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/model/value-studio/validation">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><Stage4Validation /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/model/value-studio/narrative">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><Stage5Narrative /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/model/value-studio/tracking">
+            <RouteGuard requiredTier="advanced">
+              <ErrorBoundary><Stage6Tracking /></ErrorBoundary>
+            </RouteGuard>
           </Route>
           <Route path="/model/value-studio/explorer">
             <RouteGuard requiredTier="advanced">

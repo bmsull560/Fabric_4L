@@ -117,9 +117,12 @@ const NAV_SPINE: NavItem[] = [
         path: "/model/value-studio",
         tier: "advanced",
         children: [
-          { id: "explorer", label: "Explorer", path: "/model/value-studio/explorer", tier: "advanced" },
-          { id: "normalization", label: "Normalization", path: "/model/value-studio/normalization", tier: "advanced" },
-          { id: "formulas", label: "Formula Builder", path: "/model/value-studio/formulas", tier: "advanced" }
+          { id: "discovery",  label: "1. Discovery",  path: "/model/value-studio/discovery",  tier: "advanced" },
+          { id: "mapping",    label: "2. Mapping",    path: "/model/value-studio/mapping",    tier: "advanced" },
+          { id: "modeling",   label: "3. Modeling",   path: "/model/value-studio/modeling",   tier: "advanced" },
+          { id: "validation", label: "4. Validation", path: "/model/value-studio/validation", tier: "advanced" },
+          { id: "narrative",  label: "5. Narrative",  path: "/model/value-studio/narrative",  tier: "advanced" },
+          { id: "tracking",   label: "6. Tracking",   path: "/model/value-studio/tracking",   tier: "advanced" }
         ]
       }
     ]
