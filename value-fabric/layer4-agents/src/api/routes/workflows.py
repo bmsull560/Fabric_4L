@@ -264,8 +264,10 @@ async def create_workflow(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Workflow execution failed: {str(e)}")
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Workflow execution failed")
+        raise HTTPException(status_code=500, detail="Workflow execution failed")
 
 
 @router.get("/workflows/{workflow_id}", response_model=WorkflowStatusResponse)

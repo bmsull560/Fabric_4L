@@ -448,6 +448,15 @@ async def submit_for_review(
                 error_message="Failed to submit for review: formula must be in draft status with matching version",
             )
 
+        # Audit log the governance action
+        logger.info(
+            "formula_submitted_for_review",
+            formula_id=formula_id,
+            version=request.version,
+            submitted_by=request.submitted_by,
+            actor_key_id=api_key.key_id if api_key else None,
+        )
+
         return TransitionResponse(
             success=True,
             formula_id=formula_id,
@@ -490,6 +499,15 @@ async def approve_formula(
 
         if not record:
             raise HTTPException(status_code=404, detail="Formula or version not found")
+
+        # Audit log the governance action
+        logger.info(
+            "formula_approved",
+            formula_id=formula_id,
+            version=request.version,
+            approved_by=request.approved_by,
+            actor_key_id=api_key.key_id if api_key else None,
+        )
 
         return TransitionResponse(
             success=True,
@@ -562,6 +580,15 @@ async def activate_formula(
         if not record:
             raise HTTPException(status_code=500, detail="Failed to activate formula")
 
+        # Audit log the governance action
+        logger.info(
+            "formula_activated",
+            formula_id=formula_id,
+            version=request.version,
+            activated_by=request.requested_by,
+            actor_key_id=api_key.key_id if api_key else None,
+        )
+
         return TransitionResponse(
             success=True,
             formula_id=formula_id,
@@ -625,6 +652,15 @@ async def deprecate_formula(
 
         if not record:
             raise HTTPException(status_code=500, detail="Failed to deprecate formula")
+
+        # Audit log the governance action
+        logger.info(
+            "formula_deprecated",
+            formula_id=formula_id,
+            old_status=old_status,
+            deprecated_by=request.requested_by,
+            actor_key_id=api_key.key_id if api_key else None,
+        )
 
         return TransitionResponse(
             success=True,

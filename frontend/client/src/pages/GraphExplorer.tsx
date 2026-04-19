@@ -4,7 +4,7 @@
  */
 import { useState, useCallback } from "react";
 import { Loader2, AlertCircle, RefreshCw, Search, ZoomIn, ZoomOut, RotateCcw, Move } from "lucide-react";
-import { PageHeader as WfPageHeader, Btn, SearchInput, GraphLegend, SectionCard, Tabs } from "@/components/WfPrimitives";
+import { PageHeader as WfPageHeader, Btn, SearchInput, GraphLegend, SectionCard } from "@/components/WfPrimitives";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
 import { PageShell } from "@/components/layout/PageShell";
 import { GraphVisualization } from "@/components/graph/GraphVisualization";
@@ -12,69 +12,30 @@ import { GraphInspectorPanel } from "@/components/graph/GraphInspectorPanel";
 import { useSubgraph, useEntityContext, useGraphQuery } from "@/hooks/useGraphQuery";
 import { useGraphCanvas } from "@/hooks/useGraphCanvas";
 import { useGraphData } from "@/hooks/useGraphData";
-import { getEntityBadgeClasses, VIEWBOX_WIDTH, VIEWBOX_HEIGHT } from "@/lib/graph-utils";
+import { getEntityBadgeClasses } from "@/lib/graph-utils";
 import { cn } from "@/lib/utils";
-import type { GraphNode } from "@/hooks/useGraphQuery";
 
 export default function GraphExplorer() {
   const [selected, setSelected] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("Graph Explorer");
   const [queryText, setQueryText] = useState("");
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<{ entities: any[]; relationships: any[] } | null>(null);
 
-  // Subgraph query for coherent graph data (replaces useFullGraph sampling)
   const { data: subgraph, isLoading: subgraphLoading, error: subgraphError, refetch: refetchSubgraph } = useSubgraph({
-    query: '', // Empty query returns default subgraph
+    query: '',
     depth: 2,
     limit: 100,
   });
 
-  // Entity context query when a node is selected
   const { data: entityContext, isLoading: contextLoading } = useEntityContext(selected, 2);
-
-  // GraphRAG query mutation for search
   const graphQuery = useGraphQuery();
+  const canvas = useGraphCanvas();
 
-  // Zoom and pan state management
-  const { viewState, zoomIn, zoomOut, resetView, panBy } = useGraphViewState();
-
-  // Drag state for panning
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  // Memoize graph data from coherent subgraph response
-  const graphData = useMemo(() => {
-    if (selected && entityContext) {
-      // Use entity context when a node is selected for detailed neighborhood view
-      return {
-        nodes: [entityContext.center, ...entityContext.neighbors],
-        edges: entityContext.relationships.map(r => ({
-          source: r.source,
-          target: r.target,
-          type: r.type,
-        })),
-        stats: {
-          total_nodes: entityContext.entity_count,
-          total_edges: entityContext.relationship_count,
-          node_types: countNodeTypes([entityContext.center, ...entityContext.neighbors]),
-          communities: 0,
-          density: 0,
-        },
-      };
-    }
-    // Use coherent subgraph from backend (no client-side sampling)
-    return {
-      nodes: subgraph?.nodes || [],
-      edges: subgraph?.edges || [],
-      stats: {
-        total_nodes: subgraph?.stats?.total_nodes ?? subgraph?.nodes?.length ?? 0,
-        total_edges: subgraph?.stats?.total_edges ?? subgraph?.edges?.length ?? 0,
-        node_types: countNodeTypes(subgraph?.nodes || []),
-        communities: 0,
-        density: subgraph?.stats?.density || 0,
-      },
-    };
-  }, [selected, entityContext, subgraph]);
+  const { data: graphData, isEmpty, nodeTypeCounts } = useGraphData({
+    subgraph: subgraph,
+    entityContext: entityContext,
+    searchResults: searchResults,
+  });
 
   const isLoading = subgraphLoading || contextLoading || graphQuery.isPending;
   const error = subgraphError?.message || graphQuery.error?.message || searchError;
@@ -84,13 +45,20 @@ export default function GraphExplorer() {
   }, []);
 
   const handleSearch = async () => {
-    if (!queryText.trim()) return;
+    if (!queryText.trim()) {
+      setSearchResults(null);
+      return;
+    }
     setSearchError(null);
     try {
-      await graphQuery.mutateAsync({
+      const results = await graphQuery.mutateAsync({
         query: queryText,
         max_hops: 2,
         max_results: 20,
+      });
+      setSearchResults({
+        entities: results.entities,
+        relationships: results.relationships,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Search failed';
@@ -98,35 +66,19 @@ export default function GraphExplorer() {
     }
   };
 
-  const selectedNodeData = graphData.nodes.find(n => n.id === selected);
+  const selectedNodeData = graphData.nodes.find(n => n.id === selected) || null;
 
   const handleReset = () => {
     setSelected(null);
-    resetView();
+    setSearchResults(null);
+    setQueryText("");
+    canvas.actions.resetView();
     refetchSubgraph();
   };
 
-  // Mouse event handlers for panning
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 0) { // Left click only
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - viewState.panX, y: e.clientY - viewState.panY });
-    }
-  }, [viewState.panX, viewState.panY]);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isDragging) {
-      panBy(e.clientX - dragStart.x, e.clientY - dragStart.y);
-    }
-  }, [isDragging, dragStart, panBy]);
-
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
-
   return (
-    <div className="p-6">
-      <PageHeader
+    <PageShell>
+      <WfPageHeader
         breadcrumbs={[{ label: "Knowledge Graph" }, { label: "Graph Explorer" }]}
         title="Graph Explorer"
         subtitle="Visualize and navigate the knowledge graph"
@@ -136,16 +88,12 @@ export default function GraphExplorer() {
               {graphQuery.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
               Search
             </Btn>
-            <Btn variant="ghost">Export</Btn>
-            <Btn variant="primary">Focus Selection</Btn>
+            {/* TODO: Implement export */}
+            {false && <Btn variant="ghost">Export</Btn>}
+            {/* TODO: Implement focus selection */}
+            {false && <Btn variant="primary">Focus Selection</Btn>}
           </div>
         }
-      />
-
-      <Tabs
-        tabs={["Graph Explorer", "Query Builder", "Communities", "Metrics"]}
-        active={activeTab}
-        onChange={setActiveTab}
       />
 
       {/* 3-Panel Layout: Control | Canvas | Inspector */}
@@ -158,28 +106,29 @@ export default function GraphExplorer() {
                 placeholder="Search entities..."
                 value={queryText}
                 onChange={(e) => setQueryText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
               />
 
               {/* Zoom Controls */}
               <div className="space-y-2">
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Zoom</div>
                 <div className="flex gap-2">
-                  <Btn variant="ghost" className="flex-1 text-[11px]" onClick={zoomIn}>
+                  <Btn variant="ghost" className="flex-1 text-[11px]" onClick={canvas.actions.zoomIn}>
                     <ZoomIn className="w-3 h-3 mr-1" /> In
                   </Btn>
-                  <Btn variant="ghost" className="flex-1 text-[11px]" onClick={zoomOut}>
+                  <Btn variant="ghost" className="flex-1 text-[11px]" onClick={canvas.actions.zoomOut}>
                     <ZoomOut className="w-3 h-3 mr-1" /> Out
                   </Btn>
                 </div>
                 <div className="text-[10px] text-muted-foreground/70 text-center">
-                  {Math.round(viewState.zoom * 100)}%
+                  {Math.round(canvas.view.scale * 100)}%
                 </div>
               </div>
 
               {/* View Controls */}
               <div className="space-y-2">
                 <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">View</div>
-                <Btn variant="ghost" className="w-full text-[11px] justify-center" onClick={resetView}>
+                <Btn variant="ghost" className="w-full text-[11px] justify-center" onClick={canvas.actions.resetView}>
                   <RotateCcw className="w-3 h-3 mr-1" /> Reset View
                 </Btn>
               </div>
@@ -273,18 +222,18 @@ export default function GraphExplorer() {
             </div>
           )}
 
-          {!isLoading && !error && graphData.nodes.length > 0 && (
-            <GraphVisualization
-              nodes={graphData.nodes}
-              edges={graphData.edges}
-              selected={selected}
-              onNodeClick={handleNodeClick}
-              viewState={viewState}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              isDragging={isDragging}
-            />
+          {!isLoading && !error && !isEmpty && (
+            <div {...canvas.handlers} className="w-full h-full">
+              <GraphVisualization
+                nodes={graphData.nodes}
+                edges={graphData.edges}
+                selectedNodeId={selected}
+                onNodeClick={handleNodeClick}
+                viewTransform={canvas.view}
+                isDragging={canvas.isDragging}
+                className="w-full h-full"
+              />
+            </div>
           )}
         </div>
 
@@ -373,153 +322,6 @@ export default function GraphExplorer() {
           </SectionCard>
         </div>
       </div>
-    </div>
-  );
-}
-
-/** Wrap text into lines with a maximum line length */
-function wrapTextIntoLines(text: string, maxLineLength: number): string[] {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-
-  for (const word of words) {
-    const currentLine = lines[lines.length - 1];
-    const proposedLine = currentLine ? `${currentLine} ${word}` : word;
-
-    if (!currentLine || proposedLine.length > maxLineLength) {
-      lines.push(word);
-    } else {
-      lines[lines.length - 1] = proposedLine;
-    }
-  }
-
-  return lines;
-}
-
-/** Calculate circular layout for graph nodes */
-function calculateLayout(nodes: GraphNode[], edges: GraphEdge[]): PositionedNode[] {
-  if (!nodes.length) return [];
-
-  const centerX = GRAPH_WIDTH / 2;
-  const centerY = GRAPH_HEIGHT / 2;
-
-  return nodes.map((node, index) => {
-    const angle = (index / nodes.length) * 2 * Math.PI;
-    const radius = Math.min(GRAPH_WIDTH, GRAPH_HEIGHT) * GRAPH_RADIUS_RATIO;
-    return {
-      ...node,
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
-      r: getNodeRadius(node.entity_type),
-    };
-  });
-}
-
-interface GraphVisualizationProps {
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  selected: string | null;
-  onNodeClick: (nodeId: string) => void;
-  viewState: { zoom: number; panX: number; panY: number };
-  onMouseDown: (e: React.MouseEvent) => void;
-  onMouseMove: (e: React.MouseEvent) => void;
-  onMouseUp: () => void;
-  isDragging: boolean;
-}
-
-function GraphVisualization({
-  nodes,
-  edges,
-  selected,
-  onNodeClick,
-  viewState,
-  onMouseDown,
-  onMouseMove,
-  onMouseUp,
-  isDragging
-}: GraphVisualizationProps) {
-  const positionedNodes = useMemo(() => calculateLayout(nodes, edges), [nodes, edges]);
-  const nodeMap = useMemo(() => new Map(positionedNodes.map(n => [n.id, n])), [positionedNodes]);
-
-  // Calculate transform for zoom and pan
-  const transform = `translate(${viewState.panX}, ${viewState.panY}) scale(${viewState.zoom})`;
-
-  return (
-    <svg
-      viewBox="0 0 640 460"
-      className={cn("w-full h-full min-h-[380px]", isDragging ? "cursor-grabbing" : "cursor-grab")}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseUp}
-    >
-      {/* Grid */}
-      <defs>
-        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="hsl(var(--muted))" strokeWidth="1"/>
-        </pattern>
-      </defs>
-      <rect width="640" height="460" fill="url(#grid)"/>
-
-      {/* Graph content with zoom/pan transform */}
-      <g transform={transform}>
-        {/* Edges */}
-        {edges.map((edge, i) => {
-          const source = nodeMap.get(edge.source);
-          const target = nodeMap.get(edge.target);
-          if (!source || !target || source.x === undefined || source.y === undefined || target.x === undefined || target.y === undefined) {
-            return null;
-          }
-          return (
-            <line
-              key={i}
-              x1={source.x} y1={source.y} x2={target.x} y2={target.y}
-              stroke="hsl(var(--border))" strokeWidth="1.5"
-            />
-          );
-        })}
-
-        {/* Nodes */}
-        {positionedNodes.map(node => {
-          const c = getEntityTypeStyle(node.entity_type);
-          const isSelected = node.id === selected;
-          const lines = wrapTextIntoLines(node.name, MAX_LABEL_LINE_LENGTH);
-          const lineOffsetBase = (lines.length - 1) / 2;
-
-          return (
-            <g
-              key={node.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                onNodeClick(node.id);
-              }}
-              style={{ cursor: "pointer" }}
-            >
-              <circle
-                cx={node.x} cy={node.y} r={node.r}
-                fill={c.fill}
-                stroke={isSelected ? "hsl(var(--primary))" : c.stroke}
-                strokeWidth={isSelected ? 2.5 : 1.5}
-              />
-              {lines.map((line, lineIndex) => (
-                <text
-                  key={lineIndex}
-                  x={node.x}
-                  y={node.y + (lineIndex - lineOffsetBase) * 11 + 1}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="8"
-                  fontFamily="var(--font-sans)"
-                  fontWeight="600"
-                  fill={c.text}
-                >
-                  {line}
-                </text>
-              ))}
-            </g>
-          );
-        })}
-      </g>
-    </svg>
+    </PageShell>
   );
 }

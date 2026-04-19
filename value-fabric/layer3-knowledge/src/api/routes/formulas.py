@@ -4,6 +4,7 @@ Provides endpoints for formula evaluation and variable registry.
 Delegates calculation logic to the ROI calculation agent.
 """
 
+import re
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
@@ -36,11 +37,24 @@ class FormulaEvaluateRequest(BaseModel):
     )
     output_unit: str | None = Field(None, description="Desired output unit")
 
+    # Valid expression pattern: alphanumeric, operators, parentheses, underscores
+    VALID_EXPRESSION_PATTERN = re.compile(r"^[a-zA-Z0-9_+\-*/().\s**]+$")
+
     @field_validator("expression")
     @classmethod
     def validate_expression_or_formula_id(cls, v, info):
         if not v and not info.data.get("formula_id"):
             raise ValueError("Either formula_id or expression must be provided")
+        if v:
+            # Validate expression contains only allowed characters
+            if not cls.VALID_EXPRESSION_PATTERN.match(v):
+                raise ValueError("Expression contains invalid characters. Only alphanumeric, operators (+, -, *, /, **), parentheses, and underscores are allowed.")
+            # Check for dangerous patterns
+            dangerous_patterns = ["import", "exec", "eval", "compile", "__", "lambda", "class", "def"]
+            v_lower = v.lower()
+            for pattern in dangerous_patterns:
+                if pattern in v_lower:
+                    raise ValueError(f"Expression contains forbidden pattern: {pattern}")
         return v
 
 
@@ -449,7 +463,7 @@ async def evaluate_formula(
             result = evaluate_expression(expression, inputs_dict)
         except Exception as e:
             raise HTTPException(
-                status_code=400, detail=f"Formula evaluation error: {str(e)}"
+                status_code=400, detail="Formula evaluation failed. Check expression syntax and variable values."
             )
 
         # Generate calculation steps for transparency
@@ -683,7 +697,7 @@ async def calculate_scenario(
 
     except Exception as e:
         raise HTTPException(
-            status_code=400, detail=f"Scenario calculation failed: {str(e)}"
+            status_code=400, detail="Scenario calculation failed. Please check inputs and try again."
         )
 
 
@@ -770,6 +784,8 @@ def evaluate_simple(expr: str) -> float:
             result = tokens[i - 1] * tokens[i + 1]
             tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
         elif tokens[i] == "/":
+            if tokens[i + 1] == 0:
+                raise ZeroDivisionError("Division by zero in expression")
             result = tokens[i - 1] / tokens[i + 1]
             tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
         else:
