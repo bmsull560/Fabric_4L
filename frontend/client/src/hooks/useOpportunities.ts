@@ -36,17 +36,41 @@ export interface OpportunitiesResponse {
 }
 
 const API_ENDPOINT = '/v1/discover/opportunities';
+const STALE_TIME_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_RETRIES = 2;
+
+export class OpportunitiesApiError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode?: number,
+    public readonly response?: unknown
+  ) {
+    super(message);
+    this.name = 'OpportunitiesApiError';
+  }
+}
 
 async function fetchOpportunities(): Promise<OpportunitiesResponse> {
-  const response = await apiClient.get(API_ENDPOINT);
-  return response.data as OpportunitiesResponse;
+  const response = await apiClient.get<OpportunitiesResponse>(API_ENDPOINT);
+
+  if (!response.data || typeof response.data !== 'object') {
+    throw new OpportunitiesApiError('Invalid response format from API');
+  }
+
+  // Validate required fields
+  const data = response.data;
+  if (!Array.isArray(data.opportunities)) {
+    throw new OpportunitiesApiError('Missing or invalid opportunities array');
+  }
+
+  return data;
 }
 
 export function useOpportunities() {
-  return useQuery({
+  return useQuery<OpportunitiesResponse, OpportunitiesApiError>({
     queryKey: ['opportunities'],
     queryFn: fetchOpportunities,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
+    staleTime: STALE_TIME_MS,
+    retry: MAX_RETRIES,
   });
 }

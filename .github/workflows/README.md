@@ -4,7 +4,58 @@
 
 This directory contains 21 CI/CD workflows for the Fabric_4L 6-layer enterprise agentic SaaS platform.
 
-## Workflow Inventory
+## Workflow Tiers
+
+### Required (PR Merge Blocking)
+These workflows must pass before a PR can be merged:
+
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| `pr-checks.yml` | Multi-layer lint, typecheck, tests, security scan, dependency audit | PR to main |
+| `contract-checks.yml` | Cross-layer contract tests | PR to main |
+| `security-gates.yml` | SAST scanning (Semgrep/CodeQL) | PR/Push |
+| `k8s-dry-run.yml` | Kubernetes manifest validation | PR to main |
+
+### Nightly/Scheduled (Deep Assurance)
+Run periodically for comprehensive validation:
+
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| `integration-tests.yml` | Full Docker-based integration test suite | Schedule, Manual |
+| `smoke-gate.yml` | Cross-layer smoke tests | PR (optional) |
+| `performance-load-tests.yml` | K6 load testing | Schedule, Manual |
+| `contract-drift-check.yml` | OpenAPI contract validation | Schedule |
+| `ai-evals-pipeline.yml` | Agent skill validation | PR to skills/, Schedule |
+| `chaos-testing.yml` | Litmus chaos experiments | Schedule |
+| `secret-rotation.yml` | Automated secret rotation | Schedule |
+
+### Optional/Manual (On-Demand)
+Run manually when needed:
+
+| Workflow | Purpose | Trigger |
+|----------|---------|---------|
+| `build-deploy.yml` | Docker builds, image signing | Push to main, Manual |
+| `deploy.yml` | GitOps deployment via ArgoCD | Push to main, Manual |
+| `environment-promotion.yml` | Dev→Staging→Prod promotion gates | Build success, Manual |
+| `vault-integration.yml` | Dynamic secret injection | Reusable workflow |
+| `penetration-testing.yml` | Security pentest suite | Manual |
+| `zero-trust-validation.yml` | Security policy validation | PR (informational) |
+| `supply-chain.yml` | SBOM, Cosign signing | Build completion |
+| `test-reporting.yml` | Aggregate test results | PR Checks completion |
+| `package-sign.yml` | Package signing | Manual |
+| `publish-sdk.yml` | SDK publishing | Manual |
+| `regenerate-sdk.yml` | SDK regeneration | Manual |
+| `openapi-drift-check.yml` | OpenAPI drift detection | Schedule |
+| `pr-performance-gate.yml` | Performance regression | PR (optional) |
+| `preflight.yml` | Environment validation | Manual |
+| `runbook-validation.yml` | Runbook checks | PR |
+| `security-validation.yml` | Extended security tests | Manual |
+| `audit-evidence.yml` | Audit evidence collection | Schedule |
+| `billing-entitlements-regression.yml` | Billing regression tests | PR |
+| `docker-build-check.yml` | Dockerfile validation | PR |
+| `alertmanager-config-check.yml` | Alertmanager validation | PR |
+
+## Workflow Inventory (Detailed)
 
 ### Core CI Workflows
 

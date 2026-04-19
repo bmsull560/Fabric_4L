@@ -122,7 +122,17 @@ ignore = [
 [tool.mypy]
 python_version = "3.11"
 plugins = ["sqlalchemy.ext.mypy.plugin"]
-# Note: Additional flags passed via Makefile for CI consistency
+# Type safety ratchet - prevents regression (Gap 4)
+# Baseline established: 2026-04-19
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradual ratchet - set to true when ready
+ignore_missing_imports = true
+# Error report for CI
+show_error_codes = true
+show_column_numbers = true
+# Performance
+cache_dir = ".mypy_cache"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

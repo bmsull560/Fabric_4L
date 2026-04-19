@@ -6,11 +6,15 @@ calls L1 APIs for document processing.
 
 import asyncio
 import logging
-from typing import Any
+import time
+from typing import Any, Final
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Job terminal states
+TERMINAL_STATES: Final[frozenset[str]] = frozenset({"completed", "failed", "cancelled"})
 
 
 class Layer1IngestionClient:
@@ -140,17 +144,17 @@ class Layer1IngestionClient:
         Returns:
             Completed job result
         """
-        start_time = asyncio.get_event_loop().time()
+        start_time = time.monotonic()
 
         while True:
             status = await self.get_job_status(job_id)
 
             job_status = status.get("status", "unknown")
 
-            if job_status in ["completed", "failed", "cancelled"]:
+            if job_status in TERMINAL_STATES:
                 return status
 
-            elapsed = asyncio.get_event_loop().time() - start_time
+            elapsed = time.monotonic() - start_time
             if elapsed > timeout:
                 raise Layer1ClientError(f"Timeout waiting for job {job_id}")
 

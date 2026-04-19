@@ -142,12 +142,23 @@ async def lifespan(app: FastAPI):
     tool_registry = create_default_registry()
     state_manager = StateManager()  # Add Redis client if configured
 
+    # P0: Verify Redis connectivity (required for rate limiting, feature flags, and WebSocket)
+    redis_client = getattr(state_manager, "redis_client", None)
+    if redis_client is not None:
+        try:
+            await redis_client.ping()
+            logger.info("L4: Redis connectivity verified")
+        except Exception as e:
+            logger.error(f"L4: Redis connectivity failed: {e}")
+            raise RuntimeError(f"Redis connectivity failed - cannot start without cache: {e}") from e
+    else:
+        logger.error("L4: Redis client not configured - Redis is required")
+        raise RuntimeError("Redis client not configured - Redis is required for operation")
+
     # Initialize rate limiter and feature flags
-    redis_rate_limiter = None
-    if state_manager is not None and getattr(state_manager, "redis_client", None) is not None:
-        redis_rate_limiter = RedisRateLimiter(state_manager.redis_client)
-        app.state.rate_limiter = redis_rate_limiter
-        init_feature_flags(state_manager.redis_client)
+    redis_rate_limiter = RedisRateLimiter(state_manager.redis_client)
+    app.state.rate_limiter = redis_rate_limiter
+    init_feature_flags(state_manager.redis_client)
 
     # Register DB-backed feature flag lookup
     async def _feature_flag_lookup(flag_key: str, tenant_id):

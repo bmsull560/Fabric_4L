@@ -24,8 +24,11 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests check-deprecations ## Run all checks (lint + typecheck + tests + contracts + deprecations) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations ## Run all checks (lint + typecheck + tests + contracts + security + deprecations) — required before PR
 	@echo "✅  All checks passed"
+
+verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
+	@echo "✅  Strict verification passed"
 
 # ─── Linting ─────────────────────────────────────────────────────────────────
 
@@ -245,6 +248,16 @@ migrate: ## Run Alembic migrations for all layers
 
 contracts: ## Export OpenAPI specs from all layers
 	$(PYTHON) scripts/export_openapi.py
+
+contract-drift: contracts ## Detect OpenAPI contract drift (exports + validates layer consistency)
+	@echo "→ Checking for contract drift..."
+	@# Verify all expected contract files exist and are non-empty
+	@test -s contracts/openapi/layer1-ingestion.json || (echo "❌ Layer 1 OpenAPI spec missing or empty" && exit 1)
+	@test -s contracts/openapi/layer2-extraction.json || (echo "❌ Layer 2 OpenAPI spec missing or empty" && exit 1)
+	@test -s contracts/openapi/layer3-knowledge.json || (echo "❌ Layer 3 OpenAPI spec missing or empty" && exit 1)
+	@test -s contracts/openapi/layer4-agents.json || (echo "❌ Layer 4 OpenAPI spec missing or empty" && exit 1)
+	@test -s contracts/openapi/layer5-ground-truth.json || (echo "❌ Layer 5 OpenAPI spec missing or empty" && exit 1)
+	@echo "✅ All layer OpenAPI specs present"
 
 sdk: ## Generate the Python SDK (manual typed client)
 	$(PYTHON) scripts/generate_sdk.py

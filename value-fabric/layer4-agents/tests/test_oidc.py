@@ -301,7 +301,7 @@ class TestOIDCProviderConfig:
         assert config.provider_name == "test-idp"
         assert config.issuer_url == "https://idp.example.com"
         assert config.client_id == "client-123"
-        assert config.client_secret == "secret-456"
+        assert config.client_secret_ref == "secret-456"
         assert str(config.jwks_uri) == "https://idp.example.com/.well-known/jwks.json"
         assert config.scopes == ["openid", "email"]
         assert config.claim_mapping == {"groups": "admin"}
@@ -312,16 +312,17 @@ class TestOIDCProviderConfig:
     def test_oidc_provider_config_defaults(self) -> None:
         """Test OIDCProviderConfig default values."""
         config = OIDCProviderConfig(
+            provider_name="oidc",
             issuer_url="https://idp.example.com",
             client_id="client-123",
         )
 
-        assert config.provider_name == "oidc"  # Default
-        assert config.scopes == ["openid", "profile", "email"]  # Default
+        assert config.provider_name == "oidc"
+        assert config.scopes == ["openid", "email", "profile"]  # Default
         assert config.default_role == "read_only"  # Default
-        assert config.auto_provision_users is True  # Default
+        assert config.auto_provision_users is False  # Default
         assert config.enabled is True  # Default
-        assert config.client_secret is None
+        assert config.client_secret_ref is None
         assert config.claim_mapping == {}  # Default empty dict
 
     def test_from_settings_valid_config(self) -> None:
@@ -331,7 +332,7 @@ class TestOIDCProviderConfig:
                 "provider_name": "test-idp",
                 "issuer_url": "https://idp.example.com",
                 "client_id": "client-123",
-                "client_secret": "secret-456",
+                "client_secret_ref": "secret-456",
                 "scopes": ["openid", "email"],
                 "claim_mapping": {"groups": "admin"},
                 "default_role": "analyst",
@@ -346,7 +347,7 @@ class TestOIDCProviderConfig:
         assert config.provider_name == "test-idp"
         assert config.issuer_url == "https://idp.example.com"
         assert config.client_id == "client-123"
-        assert config.client_secret == "secret-456"
+        assert config.client_secret_ref == "secret-456"
         assert config.scopes == ["openid", "email"]
         assert config.claim_mapping == {"groups": "admin"}
         assert config.default_role == "analyst"

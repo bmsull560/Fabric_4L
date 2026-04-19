@@ -13,17 +13,46 @@ Requirements:
 - L4 service running on localhost:8004
 """
 
+import os
 import time
 import uuid
+from functools import wraps
+from typing import Callable, TypeVar
 
 import pytest
 import requests
+from requests.adapters import HTTPAdapter, Retry
 
-# Service endpoints
-L1_URL = "http://localhost:8001"
-L2_URL = "http://localhost:8002"
-L3_URL = "http://localhost:8003"
-L4_URL = "http://localhost:8004"
+# Service endpoints (configurable via env vars for CI flexibility)
+L1_URL = os.environ.get("L1_URL", "http://localhost:8001")
+L2_URL = os.environ.get("L2_URL", "http://localhost:8002")
+L3_URL = os.environ.get("L3_URL", "http://localhost:8003")
+L4_URL = os.environ.get("L4_URL", "http://localhost:8004")
+
+# HTTP client with retry logic
+_session = requests.Session()
+_retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+_session.mount("http://", HTTPAdapter(max_retries=_retries))
+_session.mount("https://", HTTPAdapter(max_retries=_retries))
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def retry_on_connection_error(max_retries: int = 3, delay: float = 1.0) -> Callable[[F], F]:
+    """Decorator to retry tests on connection errors."""
+    def decorator(func: F) -> F:
+        @wraps(func)
+        def wrapper(*args, **kwargs):  # type: ignore
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except requests.exceptions.ConnectionError as e:
+                    if attempt == max_retries - 1:
+                        raise
+                    time.sleep(delay * (attempt + 1))
+            return None  # unreachable
+        return wrapper  # type: ignore
+    return decorator
 
 
 @pytest.fixture
@@ -50,49 +79,64 @@ def test_entity_data():
 class TestL1RoutesExist:
     """Verify L4 client routes match actual L1 endpoints."""
 
+    @retry_on_connection_error()
     def test_l1_health_check(self):
-        """L1 health endpoint responds."""
-        response = requests.get(f"{L1_URL}/health")
-        assert response.status_code == 200
+        """L1 health endpoint responds with valid health status."""
+        response = _session.get(f"{L1_URL}/health", timeout=10)
+        assert response.status_code == 200, f"Health check failed: {response.status_code}"
         data = response.json()
-        assert "status" in data or "healthy" in str(data).lower()
+        assert isinstance(data, dict), f"Expected dict response, got {type(data)}"
+        # Accept either 'status' field or common health indicators
+        has_health_indicator = (
+            "status" in data
+            or data.get("healthy") is True
+            or data.get("status") == "healthy"
+        )
+        assert has_health_indicator, f"No health indicator in response: {data}"
 
+    @retry_on_connection_error()
     def test_l1_jobs_endpoint_post_creates_job(self):
         """POST /jobs creates ingestion job (was /v1/ingestion/jobs)."""
         payload = {
             "target": {"url": "https://example.com/test", "type": "http"},
             "document_type": "test",
         }
-        response = requests.post(f"{L1_URL}/jobs", json=payload)
+        response = _session.post(f"{L1_URL}/jobs", json=payload, timeout=10)
         # May fail auth but should NOT 404
-        assert response.status_code != 404, "L1 /jobs endpoint not found"
+        assert response.status_code != 404, f"L1 /jobs endpoint not found: {response.text[:200]}"
         # Should be 202 (accepted) or 401/403 (auth), not 404
-        assert response.status_code in [202, 200, 401, 403]
+        assert response.status_code in [202, 200, 401, 403], f"Unexpected status: {response.status_code}"
 
+    @retry_on_connection_error()
     def test_l1_jobs_get_list(self):
         """GET /jobs lists jobs (was /v1/ingestion/jobs)."""
-        response = requests.get(f"{L1_URL}/jobs")
-        assert response.status_code != 404, "L1 /jobs endpoint not found"
-        assert response.status_code in [200, 401, 403]
+        response = _session.get(f"{L1_URL}/jobs", timeout=10)
+        assert response.status_code != 404, f"L1 /jobs endpoint not found: {response.text[:200]}"
+        assert response.status_code in [200, 401, 403], f"Unexpected status: {response.status_code}"
 
+    @retry_on_connection_error()
     def test_l1_job_status_endpoint(self):
         """GET /jobs/{id} gets job status (was /v1/ingestion/jobs/{id})."""
         fake_job_id = str(uuid.uuid4())
-        response = requests.get(f"{L1_URL}/jobs/{fake_job_id}")
+        response = _session.get(f"{L1_URL}/jobs/{fake_job_id}", timeout=10)
         # Should be 404 for unknown job, not endpoint 404
-        assert response.status_code != 404, "L1 /jobs/{id} endpoint not found"
+        assert response.status_code != 404, f"L1 /jobs/{{id}} endpoint not found: {response.text[:200]}"
         # May get 401, 403, or 404 for unknown job
-        assert response.status_code in [404, 401, 403, 200]
+        assert response.status_code in [404, 401, 403, 200], f"Unexpected status: {response.status_code}"
 
 
 class TestL2RoutesExist:
     """Verify L4 client routes match actual L2 endpoints."""
 
+    @retry_on_connection_error()
     def test_l2_health_check(self):
         """L2 health endpoint responds."""
-        response = requests.get(f"{L2_URL}/health")
-        assert response.status_code == 200
+        response = _session.get(f"{L2_URL}/health", timeout=10)
+        assert response.status_code == 200, f"L2 health check failed: {response.status_code}"
+        data = response.json()
+        assert isinstance(data, dict), f"Expected dict, got {type(data)}"
 
+    @retry_on_connection_error()
     def test_l2_extract_endpoint_post(self):
         """POST /v1/extract exists (was /v1/extract/filing)."""
         payload = {
@@ -100,24 +144,26 @@ class TestL2RoutesExist:
             "filing_type": "TEST",
             "extraction_type": "test",
         }
-        response = requests.post(f"{L2_URL}/v1/extract", json=payload)
+        response = _session.post(f"{L2_URL}/v1/extract", json=payload, timeout=10)
         # Should NOT 404 - endpoint should exist
-        assert response.status_code != 404, "L2 /v1/extract endpoint not found"
+        assert response.status_code != 404, f"L2 /v1/extract endpoint not found: {response.text[:200]}"
 
+    @retry_on_connection_error()
     def test_l2_extract_and_ingest_endpoint(self):
         """POST /v1/extract-and-ingest exists."""
         payload = {
             "document_url": "https://example.com/test.pdf",
             "filing_type": "TEST",
         }
-        response = requests.post(f"{L2_URL}/v1/extract-and-ingest", json=payload)
-        assert response.status_code != 404, "L2 /v1/extract-and-ingest endpoint not found"
+        response = _session.post(f"{L2_URL}/v1/extract-and-ingest", json=payload, timeout=10)
+        assert response.status_code != 404, f"L2 /v1/extract-and-ingest endpoint not found: {response.text[:200]}"
 
+    @retry_on_connection_error()
     def test_l2_extract_status_endpoint(self):
         """GET /v1/extract/status/{job_id} exists."""
         fake_job_id = str(uuid.uuid4())
-        response = requests.get(f"{L2_URL}/v1/extract/status/{fake_job_id}")
-        assert response.status_code != 404, "L2 /v1/extract/status endpoint not found"
+        response = _session.get(f"{L2_URL}/v1/extract/status/{fake_job_id}", timeout=10)
+        assert response.status_code != 404, f"L2 /v1/extract/status endpoint not found: {response.text[:200]}"
 
 
 class TestL1ToL3DataFlow:
@@ -130,20 +176,21 @@ class TestL1ToL3DataFlow:
         entity_name = test_entity_data["name"]
 
         # 2. Query L3 for the entity
-        l3_response = requests.post(
+        l3_response = _session.post(
             f"{L3_URL}/v1/search/hybrid",
             json={"query": entity_name, "entity_type": "Company"},
+            timeout=15,
         )
-        assert l3_response.status_code == 200, f"L3 search failed: {l3_response.text}"
+        assert l3_response.status_code == 200, f"L3 search failed: {l3_response.text[:200]}"
         results = l3_response.json()
 
         # 3. Verify response structure
-        assert "entities" in results or "results" in results, "Missing entities in response"
+        assert "entities" in results or "results" in results, f"Missing entities in response: {list(results.keys())}"
 
     @pytest.mark.skip(reason="Requires Neo4j running - run manually")
     def test_l3_entity_persistence(self):
         """L3 entities endpoint returns data."""
-        response = requests.post(
+        response = _session.post(
             f"{L3_URL}/v1/ingest",
             json={
                 "entities": [
@@ -154,12 +201,13 @@ class TestL1ToL3DataFlow:
                     }
                 ]
             },
+            timeout=10,
         )
         # L3 may not have direct ingest - skip if 404
         if response.status_code == 404:
             pytest.skip("L3 ingest endpoint not available")
 
-        assert response.status_code in [200, 202, 401, 403]
+        assert response.status_code in [200, 202, 401, 403], f"Unexpected status: {response.status_code}"
 
 
 class TestL4WorkflowOrchestration:
@@ -169,21 +217,22 @@ class TestL4WorkflowOrchestration:
     def test_l4_workflow_triggers_l1_l2(self):
         """L4 workflow orchestrates real L1 and L2 jobs."""
         # Start workflow
-        response = requests.post(
+        response = _session.post(
             f"{L4_URL}/v1/workflows/ingestion",
             json={"source": "filing_123"},
+            timeout=10,
         )
 
         if response.status_code == 404:
             pytest.skip("L4 workflow endpoint not available")
 
-        assert response.status_code == 200, f"Workflow start failed: {response.text}"
+        assert response.status_code == 200, f"Workflow start failed: {response.text[:200]}"
         workflow_id = response.json().get("workflow_id")
         assert workflow_id, "No workflow_id in response"
 
         # Poll workflow status
         for _ in range(10):
-            status_resp = requests.get(f"{L4_URL}/v1/workflows/{workflow_id}")
+            status_resp = _session.get(f"{L4_URL}/v1/workflows/{workflow_id}", timeout=5)
             if status_resp.status_code == 200:
                 status = status_resp.json()
                 if status.get("status") in ["completed", "failed"]:
@@ -191,8 +240,8 @@ class TestL4WorkflowOrchestration:
             time.sleep(1)
 
         # Verify jobs were triggered by checking L1/L2 job lists
-        l1_jobs = requests.get(f"{L1_URL}/jobs").json()
-        l2_jobs = requests.get(f"{L2_URL}/v1/extract/status/nonexistent").json()
+        l1_jobs = _session.get(f"{L1_URL}/jobs", timeout=5).json()
+        l2_jobs = _session.get(f"{L2_URL}/v1/extract/status/nonexistent", timeout=5).json()
 
         # Should have attempted to call services (may be in error state)
         assert l1_jobs is not None, "L1 jobs endpoint failed"
@@ -201,39 +250,42 @@ class TestL4WorkflowOrchestration:
 class TestContractAlignment:
     """Verify OpenAPI contracts match runtime behavior."""
 
+    @retry_on_connection_error()
     def test_l1_openapi_spec_loads(self):
         """L1 OpenAPI spec is valid and loadable."""
-        response = requests.get(f"{L1_URL}/openapi.json")
+        response = _session.get(f"{L1_URL}/openapi.json", timeout=10)
         if response.status_code == 404:
             pytest.skip("L1 OpenAPI endpoint not exposed")
 
-        assert response.status_code == 200
+        assert response.status_code == 200, f"OpenAPI spec load failed: {response.status_code}"
         spec = response.json()
-        assert "paths" in spec
+        assert "paths" in spec, "Missing 'paths' in OpenAPI spec"
         # Verify actual routes are documented
         paths = spec["paths"]
         assert "/jobs" in paths or any("jobs" in p for p in paths), "Jobs route not documented"
 
+    @retry_on_connection_error()
     def test_l2_openapi_spec_loads(self):
         """L2 OpenAPI spec is valid and loadable."""
-        response = requests.get(f"{L2_URL}/openapi.json")
+        response = _session.get(f"{L2_URL}/openapi.json", timeout=10)
         if response.status_code == 404:
-            response = requests.get(f"{L2_URL}/docs/openapi.json")
+            response = _session.get(f"{L2_URL}/docs/openapi.json", timeout=10)
 
         if response.status_code == 404:
             pytest.skip("L2 OpenAPI endpoint not exposed")
 
-        assert response.status_code == 200
+        assert response.status_code == 200, f"OpenAPI spec load failed: {response.status_code}"
         spec = response.json()
-        assert "paths" in spec
+        assert "paths" in spec, "Missing 'paths' in OpenAPI spec"
 
+    @retry_on_connection_error()
     def test_l3_openapi_spec_matches_contract(self):
         """L3 runtime spec matches contracts/openapi/layer3-knowledge.json."""
-        response = requests.get(f"{L3_URL}/openapi.json")
+        response = _session.get(f"{L3_URL}/openapi.json", timeout=10)
         if response.status_code == 404:
             pytest.skip("L3 OpenAPI endpoint not exposed")
 
-        assert response.status_code == 200
+        assert response.status_code == 200, f"OpenAPI spec load failed: {response.status_code}"
         runtime_spec = response.json()
 
         # Load contract spec

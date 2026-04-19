@@ -248,10 +248,33 @@ Testability tests    → 27/28 pass (1 needs pytest-asyncio) ✅
 | 6 | Operational runbooks | ✅ Complete | 20+ runbooks in docs/runbooks/ |
 | 7 | API documentation | ✅ Complete | OpenAPI specs regenerated and validated |
 | 8 | Compliance traceability | ✅ Complete | [Control matrix](docs/compliance/control-matrix.md) |
-| 9 | Security controls | ✅ Complete | Zero-trust framework, network policies, RBAC |
+| 9 | Security controls | ✅ **NEW** | No insecure runtime defaults, k8s secrets are inert placeholders |
 | 10 | Lint/contract compliance | ✅ **NEW** | All layers lint-clean, all contracts aligned |
+| 11 | Fail-safe startup | ✅ **NEW** | Layer 4 startup hardened with explicit dependency gates |
+| 12 | Secret hygiene | ✅ **NEW** | No committed dev secrets, placeholders require generation |
 
-**Readiness: 10/10 criteria met** (pending runtime deployment validation)
+**Readiness: 12/12 criteria met** (pending runtime deployment validation)
+
+---
+
+## Security Hardening Completed (2026-04-19)
+
+### Gap 1: Insecure Runtime Defaults - ✅ RESOLVED
+- **docker-compose.yml**: Replaced weak fallbacks (`:-valuefabric`, `:-changeme`) with required env vars (`:?VAR is required`)
+- **.env.example**: Changed placeholder values to inert `REPLACE_WITH_*` patterns
+- **Impact**: Services now fail fast on startup if secrets are not provided
+
+### Gap 2: Layer 4 Fail-Safe Startup - ✅ RESOLVED
+- Database initialization: Now fails fast in all environments (was production-only)
+- Checkpoint saver: Now required (was optional with warning)
+- Workflow recovery: Now required for correctness
+- Redis connectivity: Added explicit ping check with fail-fast
+- **Impact**: Layer 4 startup is deterministic and dependency-aware
+
+### Gap 7: Secret Hygiene - ✅ RESOLVED
+- **k8s/overlays/dev/secrets.yml**: All values changed to inert placeholders
+- Added annotations indicating bootstrap script requirement
+- **Impact**: No usable secrets committed to repo
 
 ---
 
