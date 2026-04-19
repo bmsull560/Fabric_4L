@@ -1,12 +1,13 @@
 """Tools package for Layer 4 Agentic Workflow Engine.
 
-This package contains 24+ tools organized into 6 categories:
+This package contains 25+ tools organized into 7 categories:
 - Knowledge (6): Graph query and semantic search tools
 - Calculation (4): Formula evaluation and ROI calculation
 - CRM (4): Salesforce/HubSpot integration
 - Generation (4): Document and content generation
 - Integration (4): Notifications and task management
 - Utility (2): Validation and formatting
+- Competitive (1): Competitive intelligence and alternative analysis
 """
 
 from .calculation_tools import (
@@ -15,6 +16,7 @@ from .calculation_tools import (
     EvaluateFormulaTool,
     SensitivityAnalysisTool,
 )
+from .competitive_tools import AnalyzeCompetitionTool
 from .crm_tools import (
     FetchInteractionHistoryTool,
     GetProspectDataTool,
@@ -54,7 +56,7 @@ from .utility_tools import FormatCurrencyTool, ValidateInputTool
 
 
 def create_default_registry(config: dict | None = None) -> ToolRegistry:
-    """Create a tool registry with all 24 tools pre-registered.
+    """Create a tool registry with all 25 tools pre-registered.
 
     Args:
         config: Optional configuration dictionary for tools
@@ -102,6 +104,9 @@ def create_default_registry(config: dict | None = None) -> ToolRegistry:
     registry.register(ValidateInputTool(cfg))
     registry.register(FormatCurrencyTool(cfg))
 
+    # Competitive Intelligence Tools (1)
+    registry.register(AnalyzeCompetitionTool(cfg))
+
     return registry
 
 
@@ -146,4 +151,6 @@ __all__ = [
     # Utility
     "ValidateInputTool",
     "FormatCurrencyTool",
+    # Competitive Intelligence
+    "AnalyzeCompetitionTool",
 ]
