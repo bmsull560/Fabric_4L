@@ -8,10 +8,9 @@
  * - Industry benchmarks for reference
  */
 import { useState, useMemo, useEffect, useRef } from "react";
-import type { ReactNode } from "react";
 import { useParams, useLocation } from "wouter";
 import {
-  Save, CheckCircle2, Clock, AlertCircle,
+  Save, CheckCircle2, AlertCircle,
   ChevronRight, Loader2, Target,
 } from "lucide-react";
 import { Btn, SectionCard } from "@/components/WfPrimitives";
