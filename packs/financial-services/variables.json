@@ -625,6 +625,166 @@
       ],
       "canonicalName": "Digital_Onboarding_Investment",
       "name": "Digital Onboarding Platform Investment"
+    },
+    {
+      "variable_id": "fs-var-019",
+      "variable_name": "Operational_Cost_Savings",
+      "display_name": "Operational Cost Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Annual operational cost savings from digital transformation",
+      "canonicalName": "OperationalCostSavings",
+      "name": "Operational Cost Savings"
+    },
+    {
+      "variable_id": "fs-var-021",
+      "variable_name": "Expanded_Lending_Profit",
+      "display_name": "Expanded Lending Profit",
+      "unit": "USD",
+      "type": "output",
+      "description": "Incremental profit from expanded lending capacity",
+      "canonicalName": "ExpandedLendingProfit",
+      "name": "Expanded Lending Profit"
+    },
+    {
+      "variable_id": "fs-var-022",
+      "variable_name": "Model_Investment",
+      "display_name": "Model Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in credit risk model",
+      "canonicalName": "ModelInvestment",
+      "name": "Model Investment"
+    },
+    {
+      "variable_id": "fs-var-023",
+      "variable_name": "Avoided_Findings_Cost",
+      "display_name": "Avoided Findings Cost",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost of regulatory findings avoided through automation",
+      "canonicalName": "AvoidedFindingsCost",
+      "name": "Avoided Findings Cost"
+    },
+    {
+      "variable_id": "fs-var-024",
+      "variable_name": "Automation_Platform_Cost",
+      "display_name": "Automation Platform Cost",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual cost of compliance automation platform",
+      "canonicalName": "AutomationPlatformCost",
+      "name": "Automation Platform Cost"
+    },
+    {
+      "variable_id": "fs-var-025",
+      "variable_name": "Customer_Base",
+      "display_name": "Customer Base",
+      "unit": "count",
+      "type": "input",
+      "description": "Total number of active customers",
+      "canonicalName": "CustomerBase",
+      "name": "Customer Base"
+    },
+    {
+      "variable_id": "fs-var-026",
+      "variable_name": "Personalization_Uplift_Rate",
+      "display_name": "Personalization Uplift Rate",
+      "unit": "percentage",
+      "type": "input",
+      "description": "Revenue uplift rate from personalization (%)",
+      "canonicalName": "PersonalizationUpliftRate",
+      "name": "Personalization Uplift Rate"
+    },
+    {
+      "variable_id": "fs-var-027",
+      "variable_name": "Avg_Revenue_Per_Customer",
+      "display_name": "Avg Revenue Per Customer",
+      "unit": "USD",
+      "type": "input",
+      "description": "Average annual revenue per customer",
+      "canonicalName": "AvgRevenuePerCustomer",
+      "name": "Avg Revenue Per Customer"
+    },
+    {
+      "variable_id": "fs-var-028",
+      "variable_name": "Personalization_Platform_Cost",
+      "display_name": "Personalization Platform Cost",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual cost of personalization platform",
+      "canonicalName": "PersonalizationPlatformCost",
+      "name": "Personalization Platform Cost"
+    },
+    {
+      "variable_id": "fs-var-029",
+      "variable_name": "Settlement_Failure_Cost_Avoidance",
+      "display_name": "Settlement Failure Cost Avoidance",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost avoided from reduced settlement failures",
+      "canonicalName": "SettlementFailureCostAvoidance",
+      "name": "Settlement Failure Cost Avoidance"
+    },
+    {
+      "variable_id": "fs-var-030",
+      "variable_name": "Capital_Efficiency_Value",
+      "display_name": "Capital Efficiency Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from improved capital efficiency",
+      "canonicalName": "CapitalEfficiencyValue",
+      "name": "Capital Efficiency Value"
+    },
+    {
+      "variable_id": "fs-var-031",
+      "variable_name": "STP_Investment",
+      "display_name": "STP Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in straight-through processing",
+      "canonicalName": "StpInvestment",
+      "name": "STP Investment"
+    },
+    {
+      "variable_id": "fs-var-032",
+      "variable_name": "Additional_Clients_Per_Advisor",
+      "display_name": "Additional Clients Per Advisor",
+      "unit": "count",
+      "type": "output",
+      "description": "Additional clients each advisor can serve with AI tools",
+      "canonicalName": "AdditionalClientsPerAdvisor",
+      "name": "Additional Clients Per Advisor"
+    },
+    {
+      "variable_id": "fs-var-033",
+      "variable_name": "Advisor_Count",
+      "display_name": "Advisor Count",
+      "unit": "count",
+      "type": "input",
+      "description": "Total number of financial advisors",
+      "canonicalName": "AdvisorCount",
+      "name": "Advisor Count"
+    },
+    {
+      "variable_id": "fs-var-034",
+      "variable_name": "Performance_Uplift_Value",
+      "display_name": "Performance Uplift Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue value from improved advisor performance",
+      "canonicalName": "PerformanceUpliftValue",
+      "name": "Performance Uplift Value"
+    },
+    {
+      "variable_id": "fs-var-035",
+      "variable_name": "AI_Tools_Investment",
+      "display_name": "AI Tools Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in AI tools for advisors",
+      "canonicalName": "AiToolsInvestment",
+      "name": "AI Tools Investment"
     }
   ]
 }

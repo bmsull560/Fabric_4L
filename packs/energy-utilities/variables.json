@@ -741,6 +741,116 @@
       ],
       "canonicalName": "Infrastructure_Cost",
       "name": "EV Infrastructure Annual Cost"
+    },
+    {
+      "variable_id": "eu-var-024",
+      "variable_name": "Capacity_Revenue",
+      "display_name": "Capacity Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from grid capacity services",
+      "canonicalName": "CapacityRevenue",
+      "name": "Capacity Revenue"
+    },
+    {
+      "variable_id": "eu-var-025",
+      "variable_name": "Ancillary_Revenue",
+      "display_name": "Ancillary Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from ancillary grid services",
+      "canonicalName": "AncillaryRevenue",
+      "name": "Ancillary Revenue"
+    },
+    {
+      "variable_id": "eu-var-026",
+      "variable_name": "Peak_Shave_Savings",
+      "display_name": "Peak Shave Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost savings from peak demand shaving",
+      "canonicalName": "PeakShaveSavings",
+      "name": "Peak Shave Savings"
+    },
+    {
+      "variable_id": "eu-var-027",
+      "variable_name": "Call_Center_Savings",
+      "display_name": "Call Center Savings",
+      "unit": "USD",
+      "type": "output",
+      "description": "Cost savings from reduced call center volume",
+      "canonicalName": "CallCenterSavings",
+      "name": "Call Center Savings"
+    },
+    {
+      "variable_id": "eu-var-028",
+      "variable_name": "Payment_Improvement_Value",
+      "display_name": "Payment Improvement Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from improved payment collection rates",
+      "canonicalName": "PaymentImprovementValue",
+      "name": "Payment Improvement Value"
+    },
+    {
+      "variable_id": "eu-var-029",
+      "variable_name": "EE_Program_Revenue",
+      "display_name": "EE Program Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from energy efficiency programs",
+      "canonicalName": "EeProgramRevenue",
+      "name": "EE Program Revenue"
+    },
+    {
+      "variable_id": "eu-var-030",
+      "variable_name": "Churn_Reduction_Value",
+      "display_name": "Churn Reduction Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from reduced customer churn",
+      "canonicalName": "ChurnReductionValue",
+      "name": "Churn Reduction Value"
+    },
+    {
+      "variable_id": "eu-var-031",
+      "variable_name": "Platform_Investment",
+      "display_name": "Platform Investment",
+      "unit": "USD",
+      "type": "input",
+      "description": "Annual investment in customer engagement platform",
+      "canonicalName": "PlatformInvestment",
+      "name": "Platform Investment"
+    },
+    {
+      "variable_id": "eu-var-032",
+      "variable_name": "Grid_Services_Revenue",
+      "display_name": "Grid Services Revenue",
+      "unit": "USD",
+      "type": "output",
+      "description": "Revenue from distributed energy resource grid services",
+      "canonicalName": "GridServicesRevenue",
+      "name": "Grid Services Revenue"
+    },
+    {
+      "variable_id": "eu-var-033",
+      "variable_name": "Customer_Acquisition_Value",
+      "display_name": "Customer Acquisition Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from new customer acquisition via DER programs",
+      "canonicalName": "CustomerAcquisitionValue",
+      "name": "Customer Acquisition Value"
+    },
+    {
+      "variable_id": "eu-var-034",
+      "variable_name": "Demand_Charge_Value",
+      "display_name": "Demand Charge Value",
+      "unit": "USD",
+      "type": "output",
+      "description": "Value from demand charge optimization",
+      "canonicalName": "DemandChargeValue",
+      "name": "Demand Charge Value"
     }
   ]
 }
