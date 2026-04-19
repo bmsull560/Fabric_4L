@@ -174,15 +174,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       // Clean up on failure
       authClient.clearOidcState();
+      sessionStorage.removeItem('postLoginRedirect');
+
+      // Categorize error for better UX
+      let authError: AuthError;
+      if (error instanceof AuthError) {
+        authError = error;
+      } else {
+        const errorMessage = String(error).toLowerCase();
+        if (errorMessage.includes('expired') || errorMessage.includes('timeout')) {
+          authError = new AuthError(
+            'Session expired. Please try logging in again.',
+            AuthErrorCategory.SESSION_EXPIRED
+          );
+        } else if (errorMessage.includes('state') || errorMessage.includes('csrf')) {
+          authError = new AuthError(
+            'Invalid session state. Please try logging in again.',
+            AuthErrorCategory.AUTHENTICATION
+          );
+        } else if (errorMessage.includes('provider') || errorMessage.includes('oidc')) {
+          authError = new AuthError(
+            'SSO provider error. Please contact your administrator.',
+            AuthErrorCategory.SSO_PROVIDER_ERROR
+          );
+        } else {
+          authError = new AuthError(
+            String(error) || 'Authentication failed. Please try again.',
+            AuthErrorCategory.AUTHENTICATION
+          );
+        }
+      }
 
       setAuthState({
         state: 'error',
         user: null,
         accessToken: null,
-        error: error instanceof AuthError ? error : new AuthError(
-          String(error),
-          AuthErrorCategory.AUTHENTICATION
-        ),
+        error: authError,
       });
 
       return false;

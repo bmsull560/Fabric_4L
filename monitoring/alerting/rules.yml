@@ -179,7 +179,7 @@ groups:
           description: "CPU usage exceeds 80% for more than 10 minutes"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-cpu-usage.md"
 
-      # High LLM cost rate alert
+      # High LLM cost rate alert (aggregated)
       - alert: HighLLMCostRate
         expr: sum(rate(vf_llm_cost_usd_total[1h])) > 50
         for: 15m
@@ -202,6 +202,18 @@ groups:
           escalation_policy: "pagerduty-immediate-finops"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
 
+      # Per-tenant LLM cost budget alert (Task 85)
+      - alert: HighLLMCostPerTenant
+        expr: |
+          increase(vf_llm_cost_usd_total[24h]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High LLM cost for tenant {{ $labels.tenant_id }}"
+          description: "LLM cost exceeded $100 in 24h window for tenant {{ $labels.tenant_id }} (current: {{ $value }} USD)"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-llm-cost.md"
+
       # Formula approval alert
       - alert: FormulaApprovalRequired
         expr: layer4_formula_approval_pending > 0
@@ -212,6 +224,18 @@ groups:
           summary: "Formula approval required"
           description: "One or more formulas are pending human approval"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/formula-approval.md"
+
+      # Audit write failure alert
+      - alert: AuditWriteFailure
+        expr: increase(value_fabric_audit_write_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Audit log write failures detected"
+          description: "Audit writes are failing, compliance trail may be incomplete"
+          escalation_policy: "pagerduty-immediate"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/audit-write-failure.md"
 
       # Ground truth staleness (L5)
       - alert: StaleGroundTruthObjects

@@ -68,9 +68,9 @@ except ImportError:
     SecurityConfig = None
 
 try:
-    from shared.identity.vault_check import check_vault_health
+    from shared.identity.vault_check import is_vault_healthy
 except ImportError:
-    check_vault_health = None
+    is_vault_healthy = None
 
 logger = logging.getLogger(__name__)
 
@@ -564,9 +564,9 @@ async def startup_event() -> None:
     # Production Vault smoke gate (fail fast before starting other resources)
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and check_vault_health:
+        if vault_addr and is_vault_healthy:
             logger.info("L2: Checking Vault connectivity at %s", vault_addr)
-            ok = await check_vault_health(vault_addr)
+            ok = await is_vault_healthy(vault_addr)
             if not ok:
                 logger.error("L2: %s", _VAULT_UNREACHABLE_ERROR)
                 raise RuntimeError(_VAULT_UNREACHABLE_ERROR)

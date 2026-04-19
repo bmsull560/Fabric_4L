@@ -408,6 +408,156 @@
         }
       }
     },
+    "/api/v1/ingestion/targets/{target_id}/decisions": {
+      "get": {
+        "summary": "Get Target Decisions",
+        "description": "Get recent crawl decisions for a target's jobs.\n\nReturns the most recent crawl decisions across all jobs\nfor this target, showing routing choices and outcomes.",
+        "operationId": "get_target_decisions_api_v1_ingestion_targets__target_id__decisions_get",
+        "parameters": [
+          {
+            "name": "target_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Target Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CrawlDecisionSummary"
+                  },
+                  "title": "Response Get Target Decisions Api V1 Ingestion Targets  Target Id  Decisions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion/jobs/{job_id}/router-report": {
+      "get": {
+        "summary": "Get Job Router Report",
+        "description": "Get routing quality report for a specific job.\n\nProvides metrics on routing accuracy, fallback rates,\nand performance characteristics for analysis.",
+        "operationId": "get_job_router_report_api_v1_ingestion_jobs__job_id__router_report_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouterQualityReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion/domains/{domain}/fallback-stats": {
+      "get": {
+        "summary": "Get Domain Fallback Stats",
+        "description": "Get fallback statistics for a specific domain.\n\nShows how often the router falls back to browser for this\ndomain, helping identify SPA-heavy sites or routing issues.",
+        "operationId": "get_domain_fallback_stats_api_v1_ingestion_domains__domain__fallback_stats_get",
+        "parameters": [
+          {
+            "name": "domain",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Domain"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 30,
+              "minimum": 1,
+              "default": 7,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainFallbackStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/ingestion/jobs": {
       "get": {
         "summary": "List Jobs",
@@ -1757,6 +1907,74 @@
         "title": "ComponentHealth",
         "description": "Component health status."
       },
+      "CrawlDecisionSummary": {
+        "properties": {
+          "decision_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Decision Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "router_decision": {
+            "type": "string",
+            "title": "Router Decision"
+          },
+          "router_rule": {
+            "type": "string",
+            "title": "Router Rule"
+          },
+          "final_path": {
+            "type": "string",
+            "title": "Final Path"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "fetch_time_ms": {
+            "type": "integer",
+            "title": "Fetch Time Ms"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision_id",
+          "url",
+          "router_decision",
+          "router_rule",
+          "final_path",
+          "fallback_reason",
+          "fetch_time_ms",
+          "created_at"
+        ],
+        "title": "CrawlDecisionSummary",
+        "description": "Summary of a crawl decision for API responses."
+      },
+      "CrawlPath": {
+        "type": "string",
+        "enum": [
+          "fast",
+          "browser",
+          "fast_fallback"
+        ],
+        "title": "CrawlPath",
+        "description": "Ingestion path selection for a scraping target.\n\nControls whether the crawler uses HTTPX fast path,\nPlaywright browser automation, or hybrid fallback."
+      },
       "CreateProxyPoolRequest": {
         "properties": {
           "name": {
@@ -1812,6 +2030,10 @@
             "$ref": "#/components/schemas/TargetType",
             "default": "SINGLE_PAGE"
           },
+          "crawl_path": {
+            "$ref": "#/components/schemas/CrawlPath",
+            "default": "browser"
+          },
           "extraction_config": {
             "$ref": "#/components/schemas/ExtractionConfigInput"
           },
@@ -1863,6 +2085,63 @@
         ],
         "title": "CreateTargetRequest",
         "description": "Request to create a scraping target."
+      },
+      "DomainFallbackStatsResponse": {
+        "properties": {
+          "domain": {
+            "type": "string",
+            "title": "Domain"
+          },
+          "total_decisions": {
+            "type": "integer",
+            "title": "Total Decisions"
+          },
+          "fast_count": {
+            "type": "integer",
+            "title": "Fast Count"
+          },
+          "browser_count": {
+            "type": "integer",
+            "title": "Browser Count"
+          },
+          "fallback_count": {
+            "type": "integer",
+            "title": "Fallback Count"
+          },
+          "fallback_rate": {
+            "type": "number",
+            "title": "Fallback Rate"
+          },
+          "top_fallback_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Top Fallback Reasons"
+          },
+          "avg_fast_duration_ms": {
+            "type": "number",
+            "title": "Avg Fast Duration Ms"
+          },
+          "avg_browser_duration_ms": {
+            "type": "number",
+            "title": "Avg Browser Duration Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "domain",
+          "total_decisions",
+          "fast_count",
+          "browser_count",
+          "fallback_count",
+          "fallback_rate",
+          "top_fallback_reasons",
+          "avg_fast_duration_ms",
+          "avg_browser_duration_ms"
+        ],
+        "title": "DomainFallbackStatsResponse",
+        "description": "Fallback statistics for a domain."
       },
       "ExecuteTargetRequest": {
         "properties": {
@@ -2859,6 +3138,88 @@
         "title": "RetryJobRequest",
         "description": "Request to retry a job."
       },
+      "RouterQualityReportResponse": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Job Id"
+          },
+          "total_urls": {
+            "type": "integer",
+            "title": "Total Urls"
+          },
+          "fast_path_count": {
+            "type": "integer",
+            "title": "Fast Path Count"
+          },
+          "browser_path_count": {
+            "type": "integer",
+            "title": "Browser Path Count"
+          },
+          "fallback_count": {
+            "type": "integer",
+            "title": "Fallback Count"
+          },
+          "fallback_rate": {
+            "type": "number",
+            "title": "Fallback Rate"
+          },
+          "quality_gate_accuracy": {
+            "type": "number",
+            "title": "Quality Gate Accuracy"
+          },
+          "top_router_rules": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Top Router Rules"
+          },
+          "avg_fetch_time_ms": {
+            "type": "number",
+            "title": "Avg Fetch Time Ms"
+          },
+          "slowest_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowest Url"
+          },
+          "fastest_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fastest Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "total_urls",
+          "fast_path_count",
+          "browser_path_count",
+          "fallback_count",
+          "fallback_rate",
+          "quality_gate_accuracy",
+          "top_router_rules",
+          "avg_fetch_time_ms",
+          "slowest_url",
+          "fastest_url"
+        ],
+        "title": "RouterQualityReportResponse",
+        "description": "Quality metrics for a job's routing decisions."
+      },
       "ScheduleInput": {
         "properties": {
           "enabled": {
@@ -3129,6 +3490,10 @@
             ],
             "title": "Url Pattern"
           },
+          "crawl_path": {
+            "type": "string",
+            "title": "Crawl Path"
+          },
           "extraction_config": {
             "additionalProperties": true,
             "type": "object",
@@ -3212,6 +3577,7 @@
           "organization_id",
           "description",
           "url_pattern",
+          "crawl_path",
           "extraction_config",
           "browser_config",
           "schedule",
@@ -3382,6 +3748,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/TargetType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "crawl_path": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrawlPath"
               },
               {
                 "type": "null"

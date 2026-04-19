@@ -15,6 +15,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
+# Import Prometheus metrics for LLM cost tracking (Task 85)
+try:
+    from ..metrics.prometheus_metrics import get_metrics as get_prometheus_metrics
+
+    PROMETHEUS_AVAILABLE = True
+except ImportError:
+    PROMETHEUS_AVAILABLE = False
+    get_prometheus_metrics = None
+
 # OpenAI import with graceful fallback
 try:
     from openai import AsyncOpenAI
@@ -188,6 +197,7 @@ class LLMClient:
             Tuple of (response, cost_record)
         """
         # Resolve model from registry if enabled
+        effective_model = self.model
         if self._resolve_model_from_registry and self._registry_tenant_id:
             try:
                 from ..integration.model_registry_client import ModelRegistryClient
@@ -199,7 +209,8 @@ class LLMClient:
                         api_token=self._registry_api_token,
                     )
                     if resolved_model:
-                        self.model = resolved_model
+                        effective_model = resolved_model
+                        self.model = resolved_model  # Update cached model for subsequent calls
             except Exception as exc:
                 # Log but don't fail - fall back to default model
                 logging.getLogger(__name__).warning(
@@ -295,6 +306,7 @@ class LLMClient:
                         endpoint=endpoint,
                         input_tokens=response.usage.prompt_tokens if response.usage else 0,
                         output_tokens=response.usage.completion_tokens if response.usage else 0,
+                        tenant_id=self._registry_tenant_id,
                     )
                     self._cost_records.append(cost_record)
 
@@ -348,6 +360,7 @@ class LLMClient:
                         endpoint=endpoint,
                         input_tokens=response.usage.prompt_tokens if response.usage else 0,
                         output_tokens=response.usage.completion_tokens if response.usage else 0,
+                        tenant_id=self._registry_tenant_id,
                     )
                     self._cost_records.append(cost_record)
 
@@ -406,6 +419,7 @@ class LLMClient:
                         endpoint=endpoint,
                         input_tokens=usage.input_tokens,
                         output_tokens=usage.output_tokens,
+                        tenant_id=self._registry_tenant_id,
                     )
                     self._cost_records.append(cost_record)
 
@@ -427,8 +441,9 @@ class LLMClient:
         endpoint: str,
         input_tokens: int,
         output_tokens: int,
+        tenant_id: str | None = None,
     ) -> CostRecord:
-        """Calculate USD cost from token usage."""
+        """Calculate USD cost from token usage and record Prometheus metrics (Task 85)."""
 
         # Get pricing for model
         provider_pricing = PRICING.get(provider, {})
@@ -438,6 +453,33 @@ class LLMClient:
         input_cost = (input_tokens / 1_000_000) * model_pricing["input"]
         output_cost = (output_tokens / 1_000_000) * model_pricing["output"]
         total_cost = input_cost + output_cost
+
+        # Record Prometheus metrics (Task 85)
+        if PROMETHEUS_AVAILABLE and get_prometheus_metrics:
+            metrics = get_prometheus_metrics()
+            if metrics:
+                # Record cost in USD
+                metrics.record_llm_cost(
+                    provider=provider,
+                    model=model,
+                    tenant_id=tenant_id or "unknown",
+                    cost_usd=total_cost,
+                )
+                # Record token counts
+                if input_tokens > 0:
+                    metrics.record_llm_tokens(
+                        provider=provider,
+                        model=model,
+                        token_type="prompt",
+                        count=input_tokens,
+                    )
+                if output_tokens > 0:
+                    metrics.record_llm_tokens(
+                        provider=provider,
+                        model=model,
+                        token_type="completion",
+                        count=output_tokens,
+                    )
 
         return CostRecord(
             extraction_job_id=extraction_job_id,

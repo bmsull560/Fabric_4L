@@ -1,0 +1,46 @@
+name: Runbook Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'monitoring/alerting/rules.yml'
+      - 'docs/runbooks/**'
+      - '.github/scripts/validate-runbooks.py'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'monitoring/alerting/rules.yml'
+      - 'docs/runbooks/**'
+      - '.github/scripts/validate-runbooks.py'
+
+jobs:
+  validate-runbooks:
+    name: Validate Runbook Files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate runbooks
+        run: |
+          python .github/scripts/validate-runbooks.py --verbose
+
+      - name: Comment PR with results (on failure)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Runbook Validation Failed**\n\nOne or more alerts in `monitoring/alerting/rules.yml` reference missing runbook files, or runbooks are missing required sections (Symptoms, Diagnosis, Remediation, Escalation).\n\nSee workflow logs for details.'
+            })

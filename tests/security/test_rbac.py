@@ -7,6 +7,10 @@ Validates that:
 3. Role escalation attempts are blocked
 """
 
+import time
+from typing import Callable
+
+import jwt as jwt_lib
 import pytest
 from fastapi.testclient import TestClient
 
@@ -176,10 +180,8 @@ class TestPermissionGranularity:
 class TestJWTTamperingResistance:
     """Test JWT tampering and forgery resistance."""
 
-    def test_modified_role_claim_rejected(self, client: TestClient, jwt_encoder):
+    def test_modified_role_claim_rejected(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """P0: JWT with modified role claim is rejected."""
-        import jwt as jwt_lib
-
         # Create a valid token for standard user
         original_payload = {
             "sub": "user-123",
@@ -189,7 +191,8 @@ class TestJWTTamperingResistance:
         original_token = jwt_encoder(original_payload)
 
         # Decode, modify role, re-encode (without proper signature)
-        decoded = jwt_lib.decode(original_token, "test-secret-key", algorithms=["HS256"])
+        from tests.security.conftest import TEST_JWT_SECRET
+        decoded = jwt_lib.decode(original_token, TEST_JWT_SECRET, algorithms=["HS256"])
         decoded["role"] = "admin"  # Attempt privilege escalation
 
         # Re-encode with different secret (simulating tampering)
@@ -201,10 +204,8 @@ class TestJWTTamperingResistance:
         )
         assert response.status_code in [401, 403], "Tampered JWT should be rejected"
 
-    def test_modified_tenant_claim_rejected(self, client: TestClient, jwt_encoder):
+    def test_modified_tenant_claim_rejected(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """P0: JWT with modified tenant claim is rejected."""
-        import jwt as jwt_lib
-
         # Create valid token for tenant-a
         original_payload = {
             "sub": "user-123",
@@ -214,7 +215,8 @@ class TestJWTTamperingResistance:
         original_token = jwt_encoder(original_payload)
 
         # Decode and modify tenant
-        decoded = jwt_lib.decode(original_token, "test-secret-key", algorithms=["HS256"])
+        from tests.security.conftest import TEST_JWT_SECRET
+        decoded = jwt_lib.decode(original_token, TEST_JWT_SECRET, algorithms=["HS256"])
         decoded["tenant_id"] = "tenant-b"  # Attempt cross-tenant access
 
         # Re-encode with tampered payload
@@ -228,9 +230,6 @@ class TestJWTTamperingResistance:
 
     def test_expired_token_rejected(self, client: TestClient):
         """P0: Expired JWT token is rejected."""
-        import jwt as jwt_lib
-        import time
-
         # Create expired token
         expired_payload = {
             "sub": "user-123",
@@ -239,7 +238,8 @@ class TestJWTTamperingResistance:
             "exp": int(time.time()) - 3600,  # Expired 1 hour ago
             "iat": int(time.time()) - 7200,
         }
-        expired_token = jwt_lib.encode(expired_payload, "test-secret-key", algorithm="HS256")
+        from tests.security.conftest import TEST_JWT_SECRET
+        expired_token = jwt_lib.encode(expired_payload, TEST_JWT_SECRET, algorithm="HS256")
 
         response = client.get(
             "/api/v1/entities",
@@ -247,10 +247,8 @@ class TestJWTTamperingResistance:
         )
         assert response.status_code == 401, "Expired token should be rejected"
 
-    def test_invalid_signature_rejected(self, client: TestClient, jwt_encoder):
+    def test_invalid_signature_rejected(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """P0: JWT with invalid signature is rejected."""
-        import jwt as jwt_lib
-
         # Create valid payload
         payload = {
             "sub": "user-123",
@@ -269,8 +267,6 @@ class TestJWTTamperingResistance:
 
     def test_forged_token_with_valid_structure_rejected(self, client: TestClient):
         """P0: Completely forged JWT with valid structure but no valid signature is rejected."""
-        import jwt as jwt_lib
-
         # Create a forged admin token from scratch
         forged_payload = {
             "sub": "attacker",
@@ -320,9 +316,10 @@ class TestJWTTamperingResistance:
         # Sign with HMAC (trying to trick RS256 verification)
         import hmac
         import hashlib
+        from tests.security.conftest import TEST_JWT_SECRET
         message = f"{header}.{payload}"
         signature = base64.urlsafe_b64encode(
-            hmac.new(b"test-secret-key", message.encode(), hashlib.sha256).digest()
+            hmac.new(TEST_JWT_SECRET.encode(), message.encode(), hashlib.sha256).digest()
         ).decode().strip("=")
 
         confused_token = f"{header}.{payload}.{signature}"

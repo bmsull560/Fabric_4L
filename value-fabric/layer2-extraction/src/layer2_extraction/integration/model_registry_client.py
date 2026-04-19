@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -19,12 +19,12 @@ class CachedModel:
     """Cached model entry with TTL."""
 
     model_name: str
-    cached_at: datetime = field(default_factory=datetime.utcnow)
+    cached_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     ttl_seconds: int = 300  # 5 minute default TTL
 
     def is_expired(self) -> bool:
         """Check if cache entry has expired."""
-        return datetime.utcnow() - self.cached_at > timedelta(seconds=self.ttl_seconds)
+        return datetime.now(UTC) - self.cached_at > timedelta(seconds=self.ttl_seconds)
 
 
 class ModelRegistryClient:
@@ -42,6 +42,8 @@ class ModelRegistryClient:
             api_token="secret-token"
         )
     """
+
+    _MAX_CACHE_SIZE = 100  # Prevent unbounded cache growth
 
     def __init__(
         self,
@@ -86,7 +88,18 @@ class ModelRegistryClient:
         return None
 
     def _set_cached(self, tenant_id: str, provider: str, model_name: str) -> None:
-        """Cache model resolution result."""
+        """Cache model resolution result with LRU eviction."""
+        # Evict oldest entries if cache is at max size
+        if len(self._cache) >= self._MAX_CACHE_SIZE:
+            # Remove oldest 20% of entries (LRU approximation)
+            entries_to_remove = max(1, self._MAX_CACHE_SIZE // 5)
+            oldest_keys = sorted(
+                self._cache.keys(),
+                key=lambda k: self._cache[k].cached_at
+            )[:entries_to_remove]
+            for key in oldest_keys:
+                del self._cache[key]
+
         key = self._cache_key(tenant_id, provider)
         self._cache[key] = CachedModel(
             model_name=model_name,
@@ -102,6 +115,8 @@ class ModelRegistryClient:
         else:
             return os.getenv("LLM_MODEL", "gpt-4o")
 
+    _VALID_PROVIDERS = {"openai", "anthropic"}
+
     async def resolve_model(
         self,
         tenant_id: str,
@@ -114,35 +129,101 @@ class ModelRegistryClient:
         environment variables on any failure.
 
         Args:
-            tenant_id: Tenant ID for model lookup
+            tenant_id: Tenant ID for model lookup (required, non-empty)
             provider: Model provider (openai, anthropic)
             api_token: Optional API token for L4 authentication
 
         Returns:
             Model name (e.g., "gpt-4o", "claude-3-5-sonnet")
+
+        Raises:
+            ValueError: If tenant_id is empty or provider is invalid
         """
+        # Input validation
+        if not tenant_id or not tenant_id.strip():
+            raise ValueError("tenant_id is required and cannot be empty")
+
+        provider = provider.lower().strip()
+        if provider not in self._VALID_PROVIDERS:
+            raise ValueError(
+                f"Invalid provider '{provider}'. Must be one of: {', '.join(self._VALID_PROVIDERS)}"
+            )
+
         # Check cache first
         cached = self._get_cached(tenant_id, provider)
         if cached:
             return cached
 
-        # Attempt registry lookup
-        try:
-            model = await self._fetch_from_registry(tenant_id, provider, api_token)
-            if model:
-                self._set_cached(tenant_id, provider, model)
-                return model
-        except Exception as exc:
-            # Log warning but don't fail - fall back to env var
-            import logging
-
-            logging.getLogger(__name__).warning(
-                f"Failed to resolve model from registry for tenant {tenant_id}: {exc}. "
-                f"Falling back to environment variable."
-            )
+        # Attempt registry lookup with retry logic
+        model = await self._fetch_with_retry(tenant_id, provider, api_token)
+        if model:
+            self._set_cached(tenant_id, provider, model)
+            return model
 
         # Fallback to environment variable
         return self._get_fallback_model(provider)
+
+    async def _fetch_with_retry(
+        self,
+        tenant_id: str,
+        provider: str,
+        api_token: str | None = None,
+        max_retries: int = 3,
+    ) -> str | None:
+        """Fetch active model with exponential backoff retry logic.
+
+        Retries on transient errors (5xx, timeouts, connection errors).
+        Falls back to environment variable on permanent failures.
+
+        Args:
+            tenant_id: Tenant ID
+            provider: Model provider
+            api_token: Optional API token
+            max_retries: Maximum number of retry attempts
+
+        Returns:
+            Model name or None if not found
+        """
+        import asyncio
+        import logging
+        import random
+
+        logger = logging.getLogger(__name__)
+        last_exception: Exception | None = None
+
+        for attempt in range(max_retries):
+            try:
+                return await self._fetch_from_registry(tenant_id, provider, api_token)
+            except httpx.HTTPStatusError as exc:
+                # Retry on 5xx server errors, fail fast on 4xx client errors
+                if exc.response.status_code >= 500:
+                    last_exception = exc
+                    wait_time = (2 ** attempt) + random.uniform(0, 1)
+                    logger.warning(
+                        f"Registry request failed (attempt {attempt + 1}/{max_retries}): "
+                        f"{exc}. Retrying in {wait_time:.1f}s..."
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    # 4xx errors are client errors, don't retry
+                    logger.warning(f"Registry request failed with client error: {exc}")
+                    break
+            except (httpx.TimeoutException, httpx.ConnectError) as exc:
+                # Network/transient errors should be retried
+                last_exception = exc
+                wait_time = (2 ** attempt) + random.uniform(0, 1)
+                logger.warning(
+                    f"Registry connection error (attempt {attempt + 1}/{max_retries}): "
+                    f"{exc}. Retrying in {wait_time:.1f}s..."
+                )
+                await asyncio.sleep(wait_time)
+
+        # All retries exhausted or non-retryable error
+        logger.error(
+            f"Failed to resolve model from registry for tenant {tenant_id} after "
+            f"{max_retries} attempts: {last_exception}. Falling back to environment variable."
+        )
+        return None
 
     async def _fetch_from_registry(
         self,
@@ -180,7 +261,7 @@ class ModelRegistryClient:
             return None
         else:
             response.raise_for_status()
-            return None
+            return None  # pragma: no cover
 
     async def close(self) -> None:
         """Close HTTP client connections and clear cache."""

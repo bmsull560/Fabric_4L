@@ -679,6 +679,85 @@
       ],
       "title": "Request Latency",
       "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "id": 20,
+      "panels": [],
+      "title": "LLM Cost Observability (Task 85)",
+      "type": "row"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars"
+          },
+          "unit": "currencyUSD"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "id": 21,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (tenant_id) (increase(vf_llm_cost_usd_total[24h]))",
+          "legendFormat": "Tenant: {{ tenant_id }}",
+          "refId": "A"
+        }
+      ],
+      "title": "LLM Cost by Tenant (24h)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line"
+          },
+          "unit": "none"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "id": 22,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (provider, model, type) (rate(vf_llm_tokens_total[5m]))",
+          "legendFormat": "{{ provider }}/{{ model }} - {{ type }}",
+          "refId": "A"
+        }
+      ],
+      "title": "LLM Token Rate by Provider/Model",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",

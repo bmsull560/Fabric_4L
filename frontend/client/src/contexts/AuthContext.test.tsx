@@ -488,6 +488,9 @@ describe('AuthProvider', () => {
         const auth = useAuthContext();
         return (
           <div>
+            <div data-testid="loading">{auth.isLoading ? 'loading' : 'ready'}</div>
+            <div data-testid="authenticated">{auth.isAuthenticated ? 'authenticated' : 'unauthenticated'}</div>
+            <div data-testid="user-email">{auth.user?.email || 'no-user'}</div>
             <button data-testid="dev-bypass-btn" onClick={auth.devBypass}>
               Dev Bypass
             </button>
@@ -503,6 +506,7 @@ describe('AuthProvider', () => {
         { wrapper }
       );
 
+      // Wait for initial ready state
       await waitFor(() => {
         expect(screen.getByTestId('loading')).toHaveTextContent('ready');
       });

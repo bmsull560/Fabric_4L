@@ -147,6 +147,22 @@ class PrometheusMetrics:
             registry=self.config.registry,
         )
 
+        # LLM cost tracking (Task 85)
+        self._metrics["llm_cost_usd_total"] = Counter(
+            "vf_llm_cost_usd_total",
+            "Total LLM API cost in USD",
+            ["provider", "model", "tenant_id"],
+            registry=self.config.registry,
+        )
+
+        # LLM token tracking (Task 85)
+        self._metrics["llm_tokens_total"] = Counter(
+            "vf_llm_tokens_total",
+            "Total LLM tokens consumed",
+            ["provider", "model", "type"],  # type: prompt|completion
+            registry=self.config.registry,
+        )
+
         # Build info
         self._metrics["build_info"] = Info(
             f"{prefix}build_info", "Build information", registry=self.config.registry
@@ -198,6 +214,34 @@ class PrometheusMetrics:
     def increment_errors(self, error_type: str, component: str) -> None:
         if self.config.enabled:
             self._metrics["errors_total"].labels(error_type=error_type, component=component).inc()
+
+    def record_llm_cost(self, provider: str, model: str, tenant_id: str, cost_usd: float) -> None:
+        """Record LLM API cost (Task 85).
+
+        Args:
+            provider: LLM provider name (e.g., 'openai', 'anthropic')
+            model: Model name (e.g., 'gpt-4', 'claude-3-opus')
+            tenant_id: Tenant identifier
+            cost_usd: Cost in USD
+        """
+        if self.config.enabled:
+            self._metrics["llm_cost_usd_total"].labels(
+                provider=provider, model=model, tenant_id=tenant_id or "unknown"
+            ).inc(cost_usd)
+
+    def record_llm_tokens(self, provider: str, model: str, token_type: str, count: int) -> None:
+        """Record LLM token consumption (Task 85).
+
+        Args:
+            provider: LLM provider name
+            model: Model name
+            token_type: 'prompt' or 'completion'
+            count: Number of tokens
+        """
+        if self.config.enabled:
+            self._metrics["llm_tokens_total"].labels(
+                provider=provider, model=model, type=token_type
+            ).inc(count)
 
     def get_metrics(self) -> str:
         """Get Prometheus metrics output."""

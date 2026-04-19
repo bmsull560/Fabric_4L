@@ -24,9 +24,9 @@ except ImportError:
     SecurityConfig = None
 
 try:
-    from shared.identity.vault_check import check_vault_health
+    from shared.identity.vault_check import is_vault_healthy
 except ImportError:
-    check_vault_health = None
+    is_vault_healthy = None
 
 from ..config import get_settings
 from ..database import close_db, init_db
@@ -69,9 +69,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and check_vault_health:
+        if vault_addr and is_vault_healthy:
             logger.info("L5: Checking Vault connectivity at %s", vault_addr)
-            ok = await check_vault_health(vault_addr)
+            ok = await is_vault_healthy(vault_addr)
             if not ok:
                 logger.error("L5: Vault unreachable — cannot start in production without secrets backend")
                 raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")

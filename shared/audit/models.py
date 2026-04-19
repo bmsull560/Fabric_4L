@@ -23,6 +23,9 @@ class AuditAction(str, Enum):
     WORKFLOW_START = "workflow_start"
     WORKFLOW_COMPLETE = "workflow_complete"
     WORKFLOW_FAIL = "workflow_fail"
+    FEATURE_FLAG_CREATED = "feature_flag_created"
+    FEATURE_FLAG_UPDATED = "feature_flag_updated"
+    FEATURE_FLAG_DELETED = "feature_flag_deleted"
 
 
 class AuditOutcome(str, Enum):

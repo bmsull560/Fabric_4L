@@ -107,9 +107,21 @@ def redis_client() -> Generator:
 
 @pytest.fixture
 def client() -> TestClient:
-    """TestClient fixture - overridden from root conftest."""
+    """TestClient fixture - L1 ingestion API client for security tests."""
+    import sys
+    from pathlib import Path
+
+    # Add L1 src to path for direct imports (matches pattern in test_model_registry_integration.py)
+    l1_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer1-ingestion" / "src")
+    if l1_src not in sys.path:
+        sys.path.insert(0, l1_src)
+
     try:
-        from layer1_ingestion.src.api.main import app
+        from api.main import app
         return TestClient(app)
     except ImportError:
         pytest.skip("FastAPI app not available for testing")
+    finally:
+        # Cleanup: remove path modification to prevent isolation leakage
+        if l1_src in sys.path:
+            sys.path.remove(l1_src)

@@ -8,7 +8,12 @@
  * 4. Redirect browser to IdP (Google, Azure AD, Okta, etc.)
  * 5. IdP redirects back to /login/callback with code+state
  * 6. Frontend exchanges code for JWT via backend callback
- * 7. Store JWT, redirect to /home
+ * 7. Store JWT, redirect to original route (or /home)
+ * 
+ * Post-Login Redirect Preservation:
+ * - Captures `?redirect=` query param on initial load
+ * - Stores intended destination before IdP redirect
+ * - Restores to original route after successful callback
  */
 
 import { useEffect, useState } from 'react';
@@ -21,6 +26,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, LogIn, AlertCircle } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { useI18n } from "@/i18n";
+import { SSOButtons } from '../components/auth/SSOButtons';
 
 export default function Login() {
   const { t } = useI18n();
@@ -37,6 +43,12 @@ export default function Login() {
     const params = new URLSearchParams(search);
     const code = params.get('code');
     const state = params.get('state');
+    const redirect = params.get('redirect');
+
+    // Store intended destination before initiating login
+    if (redirect && !code) {
+      sessionStorage.setItem('postLoginRedirect', redirect);
+    }
 
     if (code && state) {
       // Handle OIDC callback
@@ -44,10 +56,12 @@ export default function Login() {
     }
   }, [search]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (preserve original destination)
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
-      navigate('/home');
+      const redirect = sessionStorage.getItem('postLoginRedirect');
+      sessionStorage.removeItem('postLoginRedirect');
+      navigate(redirect || '/home');
     }
   }, [isAuthenticated, isLoading, navigate]);
 
@@ -58,7 +72,10 @@ export default function Login() {
     try {
       const success = await handleCallback(code, state);
       if (success) {
-        navigate('/home');
+        // Restore post-login redirect after successful callback
+        const redirect = sessionStorage.getItem('postLoginRedirect');
+        sessionStorage.removeItem('postLoginRedirect');
+        navigate(redirect || '/home');
       } else {
         setError(t("login.errors.authFailed"));
       }
@@ -158,6 +175,9 @@ export default function Login() {
               )}
             </Button>
           </form>
+
+          {/* SSO Providers — Gated until Task 69 backend completion */}
+          <SSOButtons className="mt-6" enabled={false} />
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>{t("login.footer")}</p>

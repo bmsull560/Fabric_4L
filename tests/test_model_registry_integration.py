@@ -175,7 +175,7 @@ class TestModelRegistryClient:
     @pytest.mark.asyncio
     async def test_cached_model_expiration_logic(self) -> None:
         """Test the CachedModel expiration logic directly."""
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
         # Fresh cache entry
         fresh = CachedModel(model_name="gpt-4", ttl_seconds=300)
@@ -184,10 +184,53 @@ class TestModelRegistryClient:
         # Expired cache entry (created 10 minutes ago)
         expired = CachedModel(
             model_name="gpt-4",
-            cached_at=datetime.utcnow() - timedelta(minutes=10),
+            cached_at=datetime.now(UTC) - timedelta(minutes=10),
             ttl_seconds=300,
         )
         assert expired.is_expired()
+
+
+    @pytest.mark.asyncio
+    async def test_input_validation_empty_tenant_id(self) -> None:
+        """Test that empty tenant_id raises ValueError."""
+        client = ModelRegistryClient()
+
+        with pytest.raises(ValueError, match="tenant_id is required"):
+            await client.resolve_model(tenant_id="", provider="openai")
+
+        with pytest.raises(ValueError, match="tenant_id is required"):
+            await client.resolve_model(tenant_id="   ", provider="openai")
+
+    @pytest.mark.asyncio
+    async def test_input_validation_invalid_provider(self) -> None:
+        """Test that invalid provider raises ValueError."""
+        client = ModelRegistryClient()
+        tenant_id = str(uuid4())
+
+        with pytest.raises(ValueError, match="Invalid provider"):
+            await client.resolve_model(tenant_id=tenant_id, provider="invalid")
+
+        with pytest.raises(ValueError, match="Invalid provider"):
+            await client.resolve_model(tenant_id=tenant_id, provider="google")
+
+    @pytest.mark.asyncio
+    async def test_provider_case_insensitive(self, tenant_id: str) -> None:
+        """Test that provider names are case-insensitive."""
+        with respx.mock:
+            respx.get("http://test-registry:8000/v1/models/active").mock(
+                return_value=httpx.Response(404)
+            )
+
+            client = ModelRegistryClient(base_url="http://test-registry:8000")
+
+            # Should not raise - case is normalized
+            with patch.dict(os.environ, {"L2_OPENAI_MODEL": "gpt-4o"}):
+                model = await client.resolve_model(tenant_id=tenant_id, provider="OPENAI")
+                assert model == "gpt-4o"
+
+            with patch.dict(os.environ, {"L2_ANTHROPIC_MODEL": "claude-3"}):
+                model = await client.resolve_model(tenant_id=tenant_id, provider="Anthropic")
+                assert model == "claude-3"
 
 
 class TestLLMClientRegistryIntegration:

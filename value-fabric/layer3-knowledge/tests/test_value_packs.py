@@ -25,31 +25,37 @@ from src.api.routes.value_packs import (
     _merge_variables,
     _update_pack_relationships,
     _update_relationships,
-    _validate_uuid,
+    _validate_pack_id,
     execute_pack,
 )
 
 
-class TestValidateUUID:
-    """Tests for UUID validation helper."""
+class TestValidatePackId:
+    """Tests for pack ID validation helper (UUIDs and slug-style IDs)."""
 
     def test_valid_uuid(self):
         """Should not raise for valid UUID."""
         valid_id = str(uuid.uuid4())
         # Should not raise
-        _validate_uuid(valid_id)
+        _validate_pack_id(valid_id)
 
-    def test_invalid_uuid(self):
-        """Should raise HTTPException 400 for invalid UUID."""
+    def test_valid_slug_id(self):
+        """Should not raise for valid slug-style pack ID."""
+        valid_slug = "manufacturing-v1"
+        # Should not raise
+        _validate_pack_id(valid_slug)
+
+    def test_invalid_pack_id(self):
+        """Should raise HTTPException 400 for invalid pack ID."""
         with pytest.raises(HTTPException) as exc_info:
-            _validate_uuid("not-a-uuid")
+            _validate_pack_id("not@valid#id")
         assert exc_info.value.status_code == 400
         assert "Invalid pack_id format" in exc_info.value.detail
 
-    def test_empty_uuid(self):
+    def test_empty_pack_id(self):
         """Should raise HTTPException for empty string."""
         with pytest.raises(HTTPException) as exc_info:
-            _validate_uuid("")
+            _validate_pack_id("")
         assert exc_info.value.status_code == 400
 
 

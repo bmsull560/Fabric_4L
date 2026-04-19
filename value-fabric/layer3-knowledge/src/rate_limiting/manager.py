@@ -33,6 +33,7 @@ class RateLimitScope(str, Enum):
     API_KEY = "api_key"
     IP = "ip"
     ENDPOINT = "endpoint"
+    TENANT = "tenant"  # Task 84: Per-tenant rate limiting
     CUSTOM = "custom"
 
 

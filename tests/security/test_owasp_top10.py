@@ -5,8 +5,19 @@ Complements automated ZAP scanning with business-logic-aware tests
 for categories ZAP cannot fully validate: A01-A04.
 """
 
+import re
+import time
+from typing import Callable
+
+import jwt as jwt_lib
 import pytest
 from fastapi.testclient import TestClient
+
+# UUID pattern for IDOR prevention tests
+UUID_PATTERN = re.compile(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    re.IGNORECASE
+)
 
 
 class TestBrokenAccessControl:
@@ -42,7 +53,7 @@ class TestBrokenAccessControl:
                 f"IDOR vulnerability: Tenant B accessed Tenant A's entity {entity_id}"
             )
 
-    def test_idor_prevention_via_uuid_randomization(self, client: TestClient, tenant_a_token):
+    def test_idor_prevention_via_uuid_randomization(self, client: TestClient, tenant_a_token: str):
         """P0: Entity IDs use unpredictable UUIDs, not sequential integers."""
         # Create multiple entities
         entity_ids = []
@@ -56,15 +67,9 @@ class TestBrokenAccessControl:
                 entity_ids.append(response.json().get("id"))
 
         # Verify IDs are UUIDs (not sequential)
-        import re
-        uuid_pattern = re.compile(
-            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-            re.IGNORECASE
-        )
-
         for entity_id in entity_ids:
             if entity_id:
-                assert uuid_pattern.match(str(entity_id)), (
+                assert UUID_PATTERN.match(str(entity_id)), (
                     f"Entity ID {entity_id} is not a UUID - vulnerable to ID enumeration"
                 )
 
@@ -87,7 +92,7 @@ class TestBrokenAccessControl:
                 f"Path traversal not blocked for payload: {payload}"
             )
 
-    def test_http_method_not_allowed_for_role(self, client: TestClient, jwt_encoder):
+    def test_http_method_not_allowed_for_role(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """P0: HTTP method restrictions enforced per role."""
         read_only_token = jwt_encoder({
             "sub": "read-only",
@@ -183,10 +188,8 @@ class TestCryptographicFailures:
                     f"API key hash length {len(key_hash)} != 64 - may not be HMAC-SHA256"
                 )
 
-    def test_jwt_uses_secure_algorithm(self, client: TestClient, jwt_encoder):
+    def test_jwt_uses_secure_algorithm(self, client: TestClient, jwt_encoder: Callable[[dict], str]):
         """P0: JWT tokens use secure algorithm (HS256 or RS256)."""
-        import jwt as jwt_lib
-
         # Create and decode a token to check algorithm
         token = jwt_encoder({"sub": "test", "role": "standard"})
         header = jwt_lib.get_unverified_header(token)
@@ -350,8 +353,6 @@ class TestInsecureDesign:
 
     def test_rate_limiting_enforced(self, client: TestClient, standard_user_token):
         """P0: Rate limiting prevents brute force and abuse."""
-        import time
-
         # Make rapid requests to trigger rate limit
         responses = []
         for i in range(20):
@@ -448,8 +449,6 @@ class TestInsecureDesign:
 
     def test_business_logic_timing_attack_mitigation(self, client: TestClient):
         """P0: Authentication timing is constant to prevent user enumeration."""
-        import time
-
         # Time responses for existing vs non-existing users
         existing_user_times = []
         nonexistent_user_times = []

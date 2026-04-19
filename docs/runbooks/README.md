@@ -18,20 +18,20 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 | **PostgresUnreachable** | [postgres-unreachable.md](postgres-unreachable.md) | critical | ✅ New |
 | **RedisUnreachable** | [redis-unreachable.md](redis-unreachable.md) | warning | ✅ New |
 | **LLMProviderOutage** | [llm-provider-outage.md](llm-provider-outage.md) | warning | ✅ New |
-| DiskSpaceLow | [disk-space-low.md](disk-space-low.md) | warning | |
-| DiskSpaceCritical | [disk-space-critical.md](disk-space-critical.md) | critical | |
-| DiskInodeExhaustion | [disk-inode-exhaustion.md](disk-inode-exhaustion.md) | warning | |
-| SlowQueries | [slow-queries.md](slow-queries.md) | warning | |
+| DiskSpaceLow | [disk-space-low.md](disk-space-low.md) | warning | ✅ Complete |
+| DiskSpaceCritical | [disk-space-critical.md](disk-space-critical.md) | critical | ✅ Complete |
+| DiskInodeExhaustion | [disk-inode-exhaustion.md](disk-inode-exhaustion.md) | warning | ✅ Complete |
+| SlowQueries | [slow-queries.md](slow-queries.md) | warning | ✅ Complete |
 | Neo4jDown | [neo4j-down.md](neo4j-down.md) | critical | Legacy |
 | PostgresDown | [postgres-down.md](postgres-down.md) | critical | Legacy |
 | RedisDown | [redis-down.md](redis-down.md) | warning | Legacy |
 | WorkflowStalled | [workflow-stalled.md](workflow-stalled.md) | warning | Legacy |
-| HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning | |
-| HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning | |
+| HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning | ✅ Complete |
+| HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning | ✅ Complete |
 | FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning | |
 | HighLLMCostRate | [high-llm-cost.md](high-llm-cost.md) | warning | |
 | StaleGroundTruthObjects | [stale-ground-truth.md](stale-ground-truth.md) | warning | |
-| ServiceDown | [service-down.md](service-down.md) | critical | |
+| ServiceDown | [service-down.md](service-down.md) | critical | ✅ Complete |
 
 ## Disaster Recovery Game Days
 

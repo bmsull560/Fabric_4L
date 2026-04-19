@@ -8,13 +8,13 @@ import sys
 from pathlib import Path
 
 # ── Path Setup ─────────────────────────────────────────────────────────────
-# Add layer4-agents/src to path for imports when running tests directly
-tests_dir = Path(__file__).parent
-layer4_dir = tests_dir.parent
-src_dir = layer4_dir / "src"
+# Add repo root to path for shared package imports
+_tests_dir = Path(__file__).parent
+_layer4_dir = _tests_dir.parent
+_repo_root = _layer4_dir.parent.parent  # value-fabric/layer4-agents -> value-fabric -> repo root
 
-if str(layer4_dir) not in sys.path:
-    sys.path.insert(0, str(layer4_dir))
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 import pytest
 

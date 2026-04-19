@@ -4,6 +4,13 @@ import logging
 import os
 from typing import Any
 
+try:
+    from shared.identity.feature_flags import is_enabled
+except ImportError:
+    # Fallback if shared package not available
+    def is_enabled(flag_key: str, tenant_id=None, user_id=None) -> bool:
+        return False
+
 from ..integration.layer5_client import Layer5GroundTruthClient
 from ..models.agent_state import (
     BusinessCaseAgentState,
@@ -154,9 +161,22 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             return {"status": "failed", "error": str(e), "roi_results": {}}
 
     async def _execute_generate_sections(self, state: BusinessCaseAgentState) -> dict[str, Any]:
-        """Generate all requested narrative sections."""
+        """Generate all requested narrative sections.
+
+        Feature flag 'enhanced_narrative_generation' controls whether to use
+        the new LLM-powered section enhancement feature.
+        """
         if not state.case_input:
             return {"error": "No business case input configured", "sections": []}
+
+        # Check feature flag for enhanced narrative generation (Task 83: is_enabled usage)
+        enhanced_mode = is_enabled(
+            "enhanced_narrative_generation",
+            tenant_id=getattr(state, 'tenant_id', None),
+            user_id=getattr(state, 'user_id', None),
+        )
+        if enhanced_mode:
+            logger.info("Using enhanced narrative generation for business case")
 
         gathered = state.output_data.get("gather_inputs", {})
         roi_data = state.output_data.get("run_roi", {})

@@ -9,6 +9,7 @@ from .config import app as config_app
 from .flags import app as flags_app
 from .health import health as health_command
 from .models import app as models_app
+from .search import app as search_app
 from .tenants import app as tenants_app
 from .users import app as users_app
 from .workflows import app as workflows_app
@@ -22,6 +23,7 @@ app.add_typer(api_keys_app, name="api-keys", help="API key management")
 app.add_typer(workflows_app, name="workflows", help="Workflow management")
 app.add_typer(models_app, name="models", help="Model registry")
 app.add_typer(flags_app, name="feature-flags", help="Feature flags")
+app.add_typer(search_app, name="search", help="Hybrid entity search (BM25 + vector + graph)")
 app.command("health")(health_command)
 
 

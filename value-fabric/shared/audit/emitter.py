@@ -21,6 +21,18 @@ import logging
 from typing import Any, Callable, Dict, Optional, Set
 from uuid import UUID
 
+try:
+    from prometheus_client import Counter
+    _AUDIT_WRITE_FAILURES = Counter(
+        "value_fabric_audit_write_failures_total",
+        "Total number of audit event write failures",
+        ["failure_type"]
+    )
+    _METRICS_AVAILABLE = True
+except ImportError:
+    _METRICS_AVAILABLE = False
+    _AUDIT_WRITE_FAILURES = None
+
 from .models import AuditAction, AuditEvent, AuditOutcome
 
 logger = logging.getLogger("vf.audit")
@@ -211,4 +223,6 @@ class AuditEmitter:
                 exc,
                 exc_info=True,
             )
+            if _METRICS_AVAILABLE and _AUDIT_WRITE_FAILURES is not None:
+                _AUDIT_WRITE_FAILURES.labels(failure_type="db_write").inc()
 

@@ -206,7 +206,7 @@ async def api_record_eval_run(
     request: EvalRunRequest = ...,  # noqa: B008
     ctx: RequestContext = Depends(
         require_any_permission(
-            Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
+            Permission.WRITE_MODELS, Permission.ADMIN_MODELS
         )
     ),
     db: AsyncSession = Depends(get_db),

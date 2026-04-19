@@ -41,12 +41,12 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 try:
     from shared.identity.middleware import GovernanceMiddleware
     from shared.identity.rate_limiter import RedisRateLimiter
-    from shared.identity.vault_check import check_vault_health
+    from shared.identity.vault_check import is_vault_healthy
     from shared.security import add_security_middleware, SecurityConfig
 except ImportError:
     GovernanceMiddleware = None
     RedisRateLimiter = None
-    check_vault_health = None
+    is_vault_healthy = None
     add_security_middleware = None
     SecurityConfig = None
 
@@ -143,9 +143,9 @@ async def lifespan(app: FastAPI):
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and check_vault_health:
+        if vault_addr and is_vault_healthy:
             logger.info("L4: Checking Vault connectivity at %s", vault_addr)
-            ok = await check_vault_health(vault_addr)
+            ok = await is_vault_healthy(vault_addr)
             if not ok:
                 logger.error("L4: Vault unreachable — cannot start in production without secrets backend")
                 raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
@@ -286,15 +286,19 @@ if "*" in _cors_origins:
     )
 
 # SecurityMiddleware — input validation and security headers (before CORS)
-_security_config_l4 = SecurityConfig(
-    skip_validation_paths=frozenset({
-        "/agents/v1/workflows",
-        "/agents/v1/skills",
-        "/agents/v1/analyze",
-    }),
-    strict_mode=True,
-)
-add_security_middleware(app, config=_security_config_l4)
+# Guard: Skip if SecurityConfig unavailable (e.g., during OpenAPI export when shared package not in path)
+if SecurityConfig is not None and add_security_middleware is not None:
+    _security_config_l4 = SecurityConfig(
+        skip_validation_paths=frozenset({
+            "/agents/v1/workflows",
+            "/agents/v1/skills",
+            "/agents/v1/analyze",
+        }),
+        strict_mode=True,
+    )
+    add_security_middleware(app, config=_security_config_l4)
+else:
+    logger.warning("Security middleware not available — skipping for OpenAPI export")
 
 app.add_middleware(
     CORSMiddleware,

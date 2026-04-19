@@ -64,9 +64,9 @@ except ImportError:
     SecurityConfig = None
 
 try:
-    from shared.identity.vault_check import check_vault_health
+    from shared.identity.vault_check import is_vault_healthy
 except ImportError:
-    check_vault_health = None
+    is_vault_healthy = None
 
 # Configure logging
 structlog.configure(
@@ -190,7 +190,7 @@ if _environment == "production" and not _cors_origins_env:
 # Parse CORS origins, filtering out empty strings from trailing commas
 allow_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()] if _cors_origins_env else ["*"]
 # Credentials can only be allowed with specific origins, never with wildcard (browser security requirement)
-allow_credentials = "*" not in allow_origins and len(allow_origins) > 0 and allow_origins != ["*"]
+allow_credentials = "*" not in allow_origins and len(allow_origins) > 0
 
 app.add_middleware(
     CORSMiddleware,
@@ -252,9 +252,9 @@ async def startup_event() -> None:
     """Verify Vault connectivity in production."""
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and check_vault_health:
+        if vault_addr and is_vault_healthy:
             logger.info("L1: Checking Vault connectivity", vault_addr=vault_addr)
-            ok = await check_vault_health(vault_addr)
+            ok = await is_vault_healthy(vault_addr)
             if not ok:
                 logger.error("L1: Vault unreachable", vault_addr=vault_addr)
                 raise RuntimeError(_VAULT_UNREACHABLE_ERROR)

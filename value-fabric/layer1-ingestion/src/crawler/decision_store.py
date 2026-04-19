@@ -30,12 +30,11 @@ class CrawlDecisionRecord:
     This is the source of truth for debugging, metrics, and optimization.
     """
 
-    # Identity
+    # Identity (required fields first)
     decision_id: str
     job_id: str
-    tenant_id: str | None = None
 
-    # Request context
+    # Request context (required fields)
     url: str
     domain: str
     requested_path: str  # Target-level mode: fast/browser/fast_fallback
@@ -63,7 +62,8 @@ class CrawlDecisionRecord:
     spa_detected: bool
     text_length: int
 
-    # Error tracking
+    # Error tracking (optional fields with defaults)
+    tenant_id: str | None = None
     error_type: str | None = None
     error_message: str | None = None
 

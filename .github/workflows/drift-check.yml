@@ -1,0 +1,61 @@
+name: Contract Drift Check
+
+on:
+  pull_request:
+    paths:
+      - 'value-fabric/**/src/api/**'
+      - 'value-fabric/**/src/**/routes/**'
+      - 'value-fabric/**/src/**/main.py'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  detect-drift:
+    name: Detect OpenAPI Contract Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install fastapi uvicorn pydantic neo4j psycopg2-binary
+          # Install layer dependencies for proper export
+          pip install -e value-fabric/layer1-ingestion/
+          pip install -e value-fabric/layer2-extraction/
+          pip install -e value-fabric/layer3-knowledge/
+          pip install -e value-fabric/layer4-agents/
+
+      - name: Export current contracts
+        run: |
+          python scripts/export_openapi.py
+
+      - name: Check for drift
+        run: |
+          git diff --stat contracts/openapi/
+          git diff --exit-code contracts/openapi/ || {
+            echo "::error::Contract drift detected! Run 'python scripts/export_openapi.py' locally and commit changes."
+            echo "::group::Drift Details"
+            git diff contracts/openapi/
+            echo "::endgroup::"
+            exit 1
+          }
+
+      - name: Upload drift artifact (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-drift
+          path: |
+            contracts/openapi/*.json
+            scripts/export_openapi.py
+          retention-days: 7

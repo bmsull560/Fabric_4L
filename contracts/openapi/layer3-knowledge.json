@@ -502,6 +502,56 @@
               "title": "Status"
             },
             "description": "Filter by status"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category"
+            },
+            "description": "Filter by category"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search by name or description",
+              "title": "Search"
+            },
+            "description": "Search by name or description"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results to return",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum results to return"
           }
         ],
         "requestBody": {
@@ -694,7 +744,7 @@
     "/v1/packs/{pack_id}/execute": {
       "post": {
         "summary": "Execute Pack",
-        "description": "Execute a Value Pack workflow.",
+        "description": "Execute a Value Pack workflow.\n\nEvaluates all formulas associated with the pack using provided variables\nmerged with formula defaults. Returns calculated values for each formula.",
         "operationId": "execute_pack_v1_packs__pack_id__execute_post",
         "parameters": [
           {
@@ -774,6 +824,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PackForkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/packs/{pack_id}/apply": {
+      "post": {
+        "summary": "Apply Pack",
+        "description": "Apply/Deploy a Value Pack (alias for execute endpoint).",
+        "operationId": "apply_pack_v1_packs__pack_id__apply_post",
+        "parameters": [
+          {
+            "name": "pack_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Pack Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_apply_pack_v1_packs__pack_id__apply_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackExecuteResponse"
                 }
               }
             }
@@ -2173,6 +2273,402 @@
         }
       }
     },
+    "/v1/models": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "List Value Models",
+        "description": "Returns a paginated list of value models with optional filtering, sorting, and search.",
+        "operationId": "list_models_v1_models_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search in name, description, tags",
+              "title": "Search"
+            },
+            "description": "Search in name, description, tags"
+          },
+          {
+            "name": "folder",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter by folder",
+              "default": "all",
+              "title": "Folder"
+            },
+            "description": "Filter by folder"
+          },
+          {
+            "name": "industry",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by industry",
+              "title": "Industry"
+            },
+            "description": "Filter by industry"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter by status: draft, active, archived, all",
+              "default": "all",
+              "title": "Status"
+            },
+            "description": "Filter by status: draft, active, archived, all"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Sort field: name, updated_at, created_at",
+              "default": "updated_at",
+              "title": "Sort By"
+            },
+            "description": "Sort field: name, updated_at, created_at"
+          },
+          {
+            "name": "sort_dir",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Sort direction: asc, desc",
+              "default": "desc",
+              "title": "Sort Dir"
+            },
+            "description": "Sort direction: asc, desc"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results to return",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Maximum results to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Results to skip",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Results to skip"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Settings"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Models retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter or sort parameters"
+          },
+          "500": {
+            "description": "Database error"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Create Value Model",
+        "description": "Creates a new value model with the specified properties.",
+        "operationId": "create_model_v1_models_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_model_v1_models_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Model created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request data"
+          },
+          "500": {
+            "description": "Database error"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/models/folders": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Get Model Folder Counts",
+        "description": "Returns folder counts for the sidebar navigation.",
+        "operationId": "get_model_folders_v1_models_folders_get",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Settings"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoldersResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/models/{model_id}": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Get Model Detail",
+        "description": "Returns detailed information about a specific value model.",
+        "operationId": "get_model_detail_v1_models__model_id__get",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Settings"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Model retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model not found"
+          },
+          "500": {
+            "description": "Database error"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Models"
+        ],
+        "summary": "Delete Value Model",
+        "description": "Deletes a value model and its relationships.",
+        "operationId": "delete_model_v1_models__model_id__delete",
+        "parameters": [
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Settings"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Settings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Model deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model not found"
+          },
+          "403": {
+            "description": "Not authorized to delete this model"
+          },
+          "500": {
+            "description": "Database error"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/metrics": {
       "get": {
         "tags": [
@@ -2680,10 +3176,49 @@
         }
       }
     },
+    "/v1/graphrag": {
+      "post": {
+        "summary": "Graph Rag Legacy Alias",
+        "description": "Execute a GraphRAG query - backward-compatible alias for /v1/query/graph.\n\nThis endpoint exists for backward compatibility with existing clients and tests.\nNew implementations should use `/v1/query/graph` (preferred) or `/v1/query`.",
+        "operationId": "graph_rag_legacy_alias_v1_graphrag_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraphRAGQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphRAGResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/query": {
       "post": {
         "summary": "Graph Rag Query",
-        "description": "Execute a GraphRAG query with multi-hop traversal.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent queries. Results are cached for 60 seconds.\n\nNotes:\n- Preferred route: `/v1/query/graph`\n- Legacy route retained: `/v1/query` (deprecate later)",
+        "description": "Execute a GraphRAG query with multi-hop traversal.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent queries. Results are cached for 60 seconds.\n\nNotes:\n- Preferred route: `/v1/query/graph`\n- Legacy route retained: `/v1/query` (deprecate later)\n- Backward-compatible alias: `/v1/graphrag`",
         "operationId": "graph_rag_query_v1_query_post",
         "requestBody": {
           "content": {
@@ -2722,7 +3257,7 @@
     "/v1/query/graph": {
       "post": {
         "summary": "Graph Rag Query",
-        "description": "Execute a GraphRAG query with multi-hop traversal.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent queries. Results are cached for 60 seconds.\n\nNotes:\n- Preferred route: `/v1/query/graph`\n- Legacy route retained: `/v1/query` (deprecate later)",
+        "description": "Execute a GraphRAG query with multi-hop traversal.\n\nUses request deduplication to prevent redundant computation for\nidentical concurrent queries. Results are cached for 60 seconds.\n\nNotes:\n- Preferred route: `/v1/query/graph`\n- Legacy route retained: `/v1/query` (deprecate later)\n- Backward-compatible alias: `/v1/graphrag`",
         "operationId": "graph_rag_query_v1_query_graph_post",
         "requestBody": {
           "content": {
@@ -3015,6 +3550,313 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/layer3_knowledge__api__models__ValueTreeResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entities": {
+      "get": {
+        "summary": "List Entities",
+        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence\u2014eliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
+        "operationId": "list_entities_v1_entities_get",
+        "parameters": [
+          {
+            "name": "search_text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search across name and description",
+              "title": "Search Text"
+            },
+            "description": "Search across name and description"
+          },
+          {
+            "name": "entity_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by entity types",
+              "title": "Entity Types"
+            },
+            "description": "Filter by entity types"
+          },
+          {
+            "name": "domains",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by domains",
+              "title": "Domains"
+            },
+            "description": "Filter by domains"
+          },
+          {
+            "name": "statuses",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by status: validated, pending, draft, deprecated",
+              "title": "Statuses"
+            },
+            "description": "Filter by status: validated, pending, draft, deprecated"
+          },
+          {
+            "name": "min_confidence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum confidence",
+              "title": "Min Confidence"
+            },
+            "description": "Minimum confidence"
+          },
+          {
+            "name": "max_confidence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "maximum": 1.0,
+                  "minimum": 0.0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum confidence",
+              "title": "Max Confidence"
+            },
+            "description": "Maximum confidence"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "description": "Max results to return",
+              "default": 50,
+              "title": "Limit"
+            },
+            "description": "Max results to return"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Results to skip",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "Results to skip"
+          },
+          {
+            "name": "sort_by",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Field to sort by: name, updated_at, confidence, entity_type, status",
+              "default": "updated_at",
+              "title": "Sort By"
+            },
+            "description": "Field to sort by: name, updated_at, confidence, entity_type, status"
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Sort direction: asc or desc",
+              "default": "desc",
+              "title": "Sort Order"
+            },
+            "description": "Sort direction: asc or desc"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entities/{{entity_id}}": {
+      "get": {
+        "summary": "Get Entity Detail",
+        "description": "Get full entity detail for inspection/drawer views.\n\nReturns the canonical EntityDetail shape with all fields from EntitySummary\nplus extended data: relationships, provenance, validation state, and raw properties.\n\n**Path Parameters:**\n- `entity_id`: Canonical entity identifier\n\n**Query Parameters:**\n- `include_provenance`: Whether to include audit trail (default: true)\n- `include_relationships`: Whether to include related entities (default: true)\n\n**Response:** Returns EntityDetail with full canonical contract.",
+        "operationId": "get_entity_detail_v1_entities___entity_id___get",
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Entity Id"
+            }
+          },
+          {
+            "name": "include_provenance",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include provenance chain",
+              "default": true,
+              "title": "Include Provenance"
+            },
+            "description": "Include provenance chain"
+          },
+          {
+            "name": "include_relationships",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include related entities",
+              "default": true,
+              "title": "Include Relationships"
+            },
+            "description": "Include related entities"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entities/query": {
+      "post": {
+        "summary": "Query Entities",
+        "description": "Advanced entity filtering with complex criteria.\n\nSupports complex filter combinations not easily expressed in query parameters.\nUses the same underlying logic as GET /v1/entities but with a request body.\n\n**Request Body:** EntityFilterRequest with full filter specification\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
+        "operationId": "query_entities_v1_entities_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntityFilterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityListResponse"
                 }
               }
             }
@@ -3936,6 +4778,175 @@
           }
         }
       }
+    },
+    "/v1/graph/subgraph": {
+      "get": {
+        "tags": [
+          "Graph"
+        ],
+        "summary": "Get Query-Based Subgraph",
+        "description": "Returns a coherent subgraph based on a search query or centered on a specific entity. Returns both nodes and edges in a single call.",
+        "operationId": "get_query_subgraph_v1_graph_subgraph_get",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search query to find matching entities",
+              "title": "Query"
+            },
+            "description": "Search query to find matching entities"
+          },
+          {
+            "name": "center_entity_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Center entity ID for expansion mode",
+              "title": "Center Entity Id"
+            },
+            "description": "Center entity ID for expansion mode"
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 1,
+              "description": "Traversal depth (1-3)",
+              "default": 2,
+              "title": "Depth"
+            },
+            "description": "Traversal depth (1-3)"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "minimum": 1,
+              "description": "Max nodes to return",
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Max nodes to return"
+          },
+          {
+            "name": "entity_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by entity types",
+              "title": "Entity Types"
+            },
+            "description": "Filter by entity types"
+          },
+          {
+            "name": "relationship_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by relationship types",
+              "title": "Relationship Types"
+            },
+            "description": "Filter by relationship types"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subgraph retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubgraphResponse"
+                },
+                "example": {
+                  "root_entity_id": "",
+                  "nodes": [
+                    {
+                      "id": "cap-1",
+                      "label": "AI Processing",
+                      "type": "Capability"
+                    }
+                  ],
+                  "edges": [
+                    {
+                      "source": "cap-1",
+                      "target": "uc-1",
+                      "type": "ENABLES"
+                    }
+                  ],
+                  "depth": 2,
+                  "stats": {
+                    "node_count": 10,
+                    "edge_count": 15,
+                    "density": 0.33
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters - query or center_entity_id required"
+          },
+          "500": {
+            "description": "Internal server error"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4626,6 +5637,28 @@
         ],
         "title": "Body_activate_formula_v1_formulas__formula_id__activate_post"
       },
+      "Body_apply_pack_v1_packs__pack_id__apply_post": {
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/PackExecuteRequest"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Settings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "title": "Body_apply_pack_v1_packs__pack_id__apply_post"
+      },
       "Body_approve_formula_v1_formulas__formula_id__approve_post": {
         "properties": {
           "request": {
@@ -4669,6 +5702,28 @@
           "request"
         ],
         "title": "Body_create_formula_version_v1_formulas__formula_id__versions_post"
+      },
+      "Body_create_model_v1_models_post": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ModelCreateRequest"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Settings"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "title": "Body_create_model_v1_models_post"
       },
       "Body_create_pack_v1_packs_post": {
         "properties": {
@@ -5182,6 +6237,26 @@
         ],
         "title": "CommunityDetectionResponse"
       },
+      "CreateResponse": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "description": "ID of created model"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Model created successfully"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_id"
+        ],
+        "title": "CreateResponse",
+        "description": "Response after successful model creation."
+      },
       "CreateVersionRequest": {
         "properties": {
           "version": {
@@ -5207,6 +6282,26 @@
         ],
         "title": "CreateVersionRequest",
         "description": "Request to create new formula version."
+      },
+      "DeleteResponse": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "description": "ID of deleted model"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Model deleted successfully"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_id"
+        ],
+        "title": "DeleteResponse",
+        "description": "Response after successful model deletion."
       },
       "DependencyResponse": {
         "properties": {
@@ -5627,6 +6722,602 @@
         ],
         "title": "EntityContextResponse"
       },
+      "EntityDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Id",
+            "description": "Entity ID"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "description": "Entity name"
+          },
+          "entity_type": {
+            "$ref": "#/components/schemas/EntityType",
+            "description": "Entity type"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain",
+            "description": "Business domain"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "validated",
+              "pending",
+              "draft",
+              "deprecated"
+            ],
+            "title": "Status",
+            "description": "Lifecycle status"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Confidence 0-1"
+          },
+          "confidence_label": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence Label",
+            "description": "Confidence tier"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Description"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "Last update timestamp"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name",
+            "description": "Source system"
+          },
+          "extraction_job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Job Id",
+            "description": "Extraction job ID"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "Entity creation timestamp"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By",
+            "description": "User or system that created the entity"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/ProvenanceEvent"
+            },
+            "type": "array",
+            "title": "Provenance",
+            "description": "Audit trail of entity changes"
+          },
+          "relationships": {
+            "$ref": "#/components/schemas/EntityRelationships",
+            "description": "Related entities and relationship counts"
+          },
+          "properties": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Properties",
+            "description": "Raw extracted properties (internal use)"
+          },
+          "validation_errors": {
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "type": "array",
+            "title": "Validation Errors",
+            "description": "Schema validation errors if any"
+          },
+          "last_validated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Validated At",
+            "description": "When entity was last validated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "entity_type",
+          "status",
+          "confidence",
+          "confidence_label",
+          "updated_at",
+          "created_at"
+        ],
+        "title": "EntityDetail",
+        "description": "Canonical entity detail for inspection/drawer views.\n\nExtends EntitySummary with relationships and full provenance.\nOptimized for: Deep inspection, relationship navigation."
+      },
+      "EntityFilterRequest": {
+        "properties": {
+          "search_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Text",
+            "description": "Search across name, description, and properties"
+          },
+          "entity_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EntityType"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Types",
+            "description": "Include only these entity types"
+          },
+          "domains": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domains",
+            "description": "Include only these domains"
+          },
+          "statuses": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "validated",
+                    "pending",
+                    "draft",
+                    "deprecated"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statuses",
+            "description": "Include only these lifecycle statuses"
+          },
+          "min_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Confidence",
+            "description": "Minimum confidence score (inclusive)"
+          },
+          "max_confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Confidence",
+            "description": "Maximum confidence score (inclusive)"
+          },
+          "source_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Names",
+            "description": "Filter by source systems"
+          },
+          "extraction_job_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Job Ids",
+            "description": "Filter by originating extraction job"
+          },
+          "updated_after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated After",
+            "description": "Updated after this time"
+          },
+          "updated_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated Before",
+            "description": "Updated before this time"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "description": "Max results to return",
+            "default": 50
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset",
+            "description": "Results to skip (for pagination)",
+            "default": 0
+          },
+          "sort_by": {
+            "type": "string",
+            "enum": [
+              "name",
+              "updated_at",
+              "confidence",
+              "entity_type",
+              "status"
+            ],
+            "title": "Sort By",
+            "description": "Field to sort by",
+            "default": "updated_at"
+          },
+          "sort_order": {
+            "type": "string",
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "title": "Sort Order",
+            "description": "Sort direction (ascending or descending)",
+            "default": "desc"
+          }
+        },
+        "type": "object",
+        "title": "EntityFilterRequest",
+        "description": "Server-backed entity filtering request.\n\nThe API applies these filters natively in Neo4j Cypher queries.\nThis eliminates the need for client-side filtering of large result sets."
+      },
+      "EntityListResponse": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EntitySummary"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "Entity summaries"
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Count",
+            "description": "Total entities in database"
+          },
+          "filtered_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Filtered Count",
+            "description": "Entities matching filters (before pagination)"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Limit",
+            "description": "Limit applied to this query"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset",
+            "description": "Offset applied to this query"
+          },
+          "has_more": {
+            "type": "boolean",
+            "title": "Has More",
+            "description": "Whether more results available"
+          },
+          "available_domains": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Domains",
+            "description": "Domains present in current filtered set"
+          },
+          "available_sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Sources",
+            "description": "Source names present in current filtered set"
+          }
+        },
+        "type": "object",
+        "required": [
+          "results",
+          "total_count",
+          "filtered_count",
+          "limit",
+          "offset",
+          "has_more"
+        ],
+        "title": "EntityListResponse",
+        "description": "Paginated list of entity summaries with filter metadata."
+      },
+      "EntityRelationships": {
+        "properties": {
+          "total_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Count",
+            "description": "Total relationships (in + out)",
+            "default": 0
+          },
+          "incoming": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipPreview"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Incoming",
+            "description": "Sample of incoming relationships"
+          },
+          "outgoing": {
+            "items": {
+              "$ref": "#/components/schemas/RelationshipPreview"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Outgoing",
+            "description": "Sample of outgoing relationships"
+          }
+        },
+        "type": "object",
+        "title": "EntityRelationships",
+        "description": "Relationship counts and samples for quick navigation."
+      },
+      "EntitySummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Id",
+            "description": "Canonical entity identifier (stable UUID)"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "description": "Human-readable entity name"
+          },
+          "entity_type": {
+            "$ref": "#/components/schemas/EntityType",
+            "description": "Entity classification from ontology"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain",
+            "description": "Business domain/vertical (e.g., 'Finance', 'Healthcare')"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "validated",
+              "pending",
+              "draft",
+              "deprecated"
+            ],
+            "title": "Status",
+            "description": "Entity lifecycle status: validated, pending, draft, deprecated"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "Extraction confidence score (0.0 to 1.0)"
+          },
+          "confidence_label": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Confidence Label",
+            "description": "Human-readable confidence tier derived from score"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Brief entity description"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "Last modification timestamp (ISO 8601)"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name",
+            "description": "Source system where entity was extracted"
+          },
+          "extraction_job_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extraction Job Id",
+            "description": "Originating extraction job ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "entity_type",
+          "status",
+          "confidence",
+          "confidence_label",
+          "updated_at"
+        ],
+        "title": "EntitySummary",
+        "description": "Canonical entity summary for browser table views.\n\nOptimized for: Fast list rendering, filtering, sorting.\nProvides explicit, authoritative fields for UI consumption."
+      },
       "EntityType": {
         "type": "string",
         "enum": [
@@ -5657,6 +7348,24 @@
         ],
         "title": "EntityType",
         "description": "Supported entity types for filtering (aligned with ontology schema spec)."
+      },
+      "FoldersResponse": {
+        "properties": {
+          "folders": {
+            "items": {
+              "$ref": "#/components/schemas/ModelFolderSummary"
+            },
+            "type": "array",
+            "title": "Folders",
+            "description": "Available folders"
+          }
+        },
+        "type": "object",
+        "required": [
+          "folders"
+        ],
+        "title": "FoldersResponse",
+        "description": "Response for folder listing endpoint."
       },
       "FormulaEvaluateRequest": {
         "properties": {
@@ -6070,7 +7779,7 @@
           "type": {
             "type": "string",
             "title": "Type",
-            "description": "Relationship type (ENABLES, BENEFITS, DRIVES)"
+            "description": "Relationship type/label (legacy: use 'relationship_type')"
           },
           "weight": {
             "type": "number",
@@ -6093,7 +7802,7 @@
           "type"
         ],
         "title": "GraphEdge",
-        "description": "Edge/relationship in the knowledge graph."
+        "description": "Edge/relationship in the knowledge graph.\n\nNOTE: Provides backward-compatible alias 'relationship_type' for 'type'.\nTODO: Deprecate 'type' field once consumers migrate."
       },
       "GraphNode": {
         "properties": {
@@ -6105,19 +7814,19 @@
           "label": {
             "type": "string",
             "title": "Label",
-            "description": "Display label"
+            "description": "Display label (legacy: use 'name')"
           },
           "type": {
             "type": "string",
             "title": "Type",
-            "description": "Node type (Capability, UseCase, Persona, ValueDriver)"
+            "description": "Node type (legacy: use 'entity_type')"
           },
           "confidence": {
             "type": "number",
             "maximum": 1.0,
             "minimum": 0.0,
             "title": "Confidence",
-            "description": "Confidence score",
+            "description": "Confidence score (legacy: use 'confidence_score')",
             "default": 0.8
           },
           "x": {
@@ -6170,7 +7879,7 @@
           "type"
         ],
         "title": "GraphNode",
-        "description": "Node in the knowledge graph."
+        "description": "Node in the knowledge graph.\n\nNOTE: This model provides backward-compatible field aliases for frontend contract stability:\n- 'name' is an alias for 'label' (frontend expects 'name')\n- 'entity_type' is an alias for 'type' (frontend expects 'entity_type')\n- 'confidence_score' is an alias for 'confidence' (frontend expects 'confidence_score')\n\nThe legacy fields (label, type, confidence) are preserved for backward compatibility.\nTODO: Deprecate legacy fields once all consumers migrate to new field names."
       },
       "GraphRAGQuery": {
         "properties": {
@@ -6625,6 +8334,348 @@
         "title": "IngestResponse",
         "description": "Response from RDF data ingestion."
       },
+      "ModelCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "description": "Model name"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Description",
+            "description": "Model description",
+            "default": ""
+          },
+          "industry": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Industry",
+            "description": "Industry vertical"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Tags",
+            "description": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "industry"
+        ],
+        "title": "ModelCreateRequest",
+        "description": "Request body for creating a new Value Model."
+      },
+      "ModelDetail": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "description": "Unique identifier for the model"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Display name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Brief description",
+            "default": ""
+          },
+          "industry": {
+            "type": "string",
+            "title": "Industry",
+            "description": "Industry vertical"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "Searchable tags"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ModelStatus",
+            "description": "Lifecycle status"
+          },
+          "folder": {
+            "type": "string",
+            "title": "Folder",
+            "description": "Organization folder",
+            "default": "my-models"
+          },
+          "formula_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Formula Count",
+            "description": "Number of formulas",
+            "default": 0
+          },
+          "entity_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Entity Count",
+            "description": "Number of entities",
+            "default": 0
+          },
+          "driver_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Driver Count",
+            "description": "Number of value drivers",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "ISO timestamp of creation"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "ISO timestamp of last update"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner",
+            "description": "User ID of owner"
+          },
+          "is_shared": {
+            "type": "boolean",
+            "title": "Is Shared",
+            "description": "Whether shared with others",
+            "default": false
+          },
+          "formula_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Formula Ids",
+            "description": "Associated formula IDs"
+          },
+          "entity_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Entity Ids",
+            "description": "Associated entity IDs"
+          },
+          "pack_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pack Ids",
+            "description": "Referenced value pack IDs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_id",
+          "name",
+          "industry",
+          "status",
+          "created_at",
+          "updated_at",
+          "owner"
+        ],
+        "title": "ModelDetail",
+        "description": "Detailed view of a Value Model including relationships."
+      },
+      "ModelFolderSummary": {
+        "properties": {
+          "folder_id": {
+            "type": "string",
+            "title": "Folder Id",
+            "description": "Folder identifier"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Display name"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Model count in folder"
+          }
+        },
+        "type": "object",
+        "required": [
+          "folder_id",
+          "name",
+          "count"
+        ],
+        "title": "ModelFolderSummary",
+        "description": "Folder entry for sidebar navigation."
+      },
+      "ModelListResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelSummary"
+            },
+            "type": "array",
+            "title": "Models",
+            "description": "Model summaries"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "Total matching models"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Offset",
+            "description": "Current offset"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Limit",
+            "description": "Page size"
+          },
+          "filters_applied": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Filters Applied",
+            "description": "Echo of filters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models",
+          "total",
+          "offset",
+          "limit"
+        ],
+        "title": "ModelListResponse",
+        "description": "Paginated list of models with metadata."
+      },
+      "ModelStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "active",
+          "archived"
+        ],
+        "title": "ModelStatus",
+        "description": "Lifecycle states for a value model."
+      },
+      "ModelSummary": {
+        "properties": {
+          "model_id": {
+            "type": "string",
+            "title": "Model Id",
+            "description": "Unique identifier for the model"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Display name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Brief description",
+            "default": ""
+          },
+          "industry": {
+            "type": "string",
+            "title": "Industry",
+            "description": "Industry vertical"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "Searchable tags"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ModelStatus",
+            "description": "Lifecycle status"
+          },
+          "folder": {
+            "type": "string",
+            "title": "Folder",
+            "description": "Organization folder",
+            "default": "my-models"
+          },
+          "formula_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Formula Count",
+            "description": "Number of formulas",
+            "default": 0
+          },
+          "entity_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Entity Count",
+            "description": "Number of entities",
+            "default": 0
+          },
+          "driver_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Driver Count",
+            "description": "Number of value drivers",
+            "default": 0
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At",
+            "description": "ISO timestamp of creation"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "ISO timestamp of last update"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner",
+            "description": "User ID of owner"
+          },
+          "is_shared": {
+            "type": "boolean",
+            "title": "Is Shared",
+            "description": "Whether shared with others",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_id",
+          "name",
+          "industry",
+          "status",
+          "created_at",
+          "updated_at",
+          "owner"
+        ],
+        "title": "ModelSummary",
+        "description": "Summary view of a Value Model for list displays."
+      },
       "PackCreateRequest": {
         "properties": {
           "name": {
@@ -6802,6 +8853,34 @@
             "type": "boolean",
             "title": "Is Loaded",
             "default": false
+          },
+          "workflow_count": {
+            "type": "integer",
+            "title": "Workflow Count",
+            "default": 0
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope",
+            "default": "global"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
           }
         },
         "type": "object",
@@ -7012,6 +9091,34 @@
             "type": "integer",
             "title": "Benchmark Count"
           },
+          "workflow_count": {
+            "type": "integer",
+            "title": "Workflow Count",
+            "default": 0
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope",
+            "default": "global"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
           "updated_at": {
             "anyOf": [
               {
@@ -7022,6 +9129,17 @@
               }
             ],
             "title": "Updated At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
           }
         },
         "type": "object",
@@ -7148,6 +9266,49 @@
         "type": "object",
         "title": "PackUpdateRequest",
         "description": "Request to update a Value Pack."
+      },
+      "ProvenanceEvent": {
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "extracted",
+              "validated",
+              "modified",
+              "merged",
+              "deprecated"
+            ],
+            "title": "Event Type",
+            "description": "Type of provenance event"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp",
+            "description": "When the event occurred"
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Actor",
+            "description": "User ID, system component, or job ID that performed the action"
+          },
+          "details": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Details",
+            "description": "Additional event-specific data"
+          }
+        },
+        "type": "object",
+        "required": [
+          "event_type",
+          "timestamp",
+          "actor"
+        ],
+        "title": "ProvenanceEvent",
+        "description": "Single event in entity provenance chain."
       },
       "ProvenanceStep": {
         "properties": {
@@ -7279,6 +9440,44 @@
         ],
         "title": "ProvenanceTrailResponse",
         "description": "Full provenance trail for an entity."
+      },
+      "RelationshipPreview": {
+        "properties": {
+          "relationship_type": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Relationship Type",
+            "description": "Type of relationship (e.g., ENABLES, DEPENDS_ON)"
+          },
+          "target_entity_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Target Entity Id",
+            "description": "ID of related entity"
+          },
+          "target_entity_name": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Target Entity Name",
+            "description": "Name of related entity"
+          },
+          "target_entity_type": {
+            "$ref": "#/components/schemas/EntityType",
+            "description": "Type of related entity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "relationship_type",
+          "target_entity_id",
+          "target_entity_name",
+          "target_entity_type"
+        ],
+        "title": "RelationshipPreview",
+        "description": "Lightweight relationship for preview lists in entity detail."
       },
       "ResolveRequest": {
         "properties": {
@@ -9672,6 +11871,10 @@
     {
       "name": "Graph",
       "description": "Graph visualization endpoints"
+    },
+    {
+      "name": "Models",
+      "description": "Value model management and organization"
     }
   ]
 }
