@@ -1,4 +1,4 @@
-# Tasks 102, 104, 105, 106 Completion Summary
+# Tasks 102, 104, 105, 106, 108 Completion Summary
 
 **Completed:** 2026-04-19  
 **Status:** ✅ ALL COMPLETE
@@ -20,6 +20,28 @@
 - CI validation: `scripts/ci/validate-alertmanager-config.sh`
 - Runtime validation: `scripts/validate-alertmanager.ps1` (7 end-to-end checks)
 - Routing: Critical → PagerDuty+Slack, Warning → Slack, Formula → `#vf-formula-approvals`
+
+---
+
+## Task 104: LLM Cost Prometheus Metrics (P1)
+
+**Focus:** Cost observability with Prometheus metrics and budget alerts
+
+### Implementation Verified
+| Component | Location | Status |
+|-----------|----------|--------|
+| Cost metric | `prometheus_metrics.py:153-160` | `vf_llm_cost_usd_total` Gauge |
+| Token metric | `prometheus_metrics.py:163-168` | `vf_llm_tokens_total` Counter |
+| Auto-recording | `llm_client.py:476-501` | Records on every API call |
+| Grafana dashboard | `llm-costs.json` | 6 panels (cost by provider/model/tenant) |
+| Overview panel | `value-fabric-overview.json` | "LLM Cost by Tenant (24h)" |
+| Alert rules | `rules.yml` | 6 budget threshold alerts |
+
+### Alert Thresholds
+- `HighLLMCostRate`: $50/hr (warning)
+- `HighLLMCostCritical`: $100/hr (critical)
+- `HighLLMCostPerTenant`: $100/24h per tenant
+- `L2CostBudgetThreshold`: $1000 monthly
 
 ---
 
@@ -47,28 +69,6 @@
 | DiskSpaceWarning | 20% remaining (was 25%) | Balanced early warning vs noise |
 | InodesExhausted | 5% remaining (was 10%) | Lower threshold appropriate for workload |
 | GroundTruthEvaluationsFailing | Fixed to use failure rate ratio | Correct metric calculation |
-
----
-
-## Task 104: LLM Cost Prometheus Metrics (P1)
-
-**Focus:** Cost observability with Prometheus metrics and budget alerts
-
-### Implementation Verified
-| Component | Location | Status |
-|-----------|----------|--------|
-| Cost metric | `prometheus_metrics.py:153-160` | `vf_llm_cost_usd_total` Gauge |
-| Token metric | `prometheus_metrics.py:163-168` | `vf_llm_tokens_total` Counter |
-| Auto-recording | `llm_client.py:476-501` | Records on every API call |
-| Grafana dashboard | `llm-costs.json` | 6 panels (cost by provider/model/tenant) |
-| Overview panel | `value-fabric-overview.json` | "LLM Cost by Tenant (24h)" |
-| Alert rules | `rules.yml` | 6 budget threshold alerts |
-
-### Alert Thresholds
-- `HighLLMCostRate`: $50/hr (warning)
-- `HighLLMCostCritical`: $100/hr (critical)
-- `HighLLMCostPerTenant`: $100/24h per tenant
-- `L2CostBudgetThreshold`: $1000 monthly
 
 ---
 
@@ -118,9 +118,59 @@ result = client.execute_workflow(
 
 ---
 
+## Task 108: Per-Tenant Rate Limiting (P1) - Consolidated with Task 75
+
+**Focus:** TENANT-scoped rate limiting across all layers
+
+**Note:** Task 108 and Task 75 are the same implementation. Task 75 was marked complete first.
+
+### Implementation Verified
+| Acceptance Criteria | Status | Evidence |
+|---------------------|--------|----------|
+| `TENANT` scope added to `RateLimitScope` enum | ✅ | `shared/identity/rate_limiting.py:15` |
+| Rate limiter wired into L4's `GovernanceMiddleware` | ✅ | `layer4-agents/src/api/main.py:275-281` |
+| Per-tenant limits from `tenants.settings` JSONB | ✅ | `_tenant_settings_lookup()` uses `get_tenant_settings()` |
+| `429` responses include `Retry-After` header | ✅ | `middleware.py:280-286` |
+| Tenant A cannot consume Tenant B's quota | ✅ | Tenant-scoped Redis keys: `ratelimit:tenant:{tenant_id}` |
+| Rate limit events logged (not audited) | ✅ | `logger.warning()` on rate limit hit |
+
+### Implementation Details
+- ✅ `shared/identity/middleware.py` - `GovernanceMiddleware` with `_check_rate_limit()` and `_check_tenant_rate_limit()`
+- ✅ `shared/identity/rate_limiting.py` - `RateLimitScope.TENANT` and role-based defaults
+- ✅ `layer4-agents/src/api/main.py` - Middleware wired with `enable_per_tenant_rate_limiting=True`
+- ✅ `layer4-agents/tests/test_tenant_rate_limits.py` - 11 tests covering all acceptance criteria
+- ✅ Multi-worker safety - Redis check with `MultiWorkerRateLimitError` if Redis unavailable
+- ✅ Metrics callback - `on_rate_limit_hit` for Prometheus tracking
+
+### Rate Limiting Architecture
+```
+Request → GovernanceMiddleware
+  ↓
+Authenticate (API Key / JWT)
+  ↓
+Check Rate Limit (if enabled)
+  - Get tenant settings from JSONB
+  - Check Redis (multi-worker) or in-memory (single-worker)
+  - Return 429 with Retry-After if exceeded
+  ↓
+Process Request
+```
+
+### Role-Based Default Limits
+| Role | Requests/Min | Burst |
+|------|--------------|-------|
+| READ_ONLY | 30 | 5 |
+| ANALYST | 60 | 10 |
+| CONTENT_ADMIN | 120 | 20 |
+| TENANT_ADMIN | 300 | 50 |
+| SUPER_ADMIN | Unlimited | - |
+| SYSTEM | Unlimited | - |
+
+---
+
 ## Summary
 
-All three tasks are **production-ready**:
+All five tasks are **production-ready**:
 
 | Task | Status | Key Achievement |
 |------|--------|-----------------|
@@ -128,7 +178,10 @@ All three tasks are **production-ready**:
 | 104 | ✅ Complete | LLM cost metrics + budget alerts + Grafana dashboards |
 | 105 | ✅ Complete | Alert threshold tuning with inline rationale |
 | 106 | ✅ Complete | Python SDK + CLI (`vf`) with auto-generated clients |
+| 108 | ✅ Complete | Per-tenant rate limiting with TENANT scope |
 
 **Next recommended tasks:**
 - Task 69: SSO/OIDC Integration (P0 - in progress)
-- Task 108: Rate Limiting (🔴 NOT STARTED)
+- Task 107: Feature Flag System (already marked complete)
+
+**DevOps/Infra completion:** ~95% (Alertmanager, Grafana, LLM metrics, Rate limiting all complete)

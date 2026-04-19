@@ -1,15 +1,19 @@
 """Configuration for Layer 3 Knowledge Graph."""
 
+import os
 from functools import lru_cache
+from typing import List
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Load secrets from Infisical if available (optional in dev, required in prod)
+from shared.secrets import load_infisical_secrets
 try:
-    from shared.secrets import load_infisical_secrets
     load_infisical_secrets()
-except ImportError:
-    pass  # shared package not available; env vars used directly
+except Exception:
+    if os.getenv("ENVIRONMENT") == "production":
+        raise RuntimeError("Failed to load Infisical secrets in production")
 
 
 class Settings(BaseSettings):
@@ -75,6 +79,31 @@ class Settings(BaseSettings):
     neo4j_password: str = Field(..., alias="NEO4J_PASSWORD")  # Required field
     neo4j_database: str = Field(default="neo4j", alias="NEO4J_DATABASE")
     neo4j_max_pool_size: int = Field(default=50, alias="NEO4J_MAX_POOL_SIZE")
+
+    # Security Configuration
+    jwt_secret: str = Field(default="changeme", alias="JWT_SECRET")
+    cors_origins: List[str] = Field(default=["*"], alias="CORS_ORIGINS")
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        """Validate JWT secret is secure."""
+        insecure_defaults = ["changeme", "changeme-in-production", "valuefabric", "postgres", "secret", "password"]
+        if os.getenv("ENVIRONMENT") == "production":
+            if v.lower() in insecure_defaults:
+                raise ValueError(f"Insecure default JWT secret detected in production: {v}")
+            if len(v) < 32:
+                raise ValueError("JWT secret must be >= 32 characters in production")
+        return v
+
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+        """Validate CORS origins are secure."""
+        if os.getenv("ENVIRONMENT") == "production":
+            if "*" in v:
+                raise ValueError("Wildcard CORS origin not allowed in production")
+        return v
 
     # Pinecone Configuration
     pinecone_api_key: str | None = Field(default=None, alias="PINECONE_API_KEY")

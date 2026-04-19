@@ -116,17 +116,17 @@ async def lifespan(app: FastAPI):
     # Metrics middleware is registered at module level; it reads from app.state.metrics
 
     # Startup
-    # Initialize database tables (dev/test convenience)
+    # Initialize database tables (required for checkpoint and workflow state)
     import logging
     import os
 
+    # P0: Database is a required dependency - fail fast if unavailable
     try:
         await init_db()
+        logger.info("L4: Database initialized successfully")
     except Exception as e:
-        # In production, database failures are fatal. In dev/test, log warning.
-        if os.getenv("ENVIRONMENT", "development").lower() == "production":
-            raise RuntimeError(f"Database initialization failed in production: {e}") from e
-        logging.getLogger(__name__).warning(f"Database initialization skipped: {e}")
+        logger.error(f"L4: Database initialization failed: {e}")
+        raise RuntimeError(f"Database initialization failed - cannot start without persistence: {e}") from e
 
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
@@ -159,17 +159,13 @@ async def lifespan(app: FastAPI):
     # Wire WebSocket manager for real-time state broadcasting
     state_manager.set_ws_manager(ws_manager)
 
-    # Initialize checkpoint saver if database is configured
-    checkpoint_saver = None
+    # Initialize checkpoint saver for workflow resumption (required)
     try:
         checkpoint_saver = await CheckpointConfig.create_saver()
-    except Exception:
-        # Checkpointing is optional - log warning but continue
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "Checkpointing not available - workflows will not be resumable"
-        )
+        logger.info("L4: Checkpoint saver initialized successfully")
+    except Exception as e:
+        logger.error(f"L4: Checkpoint saver initialization failed: {e}")
+        raise RuntimeError(f"Checkpoint saver failed - cannot start without workflow resumption: {e}") from e
 
     workflow_executor = OrchestrationController(
         tool_registry, state_manager, checkpoint_saver=checkpoint_saver
@@ -179,14 +175,16 @@ async def lifespan(app: FastAPI):
     await workflow_executor.start()
 
     # Recover orphaned workflows from previous pod (P0-26)
+    # This is critical for correctness - fail if we can't establish workflow state
     try:
         recovered = await workflow_executor.recover_workflows()
         if recovered:
-            logging.getLogger(__name__).info(
-                f"Recovery complete: {len(recovered)} workflows marked as INTERRUPTED"
-            )
+            logger.info(f"L4: Recovery complete - {len(recovered)} workflows marked as INTERRUPTED")
+        else:
+            logger.info("L4: No orphaned workflows to recover")
     except Exception as e:
-        logging.getLogger(__name__).warning(f"Workflow recovery failed: {e}")
+        logger.error(f"L4: Workflow recovery failed: {e}")
+        raise RuntimeError(f"Workflow recovery failed - cannot start with unknown workflow state: {e}") from e
 
     # Start WebSocket manager for real-time streaming
     await ws_manager.start()

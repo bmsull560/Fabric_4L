@@ -232,3 +232,20 @@ class OIDCClient:
         )
         response.raise_for_status()
         return response.json()
+
+    async def get_userinfo(self, userinfo_endpoint: str, access_token: str) -> dict:
+        """Fetch user information from the UserInfo endpoint.
+
+        Args:
+            userinfo_endpoint: The UserInfo endpoint URL
+            access_token: Valid access token
+
+        Returns:
+            User claims dictionary
+        """
+        response = await self._http.get(
+            userinfo_endpoint,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        response.raise_for_status()
+        return response.json()

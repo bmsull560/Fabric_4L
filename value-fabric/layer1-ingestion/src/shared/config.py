@@ -1,17 +1,22 @@
 """Configuration management for Layer 1 Ingestion Service."""
 
-from pydantic import ConfigDict, Field
+import os
+from typing import List
+
+from pydantic import ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings
 
+# Load secrets from Infisical if available (optional in dev, required in prod)
+from shared.secrets import load_infisical_secrets
 try:
-    from shared.secrets import load_infisical_secrets
     load_infisical_secrets()
-except ImportError:
-    pass  # shared package not available; env vars used directly
+except Exception:
+    if os.getenv("ENVIRONMENT") == "production":
+        raise RuntimeError("Failed to load Infisical secrets in production")
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """Application settings loaded from environment variables with security validation."""
 
     # Application
     app_name: str = "layer1-ingestion"
@@ -23,6 +28,42 @@ class Settings(BaseSettings):
         default="postgresql://postgres:postgres@localhost:5432/layer1_ingestion",
         description="PostgreSQL connection URL",
     )
+
+    # JWT and Security
+    jwt_secret: str = Field(default="changeme", description="JWT signing secret")
+    cors_origins: List[str] = Field(default=["*"], description="CORS allowed origins")
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        """Validate JWT secret is secure."""
+        insecure_defaults = ["changeme", "changeme-in-production", "valuefabric", "postgres", "secret", "password"]
+        if os.getenv("ENVIRONMENT") == "production":
+            if v.lower() in insecure_defaults:
+                raise ValueError(f"Insecure default JWT secret detected in production: {v}")
+            if len(v) < 32:
+                raise ValueError("JWT secret must be >= 32 characters in production")
+        return v
+
+    @field_validator("cors_origins")
+    @classmethod
+    def validate_cors_origins(cls, v: List[str]) -> List[str]:
+        """Validate CORS origins are secure."""
+        if os.getenv("ENVIRONMENT") == "production":
+            if "*" in v:
+                raise ValueError("Wildcard CORS origin not allowed in production")
+            if not v or all(not origin.strip() for origin in v):
+                raise ValueError("At least one specific CORS origin must be configured in production")
+        return v
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        """Validate database URL does not use default credentials in production."""
+        if os.getenv("ENVIRONMENT") == "production":
+            if "postgres:postgres@" in v or "password" in v.lower():
+                raise ValueError("Database URL contains default/insecure credentials")
+        return v
 
     # Redis (Celery broker and cache)
     redis_url: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")

@@ -181,10 +181,13 @@ class TestOIDCClient:
             client_id="client-123",
             redirect_uri="https://app.example.com/callback",
             state="abc123",
+            nonce="nonce123",
+            scopes=["openid"],
         )
         assert "https://idp.example.com/auth?" in url
         assert "client_id=client-123" in url
         assert "state=abc123" in url
+        assert "nonce=nonce123" in url
         assert "response_type=code" in url
 
     def test_build_authorize_url_with_pkce(self) -> None:
@@ -197,15 +200,11 @@ class TestOIDCClient:
             state="abc123",
             nonce="def456",
             scopes=["openid", "email", "profile"],
-            code_challenge="test_challenge_123",
-            code_challenge_method="S256",
         )
         assert "https://idp.example.com/auth?" in url
         assert "client_id=client-123" in url
         assert "state=abc123" in url
         assert "nonce=def456" in url
-        assert "code_challenge=test_challenge_123" in url
-        assert "code_challenge_method=S256" in url
         assert "scope=openid+email+profile" in url
 
     @pytest.mark.asyncio
@@ -228,7 +227,6 @@ class TestOIDCClient:
                 redirect_uri="https://app.example.com/callback",
                 client_id="client-123",
                 client_secret="secret_456",
-                code_verifier="pkce_verifier_789",
             )
             assert result["access_token"] == "access_token_123"
             assert result["id_token"] == "id_token_456"
@@ -254,6 +252,7 @@ class TestOIDCClient:
                     code="invalid_code",
                     redirect_uri="https://app.example.com/callback",
                     client_id="client-123",
+                    client_secret="secret_456",
                 )
 
     @pytest.mark.asyncio
