@@ -3379,3 +3379,354 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
 4. **Sprint 4 (1 week):** Feature Flag System (Task 91)
 
 **Go/No-Go Target:** After Sprint 3 = 93%+ readiness
+
+---
+
+## Merged Sprint Plan: 3 Sprints to Production (Tasks 92-102)
+
+**Consolidated from:** 5-sprint user assessment + 11 proposed additions + immediate test fixes
+**Total New Tasks:** 11 (6 P0, 5 P1) | **Timeline:** 6 weeks
+
+---
+
+### Sprint 1: Foundation & Validation (Weeks 1-2)
+
+**Goal:** Fix critical test failures, resolve API contract drift, validate Docker deployment, achieve type safety
+**Exit Criteria:** All tests passing, OpenAPI contracts valid, docker-compose stack healthy, mypy clean
+
+#### Day 1-2: Critical Fixes
+
+**Task 92: Fix Test Import Errors (P0)**
+- **Layer:** L2/L4 Tests
+- **Effort:** 2 hours
+- **Issue:** `NameError: name 'os' is not defined` in `test_llm_cost_tracking.py`
+- **Acceptance Criteria:**
+  - [ ] Add `import os` to failing test files
+  - [ ] `pytest tests/test_llm_cost_tracking.py -v` passes
+  - [ ] All L4 agent tests pass (44/44)
+- **Implementation:**
+  - Modify: `value-fabric/layer4-agents/tests/test_llm_cost_tracking.py`
+
+**Task 93: OpenAPI Export Script Fix (P0)**
+- **Layer:** DEVOPS/Contracts
+- **Effort:** 1 day
+- **Unblocks:** SDK generation, contract validation
+- **Acceptance Criteria:**
+  - [ ] Fix `scripts/export_openapi.py` module path setup (line 52)
+  - [ ] Export succeeds for all 4 layers: `python scripts/export_openapi.py`
+  - [ ] Add CI workflow validating OpenAPI on every PR
+- **Implementation:**
+  - Modify: `scripts/export_openapi.py` (PYTHONPATH setup)
+  - Create: `.github/workflows/drift-check.yml`
+
+**Task 94: Layer 3 OpenAPI Regeneration (P0)**
+- **Layer:** L3/DEVOPS
+- **Effort:** 1 day
+- **Unblocks:** Frontend contract alignment
+- **Depends on:** Task 93
+- **Acceptance Criteria:**
+  - [ ] `contracts/openapi/layer3-knowledge.json` contains actual L3 routes (not L1)
+  - [ ] Schemas complete: `IngestRequest`, `Formula`, `GraphRAGResponse`
+  - [ ] Frontend hooks validate against regenerated spec
+  - [ ] Contract tests pass: `pytest tests/contract/ -v`
+- **Implementation:**
+  - Modify: `contracts/openapi/layer3-knowledge.json` (regenerate)
+
+#### Day 3-5: Docker & Validation
+
+**Task 95: Docker Deployment Validation (P0)**
+- **Layer:** DEVOPS
+- **Effort:** 2 days
+- **From:** User assessment Sprint 1
+- **Acceptance Criteria:**
+  - [ ] `docker-compose up` starts all 6 layers + infrastructure
+  - [ ] All health checks return 200
+  - [ ] `python scripts/smoke/production_smoke.py` passes 6/6 stages
+  - [ ] K8s manifests render: `kubectl kustomize k8s/overlays/dev`
+- **Implementation:**
+  - Verify: `value-fabric/docker-compose.yml`
+  - Test: `k8s/base/` deployments
+
+**Task 96: Vector E2E Verification (P0)**
+- **Layer:** L3
+- **Effort:** 2 days
+- **From:** User assessment Sprint 4
+- **Acceptance Criteria:**
+  - [ ] `test_vector_e2e.py` passes with real Neo4j (5/5 tests)
+  - [ ] `test_e2e_pipeline.py` passes with Docker Neo4j
+  - [ ] Vector index creation verified with real embeddings
+  - [ ] `POST /v1/search/hybrid` returns ranked results
+- **Implementation:**
+  - Run: `pytest value-fabric/layer3-knowledge/tests/test_vector_e2e.py`
+  - Fix: Any failing ingestion/query tests
+
+#### Week 2: Type Safety & Contracts
+
+**Task 97: mypy Type Coverage (P1)**
+- **Layer:** All Python
+- **Effort:** 3 days
+- **From:** User assessment (tech debt)
+- **Acceptance Criteria:**
+  - [ ] 232+ pre-existing mypy errors resolved
+  - [ ] `make type-check` passes all layers
+  - [ ] CI type-check job green
+  - [ ] No new type errors introduced
+- **Implementation:**
+  - Modify: Type annotations across L1-L6
+  - Update: `pyproject.toml` mypy configs
+
+**Task 98: Frontend-Backend Contract Alignment (P1)**
+- **Layer:** Frontend/L3
+- **Effort:** 2 days
+- **Unblocks:** Silent API regression prevention
+- **Depends on:** Task 94
+- **Acceptance Criteria:**
+  - [ ] TypeScript interfaces in `frontend/client/src/api/types.ts` match OpenAPI
+  - [ ] CI job fails on contract drift detection
+  - [ ] `POST /v1/graph/query`, `/v1/search/hybrid` routes validated
+- **Implementation:**
+  - Modify: `frontend/client/src/api/types.ts`
+  - Modify: `.github/workflows/pr-checks.yml`
+
+---
+
+### Sprint 2: Security, Auth & Monitoring (Weeks 3-4)
+
+**Goal:** Complete SSO/OIDC, wire production secrets, deploy Alertmanager, achieve operational readiness
+**Exit Criteria:** Enterprise auth working, secrets externalized, alerts routing to Slack/PagerDuty
+
+#### Week 3: SSO & Secrets
+
+**Task 99: SSO/OIDC Backend Completion (P0)**
+- **Layer:** Shared/L4
+- **Effort:** 1 week
+- **From:** Proposed additions + User Top Risk #1
+- **Unblocks:** Enterprise adoption, federated identity
+- **Depends on:** Task 54 (RLS - ✅ Complete)
+- **Acceptance Criteria:**
+  - [ ] `OIDCClient` in `shared/identity/oidc.py` with PKCE support
+  - [ ] `/auth/oidc/{tenant}/login` redirects to IdP
+  - [ ] `/auth/oidc/callback` handles token exchange
+  - [ ] Group membership maps to `Role` enum
+  - [ ] `USER_LOGIN` audit event on successful auth
+  - [ ] Unit tests for token exchange and claim mapping
+- **Implementation:**
+  - Create: `shared/identity/oidc.py`
+  - Create: `value-fabric/layer4-agents/src/api/routes/oidc.py`
+  - Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
+
+**Task 100: Secrets Management Production Wiring (P0)**
+- **Layer:** Infra
+- **Effort:** 3 days
+- **From:** User assessment Sprint 2
+- **Acceptance Criteria:**
+  - [ ] `k8s/secrets.yml.template` → actual base64-encoded values for staging
+  - [ ] Vault/Infisical wired to all layers
+  - [ ] `k8s/external-secrets/` syncs secrets from Vault
+  - [ ] No plaintext secrets in repo
+  - [ ] K8s staging deploy uses external secrets
+- **Implementation:**
+  - Modify: `k8s/secrets.yml.template`
+  - Verify: `k8s/external-secrets/vault-integration.yml`
+
+#### Week 4: Frontend Auth & Alertmanager
+
+**Task 101: SSO/OIDC Frontend Integration (P0)**
+- **Layer:** Frontend
+- **Effort:** 1 week
+- **Unblocks:** Enterprise login flow
+- **Depends on:** Task 99
+- **Acceptance Criteria:**
+  - [ ] `Login.tsx` supports OIDC redirect flow (Okta, Azure AD, Google)
+  - [ ] `SSOButtons.tsx` component with provider icons
+  - [ ] `AuthContext.tsx` handles OIDC token exchange
+  - [ ] Post-login redirects preserve original route
+  - [ ] Error handling for failed SSO flows
+- **Implementation:**
+  - Modify: `frontend/client/src/pages/Login.tsx`
+  - Modify: `frontend/client/src/contexts/AuthContext.tsx`
+  - Create: `frontend/client/src/components/auth/SSOButtons.tsx`
+
+**Task 102: Alertmanager Deployment & Routing (P1)**
+- **Layer:** DEVOPS/Monitoring
+- **Effort:** 1 week
+- **From:** Proposed additions + User Top Risk #3
+- **Depends on:** Task 72 (Runbooks - ✅ Complete)
+- **Acceptance Criteria:**
+  - [ ] `k8s/base/alertmanager/` with deployment, service, config
+  - [ ] Routing: critical → PagerDuty/Opsgenie, warning → Slack `#alerts`
+  - [ ] Formula approval notifications to Slack
+  - [ ] Environment vars: `ALERTMANAGER_SLACK_WEBHOOK`, `ALERTMANAGER_PAGERDUTY_KEY`
+  - [ ] Test alert fires through to Slack channel
+  - [ ] `runbook_url` annotation links to `docs/runbooks/`
+- **Implementation:**
+  - Create: `k8s/base/alertmanager/deployment.yml`
+  - Create: `k8s/base/alertmanager/config.yml`
+  - Create: `k8s/base/alertmanager/service.yml`
+  - Modify: `monitoring/alertmanager/alertmanager.yml`
+
+---
+
+### Sprint 3: DX & Production Hardening (Weeks 5-6)
+
+**Goal:** Developer tooling, cost observability, feature flags, rate limiting, final hardening
+**Exit Criteria:** SDK published, cost metrics visible, feature flags operational, rate limiting protecting tenants
+
+#### Week 5: Developer Experience
+
+**Task 103: Dependency Locking with uv (P1)**
+- **Layer:** DEVOPS
+- **Effort:** 1 week
+- **From:** Proposed additions + 6-Week Migration Plan
+- **Acceptance Criteria:**
+  - [ ] All 6 layers have `uv.lock` files
+  - [ ] All Dockerfiles use `uv pip sync` from lock file
+  - [ ] CI uses `uv sync --frozen`
+  - [ ] Python base images pinned to SHA digests
+  - [ ] `hadolint` passes on all Dockerfiles
+- **Implementation:**
+  - Create: `value-fabric/*/uv.lock` (6 files)
+  - Modify: All `value-fabric/layer*/Dockerfile`
+  - Modify: `.github/workflows/pr-checks.yml`
+
+**Task 104: LLM Cost Prometheus Metrics (P1)**
+- **Layer:** L2
+- **Effort:** 2 days
+- **From:** Proposed additions
+- **Depends on:** Task 70 (Model Registry - ✅ Complete)
+- **Acceptance Criteria:**
+  - [ ] Prometheus counter `vf_llm_cost_usd_total{provider, model, tenant_id}`
+  - [ ] Prometheus counter `vf_llm_tokens_total{provider, model, type}`
+  - [ ] Grafana panel "LLM Cost by Tenant"
+  - [ ] Alert rule: `vf_llm_cost_usd_total > budget_threshold`
+  - [ ] Metrics appear in `/metrics` after extraction
+- **Implementation:**
+  - Modify: `value-fabric/layer2-extraction/src/metrics/prometheus_metrics.py`
+  - Modify: `value-fabric/layer2-extraction/src/extraction/llm_extractor.py`
+  - Modify: `monitoring/grafana/dashboards/value-fabric-overview.json`
+  - Modify: `monitoring/alerting/rules.yml`
+
+**Task 105: Grafana Alert Tuning (P1)**
+- **Layer:** Monitoring
+- **Effort:** 2 days
+- **From:** User assessment Sprint 3
+- **Acceptance Criteria:**
+  - [ ] Import `value-fabric-operational.json` dashboard
+  - [ ] Alert thresholds calibrated for production
+  - [ ] PagerDuty/Slack notifications wired
+  - [ ] SLO dashboards live (error rate <5%, p95 latency <2s)
+- **Implementation:**
+  - Import: `monitoring/grafana/dashboards/value-fabric-operational.json`
+  - Modify: `monitoring/alerting/rules.yml`
+
+#### Week 6: Advanced Features
+
+**Task 106: Python SDK & CLI (P1)**
+- **Layer:** DevTools
+- **Effort:** 2 weeks (spans Sprint 2-3)
+- **From:** Proposed additions
+- **Depends on:** Task 98 (Contract Alignment)
+- **Acceptance Criteria:**
+  - [ ] Python client SDK generated from L4 OpenAPI spec
+  - [ ] SDK published as `vf-client` to GitHub Packages
+  - [ ] CLI (`vf`) with: `workflow run`, `workflow status`, `search`, `health`
+  - [ ] `pip install vf-client` installs working client
+  - [ ] `vf health` returns platform status
+  - [ ] SDK regenerated automatically in CI
+- **Implementation:**
+  - Create: `sdk/python/` (OpenAPI-generated client)
+  - Create: `sdk/cli/` (typer-based CLI)
+  - Modify: `.github/workflows/build-deploy.yml`
+
+**Task 107: Feature Flag System (P1)**
+- **Layer:** L4/Shared
+- **Effort:** 1 week
+- **From:** Proposed additions + Phase 3
+- **Depends on:** Task 54 (RLS - ✅ Complete)
+- **Acceptance Criteria:**
+  - [ ] `feature_flags` table with `flag_key`, `tenant_id`, `enabled`, `rollout_pct`
+  - [ ] `GET /v1/flags/{key}` endpoint
+  - [ ] Python helper `is_enabled(flag_key, ctx)` in `shared/feature_flags/`
+  - [ ] Flags respect per-tenant rollout percentage
+  - [ ] `is_enabled()` used in at least one L4 agent path
+  - [ ] Flag changes audited via `AuditAction`
+- **Implementation:**
+  - Create: `value-fabric/layer4-agents/src/models/feature_flags.py`
+  - Create: `value-fabric/layer4-agents/src/api/routes/feature_flags.py`
+  - Create: `shared/feature_flags/helpers.py`
+
+**Task 108: Per-Tenant Rate Limiting (P1)**
+- **Layer:** L1/L3/L4
+- **Effort:** 1 week
+- **From:** Proposed additions + Phase 3
+- **Depends on:** Task 53 (Neo4j Tenant - ✅ Complete), Task 54 (RLS - ✅ Complete)
+- **Acceptance Criteria:**
+  - [ ] `TENANT` scope added to `RateLimitScope` enum
+  - [ ] Rate limiter wired into L4's `GovernanceMiddleware`
+  - [ ] Per-tenant limits from `tenants.settings` JSONB
+  - [ ] `429` responses include `Retry-After` header
+  - [ ] Tenant A cannot consume Tenant B's quota
+  - [ ] Rate limit events logged (not audited)
+- **Implementation:**
+  - Modify: `value-fabric/layer3-knowledge/src/rate_limiting/manager.py`
+  - Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
+  - Modify: `value-fabric/layer1-ingestion/src/api/main.py`
+  - Create: `value-fabric/layer4-agents/tests/test_tenant_rate_limits.py`
+
+---
+
+### Merged Sprint Summary
+
+| Sprint | Focus | Duration | P0 Tasks | P1 Tasks | Exit Readiness |
+|--------|-------|----------|----------|----------|----------------|
+| 1 | Foundation & Validation | 2 weeks | 5 | 2 | 88% |
+| 2 | Security, Auth & Monitoring | 2 weeks | 3 | 1 | 93% |
+| 3 | DX & Production Hardening | 2 weeks | 0 | 5 | 97% |
+| **Total** | | **6 weeks** | **8** | **8** | **97%** |
+
+---
+
+### Updated Launch Checklist (Post-Merged Sprints)
+
+| # | Criterion | Pre-Sprint Status | Post-Sprint 3 Target |
+|---|-----------|-------------------|---------------------|
+| 1 | Product functionality | ✅ | ✅ |
+| 2 | Cross-layer integrity | ✅ 27/27 | ✅ 30/30 |
+| 3 | Test reliability | ✅ 44/45 | ✅ 50/50 |
+| 4 | Production observability | 🟡 Prometheus only | ✅ Prometheus + Alertmanager |
+| 5 | Deployment infrastructure | ✅ K8s + Compose | ✅ Validated + uv locked |
+| 6 | Operational runbooks | ✅ 20+ | ✅ 20+ (all linked to alerts) |
+| 7 | API documentation | ❌ Drift detected | ✅ Regenerated + aligned |
+| 8 | Compliance traceability | ✅ | ✅ |
+| 9 | Security controls | ✅ Zero-trust | ✅ Zero-trust + SSO |
+| 10 | Lint/contract compliance | ✅ | ✅ + mypy clean |
+| 11 | Enterprise auth | ❌ | ✅ OIDC + SSO |
+| 12 | Developer tooling | ❌ | ✅ SDK + CLI |
+| 13 | Cost observability | 🟡 DB only | ✅ Prometheus + alerts |
+| 14 | Feature rollout | ❌ | ✅ Feature flags |
+| 15 | Tenant protection | 🟡 Partial | ✅ Rate limiting + isolation |
+
+**Met:** 11/15 → **15/15** after Sprint 3
+
+---
+
+### Critical Path (Merged)
+
+```
+Sprint 1:  Task 92 ──► Task 93 ──► Task 94 ──► Task 95 ──► Task 96
+          (fix)       (export)    (regen)     (docker)    (vector)
+                    │                          │
+                    └────────┬─────────────────┘
+                             ▼
+Sprint 2:  Task 99 (SSO Backend) ──► Task 101 (SSO Frontend)
+          │
+          └──────► Task 100 (Secrets) ──► Task 102 (Alertmanager)
+
+Sprint 3:  Task 103 (uv) ──► Task 104 (Cost) ──► Task 105 (Grafana)
+          │
+          └──────► Task 106 (SDK) + Task 107 (Flags) + Task 108 (Rate Limits)
+```
+
+**Go/No-Go Target:** After Sprint 2 = 93% readiness | After Sprint 3 = 97% readiness
+
+---

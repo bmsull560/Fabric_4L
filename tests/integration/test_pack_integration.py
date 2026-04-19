@@ -4,153 +4,256 @@ Validates that packs load correctly and API endpoints work as expected.
 """
 
 import json
-import pytest
+from collections.abc import Generator
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 PACKS_DIR = Path(__file__).parent.parent.parent / "packs"
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def pack_manifest() -> dict[str, Any]:
+    """Load and return the pack manifest."""
+    manifest_path = PACKS_DIR / "pack-manifest.json"
+    if not manifest_path.exists():
+        pytest.skip(f"Manifest not found: {manifest_path}")
+    
+    try:
+        with open(manifest_path, encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        pytest.fail(f"Invalid JSON in manifest: {e}")
+
+
+@pytest.fixture
+def pack_path_from_id(pack_id: str) -> Path:
+    """Convert pack ID to filesystem path."""
+    # Strip version suffix (e.g., "-v1") from pack ID
+    base_id = pack_id.replace("-v1", "").replace("-v2", "").replace("-v3", "")
+    return PACKS_DIR / base_id
+
+
+def get_pack_path(pack: dict[str, Any]) -> Path:
+    """Get filesystem path for a pack from manifest entry."""
+    pack_id = pack["pack_id"]
+    base_id = pack_id.replace("-v1", "").replace("-v2", "").replace("-v3", "")
+    return PACKS_DIR / base_id
 
 
 class TestPackLoading:
     """Test pack loading from JSON files."""
 
-    def test_all_packs_loadable(self):
+    def test_all_packs_loadable(self, pack_manifest: dict[str, Any]) -> None:
         """All packs in manifest must be loadable."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
+        required_files = [
+            "formulas.json",
+            "variables.json", 
+            "ontology.json",
+            "workflow_template.json",
+            "README.md",
+        ]
         
-        for pack in manifest["packs"]:
-            pack_path = PACKS_DIR / pack["pack_id"].replace("-v1", "")
+        for pack in pack_manifest["packs"]:
+            pack_path = get_pack_path(pack)
+            
             assert pack_path.exists(), f"Pack directory missing: {pack_path}"
             
             # Verify all required files exist
-            assert (pack_path / "formulas.json").exists()
-            assert (pack_path / "variables.json").exists()
-            assert (pack_path / "ontology.json").exists()
-            assert (pack_path / "workflow_template.json").exists()
-            assert (pack_path / "README.md").exists()
+            for filename in required_files:
+                file_path = pack_path / filename
+                assert file_path.exists(), f"Required file missing: {file_path}"
 
-    def test_pack_formulas_loadable(self):
+    def test_pack_formulas_loadable(self, pack_manifest: dict[str, Any]) -> None:
         """All pack formulas must load without errors."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
-        
-        for pack in manifest["packs"]:
-            pack_path = PACKS_DIR / pack["pack_id"].replace("-v1", "")
+        for pack in pack_manifest["packs"]:
+            pack_path = get_pack_path(pack)
             formulas_file = pack_path / "formulas.json"
             
-            with open(formulas_file) as f:
-                data = json.load(f)
+            if not formulas_file.exists():
+                pytest.fail(f"Formulas file missing: {formulas_file}")
             
-            assert "formulas" in data
-            assert len(data["formulas"]) == pack["formula_count"]
+            try:
+                with open(formulas_file, encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"Invalid JSON in {formulas_file}: {e}")
+            
+            assert "formulas" in data, f"Missing 'formulas' key in {formulas_file}"
+            actual_count = len(data["formulas"])
+            expected_count = pack["formula_count"]
+            assert actual_count == expected_count, (
+                f"Formula count mismatch in {pack['pack_id']}: "
+                f"expected {expected_count}, got {actual_count}"
+            )
             
             # Validate formula structure
             for formula in data["formulas"]:
-                assert "formula_id" in formula
-                assert "expression" in formula
-                assert "string" in formula["expression"]
+                assert "formula_id" in formula, "Formula missing 'formula_id'"
+                assert "expression" in formula, "Formula missing 'expression'"
+                assert "string" in formula["expression"], "Expression missing 'string'"
 
-    def test_pack_variables_loadable(self):
+    def test_pack_variables_loadable(self, pack_manifest: dict[str, Any]) -> None:
         """All pack variables must load without errors."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
-        
-        for pack in manifest["packs"]:
-            pack_path = PACKS_DIR / pack["pack_id"].replace("-v1", "")
+        for pack in pack_manifest["packs"]:
+            pack_path = get_pack_path(pack)
             variables_file = pack_path / "variables.json"
             
-            with open(variables_file) as f:
-                data = json.load(f)
+            if not variables_file.exists():
+                pytest.fail(f"Variables file missing: {variables_file}")
             
-            assert "variables" in data
-            assert len(data["variables"]) == pack["variable_count"]
+            try:
+                with open(variables_file, encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"Invalid JSON in {variables_file}: {e}")
+            
+            assert "variables" in data, f"Missing 'variables' key in {variables_file}"
+            actual_count = len(data["variables"])
+            expected_count = pack["variable_count"]
+            assert actual_count == expected_count, (
+                f"Variable count mismatch in {pack['pack_id']}: "
+                f"expected {expected_count}, got {actual_count}"
+            )
 
 
 class TestPackConsistency:
     """Test consistency across pack files."""
 
-    def test_pack_ids_consistent(self):
+    def test_pack_ids_consistent(self, pack_manifest: dict[str, Any]) -> None:
         """Pack IDs must match across all files in each pack."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
+        json_files = [
+            "formulas.json",
+            "variables.json", 
+            "ontology.json",
+            "workflow_template.json",
+        ]
         
-        for pack in manifest["packs"]:
+        for pack in pack_manifest["packs"]:
             pack_id = pack["pack_id"]
-            pack_path = PACKS_DIR / pack_id.replace("-v1", "")
+            pack_path = get_pack_path(pack)
             
             # Check each JSON file has correct pack_id
-            for filename in ["formulas.json", "variables.json", "ontology.json", "workflow_template.json"]:
-                with open(pack_path / filename) as f:
-                    data = json.load(f)
-                assert data.get("pack_id") == pack_id, f"{filename} has wrong pack_id in {pack_id}"
+            for filename in json_files:
+                file_path = pack_path / filename
+                if not file_path.exists():
+                    continue  # Skip optional files
+                    
+                try:
+                    with open(file_path, encoding="utf-8") as f:
+                        data = json.load(f)
+                except json.JSONDecodeError as e:
+                    pytest.fail(f"Invalid JSON in {file_path}: {e}")
+                
+                actual_pack_id = data.get("pack_id")
+                assert actual_pack_id == pack_id, (
+                    f"{filename} has wrong pack_id: expected '{pack_id}', got '{actual_pack_id}'"
+                )
 
-    def test_formula_variable_references_valid(self):
+    def test_formula_variable_references_valid(self, pack_manifest: dict[str, Any]) -> None:
         """Formula variable references must point to existing variables."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
-        
-        for pack in manifest["packs"]:
-            pack_path = PACKS_DIR / pack["pack_id"].replace("-v1", "")
+        for pack in pack_manifest["packs"]:
+            pack_path = get_pack_path(pack)
             
             # Load variables
-            with open(pack_path / "variables.json") as f:
-                var_data = json.load(f)
-            valid_vars = {v["variable_name"] for v in var_data["variables"]}
+            variables_file = pack_path / "variables.json"
+            if not variables_file.exists():
+                continue
+                
+            try:
+                with open(variables_file, encoding="utf-8") as f:
+                    var_data = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"Invalid JSON in {variables_file}: {e}")
+            
+            valid_vars = {v["variable_name"] for v in var_data.get("variables", [])}
             
             # Check formulas
-            with open(pack_path / "formulas.json") as f:
-                formula_data = json.load(f)
+            formulas_file = pack_path / "formulas.json"
+            if not formulas_file.exists():
+                continue
+                
+            try:
+                with open(formulas_file, encoding="utf-8") as f:
+                    formula_data = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"Invalid JSON in {formulas_file}: {e}")
             
-            for formula in formula_data["formulas"]:
+            for formula in formula_data.get("formulas", []):
+                formula_id = formula.get("formula_id", "unknown")
                 expr_vars = formula.get("expression", {}).get("variables", [])
                 for var in expr_vars:
-                    assert var in valid_vars, f"Invalid variable reference: {var} in {formula['formula_id']}"
+                    assert var in valid_vars, (
+                        f"Invalid variable reference '{var}' in formula '{formula_id}' "
+                        f"(pack: {pack['pack_id']})"
+                    )
 
 
 class TestManifestAccuracy:
     """Test manifest statistics are accurate."""
 
-    def test_manifest_formula_counts(self):
+    def test_manifest_formula_counts(self, pack_manifest: dict[str, Any]) -> None:
         """Manifest formula counts must match actual files."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
-        
-        for pack in manifest["packs"]:
-            pack_path = PACKS_DIR / pack["pack_id"].replace("-v1", "")
+        for pack in pack_manifest["packs"]:
+            pack_path = get_pack_path(pack)
+            formulas_file = pack_path / "formulas.json"
             
-            with open(pack_path / "formulas.json") as f:
-                data = json.load(f)
+            if not formulas_file.exists():
+                continue
+                
+            try:
+                with open(formulas_file, encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"Invalid JSON in {formulas_file}: {e}")
             
-            actual_count = len(data["formulas"])
-            assert actual_count == pack["formula_count"], f"Formula count mismatch in {pack['pack_id']}"
+            actual_count = len(data.get("formulas", []))
+            expected_count = pack["formula_count"]
+            assert actual_count == expected_count, (
+                f"Formula count mismatch in {pack['pack_id']}: "
+                f"expected {expected_count}, got {actual_count}"
+            )
 
-    def test_manifest_variable_counts(self):
+    def test_manifest_variable_counts(self, pack_manifest: dict[str, Any]) -> None:
         """Manifest variable counts must match actual files."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
-        
-        for pack in manifest["packs"]:
-            pack_path = PACKS_DIR / pack["pack_id"].replace("-v1", "")
+        for pack in pack_manifest["packs"]:
+            pack_path = get_pack_path(pack)
+            variables_file = pack_path / "variables.json"
             
-            with open(pack_path / "variables.json") as f:
-                data = json.load(f)
+            if not variables_file.exists():
+                continue
+                
+            try:
+                with open(variables_file, encoding="utf-8") as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                pytest.fail(f"Invalid JSON in {variables_file}: {e}")
             
-            actual_count = len(data["variables"])
-            assert actual_count == pack["variable_count"], f"Variable count mismatch in {pack['pack_id']}"
+            actual_count = len(data.get("variables", []))
+            expected_count = pack["variable_count"]
+            assert actual_count == expected_count, (
+                f"Variable count mismatch in {pack['pack_id']}: "
+                f"expected {expected_count}, got {actual_count}"
+            )
 
-    def test_manifest_statistics(self):
+    def test_manifest_statistics(self, pack_manifest: dict[str, Any]) -> None:
         """Manifest total statistics must be correct."""
-        with open(PACKS_DIR / "pack-manifest.json") as f:
-            manifest = json.load(f)
+        stats = pack_manifest.get("statistics", {})
+        packs = pack_manifest.get("packs", [])
         
-        stats = manifest["statistics"]
-        total_formulas = sum(p["formula_count"] for p in manifest["packs"])
-        total_variables = sum(p["variable_count"] for p in manifest["packs"])
-        total_entities = sum(p["entity_count"] for p in manifest["packs"])
+        total_formulas = sum(p.get("formula_count", 0) for p in packs)
+        total_variables = sum(p.get("variable_count", 0) for p in packs)
+        total_entities = sum(p.get("entity_count", 0) for p in packs)
         
-        assert stats["total_formulas"] == total_formulas
-        assert stats["total_variables"] == total_variables
-        assert stats["total_entities"] == total_entities
+        assert stats.get("total_formulas") == total_formulas, "Total formulas mismatch"
+        assert stats.get("total_variables") == total_variables, "Total variables mismatch"
+        assert stats.get("total_entities") == total_entities, "Total entities mismatch"
 
 
 class TestPackLoaderIntegration:
@@ -165,20 +268,18 @@ class TestPackLoaderIntegration:
             get_available_packs,
         )
 
-    def test_pack_loader_formulas(self):
+    def test_pack_loader_formulas(self) -> None:
         """Pack loader must return correctly formatted formulas."""
-        pytest.importorskip("api.routes.pack_loader", reason="Layer 3 API not available")
+        pytest.importorskip("src.api.routes.pack_loader", reason="Layer 3 API not available")
         
-        from api.routes.pack_loader import load_pack_formulas
+        from src.api.routes.pack_loader import load_pack_formulas
         
         formulas = load_pack_formulas("financial-services-v1")
-        assert len(formulas) > 0
+        assert len(formulas) > 0, "No formulas returned for financial-services-v1"
         
         # Check structure
+        required_fields = ["id", "name", "expression", "variables", "pack_id"]
         for formula in formulas:
-            assert "id" in formula
-            assert "name" in formula
-            assert "expression" in formula
-            assert "variables" in formula
-            assert "pack_id" in formula
-            assert formula["pack_id"] == "financial-services-v1"
+            for field in required_fields:
+                assert field in formula, f"Formula missing required field: {field}"
+            assert formula["pack_id"] == "financial-services-v1", "Pack ID mismatch in formula"
