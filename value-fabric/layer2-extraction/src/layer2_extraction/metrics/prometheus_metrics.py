@@ -163,7 +163,7 @@ class PrometheusMetrics:
         self._metrics["llm_tokens_total"] = Counter(
             "vf_llm_tokens_total",
             "Total LLM tokens consumed",
-            ["provider", "model", "type"],  # type: prompt|completion
+            ["provider", "model", "type"],  # token type: prompt or completion
             registry=self.config.registry,
         )
 

@@ -9,6 +9,7 @@ Tests verify:
 """
 from __future__ import annotations
 
+import os
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest

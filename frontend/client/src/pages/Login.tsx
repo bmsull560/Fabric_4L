@@ -176,8 +176,8 @@ export default function Login() {
             </Button>
           </form>
 
-          {/* SSO Providers — Gated until Task 69 backend completion */}
-          <SSOButtons className="mt-6" enabled={false} />
+          {/* SSO Providers — Enabled after Task 69 backend completion */}
+          <SSOButtons className="mt-6" enabled={true} />
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>{t("login.footer")}</p>

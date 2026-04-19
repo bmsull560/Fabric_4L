@@ -5,30 +5,24 @@ FROM python:3.11.11-slim-bookworm
 # Security: Run as non-root user
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
-# Install system dependencies
+# Install system dependencies + curl for uv install and healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
 # Set working directory
 WORKDIR /app
 
-# Install Python dependencies directly (avoid editable install issues)
-RUN pip install --no-cache-dir \
-    fastapi>=0.115.0 \
-    uvicorn[standard]>=0.32.0 \
-    pydantic>=2.9.0 \
-    openai>=1.40.0 \
-    langchain>=0.3.0 \
-    langchain-text-splitters>=0.3.0 \
-    rdflib>=7.1.0 \
-    numpy>=1.26.0 \
-    redis>=5.2.0 \
-    celery>=5.4.0 \
-    httpx>=0.27.0 \
-    python-dotenv>=1.0.0 \
-    prometheus-client>=0.21.0 \
-    psutil>=6.0.0
+# Copy dependency files
+COPY layer2-extraction/pyproject.toml .
+COPY layer2-extraction/uv.lock .
+
+# Install dependencies using uv (creates .venv)
+RUN uv sync --frozen
 
 # Copy shared package
 COPY shared/ ./shared/
@@ -36,10 +30,11 @@ COPY shared/ ./shared/
 # Copy application code
 COPY layer2-extraction/src/ ./src/
 
-# Set PYTHONPATH so imports work
+# Set PATH to use uv virtual environment and PYTHONPATH for imports
+ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app:/app/src
 
-# Change ownership to non-root user
+# Change ownership to non-root user (including .venv)
 RUN chown -R appuser:appgroup /app
 USER appuser
 

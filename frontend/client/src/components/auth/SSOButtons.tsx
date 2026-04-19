@@ -1,15 +1,12 @@
 /**
  * SSO Buttons Component — Enterprise Identity Provider Selection
  *
- * **GATED:** This component is currently disabled/preview-only.
- * Full SSO provider integration requires Task 69 (SSO/OIDC Backend) completion.
- *
- * When enabled, this component renders SSO provider buttons for:
+ * Renders SSO provider buttons for:
  * - Okta
  * - Azure AD (Microsoft Entra ID)
  * - Google Workspace
  *
- * @deprecatedUntil Task 69 — Keep gated until backend provider matrix is confirmed
+ * Enabled after Task 69 (SSO/OIDC Backend) completion.
  */
 
 import { useMemo } from "react";
@@ -47,7 +44,7 @@ const GoogleIcon = () => (
 
 interface SSOButtonsProps {
   className?: string;
-  /** @deprecatedUntil Task 69 — Gated until backend SSO provider matrix is confirmed */
+  /** Enable SSO provider buttons (defaults to true after Task 69 completion) */
   enabled?: boolean;
   onProviderSelect?: (providerId: string) => void;
 }
@@ -55,21 +52,18 @@ interface SSOButtonsProps {
 /**
  * SSO Provider Selection Buttons
  *
- * **GATED COMPONENT:** Currently renders in disabled/preview state.
- * Remove `enabled` prop or set to `true` after Task 69 backend completion.
- *
  * @example
  * ```tsx
- * // Gated (current default)
+ * // Default enabled after Task 69
  * <SSOButtons />
  *
- * // Enabled (after Task 69)
- * <SSOButtons enabled onProviderSelect={handleSSO} />
+ * // With custom handler
+ * <SSOButtons onProviderSelect={handleSSO} />
  * ```
  */
 export function SSOButtons({
   className,
-  enabled = false,
+  enabled = true,
   onProviderSelect,
 }: SSOButtonsProps) {
   // Memoize providers to prevent recreation on every render
