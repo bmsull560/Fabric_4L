@@ -12,7 +12,7 @@
  */
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { useUserTierStore } from '../stores/userTierStore';
+import { useUserTierStore } from '@/stores/userTierStore';
 import { authClient, AuthClient } from '../services/authClient';
 import { type UserInfo, AuthError, AuthErrorCategory } from '../schemas/auth';
 

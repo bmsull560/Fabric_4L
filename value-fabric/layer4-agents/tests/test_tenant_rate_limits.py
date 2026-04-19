@@ -71,6 +71,18 @@ class TestTenantRateLimiting:
         limits = get_tenant_rate_limits(None)
         assert limits.requests_per_minute == 120
 
+    def test_rate_limit_check_validates_positive_rpm(self):
+        """Verify rate limit rejects non-positive requests_per_minute."""
+        from shared.identity.middleware import _check_tenant_rate_limit
+
+        tenant_id = str(uuid4())
+
+        with pytest.raises(ValueError, match="requests_per_minute must be >= 1"):
+            _check_tenant_rate_limit(tenant_id, requests_per_minute=0)
+
+        with pytest.raises(ValueError, match="requests_per_minute must be >= 1"):
+            _check_tenant_rate_limit(tenant_id, requests_per_minute=-1)
+
     def test_rate_limit_check_allows_under_limit(self):
         """Verify requests under limit are allowed."""
         from shared.identity.middleware import _check_tenant_rate_limit
