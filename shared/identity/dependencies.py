@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
-from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request, status
 
 from .context import RequestContext
-from .permissions import has_permission
 
 logger = logging.getLogger(__name__)
 

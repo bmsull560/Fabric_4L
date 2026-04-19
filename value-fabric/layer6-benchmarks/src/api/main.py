@@ -25,7 +25,7 @@ except ImportError:
     add_security_middleware = None
     SecurityConfig = None
 
-from ..metrics import get_metrics, initialize_metrics
+from ..metrics import initialize_metrics
 from ..models.benchmark_dataset import (
     MANUFACTURING_BENCHMARK_SEED,
     BenchmarkDataset,

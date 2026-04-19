@@ -256,7 +256,7 @@ class TestPackLoaderIntegration:
     """Test pack loader integration with Layer 3 API."""
     
     def test_pack_loader_imports(self):
-        """Pack loader module must be importable."""
+        """Pack loader module must be importable and expose expected functions."""
         try:
             from src.api.routes.pack_loader import (
                 load_pack_manifest,
@@ -264,6 +264,11 @@ class TestPackLoaderIntegration:
                 load_pack_variables,
                 get_available_packs,
             )
+            # Verify all expected functions are callable
+            assert callable(load_pack_formulas)
+            assert callable(load_pack_variables)
+            assert callable(get_available_packs)
+            assert callable(load_pack_manifest)
         except ImportError:
             pytest.skip("Layer 3 API not available - pack_loader module not found")
 

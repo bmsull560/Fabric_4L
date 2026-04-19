@@ -13,7 +13,7 @@ from uuid import UUID
 import json
 
 import structlog
-from sqlalchemy import select, func, and_
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..shared.database import get_db_session

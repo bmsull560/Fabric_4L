@@ -17,8 +17,6 @@ A10: Server-Side Request Forgery (SSRF)
 import pytest
 import jwt
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch
-import re
 
 
 # ============================================================================

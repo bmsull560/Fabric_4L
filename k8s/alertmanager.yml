@@ -1,8 +1,21 @@
+# DEPRECATED: This file is deprecated in favor of k8s/monitoring-alertmanager.yml
+# The new configuration includes:
+#   - Slack notifications with templates
+#   - PagerDuty integration for critical alerts
+#   - External-secrets for secret management
+#   - Unified routing with runbook_url support
+#
+# TODO: Remove this file after migration to monitoring-alertmanager.yml is complete
+# Last Updated: 2026-04-19
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: alertmanager-config
+  name: alertmanager-config-deprecated
   namespace: value-fabric
+  annotations:
+    deprecated: "true"
+    replacement: "k8s/monitoring-alertmanager.yml"
 data:
   alertmanager.yml: |
     global:

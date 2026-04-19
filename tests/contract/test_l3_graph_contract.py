@@ -242,7 +242,7 @@ class TestL3GraphNodeContracts:
         # - 'confidence_score' alias for 'confidence' (frontend expects 'confidence_score')
         # Legacy fields (label, type, confidence) are preserved for backward compatibility.
         schema_required = {"id", "label", "type"}
-        frontend_expects = {"id", "name", "entity_type", "confidence_score"}
+        # frontend_expects = {"id", "name", "entity_type", "confidence_score"}  # Documented expectation
 
         components = l3_openapi.get("components", {}).get("schemas", {})
         if "GraphNode" in components:
@@ -255,7 +255,6 @@ class TestL3GraphNodeContracts:
     def test_graph_node_response_sample_includes_alias_fields(self, monkeypatch) -> None:
         """GraphNode model_dump includes both legacy and alias fields for frontend compatibility."""
         # Import and use the actual Pydantic model to test real serialization
-        import sys
         layer3_src = str(Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src")
         monkeypatch.syspath_prepend(layer3_src)
         from api.models import GraphNode
@@ -305,7 +304,6 @@ class TestL3GraphRelationshipContracts:
     def test_graph_relationship_response_includes_alias_fields(self, monkeypatch) -> None:
         """GraphEdge model_dump includes relationship_type alias for frontend compatibility."""
         # Import and use the actual Pydantic model to test real serialization
-        import sys
         from pathlib import Path
         layer3_src = str(Path(__file__).parent.parent.parent / "value-fabric" / "layer3-knowledge" / "src")
         monkeypatch.syspath_prepend(layer3_src)

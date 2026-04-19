@@ -6,7 +6,7 @@ and performance monitoring without full cost tracking implementation.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any

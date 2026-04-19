@@ -4,7 +4,7 @@ Uses factory_boy and faker for deterministic, realistic test data generation.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 import factory
 from faker import Faker
 

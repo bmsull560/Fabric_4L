@@ -10,7 +10,6 @@ import time
 from typing import Callable
 
 import jwt as jwt_lib
-import pytest
 from fastapi.testclient import TestClient
 
 # UUID pattern for IDOR prevention tests
@@ -394,7 +393,7 @@ class TestInsecureDesign:
                     )
                     # If this succeeds, audit log is mutable - security violation
                     assert False, "Audit log immutability violation: UPDATE succeeded"
-                except Exception as e:
+                except Exception:
                     # Expected: Should fail due to trigger/policy
                     assert True
 

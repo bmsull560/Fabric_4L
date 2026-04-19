@@ -8,9 +8,8 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
-from uuid import UUID, uuid4
+from unittest.mock import Mock, patch
+from uuid import uuid4
 
 import httpx
 import pytest

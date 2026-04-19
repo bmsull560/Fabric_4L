@@ -24,7 +24,6 @@ from ..shared.database import get_db_session
 from ..shared.models import (
     ComplianceEventType,
     ComplianceLog,
-    CrawlPath,
     ExtractedData,
     ExtractionMethod,
     JobError,

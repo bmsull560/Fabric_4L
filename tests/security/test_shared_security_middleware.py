@@ -8,12 +8,10 @@ a full FastAPI app fixture.
 import json
 import sys
 from pathlib import Path
-from typing import Generator
 
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
 
 # P0 Fix: Properly handle shared module import with cleanup
 # Add value-fabric to path for shared imports, then remove after import to maintain isolation
@@ -29,7 +27,6 @@ else:
 try:
     from shared.security import (
         SecurityConfig,
-        SecurityMiddleware,
         SecurityValidator,
         add_security_middleware,
     )

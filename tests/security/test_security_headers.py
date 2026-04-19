@@ -4,7 +4,6 @@ Security tests for HTTP security headers.
 Validates that all responses include required security headers.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

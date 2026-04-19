@@ -197,8 +197,7 @@ class LLMClient:
             Tuple of (response, cost_record)
         """
         # Resolve model from registry if enabled
-        effective_model = self.model
-        if self._resolve_model_from_registry and self._registry_tenant_id:
+        if self._resolve_from_registry_enabled and self._registry_tenant_id:
             try:
                 from ..integration.model_registry_client import ModelRegistryClient
 

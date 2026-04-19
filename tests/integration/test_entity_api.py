@@ -10,8 +10,6 @@ Note: These tests require Neo4j. When Neo4j is unavailable, they are skipped.
 """
 
 import pytest
-from datetime import datetime, UTC
-from typing import Any
 
 # Skip all tests if Neo4j is not available
 pytestmark = pytest.mark.skipif(

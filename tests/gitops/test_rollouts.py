@@ -8,8 +8,6 @@ Validates:
 4. Rollback triggers
 """
 
-import subprocess
-from unittest.mock import Mock, patch
 
 import pytest
 import yaml

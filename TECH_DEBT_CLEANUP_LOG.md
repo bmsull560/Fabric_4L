@@ -68,11 +68,23 @@
 
 **Total Phase 1 Issues Fixed: 16**
 
-### Remaining Issues to Fix (30 found):
-- Layer 2: 4 issues
-- Layer 4: 13 issues  
-- Layer 6: 1 issue
-- Shared: 5 issues
-- Tests: 4 issues
+### Bug Fixes During Cleanup
+| File | Issue | Severity | Fix |
+|------|-------|----------|-----|
+| layer2/shared/llm_client.py | `_resolve_model_from_registry` attr name inconsistent with `_resolve_from_registry_enabled` | P0 | Fixed attribute reference in `chat_completion()` method |
+
+### Remaining Issues to Fix (30 found)
+| Layer | Count | Categories |
+|-------|-------|------------|
+| Layer 2 | 4 | Unused variables in extraction engine |
+| Layer 4 | 13 | Unused imports in services, tools, contracts |
+| Layer 6 | 1 | Unused import in benchmark routes |
+| Shared | 5 | Identity, audit modules |
+| Tests | 4 | Import patterns, test utilities |
+
+**Next Phase Recommendations:**
+- Phase 2: Run `ruff check --select=F401,F841` on remaining files
+- Phase 3: Address dead code in shared modules (requires cross-layer impact analysis)
+- Phase 4: Add linting to CI to prevent regression
 
 

@@ -17,7 +17,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 from .context import RequestContext
-from .hashing import verify_api_key
 from .jwt import decode_jwt
 from .permissions import get_permissions_for_role
 
@@ -209,7 +208,6 @@ def _check_tenant_rate_limit(
         if count >= requests_per_minute:
             window_elapsed = now - window_start
             _tenant_rate_limit_buckets[tenant_id] = (count, window_start)
-            allowed = False
         else:
             # Increment and store
             _tenant_rate_limit_buckets[tenant_id] = (count + 1, window_start)

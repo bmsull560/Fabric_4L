@@ -322,7 +322,7 @@ class TenantIsolationValidator:
             except Exception as e:
                 return {"success": False, "error": str(e)}
         
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession():
             while time.time() - start_time < duration_seconds:
                 # Generate burst of concurrent requests
                 tasks = []
@@ -401,12 +401,12 @@ def main():
     validator.generate_synthetic_tenants(args.tenants)
     
     if args.mode == "realistic":
-        results = asyncio.run(validator.run_realistic_workload(
+        asyncio.run(validator.run_realistic_workload(
             duration_seconds=args.duration,
             concurrent_users=args.concurrent
         ))
     else:
-        results = asyncio.run(validator.run_stress_test(
+        asyncio.run(validator.run_stress_test(
             duration_seconds=args.duration,
             concurrent_requests=args.concurrent
         ))

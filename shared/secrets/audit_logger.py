@@ -24,7 +24,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Optional
 from dataclasses import dataclass, asdict
 
 # Try to import shared audit components

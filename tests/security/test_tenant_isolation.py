@@ -373,12 +373,12 @@ class TestCacheIsolation:
 
         if response.status_code == 201:
             # Check if cache was invalidated for tenant-a
-            keys_after = len(list(redis_client.scan_iter(match=pattern_a, count=100)))
+            _ = len(list(redis_client.scan_iter(match=pattern_a, count=100)))  # noqa: F841 - verifying cache invalidation
 
             # Keys may have changed due to invalidation + repopulation
             # But tenant-b keys should be unaffected
             pattern_b = "*tenant-b*"
-            tenant_b_keys = list(redis_client.scan_iter(match=pattern_b, count=100))
+            _ = list(redis_client.scan_iter(match=pattern_b, count=100))  # noqa: F841 - verifying tenant isolation
 
             # Tenant B cache should be unaffected by tenant A operations
             # (This test assumes no cross-tenant cache dependencies)

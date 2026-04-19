@@ -8,7 +8,6 @@ Validates that:
 4. NoSQL injection is detected
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 
