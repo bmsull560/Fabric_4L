@@ -19,7 +19,7 @@ const PAIN_POINTS = [
   { id: 1, score: 8, text: "Reps spend 6hrs/week on content search", mapped: true, color: "bg-red-500" },
   { id: 2, score: 6, text: "New reps take 6 months to ramp", mapped: true, color: "bg-yellow-400" },
   { id: 3, score: 9, text: "No visibility into deal engagement", mapped: false, color: "bg-red-500" },
-  { id: 4, score: 5, text: "Inconsistent messaging across field", mapped: false, color: "bg-gray-400" },
+  { id: 4, score: 5, text: "Inconsistent messaging across field", mapped: false, color: "bg-muted-foreground" },
 ];
 
 const CAPABILITY_PALETTE = [

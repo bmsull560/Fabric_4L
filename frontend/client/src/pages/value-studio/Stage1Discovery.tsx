@@ -25,7 +25,7 @@ const PAIN_POINTS = [
   { id: 1, score: 8, text: "Reps spend 6hrs/week searching for content", category: "Cost Reduction", color: "bg-red-500" },
   { id: 2, score: 6, text: "New reps take 6 months to fully ramp", category: "Productivity", color: "bg-yellow-400" },
   { id: 3, score: 9, text: "No visibility into deal engagement after send", category: "Revenue Risk", color: "bg-red-500" },
-  { id: 4, score: 5, text: "Inconsistent messaging across the field", category: "Quality", color: "bg-gray-400" },
+  { id: 4, score: 5, text: "Inconsistent messaging across the field", category: "Quality", color: "bg-muted-foreground" },
   { id: 5, score: 7, text: "Manager coaching time is untracked and ad hoc", category: "Productivity", color: "bg-yellow-400" },
 ];
 

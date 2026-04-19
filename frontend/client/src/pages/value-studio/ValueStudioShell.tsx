@@ -4,11 +4,12 @@
  * Provides:
  *  - Persistent deal context header (account / deal type / ARR / CRM stage)
  *  - Stage progress bar with completion state per stage
- *  - Three-panel layout: left context (280px) | center workspace (flex) | right panel (280px)
+ *  - Three-panel layout: left context (260px) | center workspace (flex) | right panel (240px)
  *  - Stage navigation (prev / next) with primary CTA button
+ *  - extraActions slot for stage-specific secondary buttons
  */
 import { Link, useLocation } from "wouter";
-import { CheckCircle2, Circle, Building2, ChevronRight } from "lucide-react";
+import { CheckCircle2, Building2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,10 +38,12 @@ interface ValueStudioShellProps {
   stages: StageStatus[];
   prevLabel?: string;
   prevPath?: string;
-  nextLabel: string;
+  nextLabel?: string;
   nextPath?: string;
   onNextClick?: () => void;
   secondaryAction?: { label: string; onClick: () => void };
+  /** Additional action buttons rendered between secondaryAction and the primary next button */
+  extraActions?: React.ReactNode;
   leftPanel: React.ReactNode;
   centerPanel: React.ReactNode;
   rightPanel: React.ReactNode;
@@ -58,12 +61,9 @@ function StageProgressBar({ stages }: { stages: StageStatus[] }) {
             <div
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium cursor-pointer transition-colors",
-                stage.status === "active" &&
-                  "bg-foreground text-background",
-                stage.status === "complete" &&
-                  "text-foreground hover:bg-muted",
-                stage.status === "pending" &&
-                  "text-muted-foreground hover:bg-muted"
+                stage.status === "active" && "bg-foreground text-background",
+                stage.status === "complete" && "text-foreground hover:bg-muted",
+                stage.status === "pending" && "text-muted-foreground hover:bg-muted"
               )}
             >
               {stage.status === "complete" ? (
@@ -104,9 +104,7 @@ function DealContextHeader({ deal }: { deal: DealContext }) {
       <ChevronRight size={11} className="text-background/40" />
       <span className="text-background/70">{deal.arr}</span>
       <div className="flex-1" />
-      <span className="text-background/50 text-[11px]">
-        ⊙ {deal.crmStage}
-      </span>
+      <span className="text-background/50 text-[11px]">⊙ {deal.crmStage}</span>
     </div>
   );
 }
@@ -125,6 +123,7 @@ export default function ValueStudioShell({
   nextPath,
   onNextClick,
   secondaryAction,
+  extraActions,
   leftPanel,
   centerPanel,
   rightPanel,
@@ -169,12 +168,15 @@ export default function ValueStudioShell({
               {secondaryAction.label}
             </button>
           )}
-          <button
-            onClick={handleNext}
-            className="h-8 px-4 text-[12px] font-semibold bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
-          >
-            {nextLabel} →
-          </button>
+          {extraActions}
+          {nextLabel && (
+            <button
+              onClick={handleNext}
+              className="h-8 px-4 text-[12px] font-semibold bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
+            >
+              {nextLabel} →
+            </button>
+          )}
         </div>
       </div>
 
@@ -210,11 +212,13 @@ export default function ValueStudioShell({
 
 export function StudioPanel({
   title,
+  subtitle,
   children,
   className,
   action,
 }: {
   title?: string;
+  subtitle?: string;
   children: React.ReactNode;
   className?: string;
   action?: React.ReactNode;
@@ -228,9 +232,14 @@ export function StudioPanel({
     >
       {title && (
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {title}
-          </span>
+          <div>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {title}
+            </span>
+            {subtitle && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
+            )}
+          </div>
           {action}
         </div>
       )}
@@ -250,16 +259,15 @@ export const DEMO_DEAL: DealContext = {
 
 export function buildStages(activeId: StageId): StageStatus[] {
   const defs: { id: StageId; label: string; path: string }[] = [
-    { id: 1, label: "Discovery", path: "/model/value-studio/discovery" },
-    { id: 2, label: "Mapping", path: "/model/value-studio/mapping" },
-    { id: 3, label: "Modeling", path: "/model/value-studio/modeling" },
+    { id: 1, label: "Discovery",  path: "/model/value-studio/discovery" },
+    { id: 2, label: "Mapping",    path: "/model/value-studio/mapping" },
+    { id: 3, label: "Modeling",   path: "/model/value-studio/modeling" },
     { id: 4, label: "Validation", path: "/model/value-studio/validation" },
-    { id: 5, label: "Narrative", path: "/model/value-studio/narrative" },
-    { id: 6, label: "Tracking", path: "/model/value-studio/tracking" },
+    { id: 5, label: "Narrative",  path: "/model/value-studio/narrative" },
+    { id: 6, label: "Tracking",   path: "/model/value-studio/tracking" },
   ];
   return defs.map((d) => ({
     ...d,
-    status:
-      d.id < activeId ? "complete" : d.id === activeId ? "active" : "pending",
+    status: d.id < activeId ? "complete" : d.id === activeId ? "active" : "pending",
   }));
 }

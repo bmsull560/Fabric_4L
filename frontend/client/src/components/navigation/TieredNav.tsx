@@ -104,27 +104,19 @@ const NAV_SPINE: NavItem[] = [
     ]
   },
   {
-    id: "model",
-    label: "Model",
+    id: "value-studio",
+    label: "Value Studio",
     icon: <GitBranch size={16}/>,
-    path: "/model",
+    path: "/model/value-studio",
     tier: "advanced",
-    description: "Build value trees and formulas",
+    description: "Build and deliver business value models",
     children: [
-      {
-        id: "value-studio",
-        label: "Value Studio",
-        path: "/model/value-studio",
-        tier: "advanced",
-        children: [
-          { id: "discovery",  label: "1. Discovery",  path: "/model/value-studio/discovery",  tier: "advanced" },
-          { id: "mapping",    label: "2. Mapping",    path: "/model/value-studio/mapping",    tier: "advanced" },
-          { id: "modeling",   label: "3. Modeling",   path: "/model/value-studio/modeling",   tier: "advanced" },
-          { id: "validation", label: "4. Validation", path: "/model/value-studio/validation", tier: "advanced" },
-          { id: "narrative",  label: "5. Narrative",  path: "/model/value-studio/narrative",  tier: "advanced" },
-          { id: "tracking",   label: "6. Tracking",   path: "/model/value-studio/tracking",   tier: "advanced" }
-        ]
-      }
+      { id: "discovery",  label: "1. Discovery",  path: "/model/value-studio/discovery",  tier: "advanced" },
+      { id: "mapping",    label: "2. Mapping",    path: "/model/value-studio/mapping",    tier: "advanced" },
+      { id: "modeling",   label: "3. Modeling",   path: "/model/value-studio/modeling",   tier: "advanced" },
+      { id: "validation", label: "4. Validation", path: "/model/value-studio/validation", tier: "advanced" },
+      { id: "narrative",  label: "5. Narrative",  path: "/model/value-studio/narrative",  tier: "advanced" },
+      { id: "tracking",   label: "6. Tracking",   path: "/model/value-studio/tracking",   tier: "advanced" }
     ]
   },
   {
