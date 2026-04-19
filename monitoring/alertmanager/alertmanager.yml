@@ -96,7 +96,7 @@ receivers:
         severity: '{{ .GroupLabels.severity }}'
         group: '{{ .GroupLabels.alertname }}'
         # Link back to runbook for self-service resolution
-        client_url: '{{ .CommonAnnotations.runbook_url | default "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks" }}'
+        client_url: '{{ .CommonAnnotations.runbook_url | default "https://github.com/bmsull560/Fabric_4L/tree/main/docs/troubleshooting/runbooks" }}'
         client: 'Value Fabric Alertmanager'
         # Include detailed info
         details:

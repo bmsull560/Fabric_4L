@@ -86,16 +86,57 @@ open http://localhost:5173
 
 ## Documentation
 
+📚 **[Complete Documentation →](docs/README.md)**
+
+Our documentation follows the [Diátaxis Framework](https://diataxis.fr/) with tutorials, how-to guides, reference, and explanations.
+
+### Getting Started
+
 | Document | Description |
 |----------|-------------|
-| [`AGENTS.md`](AGENTS.md) | How to work with this repo as an AI agent or contributor |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Developer setup and contribution guide |
-| [`docs/architecture_overview.md`](docs/architecture_overview.md) | Detailed system architecture |
-| [`Providers.md`](Providers.md) | Supported LLM and data providers |
-| [`docs/secrets-management.md`](docs/secrets-management.md) | Secrets and credentials guide |
+| [Quickstart (15 min)](docs/getting-started/quickstart.md) | Get a local instance running fast |
+| [Environment Setup](docs/getting-started/environment.md) | Configure secrets, env vars, and services |
+
+### Core Concepts
+
+| Document | Description |
+|----------|-------------|
+| [System Architecture](docs/core-concepts/architecture.md) | C4 model diagrams and layer interactions |
+| [Security Model](docs/core-concepts/security-model.md) | Authentication, RBAC, and tenant isolation |
+| [Ontology System](docs/core-concepts/ontology-system.md) | Entity taxonomy and extraction pipeline |
+
+### API Reference
+
+| Document | Description |
+|----------|-------------|
+| [API Overview](docs/reference/api-overview.md) | Authentication patterns and common formats |
+| [Layer 1: Ingestion](docs/reference/layer1-ingestion-api.md) | Web scraping and job management |
+| [Layer 2: Extraction](docs/reference/layer2-extraction-api.md) | LLM-based entity extraction |
+| [Layer 3: Knowledge Graph](docs/reference/layer3-knowledge-api.md) | Neo4j + pgvector hybrid search |
+| [Layer 4: Agents](docs/reference/layer4-agents-api.md) | Workflow orchestration with LangGraph |
+| [Layer 5: Ground Truth](docs/reference/layer5-ground-truth-api.md) | Evaluation and benchmarking |
+
+### Troubleshooting & Operations
+
+| Document | Description |
+|----------|-------------|
+| [Troubleshooting Guide](docs/troubleshooting/index.md) | Decision trees and common issues |
+| [Runbooks](docs/troubleshooting/runbooks/) | 38 operational procedures |
+
+### Architecture Decisions
+
+| Document | Description |
+|----------|-------------|
+| [All ADRs](docs/explanations/adr/) | Architecture Decision Records |
+
+### Meta
+
+| Document | Description |
+|----------|-------------|
+| [`AGENTS.md`](AGENTS.md) | How to work with this repo as an AI agent |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Developer contribution guide |
 | [`SECURITY.md`](SECURITY.md) | Vulnerability reporting |
-| [`CHANGELOG.md`](CHANGELOG.md) | Release history |
-| [`ROADMAP.md`](ROADMAP.md) | Feature and completion roadmap |
+| [`ROADMAP.md`](ROADMAP.md) | Completion status and roadmap |
 
 ## SDK Installation
 

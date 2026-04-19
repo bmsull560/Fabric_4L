@@ -105,28 +105,28 @@ class TestSSEHeaders:
     @pytest.mark.asyncio
     async def test_content_type_is_event_stream(self, async_client):
         """Content-Type must be text/event-stream."""
-        await _create_job()
+        await _create_job(job_id="h-1")
         resp = await async_client.get("/v1/extract/jobs/h-1/events")
         assert "text/event-stream" in resp.headers["content-type"]
 
     @pytest.mark.asyncio
     async def test_cache_control_no_cache(self, async_client):
         """Cache-Control must be no-cache for real-time streams."""
-        await _create_job()
+        await _create_job(job_id="h-2")
         resp = await async_client.get("/v1/extract/jobs/h-2/events")
         assert resp.headers["cache-control"] == "no-cache"
 
     @pytest.mark.asyncio
     async def test_connection_keep_alive(self, async_client):
         """Connection header must be keep-alive."""
-        await _create_job()
+        await _create_job(job_id="h-3")
         resp = await async_client.get("/v1/extract/jobs/h-3/events")
         assert resp.headers.get("connection") == "keep-alive"
 
     @pytest.mark.asyncio
     async def test_nginx_buffering_disabled(self, async_client):
         """X-Accel-Buffering must be 'no' to prevent nginx buffering."""
-        await _create_job()
+        await _create_job(job_id="h-4")
         resp = await async_client.get("/v1/extract/jobs/h-4/events")
         assert resp.headers.get("x-accel-buffering") == "no"
 
@@ -141,7 +141,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_emits_complete_event(self, async_client):
         """A completed job's stream must include a 'complete' event type."""
-        await _create_job()
+        await _create_job(job_id="c-1")
         resp = await async_client.get("/v1/extract/jobs/c-1/events")
         events = _parse_sse_events(resp.text)
         types = {e["type"] for e in events}
@@ -150,7 +150,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_has_status_event(self, async_client):
         """A completed job must include a 'status' event."""
-        await _create_job()
+        await _create_job(job_id="c-2")
         resp = await async_client.get("/v1/extract/jobs/c-2/events")
         events = _parse_sse_events(resp.text)
         status_events = [e for e in events if e["type"] == "status"]
@@ -160,7 +160,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_progress_is_100(self, async_client):
         """A completed job must emit progress 100."""
-        await _create_job()
+        await _create_job(job_id="c-3")
         resp = await async_client.get("/v1/extract/jobs/c-3/events")
         events = _parse_sse_events(resp.text)
         progress_events = [e for e in events if e["type"] == "progress"]
@@ -186,7 +186,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_has_log_event(self, async_client):
         """Completed jobs should emit a log event with 'success' level."""
-        await _create_job()
+        await _create_job(job_id="c-5")
         resp = await async_client.get("/v1/extract/jobs/c-5/events")
         events = _parse_sse_events(resp.text)
         log_events = [e for e in events if e["type"] == "log"]
@@ -196,7 +196,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_stream_terminates_for_completed_job(self, async_client):
         """Stream must terminate (not hang) after complete event."""
-        await _create_job()
+        await _create_job(job_id="c-6")
         resp = await async_client.get("/v1/extract/jobs/c-6/events")
         # If we got a response, the stream terminated
         assert resp.status_code == 200
@@ -277,7 +277,7 @@ class TestSSEEventStructure:
     @pytest.mark.asyncio
     async def test_all_events_have_required_fields(self, async_client):
         """Every event must have type, timestamp, and data fields."""
-        await _create_job()
+        await _create_job(job_id="s-1")
         resp = await async_client.get("/v1/extract/jobs/s-1/events")
         events = _parse_sse_events(resp.text)
         assert len(events) > 0
@@ -289,7 +289,7 @@ class TestSSEEventStructure:
     @pytest.mark.asyncio
     async def test_timestamps_are_iso_format(self, async_client):
         """Timestamps must be ISO 8601 strings ending with Z."""
-        await _create_job()
+        await _create_job(job_id="s-2")
         resp = await async_client.get("/v1/extract/jobs/s-2/events")
         events = _parse_sse_events(resp.text)
         for event in events:
@@ -302,7 +302,7 @@ class TestSSEEventStructure:
     async def test_event_types_are_valid(self, async_client):
         """Event types must be from the defined set."""
         valid_types = {"status", "progress", "log", "entity", "complete", "error"}
-        await _create_job()
+        await _create_job(job_id="s-3")
         resp = await async_client.get("/v1/extract/jobs/s-3/events")
         events = _parse_sse_events(resp.text)
         for event in events:
@@ -311,7 +311,7 @@ class TestSSEEventStructure:
     @pytest.mark.asyncio
     async def test_sse_lines_use_data_prefix(self, async_client):
         """Raw SSE lines must be prefixed with 'data: '."""
-        await _create_job()
+        await _create_job(job_id="s-4")
         resp = await async_client.get("/v1/extract/jobs/s-4/events")
         lines = [line for line in resp.text.strip().split("\n") if line.strip()]
         data_lines = [line for line in lines if line.startswith("data: ")]
@@ -332,6 +332,7 @@ class TestSSEPendingJob:
             job_id="p-1",
             overall_status="pending",
             extraction_status="pending",
+            ingestion_status="pending",
         )
 
         # Schedule the job to complete after a short delay

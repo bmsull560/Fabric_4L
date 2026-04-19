@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 from typer.testing import CliRunner
 
+from valuefabric import ValueFabricClient
 from valuefabric.cli.main import app
-from valuefabric import Client
 from valuefabric.models import HealthResponse
 
 runner = CliRunner()
@@ -21,8 +21,8 @@ class TestSDKImports:
 
     def test_import_client(self):
         """Main client can be imported."""
-        from valuefabric import Client
-        assert Client is not None
+        from valuefabric import ValueFabricClient
+        assert ValueFabricClient is not None
 
     def test_import_models(self):
         """Models can be imported."""
@@ -38,8 +38,8 @@ class TestSDKImports:
 
     def test_import_generated_clients(self):
         """Generated clients can be imported."""
-        from valuefabric.generated.l3_client import Client as L3Client
-        from valuefabric.generated.l4_client import Client as L4Client
+        from valuefabric.generated.l3_client import L3Client
+        from valuefabric.generated.l4_client import L4Client
         assert L3Client is not None
         assert L4Client is not None
 
@@ -71,19 +71,20 @@ class TestClientInitialization:
     """Verify client can be initialized."""
 
     def test_client_init_with_url(self):
-        """Client initializes with base URL."""
-        client = Client(base_url="http://localhost:8004")
+        """Client initializes with base URL and API key."""
+        client = ValueFabricClient(base_url="http://localhost:8004", api_key="test-key")
         assert client is not None
         assert client.base_url == "http://localhost:8004"
 
     def test_client_init_with_api_key(self):
         """Client initializes with API key."""
-        client = Client(
+        client = ValueFabricClient(
             base_url="http://localhost:8004",
             api_key="test-api-key"
         )
         assert client is not None
-        assert client.api_key == "test-api-key"
+        # Verify auth handler is set (adds X-API-Key header at request time)
+        assert client._sync_client._auth is not None
 
 
 class TestModels:
@@ -93,8 +94,11 @@ class TestModels:
         """HealthResponse model can be created."""
         health = HealthResponse(
             status="healthy",
+            service="layer4-agents",
             version="1.0.0",
-            timestamp="2024-01-01T00:00:00Z"
+            timestamp="2024-01-01T00:00:00Z",
+            executor_ready=True,
+            uptime_seconds=3600.0
         )
         assert health.status == "healthy"
         assert health.version == "1.0.0"
@@ -103,8 +107,11 @@ class TestModels:
         """Models can be serialized to dict."""
         health = HealthResponse(
             status="healthy",
+            service="layer4-agents",
             version="1.0.0",
-            timestamp="2024-01-01T00:00:00Z"
+            timestamp="2024-01-01T00:00:00Z",
+            executor_ready=True,
+            uptime_seconds=3600.0
         )
         data = health.model_dump(mode="json")
         assert data["status"] == "healthy"
@@ -116,13 +123,13 @@ class TestGeneratedClients:
 
     def test_l3_client_init(self):
         """L3 client can be initialized."""
-        from valuefabric.generated.l3_client import Client as L3Client
+        from valuefabric.generated.l3_client import L3Client
         client = L3Client(base_url="http://localhost:8003")
         assert client is not None
 
     def test_l4_client_init(self):
         """L4 client can be initialized."""
-        from valuefabric.generated.l4_client import Client as L4Client
+        from valuefabric.generated.l4_client import L4Client
         client = L4Client(base_url="http://localhost:8004")
         assert client is not None
 
@@ -138,6 +145,6 @@ class TestSDKIntegration:
 
     def test_client_health_live(self):
         """Client health check against real API."""
-        client = Client(base_url="http://localhost:8004")
+        client = ValueFabricClient(base_url="http://localhost:8004")
         health = client.health()
         assert health.status in ["healthy", "degraded"]

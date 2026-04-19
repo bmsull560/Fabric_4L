@@ -4,7 +4,7 @@ category: "reference"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["layer2-extraction-api", "layer4-agents-api", "../core-concepts/ontology-system", "../troubleshooting/slow-queries"]
+related: ["api-overview", "layer2-extraction-api", "layer4-agents-api", "layer5-ground-truth-api", "../core-concepts/ontology-system", "../core-concepts/architecture", "../troubleshooting/slow-queries", "../explanations/adr/ADR-002-hybrid-graph-database"]
 ---
 
 # Layer 3: Knowledge Graph API

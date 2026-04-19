@@ -12,6 +12,10 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from .config import SecurityConfig
 
+# Default security validation constants
+DEFAULT_MAX_JSON_DEPTH = 10
+DEFAULT_MAX_JSON_KEYS = 1000
+
 # Injection detection patterns
 SQL_INJECTION_PATTERNS = [
     r"(\%27)|(\')|(\-\-)|(\%23)|(#)",  # Single quotes, comments
@@ -87,16 +91,29 @@ class SecurityValidator:
         return value.strip()
 
     @staticmethod
-    def validate_json_structure(data: Any, max_depth: int = 10, max_keys: int = 1000) -> bool:
-        """Validate JSON structure for security concerns.
+    def validate_json_structure(
+        data: Any,
+        max_depth: int = DEFAULT_MAX_JSON_DEPTH,
+        max_keys: int = DEFAULT_MAX_JSON_KEYS
+    ) -> bool:
+        """Validate JSON structure for security concerns (DoS prevention).
+        
+        Checks for deeply nested objects and excessive key counts that could
+        indicate malicious payloads or cause performance issues.
         
         Args:
-            data: Parsed JSON data
-            max_depth: Maximum allowed nesting depth
-            max_keys: Maximum allowed keys at any level
+            data: Parsed JSON data to validate
+            max_depth: Maximum allowed nesting depth (default: 10)
+            max_keys: Maximum allowed keys at any single level (default: 1000)
             
         Returns:
-            True if structure is valid, False if suspicious
+            True if structure is within safe limits, False if suspicious
+            
+        Examples:
+            >>> SecurityValidator.validate_json_structure({"a": {"b": 1}})
+            True
+            >>> SecurityValidator.validate_json_structure({"a": {str(i): i for i in range(1001)}})
+            False  # Too many keys at one level
         """
         def check_depth(obj: Any, current_depth: int) -> bool:
             if current_depth > max_depth:

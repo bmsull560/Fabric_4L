@@ -963,7 +963,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/v1/formulas/{formula_id}/versions": {
@@ -971,6 +976,11 @@
         "summary": "List Formula Versions",
         "description": "List all versions of a formula.",
         "operationId": "list_formula_versions_v1_formulas__formula_id__versions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "formula_id",
@@ -1097,6 +1107,11 @@
         "summary": "Get Formula Governance",
         "description": "Get governance metadata for a formula.",
         "operationId": "get_formula_governance_v1_formulas__formula_id__governance_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "formula_id",
@@ -1374,6 +1389,11 @@
         "summary": "Get Formula Dependencies",
         "description": "Get formula dependencies.",
         "operationId": "get_formula_dependencies_v1_formulas__formula_id__dependencies_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "formula_id",
@@ -1447,6 +1467,11 @@
         "summary": "Validate Activation",
         "description": "Validate if formula can be activated.",
         "operationId": "validate_activation_v1_formulas__formula_id__validate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "formula_id",

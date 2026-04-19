@@ -69,9 +69,32 @@ kubectl get pods -n value-fabric -l app=alertmanager
 # Check logs
 kubectl logs -n value-fabric -l app=alertmanager --tail=100
 
-# Full validation
+# Static validation (configuration only)
 ./scripts/validate-alertmanager.ps1 -Namespace value-fabric
+
+# Full runtime validation (Task 102) - end-to-end alert testing
+./scripts/validate-alertmanager.ps1 -Namespace value-fabric -TestAlert -VerboseValidation
+
+# Runtime validation with silence testing
+./scripts/validate-alertmanager.ps1 -Namespace value-fabric -TestAlert -TestSilences
+
+# JSON output for CI integration
+./scripts/validate-alertmanager.ps1 -Namespace value-fabric -TestAlert -JsonOutput
 ```
+
+#### Runtime Validation Checks (Task 102)
+
+When `-TestAlert` is specified, the script performs:
+
+| Check | Description | Pass Criteria |
+|-------|-------------|---------------|
+| Alert Firing | Trigger synthetic alerts via Prometheus API | Alerts appear in Prometheus and Alertmanager |
+| Routing Correctness | Verify alerts route to expected receivers | Critical → PagerDuty, Warning → Slack |
+| Notification Delivery | Check notification metrics | Slack webhook reachable, metrics show activity |
+| Template Integrity | Verify alert content includes required fields | alertname, severity, runbook_url, namespace present |
+| Deduplication & Grouping | Fire duplicate alerts, verify grouping | Alerts grouped, not duplicated |
+| Silence Handling | Create/test/remove silences (with `-TestSilences`) | Silences suppress alerts correctly |
+| Latency | Measure alert propagation time | < 60s from fire to notification (configurable) |
 
 ---
 

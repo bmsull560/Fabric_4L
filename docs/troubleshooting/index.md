@@ -1,10 +1,10 @@
 ---
-title: "Troubleshooting Guide - Start Here"
+title: "Troubleshooting Guide"
 category: "troubleshooting"
-audience: "intermediate"
+audience: "all"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["service-down", "database-connection", "authentication-errors", "../reference/api-reference"]
+related: ["../getting-started/quickstart", "../getting-started/environment", "../how-to-guides/setup-local-dev", "../core-concepts/architecture", "../reference/layer1-ingestion-api", "../reference/layer4-agents-api", "runbooks/infrastructure/postgres-down", "runbooks/application/agent-workflow-stall", "runbooks/application/high-error-rate"]
 ---
 
 # Troubleshooting Guide

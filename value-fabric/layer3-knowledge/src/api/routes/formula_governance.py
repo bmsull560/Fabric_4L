@@ -173,6 +173,7 @@ class ApprovalQueueItem(BaseModel):
 @router.get("/formulas/approvals/pending", response_model=list[ApprovalQueueItem])
 async def list_pending_approvals(
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """List all formulas currently pending review/approval."""
     query = """
@@ -216,6 +217,7 @@ async def list_formula_versions(
     formula_id: str,
     include_retired: bool = Query(False, description="Include retired versions"),
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """List all versions of a formula."""
     query = """
@@ -253,6 +255,7 @@ async def list_formula_versions(
 async def get_formula_governance(
     formula_id: str,
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Get governance metadata for a formula."""
     query = """
@@ -690,6 +693,7 @@ async def get_formula_dependencies(
         "both", description="Dependency direction: outgoing, incoming, or both"
     ),
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Get formula dependencies."""
     deps = []
@@ -736,6 +740,7 @@ async def validate_activation(
     formula_id: str,
     version: str = Query(..., description="Version to validate"),
     driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
 ):
     """Validate if formula can be activated."""
     query = """

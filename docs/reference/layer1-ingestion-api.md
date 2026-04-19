@@ -4,7 +4,7 @@ category: "reference"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["layer2-extraction-api", "layer3-knowledge-api", "../core-concepts/architecture", "../how-to-guides/setup-local-dev"]
+related: ["api-overview", "layer2-extraction-api", "layer3-knowledge-api", "../core-concepts/architecture", "../core-concepts/security-model", "../how-to-guides/setup-local-dev", "../troubleshooting/runbooks/infrastructure/service-down", "../explanations/adr/ADR-001-six-layer-architecture"]
 ---
 
 # Layer 1: Ingestion API

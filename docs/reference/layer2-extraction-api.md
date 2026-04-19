@@ -4,7 +4,7 @@ category: "reference"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["layer1-ingestion-api", "layer3-knowledge-api", "../core-concepts/ontology-system", "../how-to-guides/author-value-pack"]
+related: ["api-overview", "layer1-ingestion-api", "layer3-knowledge-api", "layer4-agents-api", "../core-concepts/ontology-system", "../core-concepts/architecture", "../how-to-guides/author-value-pack", "../explanations/adr/ADR-004-ontology-extraction", "../troubleshooting/extraction-quality"]
 ---
 
 # Layer 2: Extraction API

@@ -150,12 +150,12 @@ Every document must include:
 
 ```yaml
 ---
-title: "Exact Description of Content"
-category: "getting-started|core-concepts|how-to|reference|troubleshooting|explanation"
-audience: "beginner|intermediate|advanced"
-last-reviewed: "YYYY-MM-DD"
-freshness: "current|needs-update|stale"
-related: ["doc-slug-1", "doc-slug-2"]
+title: "Value Fabric Documentation"
+category: "meta"
+audience: "all"
+last-reviewed: "2026-04-19"
+freshness: "current"
+related: ["../README", "getting-started/quickstart", "core-concepts/architecture", "reference/api-overview", "troubleshooting/index", "priority-update-log", "archive/archive-registry"]
 ---
 ```
 

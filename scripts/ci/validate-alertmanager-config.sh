@@ -4,7 +4,7 @@
 
 set -e
 
-CONFIG_FILE="${1:-k8s/monitoring-alertmanager.yml}"
+CONFIG_FILE="${1:-k8s/base/monitoring-alertmanager.yml}"
 AMTOOL="${AMTOOL:-amtool}"
 
 if ! command -v "$AMTOOL" &> /dev/null; then

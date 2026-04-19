@@ -1,10 +1,10 @@
 ---
-title: "Set Up Local Development Environment"
+title: "Local Development Setup"
 category: "how-to-guides"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["../getting-started/quickstart", "../getting-started/prerequisites", "../contributing/local-setup"]
+related: ["../getting-started/quickstart", "../getting-started/environment", "../core-concepts/architecture", "../core-concepts/security-model", "../troubleshooting/index", "../troubleshooting/runbooks/infrastructure/service-down"]
 ---
 
 # Set Up Local Development Environment

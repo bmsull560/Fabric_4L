@@ -797,3 +797,35 @@ jobs:
         with:
           dockerfile: ${{ format('value-fabric/{0}/Dockerfile', matrix.layer) }}
           ignore: DL3008,DL3013
+
+  # Alertmanager configuration validation
+  alertmanager-config-check:
+    name: Alertmanager Config Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate Alertmanager configuration
+        run: |
+          chmod +x scripts/ci/validate-alertmanager-config.sh
+          ./scripts/ci/validate-alertmanager-config.sh
+
+      - name: Check kustomize build for monitoring manifests
+        run: |
+          if command -v kubectl &> /dev/null; then
+            echo "Testing kustomize build for dev overlay..."
+            kubectl kustomize k8s/overlays/dev 2>&1 | grep -q "alertmanager" && echo "✓ Alertmanager manifests found in kustomize build"
+          else
+            echo "⚠️ kubectl not available, skipping kustomize validation"
+          fi
+        continue-on-error: true

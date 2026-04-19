@@ -1,10 +1,10 @@
 ---
-title: "Value Fabric System Architecture"
+title: "Value Fabric Architecture"
 category: "core-concepts"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["security-model", "ontology-system", "../getting-started/quickstart", "../explanations/adr/001-four-layer-architecture"]
+related: ["../getting-started/quickstart", "../getting-started/environment", "../reference/layer1-ingestion-api", "security-model", "ontology-system", "../explanations/adr/ADR-001-six-layer-architecture", "../explanations/adr/ADR-002-hybrid-graph-database"]
 ---
 
 # Value Fabric System Architecture

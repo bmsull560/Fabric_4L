@@ -1311,6 +1311,9 @@ async def _job_event_generator(job_id: str):
             yield f"event: error\ndata: {json.dumps({'message': f'Job {job_id} not found'})}\n\n"
             break
 
+        # Compute overall_status from extraction and ingestion status
+        overall_status = _compute_overall_status(job.extraction_status, job.ingestion_status)
+
         # Calculate progress based on status
         status_progress_map = {
             "pending": 0,
@@ -1319,15 +1322,15 @@ async def _job_event_generator(job_id: str):
             "completed": 100,
             "failed": 100,
         }
-        progress = status_progress_map.get(job.overall_status, 0)
+        progress = status_progress_map.get(overall_status, 0)
 
         # Send status event on change
-        if job.overall_status != last_status:
-            last_status = job.overall_status
+        if overall_status != last_status:
+            last_status = overall_status
             event_data = {
                 "type": "status",
                 "timestamp": datetime.utcnow().isoformat() + "Z",
-                "data": job.overall_status,
+                "data": overall_status,
             }
             yield f"data: {json.dumps(event_data)}\n\n"
 
@@ -1359,7 +1362,7 @@ async def _job_event_generator(job_id: str):
                 yield f"data: {json.dumps(event_data)}\n\n"
 
         # Send log events for status transitions
-        if job.overall_status in ["running", "completed", "failed"]:
+        if overall_status in ["running", "completed", "failed"]:
             log_levels = {"running": "info", "completed": "success", "failed": "error"}
             log_messages = {
                 "running": f"Extraction pipeline {job_id} is running",
@@ -1371,24 +1374,24 @@ async def _job_event_generator(job_id: str):
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "data": {
                     "timestamp": datetime.utcnow().isoformat() + "Z",
-                    "level": log_levels.get(job.overall_status, "info"),
-                    "message": log_messages.get(job.overall_status, f"Status: {job.overall_status}"),
+                    "level": log_levels.get(overall_status, "info"),
+                    "message": log_messages.get(overall_status, f"Status: {overall_status}"),
                 },
             }
             yield f"data: {json.dumps(event_data)}\n\n"
 
         # Check for completion
-        if job.overall_status in ["completed", "failed"]:
-            event_type = "complete" if job.overall_status == "completed" else "error"
+        if overall_status in ["completed", "failed"]:
+            event_type = "complete" if overall_status == "completed" else "error"
             event_data = {
                 "type": event_type,
                 "timestamp": datetime.utcnow().isoformat() + "Z",
                 "data": {
                     "job_id": job_id,
-                    "status": job.overall_status,
+                    "status": overall_status,
                     "entities_extracted": job.entities_extracted,
                     "relationships_extracted": job.relationships_extracted,
-                    "error": job.last_error if job.overall_status == "failed" else None,
+                    "error": job.last_error if overall_status == "failed" else None,
                 },
             }
             yield f"data: {json.dumps(event_data)}\n\n"

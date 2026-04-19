@@ -4,7 +4,7 @@ category: "reference"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["layer3-knowledge-api", "../core-concepts/agent-framework", "../troubleshooting/workflow-stalled"]
+related: ["api-overview", "layer3-knowledge-api", "layer5-ground-truth-api", "../core-concepts/security-model", "../troubleshooting/workflow-stalled", "../troubleshooting/runbooks/application/agent-workflow-stall", "../explanations/adr/ADR-005-agent-orchestration"]
 ---
 
 # Layer 4: Agents & Workflow API

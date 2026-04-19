@@ -1,10 +1,10 @@
 ---
-title: "API Reference Overview"
+title: "Value Fabric API Overview"
 category: "reference"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["layer1-api", "layer2-api", "layer3-api", "layer4-api", "../core-concepts/architecture"]
+related: ["layer1-ingestion-api", "layer2-extraction-api", "layer3-knowledge-api", "layer4-agents-api", "layer5-ground-truth-api", "../core-concepts/security-model", "../core-concepts/architecture", "../getting-started/quickstart", "../troubleshooting/authentication-errors"]
 ---
 
 # API Reference Overview

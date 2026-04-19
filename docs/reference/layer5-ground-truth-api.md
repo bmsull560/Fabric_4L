@@ -4,7 +4,7 @@ category: "reference"
 audience: "intermediate"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["layer4-agents-api", "../core-concepts/evaluation-framework", "../how-to-guides/manage-ground-truth"]
+related: ["api-overview", "layer4-agents-api", "../core-concepts/evaluation-framework", "../core-concepts/security-model", "../how-to-guides/manage-ground-truth", "../troubleshooting/stale-ground-truth"]
 ---
 
 # Layer 5: Ground Truth & Evaluation API

@@ -91,7 +91,7 @@ data:
             description: '{{ .CommonAnnotations.summary }}'
             severity: '{{ .GroupLabels.severity }}'
             group: '{{ .GroupLabels.alertname }}'
-            client_url: '{{ .CommonAnnotations.runbook_url | default "https://github.com/bmsull560/Fabric_4L/tree/main/docs/runbooks" }}'
+            client_url: '{{ .CommonAnnotations.runbook_url | default "https://github.com/bmsull560/Fabric_4L/tree/main/docs/troubleshooting/runbooks" }}'
             client: 'Value Fabric Alertmanager'
 
       # Slack for critical alerts (escalation notification)

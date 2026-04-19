@@ -4,7 +4,7 @@ category: "getting-started"
 audience: "beginner"
 last-reviewed: "2026-04-19"
 freshness: "current"
-related: ["installation", "../core-concepts/architecture", "../reference/api-reference"]
+related: ["environment", "../core-concepts/architecture", "../how-to-guides/setup-local-dev", "../troubleshooting/index", "../core-concepts/security-model"]
 ---
 
 # Value Fabric Quickstart Guide
