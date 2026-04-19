@@ -8,11 +8,15 @@ import { z } from 'zod';
 
 export const FormulaStatusSchema = z.enum(['active', 'draft', 'pending', 'deprecated', 'archived']);
 
+export const FormulaTypeSchema = z.enum(['simple', 'composite', 'derived']);
+
 export const FormulaSchema = z.object({
   id: z.string(),
   formula_id: z.string(),
   name: z.string().min(1, 'Formula name cannot be empty'),
   description: z.string().optional(),
+  domain: z.string().optional(),
+  formula_type: FormulaTypeSchema.optional(),
   pack_id: z.string().optional(),
   pack_name: z.string().optional(),
   version: z.string(),
