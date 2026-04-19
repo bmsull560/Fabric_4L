@@ -16,7 +16,38 @@ const L2_PREFIX = '/extract';
 // ===== Auth Mocks (L4) =====
 
 export const authMocks = [
-  // OIDC Login Initiation
+  // OIDC Login Initiation - specific error cases (MUST come before generic :tenantSlug handler)
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/network-error/login`, async () => {
+    await delay(50);
+    // Simulate network failure
+    return HttpResponse.error();
+  }),
+
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/error-tenant/login`, async () => {
+    await delay(50);
+    return new HttpResponse(
+      JSON.stringify({ detail: 'Tenant not found' }),
+      { status: 404 }
+    );
+  }),
+
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/unauthorized/login`, async () => {
+    await delay(50);
+    return new HttpResponse(
+      JSON.stringify({ detail: 'Unauthorized' }),
+      { status: 401 }
+    );
+  }),
+
+  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/server-error/login`, async () => {
+    await delay(50);
+    return new HttpResponse(
+      JSON.stringify({ detail: 'Internal server error' }),
+      { status: 500 }
+    );
+  }),
+
+  // OIDC Login Initiation - default success (generic handler comes after specific ones)
   http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/:tenantSlug/login`, async ({ params, request }) => {
     await delay(50);
     const tenantSlug = params.tenantSlug as string;
@@ -59,31 +90,6 @@ export const authMocks = [
       email: 'newuser@example.com',
       role: 'advanced',
     });
-  }),
-
-  // Auth error simulation endpoints for contract testing
-  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/error-tenant/login`, async () => {
-    await delay(50);
-    return new HttpResponse(
-      JSON.stringify({ detail: 'Tenant not found' }),
-      { status: 404 }
-    );
-  }),
-
-  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/unauthorized/login`, async () => {
-    await delay(50);
-    return new HttpResponse(
-      JSON.stringify({ detail: 'Unauthorized' }),
-      { status: 401 }
-    );
-  }),
-
-  http.get(`${API_BASE}${L4_PREFIX}/auth/oidc/server-error/login`, async () => {
-    await delay(50);
-    return new HttpResponse(
-      JSON.stringify({ detail: 'Internal server error' }),
-      { status: 500 }
-    );
   }),
 ];
 

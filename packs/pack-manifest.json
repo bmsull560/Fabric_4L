@@ -73,7 +73,7 @@
       "status": "published",
       "version": "1.0.0",
       "formula_count": 7,
-      "variable_count": 19,
+      "variable_count": 34,
       "entity_count": 13,
       "path": "packs/financial-services",
       "tags": [
@@ -94,7 +94,7 @@
       "status": "published",
       "version": "1.0.0",
       "formula_count": 7,
-      "variable_count": 23,
+      "variable_count": 34,
       "entity_count": 13,
       "path": "packs/energy-utilities",
       "tags": [
@@ -136,7 +136,7 @@
       "status": "published",
       "version": "1.0.0",
       "formula_count": 7,
-      "variable_count": 14,
+      "variable_count": 28,
       "entity_count": 13,
       "path": "packs/ai-technology",
       "tags": [
@@ -174,7 +174,7 @@
   },
   "statistics": {
     "total_formulas": 49,
-    "total_variables": 182,
+    "total_variables": 222,
     "total_entities": 91,
     "total_relationships": 70
   }

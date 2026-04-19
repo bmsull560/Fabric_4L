@@ -109,11 +109,14 @@ class TestL3EntityContextContracts:
             "entity_count": 2,
             "relationship_count": 1,
         }
-        # EntityContextResponse may not be explicitly defined, check components
+        # EntityContextResponse must be defined for contract validation
         components = l3_openapi.get("components", {}).get("schemas", {})
-        if "EntityContextResponse" in components:
-            schema = _schema_ref(l3_openapi, "EntityContextResponse")
-            assert_matches_schema(sample, schema, root=l3_openapi)
+        assert "EntityContextResponse" in components, (
+            "Required schema 'EntityContextResponse' missing from OpenAPI spec. "
+            "If this schema was intentionally removed, update the contract test."
+        )
+        schema = _schema_ref(l3_openapi, "EntityContextResponse")
+        assert_matches_schema(sample, schema, root=l3_openapi)
 
 
 class TestL3EntityTraversalContracts:
@@ -150,9 +153,12 @@ class TestL3EntityTraversalContracts:
             "path_count": 1,
         }
         components = l3_openapi.get("components", {}).get("schemas", {})
-        if "EntityTraversalResponse" in components:
-            schema = _schema_ref(l3_openapi, "EntityTraversalResponse")
-            assert_matches_schema(sample, schema, root=l3_openapi)
+        assert "EntityTraversalResponse" in components, (
+            "Required schema 'EntityTraversalResponse' missing from OpenAPI spec. "
+            "If this schema was intentionally removed, update the contract test."
+        )
+        schema = _schema_ref(l3_openapi, "EntityTraversalResponse")
+        assert_matches_schema(sample, schema, root=l3_openapi)
 
     def test_traversal_direction_enum_values(self) -> None:
         """Entity traversal direction enum includes expected values."""

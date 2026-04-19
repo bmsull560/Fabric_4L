@@ -177,13 +177,16 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('loading')).toHaveTextContent('ready');
       });
 
+      // Trigger login - this starts async operation
       await act(async () => {
         screen.getByTestId('login-btn').click();
       });
 
-      // Verify state stored in sessionStorage
-      expect(sessionStorage.getItem('oidcState')).toBe('oidc-state-123');
-      expect(sessionStorage.getItem('oidcTenantSlug')).toBe('test-tenant');
+      // Wait for async operations to complete (state storage then redirect)
+      await waitFor(() => {
+        expect(sessionStorage.getItem('oidcState')).toBe('oidc-state-123');
+        expect(sessionStorage.getItem('oidcTenantSlug')).toBe('test-tenant');
+      });
 
       // Verify redirect happened
       await waitFor(() => {
@@ -205,15 +208,14 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('loading')).toHaveTextContent('ready');
       });
 
-      // Click login - this triggers setIsLoading(true) synchronously
-      act(() => {
+      // Click login and await async operations - triggers setIsLoading(true) synchronously
+      // then proceeds to async authClient call
+      await act(async () => {
         screen.getByTestId('login-btn').click();
       });
 
-      // Should immediately show loading state (set synchronously before async call)
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('loading');
-      });
+      // Loading state is set synchronously before async call, verify immediately
+      expect(screen.getByTestId('loading')).toHaveTextContent('loading');
 
       // Wait for the async operation to complete (and redirect)
       await waitFor(() => {
@@ -254,10 +256,7 @@ describe('AuthProvider', () => {
         { wrapper }
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
+      // Click immediately - AuthProvider will initialize synchronously
       await act(async () => {
         screen.getByTestId('trigger-login').click();
       });
@@ -299,10 +298,7 @@ describe('AuthProvider', () => {
         { wrapper }
       );
 
-      await waitFor(() => {
-        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
-      });
-
+      // Click immediately - AuthProvider will initialize synchronously
       await act(async () => {
         screen.getByTestId('trigger-login').click();
       });

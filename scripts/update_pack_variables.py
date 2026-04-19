@@ -24,6 +24,29 @@ def main():
         variables = data['variables']
         actual_count = len(variables)
 
+        # Validate: collect all invalid records before mutation
+        invalid_records = []
+        for idx, var in enumerate(variables):
+            missing_fields = []
+            if 'variable_name' not in var and 'canonicalName' not in var:
+                missing_fields.append('variable_name or canonicalName')
+            if missing_fields:
+                invalid_records.append({
+                    'index': idx,
+                    'record': var,
+                    'missing_fields': missing_fields
+                })
+
+        if invalid_records:
+            raise ValueError(
+                f"Found {len(invalid_records)} variables missing required fields:\n" +
+                "\n".join(
+                    f"  [record {r['index']}] missing: {', '.join(r['missing_fields'])}"
+                    for r in invalid_records[:10]  # Show first 10
+                ) +
+                (f"\n  ... and {len(invalid_records) - 10} more" if len(invalid_records) > 10 else "")
+            )
+
         # Add canonicalName and name fields to each variable
         for var in variables:
             if 'canonicalName' not in var:
