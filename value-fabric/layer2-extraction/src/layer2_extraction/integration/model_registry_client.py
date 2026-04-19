@@ -63,7 +63,7 @@ class ModelRegistryClient:
         self.timeout = timeout
         self.cache_ttl_seconds = cache_ttl_seconds
         self._cache: dict[str, CachedModel] = {}
-        self._cache_lock = threading.Lock()
+        self._cache_lock = asyncio.Lock()
         self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -81,28 +81,30 @@ class ModelRegistryClient:
         """Generate cache key for tenant/provider combination."""
         return f"{tenant_id}:{provider}"
 
-    def _get_cached(self, tenant_id: str, provider: str) -> str | None:
+    async def _get_cached(self, tenant_id: str, provider: str) -> str | None:
         """Get cached model if not expired."""
-        with self._cache_lock:
+        async with self._cache_lock:
             key = self._cache_key(tenant_id, provider)
             cached = self._cache.get(key)
             if cached and not cached.is_expired():
                 return cached.model_name
             return None
 
-    def _set_cached(self, tenant_id: str, provider: str, model_name: str) -> None:
+    async def _set_cached(self, tenant_id: str, provider: str, model_name: str) -> None:
         """Cache model resolution result with LRU eviction."""
-        with self._cache_lock:
+        async with self._cache_lock:
             # Evict oldest entries if cache is at max size
             if len(self._cache) >= self._MAX_CACHE_SIZE:
                 # Remove oldest 20% of entries (LRU approximation)
                 entries_to_remove = max(1, self._MAX_CACHE_SIZE // 5)
+                # Snapshot keys to avoid "dictionary changed size during iteration"
                 oldest_keys = sorted(
-                    self._cache.keys(),
+                    list(self._cache.keys()),
                     key=lambda k: self._cache[k].cached_at
                 )[:entries_to_remove]
                 for key in oldest_keys:
-                    del self._cache[key]
+                    if key in self._cache:
+                        del self._cache[key]
 
             key = self._cache_key(tenant_id, provider)
             self._cache[key] = CachedModel(
@@ -154,14 +156,14 @@ class ModelRegistryClient:
             )
 
         # Check cache first
-        cached = self._get_cached(tenant_id, provider)
+        cached = await self._get_cached(tenant_id, provider)
         if cached:
             return cached
 
         # Attempt registry lookup with retry logic
         model = await self._fetch_with_retry(tenant_id, provider, api_token)
         if model:
-            self._set_cached(tenant_id, provider, model)
+            await self._set_cached(tenant_id, provider, model)
             return model
 
         # Fallback to environment variable

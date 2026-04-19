@@ -20,8 +20,8 @@ class TestLLMCostTracking:
     @pytest.mark.asyncio
     async def test_token_counting_accuracy(self) -> None:
         """Token counting must match actual usage from LLM response."""
-        from value_fabric.layer4_agentv.salue_fabric.layer4_agents.src.models.tool_schemas import GenerateSectionInput
-        from value_fabric.layer4_agentv.salue_fabric.layer4_agents.src.tools.generation_tools import GenerateSectionTool
+        from src.models.tool_schemas import GenerateSectionInput
+        from src.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
 
@@ -34,7 +34,7 @@ class TestLLMCostTracking:
         mock_response.usage.completion_tokens = 50
         mock_response.usage.total_tokens = 200
 
-        with patch("value_fabric.layer4_agents.src.tools.generation_tools.AsyncOpenAI") as mock_openai:
+        with patch("src.tools.generation_tools.AsyncOpenAI") as mock_openai:
             mock_client = AsyncMock()
             mock_openai.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
@@ -54,8 +54,8 @@ class TestLLMCostTracking:
     @pytest.mark.asyncio
     async def test_cost_calculation_with_pricing(self) -> None:
         """Cost calculation must use correct pricing per model."""
-        from mrt GenerateSectionInput
-        from import GenerateSectionTool
+        from src.models.tool_schemas import GenerateSectionInput
+        from src.tools.generation_tools import GenerateSectionTool
 
         tool = GenerateSectionTool()
 
@@ -68,7 +68,7 @@ class TestLLMCostTracking:
         mock_response.usage.completion_tokens = 500  # 500 output tokens
         mock_response.usage.total_tokens = 1500
 
-        with patch("value_fabric.layer4_agents.src.tools.generation_tools.AsyncOpenAI") as mock_openai:
+        with patch("src.tools.generation_tools.AsyncOpenAI") as mock_openai:
             mock_client = AsyncMock()
             mock_openai.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
@@ -110,7 +110,7 @@ class TestLLMCostTracking:
             mock_response.usage.completion_tokens = 50
             return mock_response
 
-        with patch("value_fabric.layer4_agents.src.tools.generation_tools.AsyncOpenAI") as mock_openai:
+        with patch("src.tools.generation_tools.AsyncOpenAI") as mock_openai:
             mock_client = AsyncMock()
             mock_openai.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(side_effect=mock_create_with_retry)
@@ -149,7 +149,7 @@ class TestLLMCostTracking:
         mock_response.usage.prompt_tokens = 100000  # 100K tokens = expensive
         mock_response.usage.completion_tokens = 50000
 
-        with patch("value_fabric.layer4_agents.src.tools.generation_tools.AsyncOpenAI") as mock_openai:
+        with patch("src.tools.generation_tools.AsyncOpenAI") as mock_openai:
             mock_client = AsyncMock()
             mock_openai.return_value = mock_client
             mock_client.chat.completions.create = AsyncMock(return_value=mock_response)

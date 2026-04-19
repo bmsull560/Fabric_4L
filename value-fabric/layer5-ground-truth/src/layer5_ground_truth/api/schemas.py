@@ -509,6 +509,10 @@ class ModelVersionCreate(BaseModel):
         default_factory=dict,
         description="Additional provider-specific metadata",
     )
+    is_default: bool = Field(
+        default=False,
+        description="Whether this is the default model for the provider",
+    )
 
 
 class ModelVersionResponse(BaseModel):

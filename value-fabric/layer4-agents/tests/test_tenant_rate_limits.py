@@ -31,7 +31,7 @@ class TestTenantRateLimiting:
 
     def test_tenant_scope_added_to_enum(self):
         """Verify TENANT scope exists in RateLimitScope enum."""
-        from value_fabric.layer3_knowledge.src.rate_limiting.manager import RateLimitScope
+        from src.rate_limiting.manager import RateLimitScope
 
         assert hasattr(RateLimitScope, "TENANT")
         assert RateLimitScope.TENANT == "tenant"

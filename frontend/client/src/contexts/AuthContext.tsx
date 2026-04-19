@@ -282,10 +282,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Create a mock JWT token (valid structure but not verified)
     // Use base64url encoding (RFC 7519) instead of standard base64
     const base64url = (str: string): string => {
-      return btoa(str)
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
+      try {
+        return btoa(str)
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+      } catch {
+        // Handle non-Latin1 characters by encoding as UTF-8 first
+        const utf8Bytes = new TextEncoder().encode(str);
+        const binary = Array.from(utf8Bytes, byte => String.fromCharCode(byte)).join('');
+        return btoa(binary)
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+      }
     };
 
     const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.' +

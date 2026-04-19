@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import time
 from typing import Awaitable, Callable
 from uuid import UUID, uuid4
@@ -56,14 +57,22 @@ def _get_worker_count() -> int:
 
     Checks common WSGI/ASGI server worker count settings.
     Returns 1 for single-worker deployments (default).
+
+    Logs warning if detection fails, as this may indicate
+    multi-worker deployment without explicit configuration.
     """
-    for env_var in ("UVICORN_WORKERS", "WEB_CONCURRENCY"):
+    for env_var in ("UVICORN_WORKERS", "GUNICORN_WORKERS", "WEB_CONCURRENCY"):
         value = os.getenv(env_var)
         if value:
             try:
                 return max(1, int(value))  # Ensure at least 1
             except ValueError:
                 continue
+    logger.warning(
+        "Could not detect worker count from UVICORN_WORKERS, GUNICORN_WORKERS, "
+        "or WEB_CONCURRENCY. Defaulting to 1 worker. In multi-pod or multi-worker "
+        "deployments, configure Redis for distributed rate limiting."
+    )
     return 1
 
 
@@ -139,14 +148,20 @@ def _evict_stale_rate_limit_entries(now: float) -> None:
     per tenant to amortize cleanup cost.
     """
     cutoff = now - RATE_LIMIT_CACHE_TTL_SECONDS
-    stale_keys = [k for k, (_, t) in _tenant_rate_limit_buckets.items() if t < cutoff]
-    for k in stale_keys:
-        del _tenant_rate_limit_buckets[k]
+    with _buckets_lock:
+        stale_keys = [k for k, (_, t) in _tenant_rate_limit_buckets.items() if t < cutoff]
+        for k in stale_keys:
+            if k in _tenant_rate_limit_buckets:
+                del _tenant_rate_limit_buckets[k]
 
 
 # Request counter for amortized cleanup
 _request_count = 0
+_request_count_lock = threading.Lock()
 _cleanup_interval = 100  # Cleanup every 100 requests
+
+# Threading lock for tenant rate limit buckets
+_buckets_lock = threading.Lock()
 
 
 def _check_tenant_rate_limit(
@@ -176,24 +191,27 @@ def _check_tenant_rate_limit(
     now = time.time()
 
     # Amortized cleanup: run every N requests instead of every request
-    _request_count += 1
-    if _request_count % _cleanup_interval == 0:
+    with _request_count_lock:
+        _request_count += 1
+        should_cleanup = _request_count % _cleanup_interval == 0
+    if should_cleanup:
         _evict_stale_rate_limit_entries(now)
 
-    count, window_start = _tenant_rate_limit_buckets.get(tenant_id, (0, now))
+    with _buckets_lock:
+        count, window_start = _tenant_rate_limit_buckets.get(tenant_id, (0, now))
 
-    # Reset window if expired
-    if now - window_start > RATE_LIMIT_WINDOW_SECONDS:
-        count = 0
-        window_start = now
+        # Reset window if expired
+        if now - window_start > RATE_LIMIT_WINDOW_SECONDS:
+            count = 0
+            window_start = now
 
-    # Check limit
-    if count >= requests_per_minute:
-        retry_after = int(RATE_LIMIT_WINDOW_SECONDS - (now - window_start)) + 1
-        return False, max(1, retry_after)
+        # Check limit
+        if count >= requests_per_minute:
+            retry_after = int(RATE_LIMIT_WINDOW_SECONDS - (now - window_start)) + 1
+            return False, max(1, retry_after)
 
-    # Increment and store
-    _tenant_rate_limit_buckets[tenant_id] = (count + 1, window_start)
+        # Increment and store
+        _tenant_rate_limit_buckets[tenant_id] = (count + 1, window_start)
     return True, 0
 
 
