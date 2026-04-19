@@ -3161,7 +3161,7 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 | 69 | SSO / OIDC | P0 | 3 weeks | 🔴 NOT STARTED |
 | 70 | Model Registry | P0 | 2 days | ✅ COMPLETE 2026-04-19 |
 | 71 | Vault Wiring | P0 | 1 week | ✅ COMPLETE |
-| 72 | Incident Runbooks | P0 | 3 days | 🔴 NOT STARTED |
+| 72 | Incident Runbooks | P0 | 3 days | ✅ COMPLETE 2026-04-19 |
 | 73 | Alertmanager + Notifications | P1 | 1 week | 🔴 NOT STARTED |
 | 74 | Feature Flags | P1 | 1 week | 🔴 NOT STARTED |
 | 75 | Per-Tenant Rate Limiting | P1 | 1 week | 🔴 NOT STARTED |
@@ -3170,18 +3170,152 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 | 78 | SSO Frontend | P0 | 1 week | 🔴 NOT STARTED |
 | 79 | OpenAPI Contracts | P0 | 2 days | 🔴 NOT STARTED |
 | 80 | Dependency Locking (uv) | P1 | 1 week | 🔴 NOT STARTED |
-| 81 | Runbook Library | P0 | 3 days | 🔴 NOT STARTED |
-| 82 | Alertmanager Deploy | P1 | 1 week | 🔴 NOT STARTED |
-| 83 | Feature Flag System | P1 | 1 week | 🔴 NOT STARTED |
-| 84 | Per-Tenant Rate Limits | P1 | 1 week | 🔴 NOT STARTED |
-| 85 | LLM Cost Metrics | P1 | 2 days | 🔴 NOT STARTED |
-| 86 | Python SDK & CLI | P1 | 2 weeks | 🔴 NOT STARTED |
+| 81 | ~~Runbook Library~~ | ~~P0~~ | ~~3 days~~ | 🟡 CONSOLIDATED into Task 72 |
+| 82 | ~~Alertmanager Deploy~~ | ~~P1~~ | ~~1 week~~ | 🟡 CONSOLIDATED into Task 73 |
+| 83 | ~~Feature Flag System~~ | ~~P1~~ | ~~1 week~~ | 🟡 CONSOLIDATED into Task 74 |
+| 84 | ~~Per-Tenant Rate Limits~~ | ~~P1~~ | ~~1 week~~ | 🟡 CONSOLIDATED into Task 75 |
+| 85 | ~~LLM Cost Metrics~~ | ~~P1~~ | ~~2 days~~ | 🟡 CONSOLIDATED into Task 76 |
+| 86 | ~~Python SDK & CLI~~ | ~~P1~~ | ~~2 weeks~~ | 🟡 CONSOLIDATED into Task 77 |
+| **87** | **SSO/OIDC Backend Integration** | **P0** | **2 weeks** | 🔴 NOT STARTED |
+| **88** | **OpenAPI Contract Regeneration** | **P0** | **2 days** | 🔴 NOT STARTED |
+| **89** | **Alertmanager Deployment & Routing** | **P1** | **1 week** | 🔴 NOT STARTED |
+| **90** | **Dependency Locking with uv** | **P1** | **1 week** | 🔴 NOT STARTED |
+| **91** | **Feature Flag System** | **P1** | **1 week** | 🔴 NOT STARTED |
 
 **Total estimated Phase 3 effort: ~15 weeks (parallelizable across 2-3 engineers)**
 
-**New P0 tasks added:** 4 (Tasks 70, 71 ✅, 78, 79, 81)  
-**New P1 tasks added:** 10 (Tasks 69, 73, 74, 75, 76, 77, 80, 82, 83, 84, 85, 86)  
-**Already complete:** 2 (Task 70 - Model Registry, Task 71 - Vault Wiring)
+**New P0 tasks added:** 6 (Tasks 70, 71 ✅, 72 ✅, 78, 79, 81 → 87, 88)  
+**New P1 tasks added:** 11 (Tasks 69, 73, 74, 75, 76, 77, 80, 82-86 → 73, 74, 75, 76, 77, 80, 89, 90, 91)  
+**Already complete:** 3 (Task 70 - Model Registry, Task 71 - Vault Wiring, Task 72 - Runbooks)
+
+---
+
+### **Task 87: SSO/OIDC Backend Integration** 🔴 NOT STARTED
+
+**Priority:** P0  
+**Effort:** 2 weeks  
+**Layer:** Shared/L4  
+**Unblocks:** Enterprise adoption, federated identity, Task 78 (SSO Frontend)
+
+**Objective:** Enable federated identity so enterprise users can log in via their corporate IdP (Okta, Azure AD, Google Workspace).
+
+**Scope:**
+- Add `OIDCClient` in `shared/identity/oidc.py` with PKCE support
+- Implement `/auth/oidc/{tenant}/login` and `/auth/oidc/callback` endpoints
+- Store OIDC provider config per-tenant in `tenants.settings` JSONB
+- Map OIDC claims (`email`, `groups`) to `Role` enum
+- `USER_LOGIN` audit event on successful OIDC auth
+
+**Acceptance Criteria:**
+- [ ] `OIDCClient` in `shared/identity/oidc.py`
+- [ ] `/auth/oidc/{tenant}/login` redirects to IdP
+- [ ] `/auth/oidc/callback` handles token exchange
+- [ ] Group membership maps to `Role`
+- [ ] Unit tests for token exchange and claim mapping
+- [ ] Existing API-key auth unaffected
+
+**Implementation:**
+- Create: `shared/identity/oidc.py`
+- Create: `value-fabric/layer4-agents/src/api/routes/oidc.py`
+- Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
+
+---
+
+### **Task 88: OpenAPI Contract Regeneration** 🔴 NOT STARTED
+
+**Priority:** P0  
+**Effort:** 2 days  
+**Layer:** DEVOPS/Contracts  
+**Unblocks:** SDK generation, API contract validation, Task 86 (SDK)
+
+**Gap:** Layer 3 OpenAPI contains Layer 1 specs; export script fails with module import errors.
+
+**Acceptance Criteria:**
+- [ ] Fix `scripts/export_openapi.py` module imports
+- [ ] Regenerate `contracts/openapi/layer3-knowledge.json` from actual L3 routes
+- [ ] Add missing schemas: `IngestRequest`, `Formula`, `GraphRAGResponse`
+- [ ] Contract tests pass: `pytest tests/contract/ -v`
+- [ ] CI workflow `.github/workflows/drift-check.yml` validates contracts
+
+**Implementation:**
+- Modify: `scripts/export_openapi.py`
+- Modify: `contracts/openapi/layer3-knowledge.json`
+- Create: `.github/workflows/drift-check.yml`
+
+---
+
+### **Task 89: Alertmanager Deployment & Routing** 🔴 NOT STARTED
+
+**Priority:** P1  
+**Effort:** 1 week  
+**Layer:** DEVOPS/Monitoring  
+**Unblocks:** Production alerting, on-call response  
+**Depends on:** Task 72 (Runbooks - COMPLETE)
+
+**Gap:** Alertmanager referenced but not deployed; alerts fire into void.
+
+**Acceptance Criteria:**
+- [ ] `k8s/base/alertmanager/` with deployment, service, config
+- [ ] Routing: critical → PagerDuty/Opsgenie, warning → Slack `#alerts`
+- [ ] Formula approval notifications to Slack
+- [ ] Environment vars: `ALERTMANAGER_SLACK_WEBHOOK`, `ALERTMANAGER_PAGERDUTY_KEY`
+- [ ] Test alert fires through to Slack channel
+- [ ] `runbook_url` annotation links to `docs/runbooks/`
+
+**Implementation:**
+- Create: `k8s/base/alertmanager/deployment.yml`
+- Create: `k8s/base/alertmanager/config.yml`
+- Create: `k8s/base/alertmanager/service.yml`
+- Modify: `monitoring/alertmanager/alertmanager.yml`
+
+---
+
+### **Task 90: Dependency Locking with uv** 🔴 NOT STARTED
+
+**Priority:** P1  
+**Effort:** 1 week  
+**Layer:** DEVOPS  
+**Unblocks:** Deterministic builds, supply chain security
+
+**Gap:** No lock files means PyPI releases can break builds.
+
+**Acceptance Criteria:**
+- [ ] All 6 layers have `uv.lock` files
+- [ ] All Dockerfiles use `uv pip sync` from lock file
+- [ ] CI uses `uv sync --frozen`
+- [ ] Python base images pinned to SHA digests
+- [ ] `hadolint` passes on all Dockerfiles
+
+**Implementation:**
+- Create: `value-fabric/*/uv.lock` (6 files)
+- Modify: All `value-fabric/layer*/Dockerfile`
+- Modify: `.github/workflows/pr-checks.yml`
+
+---
+
+### **Task 91: Feature Flag System** 🔴 NOT STARTED
+
+**Priority:** P1  
+**Effort:** 1 week  
+**Layer:** L4/Shared  
+**Unblocks:** Safe rollout of new features  
+**Depends on:** Task 54 (PostgreSQL RLS - COMPLETE)
+
+**Gap:** No feature flag library; all changes require full deployment.
+
+**Acceptance Criteria:**
+- [ ] `feature_flags` table with `flag_key`, `tenant_id`, `enabled`, `rollout_pct`
+- [ ] `GET /v1/flags/{key}` endpoint
+- [ ] Python helper `is_enabled(flag_key, ctx)` in `shared/feature_flags/`
+- [ ] Flags respect per-tenant rollout percentage
+- [ ] `is_enabled()` used in at least one L4 agent path
+- [ ] Flag changes audited via `AuditAction`
+
+**Implementation:**
+- Create: `value-fabric/layer4-agents/src/models/feature_flags.py`
+- Create: `value-fabric/layer4-agents/src/api/routes/feature_flags.py`
+- Create: `shared/feature_flags/helpers.py`
+- Create: `value-fabric/layer4-agents/tests/test_feature_flags.py`
 
 ---
 
@@ -3213,11 +3347,11 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
 
 | Rank | Risk | Layer | Status |
 |------|------|-------|--------|
-| **1** | **Frontend AuthContext Tests Failing** | Frontend | 🔴 5 errors in OIDC handling |
-| **2** | **Model Registry Missing** | L5 | 🔴 No LLM versioning (Task 41) |
-| **3** | ~~Vault Integration~~ ✅ **Wired** | Infra | ✅ All layers have health checks, dynamic PostgreSQL creds configured |
-| **4** | **Incident Runbooks Absent** | Ops | 🔴 No runbook files exist |
-| **5** | **Alertmanager Unconfigured** | Monitoring | 🟡 Alerts fire to void |
+| **1** | **SSO/OIDC Backend** | Shared/L4 | 🔴 Enterprise adoption blocker |
+| **2** | **OpenAPI Contract Regeneration** | DEVOPS | 🔴 SDK generation dependency |
+| **3** | **Alertmanager Deployment** | Monitoring | 🟡 Alerts fire to void |
+| **4** | ~~Vault Integration~~ ✅ **Wired** | Infra | ✅ All layers have health checks, dynamic PostgreSQL creds configured |
+| **5** | ~~Model Registry~~ ✅ **Complete** | L5 | ✅ Delivered 2026-04-19 |
 
 ### Launch Checklist Status
 
@@ -3229,18 +3363,19 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
 | Tests >80% coverage | ✅ CI enforcement active |
 | Docker deployment | ✅ docker-compose full stack |
 | **Monitoring** | 🟡 Prometheus exists, Alertmanager pending |
-| **SSO/OIDC** | ❌ Not implemented (Task 40) |
-| **Model Governance** | ❌ No registry (Task 41) |
-| **Incident Runbooks** | ❌ None exist (Task 43) |
+| **SSO/OIDC** | ❌ Not implemented (Task 87) |
+| **Model Governance** | ✅ Complete (Task 70) |
+| **Incident Runbooks** | ✅ Complete (Task 72) |
 | **Vault Integration** | ✅ Wired with health checks, dynamic creds, policies as code |
+| **OpenAPI Contracts** | ❌ Drift detected (Task 88) |
 
-**Met:** 6/10 production survivability criteria
+**Met:** 7/11 production survivability criteria
 
-### Recommended Sprint Sequence
+### Recommended Sprint Sequence (Updated 2026-04-19)
 
-1. **Sprint 1 (1 week):** Frontend Auth Stabilization - Fix AuthContext tests
-2. **Sprint 2 (2 weeks):** Model Registry + Vault Wiring
-3. **Sprint 3 (1 week):** Runbooks + Alertmanager
-4. **Sprint 4 (2 weeks):** Enterprise Features (flags, rate limiting, SDK)
+1. **Sprint 1 (1 week):** OpenAPI Contract Regeneration (Task 88) + Dependency Locking (Task 90)
+2. **Sprint 2 (2 weeks):** SSO/OIDC Backend (Task 87) + Frontend Integration
+3. **Sprint 3 (1 week):** Alertmanager Deployment (Task 89)
+4. **Sprint 4 (1 week):** Feature Flag System (Task 91)
 
-**Go/No-Go Target:** After Sprint 3 = 95%+ readiness
+**Go/No-Go Target:** After Sprint 3 = 93%+ readiness
