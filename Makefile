@@ -6,6 +6,11 @@
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills
 
+# Strict shell settings for production safety
+.ONESHELL:
+SHELL := /bin/bash
+.SHELLFLAGS := -euo pipefail -c
+
 PYTHON := python3
 PIP    := pip install -e
 PYTEST := pytest -v --tb=short
@@ -58,18 +63,21 @@ lint: ## Lint all Python layers with ruff (fails fast on first error)
 	 echo "✅  Linting complete for all layers"
 
 # Per-layer mypy flags - stricter layers enforce more type safety
-# Layer 1: Relaxed - gradual typing migration in progress
-MYPY_LAYER1_FLAGS = --ignore-missing-imports --disable-error-code no-untyped-def
+# Layer 1: Relaxed with explicit untyped handling
+MYPY_LAYER1_FLAGS = --warn-return-any --warn-unused-configs --disallow-untyped-defs=false
 # Layer 2: Strict - fully typed codebase
-MYPY_LAYER2_FLAGS = --ignore-missing-imports --strict
+MYPY_LAYER2_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 3: Strict - fully typed codebase
-MYPY_LAYER3_FLAGS = --ignore-missing-imports --strict
+MYPY_LAYER3_FLAGS = --strict --warn-return-any --warn-unused-configs
 # Layer 4: Moderate - typed with some flexibility for agent patterns
-MYPY_LAYER4_FLAGS = --ignore-missing-imports --warn-return-any --warn-unused-ignores
+MYPY_LAYER4_FLAGS = --warn-return-any --warn-unused-configs --disallow-untyped-defs=false
 # Layer 5: Strict - fully typed codebase
-MYPY_LAYER5_FLAGS = --ignore-missing-imports --strict
-# Layer 6: Minimal - no mypy config in pyproject.toml yet
-MYPY_LAYER6_FLAGS = --ignore-missing-imports
+MYPY_LAYER5_FLAGS = --strict --warn-return-any --warn-unused-configs
+# Layer 6: Minimal - gradual typing
+MYPY_LAYER6_FLAGS = --warn-return-any --warn-unused-configs
+
+# Allow specific third-party overrides only where needed
+MYPY_OVERRIDES = --python-version 3.11
 
 # Per-layer typecheck targets for development efficiency
 typecheck-layer1: ## Type-check Layer 1 only
@@ -173,11 +181,11 @@ security-smoke: ## Run fast security smoke tests (< 2 min, PR gating)
 
 security-test: ## Run full security test suite (~ 15 min, scheduled workflows)
 	@echo "→ Running full security test suite..."
-	$(PYTEST) tests/security/test_tenant_isolation.py -v --tb=short -k "P0" || true
-	$(PYTEST) tests/security/test_rbac.py -v --tb=short -k "P0" || true
-	$(PYTEST) tests/security/test_owasp_top10.py -v --tb=short -k "P0" || true
-	$(PYTEST) tests/security/test_security_misconfiguration.py -v --tb=short || true
-	@echo "✅  Full security test suite complete (check outputs for failures)"
+	$(PYTEST) tests/security/test_tenant_isolation.py -v --tb=short -k "P0"
+	$(PYTEST) tests/security/test_rbac.py -v --tb=short -k "P0"
+	$(PYTEST) tests/security/test_owasp_top10.py -v --tb=short -k "P0"
+	$(PYTEST) tests/security/test_security_misconfiguration.py -v --tb=short
+	@echo "✅  Full security test suite complete"
 
 security-test-isolation: ## Run tenant isolation tests only
 	@echo "→ Running tenant isolation tests..."

@@ -71,8 +71,13 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
-      - name: Lint with ruff
-        run: uv run ruff check --select F401,F811,F841 src/
+      - name: Lint with ruff (comprehensive)
+        run: |
+          uv run ruff check --select E,W,F,I,N,D src/  # Errors, warnings, imports, naming, docstrings
+          uv run ruff check --select B src/  # Bugbear (likely bugs)
+          uv run ruff check --select C4 src/  # Comprehensions
+          uv run ruff check --select SIM src/  # Simplifications
+          uv run ruff check --select UP src/  # Pyupgrade
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
@@ -129,8 +134,13 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
-      - name: Lint with ruff
-        run: uv run ruff check --select F401,F811,F841 src/
+      - name: Lint with ruff (comprehensive)
+        run: |
+          uv run ruff check --select E,W,F,I,N,D src/
+          uv run ruff check --select B src/
+          uv run ruff check --select C4 src/
+          uv run ruff check --select SIM src/
+          uv run ruff check --select UP src/
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
@@ -187,8 +197,13 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
-      - name: Lint with ruff
-        run: uv run ruff check --select F401,F811,F841 src/
+      - name: Lint with ruff (comprehensive)
+        run: |
+          uv run ruff check --select E,W,F,I,N,D src/
+          uv run ruff check --select B src/
+          uv run ruff check --select C4 src/
+          uv run ruff check --select SIM src/
+          uv run ruff check --select UP src/
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
@@ -245,8 +260,13 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
-      - name: Lint with ruff
-        run: uv run ruff check --select F401,F811,F841 src/
+      - name: Lint with ruff (comprehensive)
+        run: |
+          uv run ruff check --select E,W,F,I,N,D src/
+          uv run ruff check --select B src/
+          uv run ruff check --select C4 src/
+          uv run ruff check --select SIM src/
+          uv run ruff check --select UP src/
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
@@ -303,8 +323,13 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
-      - name: Lint with ruff
-        run: uv run ruff check --select F401,F811,F841 src/
+      - name: Lint with ruff (comprehensive)
+        run: |
+          uv run ruff check --select E,W,F,I,N,D src/
+          uv run ruff check --select B src/
+          uv run ruff check --select C4 src/
+          uv run ruff check --select SIM src/
+          uv run ruff check --select UP src/
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
@@ -361,8 +386,13 @@ jobs:
       - name: Install dependencies (frozen lock)
         run: uv sync --frozen --all-extras
 
-      - name: Lint with ruff
-        run: uv run ruff check --select F401,F811,F841 src/
+      - name: Lint with ruff (comprehensive)
+        run: |
+          uv run ruff check --select E,W,F,I,N,D src/
+          uv run ruff check --select B src/
+          uv run ruff check --select C4 src/
+          uv run ruff check --select SIM src/
+          uv run ruff check --select UP src/
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
@@ -412,10 +442,16 @@ jobs:
         run: pip install ruff
 
       - name: Lint shared modules
-        run: ruff check --select F401,F811,F841 shared/
+        run: |
+          ruff check --select E,W,F,I,N,D shared/
+          ruff check --select B shared/
+          ruff check --select C4,SIM,UP shared/
 
       - name: Lint tests
-        run: ruff check --select F401,F811,F841 tests/
+        run: |
+          ruff check --select E,W,F,I,N,D tests/
+          ruff check --select B tests/
+          ruff check --select C4,SIM,UP tests/
 
   # Frontend checks
   frontend-checks:

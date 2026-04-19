@@ -271,9 +271,9 @@ test.describe('Navigation & Access Control', () => {
     });
 
     test('mobile menu is accessible', async () => {
-      // SKIP: Mobile hamburger menu not implemented in AppShell
+      // Mobile hamburger menu not implemented in AppShell
       // TieredNav sidebar is always visible (desktop-style), no SidebarTrigger present
-      test.skip(true, 'Mobile navigation UI not implemented - see AppShell.tsx');
+      test.fixme(true, 'Mobile navigation UI not implemented - tracked in #456');
 
       await appShell.homeLink.click();
       const hasMobileMenu = await appShell.mobileMenuButton.isVisible().catch(() => false);
@@ -285,8 +285,8 @@ test.describe('Navigation & Access Control', () => {
     });
 
     test('mobile navigation works', async ({ page }) => {
-      // SKIP: Mobile hamburger menu not implemented in AppShell
-      test.skip(true, 'Mobile navigation UI not implemented - see AppShell.tsx');
+      // Mobile hamburger menu not implemented in AppShell
+      test.fixme(true, 'Mobile navigation UI not implemented - tracked in #456');
 
       await page.goto('/home');
       const hasMobileMenu = await appShell.mobileMenuButton.isVisible().catch(() => false);

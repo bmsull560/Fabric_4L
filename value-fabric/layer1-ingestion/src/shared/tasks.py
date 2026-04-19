@@ -953,7 +953,7 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
                     fallback_reason=quality.fallback_reason,
                 )
 
-                browser_result = _execute_browser_path(url, routing_decision.stagehand_config)
+                browser_result = await _execute_browser_path(url, routing_decision.stagehand_config)
 
                 decision_record.final_path = "fallback"
                 decision_record.status_code = browser_result.get("status_code")
@@ -968,7 +968,7 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
 
         else:  # RouteType.BROWSER
             # Direct browser path
-            browser_result = _execute_browser_path(url, routing_decision.stagehand_config)
+            browser_result = await _execute_browser_path(url, routing_decision.stagehand_config)
 
             decision_record.final_path = "browser"
             decision_record.status_code = browser_result.get("status_code")
@@ -1031,7 +1031,7 @@ async def _execute_fast_path(url: str) -> "FastPathResult":
         return await crawler.fetch(url)
 
 
-def _execute_browser_path(url: str, config: dict | None) -> dict:
+async def _execute_browser_path(url: str, config: dict | None) -> dict:
     """Execute Playwright browser path crawl.
 
     Args:
@@ -1041,26 +1041,40 @@ def _execute_browser_path(url: str, config: dict | None) -> dict:
     Returns:
         dict with browser crawl results
     """
-    # Use existing PlaywrightCrawler
-    # This is a placeholder for the actual browser integration
-    # In production, this would use the full browser pipeline
     import time
 
     start_time = time.monotonic()
 
-    # Simulate browser crawl (replace with actual Playwright integration)
-    _ = PlaywrightCrawler()  # noqa: F841 - placeholder for future integration
-    # result = crawler.crawl(url)  # Actual call
+    # Actual Playwright integration
+    browser_config = config or {}
+    headless = browser_config.get("headless", True)
+    wait_for_selector = browser_config.get("wait_for_selector")
+    wait_timeout = browser_config.get("wait_timeout", 30000)
 
-    # Placeholder result for now
-    duration_ms = int((time.monotonic() - start_time) * 1000) + 3000  # ~3s base
+    async with PlaywrightCrawler(
+        headless=headless,
+        proxy_config=browser_config.get("proxy_config"),
+    ) as crawler:
+        result = await crawler.crawl_url(
+            url=url,
+            wait_for_selector=wait_for_selector,
+            wait_for_timeout=wait_timeout,
+            scroll_page=True,
+        )
+
+    duration_ms = int((time.monotonic() - start_time) * 1000)
 
     return {
-        "status_code": 200,
+        "status_code": result.status_code or 200,
         "duration_ms": duration_ms,
-        "content_length": 50000,  # Estimated
-        "text_length": 5000,
+        "content_length": len(result.html_content or ""),
+        "text_length": len(result.html_content or "") // 10,  # Approximate text ratio
+        "title": result.title,
+        "final_url": result.final_url,
+        "error": result.error,
         "config_used": config,
+        "blocked_resources": result.blocked_resources,
+        "scroll_triggered": result.scroll_triggered,
     }
 
 

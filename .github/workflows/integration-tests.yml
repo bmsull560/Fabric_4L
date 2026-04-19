@@ -77,13 +77,17 @@ jobs:
           pip install pytest httpx pytest-asyncio
           pytest tests/test_e2e_pipeline.py -v --tb=short
 
-      # TODO: Enable when tests/integration/ folder is created
-      # See: https://github.com/bmsull560/Fabric_4L/issues/TODO-integration-tests
-      # - name: Run integration tests
-      #   run: |
-      #     cd tests/integration
-      #     pip install pytest httpx pytest-cov
-      #     pytest -v --cov=. --cov-report=xml
+      - name: Run integration tests
+        run: |
+          if [ -d "tests/integration" ]; then
+            cd tests/integration
+            pip install pytest httpx pytest-cov
+            pytest -v --cov=. --cov-report=xml
+          else
+            echo "Integration test folder not found - this is a P0 blocker"
+            exit 1
+          fi
+        timeout-minutes: 15
 
       - name: Capture logs on failure
         if: failure()

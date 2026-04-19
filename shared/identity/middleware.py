@@ -375,11 +375,22 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
     def _extract_bearer_token(self, request: Request) -> str | None:
         """Extract bearer token from Authorization header."""
         auth_header = request.headers.get("Authorization", "")
-        
+
         if auth_header.startswith("Bearer "):
             token = auth_header[7:].strip()
             # Skip if it looks like an API key
             if not token.startswith("vf_"):
                 return token
-        
+
         return None
+
+
+# Task 108: Export rate limiting internals for testing
+__all__ = [
+    "GovernanceMiddleware",
+    "RateLimitExceeded",
+    "_check_tenant_rate_limit",
+    "_tenant_rate_limit_buckets",
+    "_check_redis_rate_limit",
+    "MultiWorkerRateLimitError",
+]

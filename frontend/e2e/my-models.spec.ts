@@ -183,7 +183,10 @@ test.describe("My Models E2E", () => {
       }
     } catch (e) {
       // Backend may not be available - mark as requiring backend
-      test.skip(true, "Backend API not available - skipping full CRUD test");
+      if (process.env.CI === 'true') {
+        throw new Error('Backend API required in CI - full CRUD test must pass');
+      }
+      test.fixme(true, 'Backend API not available locally - tracked in #457');
     }
   });
 

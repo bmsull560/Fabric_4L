@@ -16,18 +16,11 @@ from fastapi.responses import Response
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 # Task 60/61: Shared error handling and request correlation
-try:
-    from shared.error_handling import RequestIDMiddleware, register_exception_handlers
-    SHARED_ERROR_HANDLING_AVAILABLE = True
-except ImportError:
-    SHARED_ERROR_HANDLING_AVAILABLE = False
+from shared.error_handling import RequestIDMiddleware, register_exception_handlers
+SHARED_ERROR_HANDLING_AVAILABLE = True
 
-# Shared identity imports (graceful degradation if shared package unavailable)
-try:
-    from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
-except ImportError:
-    init_feature_flags = None
-    register_feature_flag_lookup = None
+# Shared identity imports
+from shared.identity.feature_flags import init_feature_flags, register_feature_flag_lookup
 
 # Governance middleware replaces the old TenantMiddleware
 # P1-29: OpenTelemetry imports
@@ -38,17 +31,11 @@ from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
-try:
-    from shared.identity.middleware import GovernanceMiddleware
-    from shared.identity.rate_limiter import RedisRateLimiter
-    from shared.identity.vault_check import is_vault_healthy
-    from shared.security import add_security_middleware, SecurityConfig
-except ImportError:
-    GovernanceMiddleware = None
-    RedisRateLimiter = None
-    is_vault_healthy = None
-    add_security_middleware = None
-    SecurityConfig = None
+# Hard imports - fail fast if security components unavailable
+from shared.identity.middleware import GovernanceMiddleware
+from shared.identity.rate_limiter import RedisRateLimiter
+from shared.identity.vault_check import is_vault_healthy
+from shared.security import add_security_middleware, SecurityConfig
 
 from ..config.checkpoint import CheckpointConfig
 from ..config.settings import settings
@@ -86,6 +73,7 @@ checkpoint_saver: AsyncPostgresSaver | None = None
 ws_manager = get_ws_manager()
 health_tracker = get_health_tracker()
 crm_sync_scheduler: CRMSyncScheduler | None = None
+oidc_cleanup_task: "OIDCCleanupTask | None" = None  # Task 69 gap fix
 
 
 # P1-29: OpenTelemetry tracer provider (initialized on startup)
@@ -210,6 +198,16 @@ async def lifespan(app: FastAPI):
     crm_sync_scheduler = await get_crm_sync_scheduler()
     await crm_sync_scheduler.start()
 
+    # Start OIDC session cleanup task (Task 69 gap fix)
+    from ..services.oidc_cleanup import create_oidc_cleanup_task
+    from ..database import db_session
+
+    global oidc_cleanup_task
+    oidc_cleanup_task = await create_oidc_cleanup_task(
+        db_session_factory=db_session,
+        interval_seconds=300.0,  # Run every 5 minutes
+    )
+
     yield
 
     # Shutdown
@@ -226,6 +224,10 @@ async def lifespan(app: FastAPI):
     if crm_sync_scheduler:
         await crm_sync_scheduler.stop()
 
+    # Stop OIDC cleanup task
+    if oidc_cleanup_task:
+        await oidc_cleanup_task.stop()
+
     # Close checkpoint saver connection
     if checkpoint_saver:
         await CheckpointConfig.close_saver(checkpoint_saver)
@@ -241,6 +243,7 @@ async def lifespan(app: FastAPI):
     workflow_executor = None
     state_manager = None
     checkpoint_saver = None
+    oidc_cleanup_task = None
 
 
 app = FastAPI(
@@ -293,20 +296,16 @@ if "*" in _cors_origins:
         "Set CORS_ORIGINS to specific origins in production."
     )
 
-# SecurityMiddleware — input validation and security headers (before CORS)
-# Guard: Skip if SecurityConfig unavailable (e.g., during OpenAPI export when shared package not in path)
-if SecurityConfig is not None and add_security_middleware is not None:
-    _security_config_l4 = SecurityConfig(
-        skip_validation_paths=frozenset({
-            "/agents/v1/workflows",
-            "/agents/v1/skills",
-            "/agents/v1/analyze",
-        }),
-        strict_mode=True,
-    )
-    add_security_middleware(app, config=_security_config_l4)
-else:
-    logger.warning("Security middleware not available — skipping for OpenAPI export")
+# SecurityMiddleware — input validation and security headers (mandatory)
+_security_config_l4 = SecurityConfig(
+    skip_validation_paths=frozenset({
+        "/agents/v1/workflows",
+        "/agents/v1/skills",
+        "/agents/v1/analyze",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l4)
 
 app.add_middleware(
     CORSMiddleware,

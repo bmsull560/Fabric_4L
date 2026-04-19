@@ -2,6 +2,11 @@
 
 Provides persistent, queryable decision history separate from operational logs.
 Enables replay analysis, audit lookup, and policy validation.
+
+FIXME (P2 Risk #13): Async methods use sync SQLAlchemy calls.
+Current implementation uses thread-blocking sync calls in async methods.
+Resolution: Migrate to async SQLAlchemy (asyncio extension) or asyncpg.
+Tracked: Risk #13 in correctness hardening protocol.
 """
 
 from __future__ import annotations

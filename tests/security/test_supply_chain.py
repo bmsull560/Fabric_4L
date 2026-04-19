@@ -38,6 +38,8 @@ class TestImageSignatures:
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
+            if os.getenv("CI") == "true":
+                raise RuntimeError("Cosign required in CI for supply chain tests")
             pytest.skip("Cosign not available")
 
     def test_cosign_can_verify_local_images(self, cosign_available):
@@ -83,6 +85,10 @@ class TestImageSignatures:
 class TestSBOMGeneration:
     """Test SBOM generation and validation."""
 
+    @pytest.mark.skipif(
+        os.getenv("CI") != "true",
+        reason="Syft optional for local dev, required in CI"
+    )
     def test_syft_can_generate_sbom(self):
         """P1: Syft can generate valid CycloneDX SBOMs."""
         # Test with a simple Docker image or skip
@@ -94,6 +100,8 @@ class TestSBOMGeneration:
             )
             assert result.returncode == 0
         except (subprocess.CalledProcessError, FileNotFoundError):
+            if os.getenv("CI") == "true":
+                raise RuntimeError("Syft required in CI for SBOM tests")
             pytest.skip("Syft not available")
 
     def test_cyclonedx_sbom_structure(self):
@@ -284,6 +292,10 @@ class TestAdmissionPolicies:
 class TestVulnerabilityScanning:
     """Test vulnerability scanning integration."""
 
+    @pytest.mark.skipif(
+        os.getenv("CI") != "true",
+        reason="Grype optional for local dev, required in CI"
+    )
     def test_grype_can_scan_sbom(self):
         """Grype can scan SBOMs for vulnerabilities."""
         try:
@@ -294,6 +306,8 @@ class TestVulnerabilityScanning:
             )
             assert result.returncode == 0
         except (subprocess.CalledProcessError, FileNotFoundError):
+            if os.getenv("CI") == "true":
+                raise RuntimeError("Grype required in CI for vulnerability scanning")
             pytest.skip("Grype not available")
 
     def test_vulnerability_report_structure(self):

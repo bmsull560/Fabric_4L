@@ -57,16 +57,11 @@ from ..shared.models import (
 )
 from ..shared.tasks import cleanup_old_content, process_scraping_job
 
-try:
-    from shared.security import add_security_middleware, SecurityConfig
-except ImportError:
-    add_security_middleware = None
-    SecurityConfig = None
-
-try:
-    from shared.identity.vault_check import is_vault_healthy
-except ImportError:
-    is_vault_healthy = None
+# Hard imports - fail fast if security components unavailable
+from shared.security import add_security_middleware, SecurityConfig
+from shared.identity.middleware import GovernanceMiddleware
+from shared.identity.rate_limiter import RedisRateLimiter
+from shared.identity.vault_check import is_vault_healthy
 
 # Configure logging
 structlog.configure(
@@ -200,42 +195,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# SecurityMiddleware — input validation and security headers (only if shared package available)
-if SecurityConfig and add_security_middleware:
-    _security_config_l1 = SecurityConfig(
-        skip_validation_paths=frozenset({
-            "/v1/ingest",
-            "/v1/ingest/batch",
-            "/v1/batch/ingest",
-        }),
-        strict_mode=True,
-    )
-    add_security_middleware(app, config=_security_config_l1)
+# SecurityMiddleware — input validation and security headers (mandatory)
+_security_config_l1 = SecurityConfig(
+    skip_validation_paths=frozenset({
+        "/v1/ingest",
+        "/v1/ingest/batch",
+        "/v1/batch/ingest",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l1)
 
-# GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
-# api_key_resolver is None here (L1 uses JWT auth primarily); pass a resolver
-# callable to support X-API-Key if the shared key store is accessible.
+# GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
+redis_rate_limiter = None
 try:
-    from shared.identity.middleware import GovernanceMiddleware
-    from shared.identity.rate_limiter import RedisRateLimiter
+    from ..shared.database import redis_client
 
-    redis_rate_limiter = None
-    try:
-        from ..shared.database import redis_client
+    if redis_client is not None:
+        redis_rate_limiter = RedisRateLimiter(redis_client)
+except Exception:
+    pass
 
-        if redis_client is not None:
-            redis_rate_limiter = RedisRateLimiter(redis_client)
-    except Exception:
-        pass
-
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=redis_rate_limiter)
-except ImportError:
-    import logging as _log
-
-    _log.getLogger(__name__).warning(
-        "shared.identity not importable — GovernanceMiddleware skipped in L1. "
-        "Ensure the shared package is installed."
-    )
+app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=redis_rate_limiter)
 
 # Add metrics middleware if available — INNERMOST
 if metrics:

@@ -139,15 +139,24 @@ class DocumentIngestionAgent(BaseAgent):
 
         elif capability == "ocr_processing":
             # Similar pattern with OCR-specific processing
-            pass
+            raise NotImplementedError(
+                f"{self.__class__.__name__}.ocr_processing is not yet implemented. "
+                "Disable this capability in config or implement before production."
+            )
 
         elif capability == "metadata_extraction":
             # Query Layer 1 for document metadata
-            pass
+            raise NotImplementedError(
+                f"{self.__class__.__name__}.metadata_extraction is not yet implemented. "
+                "Disable this capability in config or implement before production."
+            )
 
         elif capability == "source_validation":
             # Validate document source
-            pass
+            raise NotImplementedError(
+                f"{self.__class__.__name__}.source_validation is not yet implemented. "
+                "Disable this capability in config or implement before production."
+            )
 
         raise ValueError(f"Unknown capability: {capability}")
 
@@ -259,16 +268,24 @@ class FinancialExtractionAgent(BaseAgent):
 
     async def _llm_enhance_filing(self, extraction: dict[str, Any]) -> dict[str, Any]:
         """Enhance extraction results with LLM analysis."""
-        # Implementation with gpt-4-turbo
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._llm_enhance_filing is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _extract_metrics_with_llm(self, params: dict[str, Any]) -> dict[str, Any]:
         """Extract financial metrics using LLM."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._extract_metrics_with_llm is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _identify_risks(self, params: dict[str, Any]) -> dict[str, Any]:
         """Identify risk factors using risk_assessment_v1 template."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._identify_risks is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
 
 # ============================================================================
@@ -370,15 +387,24 @@ class ValueTreeProjectionAgent(BaseAgent):
 
     async def _semantic_match(self, params: dict[str, Any], tenant_id: str) -> dict[str, Any]:
         """Perform semantic matching using graph + embeddings."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._semantic_match is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _traverse_graph(self, params: dict[str, Any]) -> dict[str, Any]:
         """Traverse graph with Cypher query."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._traverse_graph is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _classify_node(self, params: dict[str, Any]) -> dict[str, Any]:
         """Classify a node in the value tree."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._classify_node is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
 
 # ============================================================================
@@ -459,19 +485,31 @@ class WhitespaceAnalysisAgent(BaseAgent):
         self, params: dict[str, Any], context: dict[str, Any]
     ) -> dict[str, Any]:
         """Identify gaps using semantic matching."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._identify_gaps is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _assess_maturity(self, params: dict[str, Any]) -> dict[str, Any]:
         """Assess maturity of solution for gaps."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._assess_maturity is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _generate_pathways(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate expansion pathways."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._generate_pathways is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _synthesize_account_plan(self, params: dict[str, Any]) -> dict[str, Any]:
         """Synthesize account plan document."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._synthesize_account_plan is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
 
 # ============================================================================
@@ -558,19 +596,31 @@ class ROICalculationAgent(BaseAgent):
 
     async def _execute_formula(self, params: dict[str, Any]) -> dict[str, Any]:
         """Execute formula with validation."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._execute_formula is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _substitute_metrics(self, params: dict[str, Any]) -> dict[str, Any]:
         """Substitute metrics into formula."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._substitute_metrics is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _analyze_sensitivity(self, params: dict[str, Any]) -> dict[str, Any]:
         """Perform sensitivity analysis."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._analyze_sensitivity is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _model_scenarios(self, params: dict[str, Any]) -> dict[str, Any]:
         """Model multiple scenarios."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._model_scenarios is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
 
 # ============================================================================
@@ -664,19 +714,31 @@ class NarrativeSynthesisAgent(BaseAgent):
 
     async def _generate_executive_summary(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate executive summary using template."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._generate_executive_summary is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _create_slide_deck(self, params: dict[str, Any]) -> dict[str, Any]:
         """Create slide deck with charts."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._create_slide_deck is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _draft_proposal(self, params: dict[str, Any]) -> dict[str, Any]:
         """Draft risk-adjusted proposal."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._draft_proposal is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _generate_alignment_doc(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate stakeholder alignment document."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._generate_alignment_doc is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
 
 # ============================================================================
@@ -767,19 +829,31 @@ class ProvenanceTrackingAgent(BaseAgent):
 
     async def _generate_prov_o(self, params: dict[str, Any]) -> dict[str, Any]:
         """Generate PROV-O document."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._generate_prov_o is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _create_rdf_star(self, params: dict[str, Any]) -> dict[str, Any]:
         """Create RDF* annotation."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._create_rdf_star is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _track_lineage(self, params: dict[str, Any]) -> dict[str, Any]:
         """Track data lineage."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._track_lineage is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _construct_decision_trace(self, params: dict[str, Any]) -> dict[str, Any]:
         """Construct decision trace."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._construct_decision_trace is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
 
 # ============================================================================
@@ -878,19 +952,31 @@ class OrchestrationController(BaseAgent):
 
     async def _schedule_workflow(self, params: dict[str, Any]) -> dict[str, Any]:
         """Schedule workflow with priority."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._schedule_workflow is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _distribute_tasks(self, params: dict[str, Any]) -> dict[str, Any]:
         """Distribute tasks to agents."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._distribute_tasks is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _recover_failure(self, params: dict[str, Any]) -> dict[str, Any]:
         """Recover from failure."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._recover_failure is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def _manage_resources(self, params: dict[str, Any]) -> dict[str, Any]:
         """Manage agent pool scaling."""
-        pass
+        raise NotImplementedError(
+            f"{self.__class__.__name__}._manage_resources is not yet implemented. "
+            "Disable this capability in config or implement before production."
+        )
 
     async def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent with the controller."""

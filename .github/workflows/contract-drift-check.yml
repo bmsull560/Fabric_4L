@@ -173,8 +173,10 @@ jobs:
 
       - name: Run contract tests
         run: |
-          pytest ${{ matrix.test_path }} -v --tb=short || true
-        # Continue on failure to report all issues
+          pytest ${{ matrix.test_path }} -v --tb=short
+        # Hard fail on contract violations - no tolerance for drift
+        env:
+          FAIL_ON_CONTRACT_VIOLATION: "true"
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

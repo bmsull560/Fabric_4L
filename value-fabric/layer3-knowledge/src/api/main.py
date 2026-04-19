@@ -47,23 +47,11 @@ from .exceptions import (
     ValidationError,
     ValueFabricException,
 )
-try:
-    from shared.security import add_security_middleware, SecurityConfig
-except ImportError:
-    add_security_middleware = None
-    SecurityConfig = None
-
-try:
-    from shared.identity.vault_check import is_vault_healthy
-except ImportError:
-    is_vault_healthy = None
-
-# Import shared error handling (Task 60/61: Error Response Hardening + Request Correlation)
-try:
-    from shared.error_handling import RequestIDMiddleware
-    SHARED_ERROR_HANDLING_AVAILABLE = True
-except ImportError:
-    SHARED_ERROR_HANDLING_AVAILABLE = False
+# Hard imports - fail fast if security components unavailable
+from shared.security import add_security_middleware, SecurityConfig
+from shared.identity.vault_check import is_vault_healthy
+from shared.error_handling import RequestIDMiddleware
+SHARED_ERROR_HANDLING_AVAILABLE = True
 # Import dataclass utilities
 from dataclasses import asdict
 
@@ -605,19 +593,9 @@ if SecurityConfig and add_security_middleware:
     )
     add_security_middleware(app, config=_security_config_l3)
 
-# GovernanceMiddleware — provides verified JWT + API-key auth for L3.
-# Replaces the existing AuthenticationMiddleware in auth/middleware.py.
-# api_key_resolver is None here; plug in the DB-backed resolver from L4's
-# tenant service if L3 is given access to the same Postgres instance.
-try:
-    from shared.identity.middleware import GovernanceMiddleware
-
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
-except ImportError:
-    logger.warning(
-        "shared.identity not importable — GovernanceMiddleware skipped in L3. "
-        "Ensure the shared package is installed."
-    )
+# GovernanceMiddleware — provides verified JWT + API-key auth for L3 (mandatory)
+from shared.identity.middleware import GovernanceMiddleware
+app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
 
 # Rate limiting middleware
 try:

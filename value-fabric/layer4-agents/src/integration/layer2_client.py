@@ -90,7 +90,7 @@ class Layer2ExtractionClient:
 
         try:
             response = await self.client.post(
-                "/v1/extract/filing",
+                "/v1/extract",
                 json=payload,
             )
             response.raise_for_status()
@@ -204,6 +204,43 @@ class Layer2ExtractionClient:
         except httpx.HTTPError as e:
             logger.error(f"Failed to identify risks: {e}")
             raise Layer2ClientError(f"Failed to identify risks: {e}") from e
+
+    async def extract_and_ingest(
+        self,
+        url: str,
+        filing_type: str,
+        ticker: str | None = None,
+    ) -> dict[str, Any]:
+        """Extract from filing and auto-ingest to knowledge graph.
+
+        Args:
+            url: URL of filing document
+            filing_type: 10-K, 10-Q, 8-K, etc.
+            ticker: Company ticker symbol
+
+        Returns:
+            Extraction and ingestion result
+        """
+        payload = {
+            "document_url": url,
+            "filing_type": filing_type,
+            "extraction_type": "sec_filing",
+            "auto_ingest": True,
+        }
+
+        if ticker:
+            payload["ticker"] = ticker
+
+        try:
+            response = await self.client.post(
+                "/v1/extract-and-ingest",
+                json=payload,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to extract and ingest: {e}")
+            raise Layer2ClientError(f"Failed to extract and ingest: {e}") from e
 
     async def close(self) -> None:
         """Close HTTP client."""

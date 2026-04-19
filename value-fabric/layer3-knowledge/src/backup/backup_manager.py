@@ -3,6 +3,7 @@
 import gzip
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -10,6 +11,13 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+try:
+    from cryptography.fernet import Fernet
+    HAS_CRYPTOGRAPHY = True
+except ImportError:
+    HAS_CRYPTOGRAPHY = False
+    Fernet = None  # type: ignore
 
 from ..logging_config import get_logger
 
@@ -379,14 +387,16 @@ class LocalStorage(BackupStorage):
 class BackupManager:
     """Manages backup and restore operations."""
 
-    def __init__(self, config: BackupConfig):
+    def __init__(self, config: BackupConfig, neo4j_driver=None):
         """Initialize backup manager.
 
         Args:
             config: Backup configuration
+            neo4j_driver: Optional Neo4j driver for restore operations
         """
         self.config = config
         self.storage = self._create_storage()
+        self.neo4j_driver = neo4j_driver
         self.active_backups: dict[str, BackupMetadata] = {}
         self.backup_history: list[BackupMetadata] = []
         self._loaded_existing = False
@@ -567,44 +577,121 @@ class BackupManager:
             )
 
     async def _generate_backup_data(self, backup_type: BackupType) -> bytes:
-        """Generate backup data based on type.
+        """Generate backup data based on type from Neo4j.
 
         Args:
             backup_type: Type of backup
 
         Returns:
-            Backup data
+            Backup data as JSON bytes
         """
-        # This would integrate with the actual data sources
-        # For now, return placeholder data
+        if not self.neo4j_driver:
+            raise RuntimeError("Neo4j driver required for backup generation")
 
         if backup_type == BackupType.FULL:
-            # Full backup of all data
+            # Export all entities and relationships from Neo4j
+            entities = []
+            relationships = []
+            schema_info = {"constraints": [], "indexes": []}
+
+            async with self.neo4j_driver.session() as session:
+                # Get all entities
+                entity_result = await session.run("""
+                    MATCH (n)
+                    RETURN n, labels(n) as types, id(n) as node_id
+                    LIMIT 10000
+                """)
+                async for record in entity_result:
+                    node = record["n"]
+                    node_data = dict(node)
+                    entities.append({
+                        "id": node_data.get("id", str(record["node_id"])),
+                        "type": record["types"][0] if record["types"] else "Entity",
+                        "properties": {k: v for k, v in node_data.items() if k != "id"},
+                        "tenant_id": node_data.get("tenant_id", "default"),
+                    })
+
+                # Get all relationships
+                rel_result = await session.run("""
+                    MATCH (n)-[r]->(m)
+                    RETURN n.id as source_id, m.id as target_id,
+                           type(r) as rel_type, properties(r) as rel_props
+                    LIMIT 50000
+                """)
+                async for record in rel_result:
+                    if record["source_id"] and record["target_id"]:
+                        relationships.append({
+                            "source_id": record["source_id"],
+                            "target_id": record["target_id"],
+                            "type": record["rel_type"],
+                            "properties": record["rel_props"] or {},
+                        })
+
+                # Get schema constraints
+                try:
+                    constraints_result = await session.run("SHOW CONSTRAINTS")
+                    async for record in constraints_result:
+                        schema_info["constraints"].append(dict(record))
+                except Exception as e:
+                    logger.warning(f"Could not retrieve constraints: {e}")
+
+                # Get indexes
+                try:
+                    indexes_result = await session.run("SHOW INDEXES")
+                    async for record in indexes_result:
+                        schema_info["indexes"].append(dict(record))
+                except Exception as e:
+                    logger.warning(f"Could not retrieve indexes: {e}")
+
             backup_data = {
                 "type": "full",
                 "timestamp": datetime.utcnow().isoformat(),
-                "entities": [],  # Would contain actual entity data
-                "relationships": [],  # Would contain actual relationship data
-                "schema": {},  # Would contain schema information
-                "metadata": {"version": "1.0.0", "source": "value-fabric-layer3"},
+                "entities": entities,
+                "relationships": relationships,
+                "schema": schema_info,
+                "metadata": {
+                    "version": "1.0.0",
+                    "source": "value-fabric-layer3",
+                    "entity_count": len(entities),
+                    "relationship_count": len(relationships),
+                },
             }
         elif backup_type == BackupType.INCREMENTAL:
-            # Incremental backup (changes since last backup)
+            # Incremental backup - changes since last backup
+            last_backup = self._get_last_full_backup_id()
             backup_data = {
                 "type": "incremental",
                 "timestamp": datetime.utcnow().isoformat(),
-                "changes": [],  # Would contain changes since last backup
-                "base_backup": self._get_last_full_backup_id(),
+                "base_backup": last_backup,
+                "changes": [],  # Would need timestamp tracking for true incremental
                 "metadata": {"version": "1.0.0", "source": "value-fabric-layer3"},
             }
         elif backup_type == BackupType.SCHEMA:
             # Schema-only backup
+            schema_info = {"constraints": [], "indexes": []}
+
+            if self.neo4j_driver:
+                async with self.neo4j_driver.session() as session:
+                    try:
+                        constraints_result = await session.run("SHOW CONSTRAINTS")
+                        async for record in constraints_result:
+                            schema_info["constraints"].append(dict(record))
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve constraints: {e}")
+
+                    try:
+                        indexes_result = await session.run("SHOW INDEXES")
+                        async for record in indexes_result:
+                            schema_info["indexes"].append(dict(record))
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve indexes: {e}")
+
             backup_data = {
                 "type": "schema",
                 "timestamp": datetime.utcnow().isoformat(),
-                "schema": {},  # Would contain schema definition
-                "constraints": [],  # Would contain constraints
-                "indexes": [],  # Would contain indexes
+                "schema": schema_info,
+                "constraints": schema_info["constraints"],
+                "indexes": schema_info["indexes"],
                 "metadata": {"version": "1.0.0", "source": "value-fabric-layer3"},
             }
         else:
@@ -642,7 +729,7 @@ class BackupManager:
             raise ValueError(f"Unsupported compression algorithm: {algorithm}")
 
     async def _encrypt_data(self, data: bytes) -> bytes:
-        """Encrypt backup data.
+        """Encrypt backup data using Fernet (AES-256-CBC with HMAC).
 
         Args:
             data: Data to encrypt
@@ -650,10 +737,31 @@ class BackupManager:
         Returns:
             Encrypted data
         """
-        # Placeholder for encryption implementation
-        # In production, use proper encryption like AES-256
-        logger.warning("Encryption not implemented - returning original data")
-        return data
+        if not HAS_CRYPTOGRAPHY or not Fernet:
+            raise RuntimeError(
+                "Encryption requires 'cryptography' package. "
+                "Install with: pip install cryptography"
+            )
+
+        encryption_key = self.config.encryption_key
+        if not encryption_key:
+            # Generate a key from environment or raise error
+            encryption_key = os.environ.get('BACKUP_ENCRYPTION_KEY')
+            if not encryption_key:
+                raise RuntimeError(
+                    "Encryption enabled but no key provided. "
+                    "Set encryption_key in config or BACKUP_ENCRYPTION_KEY env var"
+                )
+
+        # Ensure key is valid Fernet key (32 bytes base64-encoded)
+        try:
+            fernet = Fernet(encryption_key.encode() if isinstance(encryption_key, str) else encryption_key)
+        except Exception as e:
+            raise ValueError(f"Invalid encryption key format: {e}")
+
+        encrypted = fernet.encrypt(data)
+        logger.info(f"Encrypted backup data: {len(data)} bytes -> {len(encrypted)} bytes")
+        return encrypted
 
     async def restore_backup(self, request: RestoreRequest) -> RestoreResponse:
         """Restore from backup.
@@ -756,7 +864,7 @@ class BackupManager:
         return None
 
     async def _decrypt_data(self, data: bytes) -> bytes:
-        """Decrypt backup data.
+        """Decrypt backup data using Fernet.
 
         Args:
             data: Encrypted data
@@ -764,9 +872,25 @@ class BackupManager:
         Returns:
             Decrypted data
         """
-        # Placeholder for decryption implementation
-        logger.warning("Decryption not implemented - returning original data")
-        return data
+        if not HAS_CRYPTOGRAPHY or not Fernet:
+            raise RuntimeError(
+                "Decryption requires 'cryptography' package. "
+                "Install with: pip install cryptography"
+            )
+
+        encryption_key = self.config.encryption_key
+        if not encryption_key:
+            encryption_key = os.environ.get('BACKUP_ENCRYPTION_KEY')
+            if not encryption_key:
+                raise RuntimeError("Decryption enabled but no key provided")
+
+        try:
+            fernet = Fernet(encryption_key.encode() if isinstance(encryption_key, str) else encryption_key)
+            decrypted = fernet.decrypt(data)
+            logger.info(f"Decrypted backup data: {len(data)} bytes -> {len(decrypted)} bytes")
+            return decrypted
+        except Exception as e:
+            raise ValueError(f"Failed to decrypt backup data: {e}")
 
     async def _decompress_data(self, data: bytes, algorithm: str) -> bytes:
         """Decompress backup data.
@@ -786,47 +910,137 @@ class BackupManager:
     async def _restore_entities(
         self, entities: list[dict[str, Any]], target_database: str | None
     ) -> int:
-        """Restore entities from backup.
+        """Restore entities from backup to Neo4j.
 
         Args:
             entities: Entity data
-            target_database: Target database
+            target_database: Target database (not used, Neo4j handles this)
 
         Returns:
             Number of entities restored
         """
-        # Placeholder for entity restoration
-        # In production, this would integrate with the actual graph database
-        logger.info(f"Restoring {len(entities)} entities")
-        return len(entities)
+        if not self.neo4j_driver:
+            logger.warning("No Neo4j driver available, cannot restore entities")
+            return 0
+
+        restored_count = 0
+        async with self.neo4j_driver.session() as session:
+            for entity in entities:
+                try:
+                    # Extract entity properties
+                    entity_id = entity.get("id")
+                    entity_type = entity.get("type", "Entity")
+                    properties = entity.get("properties", {})
+                    tenant_id = entity.get("tenant_id", "default")
+
+                    # Create or merge entity node
+                    query = f"""
+                    MERGE (n:{entity_type} {{id: $entity_id, tenant_id: $tenant_id}})
+                    SET n += $properties
+                    """
+                    await session.run(
+                        query,
+                        entity_id=entity_id,
+                        tenant_id=tenant_id,
+                        properties=properties,
+                    )
+                    restored_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to restore entity {entity.get('id')}: {e}")
+
+        logger.info(f"Restored {restored_count}/{len(entities)} entities")
+        return restored_count
 
     async def _restore_relationships(
         self, relationships: list[dict[str, Any]], target_database: str | None
     ) -> int:
-        """Restore relationships from backup.
+        """Restore relationships from backup to Neo4j.
 
         Args:
             relationships: Relationship data
-            target_database: Target database
+            target_database: Target database (not used)
 
         Returns:
             Number of relationships restored
         """
-        # Placeholder for relationship restoration
-        logger.info(f"Restoring {len(relationships)} relationships")
-        return len(relationships)
+        if not self.neo4j_driver:
+            logger.warning("No Neo4j driver available, cannot restore relationships")
+            return 0
+
+        restored_count = 0
+        async with self.neo4j_driver.session() as session:
+            for rel in relationships:
+                try:
+                    # Extract relationship properties
+                    source_id = rel.get("source_id")
+                    target_id = rel.get("target_id")
+                    rel_type = rel.get("type", "RELATED_TO")
+                    properties = rel.get("properties", {})
+                    tenant_id = rel.get("tenant_id", "default")
+
+                    if not source_id or not target_id:
+                        logger.warning(f"Skipping relationship with missing source/target: {rel}")
+                        continue
+
+                    # Create relationship between entities
+                    query = f"""
+                    MATCH (source {{id: $source_id, tenant_id: $tenant_id}})
+                    MATCH (target {{id: $target_id, tenant_id: $tenant_id}})
+                    MERGE (source)-[r:{rel_type}]->(target)
+                    SET r += $properties
+                    """
+                    await session.run(
+                        query,
+                        source_id=source_id,
+                        target_id=target_id,
+                        tenant_id=tenant_id,
+                        properties=properties,
+                    )
+                    restored_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to restore relationship: {e}")
+
+        logger.info(f"Restored {restored_count}/{len(relationships)} relationships")
+        return restored_count
 
     async def _restore_schema(
         self, schema: dict[str, Any], target_database: str | None
     ) -> None:
-        """Restore schema from backup.
+        """Restore schema constraints and indexes from backup.
 
         Args:
-            schema: Schema data
-            target_database: Target database
+            schema: Schema data with constraints and indexes
+            target_database: Target database (not used)
         """
-        # Placeholder for schema restoration
-        logger.info("Restoring schema")
+        if not self.neo4j_driver:
+            logger.warning("No Neo4j driver available, cannot restore schema")
+            return
+
+        constraints = schema.get("constraints", [])
+        indexes = schema.get("indexes", [])
+
+        async with self.neo4j_driver.session() as session:
+            # Restore constraints
+            for constraint in constraints:
+                try:
+                    cypher = constraint.get("cypher")
+                    if cypher:
+                        await session.run(cypher)
+                        logger.info(f"Restored constraint: {constraint.get('name')}")
+                except Exception as e:
+                    logger.warning(f"Failed to restore constraint: {e}")
+
+            # Restore indexes
+            for index in indexes:
+                try:
+                    cypher = index.get("cypher")
+                    if cypher:
+                        await session.run(cypher)
+                        logger.info(f"Restored index: {index.get('name')}")
+                except Exception as e:
+                    logger.warning(f"Failed to restore index: {e}")
+
+        logger.info(f"Schema restore completed: {len(constraints)} constraints, {len(indexes)} indexes")
 
     async def list_backups(
         self, backup_type: BackupType | None = None

@@ -23,6 +23,8 @@ from ..interfaces.value_pack_service import (
     ValueDriverRef,
     ValuePack,
 )
+from ..tools.calculation_tools import EvaluateFormulaTool
+from ..models.tool_schemas import EvaluateFormulaInput
 
 
 class Neo4jValuePackService(IValuePackService):
@@ -267,19 +269,47 @@ class Neo4jValuePackService(IValuePackService):
                 started_at=started_at,
             )
 
-        # TODO: Integrate with formula evaluation service
-        # For now, return placeholder result
-        outputs = {
-            "pack_name": pack.name,
-            "formulas_evaluated": len(pack.formulas),
-            "variables_provided": len(request.variables),
-        }
+        # Execute formulas using calculation tool
+        formula_tool = EvaluateFormulaTool()
+        outputs: dict[str, Any] = {"pack_name": pack.name}
+        errors: list[str] = []
+
+        for formula in pack.formulas:
+            # Build variables dict from request and formula defaults
+            eval_vars = dict(request.variables)
+            for var in formula.variables:
+                if var not in eval_vars:
+                    eval_vars[var] = 0.0  # Default value
+
+            # Execute formula
+            try:
+                result = await formula_tool.execute(
+                    EvaluateFormulaInput(
+                        formula=formula.formula_id,  # Use formula ID as expression reference
+                        variables=eval_vars,
+                    )
+                )
+                if result.success and result.result is not None:
+                    outputs[formula.name] = result.result
+                else:
+                    errors.append(f"Formula {formula.name} failed: {result.error}")
+                    outputs[formula.name] = None
+            except Exception as e:
+                errors.append(f"Formula {formula.name} error: {e}")
+                outputs[formula.name] = None
+
+        outputs["formulas_evaluated"] = len(pack.formulas)
+        outputs["variables_provided"] = len(request.variables)
+
+        # Determine final status before DB update
+        final_status = "success" if not errors else "partial" if outputs else "failed"
 
         # Update execution status
         complete_query = """
         MATCH (pe:PackExecution {id: $execution_id})
         SET pe.status = $status,
             pe.outputs = $outputs,
+            pe.errors = $errors,
             pe.completedAt = $completed_at
         """
 
@@ -288,17 +318,18 @@ class Neo4jValuePackService(IValuePackService):
             await session.run(
                 complete_query,
                 execution_id=execution_id,
-                status="success",
+                status=final_status,
                 outputs=outputs,
+                errors=errors,
                 completed_at=completed_at,
             )
 
         return PackExecutionResult(
             execution_id=execution_id,
             pack_id=request.pack_id,
-            status="success",
+            status=final_status,
             outputs=outputs,
-            errors=[],
+            errors=errors,
             completed_at=datetime.fromisoformat(completed_at),
         )
 

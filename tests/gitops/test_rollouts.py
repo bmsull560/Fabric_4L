@@ -8,15 +8,31 @@ Validates:
 4. Rollback triggers
 """
 
+import os
 
 import pytest
 import yaml
 
 
+@pytest.fixture(scope="session")
+def require_gitops_config():
+    """Ensure GitOps config exists - hard fail in CI."""
+    config_path = os.getenv("GITOPS_CONFIG_PATH", "k8s/gitops/")
+    if not os.path.exists(config_path):
+        if os.getenv("CI") == "true":
+            raise FileNotFoundError(
+                f"GitOps config required at {config_path}. "
+                "Set GITOPS_CONFIG_PATH or create config files."
+            )
+        else:
+            pytest.skip("GitOps config not found (local dev)")
+    return config_path
+
+
 class TestArgoRollouts:
     """Test Argo Rollouts configuration."""
 
-    def test_rollout_yaml_valid(self):
+    def test_rollout_yaml_valid(self, require_gitops_config):
         """Rollout YAML files are valid Kubernetes resources."""
         rollout_files = [
             "k8s/gitops/rollouts/layer4-agents-rollout.yaml",
@@ -35,10 +51,12 @@ class TestArgoRollouts:
                 assert "spec" in rollout
                 assert "strategy" in rollout["spec"]
                 assert "canary" in rollout["spec"]["strategy"]
-            except FileNotFoundError:
+            except FileNotFoundError as e:
+                if os.getenv("CI") == "true":
+                    raise FileNotFoundError(f"GitOps config required: {file}") from e
                 pytest.skip(f"File not found: {file}")
 
-    def test_canary_steps_defined(self):
+    def test_canary_steps_defined(self, require_gitops_config):
         """Canary rollout has proper steps defined."""
         try:
             with open("k8s/gitops/rollouts/layer4-agents-rollout.yaml") as f:

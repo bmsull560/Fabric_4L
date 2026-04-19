@@ -29,12 +29,15 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from layer2_extraction.api.deps import RequestContext
+from shared.identity.middleware import GovernanceMiddleware
 
+# Load secrets from Infisical if available (optional in dev, required in prod)
+from shared.secrets import load_infisical_secrets
 try:
-    from shared.secrets import load_infisical_secrets
     load_infisical_secrets()
-except ImportError:
-    pass  # shared package not available; env vars used directly
+except Exception:
+    if os.getenv("ENVIRONMENT") == "production":
+        raise RuntimeError("Failed to load Infisical secrets in production")
 
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
@@ -61,16 +64,9 @@ from layer2_extraction.output.provenance import (
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
 
-try:
-    from shared.security import add_security_middleware, SecurityConfig
-except ImportError:
-    add_security_middleware = None
-    SecurityConfig = None
-
-try:
-    from shared.identity.vault_check import is_vault_healthy
-except ImportError:
-    is_vault_healthy = None
+# Hard imports - fail fast if security components unavailable
+from shared.security import add_security_middleware, SecurityConfig
+from shared.identity.vault_check import is_vault_healthy
 
 logger = logging.getLogger(__name__)
 
@@ -114,30 +110,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# SecurityMiddleware — input validation and security headers
-if SecurityConfig and add_security_middleware:
-    _security_config_l2 = SecurityConfig(
-        skip_validation_paths=frozenset({
-            "/v1/extract",
-            "/v1/extract/batch",
-            "/v1/nl-query",
-        }),
-        strict_mode=True,
-    )
-    add_security_middleware(app, config=_security_config_l2)
+# SecurityMiddleware — input validation and security headers (mandatory)
+_security_config_l2 = SecurityConfig(
+    skip_validation_paths=frozenset({
+        "/v1/extract",
+        "/v1/extract/batch",
+        "/v1/nl-query",
+    }),
+    strict_mode=True,
+)
+add_security_middleware(app, config=_security_config_l2)
 
-# GovernanceMiddleware — verifies JWTs and resolves tenant/user context.
-try:
-    from shared.identity.middleware import GovernanceMiddleware
-
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
-except ImportError:
-    import logging as _log
-
-    _log.getLogger(__name__).warning(
-        "shared.identity not importable — GovernanceMiddleware skipped in L2. "
-        "Ensure the shared package is installed."
-    )
+# GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
+app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
 
 # Add metrics middleware if available — INNERMOST
 if metrics:

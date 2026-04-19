@@ -23,87 +23,14 @@ import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
+import { useOpportunities, type Opportunity } from "@/hooks/useOpportunities";
 
-// ── Types ───────────────────────────────────────────────────────────────────
+// ── Re-export types from hook for local usage ─────────────────────────────────
 
 type OpportunityStatus = 'new' | 'investigating' | 'qualified' | 'converted' | 'dismissed';
 type ImpactLevel = 'high' | 'medium' | 'low';
 type SortField = 'aiScore' | 'value' | 'confidence' | 'discoveredAt';
 type SortDirection = 'asc' | 'desc';
-
-interface Opportunity {
-  id: string;
-  title: string;
-  description: string;
-  account: string;
-  accountId: string;
-  category: string;
-  status: OpportunityStatus;
-  impact: ImpactLevel;
-  estimatedValue: string;
-  confidenceScore: number;
-  aiScore: number;
-  discoveredAt: string;
-  insights: string[];
-  recommendedActions: string[];
-  sources: string[];
-}
-
-// ── Mock Data (to be replaced with real API) ─────────────────────────────────
-
-const MOCK_OPPORTUNITIES: Opportunity[] = [
-  {
-    id: 'opp-1',
-    title: 'License Consolidation Opportunity',
-    description: 'Customer has 5 separate license agreements that could be consolidated for 23% cost reduction',
-    account: 'Acme Corporation',
-    accountId: 'acc-123',
-    category: 'Cost Optimization',
-    status: 'qualified',
-    impact: 'high',
-    estimatedValue: '$450K',
-    confidenceScore: 87,
-    aiScore: 92,
-    discoveredAt: '2024-01-15T10:30:00Z',
-    insights: ['5 active licenses detected', 'Overlapping feature sets', 'Renewal dates within 60 days'],
-    recommendedActions: ['Schedule consolidation call', 'Prepare unified proposal', 'Identify decision makers'],
-    sources: ['CRM Data', 'Contract Analysis', 'Usage Patterns'],
-  },
-  {
-    id: 'opp-2',
-    title: 'Advanced Analytics Upsell',
-    description: 'Low feature adoption suggests need for premium analytics package with training',
-    account: 'Globex Industries',
-    accountId: 'acc-456',
-    category: 'Upsell',
-    status: 'investigating',
-    impact: 'medium',
-    estimatedValue: '$125K',
-    confidenceScore: 72,
-    aiScore: 78,
-    discoveredAt: '2024-01-14T14:20:00Z',
-    insights: ['15% feature utilization', 'Support tickets indicate confusion', 'Peer companies have higher tier'],
-    recommendedActions: ['Schedule product demo', 'Offer training package', 'Share case studies'],
-    sources: ['Usage Analytics', 'Support Tickets', 'Benchmark Data'],
-  },
-  {
-    id: 'opp-3',
-    title: 'Cross-sell Security Module',
-    description: 'Recent compliance audit indicates need for advanced security features',
-    account: 'Initech LLC',
-    accountId: 'acc-789',
-    category: 'Cross-sell',
-    status: 'new',
-    impact: 'high',
-    estimatedValue: '$200K',
-    confidenceScore: 91,
-    aiScore: 95,
-    discoveredAt: '2024-01-15T08:15:00Z',
-    insights: ['SOC2 audit scheduled', 'Current plan lacks security features', 'Compliance gap identified'],
-    recommendedActions: ['Contact CISO', 'Prepare security ROI analysis', 'Schedule compliance review'],
-    sources: ['News Monitoring', 'Compliance Database', 'Account Signals'],
-  },
-];
 
 // ── Styling Constants ─────────────────────────────────────────────────────────
 
@@ -326,12 +253,14 @@ function OpportunityFinderContent() {
   const [sortField, setSortField] = useState<SortField>('aiScore');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
 
-  // Simulate API loading
+  // Real API integration
+  const { data: opportunitiesData, isLoading, error } = useOpportunities();
+  const rawOpportunities = opportunitiesData?.opportunities ?? [];
+
+  // Filter and sort opportunities
   const opportunities = useMemo(() => {
-    let filtered = [...MOCK_OPPORTUNITIES];
+    let filtered = [...rawOpportunities];
 
     if (search) {
       const term = search.toLowerCase();
@@ -374,7 +303,7 @@ function OpportunityFinderContent() {
     });
 
     return filtered;
-  }, [search, categoryFilter, statusFilter, impactFilter, sortField, sortDirection]);
+  }, [rawOpportunities, search, categoryFilter, statusFilter, impactFilter, sortField, sortDirection]);
 
   const stats = useMemo(() => {
     const total = opportunities.length;
@@ -384,7 +313,7 @@ function OpportunityFinderContent() {
     return { total, highImpact, totalValue, newOpps };
   }, [opportunities]);
 
-  const categories = useMemo(() => Array.from(new Set(MOCK_OPPORTUNITIES.map(o => o.category))), []);
+  const categories = useMemo(() => Array.from(new Set(rawOpportunities.map(o => o.category))), [rawOpportunities]);
 
   const handleSort = useCallback((field: SortField) => {
     setSortField(prev => {
@@ -423,7 +352,7 @@ function OpportunityFinderContent() {
             <AlertCircle className="w-8 h-8 text-red-500 shrink-0 mt-0.5" />
             <div className="flex-1">
               <h3 className="text-[14px] font-semibold text-red-800 mb-1">Failed to load opportunities</h3>
-              <p className="text-[12px] text-red-600">{error.message}</p>
+              <p className="text-[12px] text-red-600">{error instanceof Error ? error.message : 'Unknown error'}</p>
             </div>
           </div>
         </div>

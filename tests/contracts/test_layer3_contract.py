@@ -2,11 +2,49 @@
 Contract Tests for Layer 3 Knowledge Graph API
 
 Validates that the implementation matches the OpenAPI specification.
-These tests verify endpoints exist and return expected status codes.
+These tests verify endpoints exist and return expected status codes AND schema.
 """
 
+import jsonschema
 import pytest
 from httpx import AsyncClient
+
+
+# GraphNode schema for validation
+GRAPH_NODE_SCHEMA = {
+    "type": "object",
+    "required": ["id"],
+    "properties": {
+        "id": {"type": "string"},
+        "type": {"type": "string"},
+        "name": {"type": "string"},
+        "description": {"type": ["string", "null"]},
+        "confidence_score": {"type": "number"},
+    }
+}
+
+GRAPH_RESPONSE_SCHEMA = {
+    "type": "object",
+    "required": ["nodes", "edges"],
+    "properties": {
+        "nodes": {
+            "type": "array",
+            "items": GRAPH_NODE_SCHEMA
+        },
+        "edges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["source", "target", "type"],
+                "properties": {
+                    "source": {"type": "string"},
+                    "target": {"type": "string"},
+                    "type": {"type": "string"},
+                }
+            }
+        }
+    }
+}
 
 
 # ============================================================================
@@ -160,3 +198,22 @@ async def test_health_endpoint_exists(client: AsyncClient):
     """Verify GET /health is implemented."""
     response = await client.get("/health")
     assert response.status_code == 200, "Health endpoint should return 200"
+
+
+# ============================================================================
+# Schema Validation Tests
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_graph_endpoint_returns_valid_schema(client: AsyncClient):
+    """Validate graph endpoint returns schema-compliant response."""
+    response = await client.get("/v1/graph/nodes?limit=5")
+    assert response.status_code == 200, "Graph nodes endpoint should return 200"
+    data = response.json()
+
+    # Validate schema structure, not just status
+    jsonschema.validate(data, GRAPH_RESPONSE_SCHEMA)
+
+    # Validate business invariants
+    assert all(node.get("id") for node in data["nodes"]), "All nodes must have IDs"
+    assert isinstance(data["edges"], list), "Edges must be list"

@@ -98,7 +98,7 @@ class Layer1IngestionClient:
 
         try:
             response = await self.client.post(
-                "/v1/ingestion/jobs",
+                "/jobs",
                 json=payload,
             )
             response.raise_for_status()
@@ -117,7 +117,7 @@ class Layer1IngestionClient:
             Job status
         """
         try:
-            response = await self.client.get(f"/v1/ingestion/jobs/{job_id}")
+            response = await self.client.get(f"/jobs/{job_id}")
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:
@@ -166,7 +166,7 @@ class Layer1IngestionClient:
             Extraction result
         """
         try:
-            response = await self.client.get(f"/v1/ingestion/jobs/{job_id}/result")
+            response = await self.client.get(f"/jobs/{job_id}/results")
             response.raise_for_status()
             return response.json()
         except httpx.HTTPError as e:

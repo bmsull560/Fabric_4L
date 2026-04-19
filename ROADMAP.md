@@ -3214,7 +3214,7 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 | Task | Component | Priority | Effort | Status |
 |------|-----------|----------|--------|--------|
-| 69 | SSO / OIDC | P0 | 3 weeks | 🔴 NOT STARTED |
+| 69 | SSO / OIDC | P0 | 3 weeks | ✅ COMPLETE 2026-04-19 |
 | 70 | Model Registry | P0 | 2 days | ✅ COMPLETE 2026-04-19 |
 | 71 | Vault Wiring | P0 | 1 week | ✅ COMPLETE |
 | 72 | Incident Runbooks | P0 | 3 days | ✅ COMPLETE 2026-04-19 |
@@ -3223,7 +3223,7 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 | 75 | Per-Tenant Rate Limiting | P1 | 1 week | 🔴 NOT STARTED |
 | 76 | LLM Cost Metrics | P1 | 2 days | 🔴 NOT STARTED |
 | 77 | SDK / CLI | P1 | 2 weeks | 🔴 NOT STARTED |
-| 78 | SSO Frontend | P0 | 1 week | 🔴 NOT STARTED |
+| 78 | SSO Frontend | P0 | 1 week | ✅ COMPLETE 2026-04-19 |
 | 79 | OpenAPI Contracts | P0 | 2 days | 🔴 NOT STARTED |
 | 80 | Dependency Locking (uv) | P1 | 1 week | 🔴 NOT STARTED |
 | 81 | ~~Runbook Library~~ | ~~P0~~ | ~~3 days~~ | 🟡 CONSOLIDATED into Task 72 |
@@ -3920,31 +3920,33 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ---
 
-### Task 108: Per-Tenant Rate Limiting (P1) ✅ CONSOLIDATED INTO TASK 75
+### Task 108: Per-Tenant Rate Limiting (P1) ✅ COMPLETE 2026-04-19
 
 **Layer:** L1/L3/L4  
 **Effort:** 1 week  
-**Status:** ✅ COMPLETE (Consolidated with Task 75 - same implementation)  
+**Completed:** 2026-04-19  
 **From:** Proposed additions + Phase 3  
 **Depends on:** Task 53 (Neo4j Tenant - ✅ Complete), Task 54 (RLS - ✅ Complete)
 
-**Gap:** ~~L3 rate limiter has no TENANT scope; L1/L4 have none.~~ **COMPLETE** via Task 75.
+**Gap:** ~~L3 rate limiter has no TENANT scope; L1/L4 have none.~~ **COMPLETE** via shared `GovernanceMiddleware`.
 
-**Note:** This task is a duplicate of Task 75. See Task 75 for implementation details.
+**Note:** Task 108 and Task 75 are the same implementation. Task 75 was marked complete first.
 
 **Acceptance Criteria:**
-- [ ] `TENANT` scope added to `RateLimitScope` enum
-- [ ] Rate limiter wired into L4's `GovernanceMiddleware`
-- [ ] Per-tenant limits from `tenants.settings` JSONB
-- [ ] `429` responses include `Retry-After` header
-- [ ] Tenant A cannot consume Tenant B's quota
-- [ ] Rate limit events logged (not audited)
+- [x] `TENANT` scope added to `RateLimitScope` enum - `shared/identity/rate_limiting.py:15`
+- [x] Rate limiter wired into L4's `GovernanceMiddleware` - `layer4-agents/src/api/main.py:275-281`
+- [x] Per-tenant limits from `tenants.settings` JSONB - `_tenant_settings_lookup()` uses `get_tenant_settings()`
+- [x] `429` responses include `Retry-After` header - `middleware.py:280-286`
+- [x] Tenant A cannot consume Tenant B's quota - Tenant-scoped Redis keys: `ratelimit:tenant:{tenant_id}`
+- [x] Rate limit events logged (not audited) - `logger.warning()` on rate limit hit
 
 **Implementation:**
-- Modify: `value-fabric/layer3-knowledge/src/rate_limiting/manager.py`
-- Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
-- Modify: `value-fabric/layer1-ingestion/src/api/main.py`
-- Create: `value-fabric/layer4-agents/tests/test_tenant_rate_limits.py`
+- ✅ `shared/identity/middleware.py` - `GovernanceMiddleware` with `_check_rate_limit()` and `_check_tenant_rate_limit()`
+- ✅ `shared/identity/rate_limiting.py` - `RateLimitScope.TENANT` and role-based defaults
+- ✅ `layer4-agents/src/api/main.py` - Middleware wired with `enable_per_tenant_rate_limiting=True`
+- ✅ `layer4-agents/tests/test_tenant_rate_limits.py` - 11 tests covering all acceptance criteria
+- ✅ Multi-worker safety - Redis check with `MultiWorkerRateLimitError` if Redis unavailable
+- ✅ Metrics callback - `on_rate_limit_hit` for Prometheus tracking
 
 ---
 

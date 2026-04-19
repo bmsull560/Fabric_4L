@@ -65,16 +65,57 @@ def tenant_b_token(jwt_encoder) -> str:
     })
 
 
+def check_db() -> bool:
+    """Check if database is available."""
+    db_url = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/test_value_fabric")
+    try:
+        conn = psycopg2.connect(db_url)
+        conn.close()
+        return True
+    except psycopg2.OperationalError:
+        return False
+
+
+def check_redis() -> bool:
+    """Check if Redis is available."""
+    redis_host = os.getenv("REDIS_HOST", "localhost")
+    redis_port = int(os.getenv("REDIS_PORT", 6379))
+    try:
+        client = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=False)
+        client.ping()
+        client.close()
+        return True
+    except redis.ConnectionError:
+        return False
+
+
+@pytest.fixture(scope="session")
+def require_security_deps():
+    """Ensure security test dependencies are available - hard fail in CI."""
+    if os.getenv("CI") == "true":
+        # In CI, hard requirements
+        assert check_db(), "Security tests require DB in CI"
+        assert check_redis(), "Security tests require Redis in CI"
+    # Return silently in non-CI mode
+
+
 @pytest.fixture
 def db_connection() -> Generator:
     """Database connection for RLS policy testing."""
     db_url = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/test_value_fabric")
+
+    if os.getenv("CI") == "true":
+        # In CI, hard fail
+        if not check_db():
+            raise RuntimeError("Security tests require DB. Run: docker-compose up postgres")
 
     try:
         conn = psycopg2.connect(db_url)
         conn.autocommit = True
         yield conn
     except psycopg2.OperationalError as e:
+        if os.getenv("CI") == "true":
+            raise RuntimeError(f"Security tests require DB in CI: {e}")
         pytest.skip(f"Database not available for RLS testing: {e}")
     finally:
         if 'conn' in locals() and conn:
@@ -88,6 +129,9 @@ def redis_client() -> Generator:
     redis_port = int(os.getenv("REDIS_PORT", DEFAULT_REDIS_PORT))
     redis_db = int(os.getenv("REDIS_DB", DEFAULT_REDIS_DB))
 
+    if os.getenv("CI") == "true" and not check_redis():
+        raise RuntimeError("Security tests require Redis. Run: docker-compose up redis")
+
     try:
         client = redis.Redis(
             host=redis_host,
@@ -99,6 +143,8 @@ def redis_client() -> Generator:
         client.ping()
         yield client
     except redis.ConnectionError as e:
+        if os.getenv("CI") == "true":
+            raise RuntimeError(f"Security tests require Redis in CI: {e}")
         pytest.skip(f"Redis not available for cache isolation testing: {e}")
     finally:
         if 'client' in locals() and client:
