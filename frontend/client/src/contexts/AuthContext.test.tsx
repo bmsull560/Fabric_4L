@@ -12,12 +12,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { createWrapper } from '../test-utils';
-import { server } from '../../../test/mocks/server';
 import { AuthProvider, useAuthContext, type UserInfo } from './AuthContext';
-
-// OIDC endpoint paths
-const API_BASE = '/api/v1';
-const L4_PREFIX = '/agents';
 
 // ── Test Helpers ───────────────────────────────────────────────────────────
 
@@ -69,8 +64,6 @@ describe('AuthProvider', () => {
       writable: true,
       value: { href: 'http://localhost:3000', origin: 'http://localhost:3000', pathname: '/', replace: vi.fn() },
     });
-    // Reset MSW handlers
-    server.resetHandlers();
   });
 
   afterEach(() => {
