@@ -1,4 +1,4 @@
-FROM python:3.11.11-slim-bookworm
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
 
 LABEL maintainer="Value Fabric Engineering"
 LABEL description="Layer 5 — Ground Truth Service"
@@ -7,25 +7,20 @@ LABEL description="Layer 5 — Ground Truth Service"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
+
+# Install uv from official image
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
 
 WORKDIR /app
 
-# Install Python dependencies directly
-RUN pip install --no-cache-dir \
-    fastapi>=0.109 \
-    uvicorn[standard]>=0.27 \
-    sqlalchemy>=2.0 \
-    alembic>=1.13 \
-    asyncpg>=0.29 \
-    psycopg2-binary>=2.9 \
-    pydantic>=2.5 \
-    pydantic-settings>=2.1 \
-    python-multipart>=0.0.6 \
-    httpx>=0.26 \
-    python-dateutil>=2.9 \
-    structlog>=24.1 \
-    PyJWT>=2.8
+# Copy dependency files
+COPY layer5-ground-truth/pyproject.toml .
+COPY layer5-ground-truth/uv.lock .
+
+# Install dependencies using uv (deterministic from lock file)
+RUN uv sync --frozen --no-install-project
 
 # Copy shared package
 COPY shared/ ./shared/
@@ -33,9 +28,9 @@ COPY shared/ ./shared/
 # Copy source (selective to avoid tests/cache bloat)
 COPY layer5-ground-truth/src/ ./src/
 COPY layer5-ground-truth/alembic.ini .
-COPY layer5-ground-truth/pyproject.toml .
 
-# Set PYTHONPATH so imports work
+# Set PATH to use uv virtual environment and PYTHONPATH for imports
+ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app:/app/src
 
 # Create non-root user

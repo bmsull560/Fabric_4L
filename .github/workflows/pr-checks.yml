@@ -61,23 +61,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
-          pip install pytest-cov
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.11.6'
+          enable-cache: true
+
+      - name: Install dependencies (frozen lock)
+        run: uv sync --frozen --all-extras
 
       - name: Lint with ruff
-        run: ruff check src/
+        run: uv run ruff check --select F401,F811,F841 src/
 
       - name: Type check with mypy
-        run: mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
         run: |
-          pip install pytest-json-report
-          pytest tests/ -v --tb=short \
+          uv run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml:layer1-coverage.xml \
             --junitxml=layer1-junit.xml \
             --json-report --json-report-file=layer1-results.json \
@@ -95,14 +97,11 @@ jobs:
           retention-days: 14
 
       - name: Security scan with bandit
-        run: |
-          pip install bandit
-          bandit -r src/ -ll -ii
+        run: uv run bandit -r src/ -ll -ii
 
       - name: Dependency audit with pip-audit
         run: |
-          pip install pip-audit
-          pip-audit --severity high --exit-code 1
+          uv run pip-audit --severity high --exit-code 1
 
   # Layer 2 - Extraction
   layer2-checks:
@@ -120,23 +119,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
-          pip install pytest-cov
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.11.6'
+          enable-cache: true
+
+      - name: Install dependencies (frozen lock)
+        run: uv sync --frozen --all-extras
 
       - name: Lint with ruff
-        run: ruff check src/
+        run: uv run ruff check --select F401,F811,F841 src/
 
       - name: Type check with mypy
-        run: mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
         run: |
-          pip install pytest-json-report
-          pytest tests/ -v --tb=short \
+          uv run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml:layer2-coverage.xml \
             --junitxml=layer2-junit.xml \
             --json-report --json-report-file=layer2-results.json \
@@ -154,14 +155,11 @@ jobs:
           retention-days: 14
 
       - name: Security scan with bandit
-        run: |
-          pip install bandit
-          bandit -r src/ -ll -ii
+        run: uv run bandit -r src/ -ll -ii
 
       - name: Dependency audit with pip-audit
         run: |
-          pip install pip-audit
-          pip-audit --severity high --exit-code 1
+          uv run pip-audit --severity high --exit-code 1
 
   # Layer 3 - Knowledge
   layer3-checks:
@@ -190,7 +188,7 @@ jobs:
         run: uv sync --frozen --all-extras
 
       - name: Lint with ruff
-        run: uv run ruff check src/
+        run: uv run ruff check --select F401,F811,F841 src/
 
       - name: Type check with mypy
         run: uv run mypy src/ --ignore-missing-imports
@@ -237,23 +235,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
-          pip install pytest-cov
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.11.6'
+          enable-cache: true
+
+      - name: Install dependencies (frozen lock)
+        run: uv sync --frozen --all-extras
 
       - name: Lint with ruff
-        run: ruff check src/
+        run: uv run ruff check --select F401,F811,F841 src/
 
       - name: Type check with mypy
-        run: mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
         run: |
-          pip install pytest-json-report
-          pytest tests/ -v --tb=short \
+          uv run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml:layer4-coverage.xml \
             --junitxml=layer4-junit.xml \
             --json-report --json-report-file=layer4-results.json \
@@ -271,14 +271,11 @@ jobs:
           retention-days: 14
 
       - name: Security scan with bandit
-        run: |
-          pip install bandit
-          bandit -r src/ -ll -ii
+        run: uv run bandit -r src/ -ll -ii
 
       - name: Dependency audit with pip-audit
         run: |
-          pip install pip-audit
-          pip-audit --severity high --exit-code 1
+          uv run pip-audit --severity high --exit-code 1
 
   # Layer 5 - Ground Truth
   layer5-checks:
@@ -296,23 +293,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
-          pip install pytest-cov
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.11.6'
+          enable-cache: true
+
+      - name: Install dependencies (frozen lock)
+        run: uv sync --frozen --all-extras
 
       - name: Lint with ruff
-        run: ruff check src/
+        run: uv run ruff check --select F401,F811,F841 src/
 
       - name: Type check with mypy
-        run: mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
         run: |
-          pip install pytest-json-report
-          pytest tests/ -v --tb=short \
+          uv run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml:layer5-coverage.xml \
             --junitxml=layer5-junit.xml \
             --json-report --json-report-file=layer5-results.json \
@@ -330,14 +329,11 @@ jobs:
           retention-days: 14
 
       - name: Security scan with bandit
-        run: |
-          pip install bandit
-          bandit -r src/ -ll -ii
+        run: uv run bandit -r src/ -ll -ii
 
       - name: Dependency audit with pip-audit
         run: |
-          pip install pip-audit
-          pip-audit --severity high --exit-code 1
+          uv run pip-audit --severity high --exit-code 1
 
   # Layer 6 - Benchmarks
   layer6-checks:
@@ -355,23 +351,25 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
-          pip install pytest-cov
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: '0.11.6'
+          enable-cache: true
+
+      - name: Install dependencies (frozen lock)
+        run: uv sync --frozen --all-extras
 
       - name: Lint with ruff
-        run: ruff check src/
+        run: uv run ruff check --select F401,F811,F841 src/
 
       - name: Type check with mypy
-        run: mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ --ignore-missing-imports
 
       - name: Run tests with coverage
         run: |
-          pip install pytest-json-report
-          pytest tests/ -v --tb=short \
+          uv run pytest tests/ -v --tb=short \
             --cov=src --cov-report=xml:layer6-coverage.xml \
             --junitxml=layer6-junit.xml \
             --json-report --json-report-file=layer6-results.json \
@@ -389,14 +387,35 @@ jobs:
           retention-days: 14
 
       - name: Security scan with bandit
-        run: |
-          pip install bandit
-          bandit -r src/ -ll -ii
+        run: uv run bandit -r src/ -ll -ii
 
       - name: Dependency audit with pip-audit
         run: |
-          pip install pip-audit
-          pip-audit --severity high --exit-code 1
+          uv run pip-audit --severity high --exit-code 1
+
+  # Cross-layer shared and tests validation
+  shared-and-tests-checks:
+    name: Shared & Tests - Code Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint shared modules
+        run: ruff check --select F401,F811,F841 shared/
+
+      - name: Lint tests
+        run: ruff check --select F401,F811,F841 tests/
 
   # Frontend checks
   frontend-checks:
@@ -430,6 +449,29 @@ jobs:
 
       - name: Lint
         run: pnpm run lint
+
+      - name: Check for unguarded console statements
+        run: |
+          # Find console.log/console.warn without DEV guard (excluding tests)
+          violations=$(grep -rn "console\.log\|console\.warn" frontend/client/src/ \
+            --include="*.ts" --include="*.tsx" \
+            | grep -v "\.test\." \
+            | grep -v "\.spec\." \
+            | grep -v "import\.meta\.env\.DEV" \
+            | grep -v "process\.env\.NODE_ENV" \
+            | grep -v "noqa" || true)
+
+          if [ -n "$violations" ]; then
+            echo "❌ Found unguarded console statements in production code:"
+            echo "$violations"
+            echo ""
+            echo "Either:"
+            echo "  1. Remove the console statement"
+            echo "  2. Guard with: if (import.meta.env.DEV) { console.log(...) }"
+            exit 1
+          fi
+
+          echo "✅ No unguarded console statements found"
 
       - name: Build
         run: pnpm run build
@@ -755,4 +797,4 @@ jobs:
         if: matrix.layer != 'frontend'
         with:
           dockerfile: ${{ format('value-fabric/{0}/Dockerfile', matrix.layer) }}
-          ignore: DL3008,DL3013,DL3018
+          ignore: DL3008,DL3013

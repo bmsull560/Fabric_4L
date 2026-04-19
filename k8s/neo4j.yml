@@ -31,12 +31,37 @@ spec:
                 secretKeyRef:
                   name: neo4j-secret
                   key: auth
-            - name: NEO4J_PLUGINS
-              value: '["apoc"]'
+            # APOC disabled temporarily - re-enable after base deployment succeeds
+            # - name: NEO4J_PLUGINS
+            #   value: '["apoc"]'
+            - name: NEO4J_ACCEPT_LICENSE_AGREEMENT
+              value: "yes"
             - name: NEO4J_dbms_memory_heap_max__size
               value: "2G"
             - name: NEO4J_dbms_memory_pagecache_size
               value: "1G"
+            - name: NEO4J_server_config_strict_validation_enabled
+              value: "false"
+            - name: NEO4J_server_bolt_enabled
+              value: "true"
+            - name: NEO4J_server_bolt_listen__address
+              value: "0.0.0.0:7687"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Unset ALL Kubernetes-injected service env vars that conflict with Neo4j config
+              unset PORT
+              unset NEO4J_PORT DB_PORT
+              unset NEO4J_PORT_7474_TCP NEO4J_PORT_7474_TCP_ADDR NEO4J_PORT_7474_TCP_PORT NEO4J_PORT_7474_TCP_PROTO
+              unset NEO4J_PORT_7687_TCP NEO4J_PORT_7687_TCP_ADDR NEO4J_PORT_7687_TCP_PORT NEO4J_PORT_7687_TCP_PROTO
+              unset NEO4J_SERVICE_PORT NEO4J_SERVICE_PORT_HTTP NEO4J_SERVICE_PORT_BOLT
+              unset DB_SERVICE_HOST DB_SERVICE_PORT DB_SERVICE_PORT_HTTP DB_SERVICE_PORT_BOLT
+              unset NEO4J_SERVICE_HOST DB_SERVICE_HOST
+              unset NEO4J_SERVICE_PORT_HTTP NEO4J_SERVICE_PORT_BOLT
+              unset DB_PORT_7474_TCP DB_PORT_7474_TCP_ADDR DB_PORT_7474_TCP_PORT DB_PORT_7474_TCP_PROTO
+              unset DB_PORT_7687_TCP DB_PORT_7687_TCP_ADDR DB_PORT_7687_TCP_PORT DB_PORT_7687_TCP_PROTO
+              # Start Neo4j
+              exec /startup/docker-entrypoint.sh neo4j
           resources:
             requests:
               memory: "2Gi"
@@ -76,7 +101,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: neo4j
+  name: neo4j-db
   namespace: value-fabric
   labels:
     app: neo4j

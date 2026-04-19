@@ -32,7 +32,7 @@ class TestSQLInjectionPrevention:
 
             if response.status_code == 200:
                 # If allowed, data should be properly escaped/sanitized
-                data = response.json()
+                _ = response.json()  # noqa: F841 - verifying response is valid JSON
                 # No SQL should be executed
 
     def test_sql_injection_in_json_body_blocked(self, client: TestClient):

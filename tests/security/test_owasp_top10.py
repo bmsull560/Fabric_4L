@@ -153,7 +153,7 @@ class TestCryptographicFailures:
         # Set logging to capture all levels
         with caplog.at_level(logging.INFO):
             # Attempt login or password-related operation
-            response = client.post(
+            _ = client.post(  # noqa: F841 - testing that password is not logged
                 "/api/v1/auth/login",
                 json={
                     "email": "test@example.com",
@@ -270,7 +270,7 @@ class TestInjection:
 
             if response.status_code == 200:
                 # If allowed, should not have deleted/modified data
-                data = response.json()
+                _ = response.json()  # noqa: F841 - verifying response is valid JSON
                 # Response should be structured, not raw Cypher error
 
     def test_xxe_prevention(self, client: TestClient, admin_user_token):

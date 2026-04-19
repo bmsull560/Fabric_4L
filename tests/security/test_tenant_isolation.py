@@ -362,7 +362,7 @@ class TestCacheIsolation:
 
         # Get tenant-a cache key count before invalidation
         pattern_a = "*tenant-a*"
-        keys_before = len(list(redis_client.scan_iter(match=pattern_a, count=100)))
+        _ = len(list(redis_client.scan_iter(match=pattern_a, count=100)))  # noqa: F841 - baseline measurement
 
         # Trigger cache invalidation (e.g., via entity update)
         response = client.post(

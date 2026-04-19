@@ -46,7 +46,7 @@ data:
             actions:
               - type: button
                 text: 'View Runbook'
-                url: '{{ .CommonAnnotations.runbook_url }}'
+                url: '{{ if .CommonAnnotations.runbook_url }}{{ .CommonAnnotations.runbook_url }}{{ else }}https://docs.value-fabric.io/runbooks{{ end }}'
       # Critical Slack channel
       - name: slack-critical
         slack_configs:
@@ -57,7 +57,7 @@ data:
             actions:
               - type: button
                 text: 'View Runbook'
-                url: '{{ .CommonAnnotations.runbook_url }}'
+                url: '{{ if .CommonAnnotations.runbook_url }}{{ .CommonAnnotations.runbook_url }}{{ else }}https://docs.value-fabric.io/runbooks{{ end }}'
       # Formula approval notifications
       - name: slack-formula-approval
         slack_configs:
@@ -70,9 +70,9 @@ data:
         pagerduty_configs:
           - service_key_file: '/etc/alertmanager/secrets/pagerduty-integration-key'
             severity: critical
-            description: '{{ .CommonAnnotations.summary }}'
+            description: '{{ if .CommonAnnotations.summary }}{{ .CommonAnnotations.summary }}{{ else }}{{ .GroupLabels.alertname }} - Critical Alert{{ end }}'
             details:
-              runbook_url: '{{ .CommonAnnotations.runbook_url }}'
+              runbook_url: '{{ if .CommonAnnotations.runbook_url }}{{ .CommonAnnotations.runbook_url }}{{ else }}https://docs.value-fabric.io/runbooks{{ end }}'
               firing_alerts: '{{ .Alerts.Firing | len }}'
       # Webhook fallback (for compatibility)
       - name: default

@@ -1,11 +1,13 @@
 # Value Fabric Python SDK
 
+[![PyPI](https://img.shields.io/pypi/v/valuefabric)](https://pypi.org/project/valuefabric/)
+
 Python SDK and CLI for the [Value Fabric](https://github.com/bmsull560/Fabric_4L) Layer 4 Agentic Workflow Engine.
 
 ## Installation
 
 ```bash
-pip install valuefabric-sdk
+pip install valuefabric
 ```
 
 ## Quick Start

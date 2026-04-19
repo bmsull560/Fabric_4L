@@ -27,6 +27,7 @@ from datetime import datetime, timedelta, timezone
 class TestBrokenAccessControl:
     """Test A01:2021 - Broken Access Control"""
 
+    @pytest.mark.asyncio
     async def test_horizontal_privilege_escalation_blocked(self, client, auth_headers):
         """User cannot access other user's data (IDOR prevention)."""
         # Try to access entity belonging to another tenant
@@ -43,6 +44,7 @@ class TestBrokenAccessControl:
             data = response.json()
             assert data.get("tenant_id") != "other-tenant"
 
+    @pytest.mark.asyncio
     async def test_vertical_privilege_escalation_blocked(self, client, user_headers):
         """Non-admin user cannot access admin endpoints."""
         admin_endpoints = [
@@ -55,16 +57,16 @@ class TestBrokenAccessControl:
             response = await client.get(endpoint, headers=user_headers)
             assert response.status_code == 403, f"Endpoint {endpoint} should reject non-admin"
 
+    @pytest.mark.asyncio
     async def test_admin_can_access_admin_endpoints(self, client, admin_headers):
         """Admin user can access admin endpoints."""
         response = await client.get("/api/admin/users", headers=admin_headers)
         assert response.status_code in [200, 404]  # 404 if no users yet
 
+    @pytest.mark.asyncio
     async def test_direct_object_reference_protection(self, client, auth_headers):
         """Sequential IDs should not expose enumeration vulnerability."""
         # Try to guess other entity IDs by incrementing
-        base_id = "entity-123"
-        
         for i in range(1, 5):
             guessed_id = f"entity-{124 + i}"
             response = await client.get(
@@ -78,6 +80,7 @@ class TestBrokenAccessControl:
                 data = response.json()
                 assert data.get("tenant_id") == auth_headers.get("x-tenant-id", "test-tenant")
 
+    @pytest.mark.asyncio
     async def test_cors_policy_enforced(self, client):
         """CORS policy prevents cross-origin attacks."""
         response = await client.options(
@@ -92,6 +95,7 @@ class TestBrokenAccessControl:
         allowed_origins = response.headers.get("access-control-allow-origin", "")
         assert "malicious-site.com" not in allowed_origins
 
+    @pytest.mark.asyncio
     async def test_method_override_protection(self, client, auth_headers):
         """POST requests cannot be overridden to bypass security."""
         response = await client.post(
@@ -106,6 +110,7 @@ class TestBrokenAccessControl:
         # Should create entity, not delete
         assert response.status_code in [201, 400]  # Created or bad request, not method not allowed
 
+    @pytest.mark.asyncio
     async def test_directory_traversal_blocked(self, client, auth_headers):
         """Path traversal sequences blocked in file paths."""
         malicious_paths = [
@@ -135,6 +140,7 @@ class TestBrokenAccessControl:
 class TestCryptographicFailures:
     """Test A02:2021 - Cryptographic Failures"""
 
+    @pytest.mark.asyncio
     async def test_passwords_not_returned_in_api(self, client, auth_headers):
         """Passwords and hashes never returned in API responses."""
         response = await client.get("/api/users/me", headers=auth_headers)
@@ -145,6 +151,7 @@ class TestCryptographicFailures:
             assert "password_hash" not in data
             assert "hashed_password" not in data
 
+    @pytest.mark.asyncio
     async def test_sensitive_data_encrypted_in_db(self, client, auth_headers):
         """PII and sensitive data encrypted at rest."""
         response = await client.get("/api/users/me", headers=auth_headers)
@@ -155,6 +162,7 @@ class TestCryptographicFailures:
             # This test verifies the API doesn't leak encryption details
             assert "_encrypted" not in str(data)
 
+    @pytest.mark.asyncio
     async def test_tls_enforced(self, client):
         """HTTPS enforced - HTTP requests redirected or rejected."""
         # This test runs against HTTPS endpoint
@@ -163,6 +171,7 @@ class TestCryptographicFailures:
         # Should succeed over HTTPS
         assert response.status_code == 200
 
+    @pytest.mark.asyncio
     async def test_weak_crypto_algorithms_rejected(self, client):
         """Weak cryptographic algorithms not accepted."""
         # Test JWT signing algorithm
@@ -180,6 +189,7 @@ class TestCryptographicFailures:
         # Should reject tokens with 'none' algorithm
         assert response.status_code in [401, 403]
 
+    @pytest.mark.asyncio
     async def test_strong_password_policy_enforced(self, client):
         """Weak passwords rejected during registration."""
         weak_passwords = [
@@ -207,6 +217,7 @@ class TestCryptographicFailures:
 class TestInjectionAttacks:
     """Test A03:2021 - Injection"""
 
+    @pytest.mark.asyncio
     async def test_sql_injection_in_search_blocked(self, client, auth_headers):
         """SQL injection attempts in search parameters blocked."""
         sql_injection_payloads = [
@@ -233,6 +244,7 @@ class TestInjectionAttacks:
                 if isinstance(data, dict) and "items" in data:
                     assert len(data["items"]) < 1000  # Reasonable limit
 
+    @pytest.mark.asyncio
     async def test_nosql_injection_blocked(self, client, auth_headers):
         """NoSQL injection attempts blocked."""
         nosql_payloads = [
@@ -251,6 +263,7 @@ class TestInjectionAttacks:
             # Should not execute NoSQL operators
             assert response.status_code in [200, 400, 422]
 
+    @pytest.mark.asyncio
     async def test_command_injection_blocked(self, client, auth_headers):
         """Command injection in file upload paths blocked."""
         malicious_filenames = [
@@ -270,6 +283,7 @@ class TestInjectionAttacks:
             # Should sanitize filename or reject
             assert response.status_code in [200, 400]
 
+    @pytest.mark.asyncio
     async def test_ldap_injection_blocked(self, client):
         """LDAP injection in authentication blocked."""
         ldap_payloads = [
@@ -287,6 +301,7 @@ class TestInjectionAttacks:
             # Should not authenticate
             assert response.status_code in [401, 400]
 
+    @pytest.mark.asyncio
     async def test_xpath_injection_blocked(self, client, auth_headers):
         """XPath injection blocked in XML queries."""
         xpath_payloads = [
@@ -313,6 +328,7 @@ class TestInjectionAttacks:
 class TestInsecureDesign:
     """Test A04:2021 - Insecure Design"""
 
+    @pytest.mark.asyncio
     async def test_rate_limiting_enforced(self, client):
         """API endpoints have rate limiting."""
         # Make rapid requests
@@ -326,6 +342,7 @@ class TestInsecureDesign:
         success_count = responses.count(200)
         assert success_count >= 15  # At least 15 should succeed
 
+    @pytest.mark.asyncio
     async def test_auth_rate_limiting(self, client):
         """Authentication endpoints have strict rate limiting."""
         responses = []
@@ -340,6 +357,7 @@ class TestInsecureDesign:
         rate_limited = any(r == 429 for r in responses)
         assert rate_limited or responses.count(401) >= 5
 
+    @pytest.mark.asyncio
     async def test_business_logic_limits_enforced(self, client, auth_headers):
         """Business logic limits prevent abuse."""
         # Try to create excessive entities
@@ -357,6 +375,7 @@ class TestInsecureDesign:
                 assert "limit" in response.text().lower() or "quota" in response.text().lower()
                 break
 
+    @pytest.mark.asyncio
     async def test_consistent_error_messages(self, client):
         """Error messages don't leak sensitive information."""
         # Test login with wrong username
@@ -384,6 +403,7 @@ class TestInsecureDesign:
 class TestSecurityMisconfiguration:
     """Test A05:2021 - Security Misconfiguration"""
 
+    @pytest.mark.asyncio
     async def test_security_headers_present(self, client):
         """Security headers present in all responses."""
         response = await client.get("/api/health")
@@ -396,6 +416,7 @@ class TestSecurityMisconfiguration:
         assert "x-frame-options" in headers
         assert headers.get("x-frame-options") in ["DENY", "SAMEORIGIN"]
 
+    @pytest.mark.asyncio
     async def test_no_server_version_disclosure(self, client):
         """Server version not disclosed in headers."""
         response = await client.get("/api/health")
@@ -408,6 +429,7 @@ class TestSecurityMisconfiguration:
         assert "python" not in server_header.lower()
         assert "fastapi" not in server_header.lower()
 
+    @pytest.mark.asyncio
     async def test_error_stack_traces_hidden_in_prod(self, client):
         """Stack traces not exposed in production error responses."""
         # Trigger an error (invalid endpoint)
@@ -420,6 +442,7 @@ class TestSecurityMisconfiguration:
             assert "File \"" not in body
             assert "line " not in body or "trace" not in body.lower()
 
+    @pytest.mark.asyncio
     async def test_debug_mode_disabled(self, client):
         """Debug mode disabled in production."""
         response = await client.get("/docs")
@@ -431,6 +454,7 @@ class TestSecurityMisconfiguration:
             assert "password" not in body.lower()
             assert "private_key" not in body.lower()
 
+    @pytest.mark.asyncio
     async def test_http_methods_restricted(self, client):
         """Only necessary HTTP methods allowed."""
         # Test OPTIONS preflight
@@ -451,6 +475,7 @@ class TestSecurityMisconfiguration:
 class TestVulnerableComponents:
     """Test A06:2021 - Vulnerable and Outdated Components"""
 
+    @pytest.mark.asyncio
     async def test_dependencies_scanned_for_vulns(self, client):
         """Dependencies scanned for known vulnerabilities."""
         # This is a CI/CD check, but we verify the endpoint exists
@@ -464,6 +489,7 @@ class TestVulnerableComponents:
             high_vulns = [v for v in vulns if v.get("severity") in ["high", "critical"]]
             assert len(high_vulns) == 0, f"Found {len(high_vulns)} high/critical vulnerabilities"
 
+    @pytest.mark.asyncio
     async def test_no_unmaintained_dependencies(self, client):
         """No unmaintained or deprecated dependencies."""
         # This is primarily a CI/CD check via pip-audit or similar
@@ -479,6 +505,7 @@ class TestVulnerableComponents:
 class TestAuthenticationFailures:
     """Test A07:2021 - Identification and Authentication Failures"""
 
+    @pytest.mark.asyncio
     async def test_brute_force_protection(self, client):
         """Brute force attacks blocked by rate limiting."""
         # Attempt multiple failed logins
@@ -495,6 +522,7 @@ class TestAuthenticationFailures:
         # If we get here without 429, check for account lockout
         # or other brute force protection
 
+    @pytest.mark.asyncio
     async def test_weak_passwords_rejected(self, client):
         """Weak passwords rejected during registration."""
         weak_passwords = [
@@ -512,6 +540,7 @@ class TestAuthenticationFailures:
             })
             assert response.status_code == 422
 
+    @pytest.mark.asyncio
     async def test_session_tokens_secure(self, client, auth_headers):
         """Session tokens have secure attributes."""
         response = await client.post("/api/auth/login", json={
@@ -526,6 +555,7 @@ class TestAuthenticationFailures:
                 # Cookie should have secure and httponly flags
                 assert cookies["session"].secure or True  # May be set via header
 
+    @pytest.mark.asyncio
     async def test_expired_token_rejected(self, client):
         """Expired JWT tokens rejected."""
         expired_token = jwt.encode(
@@ -544,6 +574,7 @@ class TestAuthenticationFailures:
         
         assert response.status_code == 401
 
+    @pytest.mark.asyncio
     async def test_malformed_token_rejected(self, client):
         """Malformed JWT tokens rejected."""
         malformed_tokens = [
@@ -560,6 +591,7 @@ class TestAuthenticationFailures:
             )
             assert response.status_code in [401, 403]
 
+    @pytest.mark.asyncio
     async def test_multi_factor_authentication_option(self, client, auth_headers):
         """Multi-factor authentication available for sensitive operations."""
         # Check if MFA endpoints exist
@@ -577,6 +609,7 @@ class TestAuthenticationFailures:
 class TestDataIntegrityFailures:
     """Test A08:2021 - Software and Data Integrity Failures"""
 
+    @pytest.mark.asyncio
     async def test_csrf_protection_on_state_changing_ops(self, client, auth_headers):
         """CSRF tokens required for state-changing operations."""
         # Try POST without CSRF token
@@ -590,6 +623,7 @@ class TestDataIntegrityFailures:
         # This test documents the expected behavior
         assert response.status_code in [201, 403]
 
+    @pytest.mark.asyncio
     async def test_webhook_signature_verification(self, client):
         """Webhook signatures verified to prevent tampering."""
         # Send webhook without signature
@@ -601,12 +635,14 @@ class TestDataIntegrityFailures:
         # Should reject unsigned webhooks
         assert response.status_code in [400, 401]
 
+    @pytest.mark.asyncio
     async def test_dependency_integrity_verification(self, client):
         """Dependencies verified for integrity (checksums)."""
         # This is primarily a CI/CD check
         # Verify that lockfiles exist and are used
         pass
 
+    @pytest.mark.asyncio
     async def test_unsigned_commits_rejected(self, client):
         """Unsigned code commits rejected in protected branches."""
         # GitHub/GitLab configuration test
@@ -621,6 +657,7 @@ class TestDataIntegrityFailures:
 class TestLoggingAndMonitoring:
     """Test A09:2021 - Security Logging and Monitoring Failures"""
 
+    @pytest.mark.asyncio
     async def test_security_events_logged(self, client):
         """Security events (login, failures) are logged."""
         # Trigger a failed login
@@ -636,12 +673,14 @@ class TestLoggingAndMonitoring:
             logs = response.json()
             assert len(logs.get("items", [])) > 0 or logs.get("total", 0) > 0
 
+    @pytest.mark.asyncio
     async def test_no_sensitive_data_in_logs(self, client):
         """Logs do not contain sensitive data (passwords, tokens)."""
         # This requires checking actual log files
         # Placeholder for log inspection test
         pass
 
+    @pytest.mark.asyncio
     async def test_suspicious_activity_alerts(self, client):
         """Suspicious activity triggers alerts."""
         # Trigger multiple failed logins
@@ -669,6 +708,7 @@ class TestLoggingAndMonitoring:
 class TestServerSideRequestForgery:
     """Test A10:2021 - Server-Side Request Forgery"""
 
+    @pytest.mark.asyncio
     async def test_ssrf_in_url_parameter_blocked(self, client, auth_headers):
         """SSRF via URL parameters blocked."""
         ssrf_payloads = [
@@ -689,6 +729,7 @@ class TestServerSideRequestForgery:
             # Should block internal network access
             assert response.status_code in [400, 403, 422]
 
+    @pytest.mark.asyncio
     async def test_ssrf_in_webhook_url_blocked(self, client, auth_headers):
         """SSRF via webhook URL configuration blocked."""
         response = await client.post(
@@ -703,6 +744,7 @@ class TestServerSideRequestForgery:
         # Should reject internal URLs
         assert response.status_code in [400, 422]
 
+    @pytest.mark.asyncio
     async def test_ssrf_in_pdf_generation_blocked(self, client, auth_headers):
         """SSRF via PDF generation (HTML to PDF) blocked."""
         response = await client.post(
@@ -717,6 +759,7 @@ class TestServerSideRequestForgery:
         # Should not allow iframe to internal services
         assert response.status_code in [400, 422]
 
+    @pytest.mark.asyncio
     async def test_dns_rebinding_protection(self, client, auth_headers):
         """DNS rebinding attacks blocked."""
         # URLs that might resolve to internal IPs after rebinding

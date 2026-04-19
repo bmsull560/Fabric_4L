@@ -92,6 +92,10 @@ PRICING = {
     },
 }
 
+# Retry configuration
+RETRY_BACKOFF_BASE_SECONDS = 2.0
+RETRY_JITTER_MAX_SECONDS = 0.25
+
 
 class LLMClient:
     """Unified LLM client with cost tracking.
@@ -196,25 +200,6 @@ class LLMClient:
         Returns:
             Tuple of (response, cost_record)
         """
-        # Resolve model from registry if enabled
-        if self._resolve_from_registry_enabled and self._registry_tenant_id:
-            try:
-                from ..integration.model_registry_client import ModelRegistryClient
-
-                async with ModelRegistryClient() as client:
-                    resolved_model = await client.resolve_model(
-                        tenant_id=self._registry_tenant_id,
-                        provider=self.provider.value,
-                        api_token=self._registry_api_token,
-                    )
-                    if resolved_model:
-                        self.model = resolved_model  # Update cached model for subsequent calls
-            except Exception as exc:
-                # Log but don't fail - fall back to default model
-                logging.getLogger(__name__).warning(
-                    f"Failed to resolve model from registry: {exc}. Using default: {self.model}"
-                )
-
         if self.provider == LLMProvider.OPENAI:
             return await self._openai_completion(
                 messages,
@@ -312,13 +297,17 @@ class LLMClient:
                 parsed_result = response.choices[0].message.parsed
                 return parsed_result, cost_record
 
-            except Exception:
+            except Exception as exc:
                 if attempt == self.max_retries - 1:
                     raise
-                wait_time = (2**attempt) + random.uniform(0, 0.25)
+                logger = logging.getLogger(__name__)
+                wait_time = self._calculate_retry_wait(attempt)
+                logger.warning(
+                    f"OpenAI structured completion failed (attempt {attempt + 1}/{self.max_retries}): {exc}. Retrying in {wait_time:.2f}s..."
+                )
                 await asyncio.sleep(wait_time)
 
-        raise RuntimeError("Max retries exceeded")
+        raise RuntimeError("Max retries exceeded for OpenAI structured completion")
 
     async def _openai_completion(
         self,
@@ -364,13 +353,17 @@ class LLMClient:
 
                 return response, cost_record
 
-            except Exception:
+            except Exception as exc:
                 if attempt == self.max_retries - 1:
                     raise
-                wait_time = (2**attempt) + random.uniform(0, 0.25)
+                logger = logging.getLogger(__name__)
+                wait_time = self._calculate_retry_wait(attempt)
+                logger.warning(
+                    f"OpenAI completion failed (attempt {attempt + 1}/{self.max_retries}): {exc}. Retrying in {wait_time:.2f}s..."
+                )
                 await asyncio.sleep(wait_time)
 
-        raise RuntimeError("Max retries exceeded")
+        raise RuntimeError("Max retries exceeded for OpenAI completion")
 
     async def _anthropic_completion(
         self,
@@ -423,13 +416,17 @@ class LLMClient:
 
                 return response, cost_record
 
-            except Exception:
+            except Exception as exc:
                 if attempt == self.max_retries - 1:
                     raise
-                wait_time = (2**attempt) + random.uniform(0, 0.25)
+                logger = logging.getLogger(__name__)
+                wait_time = self._calculate_retry_wait(attempt)
+                logger.warning(
+                    f"Anthropic completion failed (attempt {attempt + 1}/{self.max_retries}): {exc}. Retrying in {wait_time:.2f}s..."
+                )
                 await asyncio.sleep(wait_time)
 
-        raise RuntimeError("Max retries exceeded")
+        raise RuntimeError("Max retries exceeded for Anthropic completion")
 
     def _calculate_cost(
         self,
@@ -487,6 +484,19 @@ class LLMClient:
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             cost_usd=total_cost,
+        )
+
+    def _calculate_retry_wait(self, attempt: int) -> float:
+        """Calculate exponential backoff with jitter for retry delays.
+
+        Args:
+            attempt: Current retry attempt (0-indexed)
+
+        Returns:
+            Wait time in seconds before next retry
+        """
+        return (RETRY_BACKOFF_BASE_SECONDS**attempt) + random.uniform(
+            0, RETRY_JITTER_MAX_SECONDS
         )
 
     async def _resolve_from_registry(self) -> str | None:

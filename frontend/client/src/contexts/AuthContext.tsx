@@ -322,7 +322,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useUserTierStore.getState().setUserRole(mockUser.role);
 
-    console.log('[DEV] Authentication bypassed — logged in as', mockUser.email);
+    if (import.meta.env.DEV) {
+      console.log('[DEV] Authentication bypassed — logged in as', mockUser.email);
+    }
   }, []);
 
   const value: AuthContextType = {

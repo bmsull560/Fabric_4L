@@ -174,8 +174,59 @@ Prometheus metrics available at `/metrics` on all services.
 
 Monitoring manifests:
 
-- `monitoring-alertmanager.yml`
-- `monitoring-prometheus.yml`
+- `monitoring-alertmanager.yml` - Alertmanager with Slack + PagerDuty routing
+- `monitoring-prometheus.yml` - Prometheus server with alerting rules
+
+### Alertmanager Configuration
+
+Alertmanager is configured with multi-channel routing:
+
+| Severity | Slack | PagerDuty | Webhook |
+|----------|-------|-----------|---------|
+| critical | #vf-alerts-critical | ✅ | fallback |
+| warning | #vf-alerts | - | fallback |
+| info | #vf-alerts | - | fallback |
+
+**Prerequisites:**
+
+1. **External Secrets Operator** must be installed and configured with Vault/Infisical
+2. **Slack webhook URL** configured in Vault at `value-fabric/monitoring/slack-webhook-url`
+3. **PagerDuty integration key** (optional) at `value-fabric/monitoring/pagerduty-integration-key`
+
+**Deploy Alertmanager:**
+
+```bash
+# 1. Create external secret for Alertmanager
+kubectl apply -f k8s/external-secrets/alertmanager-secrets.yaml
+
+# 2. Deploy Alertmanager
+kubectl apply -f k8s/monitoring-alertmanager.yml
+
+# 3. Verify deployment
+kubectl wait --for=condition=ready pod -l app=alertmanager -n value-fabric --timeout=60s
+```
+
+**Alertmanager features:**
+- Slack notifications with rich templates (includes runbook links)
+- PagerDuty escalation for critical alerts
+- Inhibition rules (warning suppressed when critical firing)
+- Grouping by alertname and severity
+- Persistent storage for alert history
+
+**Validate notification routing:**
+
+```bash
+# Port-forward to Alertmanager
+kubectl port-forward -n value-fabric svc/alertmanager 9093:9093
+
+# Check Alertmanager status
+curl -fsS http://localhost:9093/api/v2/status
+
+# Test alert reception
+curl -X POST http://localhost:9093/api/v2/alerts \
+  -H "Content-Type: application/json" \
+  -d '[{"labels":{"alertname":"TestAlert","severity":"warning"},"annotations":{"summary":"Test alert"}}]'
+```
 
 Runtime verification playbook:
 

@@ -487,8 +487,7 @@ function Accounts() {
   };
 
   const handleAddAccount = () => {
-    // Placeholder for add account functionality
-    console.log("Add Account clicked");
+    // TODO: Implement add account functionality (Task pending)
   };
 
   const updateFilters = (updates: Partial<AccountFilters>) => {

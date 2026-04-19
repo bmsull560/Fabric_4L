@@ -1049,7 +1049,7 @@ def _execute_browser_path(url: str, config: dict | None) -> dict:
     start_time = time.monotonic()
 
     # Simulate browser crawl (replace with actual Playwright integration)
-    crawler = PlaywrightCrawler()
+    _ = PlaywrightCrawler()  # noqa: F841 - placeholder for future integration
     # result = crawler.crawl(url)  # Actual call
 
     # Placeholder result for now

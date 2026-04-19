@@ -237,6 +237,47 @@ groups:
           escalation_policy: "pagerduty-immediate"
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/audit-write-failure.md"
 
+      # LLM Cost Monitoring (L2 Extraction)
+      - alert: L2HighExtractionCost
+        expr: |
+          increase(vf_llm_cost_usd_total[1h]) > 10
+          or
+          increase(layer2_llm_cost_usd_total[1h]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "L2 extraction cost exceeded $10/hour"
+          description: "Current hourly cost: ${{ $value | printf \"%.2f\" }}. L2 LLM extraction is consuming more budget than expected."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/llm-cost-anomaly.md"
+
+      - alert: L2CostBudgetThreshold
+        expr: |
+          vf_llm_cost_usd_total > 1000
+          or
+          layer2_llm_cost_usd_total > 1000
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "L2 monthly cost budget exceeded $1000"
+          description: "Current total cost: ${{ $value | printf \"%.2f\" }}. Monthly budget threshold crossed."
+          escalation_policy: "pagerduty-immediate"
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/budget-exceeded.md"
+
+      - alert: L2TokenUsageSpike
+        expr: |
+          increase(vf_llm_tokens_total[10m]) > 100000
+          or
+          increase(layer2_llm_tokens_total[10m]) > 100000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "L2 token usage spike detected (>100K tokens in 10min)"
+          description: "Tokens consumed: {{ $value }}. Possible runaway extraction job or infinite loop."
+          runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/token-spike.md"
+
       # Ground truth staleness (L5)
       - alert: StaleGroundTruthObjects
         expr: layer5_stale_objects_detected > 10

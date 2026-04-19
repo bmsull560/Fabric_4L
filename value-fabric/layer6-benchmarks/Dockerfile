@@ -1,4 +1,4 @@
-FROM python:3.11.11-slim-bookworm
+FROM python:3.11.11-slim-bookworm@sha256:081075da77b2b55c23c088251026fb69a7b2bf92471e491ff5fd75c192fd38e5
 
 # Security: Create non-root user early
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
@@ -8,14 +8,15 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies directly
-RUN pip install --no-cache-dir \
-    fastapi>=0.115.0 \
-    uvicorn[standard]>=0.32.0 \
-    pydantic>=2.9.0 \
-    httpx>=0.27.0 \
-    prometheus-client>=0.21.0 \
-    psutil>=5.9
+# Install uv from official image
+COPY --from=ghcr.io/astral-sh/uv:0.11.6 /uv /uvx /bin/
+
+# Copy dependency files
+COPY layer6-benchmarks/pyproject.toml .
+COPY layer6-benchmarks/uv.lock .
+
+# Install dependencies using uv (deterministic from lock file)
+RUN uv sync --frozen --no-install-project
 
 # Copy shared package
 COPY shared/ ./shared/
@@ -23,7 +24,8 @@ COPY shared/ ./shared/
 # Copy source code
 COPY layer6-benchmarks/src/ ./src/
 
-# Set PYTHONPATH so imports work
+# Set PATH to use uv virtual environment and PYTHONPATH for imports
+ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app
 
 # Change ownership to non-root user
