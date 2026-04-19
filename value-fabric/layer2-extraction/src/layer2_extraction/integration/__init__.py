@@ -2,6 +2,7 @@
 
 Provides clients for connecting to downstream layers:
 - Layer3KnowledgeClient: Push extraction results to Neo4j Knowledge Graph
+- ModelRegistryClient: Resolve LLM models from Layer 4 Model Registry
 """
 
 from .layer3_client import (
@@ -10,6 +11,7 @@ from .layer3_client import (
     Layer3KnowledgeClient,
     ingest_to_knowledge_graph,
 )
+from .model_registry_client import ModelRegistryClient
 from .pending_ingestion_store import (
     PendingIngestionRecord,
     PendingIngestionStore,
@@ -23,6 +25,7 @@ __all__ = [
     "IngestionStatus",
     "Layer3KnowledgeClient",
     "ingest_to_knowledge_graph",
+    "ModelRegistryClient",
     "PendingIngestionStore",
     "PendingIngestionRecord",
     "PostgresPendingIngestionStore",

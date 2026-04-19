@@ -295,18 +295,89 @@ The application resolves the reference at runtime using the Vault KV v2 API. Rot
 
 In production, use the Vault Database Secrets Engine to generate short-lived PostgreSQL credentials. See `k8s/external-secrets/vault-database-dynamic.yml` for the ExternalSecret manifest (1h TTL). Dynamic credentials are automatically rotated and revoked, reducing the blast radius of credential leaks.
 
+## Verification
+
+### Check ClusterSecretStore Status
+
+```bash
+# Verify ClusterSecretStore is Ready
+kubectl get ClusterSecretStore vault-backend -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+# Expected output: True
+
+# Check ExternalSecret sync status
+kubectl get externalsecret -n value-fabric
+
+# Check specific ExternalSecret details
+kubectl describe externalsecret openai-api-key -n value-fabric
+```
+
+### Verify Secret Sync
+
+```bash
+# List secrets created by External Secrets Operator
+kubectl get secrets -n value-fabric | grep -E "(openai|postgres|neo4j|jwt|layer)"
+
+# Verify secret content (example: OpenAI API key)
+kubectl get secret openai-secret -n value-fabric -o jsonpath='{.data.api-key}' | base64 -d
+```
+
+### Test Dynamic PostgreSQL Credentials
+
+```bash
+# Generate dynamic credentials from Vault
+vault read database/creds/layer1-app
+
+# Verify credentials work (requires psql)
+export PGUSER=<username_from_vault>
+export PGPASSWORD=<password_from_vault>
+psql -h postgres.value-fabric.svc.cluster.local -U $PGUSER -d ingestion -c "SELECT current_user;"
+```
+
+## Troubleshooting ExternalSecret Sync
+
+### Symptom: ExternalSecret shows `SecretSyncedError`
+
+```bash
+# Check ExternalSecret status
+kubectl describe externalsecret <name> -n value-fabric
+
+# Check External Secrets Operator logs
+kubectl logs -n external-secrets deployment/external-secrets
+
+# Verify Vault connectivity from cluster
+kubectl run vault-test --rm -i --restart=Never --image=curlimages/curl \
+  -- -s http://vault.vault.svc.cluster.local:8200/v1/sys/health
+```
+
+### Symptom: Dynamic credentials not rotating
+
+```bash
+# Check TTL on database role
+vault read database/roles/layer1-app
+
+# Verify database connection config
+vault read database/config/postgres
+
+# Check if credentials are being generated
+vault read database/creds/layer1-app
+```
+
 ## Smoke Gate
 
 Before deploying to production, run the Vault smoke test to verify connectivity and secret access:
 
 ```bash
+# Test Vault connectivity and secrets
 export VAULT_ADDR=https://vault.value-fabric.svc:8200
 export VAULT_TOKEN=<your-vault-token>
 python scripts/smoke/vault_smoke.py
+
+# Test ClusterSecretStore status
+python scripts/smoke/clustersecretstore_check.py
 ```
 
 A non-zero exit code blocks the deployment pipeline.
 
 ---
 
-*Last updated: 2026-04-13*
+*Last updated: 2026-04-19*

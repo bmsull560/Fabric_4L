@@ -107,6 +107,9 @@ class LLMClient:
         timeout: float = 60.0,
         max_retries: int = 3,
         cost_tracking_enabled: bool = True,
+        resolve_model_from_registry: bool = False,
+        registry_tenant_id: str | None = None,
+        registry_api_token: str | None = None,
     ):
         """Initialize LLM client.
 
@@ -117,12 +120,18 @@ class LLMClient:
             timeout: Request timeout in seconds
             max_retries: Max retry attempts for failed requests
             cost_tracking_enabled: Whether to track costs
+            resolve_model_from_registry: Whether to resolve model from L4 registry
+            registry_tenant_id: Tenant ID for registry lookup (required if resolve_model_from_registry=True)
+            registry_api_token: API token for L4 registry authentication (optional)
         """
         self.provider = LLMProvider(provider)
         self.timeout = timeout
         self.max_retries = max_retries
         self.cost_tracking_enabled = cost_tracking_enabled
         self._cost_records: list[CostRecord] = []
+        self._resolve_model_from_registry = resolve_model_from_registry
+        self._registry_tenant_id = registry_tenant_id
+        self._registry_api_token = registry_api_token
 
         # Set model with fallback to env vars
         if model:
@@ -244,10 +253,13 @@ class LLMClient:
         if not OPENAI_AVAILABLE:
             raise ImportError("openai package not installed. Run: pip install openai>=1.40.0")
 
+        # Resolve model from registry if enabled
+        effective_model = await self._get_effective_model()
+
         for attempt in range(self.max_retries):
             try:
                 response = await self._client.beta.chat.completions.parse(
-                    model=self.model,
+                    model=effective_model,
                     messages=messages,
                     temperature=temperature,
                     response_format=response_format,
@@ -259,7 +271,7 @@ class LLMClient:
                     cost_record = self._calculate_cost(
                         extraction_job_id=extraction_job_id,
                         provider="openai",
-                        model=self.model,
+                        model=effective_model,
                         endpoint=endpoint,
                         input_tokens=response.usage.prompt_tokens if response.usage else 0,
                         output_tokens=response.usage.completion_tokens if response.usage else 0,
@@ -291,10 +303,13 @@ class LLMClient:
     ) -> tuple[ChatCompletion, CostRecord | None]:
         """Execute OpenAI chat completion."""
 
+        # Resolve model from registry if enabled
+        effective_model = await self._get_effective_model()
+
         for attempt in range(self.max_retries):
             try:
                 response = await self._client.chat.completions.create(
-                    model=self.model,
+                    model=effective_model,
                     messages=messages,
                     temperature=temperature,
                     tools=tools,
@@ -309,7 +324,7 @@ class LLMClient:
                     cost_record = self._calculate_cost(
                         extraction_job_id=extraction_job_id,
                         provider="openai",
-                        model=self.model,
+                        model=effective_model,
                         endpoint=endpoint,
                         input_tokens=response.usage.prompt_tokens if response.usage else 0,
                         output_tokens=response.usage.completion_tokens if response.usage else 0,
@@ -335,6 +350,9 @@ class LLMClient:
     ) -> tuple[Any, CostRecord | None]:
         """Execute Anthropic chat completion."""
 
+        # Resolve model from registry if enabled
+        effective_model = await self._get_effective_model()
+
         # Convert messages to Anthropic format
         system_msg = None
         anthropic_messages = []
@@ -347,7 +365,7 @@ class LLMClient:
         for attempt in range(self.max_retries):
             try:
                 kwargs = {
-                    "model": self.model,
+                    "model": effective_model,
                     "messages": anthropic_messages,
                     "temperature": temperature,
                     "max_tokens": 4096,
@@ -364,7 +382,7 @@ class LLMClient:
                     cost_record = self._calculate_cost(
                         extraction_job_id=extraction_job_id,
                         provider="anthropic",
-                        model=self.model,
+                        model=effective_model,
                         endpoint=endpoint,
                         input_tokens=usage.input_tokens,
                         output_tokens=usage.output_tokens,
@@ -410,6 +428,55 @@ class LLMClient:
             output_tokens=output_tokens,
             cost_usd=total_cost,
         )
+
+    async def _resolve_model_from_registry(self) -> str | None:
+        """Resolve model from L4 registry if enabled.
+
+        Returns:
+            Model name from registry, or None if not enabled/failed
+        """
+        if not self._resolve_model_from_registry:
+            return None
+
+        if not self._registry_tenant_id:
+            # Registry resolution enabled but no tenant ID - warn and skip
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Model registry resolution enabled but no tenant_id provided. "
+                "Set registry_tenant_id or disable resolve_model_from_registry."
+            )
+            return None
+
+        try:
+            from ..integration.model_registry_client import ModelRegistryClient
+
+            async with ModelRegistryClient() as client:
+                model = await client.resolve_model(
+                    tenant_id=self._registry_tenant_id,
+                    provider=self.provider.value,
+                    api_token=self._registry_api_token,
+                )
+                return model if model != self.model else None  # Only update if different
+        except Exception as exc:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                f"Failed to resolve model from registry: {exc}. Using default: {self.model}"
+            )
+            return None
+
+    async def _get_effective_model(self) -> str:
+        """Get model name, resolving from registry if enabled.
+
+        Returns:
+            Model name to use for API calls
+        """
+        if self._resolve_model_from_registry:
+            registry_model = await self._resolve_model_from_registry()
+            if registry_model:
+                return registry_model
+        return self.model
 
     def get_cost_records(self) -> list[CostRecord]:
         """Get all recorded costs."""

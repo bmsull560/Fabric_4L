@@ -26,14 +26,14 @@ def main():
     packs_dir = Path('packs')
     manifest_path = packs_dir / 'pack-manifest.json'
 
-    with open(manifest_path) as f:
+    with open(manifest_path, encoding='utf-8') as f:
         manifest = json.load(f)
 
     total_added = 0
 
     for pack in manifest['packs']:
         pack_id = pack['pack_id']
-        pack_name = pack_id.replace('-v1', '')
+        pack_name = re.sub(r'-v\d+$', '', pack_id)  # Strip version suffix like pack loader
         pack_path = packs_dir / pack_name
 
         print(f"\n{'='*60}")
@@ -42,13 +42,13 @@ def main():
 
         # Load variables
         variables_path = pack_path / 'variables.json'
-        with open(variables_path) as f:
+        with open(variables_path, encoding='utf-8') as f:
             var_data = json.load(f)
         variables = var_data['variables']
 
         # Load formulas
         formulas_path = pack_path / 'formulas.json'
-        with open(formulas_path) as f:
+        with open(formulas_path, encoding='utf-8') as f:
             formula_data = json.load(f)
         formulas = formula_data['formulas']
 
@@ -73,7 +73,7 @@ def main():
             print(f"Missing variables: {missing}")
 
             # Add placeholder variables for missing ones
-            next_id = max(int(v['variable_id'].split('-')[-1]) for v in variables) + 1
+            next_id = max((int(v['variable_id'].split('-')[-1]) for v in variables), default=0) + 1
             pack_prefix = get_pack_prefix(pack_name, variables)
 
             for var_name in missing:

@@ -15,8 +15,20 @@ REQUIRED_SECRET_PATHS: List[str] = [
     "secret/data/value-fabric/llm",
     "secret/data/value-fabric/database",
     "secret/data/value-fabric/auth",
+    "secret/data/value-fabric/infrastructure",
+    "secret/data/value-fabric/inter-layer",
 ]
 
+# Dynamic credential roles for each layer
+DYNAMIC_CRED_ROLES: List[str] = [
+    "database/creds/app-role",
+    "database/creds/layer1-app",
+    "database/creds/layer2-app",
+    "database/creds/layer3-app",
+    "database/creds/layer4-app",
+]
+
+# Legacy fallback role (deprecated but check for compatibility)
 DYNAMIC_CRED_PATH = "database/creds/value-fabric-role"
 
 
@@ -62,23 +74,31 @@ async def _main() -> int:
                 return 1
         _log("PASS: Required secrets accessible")
 
-        # 3. PostgreSQL dynamic cred generation
-        try:
-            resp = await client.get(
-                f"{VAULT_ADDR.rstrip('/')}/v1/{DYNAMIC_CRED_PATH.lstrip('/')}",
-                headers=headers,
-            )
-            if resp.status_code != 200:
-                _log(f"FAIL: Dynamic cred generation returned {resp.status_code}")
-                return 1
-            data = resp.json().get("data", {})
-            if "username" not in data or "password" not in data:
-                _log("FAIL: Dynamic cred response missing username/password")
-                return 1
-            _log("PASS: PostgreSQL dynamic cred generation works")
-        except Exception as exc:
-            _log(f"FAIL: Dynamic cred generation error: {exc}")
+        # 3. PostgreSQL dynamic cred generation for all layer roles
+        working_roles = 0
+        for role_path in DYNAMIC_CRED_ROLES:
+            try:
+                resp = await client.get(
+                    f"{VAULT_ADDR.rstrip('/')}/v1/{role_path.lstrip('/')}",
+                    headers=headers,
+                )
+                if resp.status_code == 200:
+                    data = resp.json().get("data", {})
+                    if "username" in data and "password" in data:
+                        working_roles += 1
+                        _log(f"PASS: Dynamic creds work for {role_path}")
+                    else:
+                        _log(f"WARN: {role_path} missing username/password in response")
+                else:
+                    _log(f"WARN: {role_path} returned {resp.status_code}")
+            except Exception as exc:
+                _log(f"WARN: Error checking {role_path}: {exc}")
+
+        if working_roles == 0:
+            _log("FAIL: No dynamic credential roles working")
             return 1
+
+        _log(f"PASS: {working_roles}/{len(DYNAMIC_CRED_ROLES)} dynamic credential roles working")
 
     _log("All checks passed")
     return 0

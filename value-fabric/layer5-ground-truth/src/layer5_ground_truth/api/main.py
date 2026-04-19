@@ -23,6 +23,11 @@ except ImportError:
     add_security_middleware = None
     SecurityConfig = None
 
+try:
+    from shared.identity.vault_check import check_vault_health
+except ImportError:
+    check_vault_health = None
+
 from ..config import get_settings
 from ..database import close_db, init_db
 from .router import router
@@ -60,6 +65,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.debug:
         logger.info("DEBUG mode: running init_db() to create tables if missing")
         await init_db()
+
+    # Production Vault smoke gate
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr and check_vault_health:
+            ok = await check_vault_health(vault_addr)
+            if not ok:
+                raise RuntimeError(
+                    "Vault unreachable — cannot start in production without secrets backend"
+                )
 
     yield
 

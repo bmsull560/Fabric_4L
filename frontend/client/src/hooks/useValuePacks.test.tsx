@@ -21,6 +21,7 @@ describe("useValuePacks", () => {
     it("should fetch value packs successfully", async () => {
       const mockPacks = [
         {
+          id: "pack-1",
           pack_id: "pack-1",
           name: "SaaS Metrics Pack",
           industry: "SaaS / B2B",
@@ -91,6 +92,7 @@ describe("useValuePacks", () => {
   describe("useValuePack hook (single pack)", () => {
     it("should fetch single pack by ID", async () => {
       const mockPack = {
+        id: "pack-1",
         pack_id: "pack-1",
         name: "SaaS Metrics Pack",
         industry: "SaaS / B2B",

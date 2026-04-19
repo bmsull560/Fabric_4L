@@ -1,0 +1,123 @@
+# Kubernetes Auth Roles for Vault
+# 
+# These roles bind Kubernetes ServiceAccounts to Vault policies.
+# Apply via: kubectl apply -f k8s/vault/k8s-auth-roles.yaml
+# Then configure in Vault using the vault CLI or Vault Operator.
+#
+# Note: This manifest documents the role configuration. Actual creation
+# requires Vault CLI or a Vault Operator CRD.
+
+# ---
+# External Secrets Operator Role
+# This role allows ESO to fetch secrets from Vault
+# vault write auth/kubernetes/role/external-secrets \
+#   bound_service_account_names=external-secrets \
+#   bound_service_account_namespaces=external-secrets \
+#   policies=external-secrets \
+#   ttl=1h
+# ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-k8s-auth-roles
+  namespace: value-fabric
+data:
+  # Role configuration as YAML for documentation
+  roles.yaml: |
+    external-secrets:
+      bound_service_account_names:
+        - external-secrets
+      bound_service_account_namespaces:
+        - external-secrets
+      policies:
+        - external-secrets
+      ttl: 1h
+      max_ttl: 4h
+    
+    layer1-app:
+      bound_service_account_names:
+        - layer1-ingestion
+      bound_service_account_namespaces:
+        - value-fabric
+      policies:
+        - value-fabric-layers
+      ttl: 1h
+      max_ttl: 4h
+    
+    layer2-app:
+      bound_service_account_names:
+        - layer2-extraction
+      bound_service_account_namespaces:
+        - value-fabric
+      policies:
+        - value-fabric-layers
+      ttl: 1h
+      max_ttl: 4h
+    
+    layer3-app:
+      bound_service_account_names:
+        - layer3-knowledge
+      bound_service_account_namespaces:
+        - value-fabric
+      policies:
+        - value-fabric-layers
+      ttl: 1h
+      max_ttl: 4h
+    
+    layer4-app:
+      bound_service_account_names:
+        - layer4-agents
+      bound_service_account_namespaces:
+        - value-fabric
+      policies:
+        - value-fabric-layers
+      ttl: 1h
+      max_ttl: 4h
+
+---
+# ServiceAccount for External Secrets Operator (if not already created by ESO helm chart)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-secrets
+  namespace: external-secrets
+  annotations:
+    # Vault Kubernetes auth role reference
+    vault.hashicorp.com/role: external-secrets
+
+---
+# ServiceAccounts for each layer (if they don't exist)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: layer1-ingestion
+  namespace: value-fabric
+  annotations:
+    vault.hashicorp.com/role: layer1-app
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: layer2-extraction
+  namespace: value-fabric
+  annotations:
+    vault.hashicorp.com/role: layer2-app
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: layer3-knowledge
+  namespace: value-fabric
+  annotations:
+    vault.hashicorp.com/role: layer3-app
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: layer4-agents
+  namespace: value-fabric
+  annotations:
+    vault.hashicorp.com/role: layer4-app

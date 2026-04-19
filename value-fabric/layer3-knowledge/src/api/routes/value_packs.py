@@ -687,8 +687,7 @@ def _merge_variables(
 
     # Add formula defaults first
     for var in formula_defaults:
-        var_name = var.get("name")
-        default = var.get("default_value")
+        valid_names = {v["variable_name"] for v in var_data.get("variables", []) if v.get("variable_name")}
         if var_name and default is not None:
             try:
                 merged[var_name] = float(default)

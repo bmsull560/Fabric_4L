@@ -1,10 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
-import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG } from './useApiShared';
-
-export type PackStatus = 'active' | 'draft' | 'archived' | 'published';
-export type PackScope = 'global' | 'tenant';
+import { withApiError, BaseApiError, STALE_TIME, RETRY_CONFIG, formatZodError } from './useApiShared';
+import {
+  ValuePackSchema,
+  ValuePackListSchema,
+  type ValuePack,
+  type PackStatus,
+  type PackScope,
+} from '@/lib/schemas/valuePack';
 
 // Domain-specific error class
 export class ValuePackApiError extends BaseApiError {
@@ -14,24 +18,8 @@ export class ValuePackApiError extends BaseApiError {
   }
 }
 
-export interface ValuePack {
-  id: string;
-  pack_id: string;
-  name: string;
-  industry: string;
-  description?: string;
-  driver_count: number;
-  formula_count: number;
-  benchmark_count: number;
-  workflow_count: number;
-  status: PackStatus;
-  scope: PackScope;
-  updated_at: string;
-  created_at?: string;
-  version?: string;
-  owner?: string;
-  category?: string;
-}
+// Re-export types from schema for backward compatibility
+export type { ValuePack, PackStatus, PackScope };
 
 
 export interface ValuePackFilters {
@@ -56,7 +44,14 @@ async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> 
   if (filters.search) params.set('search', filters.search);
 
   const response = await apiClient.get('l3', `/packs?${params.toString()}`);
-  return response.data;
+
+  // Runtime validation with Zod
+  const parsed = ValuePackListSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Value pack list validation failed:', parsed.error);
+    throw new ValuePackApiError(formatZodError(parsed.error, 'value pack list response'));
+  }
+  return parsed.data;
 }
 
 /**
@@ -87,27 +82,26 @@ export function useValuePacks(filters: ValuePackFilters = {}) {
  */
 async function fetchValuePack(packId: string): Promise<ValuePack> {
   const response = await apiClient.get('l3', `/packs/${packId}`);
-  return response.data;
+
+  // Runtime validation with Zod
+  const parsed = ValuePackSchema.safeParse(response.data);
+  if (!parsed.success) {
+    console.error('Value pack detail validation failed:', parsed.error);
+    throw new ValuePackApiError(formatZodError(parsed.error, 'value pack response'));
+  }
+  return parsed.data;
 }
 
 /**
  * Hook to fetch a single value pack by ID.
- * Query is disabled when packId is null.
- * Results are cached for 5 minutes (STALE_TIME.detail).
  *
- * @param packId - The unique identifier of the value pack (null disables the query)
- * @returns React Query result with ValuePack details
- *
- * @example
- * const { data: pack, isLoading } = useValuePack('pack-123');
+ * @param packId - The pack ID to fetch, or null to disable the query
+ * @returns Query result with ValuePack data and loading/error states
  */
 export function useValuePack(packId: string | null) {
   return useQuery<ValuePack, ValuePackApiError>({
     queryKey: QK.valuePacks.detail(packId || ''),
-    queryFn: async () => {
-      if (!packId) throw new ValuePackApiError('Pack ID is required');
-      return withApiError(fetchValuePack(packId), ValuePackApiError);
-    },
+    queryFn: () => withApiError(fetchValuePack(packId!), ValuePackApiError),
     enabled: !!packId,
     staleTime: STALE_TIME.detail,
     retry: RETRY_CONFIG.maxRetries,
@@ -115,6 +109,7 @@ export function useValuePack(packId: string | null) {
   });
 }
 
+/** Parameters for applying/deploying a value pack */
 export interface ApplyValuePackParams {
   packId: string;
 }
@@ -127,6 +122,7 @@ export interface ApplyValuePackResponse {
 /**
  * Hook to apply/deploy a value pack to the current tenant.
  * Invalidates the value packs list query on success.
+ *
  * @returns Mutation object with typed data/error/parameter types
  */
 export function useApplyValuePack() {

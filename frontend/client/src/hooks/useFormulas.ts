@@ -43,7 +43,9 @@ async function fetchFormulas(filters: FormulaFilters): Promise<Formula[]> {
   // Runtime validation with Zod
   const parsed = FormulaListSchema.safeParse(response.data);
   if (!parsed.success) {
-    console.error('Formula list validation failed:', parsed.error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Formula list validation failed:', parsed.error);
+    }
     throw new FormulaApiError(formatZodError(parsed.error, 'formula list response'));
   }
   return parsed.data;
@@ -71,7 +73,9 @@ async function fetchFormula(formulaId: string): Promise<Formula> {
   // Runtime validation with Zod
   const parsed = FormulaSchema.safeParse(response.data);
   if (!parsed.success) {
-    console.error('Formula detail validation failed:', parsed.error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Formula detail validation failed:', parsed.error);
+    }
     throw new FormulaApiError(formatZodError(parsed.error, 'formula response'));
   }
   return parsed.data;
@@ -103,7 +107,9 @@ async function fetchFormulaApprovals(): Promise<ApprovalRequest[]> {
   // Runtime validation with Zod
   const parsed = ApprovalRequestListSchema.safeParse(response.data);
   if (!parsed.success) {
-    console.error('Formula approvals validation failed:', parsed.error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Formula approvals validation failed:', parsed.error);
+    }
     throw new FormulaApiError(formatZodError(parsed.error, 'formula approvals response'));
   }
   return parsed.data;

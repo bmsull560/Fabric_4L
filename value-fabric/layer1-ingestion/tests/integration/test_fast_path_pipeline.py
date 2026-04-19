@@ -533,27 +533,26 @@ class TestPerformanceCharacteristics:
     def test_content_ratio_uses_original_html_length(self) -> None:
         """P1 Regression: Content ratio uses original HTML length, not truncated."""
         from unittest.mock import MagicMock
-        from src.crawler.quality_gate import QualityGate
+        from src.crawler.quality_gate import QualityGate, QualityThresholds
 
-        gate = QualityGate()
+        # Use a high threshold that would fail if using truncated length
+        thresholds = QualityThresholds(min_content_ratio=0.5)
+        gate = QualityGate(thresholds)
 
         # Create result with truncated HTML but large original
         result = MagicMock()
         result.text_content = "A" * 1000  # 1000 chars of text
-        result.html = "A" * 1000          # Truncated to 1000
-        result.original_html_length = 50000  # Originally 50000
+        result.html = "A" * 1000          # Truncated to 1000 (ratio would be 1.0)
+        result.original_html_length = 50000  # Originally 50000 (actual ratio 0.02)
         result.status_code = 200
         result.is_spa_detected = False
         result.fetch_time_ms = 100
+        result.title = "Test"
 
         # Evaluate quality
         decision = gate.evaluate(result)
 
-        # Ratio should be 1000/50000 = 0.02, not 1000/1000 = 1.0
-        # With default threshold of 0.02, this should pass content_ratio check
-        expected_ratio = 1000 / 50000  # 0.02
-        assert expected_ratio == 0.02
-
-        # If we used truncated length, ratio would be 1.0 (1000/1000)
-        wrong_ratio = 1000 / 1000  # 1.0
-        assert wrong_ratio != expected_ratio
+        # Should FAIL because actual ratio 0.02 < threshold 0.5
+        # If code incorrectly used truncated length (ratio 1.0), it would PASS
+        assert not decision.passed, "Quality gate should fail with low content ratio"
+        assert decision.checks["content_ratio"] is False, "content_ratio check should fail"

@@ -67,6 +67,11 @@ except ImportError:
     add_security_middleware = None
     SecurityConfig = None
 
+try:
+    from shared.identity.vault_check import check_vault_health
+except ImportError:
+    check_vault_health = None
+
 logger = logging.getLogger(__name__)
 
 # App start time for uptime calculation
@@ -558,6 +563,16 @@ async def startup_event() -> None:
 
     # Start WebSocket manager for real-time streaming
     await _ws_manager.start()
+
+    # Production Vault smoke gate
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr and check_vault_health:
+            ok = await check_vault_health(vault_addr)
+            if not ok:
+                raise RuntimeError(
+                    "Vault unreachable — cannot start in production without secrets backend"
+                )
 
 
 @app.on_event("shutdown")

@@ -138,7 +138,7 @@ class QualityGate:
             "fallback_reason": decision.fallback_reason,
             "text_length": len(result.text_content),
             "text_threshold": self.thresholds.min_text_length,
-            "content_ratio": len(result.text_content) / max(len(result.html), 1),
+            "content_ratio": len(result.text_content) / max(result.original_html_length or len(result.html), 1),
             "ratio_threshold": self.thresholds.min_content_ratio,
             "fetch_time_ms": result.fetch_time_ms,
             "time_threshold_ms": self.thresholds.max_fetch_time_ms,

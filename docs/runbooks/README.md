@@ -10,20 +10,28 @@ This directory contains runbooks for every alert defined in `monitoring/alerting
 
 ## Runbook Index
 
-| Alert | File | Severity |
-|---|---|---|
-| HighErrorRate | [high-error-rate.md](high-error-rate.md) | critical |
-| DiskSpaceLow | [disk-space-low.md](disk-space-low.md) | warning |
-| DiskSpaceCritical | [disk-space-critical.md](disk-space-critical.md) | critical |
-| DiskInodeExhaustion | [disk-inode-exhaustion.md](disk-inode-exhaustion.md) | warning |
-| SlowQueries | [slow-queries.md](slow-queries.md) | warning |
-| Neo4jDown | [neo4j-down.md](neo4j-down.md) | critical |
-| PostgresDown | [postgres-down.md](postgres-down.md) | critical |
-| RedisDown | [redis-down.md](redis-down.md) | warning |
-| WorkflowStalled | [workflow-stalled.md](workflow-stalled.md) | warning |
-| HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning |
-| HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning |
-| FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning |
+| Alert | File | Severity | Status |
+|---|---|---|---|
+| **HighErrorRate** | [high-error-rate.md](high-error-rate.md) | critical | ✅ Expanded |
+| **AgentWorkflowStall** | [agent-workflow-stall.md](agent-workflow-stall.md) | warning | ✅ New |
+| **Neo4jUnreachable** | [neo4j-unreachable.md](neo4j-unreachable.md) | critical | ✅ New |
+| **PostgresUnreachable** | [postgres-unreachable.md](postgres-unreachable.md) | critical | ✅ New |
+| **RedisUnreachable** | [redis-unreachable.md](redis-unreachable.md) | warning | ✅ New |
+| **LLMProviderOutage** | [llm-provider-outage.md](llm-provider-outage.md) | warning | ✅ New |
+| DiskSpaceLow | [disk-space-low.md](disk-space-low.md) | warning | |
+| DiskSpaceCritical | [disk-space-critical.md](disk-space-critical.md) | critical | |
+| DiskInodeExhaustion | [disk-inode-exhaustion.md](disk-inode-exhaustion.md) | warning | |
+| SlowQueries | [slow-queries.md](slow-queries.md) | warning | |
+| Neo4jDown | [neo4j-down.md](neo4j-down.md) | critical | Legacy |
+| PostgresDown | [postgres-down.md](postgres-down.md) | critical | Legacy |
+| RedisDown | [redis-down.md](redis-down.md) | warning | Legacy |
+| WorkflowStalled | [workflow-stalled.md](workflow-stalled.md) | warning | Legacy |
+| HighMemoryUsage | [high-memory-usage.md](high-memory-usage.md) | warning | |
+| HighCPUUsage | [high-cpu-usage.md](high-cpu-usage.md) | warning | |
+| FormulaApprovalRequired | [formula-approval.md](formula-approval.md) | warning | |
+| HighLLMCostRate | [high-llm-cost.md](high-llm-cost.md) | warning | |
+| StaleGroundTruthObjects | [stale-ground-truth.md](stale-ground-truth.md) | warning | |
+| ServiceDown | [service-down.md](service-down.md) | critical | |
 
 ## Disaster Recovery Game Days
 

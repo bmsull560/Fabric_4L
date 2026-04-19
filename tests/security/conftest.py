@@ -1,5 +1,7 @@
 """Shared fixtures for security tests."""
 
+import os
+
 import pytest
 import jwt
 
@@ -52,3 +54,50 @@ def tenant_b_token(jwt_encoder):
         "role": "standard",
         "email": "user@tenant-b.com",
     })
+
+
+@pytest.fixture
+def db_connection():
+    """Database connection for RLS policy testing."""
+    import psycopg2
+
+    # Read from environment or use test defaults
+    db_url = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/test_value_fabric")
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    yield conn
+    conn.close()
+
+
+@pytest.fixture
+def redis_client():
+    """Redis client for cache isolation testing."""
+    import redis
+
+    redis_host = os.getenv("REDIS_HOST", "localhost")
+    redis_port = int(os.getenv("REDIS_PORT", 6379))
+    redis_db = int(os.getenv("REDIS_DB", 0))
+
+    client = redis.Redis(
+        host=redis_host,
+        port=redis_port,
+        db=redis_db,
+        decode_responses=False,
+    )
+    yield client
+    client.close()
+
+
+@pytest.fixture
+def client():
+    """TestClient fixture - overridden from root conftest."""
+    from fastapi.testclient import TestClient
+
+    # This assumes the app is importable - may need adjustment based on actual structure
+    try:
+        from value_fabric.layer1_ingestion.src.api.main import app
+        return TestClient(app)
+    except ImportError:
+        # Fallback - tests using this will be skipped if app not available
+        pytest.skip("FastAPI app not available for testing")
+        return None

@@ -18,6 +18,9 @@ Import from here:
 """
 
 from .artifacts import (
+    # Constants
+    CONFIDENCE_HIGH_THRESHOLD,
+    CONFIDENCE_MEDIUM_THRESHOLD,
     # Core schema
     EntityRef,
     ConfidenceScore,
@@ -49,6 +52,10 @@ from .artifacts import (
 )
 
 __all__ = [
+    # Constants
+    "CONFIDENCE_HIGH_THRESHOLD",
+    "CONFIDENCE_MEDIUM_THRESHOLD",
+    # Core schema
     "EntityRef",
     "ConfidenceScore",
     "ProvenanceRecord",

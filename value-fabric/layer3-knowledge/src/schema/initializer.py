@@ -1,6 +1,7 @@
 """Schema initializer for Neo4j Knowledge Graph."""
 
 import logging
+from typing import TYPE_CHECKING
 
 from neo4j import AsyncDriver
 from neo4j.exceptions import (
@@ -13,9 +14,17 @@ from neo4j.exceptions import (
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
-from .constraints import CONSTRAINTS, INDEXES, TENANT_CONSTRAINTS
+from .constraints import CONSTRAINTS, INDEXES, TENANT_CONSTRAINTS, Constraint, Index
+
+if TYPE_CHECKING:
+    from neo4j import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+# Error message patterns for resilient matching
+_ERROR_ALREADY_EXISTS = "already exists"
+_ERROR_CONSTRAINT_EXISTS = "constraint already exists"
+_ERROR_INDEX_EXISTS = "index already exists"
 
 
 class SchemaInitializer:
@@ -47,11 +56,23 @@ class SchemaInitializer:
             await self._driver.close()
             self._driver = None
 
-    async def _detect_edition(self, session) -> str:
+    def _get_edition(self, edition: str | None = None) -> str:
+        """Get effective edition with fallback chain.
+
+        Args:
+            edition: Optional edition override. Falls back to cached edition,
+                     then defaults to "community".
+
+        Returns:
+            Effective edition string
+        """
+        return edition or self._edition or "community"
+
+    async def _detect_edition(self, session: "AsyncSession") -> str:
         """Detect Neo4j edition (community or enterprise).
 
         Args:
-            session: Neo4j session
+            session: Neo4j async session
 
         Returns:
             Edition string: "community", "enterprise", or "unknown"
@@ -61,8 +82,11 @@ class SchemaInitializer:
             record = await result.single()
             edition = record["edition"].lower() if record else "unknown"
             return edition
-        except Exception as e:
-            logger.warning(f"Failed to detect Neo4j edition, assuming community: {e}")
+        except (ClientError, DatabaseError) as e:
+            logger.warning(
+                "Failed to detect Neo4j edition, assuming community",
+                extra={"error": str(e), "error_type": type(e).__name__},
+            )
             return "community"
 
     def _is_enterprise(self, edition: str | None = None) -> bool:
@@ -74,10 +98,9 @@ class SchemaInitializer:
         Returns:
             True if Enterprise Edition, False otherwise
         """
-        ed = edition or self._edition or "community"
-        return ed == "enterprise"
+        return self._get_edition(edition) == "enterprise"
 
-    def _get_constraints_for_edition(self, edition: str | None = None) -> list:
+    def _get_constraints_for_edition(self, edition: str | None = None) -> list[Constraint]:
         """Get constraints appropriate for the Neo4j edition.
 
         Args:
@@ -86,13 +109,11 @@ class SchemaInitializer:
         Returns:
             List of constraints to create for this edition
         """
-        ed = edition or self._edition or "community"
-        if ed == "enterprise":
+        if self._is_enterprise(edition):
             # Enterprise gets all constraints including property existence
             return CONSTRAINTS + TENANT_CONSTRAINTS
-        else:
-            # Community only gets basic unique constraints
-            return CONSTRAINTS
+        # Community only gets basic unique constraints
+        return CONSTRAINTS
 
     async def initialize_schema(self, drop_existing: bool = False) -> None:
         """Initialize all schema elements.
@@ -123,74 +144,101 @@ class SchemaInitializer:
 
             logger.info("Schema initialization complete")
 
-    async def _create_constraints(self, session) -> None:
-        """Create all schema constraints appropriate for the Neo4j edition."""
+    async def _execute_schema_statement(
+        self,
+        session: "AsyncSession",
+        name: str,
+        cypher: str,
+        item_type: str,
+    ) -> None:
+        """Execute a single schema statement with resilient error handling.
+
+        Args:
+            session: Neo4j async session
+            name: Name of the constraint/index for logging
+            cypher: Cypher statement to execute
+            item_type: "constraint" or "index" for context-aware logging
+
+        Raises:
+            Various Neo4j exceptions on non-recoverable errors
+        """
+        try:
+            await session.run(cypher)
+            logger.info(f"Created {item_type}: {name}")
+        except ClientError as e:
+            error_msg = str(e).lower()
+            if _ERROR_ALREADY_EXISTS in error_msg or _ERROR_CONSTRAINT_EXISTS in error_msg or _ERROR_INDEX_EXISTS in error_msg:
+                logger.info(f"{item_type.capitalize()} {name} already exists")
+                return
+            logger.error(
+                f"Client error creating {item_type} {name}",
+                extra={"name": name, "item_type": item_type, "error": str(e)},
+                exc_info=True,
+            )
+            raise
+        except (ConfigurationError, DatabaseError) as e:
+            logger.error(
+                f"Database error creating {item_type} {name}",
+                extra={"name": name, "item_type": item_type, "error": str(e)},
+                exc_info=True,
+            )
+            raise
+        except (TransientError, ServiceUnavailable) as e:
+            logger.warning(
+                f"Transient error creating {item_type} {name}, retry may be needed",
+                extra={"name": name, "item_type": item_type, "error": str(e)},
+            )
+            raise
+
+    async def _create_constraints(self, session: "AsyncSession") -> None:
+        """Create all schema constraints appropriate for the Neo4j edition.
+
+        Args:
+            session: Neo4j async session
+        """
         constraints = self._get_constraints_for_edition(self._edition)
-        skipped = []
 
         for constraint in constraints:
-            try:
-                await session.run(constraint.cypher)
-                logger.info(f"Created constraint: {constraint.name}")
-            except ClientError as e:
-                if "already exists" in str(e):
-                    logger.info(f"Constraint {constraint.name} already exists")
-                else:
-                    logger.error(
-                        f"Client error creating constraint {constraint.name}: {e}"
-                    )
-                    raise
-            except (ConfigurationError, DatabaseError) as e:
-                logger.error(
-                    f"Database error creating constraint {constraint.name}: {e}"
-                )
-                raise
-            except (TransientError, ServiceUnavailable) as e:
-                logger.warning(
-                    f"Transient error creating constraint {constraint.name}, retry may be needed: {e}"
-                )
-                raise
-            except Exception as e:
-                logger.error(
-                    f"Unexpected error creating constraint {constraint.name}: {e}"
-                )
-                raise
+            await self._execute_schema_statement(
+                session, constraint.name, constraint.cypher, "constraint"
+            )
 
         # Log skipped enterprise constraints
         if not self._is_enterprise() and TENANT_CONSTRAINTS:
             skipped_names = [c.name for c in TENANT_CONSTRAINTS]
-            logger.info(f"Skipped Enterprise-only constraints: {skipped_names}")
+            logger.info(
+                "Skipped Enterprise-only constraints",
+                extra={"skipped_count": len(TENANT_CONSTRAINTS), "skipped_names": skipped_names},
+            )
 
-    async def _create_indexes(self, session) -> None:
-        """Create all schema indexes."""
+    def _build_index_cypher(self, index: Index) -> str:
+        """Build Cypher for creating an index.
+
+        Args:
+            index: Index definition
+
+        Returns:
+            Cypher statement for creating the index
+        """
+        if index.index_type == "vector":
+            return self._build_vector_index_cypher(
+                index_name=index.name,
+                entity_type=index.entity_type,
+                property_name=index.properties[0],
+            )
+        return index.cypher
+
+    async def _create_indexes(self, session: "AsyncSession") -> None:
+        """Create all schema indexes.
+
+        Args:
+            session: Neo4j async session
+        """
         for index in INDEXES:
-            try:
-                query = index.cypher
-                if index.index_type == "vector":
-                    query = self._build_vector_index_cypher(
-                        index_name=index.name,
-                        entity_type=index.entity_type,
-                        property_name=index.properties[0],
-                    )
-                await session.run(query)
-                logger.info(f"Created index: {index.name}")
-            except ClientError as e:
-                if "already exists" in str(e):
-                    logger.info(f"Index {index.name} already exists")
-                else:
-                    logger.error(f"Client error creating index {index.name}: {e}")
-                    raise
-            except (ConfigurationError, DatabaseError) as e:
-                logger.error(f"Database error creating index {index.name}: {e}")
-                raise
-            except (TransientError, ServiceUnavailable) as e:
-                logger.warning(
-                    f"Transient error creating index {index.name}, retry may be needed: {e}"
-                )
-                raise
-            except Exception as e:
-                logger.error(f"Unexpected error creating index {index.name}: {e}")
-                raise
+            query = self._build_index_cypher(index)
+            await self._execute_schema_statement(
+                session, index.name, query, "index"
+            )
 
     def _build_vector_index_cypher(
         self,

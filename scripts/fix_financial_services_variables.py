@@ -261,11 +261,11 @@ def main():
             print(f"Added: {var['variable_name']} ({var['variable_id']})")
 
     # Save variables.json
-    with open(variables_path, 'w') as f:
+    with open(variables_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2)
 
     # Update manifest
-    with open(manifest_path) as f:
+    with open(manifest_path, encoding='utf-8') as f:
         manifest = json.load(f)
 
     for pack in manifest['packs']:

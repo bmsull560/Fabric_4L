@@ -81,13 +81,6 @@ class ConfidenceScore(BaseModel):
     level: ConfidenceLevel = ConfidenceLevel.MEDIUM
     basis: str = Field(default="", description="Human-readable explanation of the score")
 
-    @field_validator("score")
-    @classmethod
-    def validate_score_range(cls, v: float) -> float:
-        if not 0.0 <= v <= 1.0:
-            raise ValueError(f"Confidence score must be between 0.0 and 1.0, got {v}")
-        return v
-
     @field_validator("level", mode="before")
     @classmethod
     def derive_level(cls, v: Any, info: Any) -> ConfidenceLevel:

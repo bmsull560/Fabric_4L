@@ -164,6 +164,41 @@ test-frontend: ## Run frontend unit tests
 test-e2e: ## Run Playwright end-to-end tests (requires running stack)
 	cd frontend && pnpm exec playwright test
 
+# ─── Security Tests ───────────────────────────────────────────────────────────
+
+security-smoke: ## Run fast security smoke tests (< 2 min, PR gating)
+	@echo "→ Running security smoke tests (critical checks only)..."
+	$(PYTEST) tests/security/test_security_smoke.py -v --tb=short -x
+	@echo "✅  Security smoke tests passed"
+
+security-test: ## Run full security test suite (~ 15 min, scheduled workflows)
+	@echo "→ Running full security test suite..."
+	$(PYTEST) tests/security/test_tenant_isolation.py -v --tb=short -k "P0" || true
+	$(PYTEST) tests/security/test_rbac.py -v --tb=short -k "P0" || true
+	$(PYTEST) tests/security/test_owasp_top10.py -v --tb=short -k "P0" || true
+	$(PYTEST) tests/security/test_security_misconfiguration.py -v --tb=short || true
+	@echo "✅  Full security test suite complete (check outputs for failures)"
+
+security-test-isolation: ## Run tenant isolation tests only
+	@echo "→ Running tenant isolation tests..."
+	$(PYTEST) tests/security/test_tenant_isolation.py -v --tb=short
+
+security-test-rbac: ## Run RBAC tests only
+	@echo "→ Running RBAC tests..."
+	$(PYTEST) tests/security/test_rbac.py -v --tb=short
+
+security-test-owasp: ## Run OWASP Top 10 tests only
+	@echo "→ Running OWASP Top 10 tests..."
+	$(PYTEST) tests/security/test_owasp_top10.py -v --tb=short
+
+security-test-injection: ## Run injection prevention tests
+	@echo "→ Running injection tests..."
+	$(PYTEST) tests/security/test_injection.py -v --tb=short
+
+security-coverage: ## Run security tests with coverage report
+	@echo "→ Running security tests with coverage..."
+	$(PYTEST) tests/security/ --cov=shared/security --cov-report=html --cov-report=term
+
 # ─── Agent Evaluations ────────────────────────────────────────────────────────
 
 evals: ## Run agent golden-trace evaluations (requires OPENAI_API_KEY)

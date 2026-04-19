@@ -63,6 +63,11 @@ except ImportError:
     add_security_middleware = None
     SecurityConfig = None
 
+try:
+    from shared.identity.vault_check import check_vault_health
+except ImportError:
+    check_vault_health = None
+
 # Configure logging
 structlog.configure(
     processors=[
@@ -236,6 +241,21 @@ except ImportError:
 if metrics:
     metrics_middleware = MetricsMiddleware(metrics)
     app.middleware("http")(metrics_middleware)
+
+
+# Startup event: Vault health check
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Verify Vault connectivity in production."""
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        vault_addr = os.getenv("VAULT_ADDR")
+        if vault_addr and check_vault_health:
+            ok = await check_vault_health(vault_addr)
+            if not ok:
+                raise RuntimeError(
+                    "Vault unreachable — cannot start in production without secrets backend"
+                )
+
 
 # Create router for spec-compliant endpoints
 router = APIRouter(prefix="/api/v1/ingestion")
@@ -621,6 +641,54 @@ class JobProgressResponse(BaseModel):
     status: str
     progress: JobProgressDetail
     last_update: datetime
+
+
+# =============================================================================
+# PYDANTIC SCHEMAS - Crawl Decisions (HTTPX Fast Path)
+# =============================================================================
+
+
+class CrawlDecisionSummary(BaseModel):
+    """Summary of a crawl decision for API responses."""
+
+    decision_id: UUID
+    url: str
+    router_decision: str
+    router_rule: str
+    final_path: str
+    fallback_reason: str | None
+    fetch_time_ms: int
+    created_at: datetime
+
+
+class RouterQualityReportResponse(BaseModel):
+    """Quality metrics for a job's routing decisions."""
+
+    job_id: UUID
+    total_urls: int
+    fast_path_count: int
+    browser_path_count: int
+    fallback_count: int
+    fallback_rate: float
+    quality_gate_accuracy: float
+    top_router_rules: dict[str, int]
+    avg_fetch_time_ms: float
+    slowest_url: str | None
+    fastest_url: str | None
+
+
+class DomainFallbackStatsResponse(BaseModel):
+    """Fallback statistics for a domain."""
+
+    domain: str
+    total_decisions: int
+    fast_count: int
+    browser_count: int
+    fallback_count: int
+    fallback_rate: float
+    top_fallback_reasons: dict[str, int]
+    avg_fast_duration_ms: float
+    avg_browser_duration_ms: float
 
 
 # =============================================================================
@@ -1285,6 +1353,152 @@ async def execute_target(
             "scope": "organization",
         },
         estimated_start_time=None,
+    )
+
+
+# =============================================================================
+# API ENDPOINTS - Crawl Decisions (HTTPX Fast Path)
+# =============================================================================
+
+
+@router.get("/targets/{target_id}/decisions", response_model=list[CrawlDecisionSummary])
+async def get_target_decisions(
+    target_id: UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    org_id: UUID = Depends(get_organization_id),
+    db: Session = Depends(get_db),
+):
+    """Get recent crawl decisions for a target's jobs.
+
+    Returns the most recent crawl decisions across all jobs
+    for this target, showing routing choices and outcomes.
+    """
+    from ..crawler.decision_store import CrawlDecisionRepository
+
+    # Verify target exists and belongs to org
+    target = db.query(ScrapingTarget).filter(
+        ScrapingTarget.id == target_id,
+        ScrapingTarget.organization_id == org_id
+    ).first()
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Target not found")
+
+    # Get decisions for all jobs of this target
+    jobs = db.query(ScrapingJob).filter(ScrapingJob.target_id == target_id).all()
+    job_ids = [str(j.id) for j in jobs]
+
+    repo = CrawlDecisionRepository(db)
+    all_decisions = []
+
+    for job_id in job_ids[:5]:  # Limit to recent 5 jobs
+        decisions = await repo.get_by_job(job_id, limit=20)
+        all_decisions.extend(decisions)
+
+    # Sort by created_at desc and limit
+    all_decisions.sort(key=lambda d: d.created_at, reverse=True)
+    all_decisions = all_decisions[:limit]
+
+    return [
+        CrawlDecisionSummary(
+            decision_id=UUID(d.decision_id),
+            url=d.url,
+            router_decision=d.router_decision,
+            router_rule=d.router_rule,
+            final_path=d.final_path,
+            fallback_reason=d.fallback_reason,
+            fetch_time_ms=d.fetch_time_ms,
+            created_at=d.created_at,
+        )
+        for d in all_decisions
+    ]
+
+
+@router.get("/jobs/{job_id}/router-report", response_model=RouterQualityReportResponse)
+async def get_job_router_report(
+    job_id: UUID,
+    org_id: UUID = Depends(get_organization_id),
+    db: Session = Depends(get_db),
+):
+    """Get routing quality report for a specific job.
+
+    Provides metrics on routing accuracy, fallback rates,
+    and performance characteristics for analysis.
+    """
+    from ..crawler.decision_store import CrawlDecisionRepository
+
+    # Verify job exists and belongs to org
+    job = db.query(ScrapingJob).filter(
+        ScrapingJob.id == job_id,
+        ScrapingJob.organization_id == org_id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    repo = CrawlDecisionRepository(db)
+    report = await repo.get_router_quality_report(str(job_id))
+
+    return RouterQualityReportResponse(
+        job_id=UUID(report.job_id),
+        total_urls=report.total_urls,
+        fast_path_count=report.fast_path_count,
+        browser_path_count=report.browser_path_count,
+        fallback_count=report.fallback_count,
+        fallback_rate=report.fallback_rate,
+        quality_gate_accuracy=report.quality_gate_accuracy,
+        top_router_rules=report.top_router_rules,
+        avg_fetch_time_ms=report.avg_fetch_time_ms,
+        slowest_url=report.slowest_url,
+        fastest_url=report.fastest_url,
+    )
+
+
+@router.get("/domains/{domain}/fallback-stats", response_model=DomainFallbackStatsResponse)
+async def get_domain_fallback_stats(
+    domain: str,
+    days: int = Query(default=7, ge=1, le=30),
+    org_id: UUID = Depends(get_organization_id),
+    db: Session = Depends(get_db),
+):
+    """Get fallback statistics for a specific domain.
+
+    Shows how often the router falls back to browser for this
+    domain, helping identify SPA-heavy sites or routing issues.
+    """
+    from datetime import timedelta
+    from ..crawler.decision_store import CrawlDecisionRepository
+
+    # Verify org has crawled this domain (basic authorization check)
+    has_access = db.query(CrawlDecision).filter(
+        CrawlDecision.domain == domain,
+        CrawlDecision.tenant_id == org_id
+    ).first()
+
+    if not has_access:
+        # Check if any target URL matches this domain
+        has_target = db.query(ScrapingTarget).filter(
+            ScrapingTarget.organization_id == org_id,
+            ScrapingTarget.url.ilike(f"%{domain}%")
+        ).first()
+
+        if not has_target:
+            raise HTTPException(status_code=403, detail="No access to this domain")
+
+    since = datetime.utcnow() - timedelta(days=days)
+    repo = CrawlDecisionRepository(db)
+    stats = await repo.get_fallback_stats(domain, since=since)
+
+    return DomainFallbackStatsResponse(
+        domain=stats.domain,
+        total_decisions=stats.total_decisions,
+        fast_count=stats.fast_count,
+        browser_count=stats.browser_count,
+        fallback_count=stats.fallback_count,
+        fallback_rate=stats.fallback_rate,
+        top_fallback_reasons=stats.top_fallback_reasons,
+        avg_fast_duration_ms=stats.avg_fast_duration_ms,
+        avg_browser_duration_ms=stats.avg_browser_duration_ms,
     )
 
 
