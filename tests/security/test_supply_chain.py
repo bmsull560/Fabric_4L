@@ -265,14 +265,19 @@ class TestAdmissionPolicies:
         for policy_file in policy_files:
             try:
                 with open(policy_file) as f:
-                    policy = yaml.safe_load(f)
-                
-                # Validate required fields
-                assert policy["apiVersion"] == "kyverno.io/v1"
-                assert policy["kind"] in ["ClusterPolicy", "Policy"]
-                assert "metadata" in policy
-                assert "spec" in policy
-                assert "rules" in policy["spec"]
+                    # Use safe_load_all to handle multi-document YAML files
+                    # (Kyverno policy files often bundle multiple ClusterPolicy docs)
+                    policies = list(yaml.safe_load_all(f))
+
+                assert len(policies) > 0, f"No documents found in {policy_file}"
+
+                # Validate required fields on every document in the file
+                for policy in policies:
+                    assert policy["apiVersion"] == "kyverno.io/v1"
+                    assert policy["kind"] in ["ClusterPolicy", "Policy"]
+                    assert "metadata" in policy
+                    assert "spec" in policy
+                    assert "rules" in policy["spec"]
             except FileNotFoundError:
                 pytest.skip(f"Policy file not found: {policy_file}")
 
