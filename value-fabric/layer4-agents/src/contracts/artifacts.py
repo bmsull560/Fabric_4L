@@ -340,6 +340,7 @@ class ValueModelArtifact(BaseModel):
 
     # Lineage
     context_artifact_id: str  # ContextArtifact.artifact_id
+    competitive_intel_artifact_id: str | None = None  # CompetitiveIntelArtifact.artifact_id
     pack_id: str | None = None
 
     # Tenant context
@@ -482,6 +483,7 @@ class NarrativeArtifact(BaseModel):
     # Lineage
     value_model_artifact_id: str
     integrity_artifact_id: str
+    competitive_intel_artifact_id: str | None = None  # CompetitiveIntelArtifact.artifact_id
 
     # Core output
     executive_summary: ExecutiveSummary = Field(default_factory=ExecutiveSummary)
@@ -494,3 +496,236 @@ class NarrativeArtifact(BaseModel):
         default_factory=list
     )
     last_exported_at: datetime | None = None
+
+
+# ---------------------------------------------------------------------------
+# Artifact 5: CompetitiveIntelArtifact
+# Owned by: CompetitiveIntelAgent
+#
+# Design principle (from framework spec):
+#   "Competitive intel in a value model is evidence about alternative choices
+#    that changes the economic case."
+#
+# A competitive fact belongs in this artifact only if it affects:
+#   - value magnitude   (economic differences)
+#   - value timing      (time-to-value differences)
+#   - value confidence  (proof quality, reference depth)
+#   - value risk        (execution risk, vendor lock-in, compliance exposure)
+# ---------------------------------------------------------------------------
+
+
+class CompetitiveBaseline(str, Enum):
+    """The four real competitors every value model must evaluate against."""
+    STATUS_QUO = "STATUS_QUO"           # Doing nothing — cost of inaction
+    INCUMBENT = "INCUMBENT"             # Existing vendor, spreadsheet, or workflow
+    ALTERNATIVE_VENDOR = "ALTERNATIVE_VENDOR"  # Direct category competitor
+    INTERNAL_BUILD = "INTERNAL_BUILD"   # DIY / tool assembly by the buyer
+
+
+class EconomicDifferenceCategory(str, Enum):
+    """
+    The five dimensions that translate competitive facts into economic argument.
+    Maps directly to the five model inputs from the framework spec.
+    """
+    CAPABILITY_TO_OUTCOME = "CAPABILITY_TO_OUTCOME"
+    TIME_TO_VALUE = "TIME_TO_VALUE"
+    COST_STRUCTURE = "COST_STRUCTURE"
+    RISK_AND_CONFIDENCE = "RISK_AND_CONFIDENCE"
+    VALUE_REALIZATION_CONFIDENCE = "VALUE_REALIZATION_CONFIDENCE"
+
+
+class ProofSource(BaseModel):
+    """
+    A single piece of evidence supporting a competitive claim.
+    Replaces free-text battlecard citations with structured, scoreable proof.
+    """
+    source_type: Literal[
+        "CUSTOMER_REFERENCE",
+        "ANALYST_REPORT",
+        "WIN_LOSS_DATA",
+        "PRODUCT_DOCUMENTATION",
+        "MEETING_TRANSCRIPT",
+        "BENCHMARK_STUDY",
+        "INTERNAL_ESTIMATE",
+    ]
+    description: str
+    url: str | None = None
+    published_at: datetime | None = None
+    credibility: Literal["HIGH", "MEDIUM", "LOW"] = "MEDIUM"
+
+
+class EconomicDifference(BaseModel):
+    """
+    A single economic difference between Value Fabric and a competitive baseline.
+
+    This is the atomic unit of competitive intelligence in the value model.
+    It must be specific enough to affect an assumption, scenario, or confidence
+    score in the ValueModelArtifact.
+    """
+    difference_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    category: EconomicDifferenceCategory
+
+    # Human-readable description of the difference
+    description: str = Field(
+        ...,
+        description=(
+            "Concrete economic statement, e.g. 'Competitor X requires 6 months "
+            "of professional services before go-live, delaying time-to-value by "
+            "an estimated 180 days relative to Value Fabric.'"
+        ),
+    )
+
+    # Quantified impact where possible
+    impact_direction: Literal["FAVORS_US", "FAVORS_COMPETITOR", "NEUTRAL"] = "FAVORS_US"
+    impact_magnitude: str = Field(
+        default="",
+        description=(
+            "Quantified impact where available, e.g. '+$120K year-1 net savings', "
+            "'–60 days time-to-value', '2x lower admin burden'."
+        ),
+    )
+
+    # Which value model components this difference affects
+    affects_assumptions: list[str] = Field(
+        default_factory=list,
+        description="Assumption IDs in ValueModelArtifact.assumption_registry that this difference modifies.",
+    )
+    affects_scenarios: list[str] = Field(
+        default_factory=list,
+        description="Scenario IDs in ValueModelArtifact.scenario_analyses that this difference applies to.",
+    )
+
+    # Evidence
+    proof_sources: list[ProofSource] = Field(default_factory=list)
+    confidence: ConfidenceScore | None = None
+
+    # Flag for IntegrityAgent review
+    is_unsupported_claim: bool = False
+    integrity_flag: str | None = Field(
+        default=None,
+        description="Populated by IntegrityAgent if the claim lacks sufficient evidence.",
+    )
+
+
+class CompetitiveScenario(BaseModel):
+    """
+    A side-by-side financial scenario comparing Value Fabric against one baseline.
+    Feeds directly into ValueModelArtifact.scenario_analyses.
+    """
+    scenario_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    baseline_type: CompetitiveBaseline
+    competitor_name: str | None = None
+    label: str  # e.g. "vs. Status Quo", "vs. Incumbent (Salesforce CPQ)"
+
+    # Financial deltas relative to Value Fabric base case
+    year1_net_value_delta_usd: Decimal | None = None
+    payback_months_delta: int | None = None
+    time_to_value_days_delta: int | None = None
+
+    # Confidence in this scenario's assumptions
+    scenario_confidence: ConfidenceScore | None = None
+    key_assumptions: list[str] = Field(
+        default_factory=list,
+        description="Free-text assumptions underpinning this scenario.",
+    )
+    sensitivity_notes: str = Field(
+        default="",
+        description=(
+            "Describe where the model still wins under conservative assumptions "
+            "— the 'even if' argument."
+        ),
+    )
+
+
+class CompetitiveIntelArtifact(BaseModel):
+    """
+    Output of CompetitiveIntelAgent.
+
+    First-class input to the value model — not a sidebar battlecard.
+    Competitive facts that do not affect value magnitude, timing, confidence,
+    or risk are excluded by design.
+
+    Lifecycle:
+      1. CompetitiveIntelAgent populates this artifact from Knowledge Graph
+         queries, ingested competitor content, and meeting transcripts.
+      2. ValueModelAgent reads competitive_baselines to adjust assumptions
+         and scenario analyses in ValueModelArtifact.
+      3. IntegrityAgent audits is_unsupported_claim flags and scores
+         overall competitive defensibility.
+      4. NarrativeAgent uses competitive_scenarios to generate the
+         'value superiority' framing in the executive readout.
+    """
+    model_config = ConfigDict(populate_by_name=True)
+
+    # Artifact identity
+    artifact_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    artifact_type: Literal["CompetitiveIntelArtifact"] = "CompetitiveIntelArtifact"
+    schema_version: Literal["1.0.0"] = "1.0.0"
+    owner_agent: Literal["CompetitiveIntelAgent"] = "CompetitiveIntelAgent"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    # Lineage — links back to the context that triggered this analysis
+    context_artifact_id: str
+    tenant_id: str
+    workspace_id: str
+
+    # The four competitive baselines evaluated
+    # Each entry covers one alternative option the buyer is considering
+    competitive_baselines: list[CompetitiveBaseline] = Field(
+        default_factory=list,
+        description=(
+            "Which of the four baselines were analyzed. A complete value model "
+            "evaluates all four: STATUS_QUO, INCUMBENT, ALTERNATIVE_VENDOR, "
+            "INTERNAL_BUILD."
+        ),
+    )
+
+    # Structured economic differences per baseline
+    economic_differences: list[EconomicDifference] = Field(default_factory=list)
+
+    # Comparative financial scenarios
+    competitive_scenarios: list[CompetitiveScenario] = Field(default_factory=list)
+
+    # Unsupported claims flagged for rep review before executive delivery
+    flagged_claims: list[str] = Field(
+        default_factory=list,
+        description="difference_ids of EconomicDifferences with is_unsupported_claim=True.",
+    )
+
+    # Overall competitive confidence score (weighted average across differences)
+    overall_competitive_confidence: ConfidenceScore | None = None
+
+    @property
+    def is_complete(self) -> bool:
+        """
+        A complete competitive analysis covers all four baselines and has
+        at least one economic difference per baseline.
+        """
+        covered = {d.category for d in self.economic_differences}
+        baselines_covered = len(self.competitive_baselines) >= 2
+        has_differences = len(self.economic_differences) >= 4
+        return baselines_covered and has_differences
+
+    @property
+    def has_unsupported_claims(self) -> bool:
+        return len(self.flagged_claims) > 0
+
+    @property
+    def supported_differences(self) -> list[EconomicDifference]:
+        """Return only differences with at least one proof source."""
+        return [d for d in self.economic_differences if d.proof_sources]
+
+    @property
+    def competitive_defensibility_score(self) -> float:
+        """
+        0.0–1.0 score representing how defensible the competitive argument is.
+        Computed as: (supported differences / total differences) weighted by
+        proof source credibility.
+        """
+        if not self.economic_differences:
+            return 0.0
+        total = len(self.economic_differences)
+        supported = len(self.supported_differences)
+        unsupported_penalty = len(self.flagged_claims) * 0.1
+        base_score = supported / total
+        return max(0.0, min(1.0, base_score - unsupported_penalty))
