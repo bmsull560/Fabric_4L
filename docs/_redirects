@@ -1,0 +1,36 @@
+# Documentation Redirects
+# Format: from_path to_path status_code
+#
+# Phase 1 Archival - 2026-04-19
+# These redirects map archived documentation URLs to their modern equivalents
+
+# Phase 2 Migration - 2026-04-19
+# API Reference split into layer-specific docs
+/API_REFERENCE.md /docs/reference/api-overview.md 301
+
+# Runbook reorganization
+/docs/runbooks/ /docs/troubleshooting/runbooks/ 301
+
+# Task-specific signoffs and implementation docs
+/LAYER2_GAP_ANALYSIS.md /ROADMAP.md 301
+/Phase2_Readiness_Status.md /ROADMAP.md 301
+/HTTPX_FAST_PATH_PRODUCTION_SIGNOFF.md /docs/operations/COMMAND_REFERENCE.md 301
+/MY_MODELS_PRODUCTION_SIGNOFF.md /LAUNCH_READINESS_REPORT.md 301
+/MY_MODELS_PRODUCTION_READINESS.md /ROADMAP.md 301
+/TASK_42_IMPLEMENTATION_SUMMARY.md /ROADMAP.md 301
+/TASK_42_VERIFICATION_REPORT.md /ROADMAP.md 301
+/TIER1_BLOCKERS_IMPLEMENTATION_SPEC.md /ROADMAP.md 301
+/TIER1_BLOCKERS_IMPLEMENTATION_COMPLETE.md /ROADMAP.md 301
+/DEPLOYMENT_REALITY_REPORT.md /DEPLOYMENT_COMPLETE.md 301
+
+# Archived content (preserved for reference but redirects to modern docs)
+/docs/archive/2026-04-19/ARCHIVED_LAYER2_GAP_ANALYSIS.md /ROADMAP.md 302
+/docs/archive/2026-04-19/ARCHIVED_Phase2_Readiness_Status.md /ROADMAP.md 302
+/docs/archive/2026-04-19/ARCHIVED_HTTPX_FAST_PATH_PRODUCTION_SIGNOFF.md /docs/operations/COMMAND_REFERENCE.md 302
+/docs/archive/2026-04-19/ARCHIVED_MY_MODELS_PRODUCTION_SIGNOFF.md /LAUNCH_READINESS_REPORT.md 302
+/docs/archive/2026-04-19/ARCHIVED_MY_MODELS_PRODUCTION_READINESS.md /ROADMAP.md 302
+/docs/archive/2026-04-19/ARCHIVED_TASK_42_IMPLEMENTATION_SUMMARY.md /ROADMAP.md 302
+/docs/archive/2026-04-19/ARCHIVED_TASK_42_VERIFICATION_REPORT.md /ROADMAP.md 302
+/docs/archive/2026-04-19/ARCHIVED_TIER1_BLOCKERS_IMPLEMENTATION_SPEC.md /ROADMAP.md 302
+/docs/archive/2026-04-19/ARCHIVED_TIER1_BLOCKERS_IMPLEMENTATION_COMPLETE.md /ROADMAP.md 302
+/docs/archive/2026-04-19/ARCHIVED_DEPLOYMENT_REALITY_REPORT.md /DEPLOYMENT_COMPLETE.md 302

@@ -16,6 +16,13 @@ import { useGraphData } from "@/hooks/useGraphData";
 import { getEntityBadgeClasses } from "@/lib/graph-utils";
 import { cn } from "@/lib/utils";
 
+// Constants for graph configuration
+const GRAPH_NODE_LIMIT = 100;
+const SEARCH_MAX_RESULTS = 20;
+const DEFAULT_DEPTH = 2;
+const CANVAS_MIN_HEIGHT = 500;
+const HEADER_OFFSET_PX = 280;
+
 export default function GraphExplorer() {
   const [selected, setSelected] = useState<string | null>(null);
   const [queryText, setQueryText] = useState("");
@@ -24,8 +31,8 @@ export default function GraphExplorer() {
 
   const { data: subgraph, isLoading: subgraphLoading, error: subgraphError, refetch: refetchSubgraph } = useSubgraph({
     query: '',
-    depth: 2,
-    limit: 100,
+    depth: DEFAULT_DEPTH,
+    limit: GRAPH_NODE_LIMIT,
   });
 
   const { data: entityContext, isLoading: contextLoading } = useEntityContext(selected, 2);
@@ -45,7 +52,7 @@ export default function GraphExplorer() {
     setSelected(prev => nodeId === prev ? null : nodeId);
   }, []);
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!queryText.trim()) {
       setSearchResults(null);
       return;
@@ -54,8 +61,8 @@ export default function GraphExplorer() {
     try {
       const results = await graphQuery.mutateAsync({
         query: queryText,
-        max_hops: 2,
-        max_results: 20,
+        max_hops: DEFAULT_DEPTH,
+        max_results: SEARCH_MAX_RESULTS,
       });
       setSearchResults({
         entities: results.entities,
@@ -65,7 +72,13 @@ export default function GraphExplorer() {
       const message = err instanceof Error ? err.message : 'Search failed';
       setSearchError(message);
     }
-  };
+  }, [queryText, graphQuery]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  }, [handleSearch]);
 
   const selectedNodeData = graphData.nodes.find(n => n.id === selected) || null;
 
@@ -89,10 +102,6 @@ export default function GraphExplorer() {
               {graphQuery.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
               Search
             </Btn>
-            {/* TODO: Implement export */}
-            {false && <Btn variant="ghost">Export</Btn>}
-            {/* TODO: Implement focus selection */}
-            {false && <Btn variant="primary">Focus Selection</Btn>}
           </div>
         }
       />
@@ -110,7 +119,7 @@ export default function GraphExplorer() {
                   className="pl-8 h-9 text-sm"
                   value={queryText}
                   onChange={(e) => setQueryText(e.target.value)}
-                  onKeyDown={(e: React.KeyboardEvent) => e.key === "Enter" && handleSearch()}
+                  onKeyDown={handleKeyDown}
                 />
               </div>
 
@@ -138,24 +147,6 @@ export default function GraphExplorer() {
                 </Btn>
               </div>
 
-              {/* TODO: Layout Controls - implement useGraphLayout hook */}
-              {false && (
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Layout</div>
-                  <Btn variant="ghost" className="w-full text-[11px] justify-center">Force Directed</Btn>
-                  <Btn variant="ghost" className="w-full text-[11px] justify-center">Circular</Btn>
-                  <Btn variant="ghost" className="w-full text-[11px] justify-center">Hierarchical</Btn>
-                </div>
-              )}
-
-              {/* TODO: Filter Controls - implement useGraphFilters hook */}
-              {false && (
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Filters</div>
-                  <Btn variant="ghost" className="w-full text-[11px] justify-center">Entity Types ▾</Btn>
-                  <Btn variant="ghost" className="w-full text-[11px] justify-center">Confidence ▾</Btn>
-                </div>
-              )}
             </div>
           </SectionCard>
 
@@ -212,11 +203,11 @@ export default function GraphExplorer() {
           )}
 
           {/* Truncation indicator */}
-          {!isLoading && !error && isEmpty && (
+          {!isLoading && !error && !isEmpty && graphData.nodes.length >= GRAPH_NODE_LIMIT && (
             <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 bg-warning/10 backdrop-blur-sm px-3 py-1.5 rounded-md border border-warning/20 shadow-sm">
               <AlertCircle className="w-3 h-3 text-warning" />
               <span className="text-[11px] text-warning-foreground">
-                Showing 100 nodes. Refine search to see more.
+                Showing {GRAPH_NODE_LIMIT} nodes. Refine search to see more.
               </span>
             </div>
           )}

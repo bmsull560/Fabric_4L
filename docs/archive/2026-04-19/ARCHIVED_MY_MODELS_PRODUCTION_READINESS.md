@@ -1,5 +1,8 @@
 # My Models — Production Readiness Report
 
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records a completed readiness assessment. For current status, see [ROADMAP.md](../../ROADMAP.md). See the [Archive Registry](../archive-registry.md).
+
 ## Executive Summary
 
 The My Models feature has been brought to production readiness through the implementation of a first-class backend API in Layer 3 and a refactored frontend that consumes real data. The feature now has a clean data contract, comprehensive test coverage, and production-quality UX.

@@ -1,5 +1,8 @@
 # Layer 2 Extraction Engine - Gap Analysis Report
 
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document refers to deprecated analysis that is no longer accurate. Layer 2 is now 90% complete. For current status, see [ROADMAP.md](../../ROADMAP.md) and the [Archive Registry](../archive-registry.md).
+
 **Date:** April 18, 2026  
 **Status:** ⚠️ CRITICAL ISSUES IDENTIFIED - Not Production Ready  
 **Analyst:** AI Code Review  

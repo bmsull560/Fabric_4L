@@ -27,6 +27,7 @@ spec:
       containers:
         - name: api
           image: value-fabric/layer3-knowledge:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8001
               name: http

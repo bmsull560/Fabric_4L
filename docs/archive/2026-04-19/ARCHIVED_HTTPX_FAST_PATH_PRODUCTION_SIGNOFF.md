@@ -1,4 +1,7 @@
-# HTTPX Fast Path - Production Sign-Off
+# HTTPX Fast Path — Production Signoff
+
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records a completed production signoff. For current HTTPX configuration, see [docs/operations/COMMAND_REFERENCE.md](../../operations/COMMAND_REFERENCE.md). See the [Archive Registry](../archive-registry.md).
 
 **Date**: 2026-04-16  
 **Version**: 1.0.0  

@@ -27,6 +27,9 @@ STATUS_ACTIVE = "active"
 STATUS_DEPRECATED = "deprecated"
 STATUS_RETIRED = "retired"
 
+# Default configuration constants
+DEFAULT_REVIEW_CYCLE_DAYS = 90
+
 router = APIRouter()
 
 
@@ -292,7 +295,7 @@ async def get_formula_governance(
             status=f.get("status", "draft"),
             owner=f.get("owner"),
             department=f.get("department"),
-            review_cycle_days=f.get("reviewCycleDays", 90),
+            review_cycle_days=f.get("reviewCycleDays", DEFAULT_REVIEW_CYCLE_DAYS),
             approved_by=f.get("approvedBy"),
             approved_at=f.get("approvedAt"),
             last_reviewed_at=f.get("lastReviewedAt"),
@@ -451,10 +454,12 @@ async def submit_for_review(
         # Audit log the governance action
         logger.info(
             "formula_submitted_for_review",
-            formula_id=formula_id,
-            version=request.version,
-            submitted_by=request.submitted_by,
-            actor_key_id=api_key.key_id if api_key else None,
+            extra={
+                "formula_id": formula_id,
+                "version": request.version,
+                "submitted_by": request.submitted_by,
+                "actor_key_id": api_key.key_id if api_key else None,
+            },
         )
 
         return TransitionResponse(
@@ -503,10 +508,12 @@ async def approve_formula(
         # Audit log the governance action
         logger.info(
             "formula_approved",
-            formula_id=formula_id,
-            version=request.version,
-            approved_by=request.approved_by,
-            actor_key_id=api_key.key_id if api_key else None,
+            extra={
+                "formula_id": formula_id,
+                "version": request.version,
+                "approved_by": request.approved_by,
+                "actor_key_id": api_key.key_id if api_key else None,
+            },
         )
 
         return TransitionResponse(
@@ -583,10 +590,12 @@ async def activate_formula(
         # Audit log the governance action
         logger.info(
             "formula_activated",
-            formula_id=formula_id,
-            version=request.version,
-            activated_by=request.requested_by,
-            actor_key_id=api_key.key_id if api_key else None,
+            extra={
+                "formula_id": formula_id,
+                "version": request.version,
+                "activated_by": request.requested_by,
+                "actor_key_id": api_key.key_id if api_key else None,
+            },
         )
 
         return TransitionResponse(
@@ -656,10 +665,12 @@ async def deprecate_formula(
         # Audit log the governance action
         logger.info(
             "formula_deprecated",
-            formula_id=formula_id,
-            old_status=old_status,
-            deprecated_by=request.requested_by,
-            actor_key_id=api_key.key_id if api_key else None,
+            extra={
+                "formula_id": formula_id,
+                "old_status": old_status,
+                "deprecated_by": request.requested_by,
+                "actor_key_id": api_key.key_id if api_key else None,
+            },
         )
 
         return TransitionResponse(

@@ -7497,7 +7497,7 @@
             "minimum": 0.0,
             "title": "Confidence",
             "description": "Confidence in result",
-            "default": 0.95
+            "default": 0.92
           },
           "calculation_steps": {
             "items": {

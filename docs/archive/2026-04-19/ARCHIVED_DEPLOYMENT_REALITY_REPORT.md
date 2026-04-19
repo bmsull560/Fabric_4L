@@ -1,4 +1,8 @@
 # Docker Compose Deployment Reality Report
+
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records a historical deployment snapshot. See [DEPLOYMENT_COMPLETE.md](../../DEPLOYMENT_COMPLETE.md) for current status and the [Archive Registry](../archive-registry.md).
+
 **Date:** 2026-04-12  
 **Phase:** 1 - Deployment Validation
 

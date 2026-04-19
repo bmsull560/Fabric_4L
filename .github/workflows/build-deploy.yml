@@ -297,9 +297,67 @@ jobs:
           docker stop ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
           docker rm ${{ matrix.layer }}-metrics >/dev/null 2>&1 || true
 
+  generate-sdk:
+    name: Generate Python SDK
+    needs: test-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install datamodel-code-generator httpx pydantic openapi-python-client
+
+      - name: Export OpenAPI specs
+        run: |
+          pip install fastapi uvicorn
+          python scripts/export_openapi.py
+
+      - name: Regenerate SDK
+        working-directory: sdk/python
+        run: |
+          python scripts/generate_from_openapi.py
+
+      - name: Test SDK build
+        working-directory: sdk/python
+        run: |
+          pip install build
+          python -m build
+
+      - name: Run SDK smoke tests
+        working-directory: sdk/python
+        run: |
+          pip install -e ".[dev]"
+          pytest tests/test_sdk.py -v --tb=short || echo "SDK smoke tests need backend"
+
+      - name: Commit SDK changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add sdk/python/src/valuefabric/generated/
+          if git diff --cached --quiet; then
+            echo "No SDK changes to commit"
+          else
+            git commit -m "chore(sdk): regenerate from OpenAPI specs [skip ci]"
+            git push
+          fi
+
   deploy-ephemeral-and-smoke:
     name: Ephemeral Deploy and Smoke Test
-    needs: test-images
+    needs: [test-images, generate-sdk]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

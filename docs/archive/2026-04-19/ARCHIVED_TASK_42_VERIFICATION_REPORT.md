@@ -1,5 +1,8 @@
 # Task 42 Implementation Verification Report
 
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records completed verification. See [ROADMAP.md](../../ROADMAP.md) for current status and the [Archive Registry](../archive-registry.md).
+
 **Date:** 2026-04-19  
 **Plan:** task-42-vault-integration-d7ddc3.md  
 **Status:** ✅ ALL ACCEPTANCE CRITERIA MET

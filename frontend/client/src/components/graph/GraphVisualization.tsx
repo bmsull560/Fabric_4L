@@ -35,6 +35,20 @@ export interface GraphVisualizationProps {
 
 const MAX_LABEL_LINE_LENGTH = 12;
 
+/** Type guard to check if a node has position coordinates */
+function hasPosition(node: GraphNode): node is GraphNode & { x: number; y: number } {
+  return typeof node.x === "number" && typeof node.y === "number";
+}
+
+/** Get node coordinates with fallback to center */
+function getNodePosition(
+  node: GraphNode
+): { x: number; y: number } {
+  return hasPosition(node)
+    ? { x: node.x, y: node.y }
+    : { x: VIEWBOX_WIDTH / 2, y: VIEWBOX_HEIGHT / 2 };
+}
+
 /**
  * Graph visualization component using SVG.
  *
@@ -101,19 +115,16 @@ export function GraphVisualization({
             const target = nodeMap.get(edge.target);
             if (!source || !target) return null;
 
-            // Get coordinates (handle positioned and unpositioned nodes)
-            const sx = (source as GraphNode & { x?: number }).x ?? VIEWBOX_WIDTH / 2;
-            const sy = (source as GraphNode & { y?: number }).y ?? VIEWBOX_HEIGHT / 2;
-            const tx = (target as GraphNode & { x?: number }).x ?? VIEWBOX_WIDTH / 2;
-            const ty = (target as GraphNode & { y?: number }).y ?? VIEWBOX_HEIGHT / 2;
+            const sourcePos = getNodePosition(source);
+            const targetPos = getNodePosition(target);
 
             return (
               <line
                 key={`edge-${edge.source}-${edge.target}-${index}`}
-                x1={sx}
-                y1={sy}
-                x2={tx}
-                y2={ty}
+                x1={sourcePos.x}
+                y1={sourcePos.y}
+                x2={targetPos.x}
+                y2={targetPos.y}
                 stroke="hsl(var(--border))"
                 strokeWidth="1.5"
               />
@@ -125,10 +136,7 @@ export function GraphVisualization({
             const colors = getEntityHexColors(node.entity_type);
             const isSelected = node.id === selectedNodeId;
             const radius = getNodeRadius(node.entity_type);
-
-            // Get coordinates
-            const x = (node as GraphNode & { x?: number }).x ?? VIEWBOX_WIDTH / 2;
-            const y = (node as GraphNode & { y?: number }).y ?? VIEWBOX_HEIGHT / 2;
+            const position = getNodePosition(node);
 
             const lines = wrapTextIntoLines(node.name, MAX_LABEL_LINE_LENGTH);
             const lineOffsetBase = (lines.length - 1) / 2;
@@ -136,7 +144,7 @@ export function GraphVisualization({
             return (
               <g
                 key={node.id}
-                transform={`translate(${x}, ${y})`}
+                transform={`translate(${position.x}, ${position.y})`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onNodeClick(node.id);

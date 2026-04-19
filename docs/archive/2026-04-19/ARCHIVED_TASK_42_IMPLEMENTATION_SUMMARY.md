@@ -1,5 +1,8 @@
 # Task 42: HashiCorp Vault Integration - Implementation Summary
 
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records a completed implementation. Current Vault status is in [ROADMAP.md](../../ROADMAP.md). See the [Archive Registry](../archive-registry.md).
+
 **Status:** ✅ COMPLETE  
 **Date:** 2026-04-19  
 **Scope:** Verification-first approach with cross-layer Vault health checks and production wiring

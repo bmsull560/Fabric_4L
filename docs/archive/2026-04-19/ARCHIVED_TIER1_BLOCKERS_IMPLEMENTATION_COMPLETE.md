@@ -1,5 +1,8 @@
 # Tier 1 Production Blockers - Implementation Complete
 
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records completed blocker resolution. See [ROADMAP.md](../../ROADMAP.md) for current status and the [Archive Registry](../archive-registry.md).
+
 **Date:** April 17, 2026  
 **Status:** ✅ IMPLEMENTED  
 **Blockers:** 3/3 Complete

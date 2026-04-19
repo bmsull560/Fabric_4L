@@ -36,22 +36,26 @@ def load_pack_manifest() -> dict[str, Any] | None:
 
 
 def _extract_pack_slug(pack_id: str) -> str | None:
-    """Extract pack slug by removing version suffix.
+    """Extract pack slug from pack_id by removing version suffix.
     
     Args:
         pack_id: Pack identifier (e.g., 'financial-services-v1')
         
     Returns:
-        Pack slug (e.g., 'financial-services') or None if invalid
+        Pack slug (e.g., 'financial-services') or None if invalid/unsafe
     """
-    # Remove version suffix (-v1, -v2, etc.)
-    slug = VERSION_SUFFIX_PATTERN.sub("", pack_id)
-    
-    # Validate slug is not empty and doesn't traverse paths
-    if not slug or slug == "." or ".." in slug or "/" in slug or "\\" in slug:
+    # Validate pack_id format first
+    if not VALID_PACK_ID_PATTERN.match(pack_id):
         return None
     
-    return slug
+    # Remove version suffix (e.g., -v1, -v2, -v123)
+    pack_slug = VERSION_SUFFIX_PATTERN.sub("", pack_id)
+    
+    # Safety check: ensure slug doesn't escape packs directory
+    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug or not pack_slug:
+        return None
+    
+    return pack_slug
 
 
 def load_pack_formulas(pack_id: str) -> list[dict]:
@@ -63,15 +67,10 @@ def load_pack_formulas(pack_id: str) -> list[dict]:
     Returns:
         List of formula definitions in Layer 3 format
     """
-    # Validate pack_id to prevent path traversal
-    if not VALID_PACK_ID_PATTERN.match(pack_id):
+    pack_slug = _extract_pack_slug(pack_id)
+    if pack_slug is None:
         return []
     
-    # Extract slug by removing version suffix (e.g., -v1, -v2, -v123)
-    pack_slug = VERSION_SUFFIX_PATTERN.sub("", pack_id)
-    # Additional safety: ensure pack_slug doesn't escape packs directory
-    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug or not pack_slug:
-        return []
     formulas_file = PACKS_DIR / pack_slug / "formulas.json"
     
     if not formulas_file.exists():
@@ -130,15 +129,10 @@ def load_pack_variables(pack_id: str) -> list[dict]:
     Returns:
         List of variable definitions in Layer 3 format
     """
-    # Validate pack_id to prevent path traversal
-    if not VALID_PACK_ID_PATTERN.match(pack_id):
+    pack_slug = _extract_pack_slug(pack_id)
+    if pack_slug is None:
         return []
     
-    # Extract slug by removing version suffix (e.g., -v1, -v2, -v123)
-    pack_slug = VERSION_SUFFIX_PATTERN.sub("", pack_id)
-    # Additional safety: ensure pack_slug doesn't escape packs directory
-    if ".." in pack_slug or "/" in pack_slug or "\\" in pack_slug or not pack_slug:
-        return []
     variables_file = PACKS_DIR / pack_slug / "variables.json"
     
     if not variables_file.exists():
@@ -270,7 +264,5 @@ def invalidate_cache():
     """Invalidate all caches (useful for reloading)."""
     global _formula_cache, _variable_cache, _pack_cache
     _formula_cache = None
-    _variable_cache = None
-    _pack_cache = None
     _variable_cache = None
     _pack_cache = None

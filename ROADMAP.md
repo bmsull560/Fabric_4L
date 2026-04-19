@@ -3679,53 +3679,34 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ---
 
-### Task 99: SSO/OIDC Backend Completion (P0) ✅ COMPLETE
+### Task 99: SSO/OIDC Backend Completion (P0) ✅ COMPLETE 2026-04-19
 
 **Layer:** Shared/L4  
 **Effort:** 1 week  
 **Unblocks:** Enterprise adoption, federated identity  
 **Depends on:** Task 54 (RLS - ✅ Complete)  
-**Status:** ✅ COMPLETED 2026-04-19
-
-**Delivered:**
-- ✅ `OIDCClient` in `shared/identity/oidc.py` with PKCE support
-- ✅ `/auth/oidc/{tenant}/login` redirects to IdP
-- ✅ `/auth/oidc/callback` handles token exchange
-- ✅ Group membership maps to `Role` enum
-- ✅ `USER_LOGIN` audit event on successful auth
-
-**Implementation:**
-- Create: `shared/identity/oidc.py`
-- Create: `value-fabric/layer4-agents/src/api/routes/oidc.py`
-- Modify: `value-fabric/layer4-agents/src/middleware/governance.py`
-
----
-
-### Task 100: Secrets Management Production Wiring (P0) ✅ COMPLETE
-
-**Layer:** Infra  
-**Effort:** 3 days  
 **Status:** ✅ COMPLETE 2026-04-19
 
-**Acceptance Criteria:**
-- [x] `k8s/secrets.yml.template` → actual base64-encoded values for staging
-- [x] Vault/Infisical wired to all layers
-- [x] `k8s/external-secrets/` syncs secrets from Vault
-- [x] No plaintext secrets in repo
-- [x] K8s staging deploy uses external secrets
+**Gap:** SSO/OIDC support needed for enterprise authentication.
 
-**Implementation:**
-- Modify: `k8s/secrets.yml.template`
-- Verify: `k8s/external-secrets/vault-integration.yml`
+**Delivered:**
+- ✅ `shared/identity/oidc.py` - Complete `OIDCClient` class:
+  - `discover()` - OIDC discovery with 3-attempt retry
+  - `build_authorize_url()` - Authorization URL with PKCE
+  - `exchange_code()` - Token exchange with exponential backoff
+  - `get_userinfo()` - User info retrieval
+- ✅ `tenants/api/routes/oidc.py` - OIDC SSO routes:
+  - `GET /auth/oidc/{tenant_slug}/login` - Initiate OIDC flow
+  - `GET /auth/oidc/callback` - Handle IdP callback
+  - `GET /auth/oidc/{tenant_slug}/metadata` - IdP config
+- ✅ PKCE implementation:
+  - State and nonce generation
+  - Code challenge/verifier handling
+  - `oidc_sessions` table for session management
+- ✅ `shared/identity/oidc_config.py` - `OIDCProviderConfig` class
+- ✅ JWT token encoding via `shared/identity/jwt.py`
+- ✅ `map_role_from_claims()` - Role mapping from IdP claims
 
----
-
-### Task 101: SSO/OIDC Frontend Integration (P0) ✅ COMPLETE 2026-04-19
-
-**Layer:** Frontend  
-**Effort:** 1 week → **Completed**  
-**Status:** ✅ COMPLETE 2026-04-19  
-**Unblocks:** Enterprise login flow  
 **Depends on:** Task 99 (SSO Backend - ✅ Complete)
 
 **Gap:** ~~Frontend Login page lacks OIDC provider integration.~~ **COMPLETE** - Full OIDC flow implemented.

@@ -4,6 +4,7 @@ Provides endpoints for formula evaluation and variable registry.
 Delegates calculation logic to the ROI calculation agent.
 """
 
+import logging
 import re
 from typing import Any, ClassVar, Literal
 
@@ -13,6 +14,11 @@ from pydantic import BaseModel, Field, field_validator
 from ...agents.scenario_engine import VariableAdjustment, scenario_engine
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# Constants for formula evaluation
+DEFAULT_CONFIDENCE = 0.92
+FLOATING_POINT_EPSILON = 1e-10  # Threshold for considering a value as zero
 
 
 class FormulaInput(BaseModel):
@@ -37,8 +43,13 @@ class FormulaEvaluateRequest(BaseModel):
     )
     output_unit: str | None = Field(None, description="Desired output unit")
 
-    # Valid expression pattern: alphanumeric, operators, parentheses, underscores
-    VALID_EXPRESSION_PATTERN: ClassVar[re.Pattern] = re.compile(r"^[a-zA-Z0-9_+\-*/().\s**]+$")
+    # Valid expression pattern: alphanumeric, operators (+, -, *, /), parentheses, underscores, whitespace
+    # ** operator is matched as two * characters
+    VALID_EXPRESSION_PATTERN: ClassVar[re.Pattern] = re.compile(r"^[a-zA-Z0-9_+\-*/().\s]+$")
+    # Dangerous Python keywords/patterns that should not appear in formula expressions
+    DANGEROUS_PATTERNS: ClassVar[list[str]] = [
+        "import", "exec", "eval", "compile", "__", "lambda", "class", "def"
+    ]
 
     @field_validator("expression")
     @classmethod
@@ -50,9 +61,8 @@ class FormulaEvaluateRequest(BaseModel):
             if not cls.VALID_EXPRESSION_PATTERN.match(v):
                 raise ValueError("Expression contains invalid characters. Only alphanumeric, operators (+, -, *, /, **), parentheses, and underscores are allowed.")
             # Check for dangerous patterns
-            dangerous_patterns = ["import", "exec", "eval", "compile", "__", "lambda", "class", "def"]
             v_lower = v.lower()
-            for pattern in dangerous_patterns:
+            for pattern in cls.DANGEROUS_PATTERNS:
                 if pattern in v_lower:
                     raise ValueError(f"Expression contains forbidden pattern: {pattern}")
         return v
@@ -72,7 +82,7 @@ class FormulaEvaluateResponse(BaseModel):
     result: float = Field(..., description="Calculated result")
     unit: str = Field(..., description="Output unit")
     confidence: float = Field(
-        default=0.95, ge=0.0, le=1.0, description="Confidence in result"
+        default=DEFAULT_CONFIDENCE, ge=0.0, le=1.0, description="Confidence in result"
     )
     calculation_steps: list[CalculationStep] = Field(
         default_factory=list, description="Step-by-step calculation"
@@ -472,7 +482,7 @@ async def evaluate_formula(
         return FormulaEvaluateResponse(
             result=result,
             unit=output_unit,
-            confidence=0.92,  # Default confidence
+            confidence=DEFAULT_CONFIDENCE,
             calculation_steps=steps,
             formula_used=expression,
         )
@@ -711,10 +721,6 @@ def evaluate_expression(expression: str, variables: dict[str, float]) -> float:
     # Simple expression evaluation with basic operators
     # In production, use a proper math parser like numexpr or asteval
 
-    import re
-
-    # Supported operators
-
     # Replace variable names with values
     expr = expression
     for var_name, var_value in sorted(variables.items(), key=lambda x: -len(x[0])):
@@ -784,7 +790,7 @@ def evaluate_simple(expr: str) -> float:
             result = tokens[i - 1] * tokens[i + 1]
             tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]
         elif tokens[i] == "/":
-            if abs(tokens[i + 1]) < 1e-10:
+            if abs(tokens[i + 1]) < FLOATING_POINT_EPSILON:
                 raise ZeroDivisionError("Division by zero in expression")
             result = tokens[i - 1] / tokens[i + 1]
             tokens = tokens[: i - 1] + [result] + tokens[i + 2 :]

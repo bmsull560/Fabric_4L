@@ -132,8 +132,7 @@ async def invoke_tool(
 
     except Exception as e:
         # Log full exception server-side for debugging
-        import logging
-        logging.getLogger(__name__).exception(
+        logger.exception(
             f"Tool execution failed: {request.tool_name}",
             extra={"tool_name": request.tool_name, "input_data": request.input_data}
         )

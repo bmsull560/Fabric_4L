@@ -1,4 +1,7 @@
-# My Models — Final Production Sign-Off Report
+# MyModels — Production Signoff Report
+
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records a completed production signoff. For current model readiness, see [LAUNCH_READINESS_REPORT.md](../../LAUNCH_READINESS_REPORT.md). See the [Archive Registry](../archive-registry.md).
 
 **Report Date**: 2026-04-18  
 **Feature**: My Models (/library/models)  

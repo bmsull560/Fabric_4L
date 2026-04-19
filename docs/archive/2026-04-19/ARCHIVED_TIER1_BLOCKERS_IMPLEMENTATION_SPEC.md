@@ -1,5 +1,8 @@
 # Tier 1 Production Blockers - Implementation Specification
 
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document records superseded implementation plans. All blockers are resolved. See [ROADMAP.md](../../ROADMAP.md) and the [Archive Registry](../archive-registry.md).
+
 **Date:** April 17, 2026  
 **Status:** Ready for Execution  
 **Order:** (1) Vault Integration → (2) L1 Celery/Redis → (3) Monitoring Tuning

@@ -56,7 +56,10 @@ describe('useGraphQuery', () => {
 
     result.current.mutate({ query: 'Timeout query' });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+      expect(result.current.error).toBeDefined();
+    });
   });
 
   it('caches entities from response', async () => {
@@ -112,7 +115,10 @@ describe('useEntityContext', () => {
     const wrapper = createWrapper();
     const { result } = renderHook(() => useEntityContext('non-existent'), { wrapper });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+      expect(result.current.error).toBeDefined();
+    });
   });
 });
 
@@ -142,7 +148,10 @@ describe('useEntityTraversal', () => {
 
     result.current.mutate({ entity_id: 'bad-entity', direction: 'invalid' as 'up' });
 
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+      expect(result.current.error).toBeDefined();
+    });
   });
 });
 

@@ -20,11 +20,17 @@ from layer2_extraction.api import main as api_main
 
 
 @pytest.fixture(autouse=True)
-def reset_pipeline_state() -> None:
+async def reset_pipeline_state() -> None:
     """Clear pipeline jobs before each test."""
-    api_main.PIPELINE_JOBS.clear()
+    # Get all jobs and delete them
+    jobs = await api_main.job_store.list_jobs()
+    for job in jobs:
+        await api_main.job_store.delete(job.job_id)
     yield
-    api_main.PIPELINE_JOBS.clear()
+    # Cleanup after test
+    jobs = await api_main.job_store.list_jobs()
+    for job in jobs:
+        await api_main.job_store.delete(job.job_id)
 
 
 @pytest.fixture
@@ -39,7 +45,7 @@ async def async_client():
 # Helper to create jobs with reasonable defaults
 # -----------------------------------------------------------------------
 
-def _make_job(
+async def _create_job(
     job_id: str = "test-job",
     overall_status: str = "completed",
     extraction_status: str = "completed",
@@ -47,21 +53,23 @@ def _make_job(
     entities_extracted: int = 5,
     relationships_extracted: int = 3,
     last_error: str | None = None,
-) -> api_main.PipelineJob:
+) -> None:
+    """Create and store a job using the JobStore API."""
+    from layer2_extraction.integration.job_store import PipelineJob
     now = datetime.now(UTC)
-    return api_main.PipelineJob(
+    job = PipelineJob(
         job_id=job_id,
         extraction_status=extraction_status,
         ingestion_status=ingestion_status,
-        overall_status=overall_status,
+        created_at=now.isoformat(),
         entities_extracted=entities_extracted,
         relationships_extracted=relationships_extracted,
         retry_count=0,
         last_error=last_error,
         next_retry_at=None,
-        started_at=now,
-        completed_at=now if overall_status in ("completed", "failed") else None,
+        completed_at=now.isoformat() if overall_status in ("completed", "failed") else None,
     )
+    await api_main.job_store.set(job)
 
 
 # -----------------------------------------------------------------------
@@ -97,28 +105,28 @@ class TestSSEHeaders:
     @pytest.mark.asyncio
     async def test_content_type_is_event_stream(self, async_client):
         """Content-Type must be text/event-stream."""
-        api_main.PIPELINE_JOBS["h-1"] = _make_job(job_id="h-1")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/h-1/events")
         assert "text/event-stream" in resp.headers["content-type"]
 
     @pytest.mark.asyncio
     async def test_cache_control_no_cache(self, async_client):
         """Cache-Control must be no-cache for real-time streams."""
-        api_main.PIPELINE_JOBS["h-2"] = _make_job(job_id="h-2")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/h-2/events")
         assert resp.headers["cache-control"] == "no-cache"
 
     @pytest.mark.asyncio
     async def test_connection_keep_alive(self, async_client):
         """Connection header must be keep-alive."""
-        api_main.PIPELINE_JOBS["h-3"] = _make_job(job_id="h-3")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/h-3/events")
         assert resp.headers.get("connection") == "keep-alive"
 
     @pytest.mark.asyncio
     async def test_nginx_buffering_disabled(self, async_client):
         """X-Accel-Buffering must be 'no' to prevent nginx buffering."""
-        api_main.PIPELINE_JOBS["h-4"] = _make_job(job_id="h-4")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/h-4/events")
         assert resp.headers.get("x-accel-buffering") == "no"
 
@@ -133,7 +141,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_emits_complete_event(self, async_client):
         """A completed job's stream must include a 'complete' event type."""
-        api_main.PIPELINE_JOBS["c-1"] = _make_job(job_id="c-1")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/c-1/events")
         events = _parse_sse_events(resp.text)
         types = {e["type"] for e in events}
@@ -142,7 +150,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_has_status_event(self, async_client):
         """A completed job must include a 'status' event."""
-        api_main.PIPELINE_JOBS["c-2"] = _make_job(job_id="c-2")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/c-2/events")
         events = _parse_sse_events(resp.text)
         status_events = [e for e in events if e["type"] == "status"]
@@ -152,7 +160,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_progress_is_100(self, async_client):
         """A completed job must emit progress 100."""
-        api_main.PIPELINE_JOBS["c-3"] = _make_job(job_id="c-3")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/c-3/events")
         events = _parse_sse_events(resp.text)
         progress_events = [e for e in events if e["type"] == "progress"]
@@ -161,7 +169,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_complete_event_contains_job_metadata(self, async_client):
         """Complete event data must include job_id, status, counts."""
-        api_main.PIPELINE_JOBS["c-4"] = _make_job(
+        await _create_job(
             job_id="c-4", entities_extracted=7, relationships_extracted=4
         )
         resp = await async_client.get("/v1/extract/jobs/c-4/events")
@@ -178,7 +186,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_completed_job_has_log_event(self, async_client):
         """Completed jobs should emit a log event with 'success' level."""
-        api_main.PIPELINE_JOBS["c-5"] = _make_job(job_id="c-5")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/c-5/events")
         events = _parse_sse_events(resp.text)
         log_events = [e for e in events if e["type"] == "log"]
@@ -188,7 +196,7 @@ class TestSSECompletedJob:
     @pytest.mark.asyncio
     async def test_stream_terminates_for_completed_job(self, async_client):
         """Stream must terminate (not hang) after complete event."""
-        api_main.PIPELINE_JOBS["c-6"] = _make_job(job_id="c-6")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/c-6/events")
         # If we got a response, the stream terminated
         assert resp.status_code == 200
@@ -204,7 +212,7 @@ class TestSSEFailedJob:
     @pytest.mark.asyncio
     async def test_failed_job_emits_error_event(self, async_client):
         """A failed job's stream must include an 'error' event."""
-        api_main.PIPELINE_JOBS["f-1"] = _make_job(
+        await _create_job(
             job_id="f-1",
             overall_status="failed",
             extraction_status="failed",
@@ -218,7 +226,7 @@ class TestSSEFailedJob:
     @pytest.mark.asyncio
     async def test_failed_job_error_contains_last_error(self, async_client):
         """Error event data must include the last_error message."""
-        api_main.PIPELINE_JOBS["f-2"] = _make_job(
+        await _create_job(
             job_id="f-2",
             overall_status="failed",
             extraction_status="failed",
@@ -233,7 +241,7 @@ class TestSSEFailedJob:
     @pytest.mark.asyncio
     async def test_failed_job_has_log_with_error_level(self, async_client):
         """Failed jobs should emit a log event with 'error' level."""
-        api_main.PIPELINE_JOBS["f-3"] = _make_job(
+        await _create_job(
             job_id="f-3",
             overall_status="failed",
             extraction_status="failed",
@@ -247,7 +255,7 @@ class TestSSEFailedJob:
     @pytest.mark.asyncio
     async def test_failed_job_progress_is_100(self, async_client):
         """Failed jobs should still report 100% progress (terminal)."""
-        api_main.PIPELINE_JOBS["f-4"] = _make_job(
+        await _create_job(
             job_id="f-4",
             overall_status="failed",
             extraction_status="failed",
@@ -269,7 +277,7 @@ class TestSSEEventStructure:
     @pytest.mark.asyncio
     async def test_all_events_have_required_fields(self, async_client):
         """Every event must have type, timestamp, and data fields."""
-        api_main.PIPELINE_JOBS["s-1"] = _make_job(job_id="s-1")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/s-1/events")
         events = _parse_sse_events(resp.text)
         assert len(events) > 0
@@ -281,7 +289,7 @@ class TestSSEEventStructure:
     @pytest.mark.asyncio
     async def test_timestamps_are_iso_format(self, async_client):
         """Timestamps must be ISO 8601 strings ending with Z."""
-        api_main.PIPELINE_JOBS["s-2"] = _make_job(job_id="s-2")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/s-2/events")
         events = _parse_sse_events(resp.text)
         for event in events:
@@ -294,7 +302,7 @@ class TestSSEEventStructure:
     async def test_event_types_are_valid(self, async_client):
         """Event types must be from the defined set."""
         valid_types = {"status", "progress", "log", "entity", "complete", "error"}
-        api_main.PIPELINE_JOBS["s-3"] = _make_job(job_id="s-3")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/s-3/events")
         events = _parse_sse_events(resp.text)
         for event in events:
@@ -303,7 +311,7 @@ class TestSSEEventStructure:
     @pytest.mark.asyncio
     async def test_sse_lines_use_data_prefix(self, async_client):
         """Raw SSE lines must be prefixed with 'data: '."""
-        api_main.PIPELINE_JOBS["s-4"] = _make_job(job_id="s-4")
+        await _create_job()
         resp = await async_client.get("/v1/extract/jobs/s-4/events")
         lines = [line for line in resp.text.strip().split("\n") if line.strip()]
         data_lines = [line for line in lines if line.startswith("data: ")]
@@ -320,19 +328,31 @@ class TestSSEPendingJob:
     @pytest.mark.asyncio
     async def test_pending_job_emits_status_pending(self, async_client):
         """A pending job should initially emit status 'pending'."""
-        job = _make_job(
+        await _create_job(
             job_id="p-1",
             overall_status="pending",
             extraction_status="pending",
         )
-        api_main.PIPELINE_JOBS["p-1"] = job
 
         # Schedule the job to complete after a short delay
         async def _complete_job():
             await asyncio.sleep(0.6)
-            job.overall_status = "completed"
-            job.extraction_status = "completed"
-            job.completed_at = datetime.now(UTC)
+            job = await api_main.job_store.get("p-1")
+            if job:
+                from layer2_extraction.integration.job_store import PipelineJob
+                updated_job = PipelineJob(
+                    job_id=job.job_id,
+                    extraction_status="completed",
+                    ingestion_status=job.ingestion_status,
+                    created_at=job.created_at,
+                    entities_extracted=job.entities_extracted,
+                    relationships_extracted=job.relationships_extracted,
+                    retry_count=job.retry_count,
+                    last_error=job.last_error,
+                    next_retry_at=job.next_retry_at,
+                    completed_at=datetime.now(UTC).isoformat(),
+                )
+                await api_main.job_store.set(updated_job)
 
         task = asyncio.create_task(_complete_job())
         try:

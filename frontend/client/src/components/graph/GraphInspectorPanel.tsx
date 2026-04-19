@@ -9,16 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Info, BarChart3, FileText, MousePointer2, RotateCcw } from "lucide-react";
 import { Btn } from "@/components/WfPrimitives";
+import type { GraphNode } from "@/hooks/useGraphQuery";
 import { getEntityBadgeClasses } from "@/lib/graph-utils";
 
-export interface GraphNodeDetails {
-  id: string;
-  name: string;
-  entity_type: string;
+/** Node details for the inspector panel - extends GraphNode, making confidence_score optional */
+export type GraphNodeDetails = Omit<GraphNode, 'confidence_score'> & {
   confidence_score?: number;
-  description?: string;
-  properties?: Record<string, unknown>;
-}
+};
 
 export interface GraphInspectorPanelProps {
   /** Selected node details (null shows empty state) */

@@ -1,5 +1,8 @@
 # Phase 2 Readiness Status Report
 
+> ⚠️ **ARCHIVED CONTENT** (Date: 2026-04-19)  
+> This document refers to a completed readiness assessment. Current status is tracked in [ROADMAP.md](../../ROADMAP.md). See the [Archive Registry](../archive-registry.md).
+
 **Date:** 2026-04-11  
 **Status:** 🔄 **LAUNCH READINESS ASSESSMENT COMPLETE — CORRECTED**
 
