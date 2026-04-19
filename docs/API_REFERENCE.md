@@ -329,6 +329,57 @@ Knowledge graph API backed by Neo4j and pgvector.
 }
 ```
 
+### Graph API Field Aliases
+
+The Layer 3 Graph API (`/v1/graph/*`, `/v1/entity/*`) returns node and edge data with **backward-compatible field aliases** to support both legacy and modern client implementations.
+
+#### Node Fields (GraphNode)
+
+| Internal Field | Alias (Preferred) | Description |
+| -------------- | ----------------- | ----------- |
+| `label`        | `name`            | Human-readable entity name |
+| `type`         | `entity_type`     | Entity classification (e.g., "Capability", "UseCase") |
+| `confidence`   | `confidence_score`| Confidence value (0.0 - 1.0) |
+
+All Graph API responses include **both** the legacy field and the alias field with identical values. Clients may use either field name.
+
+**Example:**
+```json
+{
+  "id": "cap-123",
+  "label": "Invoice Processing",
+  "name": "Invoice Processing",
+  "type": "Capability",
+  "entity_type": "Capability",
+  "confidence": 0.92,
+  "confidence_score": 0.92
+}
+```
+
+#### Edge Fields (GraphEdge / GraphRelationship)
+
+| Internal Field | Alias (Preferred) | Description |
+| -------------- | ----------------- | ----------- |
+| `type`         | `relationship_type` | Relationship classification (e.g., "ENABLES", "DRIVES") |
+
+**Example:**
+```json
+{
+  "source": "cap-123",
+  "target": "uc-456",
+  "type": "ENABLES",
+  "relationship_type": "ENABLES",
+  "confidence": 0.88
+}
+```
+
+#### Implementation Notes
+
+- **Serialization**: Pydantic models output both fields via custom `model_dump()` overrides.
+- **Validation**: Incoming requests may use either field name; the API normalizes internally.
+- **Deprecation**: Legacy fields (`label`, `type`, `confidence`) are not deprecated and will continue to be supported.
+- **Recommendation**: New clients should use the alias fields (`name`, `entity_type`, `confidence_score`) for clarity.
+
 ---
 
 ## Layer 4 — Agents

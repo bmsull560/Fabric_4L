@@ -15,7 +15,7 @@ The Value Fabric platform has substantial implementation across all 4 original l
 | Layer | Completion | Status | Key Gaps |
 |-------|-----------|--------|----------|
 | **L1: Ingestion** | ~75% | Advanced | Celery/Redis wiring, monitoring |
-| **L2: Extraction** | ~90% | Advanced | Production smoke verification |
+| **L2: Extraction** | ~92% | Advanced | Production smoke verification, APQC/BIAN/FIBO integration |
 | **L3: Knowledge Graph** | ~85% | Advanced | API versioning bug ✅ FIXED, performance tuning |
 | **L4: Agents** | ~78% | Advanced | Pause controls ✅, orchestration hardening |
 | **L5: Ground Truth** | ~100% | Production Ready | ✅ Complete |
@@ -62,7 +62,7 @@ value-fabric/layer1-ingestion/src/compliance/pii_scanner.py
 
 ---
 
-### **LAYER 2: Ontology-Guided Extraction Pipeline** (65% Complete)
+### **LAYER 2: Ontology-Guided Extraction Pipeline** (92% Complete)
 
 **What's Built:**
 - ✅ Pydantic ontology models (Capability, UseCase, Persona, ValueDriver)
@@ -73,15 +73,17 @@ value-fabric/layer1-ingestion/src/compliance/pii_scanner.py
 - ✅ RDF/OWL generator
 - ✅ Provenance tracker
 - ✅ Entailment validator stub
+- ✅ LLM integration (OpenAI/Anthropic client) with cost tracking
+- ✅ Prompt templates for extraction
+- ✅ Function calling schema implementation
+- ✅ Vector embedding generation
+- ✅ LLM cost Prometheus metrics (Task 104) - `vf_llm_cost_usd_total`, `vf_llm_tokens_total`
+- ✅ Full validation pipeline orchestration
+- ✅ Confidence scoring mechanism
 
 **What's Missing:**
-- ✅ LLM integration (OpenAI/Anthropic client) - COMPLETE
-- ✅ Prompt templates for extraction - COMPLETE
-- ✅ Function calling schema implementation - COMPLETE
-- ✅ Vector embedding generation - COMPLETE
 - ❌ APQC/BIAN/FIBO reference model integration
-- ✅ Full validation pipeline orchestration - COMPLETE
-- ✅ Confidence scoring mechanism - COMPLETE
+- ⚠️ Production smoke verification (cross-layer E2E)
 
 **Key Files:**
 ```
@@ -3803,27 +3805,29 @@ Task 85 (Cost metrics) ──► Task 70 (Model Registry)
 
 ---
 
-### Task 104: LLM Cost Prometheus Metrics (P1) 🔴 NOT STARTED
+### Task 104: LLM Cost Prometheus Metrics (P1) ✅ COMPLETE
 
 **Layer:** L2  
 **Effort:** 2 days  
+**Completed:** 2026-04-19  
 **Unblocks:** Cost observability, budget alerts  
 **Depends on:** Task 70 (Model Registry - ✅ Complete)
 
 **Gap:** `ExtractionCost` model tracks LLM costs in DB but no Prometheus metrics; no budget alerts.
 
 **Acceptance Criteria:**
-- [ ] Prometheus counter `vf_llm_cost_usd_total{provider, model, tenant_id}`
-- [ ] Prometheus counter `vf_llm_tokens_total{provider, model, type}`
-- [ ] Grafana panel "LLM Cost by Tenant"
-- [ ] Alert rule: `vf_llm_cost_usd_total > budget_threshold`
-- [ ] Metrics appear in `/metrics` after extraction
+- [x] Prometheus counter `vf_llm_cost_usd_total{provider, model, tenant_id}` - Gauge in `prometheus_metrics.py` lines 153-160
+- [x] Prometheus counter `vf_llm_tokens_total{provider, model, type}` - Counter in `prometheus_metrics.py` lines 163-168
+- [x] Grafana panel "LLM Cost by Tenant" - `value-fabric-overview.json` panel + dedicated `llm-costs.json` dashboard (6 panels)
+- [x] Alert rule: `vf_llm_cost_usd_total > budget_threshold` - 6 alert rules in `rules.yml` (HighLLMCostRate, HighLLMCostCritical, HighLLMCostPerTenant, L2HighExtractionCost, L2CostBudgetThreshold, L2TokenUsageSpike)
+- [x] Metrics appear in `/metrics` after extraction - `llm_client.py` calls `record_llm_cost()` and `record_llm_tokens()` in `_calculate_cost()` lines 476-501
 
 **Implementation:**
-- Modify: `value-fabric/layer2-extraction/src/metrics/prometheus_metrics.py`
-- Modify: `value-fabric/layer2-extraction/src/extraction/llm_extractor.py`
-- Modify: `monitoring/grafana/dashboards/value-fabric-overview.json`
-- Modify: `monitoring/alerting/rules.yml`
+- ✅ `value-fabric/layer2-extraction/src/metrics/prometheus_metrics.py` - Metrics defined with labels [provider, model, tenant_id] and [provider, model, type]
+- ✅ `value-fabric/layer2-extraction/src/shared/llm_client.py` - Automatic Prometheus recording on every LLM API call via `_calculate_cost()`
+- ✅ `monitoring/grafana/dashboards/llm-costs.json` - Dedicated LLM cost dashboard with 6 panels (Total Cost, Cost by Provider, Cost by Model, Cost by Tenant, Token Usage, Cost Rate)
+- ✅ `monitoring/grafana/dashboards/value-fabric-overview.json` - "LLM Cost by Tenant (24h)" panel in LLM Cost Observability row
+- ✅ `monitoring/alerting/rules.yml` - Budget threshold alerts at $50/hr (warning), $100/hr (critical), $100/24h per tenant, $1000 monthly
 
 ---
 

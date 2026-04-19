@@ -14,7 +14,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 # Third-party imports for health check
@@ -1290,16 +1290,36 @@ async def get_entity_provenance(
     return chain
 
 
+# SSE Event Generator Constants
+_SSE_POLL_INTERVAL_SECONDS = 0.5
+_SSE_PROGRESS_THRESHOLD_PERCENT = 5
+_SSE_PROGRESS_BOUNDARY_VALUES = {0, 50, 100}
+_SSE_STATUS_PROGRESS_MAP = {
+    "pending": 0,
+    "running": 25,
+    "partial": 75,
+    "completed": 100,
+    "failed": 100,
+}
+_SSE_LOG_LEVELS = {"running": "info", "completed": "success", "failed": "error"}
+_SSE_LOG_MESSAGES = {
+    "running": "Extraction pipeline is running",
+    "completed": "Extraction pipeline completed successfully",
+    "failed": "Extraction pipeline failed",
+}
+_SSE_LOGGABLE_STATUSES = {"running", "completed", "failed"}
+_SSE_TERMINAL_STATUSES = {"completed", "failed"}
+
+
 async def _job_event_generator(job_id: str):
     """Generate SSE events for a pipeline job.
 
     Yields Server-Sent Events with progress updates, status changes,
     and entity discovery from the extraction pipeline.
     """
-    import asyncio
     import json
 
-    last_status = None
+    last_status: str | None = None
     last_progress = -1
     sent_entities: set[str] = set()
 
@@ -1315,45 +1335,37 @@ async def _job_event_generator(job_id: str):
         overall_status = _compute_overall_status(job.extraction_status, job.ingestion_status)
 
         # Calculate progress based on status
-        status_progress_map = {
-            "pending": 0,
-            "running": 25,
-            "partial": 75,
-            "completed": 100,
-            "failed": 100,
-        }
-        progress = status_progress_map.get(overall_status, 0)
+        progress = _SSE_STATUS_PROGRESS_MAP.get(overall_status, 0)
 
         # Send status event on change
         if overall_status != last_status:
             last_status = overall_status
             event_data = {
                 "type": "status",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "data": overall_status,
             }
             yield f"data: {json.dumps(event_data)}\n\n"
 
-        # Send progress event on significant change (>= 5%) or at boundaries
-        if abs(progress - last_progress) >= 5 or progress in [0, 50, 100]:
+        # Send progress event on significant change or at boundaries
+        progress_diff = abs(progress - last_progress)
+        if progress_diff >= _SSE_PROGRESS_THRESHOLD_PERCENT or progress in _SSE_PROGRESS_BOUNDARY_VALUES:
             last_progress = progress
             event_data = {
                 "type": "progress",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "data": progress,
             }
             yield f"data: {json.dumps(event_data)}\n\n"
 
-        # Send entity events for newly discovered entities
-        # Note: In a real implementation, this would come from the job's entity cache
-        # For now, we simulate based on extraction progress
+        # Send entity events for newly discovered entities during active extraction
         if job.entities_extracted > 0 and job.extraction_status == "running":
             entity_key = f"entity_{job_id}_{job.entities_extracted}"
             if entity_key not in sent_entities:
                 sent_entities.add(entity_key)
                 event_data = {
                     "type": "entity",
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                     "data": {
                         "type": "Capability",
                         "name": f"Discovered Capability {job.entities_extracted}",
@@ -1362,30 +1374,32 @@ async def _job_event_generator(job_id: str):
                 yield f"data: {json.dumps(event_data)}\n\n"
 
         # Send log events for status transitions
-        if overall_status in ["running", "completed", "failed"]:
-            log_levels = {"running": "info", "completed": "success", "failed": "error"}
-            log_messages = {
-                "running": f"Extraction pipeline {job_id} is running",
-                "completed": f"Extraction pipeline {job_id} completed successfully",
-                "failed": f"Extraction pipeline {job_id} failed: {job.last_error or 'Unknown error'}",
-            }
+        if overall_status in _SSE_LOGGABLE_STATUSES:
+            log_message = _SSE_LOG_MESSAGES.get(overall_status, f"Status: {overall_status}")
+            if overall_status == "failed":
+                log_message = f"{_SSE_LOG_MESSAGES['failed']}: {job.last_error or 'Unknown error'}"
+            elif overall_status == "running":
+                log_message = f"Extraction pipeline {job_id} is running"
+            elif overall_status == "completed":
+                log_message = f"Extraction pipeline {job_id} completed successfully"
+
             event_data = {
                 "type": "log",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "data": {
-                    "timestamp": datetime.utcnow().isoformat() + "Z",
-                    "level": log_levels.get(overall_status, "info"),
-                    "message": log_messages.get(overall_status, f"Status: {overall_status}"),
+                    "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+                    "level": _SSE_LOG_LEVELS.get(overall_status, "info"),
+                    "message": log_message,
                 },
             }
             yield f"data: {json.dumps(event_data)}\n\n"
 
         # Check for completion
-        if overall_status in ["completed", "failed"]:
+        if overall_status in _SSE_TERMINAL_STATUSES:
             event_type = "complete" if overall_status == "completed" else "error"
             event_data = {
                 "type": event_type,
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "data": {
                     "job_id": job_id,
                     "status": overall_status,
@@ -1397,8 +1411,8 @@ async def _job_event_generator(job_id: str):
             yield f"data: {json.dumps(event_data)}\n\n"
             break
 
-        # Poll interval - check every 500ms for updates
-        await asyncio.sleep(0.5)
+        # Poll interval - check for updates
+        await asyncio.sleep(_SSE_POLL_INTERVAL_SECONDS)
 
 
 async def stream_job_events(job_id: str):

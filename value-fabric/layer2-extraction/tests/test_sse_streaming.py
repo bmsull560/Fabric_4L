@@ -17,6 +17,11 @@ import httpx
 import pytest
 
 from layer2_extraction.api import main as api_main
+from layer2_extraction.integration.job_store import PipelineJob
+
+# Test defaults for job creation
+DEFAULT_ENTITIES_EXTRACTED = 5
+DEFAULT_RELATIONSHIPS_EXTRACTED = 3
 
 
 @pytest.fixture(autouse=True)
@@ -50,12 +55,11 @@ async def _create_job(
     overall_status: str = "completed",
     extraction_status: str = "completed",
     ingestion_status: str = "skipped",
-    entities_extracted: int = 5,
-    relationships_extracted: int = 3,
+    entities_extracted: int = DEFAULT_ENTITIES_EXTRACTED,
+    relationships_extracted: int = DEFAULT_RELATIONSHIPS_EXTRACTED,
     last_error: str | None = None,
 ) -> None:
     """Create and store a job using the JobStore API."""
-    from layer2_extraction.integration.job_store import PipelineJob
     now = datetime.now(UTC)
     job = PipelineJob(
         job_id=job_id,

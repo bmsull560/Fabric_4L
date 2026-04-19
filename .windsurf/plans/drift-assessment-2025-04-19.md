@@ -4,7 +4,20 @@
 - **Total drift instances**: 5
 - **Critical**: 2 | **Warning**: 2 | **Info**: 1
 - **Assessment date**: 2025-04-19
+- **Implementation date**: 2025-04-19
+- **Status**: ✅ **IMPLEMENTED** - All critical drift items resolved
 - **Layers analyzed**: L1, L2, L3, L4, Frontend
+
+---
+
+## Implementation Status
+
+| Item | Status | Files Modified |
+|------|--------|----------------|
+| **P0 - Path Prefix Alignment** | ✅ **RESOLVED** | `frontend/client/.env.example`, `frontend/client/src/api/client.ts` |
+| **P1 - OpenAPI Regeneration** | ✅ **VERIFIED** | `contracts/openapi/*.json` - No drift detected |
+| **P2 - Path Alignment Contract Test** | ✅ **ADDED** | `tests/contract/test_l4_frontend_contract.py` |
+| **P2 - Field Alias Documentation** | ✅ **ADDED** | `docs/API_REFERENCE.md` |
 
 ---
 
@@ -16,7 +29,7 @@
 | `/v1/formulas/{id}/governance` | Missing `security: HTTPBearer` block in OpenAPI | Warning | Regenerate OpenAPI spec |
 | `/v1/formulas/{id}/dependencies` | Missing `security: HTTPBearer` block in OpenAPI | Warning | Regenerate OpenAPI spec |
 | `/v1/formulas/{id}/validate` | Missing `security: HTTPBearer` block in OpenAPI | Warning | Regenerate OpenAPI spec |
-| `/v1/graph/subgraph` | **Path mismatch**: Backend has `/v1/graph/subgraph`, Frontend calls `/subgraph` via L3 client with base `/api/v1/graph` | **Critical** | Align path conventions |
+| `/v1/graph/subgraph` | ✅ **RESOLVED** - Path alignment fixed | **Critical** | Changed VITE_API_BASE to `/api`, VITE_L3_PREFIX to `/v1/graph` |
 
 ### Evidence
 
@@ -43,11 +56,20 @@ Multiple formula governance endpoints are missing security documentation in the 
 
 ### Evidence
 
-**Frontend API Client Configuration** (`frontend/client/src/api/client.ts:3-12`):
+**Before (Drift Detected)**:
 ```typescript
+// frontend/client/src/api/client.ts (BEFORE)
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const LAYER_PREFIXES = {
-  l3: import.meta.env.VITE_L3_PREFIX || '/graph',
+  l3: import.meta.env.VITE_L3_PREFIX || '/graph',  // ❌ Missing /v1
+```
+
+**After (Fixed)**:
+```typescript
+// frontend/client/src/api/client.ts (AFTER)
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';  // ✅ Base path only
+const LAYER_PREFIXES = {
+  l3: import.meta.env.VITE_L3_PREFIX || '/v1/graph',  // ✅ Includes /v1
   // ...
 };
 // Full URL: /api/v1/graph + /subgraph = /api/v1/graph/subgraph

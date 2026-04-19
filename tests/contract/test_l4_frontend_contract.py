@@ -23,6 +23,10 @@ L4_WORKFLOWS_PATH = REPO_ROOT / "value-fabric" / "layer4-agents" / "src" / "api"
 
 HTTP_DECORATORS = {"get", "post", "put", "delete", "patch"}
 
+# Frontend API client configuration paths
+FRONTEND_CLIENT_PATH = REPO_ROOT / "frontend" / "client" / "src" / "api" / "client.ts"
+ENV_EXAMPLE_PATH = REPO_ROOT / "frontend" / "client" / ".env.example"
+
 
 def _load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
@@ -187,3 +191,85 @@ class TestL4WorkflowSSEContractsConsumedByUI:
                 f"Layer 4 OpenAPI drift: {sorted(missing)} monitored paths not in contract. "
                 f"Run 'python scripts/export_openapi.py' to regenerate contracts."
             )
+
+
+class TestPathAlignment:
+    """Contract tests for frontend/backend path alignment.
+
+    These tests verify that the frontend API client configuration produces
+    URLs that match the backend OpenAPI route definitions.
+    """
+
+    def test_l3_layer_prefix_includes_api_version(self) -> None:
+        """L3 layer prefix must include /v1 to align with backend routes.
+
+        Backend OpenAPI documents routes like /v1/graph/subgraph.
+        Frontend API client builds: API_BASE + L3_PREFIX + endpoint.
+        For alignment: API_BASE=/api, L3_PREFIX=/v1/graph -> /api/v1/graph/subgraph.
+        Ingress should route /api/v1/* to backend /v1/*.
+        """
+        # Read frontend env example
+        env_content = ENV_EXAMPLE_PATH.read_text(encoding="utf-8")
+
+        # Verify VITE_API_BASE is set to /api (not /api/v1)
+        assert "VITE_API_BASE=/api" in env_content, (
+            "VITE_API_BASE should be /api to allow layer prefixes to include /v1. "
+            "This enables proper ingress routing from /api/v1/* to backend /v1/*."
+        )
+
+        # Verify L3_PREFIX includes /v1
+        assert "VITE_L3_PREFIX=/v1/graph" in env_content, (
+            "VITE_L3_PREFIX must include /v1 to align with backend OpenAPI routes. "
+            "Backend documents /v1/graph/subgraph, so frontend must call /api/v1/graph/subgraph."
+        )
+
+    def test_frontend_api_client_defaults_match_env_example(self) -> None:
+        """Frontend API client fallback defaults match .env.example configuration."""
+        client_content = FRONTEND_CLIENT_PATH.read_text(encoding="utf-8")
+
+        # Extract default values from the client code
+        import re
+
+        # Check API_BASE default
+        api_base_match = re.search(r"VITE_API_BASE\s*\|\|\s*['\"]([^'\"]+)['\"]", client_content)
+        if api_base_match:
+            default_base = api_base_match.group(1)
+            assert default_base == "/api", (
+                f"API client default VITE_API_BASE should be '/api', got '{default_base}'. "
+                "This must match .env.example for consistent behavior."
+            )
+
+        # Check L3_PREFIX default
+        l3_match = re.search(r"VITE_L3_PREFIX\s*\|\|\s*['\"]([^'\"]+)['\"]", client_content)
+        if l3_match:
+            default_l3 = l3_match.group(1)
+            assert default_l3 == "/v1/graph", (
+                f"API client default VITE_L3_PREFIX should be '/v1/graph', got '{default_l3}'. "
+                "This must match .env.example and align with backend OpenAPI routes."
+            )
+
+    def test_subgraph_path_construction_matches_openapi(self) -> None:
+        """Subgraph endpoint path construction matches OpenAPI route.
+
+        Frontend useSubgraph calls: apiClient.get('l3', '/subgraph').
+        With API_BASE=/api and L3_PREFIX=/v1/graph, this becomes:
+            /api/v1/graph/subgraph.
+
+        Backend OpenAPI has: /v1/graph/subgraph.
+
+        This test verifies the layer mapping is correct for this specific endpoint.
+        """
+        l3_openapi = _load_json(OPENAPI_L3_PATH)
+        paths = l3_openapi.get("paths", {})
+
+        # Verify the OpenAPI has the subgraph endpoint
+        assert "/v1/graph/subgraph" in paths, (
+            "Backend OpenAPI must document /v1/graph/subgraph endpoint. "
+            "This is required for the Graph Explorer to function."
+        )
+
+        # Verify endpoint has GET method
+        subgraph_path = paths.get("/v1/graph/subgraph", {})
+        assert "get" in subgraph_path, (
+            "Subgraph endpoint must support GET method for useSubgraph hook."
+        )

@@ -1,14 +1,16 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
+// Base API path - layer prefixes must include /v1 to match backend OpenAPI routes
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
+// Layer prefixes include /v1 to align with backend routes (e.g., /v1/graph/subgraph)
 const LAYER_PREFIXES = {
-  l1: import.meta.env.VITE_L1_PREFIX || '/ingest',
-  l2: import.meta.env.VITE_L2_PREFIX || '/extract',
-  l3: import.meta.env.VITE_L3_PREFIX || '/graph',
-  l4: import.meta.env.VITE_L4_PREFIX || '/agents',
-  l5: import.meta.env.VITE_L5_PREFIX || '/truths',
-  l6: import.meta.env.VITE_L6_PREFIX || '/benchmarks',
+  l1: import.meta.env.VITE_L1_PREFIX || '/v1/ingest',
+  l2: import.meta.env.VITE_L2_PREFIX || '/v1/extract',
+  l3: import.meta.env.VITE_L3_PREFIX || '/v1/graph',
+  l4: import.meta.env.VITE_L4_PREFIX || '/v1/agents',
+  l5: import.meta.env.VITE_L5_PREFIX || '/v1/truths',
+  l6: import.meta.env.VITE_L6_PREFIX || '/v1/benchmarks',
 } as const;
 
 type LayerKey = keyof typeof LAYER_PREFIXES;
