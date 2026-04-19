@@ -123,8 +123,9 @@ export function useExtractedEntities(jobId: string | null, count: number = 0) {
     queryFn: async () => {
       if (!jobId || count === 0) return [];
       
-      // TODO: Replace with actual API endpoint when available
-      // For now, return placeholder data based on count
+      // NOTE: Using placeholder data until backend endpoint is available.
+      // Backend ticket: L2-42 - Add GET /v1/extract/{job_id}/entities endpoint
+      // When implemented, replace with: apiClient.get('l2', `/v1/extract/${jobId}/entities`)
       const entityTypes = ['Capability', 'UseCase', 'Persona', 'ValueDriver'];
       const mockEntities: ExtractedEntity[] = Array.from({ length: Math.min(count, 20) }, (_, i) => ({
         name: `Entity ${i + 1}`,

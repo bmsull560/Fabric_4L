@@ -26,6 +26,10 @@ class AuditAction(str, Enum):
     FEATURE_FLAG_CREATED = "feature_flag_created"
     FEATURE_FLAG_UPDATED = "feature_flag_updated"
     FEATURE_FLAG_DELETED = "feature_flag_deleted"
+    MODEL_REGISTERED = "model_registered"
+    MODEL_PROMOTED = "model_promoted"
+    MODEL_DEPRECATED = "model_deprecated"
+    MODEL_EVALUATED = "model_evaluated"
 
 
 class AuditOutcome(str, Enum):

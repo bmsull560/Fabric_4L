@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 try:
-    from shared.audit import AuditAction, emit_audit_event
+    from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 except ImportError as e:
     raise RuntimeError(
         "shared.audit package is required for audit functionality. "
@@ -64,9 +64,10 @@ class ModelRegistryService:
 
         emit_audit_event(
             AuditAction.MODEL_REGISTERED,
-            tenant_id=tenant_id,
+            AuditOutcome.SUCCESS,
             resource_type="ModelVersion",
             resource_id=str(model.id),
+            tenant_id=tenant_id,
             details={
                 "provider": provider,
                 "model_name": model_name,
@@ -197,9 +198,10 @@ class ModelRegistryService:
         )
         emit_audit_event(
             action,
-            tenant_id=model.tenant_id,
+            AuditOutcome.SUCCESS,
             resource_type="ModelVersion",
             resource_id=str(model.id),
+            tenant_id=model.tenant_id,
             details={
                 "from_stage": from_stage,
                 "to_stage": to_stage,

@@ -9,14 +9,20 @@ import json
 import logging
 import re
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.account import CRMProvider
 from ..models.integration import Integration, IntegrationStatus
 from .encryption_service import DEFAULT_KEY_ID, EncryptionService
+
+# CRM API endpoint constants
+SALESFORCE_API_VERSION = "v58.0"
+HUBSPOT_API_VERSION = "v3"
 
 logger = logging.getLogger(__name__)
 
@@ -242,23 +248,16 @@ class IntegrationService:
             }
 
         try:
-            # Decrypt credentials (for actual connection test - TODO)
             creds_json = await EncryptionService.decrypt(
                 integration.credentials_encrypted, integration.encryption_key_id
             )
-            _credentials = json.loads(creds_json)  # noqa: F841 - reserved for connection test
+            credentials = json.loads(creds_json)
 
-            # TODO: Implement actual CRM connection test using _credentials
-            # For now, return simulated success
-            return {
-                "success": True,
-                "message": f"Connection to {provider.value} successful",
-                "details": {
-                    "accounts_accessible": True,
-                    "opportunities_accessible": True,
-                    "rate_limit_remaining": 999,
-                },
-            }
+            # Perform actual HTTP connection test
+            test_result = await self._test_crm_connection(
+                provider, credentials, integration.instance_url
+            )
+            return test_result
 
         except Exception as e:
             logger.error("Connection test failed for %s: %s", provider, e)
@@ -266,6 +265,186 @@ class IntegrationService:
                 "success": False,
                 "message": f"Connection failed: {str(e)}",
                 "error_code": "CONNECTION_FAILED",
+            }
+
+    async def _test_crm_connection(
+        self,
+        provider: CRMProvider,
+        credentials: dict[str, str],
+        instance_url: str | None,
+    ) -> dict[str, Any]:
+        """Test connection to CRM provider.
+
+        Args:
+            provider: CRM provider type
+            credentials: Decrypted credentials dict
+            instance_url: Optional CRM instance URL
+
+        Returns:
+            Test result dict with success, message, and details
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if provider == CRMProvider.SALESFORCE:
+                return await self._test_salesforce_connection(
+                    client, credentials, instance_url
+                )
+            elif provider == CRMProvider.HUBSPOT:
+                return await self._test_hubspot_connection(client, credentials)
+            else:
+                return {
+                    "success": False,
+                    "message": f"Unsupported provider: {provider.value}",
+                    "error_code": "UNSUPPORTED_PROVIDER",
+                }
+
+    async def _test_salesforce_connection(
+        self,
+        client: httpx.AsyncClient,
+        credentials: dict[str, str],
+        instance_url: str | None,
+    ) -> dict[str, Any]:
+        """Test Salesforce API connection using OAuth token.
+
+        Args:
+            client: HTTP client
+            credentials: Must contain 'api_key' (OAuth access token)
+            instance_url: Salesforce instance URL
+
+        Returns:
+            Connection test result
+        """
+        access_token = credentials.get("api_key")
+        if not access_token:
+            return {
+                "success": False,
+                "message": "Missing OAuth access token in credentials",
+                "error_code": "MISSING_CREDENTIALS",
+            }
+
+        # Use provided instance_url or construct from credentials
+        base_url = instance_url or credentials.get("instance_url", "")
+        if not base_url:
+            return {
+                "success": False,
+                "message": "Salesforce instance URL is required",
+                "error_code": "MISSING_INSTANCE_URL",
+            }
+
+        try:
+            # Test API access by querying Organization info (lightweight call)
+            response = await client.get(
+                f"{base_url}/services/data/{SALESFORCE_API_VERSION}/query/",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params={"q": "SELECT Name FROM Organization LIMIT 1"},
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                org_name = data.get("records", [{}])[0].get("Name", "Unknown")
+
+                return {
+                    "success": True,
+                    "message": f"Connected to Salesforce: {org_name}",
+                    "details": {
+                        "accounts_accessible": True,
+                        "opportunities_accessible": True,
+                        "organization": org_name,
+                        "api_version": SALESFORCE_API_VERSION,
+                    },
+                }
+            elif response.status_code == 401:
+                return {
+                    "success": False,
+                    "message": "Authentication failed - token may be expired",
+                    "error_code": "AUTH_FAILED",
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"Salesforce API error: {response.status_code}",
+                    "error_code": f"API_ERROR_{response.status_code}",
+                }
+
+        except httpx.TimeoutException:
+            return {
+                "success": False,
+                "message": "Connection timed out after 30 seconds",
+                "error_code": "TIMEOUT",
+            }
+        except httpx.NetworkError as e:
+            return {
+                "success": False,
+                "message": f"Network error: {str(e)}",
+                "error_code": "NETWORK_ERROR",
+            }
+
+    async def _test_hubspot_connection(
+        self,
+        client: httpx.AsyncClient,
+        credentials: dict[str, str],
+    ) -> dict[str, Any]:
+        """Test HubSpot API connection using API key.
+
+        Args:
+            client: HTTP client
+            credentials: Must contain 'api_key' (HubSpot API key)
+
+        Returns:
+            Connection test result
+        """
+        api_key = credentials.get("api_key")
+        if not api_key:
+            return {
+                "success": False,
+                "message": "Missing API key in credentials",
+                "error_code": "MISSING_CREDENTIALS",
+            }
+
+        try:
+            # Test API access by querying account info
+            response = await client.get(
+                f"https://api.hubapi.com/account-info/{HUBSPOT_API_VERSION}/details",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                portal_name = data.get("portalName", "Unknown")
+
+                return {
+                    "success": True,
+                    "message": f"Connected to HubSpot: {portal_name}",
+                    "details": {
+                        "accounts_accessible": True,
+                        "opportunities_accessible": True,
+                        "portal_name": portal_name,
+                        "api_version": HUBSPOT_API_VERSION,
+                    },
+                }
+            elif response.status_code == 401:
+                return {
+                    "success": False,
+                    "message": "Authentication failed - API key may be invalid",
+                    "error_code": "AUTH_FAILED",
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"HubSpot API error: {response.status_code}",
+                    "error_code": f"API_ERROR_{response.status_code}",
+                }
+
+        except httpx.TimeoutException:
+            return {
+                "success": False,
+                "message": "Connection timed out after 30 seconds",
+                "error_code": "TIMEOUT",
+            }
+        except httpx.NetworkError as e:
+            return {
+                "success": False,
+                "message": f"Network error: {str(e)}",
+                "error_code": "NETWORK_ERROR",
             }
 
     async def trigger_sync(
@@ -292,12 +471,20 @@ class IntegrationService:
         integration.sync_status = IntegrationStatus.RUNNING
         await self.db.commit()
 
-        # TODO: Queue background sync job
-        # For now, return job metadata
+        # Generate sync job ID
         sync_id = str(uuid.uuid4())
 
+        # NOTE: Background sync job queuing
+        # When Celery is configured in the project, replace the following
+        # block with actual task queuing:
+        #   from ..tasks.crm_sync import sync_crm_accounts
+        #   sync_crm_accounts.delay(tenant_id, provider.value, sync_id)
+        #
+        # For now, we return job metadata that can be used to track
+        # sync status via the integration status endpoint.
         logger.info(
-            "Sync triggered for tenant=%s provider=%s sync_id=%s by user=%s",
+            "Sync triggered for tenant=%s provider=%s sync_id=%s by user=%s "
+            "(background job queuing pending Celery setup)",
             tenant_id,
             provider,
             sync_id,
@@ -308,6 +495,8 @@ class IntegrationService:
             "sync_id": sync_id,
             "status": "running",
             "provider": provider.value,
+            "queued_at": datetime.now(UTC).isoformat(),
+            "note": "Background job queuing pending Celery setup",
         }
 
     def _validate_config(

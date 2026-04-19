@@ -476,6 +476,10 @@ class OrchestrationController:
         Returns:
             True if cancelled
         """
+        # Log cancellation reason for audit trail
+        if reason:
+            logger.info(f"Cancelling workflow {workflow_id}: {reason}")
+
         # Cancel in scheduler
         cancelled = await self.scheduler.cancel_task(f"wf-{workflow_id}")
 

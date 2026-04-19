@@ -234,13 +234,14 @@ async def api_record_eval_run(
     await db.flush()
 
     # Audit event
-    from shared.audit import AuditAction, emit_audit_event
+    from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 
     emit_audit_event(
         AuditAction.MODEL_EVALUATED,
-        tenant_id=ctx.tenant_id,
+        AuditOutcome.SUCCESS,
         resource_type="ModelVersion",
         resource_id=str(model.id),
+        tenant_id=ctx.tenant_id,
         details={
             "provider": provider,
             "model_name": model.model_name,

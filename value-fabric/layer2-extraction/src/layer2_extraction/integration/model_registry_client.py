@@ -6,13 +6,17 @@ variables when the registry is unavailable.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
-import threading
+import random
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -190,11 +194,6 @@ class ModelRegistryClient:
         Returns:
             Model name or None if not found
         """
-        import asyncio
-        import logging
-        import random
-
-        logger = logging.getLogger(__name__)
         last_exception: Exception | None = None
 
         for attempt in range(max_retries):

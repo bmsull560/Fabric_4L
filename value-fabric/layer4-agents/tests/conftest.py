@@ -9,11 +9,13 @@ from pathlib import Path
 
 # ── Path Setup ─────────────────────────────────────────────────────────────
 # Add repo root to path for shared package imports
-_tests_dir = Path(__file__).parent
-_layer4_dir = _tests_dir.parent
-_repo_root = _layer4_dir.parent.parent  # value-fabric/layer4-agents -> value-fabric -> repo root
+_tests_dir = Path(__file__).parent.resolve()
+_layer4_dir = _tests_dir.parent.resolve()
+_repo_root = _layer4_dir.parent.parent.resolve()  # layer4-agents -> value-fabric -> repo root
 
-if str(_repo_root) not in sys.path:
+# Verify we found the shared package before modifying path
+_shared_package = _repo_root / "shared" / "__init__.py"
+if _shared_package.exists() and str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
 import pytest

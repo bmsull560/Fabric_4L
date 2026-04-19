@@ -10,17 +10,30 @@ Validates:
 
 from __future__ import annotations
 
-import os
-import sys
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
+
+# Module-level imports to avoid repetition in test methods
+from fastapi import Request
+from shared.identity.middleware import (
+    GovernanceMiddleware,
+    _check_tenant_rate_limit,
+    _tenant_rate_limit_buckets,
+)
+from src.tenants.settings_schema import (
+    RateLimitSettings,
+    TenantSettings,
+    get_tenant_rate_limits,
+)
+from starlette.datastructures import Headers
 
 
 @pytest.fixture(autouse=True)
 def clear_rate_limit_buckets():
     """Clear global rate limit buckets before and after each test."""
-    from shared.identity.middleware import _tenant_rate_limit_buckets
     _tenant_rate_limit_buckets.clear()
     yield
     _tenant_rate_limit_buckets.clear()
@@ -38,12 +51,6 @@ class TestTenantRateLimiting:
 
     def test_tenant_settings_schema_validation(self):
         """Verify tenant settings schema validates rate limits correctly."""
-        from src.tenants.settings_schema import (
-            RateLimitSettings,
-            TenantSettings,
-            get_tenant_rate_limits,
-        )
-
         # Valid settings
         settings = {"rate_limits": {"requests_per_minute": 200, "burst": 400}}
         tenant_settings = TenantSettings.from_json(settings)
@@ -56,11 +63,6 @@ class TestTenantRateLimiting:
 
     def test_tenant_settings_defaults(self):
         """Verify defaults are applied when settings missing."""
-        from src.tenants.settings_schema import (
-            TenantSettings,
-            get_tenant_rate_limits,
-        )
-
         # Empty settings
         limits = get_tenant_rate_limits({})
         assert limits.requests_per_minute == 120  # Default
@@ -73,8 +75,6 @@ class TestTenantRateLimiting:
 
     def test_rate_limit_check_validates_positive_rpm(self):
         """Verify rate limit rejects non-positive requests_per_minute."""
-        from shared.identity.middleware import _check_tenant_rate_limit
-
         tenant_id = str(uuid4())
 
         with pytest.raises(ValueError, match="requests_per_minute must be >= 1"):
@@ -85,8 +85,6 @@ class TestTenantRateLimiting:
 
     def test_rate_limit_check_allows_under_limit(self):
         """Verify requests under limit are allowed."""
-        from shared.identity.middleware import _check_tenant_rate_limit
-
         tenant_id = str(uuid4())
 
         # First 5 requests should be allowed
@@ -97,8 +95,6 @@ class TestTenantRateLimiting:
 
     def test_rate_limit_check_blocks_over_limit(self):
         """Verify requests over limit are blocked."""
-        from shared.identity.middleware import _check_tenant_rate_limit
-
         tenant_id = str(uuid4())
         rpm = 3
 
@@ -114,8 +110,6 @@ class TestTenantRateLimiting:
 
     def test_tenant_isolation(self):
         """Verify Tenant A cannot consume Tenant B's quota (Task 84)."""
-        from shared.identity.middleware import _check_tenant_rate_limit
-
         tenant_a = str(uuid4())
         tenant_b = str(uuid4())
         rpm = 3
@@ -140,11 +134,6 @@ class TestTenantRateLimiting:
 
     def test_rate_limit_window_reset(self):
         """Verify rate limit window resets after 60 seconds."""
-        import time
-        from unittest.mock import patch
-
-        from shared.identity.middleware import _check_tenant_rate_limit
-
         tenant_id = str(uuid4())
         rpm = 2
 
@@ -164,8 +153,6 @@ class TestTenantRateLimiting:
 
     def test_tenant_settings_serialization(self):
         """Verify tenant settings can be serialized to JSON."""
-        from src.tenants.settings_schema import TenantSettings
-
         settings = TenantSettings()
         json_data = settings.to_json()
 
@@ -180,13 +167,6 @@ class TestRateLimitMiddlewareIntegration:
     @pytest.mark.asyncio
     async def test_middleware_rate_limit_check(self):
         """Verify middleware checks rate limits when enabled."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        from fastapi import Request
-        from starlette.datastructures import Headers
-
-        from shared.identity.middleware import GovernanceMiddleware
-
         # Create mock request
         mock_request = MagicMock(spec=Request)
         mock_request.headers = Headers({"Authorization": "Bearer test-token"})
@@ -224,13 +204,6 @@ class TestRateLimitMiddlewareIntegration:
     @pytest.mark.asyncio
     async def test_middleware_skips_rate_limit_when_disabled(self):
         """Verify rate limiting is skipped when disabled."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        from fastapi import Request
-        from starlette.datastructures import Headers
-
-        from shared.identity.middleware import GovernanceMiddleware
-
         mock_request = MagicMock(spec=Request)
         mock_request.headers = Headers({})
         mock_request.state = MagicMock()

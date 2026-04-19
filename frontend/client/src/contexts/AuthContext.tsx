@@ -287,14 +287,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .replace(/\+/g, '-')
           .replace(/\//g, '_')
           .replace(/=/g, '');
-      } catch {
+      } catch (e) {
         // Handle non-Latin1 characters by encoding as UTF-8 first
-        const utf8Bytes = new TextEncoder().encode(str);
-        const binary = Array.from(utf8Bytes, byte => String.fromCharCode(byte)).join('');
-        return btoa(binary)
-          .replace(/\+/g, '-')
-          .replace(/\//g, '_')
-          .replace(/=/g, '');
+        // DOMException with name 'InvalidCharacterError' is thrown for non-Latin1
+        if (e instanceof DOMException && e.name === 'InvalidCharacterError') {
+          const utf8Bytes = new TextEncoder().encode(str);
+          const binary = Array.from(utf8Bytes, byte => String.fromCharCode(byte)).join('');
+          return btoa(binary)
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=/g, '');
+        }
+        throw e;
       }
     };
 

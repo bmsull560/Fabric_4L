@@ -207,12 +207,17 @@ def _check_tenant_rate_limit(
 
         # Check limit
         if count >= requests_per_minute:
-            retry_after = int(RATE_LIMIT_WINDOW_SECONDS - (now - window_start)) + 1
-            return False, max(1, retry_after)
+            window_elapsed = now - window_start
+            _tenant_rate_limit_buckets[tenant_id] = (count, window_start)
+            allowed = False
+        else:
+            # Increment and store
+            _tenant_rate_limit_buckets[tenant_id] = (count + 1, window_start)
+            return True, 0
 
-        # Increment and store
-        _tenant_rate_limit_buckets[tenant_id] = (count + 1, window_start)
-    return True, 0
+    # Calculate retry_after outside the lock
+    retry_after = int(RATE_LIMIT_WINDOW_SECONDS - window_elapsed) + 1
+    return False, max(1, retry_after)
 
 
 class MultiWorkerRateLimitError(RuntimeError):
