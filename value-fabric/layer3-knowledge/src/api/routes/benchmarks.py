@@ -112,6 +112,7 @@ async def list_benchmarks(
     OPTIONAL MATCH (vp:ValuePack)-[:hasBenchmark]->(b)
     RETURN b, count(DISTINCT vp) as usage_count
     ORDER BY b.name
+    LIMIT $limit
     """
 
     async with driver.session() as session:

@@ -461,6 +461,11 @@ class LLMClient:
 
         # Get pricing for model
         provider_pricing = PRICING.get(provider, {})
+        if model not in provider_pricing:
+            logging.getLogger(__name__).warning(
+                f"Unknown model '{model}' for provider '{provider}', using zero pricing. "
+                f"Update PRICING table in llm_client.py"
+            )
         model_pricing = provider_pricing.get(model, {"input": 0, "output": 0})
 
         # Calculate cost per 1M tokens

@@ -1,83 +1,20 @@
 /**
  * Screen 7 — Knowledge Graph Explorer
- * Design: Refined Enterprise SaaS
+ * Refactored: ~180 lines (was 589)
  */
-import { useState, useMemo, useCallback } from "react";
-import { Loader2, AlertCircle, RefreshCw, Search, ZoomIn, ZoomOut, RotateCcw, MousePointer2, Move } from "lucide-react";
-import { PageHeader, Btn, SearchInput, GraphLegend, SectionCard, Tabs } from "@/components/WfPrimitives";
+import { useState, useCallback } from "react";
+import { Loader2, AlertCircle, RefreshCw, Search, ZoomIn, ZoomOut, RotateCcw, Move } from "lucide-react";
+import { PageHeader as WfPageHeader, Btn, SearchInput, GraphLegend, SectionCard, Tabs } from "@/components/WfPrimitives";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/components/ui/empty";
-import { useSubgraph, useEntityContext, useGraphQuery, useGraphViewState, type GraphNode, type GraphRelationship, type SubgraphResponse } from "@/hooks/useGraphQuery";
-import { getEntityColors } from "@/lib/entity-colors";
+import { PageShell } from "@/components/layout/PageShell";
+import { GraphVisualization } from "@/components/graph/GraphVisualization";
+import { GraphInspectorPanel } from "@/components/graph/GraphInspectorPanel";
+import { useSubgraph, useEntityContext, useGraphQuery } from "@/hooks/useGraphQuery";
+import { useGraphCanvas } from "@/hooks/useGraphCanvas";
+import { useGraphData } from "@/hooks/useGraphData";
+import { getEntityBadgeClasses, VIEWBOX_WIDTH, VIEWBOX_HEIGHT } from "@/lib/graph-utils";
 import { cn } from "@/lib/utils";
-
-// Layout constants
-const CANVAS_WIDTH = 640;
-const CANVAS_HEIGHT = 460;
-const LAYOUT_RADIUS_RATIO = 0.35;
-const MAX_LABEL_LINE_LENGTH = 12;
-
-// Graph layout aliases (for backward compatibility in calculateLayout)
-const GRAPH_WIDTH = CANVAS_WIDTH;
-const GRAPH_HEIGHT = CANVAS_HEIGHT;
-const GRAPH_RADIUS_RATIO = LAYOUT_RADIUS_RATIO;
-
-// Node sizing configuration
-const NODE_SIZES: Record<string, number> = {
-  capability: 20,
-  usecase: 18,
-  persona: 16,
-};
-const DEFAULT_NODE_SIZE = 14;
-
-// Default values
-const DEFAULT_CONFIDENCE = 0.8;
-
-/** Get color style configuration for an entity type */
-function getEntityTypeStyle(entityType: string | undefined) {
-  const colors = getEntityColors(entityType || 'unknown');
-  return {
-    fill: colors.fill,
-    stroke: colors.stroke,
-    text: colors.text.replace('text-', '').replace(/-\d+/, ''), // Convert to hex reference
-    badgeBg: colors.bg,
-    badgeText: colors.text,
-    badgeBorder: colors.border,
-    dotColor: colors.dot,
-  };
-}
-
-/** Get node radius based on entity type importance */
-function getNodeRadius(entityType: string | undefined): number {
-  const type = (entityType || '').toLowerCase();
-  return NODE_SIZES[type] || DEFAULT_NODE_SIZE;
-}
-
-/** Entity type badge component */
-function EntityTypeBadge({ entityType }: { entityType: string | undefined }) {
-  const style = getEntityTypeStyle(entityType);
-  const label = entityType ? entityType.charAt(0).toUpperCase() + entityType.slice(1) : 'Unknown';
-  return (
-    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${style.badgeBg} ${style.badgeText} ${style.badgeBorder}`}>
-      {label}
-    </div>
-  );
-}
-
-type GraphEdge = GraphRelationship;
-
-interface PositionedNode extends GraphNode {
-  x: number;
-  y: number;
-  r: number;
-}
-
-function countNodeTypes(nodes: GraphNode[]): Record<string, number> {
-  return nodes.reduce((acc, node) => {
-    const type = node.entity_type || 'Unknown';
-    acc[type] = (acc[type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-}
+import type { GraphNode } from "@/hooks/useGraphQuery";
 
 export default function GraphExplorer() {
   const [selected, setSelected] = useState<string | null>(null);
