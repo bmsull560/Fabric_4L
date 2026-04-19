@@ -42,10 +42,15 @@ class EntitySource(str, Enum):
     INFERRED = "INFERRED"
 
 
+# Confidence score thresholds (must match pack_variable_loader.py)
+CONFIDENCE_HIGH_THRESHOLD = 0.85
+CONFIDENCE_MEDIUM_THRESHOLD = 0.60
+
+
 class ConfidenceLevel(str, Enum):
-    HIGH = "HIGH"       # >= 0.85
-    MEDIUM = "MEDIUM"   # 0.60 – 0.84
-    LOW = "LOW"         # < 0.60
+    HIGH = "HIGH"       # >= CONFIDENCE_HIGH_THRESHOLD
+    MEDIUM = "MEDIUM"   # CONFIDENCE_MEDIUM_THRESHOLD – CONFIDENCE_HIGH_THRESHOLD
+    LOW = "LOW"         # < CONFIDENCE_MEDIUM_THRESHOLD
 
 
 class GateStatus(str, Enum):
@@ -76,18 +81,26 @@ class ConfidenceScore(BaseModel):
     level: ConfidenceLevel = ConfidenceLevel.MEDIUM
     basis: str = Field(default="", description="Human-readable explanation of the score")
 
+    @field_validator("score")
+    @classmethod
+    def validate_score_range(cls, v: float) -> float:
+        if not 0.0 <= v <= 1.0:
+            raise ValueError(f"Confidence score must be between 0.0 and 1.0, got {v}")
+        return v
+
     @field_validator("level", mode="before")
     @classmethod
     def derive_level(cls, v: Any, info: Any) -> ConfidenceLevel:
-        # Allow explicit override; otherwise derive from score
+        # Allow explicit override; otherwise derive from score in model_post_init
         if isinstance(v, ConfidenceLevel):
             return v
         return v  # Will be set by model_post_init if needed
 
     def model_post_init(self, __context: Any) -> None:
-        if self.score >= 0.85:
+        # Use shared thresholds (keep in sync with pack_variable_loader.py)
+        if self.score >= CONFIDENCE_HIGH_THRESHOLD:
             object.__setattr__(self, "level", ConfidenceLevel.HIGH)
-        elif self.score >= 0.60:
+        elif self.score >= CONFIDENCE_MEDIUM_THRESHOLD:
             object.__setattr__(self, "level", ConfidenceLevel.MEDIUM)
         else:
             object.__setattr__(self, "level", ConfidenceLevel.LOW)

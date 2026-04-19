@@ -19,11 +19,16 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ..contracts import (
+    CONFIDENCE_HIGH_THRESHOLD,
+    CONFIDENCE_MEDIUM_THRESHOLD,
+)
 from ..interfaces.variable_registry import (
     IVariableRegistry,
     Variable,
@@ -36,7 +41,22 @@ from ..interfaces.variable_registry import (
 logger = logging.getLogger(__name__)
 
 # Default path to packs directory — resolved relative to repo root at runtime
-_DEFAULT_PACKS_DIR = Path(__file__).parents[7] / "packs"
+# Uses anchor search for "Fabric_4L" to avoid fragility from parents[N]
+def _find_repo_root(start_path: Path) -> Path:
+    """Find repository root by searching for Fabric_4L directory."""
+    for parent in start_path.parents:
+        if parent.name == "Fabric_4L":
+            return parent
+        # Fallback: look for packs directory directly
+        if (parent / "packs").exists():
+            return parent
+    # Last resort: use 7 levels up (original behavior for compatibility)
+    return start_path.parents[7]
+
+_DEFAULT_PACKS_DIR = _find_repo_root(Path(__file__)) / "packs"
+
+# Pack version pattern (e.g., "-v1", "-v2")
+_PACK_VERSION_PATTERN = re.compile(r"-v\d+$")
 
 # Mapping from pack variable type strings to VariableDataType enum
 _TYPE_MAP: dict[str, VariableDataType] = {
@@ -104,18 +124,21 @@ class PackVariableLoader:
         if not manifest_path.exists():
             raise FileNotFoundError(f"pack-manifest.json not found at {manifest_path}")
 
-        with open(manifest_path) as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
 
         results: list[PackLoadResult] = []
         for pack_entry in manifest.get("packs", []):
-            pack_id = pack_entry["pack_id"]
+            pack_id = pack_entry.get("pack_id")
+            if not pack_id:
+                logger.warning(f"Skipping pack entry without pack_id: {pack_entry}")
+                continue
             try:
                 result = await self.load_pack(pack_id)
                 results.append(result)
                 logger.info(result.summary())
             except Exception as exc:
-                logger.error(f"Failed to load pack '{pack_id}': {exc}")
+                logger.exception(f"Failed to load pack '{pack_id}'")
                 results.append(
                     PackLoadResult(
                         pack_id=pack_id,
@@ -127,6 +150,18 @@ class PackVariableLoader:
                 )
         return results
 
+    def _get_pack_paths(self, pack_id: str) -> tuple[Path, Path]:
+        """
+        Resolve pack directory and file paths.
+        
+        Strips version suffix (e.g., "-v1", "-v2") from pack_id to get directory name.
+        Returns (pack_dir, variables_path) tuple.
+        """
+        pack_dir_name = _PACK_VERSION_PATTERN.sub("", pack_id)
+        pack_dir = self._packs_dir / pack_dir_name
+        variables_path = pack_dir / "variables.json"
+        return pack_dir, variables_path
+
     async def load_pack(self, pack_id: str) -> PackLoadResult:
         """
         Load all variables from a single pack into the Variable Registry.
@@ -137,15 +172,14 @@ class PackVariableLoader:
         Returns:
             PackLoadResult with counts and any errors
         """
-        pack_dir_name = pack_id.replace("-v1", "").replace("-v2", "").replace("-v3", "")
-        variables_path = self._packs_dir / pack_dir_name / "variables.json"
+        pack_dir, variables_path = self._get_pack_paths(pack_id)
 
         if not variables_path.exists():
             raise FileNotFoundError(
                 f"variables.json not found for pack '{pack_id}' at {variables_path}"
             )
 
-        with open(variables_path) as f:
+        with open(variables_path, encoding="utf-8") as f:
             data = json.load(f)
 
         raw_variables: list[dict[str, Any]] = data.get("variables", [])
@@ -184,26 +218,49 @@ class PackVariableLoader:
         """
         Validate that all formula variable references in a pack resolve
         to registered variables. Returns a list of error messages (empty = valid).
+
+        This method performs static validation by checking that every variable
+        referenced in formula expressions exists in the pack's variables.json.
+        It does NOT validate against the runtime Variable Registry (use load_pack
+        for that). This is useful for CI/CD pre-commit hooks.
+
+        Args:
+            pack_id: The pack identifier (e.g. "financial-services-v1")
+
+        Returns:
+            List of error message strings. Empty list means all references valid.
+
+        Example:
+            loader = PackVariableLoader(registry)
+            errors = await loader.validate_pack_references("financial-services-v1")
+            if errors:
+                for e in errors:
+                    print(f"  ✗ {e}")
+            else:
+                print("  ✓ All formula references valid")
         """
-        pack_dir_name = pack_id.replace("-v1", "").replace("-v2", "").replace("-v3", "")
-        formulas_path = self._packs_dir / pack_dir_name / "formulas.json"
-        variables_path = self._packs_dir / pack_dir_name / "variables.json"
+        pack_dir, variables_path = self._get_pack_paths(pack_id)
+        formulas_path = pack_dir / "formulas.json"
 
         if not formulas_path.exists() or not variables_path.exists():
             return [f"Missing formulas.json or variables.json for pack '{pack_id}'"]
 
-        with open(variables_path) as f:
+        with open(variables_path, encoding="utf-8") as f:
             var_data = json.load(f)
-        with open(formulas_path) as f:
+        with open(formulas_path, encoding="utf-8") as f:
             formula_data = json.load(f)
 
         # Build set of valid variable names from the pack file
-        valid_names = {v["variable_name"] for v in var_data.get("variables", [])}
+        valid_names = {v.get("variable_name", "") for v in var_data.get("variables", []) if v.get("variable_name")}
 
         errors: list[str] = []
         for formula in formula_data.get("formulas", []):
             formula_id = formula.get("formula_id", "unknown")
-            refs = formula.get("expression", {}).get("variables", [])
+            expr = formula.get("expression", {})
+            if not isinstance(expr, dict):
+                errors.append(f"[{pack_id}] Formula '{formula_id}' has invalid expression format")
+                continue
+            refs = expr.get("variables", [])
             for ref in refs:
                 if ref not in valid_names:
                     errors.append(
@@ -226,9 +283,18 @@ class PackVariableLoader:
           display_name  → description (human-readable label)
           unit/type     → data_type (mapped via _TYPE_MAP)
           pack_id       → applicable_packs
+
+        Raises:
+            ValueError: If required fields (variable_id or canonicalName/variable_name) are missing
         """
-        variable_id = raw["variable_id"]
+        # Validate required fields
+        variable_id = raw.get("variable_id")
+        if not variable_id:
+            raise ValueError("Variable is missing required field 'variable_id'")
+
         canonical_name = raw.get("canonicalName") or raw.get("variable_name", "")
+        if not canonical_name:
+            raise ValueError(f"Variable '{variable_id}' is missing both 'canonicalName' and 'variable_name'")
         display_name = raw.get("display_name") or raw.get("name") or canonical_name
         description = raw.get("description") or display_name
         raw_type = (raw.get("unit") or raw.get("type") or "string").lower()

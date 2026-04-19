@@ -8,6 +8,20 @@ def get_formula_variables(formula):
     """Extract variable names from formula expression."""
     return set(formula.get('expression', {}).get('variables', []))
 
+
+def get_pack_prefix(pack_name, existing_variables):
+    """Derive pack prefix from existing variable IDs (e.g., 'ai-var-001' -> 'ai').
+    
+    Falls back to first two chars of pack name if no variables exist.
+    """
+    if existing_variables:
+        # Extract prefix from first existing variable ID
+        first_var_id = existing_variables[0].get('variable_id', '')
+        if '-var-' in first_var_id:
+            return first_var_id.split('-var-')[0]
+    # Fallback: use pack name abbreviation
+    return pack_name[:2].replace('-', '')
+
 def main():
     packs_dir = Path('packs')
     manifest_path = packs_dir / 'pack-manifest.json'
@@ -38,10 +52,15 @@ def main():
             formula_data = json.load(f)
         formulas = formula_data['formulas']
 
-        # Get all referenced variables from formulas
+        # Validate: check for formula references to non-existent variables
+        valid_formula_ids = {f['formula_id'] for f in formulas}
         referenced_vars = set()
         for formula in formulas:
             refs = get_formula_variables(formula)
+            # Validate each referenced formula exists
+            for ref_formula_id in formula.get('expression', {}).get('sub_formulas', []):
+                if ref_formula_id not in valid_formula_ids:
+                    print(f"  ⚠️  Formula '{formula['formula_id']}' references non-existent sub-formula '{ref_formula_id}'")
             referenced_vars.update(refs)
 
         # Get existing variable names
@@ -55,10 +74,11 @@ def main():
 
             # Add placeholder variables for missing ones
             next_id = max(int(v['variable_id'].split('-')[-1]) for v in variables) + 1
+            pack_prefix = get_pack_prefix(pack_name, variables)
 
             for var_name in missing:
                 var = {
-                    "variable_id": f"{pack_name[:2].replace('-', '')}-var-{next_id:03d}",
+                    "variable_id": f"{pack_prefix}-var-{next_id:03d}",
                     "variable_name": var_name,
                     "display_name": var_name.replace('_', ' '),
                     "description": f"Auto-generated variable for {var_name}",

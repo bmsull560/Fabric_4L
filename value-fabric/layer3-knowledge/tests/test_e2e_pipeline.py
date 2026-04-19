@@ -243,6 +243,19 @@ class TestSchemaInitialization:
         # Verify schema
         results = await schema_initializer.verify_schema()
 
+        # Debug: Print results to diagnose failures
+        print(f"\n=== Schema Verification Results ===")
+        print(f"Edition: {results.get('edition')}")
+        print(f"Enterprise Features: {results.get('enterprise_features')}")
+        print(f"Constraints Expected: {results.get('constraints', {}).get('expected')}")
+        print(f"Constraints Found: {results.get('constraints', {}).get('found')}")
+        print(f"Constraints Missing: {results.get('constraints', {}).get('missing')}")
+        print(f"Indexes Expected: {results.get('indexes', {}).get('expected')}")
+        print(f"Indexes Found: {results.get('indexes', {}).get('found')}")
+        print(f"Indexes Missing: {results.get('indexes', {}).get('missing')}")
+        print(f"Valid: {results.get('valid')}")
+        print(f"====================================\n")
+
         # Check edition detection
         assert results["edition"] == neo4j_edition
         assert results["enterprise_features"] == (neo4j_edition == "enterprise")

@@ -23,6 +23,9 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v1';
 const L4_PREFIX = import.meta.env.VITE_L4_PREFIX || '/agents';
 
+// Token expiry buffer (1 minute before actual expiry)
+const TOKEN_EXPIRY_BUFFER_MS = 60_000;
+
 /**
  * AuthClient — Formal contract boundary for identity operations
  *
@@ -49,7 +52,7 @@ export class AuthClient {
     let response: Response;
     try {
       response = await fetch(url);
-    } catch (networkError) {
+    } catch {
       throw new AuthError(
         'Failed to connect to authentication service',
         AuthErrorCategory.NETWORK
@@ -98,7 +101,7 @@ export class AuthClient {
     let response: Response;
     try {
       response = await fetch(url);
-    } catch (networkError) {
+    } catch {
       throw new AuthError(
         'Failed to connect to authentication service',
         AuthErrorCategory.NETWORK
@@ -184,7 +187,6 @@ export class AuthClient {
       const payload = JSON.parse(atob(base64 + padding));
 
       const exp = payload.exp * 1000; // Convert to milliseconds
-      const TOKEN_EXPIRY_BUFFER_MS = 60_000; // 1 minute buffer
 
       if (Date.now() >= exp - TOKEN_EXPIRY_BUFFER_MS) {
         this.clearSession();

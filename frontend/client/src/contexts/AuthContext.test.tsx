@@ -481,6 +481,51 @@ describe('AuthProvider', () => {
     });
   });
 
+  describe('devBypass', () => {
+    it('creates mock auth state in development mode', async () => {
+      // Component that exposes devBypass for testing
+      function DevBypassTrigger() {
+        const auth = useAuthContext();
+        return (
+          <div>
+            <button data-testid="dev-bypass-btn" onClick={auth.devBypass}>
+              Dev Bypass
+            </button>
+          </div>
+        );
+      }
+
+      const wrapper = createWrapper();
+      render(
+        <AuthProvider>
+          <DevBypassTrigger />
+        </AuthProvider>,
+        { wrapper }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('loading')).toHaveTextContent('ready');
+      });
+
+      // Initially unauthenticated
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('unauthenticated');
+
+      // Trigger dev bypass
+      await act(async () => {
+        screen.getByTestId('dev-bypass-btn').click();
+      });
+
+      // Should now be authenticated as dev user
+      await waitFor(() => {
+        expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
+        expect(screen.getByTestId('user-email')).toHaveTextContent('dev@value-fabric.com');
+      });
+
+      // Verify token was stored
+      expect(localStorage.getItem('accessToken')).toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+    });
+  });
+
   describe('refreshToken', () => {
     it('returns true when token is valid', async () => {
       // Create a JWT that expires in 1 hour

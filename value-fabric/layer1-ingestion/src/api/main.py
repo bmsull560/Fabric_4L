@@ -34,6 +34,8 @@ from ..shared.models import (
     BrowserEngine,
     ComplianceEventType,
     ComplianceLog,
+    CrawlDecision,
+    CrawlPath,
     ExtractedData,
     ExtractionMethod,
     JobError,
@@ -375,6 +377,7 @@ class CreateTargetRequest(BaseModel):
     description: str | None = None
     url: str = Field(..., description="Target URL")
     target_type: TargetType = TargetType.SINGLE_PAGE
+    crawl_path: CrawlPath = CrawlPath.BROWSER  # HTTPX Fast Path selection
     extraction_config: ExtractionConfigInput = Field(default_factory=ExtractionConfigInput)
     browser_config: BrowserConfigInput = Field(default_factory=BrowserConfigInput)
     schedule: ScheduleInput | None = None
@@ -391,6 +394,7 @@ class UpdateTargetRequest(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
     description: str | None = None
     target_type: TargetType | None = None
+    crawl_path: CrawlPath | None = None  # HTTPX Fast Path selection
     extraction_config: ExtractionConfigInput | None = None
     browser_config: BrowserConfigInput | None = None
     schedule: ScheduleInput | None = None
@@ -425,6 +429,7 @@ class ScrapingTargetDetail(ScrapingTargetSummary):
     organization_id: UUID
     description: str | None
     url_pattern: str | None
+    crawl_path: str  # HTTPX Fast Path selection
     extraction_config: dict[str, Any]
     browser_config: dict[str, Any]
     schedule: dict[str, Any] | None
@@ -900,6 +905,9 @@ async def create_target(
             "credentials_ref": request.authentication.credentials_ref,
         }
 
+    # Add crawl_path to extraction config
+    extraction_config["crawl_path"] = request.crawl_path.value
+
     target = create_scraping_target(
         organization_id=org_id,
         name=request.name,
@@ -999,6 +1007,10 @@ async def update_target(
         target.status = request.status.value
     if request.tags is not None:
         target.tags = request.tags
+    if request.crawl_path is not None:
+        if target.extraction_config is None:
+            target.extraction_config = {}
+        target.extraction_config["crawl_path"] = request.crawl_path.value
 
     # Update nested configs
     if request.extraction_config:
@@ -2123,6 +2135,7 @@ def _target_to_detail(target: ScrapingTarget) -> ScrapingTargetDetail:
         tags=target.tags or [],
         description=target.description,
         url_pattern=target.url_pattern,
+        crawl_path=target.extraction_config.get("crawl_path", "browser") if target.extraction_config else "browser",
         extraction_config=target.extraction_config or {},
         browser_config=target.browser_config or {},
         schedule=target.schedule,

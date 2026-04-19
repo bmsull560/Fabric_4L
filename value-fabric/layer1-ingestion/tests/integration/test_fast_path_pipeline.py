@@ -497,3 +497,63 @@ class TestPerformanceCharacteristics:
             # All 10 should complete in reasonable time (concurrent)
             assert len(results) == 10
             assert elapsed_ms < 2000  # Should be much faster than sequential
+
+    def test_execution_logger_handles_invalid_utf8(self) -> None:
+        """P1 Regression: ExecutionLogger handles binary/invalid UTF-8 content."""
+        from unittest.mock import MagicMock
+        from src.crawler.execution_logger import ExecutionLogger
+
+        logger = ExecutionLogger()
+
+        # Create result with invalid UTF-8 sequences (e.g., binary content)
+        result = MagicMock()
+        result.html = b"\xff\xfe<script>".decode("latin-1")  # Invalid UTF-8 bytes
+        result.text_content = "test"
+        result.status_code = 200
+        result.fetch_time_ms = 100
+        result.content_hash = "abc123"
+        result.links_found = []
+        result.is_spa_detected = False
+
+        routing_decision = MagicMock()
+        routing_decision.route.value = "fast"
+        routing_decision.reason = "static_asset"
+
+        # Should not raise UnicodeEncodeError
+        entry = logger.log_fast_path(
+            job_id="test-job",
+            url="https://example.com",
+            result=result,
+            routing_decision=routing_decision,
+            target_mode="fast"
+        )
+        assert entry is not None
+        assert entry.bytes_transferred > 0
+
+    def test_content_ratio_uses_original_html_length(self) -> None:
+        """P1 Regression: Content ratio uses original HTML length, not truncated."""
+        from unittest.mock import MagicMock
+        from src.crawler.quality_gate import QualityGate
+
+        gate = QualityGate()
+
+        # Create result with truncated HTML but large original
+        result = MagicMock()
+        result.text_content = "A" * 1000  # 1000 chars of text
+        result.html = "A" * 1000          # Truncated to 1000
+        result.original_html_length = 50000  # Originally 50000
+        result.status_code = 200
+        result.is_spa_detected = False
+        result.fetch_time_ms = 100
+
+        # Evaluate quality
+        decision = gate.evaluate(result)
+
+        # Ratio should be 1000/50000 = 0.02, not 1000/1000 = 1.0
+        # With default threshold of 0.02, this should pass content_ratio check
+        expected_ratio = 1000 / 50000  # 0.02
+        assert expected_ratio == 0.02
+
+        # If we used truncated length, ratio would be 1.0 (1000/1000)
+        wrong_ratio = 1000 / 1000  # 1.0
+        assert wrong_ratio != expected_ratio

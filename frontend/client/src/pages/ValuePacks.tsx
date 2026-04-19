@@ -37,8 +37,17 @@ const LAYOUT = {
   MY_PACKS_SLOTS: 4,
 } as const;
 
-/** Industry filter options */
-const INDUSTRIES = ["All", "SaaS / B2B", "Infrastructure / DevOps", "Financial Services", "Healthcare"];
+/** Industry filter options - synchronized with pack-manifest.json */
+const INDUSTRIES = [
+  "All",
+  "AI & Technology",
+  "Energy & Utilities",
+  "Financial Services",
+  "Life Sciences",
+  "Manufacturing",
+  "Retail & Consumer",
+  "Software",
+];
 const STATUSES: Array<"all" | PackStatus> = ["all", "active", "draft", "published", "archived"];
 const STATUS_LABELS: Record<string, string> = {
   all: "All Statuses", active: "Active", draft: "Draft", published: "Published", archived: "Archived",
@@ -46,11 +55,27 @@ const STATUS_LABELS: Record<string, string> = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Format a date string into a human-readable relative time.
+ * Handles edge cases: undefined input, invalid dates, and future dates.
+ *
+ * @param dateStr - ISO date string or undefined
+ * @returns Human-readable string (e.g., "Today", "3 days ago", "Jan 15, 2024")
+ */
 function formatLastUpdated(dateStr: string | undefined): string {
   if (!dateStr) return "Unknown";
+
   const date = new Date(dateStr);
+  // Handle invalid date strings
+  if (isNaN(date.getTime())) return "Invalid date";
+
   const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  const diffMs = now.getTime() - date.getTime();
+
+  // Handle future dates (shouldn't happen but guard against clock skew)
+  if (diffMs < 0) return date.toLocaleDateString();
+
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   if (diffDays < 7) return `${diffDays} days ago`;
@@ -268,7 +293,8 @@ function MyPacksSection({ packs }: MyPacksSectionProps) {
   return (
     <div data-testid="my-packs-section">
       <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3">My Packs</h4>
-      <div className={`grid grid-cols-${LAYOUT.MY_PACKS_SLOTS} gap-3`}>
+      {/* grid-cols-4 matches LAYOUT.MY_PACKS_SLOTS - using static class for Tailwind build-time detection */}
+      <div className="grid grid-cols-4 gap-3">
         {myPacks.length === 0 && (
           <p className="col-span-4 text-[11px] text-muted-foreground/60 text-center py-4">No deployed packs yet.</p>
         )}
@@ -514,6 +540,16 @@ function ValuePacksContent() {
   );
 }
 
+/**
+ * Value Packs page component - Entry point with error boundary.
+ *
+ * Displays domain-specific value packs that users can browse, filter, and deploy.
+ * Features: industry/category filtering, search, pack preview, deployment to tenant.
+ *
+ * @example
+ * // In router configuration
+ * { path: '/value-packs', element: <ValuePacks /> }
+ */
 export default function ValuePacks() {
   return (
     <ErrorBoundary>

@@ -144,7 +144,9 @@ export function useApproveFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      console.error('Formula approval failed:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Formula approval failed:', error.message);
+      }
     },
   });
 }
@@ -166,7 +168,9 @@ export function useSubmitFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      console.error('Formula submission failed:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Formula submission failed:', error.message);
+      }
     },
   });
 }
@@ -200,7 +204,9 @@ export function useCreateFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      console.error('Formula creation failed:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Formula creation failed:', error.message);
+      }
     },
   });
 }
@@ -232,7 +238,9 @@ export function useUpdateFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.detail(variables.formulaId) });
     },
     onError: (error) => {
-      console.error('Formula update failed:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Formula update failed:', error.message);
+      }
     },
   });
 }
@@ -254,7 +262,9 @@ export function useDeleteFormula() {
       queryClient.invalidateQueries({ queryKey: QK.formulas.all });
     },
     onError: (error) => {
-      console.error('Formula deletion failed:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Formula deletion failed:', error.message);
+      }
     },
   });
 }
@@ -283,13 +293,17 @@ export function useEvaluateFormula() {
       // Runtime validation with Zod
       const parsed = FormulaEvaluationResultSchema.safeParse(response.data);
       if (!parsed.success) {
-        console.error('Formula evaluation validation failed:', parsed.error);
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Formula evaluation validation failed:', parsed.error);
+        }
         throw new FormulaApiError(formatZodError(parsed.error, 'formula evaluation response'));
       }
       return parsed.data;
     },
     onError: (error) => {
-      console.error('Formula evaluation failed:', error.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Formula evaluation failed:', error.message);
+      }
     },
   });
 }

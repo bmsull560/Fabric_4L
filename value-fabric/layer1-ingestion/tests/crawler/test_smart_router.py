@@ -33,6 +33,19 @@ class TestRoutingRules:
         assert isinstance(result, RoutingDecision)
         assert result.route == RouteType.FAST_WITH_FALLBACK
 
+    @pytest.mark.parametrize("path,expected_route", [
+        ("/wp-content/uploads/image.jpg", RouteType.FAST),  # Directory pattern
+        ("/assets/js/app.js", RouteType.FAST),              # Directory pattern
+        ("/static/css/style.css", RouteType.FAST),          # Directory pattern
+        ("/page.html", RouteType.FAST),                     # File extension
+        ("/app.js", RouteType.FAST),                        # File extension
+        ("/api/dynamic", RouteType.FAST_WITH_FALLBACK),    # Neither
+    ])
+    def test_static_pattern_matching(self, router: SmartRouter, path: str, expected_route: RouteType) -> None:
+        """P1 Regression: Verify static asset patterns correctly route to FAST path."""
+        decision = router.decide(f"https://example.com{path}")
+        assert decision.route == expected_route, f"{path} should route to {expected_route}"
+
     def test_rule1_target_override_fast(self, router: SmartRouter) -> None:
         """Rule 1: Target mode FAST always routes to fast path."""
         decision = router.decide(

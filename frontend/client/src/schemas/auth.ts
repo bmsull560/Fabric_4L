@@ -29,7 +29,7 @@ export const TokenResponseSchema = z.object({
   access_token: z.string().min(1, 'Access token is required'),
   refresh_token: z.string().optional(),
   expires_in: z.number().int().positive().optional().default(3600),
-  token_type: z.enum(['Bearer', 'bearer']).default('Bearer'),
+  token_type: z.string().transform(val => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()).default('Bearer'),
   user_id: z.string().min(1, 'User ID is required'),
   email: z.string().email('Valid email required'),
   role: z.enum(['standard', 'advanced', 'admin']).default('standard'),

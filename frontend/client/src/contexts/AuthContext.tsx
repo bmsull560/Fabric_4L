@@ -133,7 +133,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Verify state matches what we stored
       const storedState = sessionStorage.getItem('oidcState');
       if (state !== storedState) {
-        throw new Error('Invalid state parameter');
+        throw new AuthError(
+          'Invalid state parameter - possible CSRF attack',
+          AuthErrorCategory.AUTHENTICATION
+        );
       }
 
       // Use AuthClient for contract-validated token exchange

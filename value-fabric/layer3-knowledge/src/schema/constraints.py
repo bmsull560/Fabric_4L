@@ -329,8 +329,9 @@ INDEXES: list[Index] = [
     Index("usecase_embedding_idx", "UseCase", ["embedding"], "vector"),
     Index("persona_embedding_idx", "Persona", ["embedding"], "vector"),
     Index("valuedriver_embedding_idx", "ValueDriver", ["embedding"], "vector"),
-    # Lookup index for efficient label scanning
-    Index("entity_lookup", "", [], "lookup"),
+    # NOTE: LOOKUP index for efficient label scanning
+    # Neo4j 5.x automatically creates token lookup indexes, so we don't need to create it manually
+    # Index("entity_lookup", "", [], "lookup"),  # Commented out - auto-created by Neo4j 5.x
     # Phase 2: Value Pack and Variable indexes
     Index("valuepack_name_idx", "ValuePack", ["name"], "btree"),
     Index("valuepack_industry_idx", "ValuePack", ["industry"], "btree"),
@@ -358,13 +359,21 @@ def get_all_constraints() -> list[Constraint]:
     return CONSTRAINTS
 
 
-def get_tenant_constraints() -> list[Constraint]:
+def get_tenant_constraints(edition: str = "community") -> list[Constraint]:
     """Get tenant isolation constraints (P0-03).
 
     These require Neo4j Enterprise Edition. Returns empty list for
     Community Edition compatibility.
+
+    Args:
+        edition: Neo4j edition string ("community" or "enterprise")
+
+    Returns:
+        List of tenant constraints for Enterprise, empty list for Community
     """
-    return TENANT_CONSTRAINTS
+    if edition.lower() == "enterprise":
+        return TENANT_CONSTRAINTS
+    return []  # Community Edition doesn't support EXISTS constraints
 
 
 def get_all_constraints_with_tenant(include_tenant: bool = False) -> list[Constraint]:

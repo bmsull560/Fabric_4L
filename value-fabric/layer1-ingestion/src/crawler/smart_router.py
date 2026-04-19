@@ -71,7 +71,7 @@ class SmartRouter:
     ]
 
     # Static asset patterns (always fast)
-    STATIC_PATTERNS = [
+    STATIC_EXTENSIONS = [
         ".css",
         ".js",
         ".png",
@@ -82,6 +82,9 @@ class SmartRouter:
         ".ico",
         ".pdf",
         ".zip",
+    ]
+
+    STATIC_PATH_PATTERNS = [
         "/wp-content/",
         "/assets/",
         "/static/",
@@ -159,8 +162,17 @@ class SmartRouter:
                 stagehand_config=self._default_browser_config(),
             )
 
-        # Rule 2: Static assets -> FAST
-        if any(path.endswith(ext) for ext in self.STATIC_PATTERNS):
+        # Rule 2: Static file extensions -> FAST
+        if any(path.endswith(ext) for ext in self.STATIC_EXTENSIONS):
+            return RoutingDecision(
+                url=url,
+                route=RouteType.FAST,
+                reason="static_asset",
+                priority=1,
+            )
+
+        # Rule 2b: Static asset directories -> FAST
+        if any(pattern in path for pattern in self.STATIC_PATH_PATTERNS):
             return RoutingDecision(
                 url=url,
                 route=RouteType.FAST,

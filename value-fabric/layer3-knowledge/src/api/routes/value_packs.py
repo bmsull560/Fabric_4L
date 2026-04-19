@@ -3,6 +3,7 @@
 Provides endpoints for Value Pack CRUD and execution.
 """
 
+import re
 import uuid
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -40,16 +41,43 @@ MAX_PAGE_SIZE = 100
 DEFAULT_PAGE_SIZE = 50
 
 
-def _validate_uuid(pack_id: str) -> None:
-    """Validate pack_id is a valid UUID format.
+# Pack ID validation regex: allows UUIDs OR slug-style IDs (alphanumeric, hyphens, underscores)
+# Examples: "manufacturing-v1", "life-sciences-v1", "550e8400-e29b-41d4-a716-446655440000"
+VALID_PACK_ID_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
+MAX_PACK_ID_LENGTH = 128
+
+
+def _validate_pack_id(pack_id: str) -> None:
+    """Validate pack_id format.
+
+    Accepts both UUID format (for dynamic packs) and slug-style IDs
+    (for manifest packs like "manufacturing-v1").
 
     Raises:
-        HTTPException: 400 if pack_id is not valid UUID format.
+        HTTPException: 400 if pack_id format is invalid or too long.
     """
+    if not pack_id:
+        raise HTTPException(status_code=400, detail="pack_id is required")
+
+    if len(pack_id) > MAX_PACK_ID_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"pack_id exceeds maximum length ({MAX_PACK_ID_LENGTH} chars): {pack_id[:50]}..."
+        )
+
+    # Check if it's a valid UUID
     try:
         uuid.UUID(pack_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid pack_id format: {pack_id}") from exc
+        return  # Valid UUID
+    except ValueError:
+        pass  # Not a UUID, check slug format
+
+    # Check slug format (alphanumeric, hyphens, underscores)
+    if not VALID_PACK_ID_PATTERN.match(pack_id):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid pack_id format: {pack_id}. Must be UUID or slug-style (alphanumeric, hyphens, underscores)."
+        )
 
 router = APIRouter()
 
@@ -402,7 +430,7 @@ async def get_pack(
     driver: AsyncDriver = Depends(get_driver),
 ):
     """Get Value Pack by ID."""
-    _validate_uuid(pack_id)
+    _validate_pack_id(pack_id)
     pack = await _get_pack_detail(driver, pack_id)
     if not pack:
         raise HTTPException(status_code=404, detail="Pack not found")
@@ -594,7 +622,7 @@ async def update_pack(
     driver: AsyncDriver = Depends(get_driver),
 ):
     """Update a Value Pack."""
-    _validate_uuid(pack_id)
+    _validate_pack_id(pack_id)
 
     # Verify pack exists
     check_query = "MATCH (vp:ValuePack {id: $pack_id}) RETURN vp"
@@ -699,7 +727,7 @@ async def execute_pack(
     Evaluates all formulas associated with the pack using provided variables
     merged with formula defaults. Returns calculated values for each formula.
     """
-    _validate_uuid(pack_id)
+    _validate_pack_id(pack_id)
     execution_id = str(uuid.uuid4())
     now = datetime.now(UTC).isoformat()
 
@@ -915,7 +943,7 @@ async def fork_pack(
     driver: AsyncDriver = Depends(get_driver),
 ):
     """Fork a Value Pack for customization."""
-    _validate_uuid(pack_id)
+    _validate_pack_id(pack_id)
 
     # Get original pack properties
     orig = await _get_original_pack(driver, pack_id)
@@ -940,7 +968,7 @@ async def apply_pack(
     driver: AsyncDriver = Depends(get_driver),
 ):
     """Apply/Deploy a Value Pack (alias for execute endpoint)."""
-    _validate_uuid(pack_id)
+    _validate_pack_id(pack_id)
     # NOTE: apply_pack is currently an alias for execute_pack.
     # When execution logic diverges (e.g., deployment vs preview), refactor.
     return await execute_pack(pack_id, request, driver)

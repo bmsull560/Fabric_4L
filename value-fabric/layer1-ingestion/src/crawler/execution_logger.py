@@ -152,7 +152,7 @@ data needed to calculate it later.
             fallback_reason=None,
             fetch_time_ms=result.fetch_time_ms,
             total_time_ms=result.fetch_time_ms,
-            bytes_transferred=len(result.html.encode("utf-8")),
+            bytes_transferred=len(result.html.encode("utf-8", errors="replace")),
             browser_sessions_used=0,
             browser_steps=0,
             status_code=result.status_code,
@@ -203,7 +203,7 @@ data needed to calculate it later.
             fallback_reason=quality_decision.fallback_reason,
             fetch_time_ms=fast_result.fetch_time_ms,
             total_time_ms=fast_result.fetch_time_ms,  # Will be updated after browser
-            bytes_transferred=len(fast_result.html.encode("utf-8")),
+            bytes_transferred=len(fast_result.html.encode("utf-8", errors="replace")),
             browser_sessions_used=1,  # Starting browser session
             browser_steps=0,  # Will be updated after browser completes
             status_code=fast_result.status_code,

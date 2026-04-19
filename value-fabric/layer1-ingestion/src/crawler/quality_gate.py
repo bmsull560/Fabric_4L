@@ -160,9 +160,11 @@ class QualityGate:
 
     def _check_content_ratio(self, result: FastPathResult) -> bool:
         """Check if text-to-HTML ratio is sufficient."""
-        if not result.html:
+        # P1 Fix: Use original_html_length to avoid inflated ratio from truncation
+        html_length = result.original_html_length if result.original_html_length > 0 else len(result.html)
+        if not html_length:
             return False
-        ratio = len(result.text_content) / len(result.html)
+        ratio = len(result.text_content) / html_length
         return ratio >= self.thresholds.min_content_ratio
 
     def _check_no_spa(self, result: FastPathResult) -> bool:

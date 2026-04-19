@@ -40,6 +40,7 @@ class FastPathResult:
     fetch_time_ms: int = 0
     content_type: str = ""
     headers: dict[str, str] = field(default_factory=dict)
+    original_html_length: int = 0  # P1 Fix: Store original size before truncation
 
 
 @dataclass
@@ -164,8 +165,12 @@ class HttpxCrawler:
                     headers=dict(response.headers),
                 )
 
-            # Limit HTML size for processing
-            html = response.text[: self.config.max_html_size]
+            # P1 Fix: Get full HTML first for link extraction
+            full_html = response.text
+            original_length = len(full_html)
+
+            # Limit HTML size for processing (after extracting links)
+            html = full_html[: self.config.max_html_size]
             content_type = response.headers.get("content-type", "")
 
             # Quick SPA detection
@@ -184,8 +189,8 @@ class HttpxCrawler:
                 no_fallback=False,
             ) or ""
 
-            # Extract links for discovery
-            links = self._extract_links(html, url)
+            # P1 Fix: Extract links from FULL HTML before truncation
+            links = self._extract_links(full_html, url)
 
             # Content hash for deduplication
             content_hash = hashlib.sha256(text_content.encode()).hexdigest()[:16]
@@ -202,6 +207,7 @@ class HttpxCrawler:
                 fetch_time_ms=fetch_time,
                 content_type=content_type,
                 headers=dict(response.headers),
+                original_html_length=original_length,  # P1 Fix: Store original length
             )
 
         except httpx.TimeoutException:
@@ -405,6 +411,7 @@ class HttpxCrawler:
             fetch_time_ms=fetch_time_ms,
             content_type=error_type,
             headers=headers or {},
+            original_html_length=0,
         )
 
     def get_stats(self) -> dict[str, Any]:

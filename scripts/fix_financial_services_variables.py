@@ -244,13 +244,21 @@ def main():
 
     # Add missing variables with canonicalName and name
     added_count = 0
+    existing_ids = {v['variable_id'] for v in variables}
+    
     for var in missing_vars:
         if var['variable_name'] not in existing_vars:
+            # Check for ID collision
+            if var['variable_id'] in existing_ids:
+                print(f"⚠️  Skipping {var['variable_name']}: ID '{var['variable_id']}' already exists")
+                continue
+            
             var['canonicalName'] = var['variable_name']
             var['name'] = var['display_name']
             variables.append(var)
+            existing_ids.add(var['variable_id'])
             added_count += 1
-            print(f"Added: {var['variable_name']}")
+            print(f"Added: {var['variable_name']} ({var['variable_id']})")
 
     # Save variables.json
     with open(variables_path, 'w') as f:
