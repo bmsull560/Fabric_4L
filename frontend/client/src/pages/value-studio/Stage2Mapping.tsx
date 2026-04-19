@@ -209,7 +209,7 @@ function LeftPanel() {
       </div>
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
         <span className="text-[11px] text-muted-foreground">Unmapped: 2</span>
-        <span className="h-6 px-2.5 bg-foreground text-background text-[11px] font-semibold rounded flex items-center">Mapped: 2</span>
+        <span className="h-6 px-2.5 bg-primary/10 text-primary text-[11px] font-semibold rounded flex items-center">Mapped: 2</span>
       </div>
     </StudioPanel>
   );
@@ -302,7 +302,7 @@ function CapabilityPalette() {
 function StatusBar() {
   return (
     <>
-      <span className="h-6 px-2.5 bg-foreground text-background text-[11px] font-semibold rounded flex items-center">Chains: 3</span>
+      <span className="h-6 px-2.5 bg-primary/10 text-primary text-[11px] font-semibold rounded flex items-center">Chains: 3</span>
       <span>Bridge gaps: 1</span>
       <span className="text-primary font-medium">AI suggestions: 5</span>
       <button className="text-[11px] font-medium text-primary hover:underline">Auto-map all</button>

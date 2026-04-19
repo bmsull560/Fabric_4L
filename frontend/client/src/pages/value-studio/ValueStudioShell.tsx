@@ -61,7 +61,7 @@ function StageProgressBar({ stages }: { stages: StageStatus[] }) {
             <div
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium cursor-pointer transition-colors",
-                stage.status === "active" && "bg-foreground text-background",
+                stage.status === "active" && "bg-primary/10 text-primary",
                 stage.status === "complete" && "text-foreground hover:bg-muted",
                 stage.status === "pending" && "text-muted-foreground hover:bg-muted"
               )}
@@ -73,7 +73,7 @@ function StageProgressBar({ stages }: { stages: StageStatus[] }) {
                   className={cn(
                     "w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
                     stage.status === "active"
-                      ? "bg-background text-foreground"
+                      ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   )}
                 >
@@ -96,15 +96,15 @@ function StageProgressBar({ stages }: { stages: StageStatus[] }) {
 
 function DealContextHeader({ deal }: { deal: DealContext }) {
   return (
-    <div className="h-9 bg-foreground text-background flex items-center px-4 gap-3 text-[12px] shrink-0">
-      <Building2 size={13} className="text-background/60 shrink-0" />
-      <span className="font-semibold">{deal.accountName}</span>
-      <ChevronRight size={11} className="text-background/40" />
-      <span className="text-background/70">{deal.dealType}</span>
-      <ChevronRight size={11} className="text-background/40" />
-      <span className="text-background/70">{deal.arr}</span>
+    <div className="h-9 bg-muted/50 border-b border-border flex items-center px-6 gap-3 text-[12px] shrink-0">
+      <Building2 size={13} className="text-muted-foreground shrink-0" />
+      <span className="font-semibold text-foreground">{deal.accountName}</span>
+      <ChevronRight size={11} className="text-muted-foreground/50" />
+      <span className="text-muted-foreground">{deal.dealType}</span>
+      <ChevronRight size={11} className="text-muted-foreground/50" />
+      <span className="text-muted-foreground">{deal.arr}</span>
       <div className="flex-1" />
-      <span className="text-background/50 text-[11px]">⊙ {deal.crmStage}</span>
+      <span className="text-muted-foreground text-[11px]">⊙ {deal.crmStage}</span>
     </div>
   );
 }
@@ -172,7 +172,7 @@ export default function ValueStudioShell({
           {nextLabel && (
             <button
               onClick={handleNext}
-              className="h-8 px-4 text-[12px] font-semibold bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
+              className="h-8 px-4 text-[12px] font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
               {nextLabel} →
             </button>
@@ -200,7 +200,7 @@ export default function ValueStudioShell({
 
       {/* Status bar */}
       {statusBar && (
-        <div className="h-10 shrink-0 border-t border-border bg-muted/30 flex items-center px-6 gap-4 text-[11px] text-muted-foreground">
+        <div className="h-10 shrink-0 border-t border-border bg-background flex items-center px-6 gap-4 text-[11px] text-muted-foreground">
           {statusBar}
         </div>
       )}

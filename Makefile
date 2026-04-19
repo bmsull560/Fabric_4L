@@ -177,10 +177,12 @@ test-e2e: ## Run Playwright end-to-end tests (requires running stack)
 
 # ─── Security Tests ───────────────────────────────────────────────────────────
 
-security-smoke: ## Run fast security smoke tests (< 2 min, PR gating)
+security-smoke: ## Run fast security smoke tests (< 2 min, PR gating) - HARD FAIL
 	@echo "→ Running security smoke tests (critical checks only)..."
 	$(PYTEST) tests/security/test_security_smoke.py -v --tb=short -x
 	@echo "✅  Security smoke tests passed"
+
+security-test-gating: security-smoke ## Alias for security-smoke (explicit gating semantic)
 
 security-test: ## Run full security test suite (~ 15 min, scheduled workflows)
 	@echo "→ Running full security test suite..."

@@ -233,7 +233,7 @@ function RightPanel() {
           <div className="flex items-center justify-between pt-1">
             <span className="text-[11px] font-semibold text-foreground">Confidence: 85%</span>
             <div className="flex gap-1.5">
-              <button className="h-6 px-2.5 text-[11px] font-semibold bg-foreground text-background rounded hover:bg-foreground/90">Accept</button>
+              <button className="h-6 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded hover:bg-primary/90">Accept</button>
               <button className="h-6 px-2.5 text-[11px] border border-border rounded hover:bg-muted">Edit</button>
             </div>
           </div>
@@ -256,15 +256,15 @@ function RightPanel() {
 function StatusBar() {
   return (
     <>
-      <div className="flex items-center gap-1.5">
-        <span className="h-6 px-2.5 bg-foreground text-background text-[11px] font-semibold rounded flex items-center">
-          Context Score: 82%
-        </span>
-      </div>
-      <span>Stakeholders: 3/3</span>
+      <span className="h-6 px-2.5 bg-primary/10 text-primary text-[11px] font-semibold rounded flex items-center">
+        Context Score: 82%
+      </span>
+      <span className="h-6 px-2.5 bg-secondary text-secondary-foreground text-[11px] font-semibold rounded flex items-center">
+        Stakeholders: 3/3
+      </span>
       <span>Pain Points: 5</span>
       <span>Sources: 2</span>
-      <span className="text-yellow-600 font-medium">Must reach ≥70% to advance</span>
+      <span className="text-primary font-medium">Must reach ≥70% to advance</span>
     </>
   );
 }

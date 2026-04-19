@@ -371,7 +371,7 @@ function RightPanel() {
 function StatusBar() {
   return (
     <>
-      <span className="h-6 px-2.5 bg-foreground text-background text-[11px] font-semibold rounded flex items-center">87% of pace</span>
+      <span className="h-6 px-2.5 bg-primary/10 text-primary text-[11px] font-semibold rounded flex items-center">87% of pace</span>
       <span>2 KPIs on track</span>
       <span className="text-orange-600 font-medium">1 at risk</span>
       <span>Renewal: 8 months</span>

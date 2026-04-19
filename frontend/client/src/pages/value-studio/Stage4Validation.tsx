@@ -183,7 +183,7 @@ function IssueCard({
 
       <div className="flex items-center gap-2 flex-wrap">
         {issue.primaryAction && (
-          <button className="h-7 px-4 bg-foreground text-background text-[11px] font-semibold rounded-md hover:opacity-90 transition-opacity">
+          <button className="h-7 px-4 bg-primary/10 text-primary text-[11px] font-semibold rounded-md hover:opacity-90 transition-opacity">
             {issue.primaryAction}
           </button>
         )}
@@ -260,7 +260,7 @@ function RightPanel({ activeIssue }: { activeIssue: number }) {
                   </label>
                 ))}
               </div>
-              <button className="w-full h-8 bg-foreground text-background text-[12px] font-semibold rounded-md hover:opacity-90 transition-opacity mb-4">
+              <button className="w-full h-8 bg-primary/10 text-primary text-[12px] font-semibold rounded-md hover:opacity-90 transition-opacity mb-4">
                 Apply Fix
               </button>
             </>

@@ -541,9 +541,8 @@ jobs:
           done
           node scripts/a11y/axe-critical-scan.mjs
 
-      - name: Security audit
+      - name: Security audit (GATING)
         run: pnpm audit --audit-level high
-        continue-on-error: true
 
       - name: Upload build artifacts on failure
         if: failure()

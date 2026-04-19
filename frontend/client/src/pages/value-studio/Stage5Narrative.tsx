@@ -70,7 +70,7 @@ function LeftPanel({
             className={cn(
               "w-full text-left px-3 py-2.5 rounded-md border transition-all",
               s.selected
-                ? "border-foreground bg-foreground text-background"
+                ? "border-foreground bg-primary/10 text-primary"
                 : "border-border hover:border-muted-foreground"
             )}
           >
@@ -161,7 +161,7 @@ function CenterPanel({ activeSection, setActiveSection }: {
               className={cn(
                 "h-6 px-3 text-[11px] font-medium rounded-full border transition-colors",
                 activeSection === s
-                  ? "bg-foreground text-background border-foreground"
+                  ? "bg-primary/10 text-primary border-foreground"
                   : "border-border text-muted-foreground hover:bg-muted"
               )}
             >
@@ -216,7 +216,7 @@ function RightPanel({ selectedFormat, setSelectedFormat }: {
             );
           })}
         </div>
-        <button className="w-full h-8 bg-foreground text-background text-[12px] font-semibold rounded-md hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+        <button className="w-full h-8 bg-primary/10 text-primary text-[12px] font-semibold rounded-md hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
           <Download size={13} /> Download PDF
         </button>
       </StudioPanel>

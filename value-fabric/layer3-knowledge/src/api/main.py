@@ -148,7 +148,7 @@ def _load_deprecation_register() -> dict:
         if register_path.exists():
             with open(register_path, encoding="utf-8") as f:
                 return json.load(f)
-    except Exception as e:
+    except (OSError, json.JSONDecodeError, TypeError) as e:
         logger.warning("Failed to load deprecation register", error=str(e))
     return {"deprecations": []}
 
@@ -244,7 +244,8 @@ def _register_migration_handler_with_policy(
 def _get_settings_with_fallback() -> Any:
     try:
         return get_settings()
-    except Exception:
+    except (ImportError, RuntimeError, ValueError) as e:
+        logger.warning(f"Settings unavailable, using fallback: {e}")
         return SimpleNamespace(
             log_request_id_header="X-Request-ID",
             log_level="INFO",
@@ -281,7 +282,7 @@ async def lifespan(app: FastAPI):
                 redis_url=settings.cache_redis_url, config=cache_config
             )
             logger.info("Redis cache initialized successfully")
-        except Exception as e:
+        except (ConnectionError, TimeoutError, OSError) as e:
             logger.warning(f"Failed to initialize Redis cache: {e}")
             cache_manager = None
 
@@ -296,7 +297,7 @@ async def lifespan(app: FastAPI):
             )
             metrics = initialize_metrics(metrics_config)
             logger.info("Prometheus metrics initialized successfully")
-        except Exception as e:
+        except (ConnectionError, RuntimeError, ValueError) as e:
             logger.warning(f"Failed to initialize Prometheus metrics: {e}")
             metrics = None
 
@@ -488,6 +489,7 @@ app = FastAPI(
 # Include routers from routes modules
 from .routes import (
     benchmarks,
+    entities,
     formula_governance,
     formulas,
     models,
@@ -496,6 +498,7 @@ from .routes import (
     variables,
 )
 
+# Include modular routers (decomposition in progress - Weakness #3)
 app.include_router(value_trees.router, prefix="/v1")
 app.include_router(formulas.router, prefix="/v1")
 app.include_router(value_packs.router, prefix="/v1")
@@ -503,6 +506,7 @@ app.include_router(formula_governance.router, prefix="/v1")
 app.include_router(variables.router, prefix="/v1")
 app.include_router(benchmarks.router, prefix="/v1")
 app.include_router(models.router, prefix="/v1")
+app.include_router(entities.router, prefix="/v1")  # Refactored from main.py
 
 
 @app.middleware("http")

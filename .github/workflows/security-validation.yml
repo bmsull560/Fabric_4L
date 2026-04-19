@@ -284,8 +284,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Artifacts available for 30 days." >> $GITHUB_STEP_SUMMARY
 
-      - name: Check for critical failures
+      - name: Check for critical failures (GATING)
         if: needs.security-smoke.result == 'failure'
         run: |
-          echo "❌ Security smoke tests failed - PR may have introduced security regression"
-          exit 0  # Don't block PR, just warn (adjust as needed)
+          echo "❌ Security smoke tests failed - PR blocked due to security regression"
+          exit 1  # HARD FAIL: Security tests are gating

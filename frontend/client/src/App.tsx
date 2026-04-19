@@ -1,12 +1,13 @@
 import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Route, Switch, Redirect, useLocation } from "wouter";
-import ErrorBoundary from "./components/ErrorBoundary";
+import {
+  AppShell,
+  ErrorBoundary,
+  Toaster,
+  TooltipProvider,
+} from "@/components";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
-import AppShell from "./components/AppShell";
-import { useUserTierStore, type UserTier } from "./stores/userTierStore";
+import { useUserTierStore, type UserTier } from "@/hooks";
 
 // ── Route-level code splitting ────────────────────────────────────────────────
 // Each page is loaded only when its route is first visited, reducing the initial

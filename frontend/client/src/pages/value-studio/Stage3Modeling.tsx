@@ -184,7 +184,7 @@ function CenterPanel() {
               className={cn(
                 "h-6 px-3 text-[11px] font-medium rounded-full border transition-colors capitalize",
                 activeScenario === s
-                  ? "bg-foreground text-background border-foreground"
+                  ? "bg-primary/10 text-primary border-foreground"
                   : "border-border text-muted-foreground hover:bg-muted"
               )}
             >
@@ -204,7 +204,7 @@ function CenterPanel() {
               className={cn(
                 "h-6 px-3 text-[11px] font-medium rounded-full border transition-colors capitalize",
                 activeCurve === c
-                  ? "bg-foreground text-background border-foreground"
+                  ? "bg-primary/10 text-primary border-foreground"
                   : "border-border text-muted-foreground hover:bg-muted"
               )}
             >
@@ -289,7 +289,7 @@ function RightPanel() {
 function StatusBar() {
   return (
     <>
-      <span className="h-6 px-2.5 bg-foreground text-background text-[11px] font-semibold rounded flex items-center">3-Year ROI: 412%</span>
+      <span className="h-6 px-2.5 bg-primary/10 text-primary text-[11px] font-semibold rounded flex items-center">3-Year ROI: 412%</span>
       <span>Payback: 8 months</span>
       <span>NPV: $1.67M</span>
       <span className="text-yellow-600 font-medium">3 low-confidence assumptions</span>
