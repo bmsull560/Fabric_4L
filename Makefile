@@ -259,6 +259,7 @@ contract-drift: contracts ## Detect OpenAPI contract drift (exports + validates 
 	@test -s contracts/openapi/layer3-knowledge.json || (echo "❌ Layer 3 OpenAPI spec missing or empty" && exit 1)
 	@test -s contracts/openapi/layer4-agents.json || (echo "❌ Layer 4 OpenAPI spec missing or empty" && exit 1)
 	@test -s contracts/openapi/layer5-ground-truth.json || (echo "❌ Layer 5 OpenAPI spec missing or empty" && exit 1)
+	@test -s contracts/openapi/layer6-benchmarks.json || (echo "⚠️ Layer 6 OpenAPI spec missing ( Gap 6 - non-blocking)")
 	@echo "✅ All layer OpenAPI specs present"
 
 sdk: ## Generate the Python SDK (manual typed client)

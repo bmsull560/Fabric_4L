@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import {
   AppShell,
   ErrorBoundary,
@@ -12,9 +12,14 @@ import { Route, useLocation, Link } from "wouter";
 
 // ── Navigate Component for wouter ───────────────────────────────────────────
 // Replacement for React Router's <Navigate />, which doesn't exist in wouter
+// Uses useEffect to avoid navigation during render (React best practice)
 function Navigate({ to }: { to: string }) {
   const [, navigate] = useLocation();
-  navigate(to);
+
+  useEffect(() => {
+    navigate(to);
+  }, [navigate, to]);
+
   return null;
 }
 

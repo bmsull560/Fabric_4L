@@ -16,11 +16,49 @@ export { useAuthContext } from "../contexts/AuthContext";
 // ── API/Data Hooks ───────────────────────────────────────────────────────────
 
 export { useGraphQuery, useSubgraph, useGraphViewState } from "./useGraphQuery";
-export { useFormulas, useFormula, useFormulaApprovals, useApproveFormula, useSubmitFormula } from "./useFormulas";
-export { useBenchmarks, useBenchmark, useBenchmarkPolicies, useUpdateBenchmarkPolicy } from "./useBenchmarks";
+export {
+  useFormulas,
+  useFormula,
+  useFormulaApprovals,
+  useApproveFormula,
+  useSubmitFormula,
+  type Formula,
+  type FormulaStatus,
+  type ApprovalRequest,
+} from "./useFormulas";
+export {
+  useBenchmarks,
+  useBenchmark,
+  useBenchmarkPolicies,
+  useUpdateBenchmarkPolicy,
+  type Benchmark,
+  type ConfidenceLevel,
+  type BenchmarkStatus,
+} from "./useBenchmarks";
 export { useSources } from "./useSources";
 export { useBilling } from "./useBilling";
-export { useValuePacks } from "./useValuePacks";
+export {
+  useValuePacks,
+  useValuePack,
+  useApplyValuePack,
+  type ValuePack,
+  type PackStatus,
+} from "./useValuePacks";
+export {
+  useSystemHealth,
+  useHealthAlerts,
+  type ServiceStatus,
+  type ServiceHealth,
+  type HealthAlert,
+} from "./useHealthMonitor";
+export {
+  useAccounts,
+  useAccount,
+  useAccountFilterOptions,
+  type Account,
+  type CRMProvider,
+  type SyncStatus,
+} from "./useAccounts";
 
 // ── Utility Hooks ─────────────────────────────────────────────────────────────
 

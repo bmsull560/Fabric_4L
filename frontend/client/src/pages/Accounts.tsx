@@ -16,9 +16,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import ErrorBoundary from "@/components/ErrorBoundary";
+  Skeleton,
+  ErrorBoundary,
+} from "@/components";
 import {
   useAccounts,
   useAccount,
@@ -26,7 +26,7 @@ import {
   type Account,
   type CRMProvider,
   type SyncStatus,
-} from "@/hooks/useAccounts";
+} from "@/hooks";
 import {
   Building2,
   Search,

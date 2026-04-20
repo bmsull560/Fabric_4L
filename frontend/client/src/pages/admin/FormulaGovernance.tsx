@@ -21,9 +21,8 @@ import {
   MessageSquare, Shield, Loader2, RefreshCw, Send,
 } from "lucide-react";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, ErrorBoundary } from "@/components";
 import { formatDate } from "@/lib/formatters";
-import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
   useFormulas,
@@ -33,7 +32,7 @@ import {
   type Formula,
   type ApprovalRequest,
   type FormulaStatus,
-} from "@/hooks/useFormulas";
+} from "@/hooks";
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 

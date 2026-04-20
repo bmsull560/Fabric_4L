@@ -117,9 +117,6 @@ async def lifespan(app: FastAPI):
 
     # Startup
     # Initialize database tables (required for checkpoint and workflow state)
-    import logging
-    import os
-
     # P0: Database is a required dependency - fail fast if unavailable
     try:
         await init_db()
@@ -131,7 +128,7 @@ async def lifespan(app: FastAPI):
     # Production Vault smoke gate
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
-        if vault_addr and is_vault_healthy:
+        if vault_addr:
             logger.info("L4: Checking Vault connectivity at %s", vault_addr)
             ok = await is_vault_healthy(vault_addr)
             if not ok:

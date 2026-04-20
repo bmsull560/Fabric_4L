@@ -19,8 +19,7 @@ import {
   ChevronDown, ChevronUp, Filter
 } from "lucide-react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
-import { Skeleton } from "@/components/ui/skeleton";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { Skeleton, ErrorBoundary } from "@/components";
 import { cn } from "@/lib/utils";
 import {
   useSystemHealth,
@@ -28,7 +27,7 @@ import {
   type ServiceStatus,
   type ServiceHealth,
   type HealthAlert,
-} from "@/hooks/useHealthMonitor";
+} from "@/hooks";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

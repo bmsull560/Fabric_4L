@@ -111,7 +111,7 @@ function LeftPanel() {
 // ── Center Panel ───────────────────────────────────────────────────────────────
 
 function CenterPanel() {
-  const [stakeholders, setStakeholders] = useState(STAKEHOLDERS);
+  const [stakeholders] = useState(STAKEHOLDERS);
 
   return (
     <>
@@ -204,8 +204,6 @@ function CenterPanel() {
 // ── Right Panel ────────────────────────────────────────────────────────────────
 
 function RightPanel() {
-  const [accepted, setAccepted] = useState<number[]>([]);
-
   return (
     <>
       <StudioPanel title="AI Assist">

@@ -15,15 +15,14 @@ import {
   Download, Info, AlertCircle, RefreshCw,
 } from "lucide-react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
-import { Skeleton } from "@/components/ui/skeleton";
-import ErrorBoundary from "@/components/ErrorBoundary";
+import { Skeleton, ErrorBoundary } from "@/components";
 import { cn } from "@/lib/utils";
 import {
   useBenchmarks,
   type Benchmark,
   type ConfidenceLevel,
   type BenchmarkStatus,
-} from "@/hooks/useBenchmarks";
+} from "@/hooks";
 import { formatDate } from "@/lib/formatters";
 
 // ── Styling Constants ───────────────────────────────────────────────────────────

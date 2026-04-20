@@ -10,18 +10,18 @@
  */
 import { useState, useMemo, useCallback } from "react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Skeleton,
+  ErrorBoundary,
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import ErrorBoundary from "@/components/ErrorBoundary";
+} from "@/components";
 import {
   useValuePacks,
   useValuePack,
   useApplyValuePack,
   type ValuePack,
   type PackStatus,
-} from "@/hooks/useValuePacks";
+} from "@/hooks";
 import {
   Package, Search, Filter, AlertCircle, RefreshCw, Loader2,
   Upload, Eye,
