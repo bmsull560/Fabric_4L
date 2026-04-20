@@ -17,6 +17,12 @@
     "hooks": "@/hooks"
   },
   "registries": {
-    "@tweakcn": "https://tweakcn.com/r/themes/{name}"
+    "@shadcnuikit": {
+      "url": "https://shadcnuikit.com/r/{name}.json",
+      "headers": {
+        "Authorization": "Bearer ${REGISTRY_TOKEN}"
+      }
+    }
   }
 }
+

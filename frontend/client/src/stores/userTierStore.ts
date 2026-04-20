@@ -117,88 +117,168 @@ const getDefaultPermissions = (tier: UserTier): UserPermissions => {
   }
 };
 
-// Routes and their required tiers — Canonical Navigation Taxonomy
-// Single spine with progressive disclosure: Home, Library, Discover, Model, Deliver, Evidence, Govern
+// Routes and their required tiers — Refactored 4-Layer Navigation Taxonomy
+// 1. Context Engine → 2. Value Studio → 3. Delivery Orchestrator → 4. Governance & Trust → Admin
 const ROUTE_TIER_MAP: Record<string, UserTier> = {
   // Root
   '/': 'standard',
+
   // ───────────────────────────────────────────────────────────────
   // Home — All tiers
   // ───────────────────────────────────────────────────────────────
   '/home': 'standard',
 
-  // ───────────────────────────────────────────────────────────────
-  // Library — All tiers (authoring is admin)
-  // ───────────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // 1. CONTEXT ENGINE — Foundation Layer
+  // "What does the system know and how does it reason?"
+  // ═══════════════════════════════════════════════════════════════
+
+  // Ontology & Schema
+  '/context': 'advanced',
+  '/context/ontology': 'advanced',
+  '/context/ontology/entities': 'advanced',
+  '/context/ontology/graph': 'advanced',
+
+  // Integrations & Sources
+  '/context/integrations': 'admin',
+  '/context/sources': 'admin',
+  '/context/ingestion/jobs': 'advanced',
+  '/context/extraction': 'advanced',
+
+  // Knowledge & Logic
+  '/context/packs': 'standard',
+  '/context/models': 'standard',
+  '/context/formulas': 'advanced',
+  '/context/agents': 'advanced',
+
+  // ═══════════════════════════════════════════════════════════════
+  // 2. VALUE STUDIO — Core Workflow Layer
+  // "How do I create and prove value for this specific deal?"
+  // ═══════════════════════════════════════════════════════════════
+
+  '/studio': 'standard',
+
+  // Deal Context
+  '/studio/deals': 'standard',
+  '/studio/deals/:id': 'standard',
+  '/studio/deals/:id/whitespace': 'advanced',
+
+  // Value Construction (6-Stage Pipeline)
+  '/studio/build': 'advanced',
+  '/studio/build/discovery': 'advanced',
+  '/studio/build/mapping': 'advanced',
+  '/studio/build/modeling': 'advanced',
+  '/studio/build/validation': 'advanced',
+  '/studio/build/narrative': 'advanced',
+  '/studio/build/tracking': 'advanced',
+
+  // Value Exploration
+  '/studio/trees': 'advanced',
+  '/studio/trees/:id': 'advanced',
+  '/studio/scenarios': 'advanced',
+
+  // ═══════════════════════════════════════════════════════════════
+  // 3. DELIVERY ORCHESTRATOR — Activation Layer
+  // "How does value leave the system and create impact?"
+  // ═══════════════════════════════════════════════════════════════
+
+  '/deliver': 'standard',
+
+  // Executive Outputs
+  '/deliver/cases': 'standard',
+  '/deliver/cases/:caseId': 'standard',
+  '/deliver/cases/:caseId/export': 'standard',
+
+  // Interactive Tools
+  '/deliver/calculators': 'advanced',
+  '/deliver/calculators/:id': 'advanced',
+
+  // API & Integration
+  '/deliver/api': 'admin',
+  '/deliver/embeds': 'admin',
+
+  // Stakeholder Views
+  '/deliver/views/cfo': 'standard',
+  '/deliver/views/executive': 'standard',
+  '/deliver/views/technical': 'standard',
+
+  // ═══════════════════════════════════════════════════════════════
+  // 4. GOVERNANCE & TRUST — Trust Layer
+  // "Can I trust this, and can I prove it?"
+  // ═══════════════════════════════════════════════════════════════
+
+  '/trust': 'standard',
+
+  // Assumption Traceability
+  '/trust/lineage/:entityId': 'advanced',
+  '/trust/evidence': 'standard',
+  '/trust/provenance': 'advanced',
+
+  // Agent Reasoning
+  '/trust/reasoning/:workflowId': 'advanced',
+  '/trust/traces': 'standard',
+
+  // Audit & Compliance
+  '/trust/audit/log': 'admin',
+  '/trust/audit/changes': 'admin',
+  '/trust/compliance': 'advanced',
+
+  // System Integrity
+  '/trust/health': 'admin',
+  '/trust/integrity': 'advanced',
+  '/trust/benchmarks': 'admin',
+
+  // ═══════════════════════════════════════════════════════════════
+  // ADMIN — System Configuration (Control Plane)
+  // ═══════════════════════════════════════════════════════════════
+
+  '/admin': 'admin',
+
+  // Content Governance
+  '/admin/content': 'admin',
+  '/admin/content/formulas': 'admin',
+  '/admin/content/versions': 'admin',
+  '/admin/content/approvals': 'admin',
+
+  // Data Governance
+  '/admin/data': 'admin',
+  '/admin/data/variables': 'admin',
+  '/admin/data/bindings': 'admin',
+  '/admin/data/quality': 'admin',
+
+  // Access Control
+  '/admin/access': 'admin',
+  '/admin/access/roles': 'admin',
+  '/admin/access/teams': 'admin',
+  '/admin/access/keys': 'admin',
+
+  // System Settings
+  '/admin/system': 'admin',
+  '/admin/system/settings': 'admin',
+
+  // ═══════════════════════════════════════════════════════════════
+  // LEGACY REDIRECTS (maintain for backward compatibility)
+  // ═══════════════════════════════════════════════════════════════
   '/library': 'standard',
   '/library/packs': 'standard',
   '/library/models': 'standard',
   '/library/authoring': 'admin',
-
-  // ───────────────────────────────────────────────────────────────
-  // Discover — Tier 1+ (advanced features hidden)
-  // ───────────────────────────────────────────────────────────────
   '/discover': 'standard',
   '/discover/accounts': 'standard',
   '/discover/jobs': 'standard',
   '/discover/extraction': 'advanced',
   '/discover/knowledge': 'advanced',
-  '/discover/knowledge/entities': 'advanced',
-  '/discover/knowledge/graph': 'advanced',
-  '/discover/knowledge/ontology': 'advanced',
   '/discover/integrations': 'admin',
   '/discover/sources': 'admin',
-
-  // ───────────────────────────────────────────────────────────────
-  // Model — Tier 2+ only (hidden from Tier 1)
-  // ───────────────────────────────────────────────────────────────
   '/model': 'advanced',
   '/model/value-studio': 'advanced',
-  '/model/value-studio/explorer': 'advanced',
-  '/model/value-studio/normalization': 'advanced',
-  '/model/value-studio/formulas': 'advanced',
-
-  // ───────────────────────────────────────────────────────────────
-  // Deliver — All tiers (advanced features hidden)
-  // ───────────────────────────────────────────────────────────────
-  '/deliver': 'standard',
-  '/deliver/cases': 'standard',
-  '/deliver/opportunities': 'standard',
-  '/deliver/whitespace': 'advanced',
-  '/deliver/agents': 'advanced',
-  '/deliver/cases/explore': 'advanced',
-
-  // ───────────────────────────────────────────────────────────────
-  // Evidence — All tiers (advanced features hidden)
-  // ───────────────────────────────────────────────────────────────
   '/evidence': 'standard',
   '/evidence/traces': 'standard',
-  '/evidence/export': 'standard',
   '/evidence/lineage': 'advanced',
   '/evidence/compliance': 'advanced',
-  '/evidence/changelog': 'admin',
-
-  // ───────────────────────────────────────────────────────────────
-  // Govern — Tier 3 only
-  // ───────────────────────────────────────────────────────────────
-  '/admin': 'admin',
-  '/admin/content': 'admin',
-  '/admin/content/formulas': 'admin',
-  '/admin/content/versions': 'admin',
-  '/admin/content/approvals': 'admin',
-  '/admin/content/benchmarks': 'admin',
-  '/admin/data': 'admin',
-  '/admin/data/variables': 'admin',
-  '/admin/data/bindings': 'admin',
-  '/admin/data/quality': 'admin',
-  '/admin/access': 'admin',
-  '/admin/access/roles': 'admin',
-  '/admin/access/teams': 'admin',
-  '/admin/access/keys': 'admin',
-  '/admin/system': 'admin',
-  '/admin/system/settings': 'admin',
   '/admin/system/audit': 'admin',
   '/admin/system/health': 'admin',
+  '/admin/content/benchmarks': 'admin',
 };
 
 // Pre-sorted routes for efficient lookup (longest first for proper prefix matching)

@@ -26,7 +26,7 @@ spec:
           command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 2; done']
       containers:
         - name: api
-          image: value-fabric/layer3-knowledge:v3
+          image: value-fabric/layer3-knowledge:v4
           imagePullPolicy: IfNotPresent
           command: ["/app/.venv/bin/uvicorn"]
           args: ["src.api.main:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -1,0 +1,446 @@
+import { lazy, Suspense, useEffect } from "react";
+import {
+  AppShell,
+  ErrorBoundary,
+  Toaster,
+  TooltipProvider,
+} from "@/components";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
+import { useUserTierStore, type UserTier } from "@/hooks";
+import { Route, useLocation } from "wouter";
+
+// ── Navigate Component for wouter ───────────────────────────────────────────
+function Navigate({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate(to); }, [navigate, to]);
+  return null;
+}
+
+// ── Route-level code splitting ────────────────────────────────────────────────
+const LandingPage            = lazy(() => import("./pages/LandingPage"));
+const ValueNarrativeHome    = lazy(() => import("./pages/ValueNarrativeHome"));
+const ExtractionEngine       = lazy(() => import("./pages/ExtractionEngine"));
+const IngestionJobs          = lazy(() => import("./pages/IngestionJobs"));
+const OntologyEditor         = lazy(() => import("./pages/OntologyEditor"));
+const EntityBrowser          = lazy(() => import("./pages/EntityBrowser"));
+const EntityDetail           = lazy(() => import("./pages/EntityDetail"));
+const ValueTreeExplorer      = lazy(() => import("./pages/ValueTreeExplorer"));
+const FormulaBuilder         = lazy(() => import("./pages/FormulaBuilder"));
+const FormulaList            = lazy(() => import("./pages/FormulaList"));
+const GraphExplorer          = lazy(() => import("./pages/GraphExplorer"));
+const AgentWorkflows         = lazy(() => import("./pages/AgentWorkflows"));
+const BusinessCase           = lazy(() => import("./pages/BusinessCase"));
+const InteractiveBusinessCase = lazy(() => import("./pages/InteractiveBusinessCase"));
+const DecisionTrace          = lazy(() => import("./pages/DecisionTrace"));
+const ValuePacks             = lazy(() => import("./pages/ValuePacks"));
+const Accounts               = lazy(() => import("./pages/Accounts"));
+const Integrations           = lazy(() => import("./pages/Integrations"));
+const FormulaGovernance      = lazy(() => import("./pages/admin/FormulaGovernance"));
+const BenchmarkPolicies      = lazy(() => import("./pages/admin/BenchmarkPolicies"));
+const VariableRegistry       = lazy(() => import("./pages/admin/VariableRegistry"));
+const PackManagement         = lazy(() => import("./pages/admin/PackManagement"));
+const PermissionsAdmin       = lazy(() => import("./pages/admin/PermissionsAdmin"));
+const PlatformSettings       = lazy(() => import("./pages/admin/PlatformSettings"));
+const HealthMonitor          = lazy(() => import("./pages/admin/HealthMonitor"));
+const MyModels               = lazy(() => import("./pages/MyModels"));
+const BusinessCaseList       = lazy(() => import("./pages/BusinessCaseList"));
+const OpportunityFinder      = lazy(() => import("./pages/OpportunityFinder"));
+const WhitespaceAnalysis     = lazy(() => import("./pages/WhitespaceAnalysis"));
+const SourceConfiguration    = lazy(() => import("./pages/SourceConfiguration"));
+const NotFound               = lazy(() => import("./pages/NotFound"));
+const Login                  = lazy(() => import("./pages/Login"));
+const Stage1Discovery        = lazy(() => import("./pages/value-studio/Stage1Discovery"));
+const Stage2Mapping          = lazy(() => import("./pages/value-studio/Stage2Mapping"));
+const Stage3Modeling         = lazy(() => import("./pages/value-studio/Stage3Modeling"));
+const Stage4Validation       = lazy(() => import("./pages/value-studio/Stage4Validation"));
+const Stage5Narrative        = lazy(() => import("./pages/value-studio/Stage5Narrative"));
+const Stage6Tracking         = lazy(() => import("./pages/value-studio/Stage6Tracking"));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[200px]">
+      <div className="w-6 h-6 rounded-full border-2 border-neutral-300 border-t-neutral-700 animate-spin" />
+    </div>
+  );
+}
+
+type RequiredUserTier = Exclude<UserTier, 'unknown'>;
+
+function RouteGuard({
+  children,
+  requiredTier = "standard",
+}: {
+  children: React.ReactNode;
+  requiredTier?: RequiredUserTier;
+}) {
+  const [location] = useLocation();
+  const { isAuthenticated, isLoading } = useAuthContext();
+  const canAccessRouteWithReason = useUserTierStore(state => state.canAccessRouteWithReason);
+
+  if (isLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" />;
+
+  let accessDecision;
+  try {
+    accessDecision = canAccessRouteWithReason(requiredTier);
+  } catch (error) {
+    console.error('[RouteGuard] Permission evaluation failed:', error);
+    accessDecision = { allowed: false, reason: 'PERMISSION_EVALUATION_EXCEPTION' };
+  }
+
+  if (!accessDecision.allowed) {
+    console.warn(`[RouteGuard] Access denied to ${location}: ${accessDecision.reason}`);
+    return <Navigate to="/home" />;
+  }
+
+  return <>{children}</>;
+}
+
+function Router() {
+  const rawCurrentTier = useUserTierStore(state => state.currentTier);
+  const rawEffectiveTier = useUserTierStore(state => state.effectiveTier);
+  const { isAuthenticated } = useAuthContext();
+  
+  const currentTier: RequiredUserTier = rawCurrentTier === 'unknown' ? 'standard' : rawCurrentTier;
+  const effectiveTier: RequiredUserTier = rawEffectiveTier === 'unknown' ? 'standard' : rawEffectiveTier;
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      {/* PUBLIC ROUTES */}
+      <Route path="/">{isAuthenticated ? <Navigate to="/home" /> : <LandingPage />}</Route>
+      <Route path="/login"><Login /></Route>
+      <Route path="/login/callback"><Login /></Route>
+
+      {/* AUTHENTICATED ROUTES */}
+      <Route>
+        <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
+          
+          {/* HOME */}
+          <Route path="/home">
+            <RouteGuard><ErrorBoundary><ValueNarrativeHome /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              1. CONTEXT ENGINE — Foundation Layer
+              What does the system know and how does it reason?
+              ═══════════════════════════════════════════════════════════════ */}
+
+          {/* Ontology & Schema */}
+          <Route path="/context"><Navigate to="/context/ontology"/></Route>
+          <Route path="/context/ontology">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><OntologyEditor /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/ontology/entities">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><EntityBrowser /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/ontology/graph">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><GraphExplorer /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Integrations & Sources */}
+          <Route path="/context/integrations">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><Integrations /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/sources">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><SourceConfiguration /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/ingestion/jobs">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><IngestionJobs /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/extraction">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><ExtractionEngine /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Knowledge & Logic */}
+          <Route path="/context/packs">
+            <RouteGuard><ErrorBoundary><ValuePacks /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/models">
+            <RouteGuard><ErrorBoundary><MyModels /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/formulas">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><FormulaList /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/formulas/new">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><FormulaBuilder isNew /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/formulas/:formulaId">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><FormulaBuilder /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/context/agents">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><AgentWorkflows /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              2. VALUE STUDIO — Core Workflow Layer
+              How do I create and prove value for this specific deal?
+              ═══════════════════════════════════════════════════════════════ */}
+
+          <Route path="/studio"><Navigate to="/studio/deals"/></Route>
+
+          {/* Deal Context */}
+          <Route path="/studio/deals">
+            <RouteGuard><ErrorBoundary><OpportunityFinder /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/deals/:id">
+            <RouteGuard><ErrorBoundary><Accounts /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/deals/:id/whitespace">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><WhitespaceAnalysis /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Value Construction (6-Stage Pipeline) */}
+          <Route path="/studio/build"><Navigate to="/studio/build/discovery"/></Route>
+          <Route path="/studio/build/discovery">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><Stage1Discovery /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/build/mapping">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><Stage2Mapping /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/build/modeling">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><Stage3Modeling /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/build/validation">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><Stage4Validation /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/build/narrative">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><Stage5Narrative /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/build/tracking">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><Stage6Tracking /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Value Exploration */}
+          <Route path="/studio/trees">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><ValueTreeExplorer /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/trees/:id">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><ValueTreeExplorer /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/studio/scenarios">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><InteractiveBusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              3. DELIVERY ORCHESTRATOR — Activation Layer
+              How does value leave the system and create impact?
+              ═══════════════════════════════════════════════════════════════ */}
+
+          <Route path="/deliver"><Navigate to="/deliver/cases"/></Route>
+
+          {/* Executive Outputs */}
+          <Route path="/deliver/cases">
+            <RouteGuard><ErrorBoundary><BusinessCaseList /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/deliver/cases/:caseId">
+            <RouteGuard><ErrorBoundary><BusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/deliver/cases/:caseId/export">
+            <RouteGuard><ErrorBoundary><BusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Interactive Tools */}
+          <Route path="/deliver/calculators">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><InteractiveBusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/deliver/calculators/:id">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><InteractiveBusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* API & Integration */}
+          <Route path="/deliver/api">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><Integrations /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/deliver/embeds">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><Integrations /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Stakeholder Views */}
+          <Route path="/deliver/views/cfo">
+            <RouteGuard><ErrorBoundary><BusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/deliver/views/executive">
+            <RouteGuard><ErrorBoundary><BusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/deliver/views/technical">
+            <RouteGuard><ErrorBoundary><BusinessCase /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              4. GOVERNANCE & TRUST — Trust Layer
+              Can I trust this, and can I prove it?
+              ═══════════════════════════════════════════════════════════════ */}
+
+          <Route path="/trust"><Navigate to="/trust/traces"/></Route>
+
+          {/* Assumption Traceability */}
+          <Route path="/trust/lineage/:entityId">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/trust/evidence">
+            <RouteGuard><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/trust/provenance">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Agent Reasoning */}
+          <Route path="/trust/reasoning/:workflowId">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/trust/traces">
+            <RouteGuard><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Audit & Compliance */}
+          <Route path="/trust/audit/log">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/trust/audit/changes">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/trust/compliance">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* System Integrity */}
+          <Route path="/trust/health">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><HealthMonitor /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/trust/integrity">
+            <RouteGuard requiredTier="advanced"><ErrorBoundary><DecisionTrace /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/trust/benchmarks">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><BenchmarkPolicies /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              ADMIN — System Configuration (Control Plane)
+              ═══════════════════════════════════════════════════════════════ */}
+
+          <Route path="/admin"><Navigate to="/admin/content/formulas"/></Route>
+
+          {/* Content Governance */}
+          <Route path="/admin/content"><Navigate to="/admin/content/formulas"/></Route>
+          <Route path="/admin/content/formulas">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><FormulaGovernance /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/admin/content/versions">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><FormulaGovernance /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/admin/content/approvals">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><FormulaGovernance /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Data Governance */}
+          <Route path="/admin/data"><Navigate to="/admin/data/variables"/></Route>
+          <Route path="/admin/data/variables">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><VariableRegistry /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/admin/data/bindings">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><VariableRegistry /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/admin/data/quality">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><VariableRegistry /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* Access Control */}
+          <Route path="/admin/access"><Navigate to="/admin/access/roles"/></Route>
+          <Route path="/admin/access/roles">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><PermissionsAdmin /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/admin/access/teams">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><PermissionsAdmin /></ErrorBoundary></RouteGuard>
+          </Route>
+          <Route path="/admin/access/keys">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><PermissionsAdmin /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* System Settings */}
+          <Route path="/admin/system"><Navigate to="/admin/system/settings"/></Route>
+          <Route path="/admin/system/settings">
+            <RouteGuard requiredTier="admin"><ErrorBoundary><PlatformSettings /></ErrorBoundary></RouteGuard>
+          </Route>
+
+          {/* ═══════════════════════════════════════════════════════════════
+              LEGACY REDIRECTS — Backward Compatibility
+              ═══════════════════════════════════════════════════════════════ */}
+
+          {/* Library → Context */}
+          <Route path="/library"><Navigate to="/context/packs"/></Route>
+          <Route path="/library/packs"><Navigate to="/context/packs"/></Route>
+          <Route path="/library/models"><Navigate to="/context/models"/></Route>
+          <Route path="/library/authoring"><Navigate to="/admin/content/formulas"/></Route>
+
+          {/* Discover → Context & Studio */}
+          <Route path="/discover"><Navigate to="/studio/deals"/></Route>
+          <Route path="/discover/accounts"><Navigate to="/studio/deals"/></Route>
+          <Route path="/discover/accounts/:id"><Navigate to="/studio/deals/:id"/></Route>
+          <Route path="/discover/jobs"><Navigate to="/context/ingestion/jobs"/></Route>
+          <Route path="/discover/extraction"><Navigate to="/context/extraction"/></Route>
+          <Route path="/discover/knowledge"><Navigate to="/context/ontology"/></Route>
+          <Route path="/discover/knowledge/entities"><Navigate to="/context/ontology/entities"/></Route>
+          <Route path="/discover/knowledge/graph"><Navigate to="/context/ontology/graph"/></Route>
+          <Route path="/discover/knowledge/ontology"><Navigate to="/context/ontology"/></Route>
+          <Route path="/discover/integrations"><Navigate to="/context/integrations"/></Route>
+          <Route path="/discover/sources"><Navigate to="/context/sources"/></Route>
+
+          {/* Model/Value Studio → Studio */}
+          <Route path="/model"><Navigate to="/studio/build/discovery"/></Route>
+          <Route path="/model/value-studio"><Navigate to="/studio/build/discovery"/></Route>
+          <Route path="/model/value-studio/discovery"><Navigate to="/studio/build/discovery"/></Route>
+          <Route path="/model/value-studio/mapping"><Navigate to="/studio/build/mapping"/></Route>
+          <Route path="/model/value-studio/modeling"><Navigate to="/studio/build/modeling"/></Route>
+          <Route path="/model/value-studio/validation"><Navigate to="/studio/build/validation"/></Route>
+          <Route path="/model/value-studio/narrative"><Navigate to="/studio/build/narrative"/></Route>
+          <Route path="/model/value-studio/tracking"><Navigate to="/studio/build/tracking"/></Route>
+          <Route path="/model/value-studio/explorer"><Navigate to="/studio/trees"/></Route>
+          <Route path="/model/value-studio/normalization"><Navigate to="/studio/trees"/></Route>
+          <Route path="/model/value-studio/formulas"><Navigate to="/context/formulas"/></Route>
+          <Route path="/model/value-studio/formulas/new"><Navigate to="/context/formulas/new"/></Route>
+          <Route path="/model/value-studio/formulas/:formulaId"><Navigate to="/context/formulas/:formulaId"/></Route>
+
+          {/* Deliver → Studio & Delivery */}
+          <Route path="/deliver/opportunities"><Navigate to="/studio/deals"/></Route>
+          <Route path="/deliver/whitespace"><Navigate to="/studio/deals/:id/whitespace"/></Route>
+          <Route path="/deliver/agents"><Navigate to="/context/agents"/></Route>
+          <Route path="/deliver/cases/explore"><Navigate to="/studio/scenarios"/></Route>
+
+          {/* Evidence → Trust */}
+          <Route path="/evidence"><Navigate to="/trust/traces"/></Route>
+          <Route path="/evidence/traces"><Navigate to="/trust/traces"/></Route>
+          <Route path="/evidence/export"><Navigate to="/trust/evidence"/></Route>
+          <Route path="/evidence/lineage"><Navigate to="/trust/lineage/:entityId"/></Route>
+          <Route path="/evidence/compliance"><Navigate to="/trust/compliance"/></Route>
+          <Route path="/evidence/changelog"><Navigate to="/trust/audit/changes"/></Route>
+
+          {/* Admin system routes → Trust */}
+          <Route path="/admin/system/audit"><Navigate to="/trust/audit/log"/></Route>
+          <Route path="/admin/system/health"><Navigate to="/trust/health"/></Route>
+          <Route path="/admin/content/benchmarks"><Navigate to="/trust/benchmarks"/></Route>
+
+          {/* Catch-all */}
+          <Route><ErrorBoundary><NotFound /></ErrorBoundary></Route>
+        </AppShell>
+      </Route>
+    </Suspense>
+  );
+}
+
+function App() {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="light">
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster/>
+            <Router/>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
+}
+
+export default App;

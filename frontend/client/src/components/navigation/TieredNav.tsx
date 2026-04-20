@@ -1,14 +1,16 @@
 /**
  * TieredNav — Single-Spine Navigation with Progressive Disclosure
  *
- * Navigation Taxonomy:
+ * Refactored 4-Layer Navigation Model:
  * - Home: Dashboard (all tiers)
- * - Library: Content catalog (all tiers)
- * - Discover: Research & data (Tier 1+ with progressive disclosure)
- * - Model: Build value models (Tier 2+)
- * - Deliver: Output & workflows (all tiers)
- * - Evidence: Audit & provenance (all tiers)
- * - Govern: Admin controls (Tier 3)
+ * - Context Engine: Foundation layer — knowledge, ontology, data (Tier 1+ with progressive disclosure)
+ * - Value Studio: Core workflow — deal-specific value creation (Tier 1+ with progressive disclosure)
+ * - Deliver: Activation layer — outputs, calculators, APIs (Tier 1+ with progressive disclosure)
+ * - Trust: Governance & observability — audit, provenance, compliance (Tier 1+ with progressive disclosure)
+ * - Admin: System configuration — content, data, access, settings (Tier 3)
+ *
+ * The narrative arc: Context → Studio → Deliver → Trust
+ * "What does the system know?" → "How do I build value?" → "How do I deliver impact?" → "Can I trust this?"
  *
  * Features:
  * - Single stable navigation spine that grows with tier
@@ -53,6 +55,8 @@ export interface TieredNavProps {
 
 /**
  * NAV_SPINE — Single source of truth for all navigation
+ * Refactored 4-Layer Navigation:
+ * 1. Context Engine → 2. Value Studio → 3. Delivery → 4. Governance & Trust → Admin
  * Progressive disclosure: items filtered by user tier at render time
  */
 const NAV_SPINE: NavItem[] = [
@@ -64,115 +68,186 @@ const NAV_SPINE: NavItem[] = [
     tier: "standard",
     description: "Dashboard and quick actions"
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 1. CONTEXT ENGINE — Foundation Layer
+  // "What does the system know and how does it reason?"
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "library",
-    label: "Library",
+    id: "context",
+    label: "Context Engine",
     icon: <Package size={16}/>,
-    path: "/library",
+    path: "/context",
     tier: "standard",
-    description: "Content catalog and value packs",
+    description: "Knowledge, ontology, and system intelligence",
     children: [
-      { id: "packs", label: "Value Packs", path: "/library/packs", tier: "standard" },
-      { id: "models", label: "My Models", path: "/library/models", tier: "standard" },
-      { id: "authoring", label: "Pack Authoring", path: "/library/authoring", tier: "admin", badge: "Admin" }
-    ]
-  },
-  {
-    id: "discover",
-    label: "Discover",
-    icon: <Search size={16}/>,
-    path: "/discover",
-    tier: "standard",
-    description: "Research accounts and manage data",
-    children: [
-      { id: "accounts", label: "Accounts", path: "/discover/accounts", tier: "standard" },
-      { id: "jobs", label: "Ingestion Jobs", path: "/discover/jobs", tier: "standard" },
-      { id: "extraction", label: "Extraction Engine", path: "/discover/extraction", tier: "advanced" },
+      // Knowledge & Logic (All Tiers)
+      { id: "packs", label: "Value Packs", path: "/context/packs", tier: "standard" },
+      { id: "models", label: "Models", path: "/context/models", tier: "standard" },
+      { id: "formulas", label: "Formulas", path: "/context/formulas", tier: "advanced" },
+      { id: "agents", label: "Agents", path: "/context/agents", tier: "advanced" },
+
+      // Ontology & Schema (Advanced+)
       {
-        id: "knowledge",
-        label: "Knowledge Model",
-        path: "/discover/knowledge",
+        id: "ontology",
+        label: "Ontology",
+        path: "/context/ontology",
         tier: "advanced",
         children: [
-          { id: "entities", label: "Entity Browser", path: "/discover/knowledge/entities", tier: "advanced" },
-          { id: "graph", label: "Graph Explorer", path: "/discover/knowledge/graph", tier: "advanced" },
-          { id: "ontology", label: "Ontology Editor", path: "/discover/knowledge/ontology", tier: "advanced" }
+          { id: "ontology-editor", label: "Schema Editor", path: "/context/ontology", tier: "advanced" },
+          { id: "entities", label: "Entities", path: "/context/ontology/entities", tier: "advanced" },
+          { id: "graph", label: "Graph View", path: "/context/ontology/graph", tier: "advanced" }
         ]
       },
-      { id: "integrations", label: "Integrations", path: "/discover/integrations", tier: "admin", badge: "Admin" },
-      { id: "sources", label: "Source Configuration", path: "/discover/sources", tier: "admin", badge: "Admin" }
+
+      // Data Ingestion (Advanced+)
+      { id: "ingestion", label: "Ingestion Jobs", path: "/context/ingestion/jobs", tier: "advanced" },
+      { id: "extraction", label: "Extraction", path: "/context/extraction", tier: "advanced" },
+
+      // Integrations (Admin)
+      { id: "integrations", label: "Integrations", path: "/context/integrations", tier: "admin", badge: "Admin" },
+      { id: "sources", label: "Sources", path: "/context/sources", tier: "admin", badge: "Admin" }
     ]
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 2. VALUE STUDIO — Core Workflow Layer
+  // "How do I create and prove value for this specific deal?"
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "value-studio",
+    id: "studio",
     label: "Value Studio",
     icon: <GitBranch size={16}/>,
-    path: "/model/value-studio",
-    tier: "advanced",
-    description: "Build and deliver business value models",
+    path: "/studio",
+    tier: "standard",
+    description: "Build and prove value for specific deals",
     children: [
-      { id: "discovery",  label: "1. Discovery",  path: "/model/value-studio/discovery",  tier: "advanced" },
-      { id: "mapping",    label: "2. Mapping",    path: "/model/value-studio/mapping",    tier: "advanced" },
-      { id: "modeling",   label: "3. Modeling",   path: "/model/value-studio/modeling",   tier: "advanced" },
-      { id: "validation", label: "4. Validation", path: "/model/value-studio/validation", tier: "advanced" },
-      { id: "narrative",  label: "5. Narrative",  path: "/model/value-studio/narrative",  tier: "advanced" },
-      { id: "tracking",   label: "6. Tracking",   path: "/model/value-studio/tracking",   tier: "advanced" }
+      // Deal Context (All Tiers)
+      { id: "deals", label: "Deals", path: "/studio/deals", tier: "standard" },
+
+      // 6-Stage Value Construction Pipeline (Advanced+)
+      {
+        id: "build",
+        label: "Build Value",
+        path: "/studio/build",
+        tier: "advanced",
+        children: [
+          { id: "discovery",  label: "1. Discovery",  path: "/studio/build/discovery",  tier: "advanced" },
+          { id: "mapping",    label: "2. Mapping",    path: "/studio/build/mapping",    tier: "advanced" },
+          { id: "modeling",   label: "3. Modeling",   path: "/studio/build/modeling",   tier: "advanced" },
+          { id: "validation", label: "4. Validation", path: "/studio/build/validation", tier: "advanced" },
+          { id: "narrative",  label: "5. Narrative",  path: "/studio/build/narrative",  tier: "advanced" },
+          { id: "tracking",   label: "6. Tracking",   path: "/studio/build/tracking",   tier: "advanced" }
+        ]
+      },
+
+      // Value Exploration (Advanced+)
+      { id: "trees", label: "Value Trees", path: "/studio/trees", tier: "advanced" },
+      { id: "scenarios", label: "Scenarios", path: "/studio/scenarios", tier: "advanced" }
     ]
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 3. DELIVERY ORCHESTRATOR — Activation Layer
+  // "How does value leave the system and create impact?"
+  // ═══════════════════════════════════════════════════════════════════════════
   {
     id: "deliver",
     label: "Deliver",
     icon: <Briefcase size={16}/>,
     path: "/deliver",
     tier: "standard",
-    description: "Output business cases and workflows",
+    description: "Activate and distribute value",
     children: [
+      // Executive Outputs (All Tiers)
       { id: "cases", label: "Business Cases", path: "/deliver/cases", tier: "standard" },
-      { id: "opportunities", label: "Opportunity Finder", path: "/deliver/opportunities", tier: "standard" },
-      { id: "whitespace", label: "Whitespace Analysis", path: "/deliver/whitespace", tier: "advanced" },
-      { id: "agents", label: "Agent Dashboard", path: "/deliver/agents", tier: "advanced" },
-      { id: "explore", label: "Interactive Explorer", path: "/deliver/cases/explore", tier: "advanced" }
+
+      // Interactive Tools (Advanced+)
+      { id: "calculators", label: "Calculators", path: "/deliver/calculators", tier: "advanced" },
+
+      // Stakeholder Views (All Tiers)
+      {
+        id: "views",
+        label: "Stakeholder Views",
+        path: "/deliver/views",
+        tier: "standard",
+        children: [
+          { id: "cfo", label: "CFO View", path: "/deliver/views/cfo", tier: "standard" },
+          { id: "executive", label: "Executive View", path: "/deliver/views/executive", tier: "standard" },
+          { id: "technical", label: "Technical View", path: "/deliver/views/technical", tier: "standard" }
+        ]
+      },
+
+      // API & Integration (Admin)
+      { id: "api", label: "API & Webhooks", path: "/deliver/api", tier: "admin", badge: "Admin" },
+      { id: "embeds", label: "Embeds", path: "/deliver/embeds", tier: "admin", badge: "Admin" }
     ]
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4. GOVERNANCE & TRUST — Trust Layer
+  // "Can I trust this, and can I prove it?"
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "evidence",
-    label: "Evidence",
+    id: "trust",
+    label: "Trust",
     icon: <Shield size={16}/>,
-    path: "/evidence",
+    path: "/trust",
     tier: "standard",
-    description: "Audit trails and compliance proof",
+    description: "Provenance, audit, and compliance",
     children: [
-      { id: "traces", label: "Decision Traces", path: "/evidence/traces", tier: "standard" },
-      { id: "export", label: "Export Reports", path: "/evidence/export", tier: "standard" },
-      { id: "lineage", label: "Lineage Explorer", path: "/evidence/lineage", tier: "advanced" },
-      { id: "compliance", label: "Compliance Reports", path: "/evidence/compliance", tier: "advanced" },
-      { id: "changelog", label: "Full Change Log", path: "/evidence/changelog", tier: "admin", badge: "Admin" }
+      // Evidence & Traces (All Tiers)
+      { id: "traces", label: "Decision Traces", path: "/trust/traces", tier: "standard" },
+      { id: "evidence", label: "Evidence", path: "/trust/evidence", tier: "standard" },
+
+      // Traceability (Advanced+)
+      { id: "provenance", label: "Provenance", path: "/trust/provenance", tier: "advanced" },
+      { id: "integrity", label: "Integrity", path: "/trust/integrity", tier: "advanced" },
+      { id: "compliance", label: "Compliance", path: "/trust/compliance", tier: "advanced" },
+
+      // System Integrity & Audit (Admin)
+      { id: "benchmarks", label: "Benchmarks", path: "/trust/benchmarks", tier: "admin", badge: "Admin" },
+      {
+        id: "audit",
+        label: "Audit",
+        path: "/trust/audit",
+        tier: "admin",
+        badge: "Admin",
+        children: [
+          { id: "audit-log", label: "Audit Log", path: "/trust/audit/log", tier: "admin" },
+          { id: "changes", label: "Change History", path: "/trust/audit/changes", tier: "admin" }
+        ]
+      },
+      { id: "health", label: "System Health", path: "/trust/health", tier: "admin", badge: "Admin" }
     ]
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ADMIN — System Configuration (Control Plane)
+  // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "govern",
-    label: "Govern",
+    id: "admin",
+    label: "Admin",
     icon: <Settings size={16}/>,
     path: "/admin",
     tier: "admin",
-    description: "Platform governance and configuration",
+    description: "Platform configuration and governance",
     badge: "Admin",
     children: [
       {
         id: "content",
-        label: "Content Governance",
+        label: "Content",
         path: "/admin/content",
         tier: "admin",
         children: [
           { id: "formulas", label: "Formula Registry", path: "/admin/content/formulas", tier: "admin" },
           { id: "versions", label: "Version History", path: "/admin/content/versions", tier: "admin" },
-          { id: "approvals", label: "Approval Queue", path: "/admin/content/approvals", tier: "admin" },
-          { id: "benchmarks", label: "Benchmark Policies", path: "/admin/content/benchmarks", tier: "admin" }
+          { id: "approvals", label: "Approval Queue", path: "/admin/content/approvals", tier: "admin" }
         ]
       },
       {
         id: "data",
-        label: "Data Governance",
+        label: "Data",
         path: "/admin/data",
         tier: "admin",
         children: [
@@ -183,7 +258,7 @@ const NAV_SPINE: NavItem[] = [
       },
       {
         id: "access",
-        label: "Access Control",
+        label: "Access",
         path: "/admin/access",
         tier: "admin",
         children: [
@@ -198,9 +273,7 @@ const NAV_SPINE: NavItem[] = [
         path: "/admin/system",
         tier: "admin",
         children: [
-          { id: "settings", label: "Platform Settings", path: "/admin/system/settings", tier: "admin" },
-          { id: "audit", label: "Audit Log", path: "/admin/system/audit", tier: "admin" },
-          { id: "health", label: "Health Monitor", path: "/admin/system/health", tier: "admin" }
+          { id: "settings", label: "Settings", path: "/admin/system/settings", tier: "admin" }
         ]
       }
     ]

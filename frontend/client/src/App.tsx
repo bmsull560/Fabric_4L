@@ -461,32 +461,69 @@ function Router() {
             </RouteGuard>
           </Route>
 
-          {/* Govern → System */}
-          <Route path="/admin/system">
-            <Navigate to="/admin/system/settings"/>
-          </Route>
-          <Route path="/admin/system/settings">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><PlatformSettings /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/admin/system/audit">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/admin/system/health">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><HealthMonitor /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
+          {/* ═══════════════════════════════════════════════════════════════
+            LEGACY REDIRECTS — Backward Compatibility
+            ═══════════════════════════════════════════════════════════════ */}
 
-              {/* Catch-all for authenticated routes */}
-              <Route>
-                <ErrorBoundary><NotFound /></ErrorBoundary>
-              </Route>
-          </AppShell>
-        </Route>
+          {/* Library → Context */}
+          <Route path="/library"><Navigate to="/context/packs"/></Route>
+          <Route path="/library/packs"><Navigate to="/context/packs"/></Route>
+          <Route path="/library/models"><Navigate to="/context/models"/></Route>
+          <Route path="/library/authoring"><Navigate to="/admin/content/formulas"/></Route>
+
+          {/* Discover → Context & Studio */}
+          <Route path="/discover"><Navigate to="/studio/deals"/></Route>
+          <Route path="/discover/accounts"><Navigate to="/studio/deals"/></Route>
+          <Route path="/discover/accounts/:id"><Navigate to="/studio/deals/:id"/></Route>
+          <Route path="/discover/jobs"><Navigate to="/context/ingestion/jobs"/></Route>
+          <Route path="/discover/extraction"><Navigate to="/context/extraction"/></Route>
+          <Route path="/discover/knowledge"><Navigate to="/context/ontology"/></Route>
+          <Route path="/discover/knowledge/entities"><Navigate to="/context/ontology/entities"/></Route>
+          <Route path="/discover/knowledge/graph"><Navigate to="/context/ontology/graph"/></Route>
+          <Route path="/discover/knowledge/ontology"><Navigate to="/context/ontology"/></Route>
+          <Route path="/discover/integrations"><Navigate to="/context/integrations"/></Route>
+          <Route path="/discover/sources"><Navigate to="/context/sources"/></Route>
+
+          {/* Model/Value Studio → Studio */}
+          <Route path="/model"><Navigate to="/studio/build/discovery"/></Route>
+          <Route path="/model/value-studio"><Navigate to="/studio/build/discovery"/></Route>
+          <Route path="/model/value-studio/discovery"><Navigate to="/studio/build/discovery"/></Route>
+          <Route path="/model/value-studio/mapping"><Navigate to="/studio/build/mapping"/></Route>
+          <Route path="/model/value-studio/modeling"><Navigate to="/studio/build/modeling"/></Route>
+          <Route path="/model/value-studio/validation"><Navigate to="/studio/build/validation"/></Route>
+          <Route path="/model/value-studio/narrative"><Navigate to="/studio/build/narrative"/></Route>
+          <Route path="/model/value-studio/tracking"><Navigate to="/studio/build/tracking"/></Route>
+          <Route path="/model/value-studio/explorer"><Navigate to="/studio/trees"/></Route>
+          <Route path="/model/value-studio/normalization"><Navigate to="/studio/trees"/></Route>
+          <Route path="/model/value-studio/formulas"><Navigate to="/context/formulas"/></Route>
+          <Route path="/model/value-studio/formulas/new"><Navigate to="/context/formulas/new"/></Route>
+          <Route path="/model/value-studio/formulas/:formulaId"><Navigate to="/context/formulas/:formulaId"/></Route>
+
+          {/* Deliver → Studio & Delivery */}
+          <Route path="/deliver/opportunities"><Navigate to="/studio/deals"/></Route>
+          <Route path="/deliver/whitespace"><Navigate to="/studio/deals/:id/whitespace"/></Route>
+          <Route path="/deliver/agents"><Navigate to="/context/agents"/></Route>
+          <Route path="/deliver/cases/explore"><Navigate to="/studio/scenarios"/></Route>
+
+          {/* Evidence → Trust */}
+          <Route path="/evidence"><Navigate to="/trust/traces"/></Route>
+          <Route path="/evidence/traces"><Navigate to="/trust/traces"/></Route>
+          <Route path="/evidence/export"><Navigate to="/trust/evidence"/></Route>
+          <Route path="/evidence/lineage"><Navigate to="/trust/lineage"/></Route>
+          <Route path="/evidence/compliance"><Navigate to="/trust/compliance"/></Route>
+          <Route path="/evidence/changelog"><Navigate to="/trust/audit/changes"/></Route>
+
+          {/* Admin system routes → Trust */}
+          <Route path="/admin/system/audit"><Navigate to="/trust/audit/log"/></Route>
+          <Route path="/admin/system/health"><Navigate to="/trust/health"/></Route>
+          <Route path="/admin/content/benchmarks"><Navigate to="/trust/benchmarks"/></Route>
+
+          {/* Catch-all for authenticated routes */}
+          <Route>
+            <ErrorBoundary><NotFound /></ErrorBoundary>
+          </Route>
+        </AppShell>
+      </Route>
     </Suspense>
   );
 }
