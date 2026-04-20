@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME, BusinessCaseApiError } from './useApiShared';
+import { formatCompactCurrency } from '@/lib/formatters';
 import {
   parseBusinessCaseNarrativeOutput,
   parseBusinessCaseRoiOutput,
@@ -90,7 +91,7 @@ export function useBusinessCase(caseId: string | null) {
         name: uc.name || 'Unknown Use Case',
         persona: uc.persona || 'Unknown',
         driver: uc.value_driver || 'Unknown',
-        roi: formatCurrency(uc.roi_value ?? 0),
+        roi: formatCompactCurrency(uc.roi_value ?? 0),
         payback: `${uc.payback_months ?? 12} mo`,
         confidence: Math.round((uc.confidence ?? 0.8) * 100),
       }));
@@ -103,7 +104,7 @@ export function useBusinessCase(caseId: string | null) {
       return {
         id: caseId,
         company: output.company_name || 'Acme Corp',
-        totalValue: formatCurrency(totalValue),
+        totalValue: formatCompactCurrency(totalValue),
         useCases,
         avgPayback: `${avgPayback} months`,
         confidence,
@@ -116,22 +117,13 @@ export function useBusinessCase(caseId: string | null) {
   });
 }
 
-function formatCurrency(value: number): string {
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(1)}M`;
-  } else if (value >= 1000) {
-    return `$${(value / 1000).toFixed(1)}K`;
-  }
-  return `$${value}`;
-}
-
 function generateSummary(useCases: UseCase[], totalValue: number): string {
   if (useCases.length === 0) {
     return 'No use cases available for analysis.';
   }
 
   const topCase = useCases[0];
-  return `${topCase.name} presents the most significant opportunity with an estimated ${topCase.roi} in value. Combined with other identified use cases, the total addressable value is estimated at ${formatCurrency(totalValue)} annually with an average payback period of ${useCases.length > 1 ? 'several months' : '6-9 months'}.`;
+  return `${topCase.name} presents the most significant opportunity with an estimated ${topCase.roi} in value. Combined with other identified use cases, the total addressable value is estimated at ${formatCompactCurrency(totalValue)} annually with an average payback period of ${useCases.length > 1 ? 'several months' : '6-9 months'}.`;
 }
 
 /**
@@ -174,7 +166,7 @@ export function useBusinessCases(filters: BusinessCaseFilters = {}) {
         name: workflow.name || `Case ${workflow.workflow_id}`,
         company: workflow.company_name || 'Unknown Company',
         status: (workflow.status === 'completed' ? 'active' : workflow.status || 'draft') as BusinessCaseListItem['status'],
-        totalValue: formatCurrency(workflow.total_value ?? 0),
+        totalValue: formatCompactCurrency(workflow.total_value ?? 0),
         useCaseCount: workflow.use_case_count ?? 0,
         confidence: Math.round((workflow.confidence ?? 0.8) * 100),
         createdAt: workflow.created_at || new Date().toISOString(),

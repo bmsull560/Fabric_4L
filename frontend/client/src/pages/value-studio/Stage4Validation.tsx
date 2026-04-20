@@ -68,6 +68,7 @@ const ISSUES: Issue[] = [
     id: 3,
     severity: "warning",
     title: "WARNING: 3 ASSUMPTIONS NEED VALIDATION",
+    description: "Key model assumptions lack empirical validation. These should be confirmed with customer data or industry benchmarks before finalizing the business case.",
     actions: [
       "Content find rate improvement — currently estimated, not measured",
       "Manager coaching adoption rate — no baseline established",

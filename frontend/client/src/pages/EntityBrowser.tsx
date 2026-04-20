@@ -93,9 +93,7 @@ export default function EntityBrowser() {
   // Fetch selected entity details
   const { data: selectedEntity, isLoading: isLoadingEntity } = useEntity(selectedEntityId);
 
-  const errorMessage = error
-    ? (error as any).response?.data?.detail || (error as Error).message
-    : null;
+  const errorMessage = error ? (error as Error).message : null;
 
   const handleExport = () => {
     if (!selectedEntity) return;

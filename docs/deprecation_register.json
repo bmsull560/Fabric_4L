@@ -1,10 +1,42 @@
 {
   "$schema": "./deprecation_register_schema.json",
   "version": "1.0.0",
-  "last_updated": "2026-04-14",
-  "deprecations": [],
+  "last_updated": "2026-04-19",
+  "deprecations": [
+    {
+      "feature": "GraphNode.legacy_id",
+      "path": "/v1/graph/subgraph",
+      "deprecated_since": "2026-04-01",
+      "target_removal": "2026-07-01",
+      "owner": "platform-team@valuefabric.io",
+      "migration_path": "Use 'id' field instead of 'legacy_id'",
+      "severity": "high",
+      "sunset_headers": true
+    },
+    {
+      "feature": "POST /v1/search",
+      "path": "/v1/search",
+      "deprecated_since": "2026-04-01",
+      "target_removal": "2026-06-01",
+      "owner": "platform-team@valuefabric.io",
+      "migration_path": "Use GET /v1/entities for entity listing",
+      "severity": "medium",
+      "sunset_headers": true
+    },
+    {
+      "feature": "POST /v1/graphrag (legacy alias)",
+      "path": "/v1/graphrag",
+      "deprecated_since": "2026-04-01",
+      "target_removal": "2026-06-01",
+      "owner": "platform-team@valuefabric.io",
+      "migration_path": "Use POST /v1/query/graph for GraphRAG queries",
+      "severity": "medium",
+      "sunset_headers": true
+    }
+  ],
   "metadata": {
     "description": "Machine-readable deprecation register for Value Fabric API and features",
-    "contact": "platform-team@valuefabric.io"
+    "contact": "platform-team@valuefabric.io",
+    "policy": "All deprecations include sunset headers and 90-day migration period"
   }
 }

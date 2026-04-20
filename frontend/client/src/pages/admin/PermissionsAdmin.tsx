@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate } from "@/lib/formatters";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
@@ -63,11 +64,6 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return "—";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 function PermissionsSkeleton() {
   return (

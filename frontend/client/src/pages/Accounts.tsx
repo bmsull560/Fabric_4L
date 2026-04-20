@@ -45,6 +45,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDate, formatCurrency } from "@/lib/formatters";
 
 const PROVIDER_COLORS: Record<CRMProvider, { bg: string; text: string; border: string }> = {
   salesforce: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -58,28 +59,6 @@ const SYNC_STATUS_COLORS: Record<SyncStatus, "completed" | "processing" | "faile
   stale: "processing",
 };
 
-function formatCurrency(value: number | undefined): string {
-  if (value === undefined || value === null) return "—";
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
-}
-
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return "—";
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  return date.toLocaleDateString();
-}
 
 interface FilterChipProps {
   label: string;

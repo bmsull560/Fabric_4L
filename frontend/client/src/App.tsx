@@ -8,6 +8,15 @@ import {
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
 import { useUserTierStore, type UserTier } from "@/hooks";
+import { Route, useLocation, Link } from "wouter";
+
+// ── Navigate Component for wouter ───────────────────────────────────────────
+// Replacement for React Router's <Navigate />, which doesn't exist in wouter
+function Navigate({ to }: { to: string }) {
+  const [, navigate] = useLocation();
+  navigate(to);
+  return null;
+}
 
 // ── Route-level code splitting ────────────────────────────────────────────────
 // Each page is loaded only when its route is first visited, reducing the initial
@@ -88,9 +97,9 @@ function RouteGuard({
     return null;
   }
 
-  // Redirect unauthenticated users to login
+  // Navigate unauthenticated users to login
   if (!isAuthenticated) {
-    return <Redirect to="/login" />;
+    return <Navigate to="/login" />;
   }
 
   // Check if user can access this route based on tier
@@ -108,9 +117,9 @@ function RouteGuard({
     // SECURITY: Log denied access attempts for monitoring
     console.warn(`[RouteGuard] Access denied to ${location}: ${accessDecision.reason}`);
     
-    // SECURITY: Redirect all denied requests to safe fallback
+    // SECURITY: Navigate all denied requests to safe fallback
     // Regardless of tier, unauthorized access attempts go to /home
-    return <Redirect to="/home" />;
+    return <Navigate to="/home" />;
   }
 
   return <>{children}</>;
@@ -128,15 +137,14 @@ function Router() {
 
   return (
     <Suspense fallback={<PageLoader />}>
-      <Switch>
-        {/* ═══════════════════════════════════════════════════════════════
-            PUBLIC ROUTES — Outside AppShell (unauthenticated)
-            ═══════════════════════════════════════════════════════════════ */}
-        
-        {/* Landing Page — Marketing/Login page */}
-        <Route path="/">
-          {isAuthenticated ? <Redirect to="/home" /> : <LandingPage />}
-        </Route>
+      {/* ═══════════════════════════════════════════════════════════════
+          PUBLIC ROUTES — Outside AppShell (unauthenticated)
+          ═══════════════════════════════════════════════════════════════ */}
+      
+      {/* Landing Page — Marketing/Login page */}
+      <Route path="/">
+        {isAuthenticated ? <Navigate to="/home" /> : <LandingPage />}
+      </Route>
 
         {/* Legacy Login route — handles OIDC callbacks */}
         <Route path="/login">
@@ -151,8 +159,6 @@ function Router() {
             ═══════════════════════════════════════════════════════════════ */}
         <Route>
           <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
-            <Switch>
-
           {/* ═══════════════════════════════════════════════════════════════
               HOME — Dashboard (All Tiers)
               ═══════════════════════════════════════════════════════════════ */}
@@ -166,7 +172,7 @@ function Router() {
               LIBRARY — Content Catalog (All Tiers)
               ═══════════════════════════════════════════════════════════════ */}
           <Route path="/library">
-            <Redirect to="/library/packs"/>
+            <Navigate to="/library/packs"/>
           </Route>
           <Route path="/library/packs">
             <RouteGuard>
@@ -188,7 +194,7 @@ function Router() {
               DISCOVER — Research & Data (Tier 1+, progressive disclosure)
               ═══════════════════════════════════════════════════════════════ */}
           <Route path="/discover">
-            <Redirect to="/discover/accounts"/>
+            <Navigate to="/discover/accounts"/>
           </Route>
           <Route path="/discover/accounts">
             <RouteGuard>
@@ -213,7 +219,7 @@ function Router() {
 
           {/* Discover → Knowledge Model (Tier 2+) */}
           <Route path="/discover/knowledge">
-            <Redirect to="/discover/knowledge/entities"/>
+            <Navigate to="/discover/knowledge/entities"/>
           </Route>
           <Route path="/discover/knowledge/entities">
             <RouteGuard requiredTier="advanced">
@@ -247,10 +253,10 @@ function Router() {
               MODEL — Build Value Models (Tier 2+)
               ═══════════════════════════════════════════════════════════════ */}
           <Route path="/model">
-            <Redirect to="/model/value-studio/explorer"/>
+            <Navigate to="/model/value-studio/explorer"/>
           </Route>
           <Route path="/model/value-studio">
-            <Redirect to="/model/value-studio/discovery"/>
+            <Navigate to="/model/value-studio/discovery"/>
           </Route>
           {/* ── Value Studio 6-Stage Pipeline ── */}
           <Route path="/model/value-studio/discovery">
@@ -313,7 +319,7 @@ function Router() {
               DELIVER — Output & Workflows (All Tiers)
               ═══════════════════════════════════════════════════════════════ */}
           <Route path="/deliver">
-            <Redirect to="/deliver/cases"/>
+            <Navigate to="/deliver/cases"/>
           </Route>
           <Route path="/deliver/cases">
             <RouteGuard>
@@ -350,7 +356,7 @@ function Router() {
               EVIDENCE — Audit & Provenance (All Tiers)
               ═══════════════════════════════════════════════════════════════ */}
           <Route path="/evidence">
-            <Redirect to="/evidence/traces"/>
+            <Navigate to="/evidence/traces"/>
           </Route>
           <Route path="/evidence/traces">
             <RouteGuard>
@@ -382,12 +388,12 @@ function Router() {
               GOVERN — Admin Control Plane (Tier 3)
               ═══════════════════════════════════════════════════════════════ */}
           <Route path="/admin">
-            <Redirect to="/admin/content/formulas"/>
+            <Navigate to="/admin/content/formulas"/>
           </Route>
 
           {/* Govern → Content */}
           <Route path="/admin/content">
-            <Redirect to="/admin/content/formulas"/>
+            <Navigate to="/admin/content/formulas"/>
           </Route>
           <Route path="/admin/content/formulas">
             <RouteGuard requiredTier="admin">
@@ -412,7 +418,7 @@ function Router() {
 
           {/* Govern → Data */}
           <Route path="/admin/data">
-            <Redirect to="/admin/data/variables"/>
+            <Navigate to="/admin/data/variables"/>
           </Route>
           <Route path="/admin/data/variables">
             <RouteGuard requiredTier="admin">
@@ -432,7 +438,7 @@ function Router() {
 
           {/* Govern → Access */}
           <Route path="/admin/access">
-            <Redirect to="/admin/access/roles"/>
+            <Navigate to="/admin/access/roles"/>
           </Route>
           <Route path="/admin/access/roles">
             <RouteGuard requiredTier="admin">
@@ -452,7 +458,7 @@ function Router() {
 
           {/* Govern → System */}
           <Route path="/admin/system">
-            <Redirect to="/admin/system/settings"/>
+            <Navigate to="/admin/system/settings"/>
           </Route>
           <Route path="/admin/system/settings">
             <RouteGuard requiredTier="admin">
@@ -474,10 +480,8 @@ function Router() {
               <Route>
                 <ErrorBoundary><NotFound /></ErrorBoundary>
               </Route>
-            </Switch>
           </AppShell>
         </Route>
-      </Switch>
     </Suspense>
   );
 }

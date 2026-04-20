@@ -20,8 +20,9 @@ import {
   ArrowUpDown, MoreHorizontal, Download, FileText, Check, X,
   MessageSquare, Shield, Loader2, RefreshCw, Send,
 } from "lucide-react";
-import { PageHeader, Btn, SectionCard, StatusBadge } from "@/components/WfPrimitives";
+import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate } from "@/lib/formatters";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import {
@@ -37,38 +38,6 @@ import {
 // ── Types ───────────────────────────────────────────────────────────────────────
 
 type ApprovalAction = "approve" | "reject" | "request_changes";
-
-// ── Constants ──────────────────────────────────────────────────────────────────
-
-const DATE_FORMAT = {
-  LOCALE: 'en-US' as const,
-  SHORT_DATE: { month: 'short' as const, day: 'numeric' as const },
-} as const;
-
-const TIME_RANGES = {
-  MS_PER_DAY: 1000 * 60 * 60 * 24,
-  TODAY: 0,
-  YESTERDAY: 1,
-  DAYS_THRESHOLD: 7,
-} as const;
-
-// ── Helper Functions ───────────────────────────────────────────────────────────
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / TIME_RANGES.MS_PER_DAY);
-  
-  // Handle future dates gracefully
-  if (diffDays < TIME_RANGES.TODAY) {
-    return date.toLocaleDateString(DATE_FORMAT.LOCALE, DATE_FORMAT.SHORT_DATE);
-  }
-  if (diffDays === TIME_RANGES.TODAY) return "Today";
-  if (diffDays === TIME_RANGES.YESTERDAY) return "Yesterday";
-  if (diffDays < TIME_RANGES.DAYS_THRESHOLD) return `${diffDays} days ago`;
-  return date.toLocaleDateString(DATE_FORMAT.LOCALE, DATE_FORMAT.SHORT_DATE);
-}
 
 function toggleSelection<T>(set: Set<T>, item: T): Set<T> {
   const newSet = new Set(set);

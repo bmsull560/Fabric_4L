@@ -11,7 +11,7 @@
 
 // ── Auth Hooks ─────────────────────────────────────────────────────────────────
 
-export { useAuthContext } from "@/contexts/AuthContext";
+export { useAuthContext } from "../contexts/AuthContext";
 
 // ── API/Data Hooks ───────────────────────────────────────────────────────────
 
@@ -25,7 +25,16 @@ export { useValuePacks } from "./useValuePacks";
 // ── Utility Hooks ─────────────────────────────────────────────────────────────
 
 export { usePersistFn } from "./usePersistFn";
+export {
+  usePrefersReducedMotion,
+  usePrefersHighContrast,
+  useFocusTrap,
+  useAnnouncer,
+  useListKeyboardNavigation,
+  useSkipLink,
+} from "./useAccessibility";
 
 // ── Domain Hooks ─────────────────────────────────────────────────────────────
 
-export { useUserTierStore } from "@/stores/userTierStore";
+export { useUserTierStore } from "../stores/userTierStore";
+export type { UserTier } from "../stores/userTierStore";

@@ -69,16 +69,16 @@ describe('EntityBrowser Contract Tests', () => {
     vi.clearAllMocks();
     vi.mocked(useEntityUIStore).mockReturnValue(mockStore);
     vi.mocked(useEntities).mockReturnValue({
-      data: null,
+      data: undefined,
       isLoading: false,
       error: null,
       refetch: vi.fn(),
-    });
+    } as unknown as ReturnType<typeof useEntities>);
     vi.mocked(useEntity).mockReturnValue({
-      data: null,
+      data: undefined,
       isLoading: false,
       error: null,
-    });
+    } as unknown as ReturnType<typeof useEntity>);
   });
 
   describe('API Data Consumption', () => {

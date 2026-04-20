@@ -2,14 +2,7 @@
 
 NOTE: If tests fail due to missing schemas, regenerate OpenAPI contracts:
     python scripts/export_openapi.py
-
-NOTE: This test is quarantined (see tests/quarantine/). Docker-dependent failures.
 """
-
-import pytest
-
-# Quarantine marker: Docker-dependent test - tracked in issue #123
-pytestmark = pytest.mark.skip(reason="Docker-dependent, tracked in issue #123. See tests/quarantine/")
 
 from __future__ import annotations
 

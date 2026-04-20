@@ -137,7 +137,7 @@ export const handlers = [
 
   // Entities - Update
   http.patch('/api/entities/:id', async ({ params, request }) => {
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const entity = mockEntities.find(e => e.id === params.id);
     if (!entity) {
       return new HttpResponse(null, { status: 404 });
@@ -252,7 +252,7 @@ export const handlers = [
 
   // Ingestion - Create job
   http.post('/api/ingestion/jobs', async ({ request }) => {
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     await delay(100);
     return HttpResponse.json({
       id: generateId('job'),

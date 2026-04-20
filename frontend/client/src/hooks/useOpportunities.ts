@@ -35,7 +35,7 @@ export interface OpportunitiesResponse {
   generatedAt: string;
 }
 
-const API_ENDPOINT = '/v1/discover/opportunities';
+const API_ENDPOINT = '/discover/opportunities';
 const STALE_TIME_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_RETRIES = 2;
 
@@ -51,14 +51,14 @@ export class OpportunitiesApiError extends Error {
 }
 
 async function fetchOpportunities(): Promise<OpportunitiesResponse> {
-  const response = await apiClient.get<OpportunitiesResponse>(API_ENDPOINT);
+  const response = await apiClient.get('l4', API_ENDPOINT);
 
   if (!response.data || typeof response.data !== 'object') {
     throw new OpportunitiesApiError('Invalid response format from API');
   }
 
   // Validate required fields
-  const data = response.data;
+  const data = response.data as OpportunitiesResponse;
   if (!Array.isArray(data.opportunities)) {
     throw new OpportunitiesApiError('Missing or invalid opportunities array');
   }

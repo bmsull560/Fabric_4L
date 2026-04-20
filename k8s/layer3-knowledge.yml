@@ -26,10 +26,10 @@ spec:
           command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 2; done']
       containers:
         - name: api
-          image: value-fabric/layer3-knowledge:fixed
-          imagePullPolicy: Never
-          command: ["/bin/sh"]
-          args: ["-c", "until nc -z neo4j-db 7687; do sleep 2; done; uvicorn src.api.main:app --host 0.0.0.0 --port 8001"]
+          image: value-fabric/layer3-knowledge:v3
+          imagePullPolicy: IfNotPresent
+          command: ["/app/.venv/bin/uvicorn"]
+          args: ["src.api.main:app", "--host", "0.0.0.0", "--port", "8001"]
           ports:
             - containerPort: 8001
               name: http
@@ -37,6 +37,10 @@ spec:
             - configMapRef:
                 name: value-fabric-config
           env:
+            - name: PATH
+              value: "/app/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+            - name: PYTHONPATH
+              value: "/app"
             - name: NEO4J_URI
               value: "bolt://neo4j-db:7687"
             - name: NEO4J_USER

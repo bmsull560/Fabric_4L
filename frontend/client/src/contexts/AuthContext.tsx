@@ -31,6 +31,8 @@ interface AuthContextType {
   handleCallback: (code: string, state: string) => Promise<boolean>;
   logout: () => void;
   refreshToken: () => Promise<boolean>;
+  /** Development-only bypass for testing authenticated flows */
+  devBypass?: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -260,6 +262,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return isValid;
   }, []);
 
+  /**
+   * Development bypass — allows instant authentication for testing
+   * Only available in development environment
+   */
+  const devBypass = useCallback(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      console.warn('[Auth] devBypass is only available in development mode');
+      return;
+    }
+    // Set mock authenticated state for development testing
+    setAuthState({
+      state: 'authenticated',
+      user: {
+        id: 'dev-user-123',
+        email: 'dev@example.com',
+        role: 'admin',
+        tenantId: 'dev-tenant',
+        tenantSlug: 'dev',
+      },
+      accessToken: 'dev-token-bypass',
+      error: null,
+    });
+  }, []);
+
   const value: AuthContextType = {
     isAuthenticated: authState.state === 'authenticated',
     isLoading,
@@ -269,6 +295,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     handleCallback,
     logout,
     refreshToken,
+    devBypass: process.env.NODE_ENV === 'development' ? devBypass : undefined,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -11,7 +11,7 @@
  *   PageShell, 
  *   Button, 
  *   Card, 
- *   useToast 
+ *   toast 
  * } from "@/components";
  * ```
  */
@@ -123,6 +123,20 @@ export { IntegrationList } from "./integrations/IntegrationList";
 // ── Auth Components ────────────────────────────────────────────────────────────
 
 export { SSOButtons } from "./auth/SSOButtons";
+
+// ── Error Handling & Loading States ───────────────────────────────────────────
+
+export { ErrorFallback, InlineError, SectionError } from "./ui/ErrorFallback";
+export {
+  SkeletonLine,
+  SkeletonText,
+  SkeletonCard,
+  SkeletonTable,
+  SkeletonTableRow,
+  SkeletonPage,
+  SkeletonStats,
+  SkeletonForm,
+} from "./ui/SkeletonViews";
 
 // ── Re-export toast utilities for convenience ──────────────────────────────────
 
