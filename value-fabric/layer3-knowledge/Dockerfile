@@ -3,7 +3,7 @@ WORKDIR /app
 COPY layer3-knowledge/pyproject.toml layer3-knowledge/uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
 
-FROM python:3.11-slim-bookworm
+FROM python:3.14-slim-bookworm
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
