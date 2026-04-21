@@ -8,6 +8,7 @@ import ValueStudioShell, {
   StudioPanel, DEMO_DEAL, buildStages,
 } from "./ValueStudioShell";
 import { cn } from "@/lib/utils";
+import { Btn } from "@/components/WfPrimitives";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -145,9 +146,9 @@ function CenterPanel({ activeSection, setActiveSection }: {
         </div>
 
         <div className="flex items-center gap-3 mt-3">
-          <button className="text-[11px] text-primary hover:underline">Edit inline</button>
+          <Btn variant="ghost" className="h-6 px-2 text-primary hover:underline">Edit inline</Btn>
           <span className="text-border">|</span>
-          <button className="text-[11px] text-muted-foreground hover:underline">Track changes</button>
+          <Btn variant="ghost" className="h-6 px-2 text-muted-foreground hover:underline">Track changes</Btn>
         </div>
       </StudioPanel>
 
@@ -155,18 +156,14 @@ function CenterPanel({ activeSection, setActiveSection }: {
       <StudioPanel title="Full Narrative — Section Editor">
         <div className="flex items-center gap-1.5 mb-3 flex-wrap">
           {NARRATIVE_SECTIONS.map((s) => (
-            <button
+            <Btn
               key={s}
+              variant={activeSection === s ? "primary" : "outline"}
               onClick={() => setActiveSection(s)}
-              className={cn(
-                "h-6 px-3 text-[11px] font-medium rounded-full border transition-colors",
-                activeSection === s
-                  ? "bg-primary/10 text-primary border-foreground"
-                  : "border-border text-muted-foreground hover:bg-muted"
-              )}
+              className="h-6 px-3 text-[10px] rounded-full"
             >
               {s}
-            </button>
+            </Btn>
           ))}
         </div>
         <div className="min-h-[80px] p-3 border border-border rounded-md bg-muted/30 text-[12px] text-foreground leading-relaxed">
@@ -216,9 +213,9 @@ function RightPanel({ selectedFormat, setSelectedFormat }: {
             );
           })}
         </div>
-        <button className="w-full h-8 bg-primary/10 text-primary text-[12px] font-semibold rounded-md hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+        <Btn variant="primary" className="w-full h-8 gap-2">
           <Download size={13} /> Download PDF
-        </button>
+        </Btn>
       </StudioPanel>
 
       {/* Document Preview */}
@@ -256,9 +253,9 @@ function RightPanel({ selectedFormat, setSelectedFormat }: {
             </button>
           ))}
         </div>
-        <button className="w-full h-8 border border-foreground text-foreground text-[12px] font-semibold rounded-md hover:bg-muted transition-colors flex items-center justify-center gap-2">
+        <Btn variant="outline" className="w-full h-8 gap-2 border-foreground text-foreground">
           <Share2 size={13} /> Share for Stakeholder Review
-        </button>
+        </Btn>
       </StudioPanel>
     </>
   );
@@ -300,9 +297,9 @@ export default function Stage5Narrative() {
       nextLabel="Continue to Tracking"
       nextPath="/model/value-studio/tracking"
       extraActions={
-        <button className="h-8 px-3 border border-border text-[12px] font-medium rounded-md hover:bg-muted transition-colors flex items-center gap-1.5">
+        <Btn variant="outline" className="h-8 px-3 gap-1.5">
           <Share2 size={13} /> Share for Review
-        </button>
+        </Btn>
       }
       leftPanel={<LeftPanel stakeholders={stakeholders} setStakeholders={setStakeholders} />}
       centerPanel={<CenterPanel activeSection={activeSection} setActiveSection={setActiveSection} />}

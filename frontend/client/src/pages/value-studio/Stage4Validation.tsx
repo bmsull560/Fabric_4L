@@ -8,6 +8,7 @@ import ValueStudioShell, {
 } from "./ValueStudioShell";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { Btn, StatusBadge } from "@/components/WfPrimitives";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -184,17 +185,18 @@ function IssueCard({
 
       <div className="flex items-center gap-2 flex-wrap">
         {issue.primaryAction && (
-          <button className="h-7 px-4 bg-primary/10 text-primary text-[11px] font-semibold rounded-md hover:opacity-90 transition-opacity">
+          <Btn variant="primary" className="h-7 px-4 text-[10px]">
             {issue.primaryAction}
-          </button>
+          </Btn>
         )}
         {issue.secondaryActions?.map((a) => (
-          <button
+          <Btn
             key={a}
-            className="h-7 px-3 border border-border text-[11px] font-medium rounded-md hover:bg-muted transition-colors"
+            variant="outline"
+            className="h-7 px-3 text-[10px]"
           >
             {a}
-          </button>
+          </Btn>
         ))}
       </div>
     </div>
@@ -261,9 +263,9 @@ function RightPanel({ activeIssue }: { activeIssue: number }) {
                   </label>
                 ))}
               </div>
-              <button className="w-full h-8 bg-primary/10 text-primary text-[12px] font-semibold rounded-md hover:opacity-90 transition-opacity mb-4">
+              <Btn variant="primary" className="w-full h-8 text-[11px] mb-4">
                 Apply Fix
-              </button>
+              </Btn>
             </>
           )}
 
@@ -302,9 +304,9 @@ function StatusBar() {
       <span className="h-6 px-2.5 bg-green-600 text-white text-[11px] font-semibold rounded flex items-center gap-1">
         <CheckCircle2 size={11} /> 2 GATES passed
       </span>
-      <button className="text-[11px] text-muted-foreground hover:underline">
+      <Btn variant="ghost" className="h-6 px-2 text-muted-foreground hover:underline">
         Publish Anyway (requires justification)
-      </button>
+      </Btn>
     </>
   );
 }
@@ -326,9 +328,9 @@ export default function Stage4Validation() {
       nextLabel="Continue to Narrative"
       nextPath="/model/value-studio/narrative"
       extraActions={
-        <button className="h-8 px-3 border border-border text-[12px] font-medium rounded-md hover:bg-muted transition-colors">
+        <Btn variant="outline" className="h-8 px-3">
           Run Review Again
-        </button>
+        </Btn>
       }
       leftPanel={<LeftPanel activeIssue={activeIssue} />}
       centerPanel={<CenterPanel activeIssue={activeIssue} setActiveIssue={setActiveIssue} />}

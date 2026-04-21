@@ -11,6 +11,7 @@
 import { Link, useLocation } from "wouter";
 import { CheckCircle2, Building2, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SectionCard, Btn } from "@/components/WfPrimitives";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,27 +156,21 @@ export default function ValueStudioShell({
         <div className="flex items-center gap-2 shrink-0">
           {prevLabel && prevPath && (
             <Link href={prevPath}>
-              <button className="h-8 px-3 text-[12px] font-medium border border-border rounded-md hover:bg-muted transition-colors">
+              <Btn variant="outline">
                 ← {prevLabel}
-              </button>
+              </Btn>
             </Link>
           )}
           {secondaryAction && (
-            <button
-              onClick={secondaryAction.onClick}
-              className="h-8 px-3 text-[12px] font-medium border border-border rounded-md hover:bg-muted transition-colors"
-            >
+            <Btn variant="outline" onClick={secondaryAction.onClick}>
               {secondaryAction.label}
-            </button>
+            </Btn>
           )}
           {extraActions}
           {nextLabel && (
-            <button
-              onClick={handleNext}
-              className="h-8 px-4 text-[12px] font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
-            >
+            <Btn variant="primary" onClick={handleNext}>
               {nextLabel} →
-            </button>
+            </Btn>
           )}
         </div>
       </div>
@@ -224,27 +219,20 @@ export function StudioPanel({
   action?: React.ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "bg-card border border-border rounded-lg overflow-hidden flex flex-col",
-        className
-      )}
+    <SectionCard
+      title={title}
+      className={cn("flex flex-col", className)}
     >
-      {title && (
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-          <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {title}
-            </span>
-            {subtitle && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
-            )}
-          </div>
+      {subtitle && (
+        <p className="text-[10px] text-muted-foreground -mt-2 mb-3">{subtitle}</p>
+      )}
+      {action && (
+        <div className="absolute top-2.5 right-4">
           {action}
         </div>
       )}
-      <div className="flex-1 p-4">{children}</div>
-    </div>
+      {children}
+    </SectionCard>
   );
 }
 
