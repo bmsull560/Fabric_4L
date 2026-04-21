@@ -12,6 +12,7 @@ import ValueStudioShell, {
   StudioPanel, DEMO_DEAL, buildStages,
 } from "./ValueStudioShell";
 import { cn } from "@/lib/utils";
+import { Btn, SearchInput, DataTable, StatusBadge } from "@/components/WfPrimitives";
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -56,10 +57,10 @@ const EXTRACTED_QUOTES = [
 
 function SourceButton({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <button className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium border border-border rounded-md hover:bg-muted transition-colors text-left">
+    <Btn variant="outline" className="w-full justify-start gap-2 h-9">
       <span className="text-muted-foreground">{icon}</span>
       {label}
-    </button>
+    </Btn>
   );
 }
 
@@ -138,36 +139,24 @@ function CenterPanel() {
       <StudioPanel
         title="Stakeholder Map"
         action={
-          <button className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+          <Btn variant="ghost" className="h-6 px-2 text-primary hover:underline">
             <Plus size={11} /> Add Stakeholder
-          </button>
+          </Btn>
         }
       >
-        <table className="w-full text-[12px]">
-          <thead>
-            <tr className="border-b border-border">
-              {["Role", "Name", "Authority", "Status"].map((h) => (
-                <th key={h} className="text-left py-1.5 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {stakeholders.map((s, i) => (
-              <tr key={i} className="border-b border-border last:border-0">
-                <td className="py-2 pr-4 font-medium">{s.role}</td>
-                <td className="py-2 pr-4">{s.name}</td>
-                <td className="py-2 pr-4 text-muted-foreground">{s.authority}</td>
-                <td className="py-2">
-                  {s.confirmed
-                    ? <CheckCircle2 size={13} className="text-green-500" />
-                    : <Circle size={13} className="text-muted-foreground" />}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={["Role", "Name", "Authority", "Status"]}
+          rows={stakeholders.map((s) => [
+            <span className="font-medium">{s.role}</span>,
+            s.name,
+            <span className="text-muted-foreground">{s.authority}</span>,
+            s.confirmed ? (
+              <CheckCircle2 size={13} className="text-green-500" />
+            ) : (
+              <Circle size={13} className="text-muted-foreground" />
+            ),
+          ])}
+        />
       </StudioPanel>
 
       {/* Pain Point Registry */}
@@ -230,9 +219,9 @@ function RightPanel() {
           ))}
           <div className="flex items-center justify-between pt-1">
             <span className="text-[11px] font-semibold text-foreground">Confidence: 85%</span>
-            <div className="flex gap-1.5">
-              <button className="h-6 px-2.5 text-[11px] font-semibold bg-primary text-primary-foreground rounded hover:bg-primary/90">Accept</button>
-              <button className="h-6 px-2.5 text-[11px] border border-border rounded hover:bg-muted">Edit</button>
+          <div className="flex gap-1.5">
+              <Btn variant="primary" className="h-6 px-2.5 text-[10px]">Accept</Btn>
+              <Btn variant="outline" className="h-6 px-2.5 text-[10px]">Edit</Btn>
             </div>
           </div>
         </div>

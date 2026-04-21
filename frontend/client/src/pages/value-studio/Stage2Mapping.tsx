@@ -12,6 +12,7 @@ import ValueStudioShell, {
   StudioPanel, DEMO_DEAL, buildStages,
 } from "./ValueStudioShell";
 import { cn } from "@/lib/utils";
+import { Btn, SearchInput } from "@/components/WfPrimitives";
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -251,13 +252,11 @@ function CapabilityPalette() {
 
   return (
     <StudioPanel title="Capability Palette">
-      <div className="relative mb-3">
-        <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
+      <div className="mb-3">
+        <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search capabilities..."
-          className="w-full h-7 pl-7 pr-3 text-[12px] border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
       <div className="flex flex-col gap-0 overflow-y-auto max-h-[500px]">
@@ -302,10 +301,10 @@ function CapabilityPalette() {
 function StatusBar() {
   return (
     <>
-      <span className="h-6 px-2.5 bg-primary/10 text-primary text-[11px] font-semibold rounded flex items-center">Chains: 3</span>
+      <span className="h-6 px-2.5 bg-foreground text-background text-[11px] font-semibold rounded flex items-center">Chains: 3</span>
       <span>Bridge gaps: 1</span>
       <span className="text-primary font-medium">AI suggestions: 5</span>
-      <button className="text-[11px] font-medium text-primary hover:underline">Auto-map all</button>
+      <Btn variant="ghost" className="h-6 px-2 text-primary hover:underline">Auto-map all</Btn>
     </>
   );
 }

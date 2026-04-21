@@ -8,6 +8,7 @@ import ValueStudioShell, {
   StudioPanel, DEMO_DEAL, buildStages,
 } from "./ValueStudioShell";
 import { cn } from "@/lib/utils";
+import { Btn, DataTable } from "@/components/WfPrimitives";
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -230,36 +231,22 @@ function CenterPanel() {
     <>
       {/* Promised vs Actual Quarterly */}
       <StudioPanel title="Promised vs Actual — Quarterly">
-        <table className="w-full text-[12px] mb-3">
-          <thead>
-            <tr className="border-b border-border">
-              {["Quarter", "Promised", "Actual", "vs Pace"].map((h) => (
-                <th key={h} className="text-left py-2 pr-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {QUARTERLY_DATA.map((row) => (
-              <tr key={row.quarter} className="border-b border-border last:border-0">
-                <td className="py-2.5 pr-4 font-semibold">{row.quarter}</td>
-                <td className="py-2.5 pr-4 text-muted-foreground">{row.promised}</td>
-                <td className="py-2.5 pr-4 font-semibold">{row.actual}</td>
-                <td className="py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${row.pct}%` }} />
-                    </div>
-                    <span className="text-green-600 font-semibold text-[11px]">{row.pct}%</span>
-                    <span className="text-green-600 text-[11px]">On track ↑</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <p className="text-[12px] font-semibold text-foreground">Overall: 87% of pace</p>
+        <DataTable
+          columns={["Quarter", "Promised", "Actual", "vs Pace"]}
+          rows={QUARTERLY_DATA.map((row) => [
+            <span className="font-semibold">{row.quarter}</span>,
+            <span className="text-muted-foreground">{row.promised}</span>,
+            <span className="font-semibold">{row.actual}</span>,
+            <div className="flex items-center gap-2">
+              <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-full bg-green-500 rounded-full" style={{ width: `${row.pct}%` }} />
+              </div>
+              <span className="text-green-600 font-semibold text-[11px]">{row.pct}%</span>
+              <span className="text-green-600 text-[11px]">On track ↑</span>
+            </div>,
+          ])}
+        />
+        <p className="text-[12px] font-semibold text-foreground mt-3">Overall: 87% of pace</p>
       </StudioPanel>
 
       {/* Adoption Curve */}
@@ -290,9 +277,9 @@ function CenterPanel() {
                   <span className="text-green-600 font-medium">{item.value}</span>
                 </p>
               </div>
-              <button className="h-7 px-3 border border-border text-[11px] font-medium rounded-md hover:bg-muted transition-colors whitespace-nowrap">
+              <Btn variant="outline" className="h-7 px-3 text-[10px] whitespace-nowrap">
                 {item.cta}
-              </button>
+              </Btn>
             </div>
           ))}
         </div>
@@ -338,9 +325,9 @@ function RightPanel() {
           </div>
         </div>
 
-        <button className="w-full h-7 border border-border text-[11px] font-medium rounded-md hover:bg-muted transition-colors flex items-center justify-center gap-1.5">
+        <Btn variant="outline" className="w-full h-7 gap-1.5 text-[10px]">
           <Plus size={11} /> Add Milestone
-        </button>
+        </Btn>
       </StudioPanel>
 
       {/* Renewal Signal */}
@@ -393,9 +380,9 @@ export default function Stage6Tracking() {
       prevLabel="Narrative"
       prevPath="/model/value-studio/narrative"
       extraActions={
-        <button className="h-8 px-3 border border-border text-[12px] font-medium rounded-md hover:bg-muted transition-colors flex items-center gap-1.5">
+        <Btn variant="outline" className="h-8 px-3 gap-1.5">
           <Download size={13} /> Export Realization Report
-        </button>
+        </Btn>
       }
       leftPanel={<LeftPanel />}
       centerPanel={<CenterPanel />}

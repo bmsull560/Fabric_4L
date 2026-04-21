@@ -8,6 +8,7 @@ import ValueStudioShell, {
   StudioPanel, DEMO_DEAL, buildStages,
 } from "./ValueStudioShell";
 import { cn } from "@/lib/utils";
+import { Btn, DataTable } from "@/components/WfPrimitives";
 
 // ── Mock data ──────────────────────────────────────────────────────────────────
 
@@ -142,28 +143,15 @@ function CenterPanel() {
     <>
       {/* Year-by-year projection */}
       <StudioPanel title="Year-by-Year Projection">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-b border-border">
-              <th className="text-left py-2 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground w-32" />
-              {["Year 1", "Year 2", "Year 3"].map((y) => (
-                <th key={y} className="text-right py-2 pr-4 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {y}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {PROJECTION.map((row) => (
-              <tr key={row.label} className={cn("border-b border-border last:border-0", row.bold && "font-bold")}>
-                <td className="py-2.5 pr-4 text-muted-foreground text-[12px]">{row.label}</td>
-                <td className="py-2.5 pr-4 text-right">{row.y1}</td>
-                <td className="py-2.5 pr-4 text-right">{row.y2}</td>
-                <td className="py-2.5 text-right">{row.y3}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <DataTable
+          columns={["", "Year 1", "Year 2", "Year 3"]}
+          rows={PROJECTION.map((row) => [
+            <span className={cn("text-muted-foreground text-[12px]", row.bold && "font-bold text-foreground")}>{row.label}</span>,
+            <div className={cn("text-right", row.bold && "font-bold")}>{row.y1}</div>,
+            <div className={cn("text-right", row.bold && "font-bold")}>{row.y2}</div>,
+            <div className={cn("text-right", row.bold && "font-bold")}>{row.y3}</div>,
+          ])}
+        />
       </StudioPanel>
 
       {/* Key Metrics */}
@@ -178,18 +166,14 @@ function CenterPanel() {
         </div>
         <div className="flex items-center gap-2">
           {(["conservative", "expected", "optimistic"] as const).map((s) => (
-            <button
+            <Btn
               key={s}
+              variant={activeScenario === s ? "primary" : "outline"}
               onClick={() => setActiveScenario(s)}
-              className={cn(
-                "h-6 px-3 text-[11px] font-medium rounded-full border transition-colors capitalize",
-                activeScenario === s
-                  ? "bg-primary/10 text-primary border-foreground"
-                  : "border-border text-muted-foreground hover:bg-muted"
-              )}
+              className="h-6 px-3 text-[10px] rounded-full capitalize"
             >
               {s === "expected" ? `Expected: 412%` : s === "conservative" ? "Conservative: 289%" : "Optimistic: 535%"}
-            </button>
+            </Btn>
           ))}
         </div>
       </StudioPanel>
@@ -198,18 +182,14 @@ function CenterPanel() {
       <StudioPanel title="Ramp & Adoption Profile">
         <div className="flex items-center gap-2 mb-3">
           {(["s-curve", "linear", "step"] as const).map((c) => (
-            <button
+            <Btn
               key={c}
+              variant={activeCurve === c ? "primary" : "outline"}
               onClick={() => setActiveCurve(c)}
-              className={cn(
-                "h-6 px-3 text-[11px] font-medium rounded-full border transition-colors capitalize",
-                activeCurve === c
-                  ? "bg-primary/10 text-primary border-foreground"
-                  : "border-border text-muted-foreground hover:bg-muted"
-              )}
+              className="h-6 px-3 text-[10px] rounded-full capitalize"
             >
               {c === "s-curve" ? "S-curve" : c === "step" ? "Step function" : "Linear"}
-            </button>
+            </Btn>
           ))}
           <span className="ml-auto text-[11px] text-muted-foreground">3-month ramp lag</span>
         </div>
@@ -252,9 +232,9 @@ function RightPanel() {
     <StudioPanel
       title="Assumption Registry"
       action={
-        <button className="flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
+        <Btn variant="ghost" className="h-6 px-2 text-primary hover:underline">
           <Plus size={11} /> Add
-        </button>
+        </Btn>
       }
     >
       <p className="text-[11px] text-muted-foreground mb-3">12 assumptions · Confidence breakdown:</p>
@@ -277,9 +257,9 @@ function RightPanel() {
           </div>
         ))}
       </div>
-      <button className="mt-4 w-full flex items-center justify-center gap-2 h-7 text-[11px] font-medium border border-border rounded-md hover:bg-muted transition-colors">
+      <Btn variant="outline" className="mt-4 w-full gap-2 h-8">
         <Phone size={11} /> Schedule Validation Call
-      </button>
+      </Btn>
     </StudioPanel>
   );
 }
