@@ -67,6 +67,15 @@ const Stage4Validation       = lazy(() => import("./pages/value-studio/Stage4Val
 const Stage5Narrative        = lazy(() => import("./pages/value-studio/Stage5Narrative"));
 const Stage6Tracking         = lazy(() => import("./pages/value-studio/Stage6Tracking"));
 
+// ── Workflow — 7-Step Guided Value Creation ───────────────────────────────────
+const WorkflowProspectSetup  = lazy(() => import("./workflow/pages/ProspectSetup"));
+const WorkflowIntelligence   = lazy(() => import("./workflow/pages/Intelligence"));
+const WorkflowAIModel        = lazy(() => import("./workflow/pages/AIModel"));
+const WorkflowDriverTree     = lazy(() => import("./workflow/pages/DriverTree"));
+const WorkflowEvidence       = lazy(() => import("./workflow/pages/Evidence"));
+const WorkflowCalculator     = lazy(() => import("./workflow/pages/Calculator"));
+const WorkflowValueCase      = lazy(() => import("./workflow/pages/ValueCase"));
+
 // Minimal inline fallback — shown during chunk download (typically <200 ms on broadband)
 function PageLoader() {
   return (
@@ -317,6 +326,46 @@ function Router() {
           <Route path="/model/value-studio/formulas/:formulaId">
             <RouteGuard requiredTier="advanced">
               <ErrorBoundary><FormulaBuilder /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+
+          {/* ── Workflow — 7-Step Guided Experience ── */}
+          <Route path="/workflow">
+            <Navigate to="/workflow/prospect" />
+          </Route>
+          <Route path="/workflow/prospect">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><WorkflowProspectSetup /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/workflow/intelligence">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><WorkflowIntelligence /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/workflow/ai-model">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><WorkflowAIModel /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/workflow/driver-tree">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><WorkflowDriverTree /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/workflow/evidence">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><WorkflowEvidence /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/workflow/calculator">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><WorkflowCalculator /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/workflow/value-case">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><WorkflowValueCase /></ErrorBoundary>
             </RouteGuard>
           </Route>
 

@@ -24,7 +24,7 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Search, ChevronDown, ChevronRight,
-  Briefcase, Shield, GitBranch,
+  Briefcase, Shield, GitBranch, Zap, Workflow,
   Settings, Package, Eye, Lock, Crown, Wrench
 } from "lucide-react";
 
@@ -144,6 +144,29 @@ const NAV_SPINE: NavItem[] = [
       // Value Exploration (Advanced+)
       { id: "trees", label: "Value Trees", path: "/studio/trees", tier: "advanced" },
       { id: "scenarios", label: "Scenarios", path: "/studio/scenarios", tier: "advanced" }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 2b. WORKFLOW — Guided 7-Step Value Creation (Parallel to Value Studio)
+  // "Alternative guided experience for value-case creation"
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    id: "workflow",
+    label: "Workflow",
+    icon: <Zap size={16}/>,
+    path: "/workflow",
+    tier: "standard",
+    description: "Guided 7-step value-case creation",
+    badge: "New",
+    children: [
+      { id: "workflow-prospect", label: "1. Prospect", path: "/workflow/prospect", tier: "standard" },
+      { id: "workflow-intelligence", label: "2. Intelligence", path: "/workflow/intelligence", tier: "standard" },
+      { id: "workflow-ai", label: "3. AI Model", path: "/workflow/ai-model", tier: "standard" },
+      { id: "workflow-driver", label: "4. Driver Tree", path: "/workflow/driver-tree", tier: "standard" },
+      { id: "workflow-evidence", label: "5. Evidence", path: "/workflow/evidence", tier: "standard" },
+      { id: "workflow-calc", label: "6. Calculator", path: "/workflow/calculator", tier: "standard" },
+      { id: "workflow-case", label: "7. Value Case", path: "/workflow/value-case", tier: "standard" }
     ]
   },
 

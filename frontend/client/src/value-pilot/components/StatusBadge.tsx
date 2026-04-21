@@ -38,9 +38,9 @@ const variantConfig: Record<StatusVariant, { bg: string; text: string; dot: stri
     dot: 'bg-destructive',
   },
   info: {
-    bg: 'bg-primary/10',
-    text: 'text-primary',
-    dot: 'bg-primary',
+    bg: 'bg-blue-500/10',
+    text: 'text-blue-500',
+    dot: 'bg-blue-500',
   },
   active: {
     bg: 'bg-primary/10',

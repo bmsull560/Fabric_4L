@@ -14,6 +14,7 @@ import type {
   DriverTree,
   EvidenceMatch,
   ScenarioConfig,
+  ScenarioVariable,
   ScenarioResult,
   ValueCase,
 } from '../types';
@@ -52,8 +53,7 @@ export interface PilotState {
   generatedCaseId: string | null;
   valueCase: ValueCase | null;
   
-  // Computed
-  canProceed: boolean;
+  // Step validation state
   stepValidation: Record<number, boolean>;
 }
 
@@ -91,7 +91,7 @@ export interface PilotActions {
   // Calculator
   setScenario: (scenario: ScenarioConfig) => void;
   setScenarioResult: (result: ScenarioResult) => void;
-  updateVariable: (id: string, updates: Partial<ScenarioConfig['variables'][0]>) => void;
+  updateVariable: (id: string, updates: Partial<ScenarioVariable>) => void;
   
   // Value Case
   setGeneratedCaseId: (id: string | null) => void;
@@ -100,12 +100,14 @@ export interface PilotActions {
   
   // Validation
   validateStep: (step: number, isValid: boolean) => void;
-  checkCanProceed: () => boolean;
+  
+  // Computed
+  get canProceed(): boolean;
 }
 
 const generateSessionId = () => `pilot_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
-const initialState: PilotState = {
+const initialState: Omit<PilotState, 'canProceed'> = {
   sessionId: null,
   currentStep: 0,
   startedAt: null,
@@ -131,7 +133,6 @@ const initialState: PilotState = {
   generatedCaseId: null,
   valueCase: null,
   
-  canProceed: false,
   stepValidation: {},
 };
 
@@ -149,10 +150,13 @@ export const usePilotStore = create<PilotState & PilotActions>()(
       
       clearSession: () => set(initialState),
       
-      setCurrentStep: (step) => set({ currentStep: step }),
+      setCurrentStep: (step) => {
+        const validStep = Math.min(6, Math.max(0, step));
+        set({ currentStep: validStep });
+      },
       
       // Prospect Setup
-      setProspect: (prospect) => set({ prospect, canProceed: !!prospect.companyId }),
+      setProspect: (prospect) => set({ prospect }),
       
       updateProspect: (updates) => set((state) => ({
         prospect: state.prospect ? { ...state.prospect, ...updates } : null,
@@ -171,7 +175,9 @@ export const usePilotStore = create<PilotState & PilotActions>()(
       setHypotheses: (hypotheses) => set({ hypotheses }),
       
       selectHypothesis: (id) => set((state) => ({
-        selectedHypothesisIds: [...state.selectedHypothesisIds, id],
+        selectedHypothesisIds: state.selectedHypothesisIds.includes(id)
+          ? state.selectedHypothesisIds
+          : [...state.selectedHypothesisIds, id],
       })),
       
       deselectHypothesis: (id) => set((state) => ({
@@ -184,7 +190,9 @@ export const usePilotStore = create<PilotState & PilotActions>()(
       setDriverTree: (tree) => set({ driverTree: tree }),
       
       selectNode: (id) => set((state) => ({
-        selectedNodeIds: [...state.selectedNodeIds, id],
+        selectedNodeIds: state.selectedNodeIds.includes(id)
+          ? state.selectedNodeIds
+          : [...state.selectedNodeIds, id],
       })),
       
       deselectNode: (id) => set((state) => ({
@@ -195,7 +203,9 @@ export const usePilotStore = create<PilotState & PilotActions>()(
       setEvidenceMatches: (matches) => set({ evidenceMatches: matches }),
       
       verifyEvidence: (id) => set((state) => ({
-        verifiedEvidenceIds: [...state.verifiedEvidenceIds, id],
+        verifiedEvidenceIds: state.verifiedEvidenceIds.includes(id)
+          ? state.verifiedEvidenceIds
+          : [...state.verifiedEvidenceIds, id],
       })),
       
       unverifyEvidence: (id) => set((state) => ({
@@ -232,7 +242,8 @@ export const usePilotStore = create<PilotState & PilotActions>()(
         stepValidation: { ...state.stepValidation, [step]: isValid },
       })),
       
-      checkCanProceed: () => {
+      // Computed getter - recalculates based on current state
+      get canProceed() {
         const state = get();
         const currentStep = state.currentStep;
         
