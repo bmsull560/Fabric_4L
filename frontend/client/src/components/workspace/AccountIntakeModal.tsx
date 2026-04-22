@@ -1,0 +1,221 @@
+/**
+ * Account Intake Modal — "New Value Case"
+ *
+ * Launched from the Accounts page. Gathers the minimum information
+ * needed to seed the Intelligence pipeline:
+ *   - Company name (or select existing account)
+ *   - Industry
+ *   - Primary contact / buyer role
+ *   - Known pain points (optional)
+ *   - Analysis depth (Fast / Balanced / Deep)
+ *
+ * On submit:
+ *   1. Creates or updates the Account record
+ *   2. Navigates to /intelligence/{accountId}/signals
+ */
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { X, Search, Sparkles, Building2, User, AlertTriangle, Gauge } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Btn } from "@/components/WfPrimitives";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface AccountIntakeModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+type AnalysisDepth = "fast" | "balanced" | "deep";
+
+const DEPTH_OPTIONS: { key: AnalysisDepth; label: string; description: string }[] = [
+  { key: "fast",     label: "Fast",     description: "Quick scan — web enrichment only" },
+  { key: "balanced", label: "Balanced", description: "Standard — web + document analysis" },
+  { key: "deep",     label: "Deep",     description: "Comprehensive — all sources + competitive intel" },
+];
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+
+export default function AccountIntakeModal({ open, onClose }: AccountIntakeModalProps) {
+  const [, navigate] = useLocation();
+
+  // Form state
+  const [companyName, setCompanyName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [revenue, setRevenue] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactRole, setContactRole] = useState("");
+  const [painPoints, setPainPoints] = useState("");
+  const [depth, setDepth] = useState<AnalysisDepth>("balanced");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!open) return null;
+
+  const canSubmit = companyName.trim().length > 0;
+
+  const handleSubmit = async () => {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+
+    // Generate a temporary account ID (in production, this comes from the backend)
+    const accountId = companyName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      || "new-account";
+
+    // TODO: POST to backend /api/accounts with the intake payload
+    // For now, simulate a short delay and navigate
+    await new Promise((r) => setTimeout(r, 400));
+
+    setIsSubmitting(false);
+    onClose();
+    navigate(`/intelligence/${accountId}/signals`);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative bg-background border border-border rounded-lg shadow-xl w-full max-w-[560px] max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Sparkles size={16} className="text-primary" />
+            <h2 className="text-[16px] font-bold text-foreground">New Value Case</h2>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <div className="px-6 py-5 space-y-5">
+          {/* Company */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground mb-1.5">
+              <Building2 size={13} className="text-muted-foreground" />
+              Company Name <span className="text-destructive">*</span>
+            </label>
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Search or enter company name…"
+                className="w-full h-9 pl-9 pr-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          {/* Industry + Revenue */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[12px] font-semibold text-foreground mb-1.5 block">Industry</label>
+              <input
+                type="text"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                placeholder="e.g. Manufacturing"
+                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-[12px] font-semibold text-foreground mb-1.5 block">Revenue</label>
+              <input
+                type="text"
+                value={revenue}
+                onChange={(e) => setRevenue(e.target.value)}
+                placeholder="e.g. $4.2B"
+                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          {/* Primary Contact */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground mb-1.5">
+              <User size={13} className="text-muted-foreground" />
+              Primary Contact
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <input
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="Contact name"
+                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <input
+                type="text"
+                value={contactRole}
+                onChange={(e) => setContactRole(e.target.value)}
+                placeholder="Role (e.g. VP Operations)"
+                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          {/* Known Pain Points */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground mb-1.5">
+              <AlertTriangle size={13} className="text-muted-foreground" />
+              Known Pain Points
+              <span className="text-[10px] text-muted-foreground font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={painPoints}
+              onChange={(e) => setPainPoints(e.target.value)}
+              placeholder="Describe any known challenges, priorities, or context…"
+              rows={3}
+              className="w-full px-3 py-2 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+            />
+          </div>
+
+          {/* Analysis Depth */}
+          <div>
+            <label className="flex items-center gap-1.5 text-[12px] font-semibold text-foreground mb-2">
+              <Gauge size={13} className="text-muted-foreground" />
+              Analysis Depth
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {DEPTH_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setDepth(opt.key)}
+                  className={cn(
+                    "flex flex-col items-center px-3 py-2.5 rounded-md border text-center transition-colors",
+                    depth === opt.key
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border text-muted-foreground hover:border-foreground/20"
+                  )}
+                >
+                  <span className="text-[12px] font-semibold">{opt.label}</span>
+                  <span className="text-[10px] mt-0.5 leading-tight">{opt.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
+          <Btn variant="outline" onClick={onClose}>Cancel</Btn>
+          <Btn
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={!canSubmit || isSubmitting}
+            className="gap-1.5"
+          >
+            <Sparkles size={13} />
+            {isSubmitting ? "Launching…" : "Launch Intelligence"}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+}

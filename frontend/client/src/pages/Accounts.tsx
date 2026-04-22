@@ -8,7 +8,9 @@
  * - Search and pagination
  */
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
+import AccountIntakeModal from "@/components/workspace/AccountIntakeModal";
 import {
   Table,
   TableBody,
@@ -205,9 +207,10 @@ function FilterChipBar({ filters, filterOptions, onChange }: FilterChipBarProps)
 interface AccountDetailPanelProps {
   accountId: string | null;
   onClose: () => void;
+  onLaunchIntelligence?: (accountId: string) => void;
 }
 
-function AccountDetailPanel({ accountId, onClose }: AccountDetailPanelProps) {
+function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: AccountDetailPanelProps) {
   const { data: account, isLoading } = useAccount(accountId);
 
   if (!accountId) {
@@ -394,9 +397,11 @@ function AccountDetailPanel({ accountId, onClose }: AccountDetailPanelProps) {
       <div className="p-5 border-t border-border bg-muted/30">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-3">Actions</p>
         <div className="flex items-center gap-2">
-          <Btn variant="primary" className="flex-1">
+          <Btn variant="primary" className="flex-1" onClick={() => {
+            if (accountId && onLaunchIntelligence) onLaunchIntelligence(accountId);
+          }}>
             <FileText size={14} className="mr-1" />
-            Create Case
+            Launch Intelligence
           </Btn>
           <Btn variant="ghost">
             <Activity size={14} className="mr-1" />
@@ -426,6 +431,7 @@ interface FilterOptions {
 }
 
 function Accounts() {
+  const [, navigate] = useLocation();
   const [filters, setFilters] = useState<AccountFilters>({
     sync_status: "all",
     search: "",
@@ -433,6 +439,7 @@ function Accounts() {
     page_size: 20,
   });
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [intakeOpen, setIntakeOpen] = useState(false);
 
   const { data, isLoading, error } = useAccounts(filters);
   const { data: filterOptions } = useAccountFilterOptions();
@@ -466,7 +473,12 @@ function Accounts() {
   };
 
   const handleAddAccount = () => {
-    // TODO: Implement add account functionality (Task pending)
+    setIntakeOpen(true);
+  };
+
+  const handleIntakeSubmit = (accountId: string) => {
+    setIntakeOpen(false);
+    navigate(`/intelligence/${accountId}/signals`);
   };
 
   const updateFilters = (updates: Partial<AccountFilters>) => {
@@ -488,7 +500,7 @@ function Accounts() {
               </Btn>
               <Btn variant="primary" onClick={handleAddAccount}>
                 <Plus size={14} className="mr-1.5" />
-                Add Account
+                New Value Case
               </Btn>
             </>
           }
@@ -630,12 +642,22 @@ function Accounts() {
           {selectedAccountId && (
             <div className="col-span-3">
               <div className="bg-card border border-border rounded-lg h-[calc(100vh-200px)] sticky top-8">
-                <AccountDetailPanel accountId={selectedAccountId} onClose={() => setSelectedAccountId(null)} />
+                <AccountDetailPanel
+                  accountId={selectedAccountId}
+                  onClose={() => setSelectedAccountId(null)}
+                  onLaunchIntelligence={(id) => navigate(`/intelligence/${id}/signals`)}
+                />
               </div>
             </div>
           )}
         </div>
       </div>
+      {/* Account Intake Modal */}
+      <AccountIntakeModal
+        open={intakeOpen}
+        onClose={() => setIntakeOpen(false)}
+        onSubmit={handleIntakeSubmit}
+      />
     </div>
   );
 }
