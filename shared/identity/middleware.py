@@ -20,6 +20,17 @@ from .context import RequestContext
 from .jwt import decode_jwt
 from .permissions import get_permissions_for_role
 
+# Task 3.1: Tenant resolution audit logging
+try:
+    from shared.audit import emit_audit_event, AuditAction, AuditOutcome, TenantResolvedDetails
+    AUDIT_AVAILABLE = True
+except ImportError:
+    AUDIT_AVAILABLE = False
+    emit_audit_event = None  # type: ignore
+    AuditAction = None  # type: ignore
+    AuditOutcome = None  # type: ignore
+    TenantResolvedDetails = None  # type: ignore
+
 # Redis import for distributed rate limiting (optional)
 try:
     import redis.asyncio as redis
@@ -324,9 +335,9 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         return _check_tenant_rate_limit(tenant_id_str, rpm)
 
     async def _authenticate(self, request: Request) -> RequestContext:
-        """Authenticate request and build context."""
+        """Authenticate request and build context with standardized tenant claims (Task 1.1)."""
         context = RequestContext()
-        
+
         # Try API key auth
         api_key = self._extract_api_key(request)
         if api_key and self.api_key_lookup:
@@ -336,6 +347,8 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 context.api_key_id = key_data.get("id")
                 context.permissions = key_data.get("permissions", [])
                 context.roles = ["api_key"]
+                context.auth_source = "api_key"
+                # API keys are tied to a specific tenant - no org_id or service account support yet
 
         # Try JWT auth (if no API key or API key failed)
         if not context.tenant_id:
@@ -345,7 +358,21 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 if payload:
                     context.user_id = UUID(payload.get("sub")) if payload.get("sub") else None
                     context.tenant_id = UUID(payload.get("tenant_id")) if payload.get("tenant_id") else None
+                    context.org_id = UUID(payload.get("org_id")) if payload.get("org_id") else None
+                    context.tenant_role = payload.get("tenant_role")
+                    # P1: Use constant for default isolation tier
+                    from .context import ISOLATION_TIER_SHARED, AUTH_SOURCE_JWT
+                    context.isolation_tier = payload.get("isolation_tier", ISOLATION_TIER_SHARED)
                     context.roles = payload.get("roles", [])
+                    context.auth_source = payload.get("auth_source", AUTH_SOURCE_JWT)
+
+                    # Service account support
+                    svc_account_id = payload.get("service_account_id")
+                    if svc_account_id:
+                        context.service_account_id = UUID(svc_account_id)
+                        context.service_account_scopes = payload.get("scopes", [])
+                        context.auth_source = "service_account"
+
                     # Derive permissions from roles
                     perms = []
                     for role in context.roles:
@@ -355,7 +382,60 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         # Extract request ID
         context.request_id = request.headers.get("X-Request-ID") or str(UUID())
 
+        # Task 3.1: Emit tenant resolution audit event
+        await self._emit_tenant_resolution_audit(request, context)
+
         return context
+
+    async def _emit_tenant_resolution_audit(
+        self, request: Request, context: RequestContext
+    ) -> None:
+        """P1: Extracted helper to emit TENANT_RESOLVED audit event."""
+        if not AUDIT_AVAILABLE:
+            return
+
+        try:
+            # Build details with safe attribute access
+            request_path = None
+            request_method = None
+            try:
+                request_path = str(request.url.path)
+                request_method = request.method
+            except (AttributeError, RuntimeError):
+                pass  # P1: Safer than hasattr check
+
+            details = TenantResolvedDetails(
+                resolution_source=context.auth_source,
+                resolved_tenant_id=str(context.tenant_id) if context.tenant_id else None,
+                user_id=str(context.user_id) if context.user_id else None,
+                api_key_id=str(context.api_key_id) if context.api_key_id else None,
+                service_account_id=str(context.service_account_id) if context.service_account_id else None,
+                auth_method=context.auth_source,
+                has_org_id=context.org_id is not None,
+                org_id=str(context.org_id) if context.org_id else None,
+                tenant_role=context.tenant_role,
+                isolation_tier=context.isolation_tier,
+                roles=context.roles or [],
+                is_super_admin=context.is_super_admin(),
+                outcome="success" if context.tenant_id else "failure",
+                failure_reason=None if context.tenant_id else "No tenant_id resolved from authentication",
+                request_path=request_path,
+                request_method=request_method,
+            )
+
+            await emit_audit_event(
+                action=AuditAction.TENANT_RESOLVED,
+                outcome=AuditOutcome.SUCCESS if context.tenant_id else AuditOutcome.FAILURE,
+                resource_type="tenant_resolution",
+                resource_id=str(context.tenant_id) if context.tenant_id else None,
+                actor_id=context.user_id or context.api_key_id or context.service_account_id,
+                tenant_id=context.tenant_id,
+                request_id=context.request_id,
+                details=details.model_dump(exclude_none=True),
+            )
+        except Exception as e:
+            # P0: Log but don't fail the request
+            logger.debug("Audit emission failed (non-critical): %s", e)
 
     def _extract_api_key(self, request: Request) -> str | None:
         """Extract API key from Authorization header."""

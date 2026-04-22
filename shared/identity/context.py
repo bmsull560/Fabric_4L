@@ -2,21 +2,62 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, ClassVar
 from uuid import UUID
+
+# P1: Tenant isolation tier constants
+ISOLATION_TIER_SHARED = "shared"
+ISOLATION_TIER_SCHEMA = "schema"
+ISOLATION_TIER_DATABASE = "database"
+VALID_ISOLATION_TIERS = {ISOLATION_TIER_SHARED, ISOLATION_TIER_SCHEMA, ISOLATION_TIER_DATABASE}
+
+# Auth source constants
+AUTH_SOURCE_JWT = "jwt_claim"
+AUTH_SOURCE_API_KEY = "api_key"
+AUTH_SOURCE_SERVICE_ACCOUNT = "service_account"
+AUTH_SOURCE_UNKNOWN = "unknown"
 
 
 @dataclass
 class RequestContext:
-    """Context for the current request including tenant and user info."""
+    """Context for the current request including tenant and user info.
 
+    Multi-tenancy fields:
+    - tenant_id: Primary tenant identifier for RLS enforcement
+    - org_id: Optional organization hierarchy (enterprise feature)
+    - tenant_role: User's role within the tenant context
+    - isolation_tier: Tenant's data isolation level (shared/schema/database)
+    - auth_source: How the tenant context was resolved (jwt_claim|api_key|service_account)
+
+    Service account fields (for programmatic access):
+    - service_account_id: Service account identifier
+    - service_account_scopes: Granted scopes for service account
+    """
+
+    # Core identity
     tenant_id: UUID | None = None
     user_id: UUID | None = None
     api_key_id: UUID | None = None
     roles: list[str] | None = None
     permissions: list[str] | None = None
     request_id: str | None = None
+
+    # Extended tenant context (Task 1.1)
+    org_id: UUID | None = None
+    tenant_role: str | None = None
+    isolation_tier: str = ISOLATION_TIER_SHARED
+    auth_source: str = AUTH_SOURCE_UNKNOWN
+
+    # Service account support (Task 1.3)
+    service_account_id: UUID | None = None
+    service_account_scopes: list[str] = field(default_factory=list)
+
+    # P1: Class-level validation
+    _valid_isolation_tiers: ClassVar[set[str]] = VALID_ISOLATION_TIERS
+    _valid_auth_sources: ClassVar[set[str]] = {
+        AUTH_SOURCE_JWT, AUTH_SOURCE_API_KEY, AUTH_SOURCE_SERVICE_ACCOUNT, AUTH_SOURCE_UNKNOWN
+    }
 
     def has_permission(self, permission: str) -> bool:
         """Check if context has specific permission."""
@@ -36,13 +77,36 @@ class RequestContext:
             return False
         return "tenant_admin" in self.roles or "super_admin" in self.roles
 
+    def is_service_account(self) -> bool:
+        """Check if context represents a service account."""
+        return self.service_account_id is not None
+
+    def is_isolation_tier_valid(self) -> bool:
+        """Check if isolation_tier is a valid value."""
+        return self.isolation_tier in self._valid_isolation_tiers
+
+    def is_auth_source_valid(self) -> bool:
+        """Check if auth_source is a valid value."""
+        return self.auth_source in self._valid_auth_sources
+
+    @staticmethod
+    def _uuid_to_str(uuid_val: UUID | None) -> str | None:
+        """P2: Helper to serialize UUID to string."""
+        return str(uuid_val) if uuid_val else None
+
     def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary."""
         return {
-            "tenant_id": str(self.tenant_id) if self.tenant_id else None,
-            "user_id": str(self.user_id) if self.user_id else None,
-            "api_key_id": str(self.api_key_id) if self.api_key_id else None,
+            "tenant_id": self._uuid_to_str(self.tenant_id),
+            "user_id": self._uuid_to_str(self.user_id),
+            "api_key_id": self._uuid_to_str(self.api_key_id),
             "roles": self.roles,
             "permissions": self.permissions,
             "request_id": self.request_id,
+            "org_id": self._uuid_to_str(self.org_id),
+            "tenant_role": self.tenant_role,
+            "isolation_tier": self.isolation_tier,
+            "auth_source": self.auth_source,
+            "service_account_id": self._uuid_to_str(self.service_account_id),
+            "service_account_scopes": self.service_account_scopes,
         }

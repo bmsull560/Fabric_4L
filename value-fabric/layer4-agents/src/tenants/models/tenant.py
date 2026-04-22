@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from enum import Enum
 from typing import Any
 
 from sqlalchemy import JSON, DateTime, Index, String, UniqueConstraint
@@ -11,6 +12,20 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ...database import Base
+
+
+class IsolationTier(str, Enum):
+    """Tenant data isolation tiers for future-proofing (Task 4.1).
+
+    Tiers:
+    - SHARED: Shared schema with RLS (current implementation)
+    - SCHEMA: Dedicated schema per tenant (future)
+    - DATABASE: Dedicated database per tenant (future)
+    """
+
+    SHARED = "shared"
+    SCHEMA = "schema"
+    DATABASE = "database"
 
 
 class Tenant(Base):
@@ -52,8 +67,8 @@ class Tenant(Base):
     settings: Mapped[dict[str, Any]] = mapped_column(
         JSON,
         nullable=False,
-        default=dict,
-        comment="Tenant-level configuration blob (rate limits, feature flags, etc.)",
+        default=lambda: {"isolation_tier": IsolationTier.SHARED.value},
+        comment="Tenant-level configuration blob (rate limits, feature flags, isolation_tier, etc.)",
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -67,6 +82,14 @@ class Tenant(Base):
         nullable=False,
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
+    )
+
+    # Relationship to tier history (Task 4.1)
+    tier_history: Mapped[list["TenantIsolationTierHistory"]] = relationship(
+        "TenantIsolationTierHistory",
+        back_populates="tenant",
+        order_by="desc(TenantIsolationTierHistory.changed_at)",
+        cascade="all, delete-orphan",
     )
 
     __table_args__ = (

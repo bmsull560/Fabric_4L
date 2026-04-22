@@ -5,13 +5,47 @@ automatic reconnection support and event replay.
 """
 
 import logging
+import os
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from .manager import get_ws_manager
 
+try:
+    from shared.identity.jwt import decode_jwt
+    JWT_AVAILABLE = True
+except ImportError:
+    JWT_AVAILABLE = False
+    decode_jwt = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 websocket_router = APIRouter()
+
+
+def _extract_tenant_from_token(token: str | None) -> tuple[str | None, str | None]:
+    """Extract tenant_id and user_id from JWT token (Task 2.2).
+
+    Args:
+        token: JWT bearer token
+
+    Returns:
+        Tuple of (tenant_id, user_id) or (None, None) if invalid
+    """
+    if not token or not JWT_AVAILABLE:
+        return None, None
+
+    jwt_secret = os.environ.get("JWT_SECRET")
+
+    try:
+        payload = decode_jwt(token, jwt_secret)
+        if payload:
+            tenant_id = payload.get("tenant_id")
+            user_id = payload.get("sub")
+            return tenant_id, user_id
+    except Exception as e:
+        logger.warning(f"Failed to decode JWT for WebSocket: {e}")
+
+    return None, None
 
 
 @websocket_router.websocket("/ws/workflows/{workflow_id}")
@@ -20,6 +54,9 @@ async def workflow_websocket(
     workflow_id: str,
     last_event_id: str | None = Query(
         None, description="Last seen event ID for replay on reconnect"
+    ),
+    token: str | None = Query(
+        None, description="JWT token for tenant context (Task 2.2)"
     ),
 ):
     """WebSocket endpoint for real-time workflow streaming.
@@ -64,9 +101,15 @@ async def workflow_websocket(
     """
     ws_manager = get_ws_manager()
 
+    # Task 2.2: Extract tenant context from JWT token
+    tenant_id, user_id = _extract_tenant_from_token(token)
+
     try:
-        # Accept connection and send replay if reconnecting
-        await ws_manager.connect(websocket, workflow_id, last_event_id)
+        # Accept connection and send replay if reconnecting (with tenant context)
+        await ws_manager.connect(
+            websocket, workflow_id, last_event_id,
+            tenant_id=tenant_id, user_id=user_id
+        )
 
         # Keep connection alive and handle client messages
         while True:

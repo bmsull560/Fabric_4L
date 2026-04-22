@@ -44,10 +44,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models.api_key import APIKey
-from .models.tenant import Tenant
+from .models.isolation_tier_history import TenantIsolationTierHistory
+from .models.tenant import IsolationTier, Tenant
 from .models.user import User
 
 logger = logging.getLogger(__name__)
+
+# Task 4.1: Valid change sources for tier change audit logging
+VALID_CHANGE_SOURCES = frozenset({
+    "system",
+    "migration",
+    "admin",
+    "policy_engine",
+    "api",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +142,151 @@ async def delete_tenant(db: AsyncSession, tenant_id: UUID) -> bool:
     await db.flush()
     logger.info("Soft-deleted tenant %s", tenant_id)
     return True
+
+
+# ---------------------------------------------------------------------------
+# Isolation Tier History (Task 4.1)
+# ---------------------------------------------------------------------------
+
+
+async def log_isolation_tier_change(
+    db: AsyncSession,
+    tenant_id: UUID,
+    from_tier: str,
+    to_tier: str,
+    *,
+    changed_by: UUID | None = None,
+    reason: str | None = None,
+    change_source: str = "admin",
+    request_id: str | None = None,
+) -> TenantIsolationTierHistory:
+    """Log an isolation tier change to the audit history table.
+
+    Args:
+        db: Database session
+        tenant_id: The tenant whose tier changed
+        from_tier: Previous tier value
+        to_tier: New tier value
+        changed_by: User or service account that made the change
+        reason: Human-readable reason for the change
+        change_source: Source of change (system, migration, admin, policy_engine, api)
+        request_id: Request ID for correlation with audit logs
+
+    Returns:
+        The created history record
+
+    Raises:
+        ValueError: If change_source is not valid or tier values are invalid
+    """
+    # P1: Validate change_source against allowed values
+    if change_source not in VALID_CHANGE_SOURCES:
+        raise ValueError(
+            f"Invalid change_source: {change_source}. "
+            f"Must be one of: {', '.join(sorted(VALID_CHANGE_SOURCES))}"
+        )
+
+    # P1: Validate tier values
+    valid_tiers = {t.value for t in IsolationTier}
+    if from_tier not in valid_tiers:
+        raise ValueError(
+            f"Invalid from_tier: {from_tier}. Must be one of: {', '.join(sorted(valid_tiers))}"
+        )
+    if to_tier not in valid_tiers:
+        raise ValueError(
+            f"Invalid to_tier: {to_tier}. Must be one of: {', '.join(sorted(valid_tiers))}"
+        )
+
+    history = TenantIsolationTierHistory(
+        tenant_id=tenant_id,
+        from_tier=from_tier,
+        to_tier=to_tier,
+        changed_by=changed_by,
+        reason=reason,
+        change_source=change_source,
+        request_id=request_id,
+    )
+    db.add(history)
+    await db.flush()
+    logger.info(
+        "Logged isolation tier change for tenant %s: %s -> %s (by=%s, source=%s)",
+        tenant_id,
+        from_tier,
+        to_tier,
+        changed_by,
+        change_source,
+    )
+    return history
+
+
+async def update_tenant_isolation_tier(
+    db: AsyncSession,
+    tenant_id: UUID,
+    new_tier: str,
+    *,
+    changed_by: UUID | None = None,
+    reason: str | None = None,
+    change_source: str = "admin",
+    request_id: str | None = None,
+) -> TenantModel | None:
+    """Update tenant isolation tier with full audit logging.
+
+    This is the preferred method for changing isolation tiers as it
+    ensures proper audit trail logging.
+
+    Args:
+        db: Database session
+        tenant_id: The tenant to update
+        new_tier: New isolation tier (shared, schema, database)
+        changed_by: Who made the change
+        reason: Why the change was made
+        change_source: Source of the change
+        request_id: Request ID for audit correlation
+
+    Returns:
+        Updated tenant model or None if tenant not found
+    """
+    # Validate tier
+    if new_tier not in [t.value for t in IsolationTier]:
+        raise ValueError(f"Invalid isolation tier: {new_tier}")
+
+    # Get current tenant
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        return None
+
+    # Get current tier from settings
+    current_settings = tenant.settings or {}
+    old_tier = current_settings.get("isolation_tier", IsolationTier.SHARED.value)
+
+    # Only log if actually changing
+    if old_tier != new_tier:
+        # Update settings
+        current_settings["isolation_tier"] = new_tier
+        tenant.settings = current_settings
+        tenant.updated_at = datetime.now(UTC)
+
+        # Log the change
+        await log_isolation_tier_change(
+            db,
+            tenant_id,
+            old_tier,
+            new_tier,
+            changed_by=changed_by,
+            reason=reason,
+            change_source=change_source,
+            request_id=request_id,
+        )
+        await db.flush()
+
+        logger.info(
+            "Updated tenant %s isolation tier: %s -> %s",
+            tenant_id,
+            old_tier,
+            new_tier,
+        )
+
+    return _tenant_to_model(tenant)
 
 
 # ---------------------------------------------------------------------------

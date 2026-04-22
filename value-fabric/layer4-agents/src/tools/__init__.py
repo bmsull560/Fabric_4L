@@ -46,9 +46,11 @@ from .knowledge_tools import (
 )
 from .registry import (
     BaseTool,
+    TenantAwareTool,
     ToolError,
     ToolNotFoundError,
     ToolRegistry,
+    ToolValidationError,
     get_global_registry,
     tool,
 )
@@ -113,8 +115,10 @@ def create_default_registry(config: dict | None = None) -> ToolRegistry:
 __all__ = [
     # Registry
     "BaseTool",
+    "TenantAwareTool",
     "ToolError",
     "ToolNotFoundError",
+    "ToolValidationError",
     "ToolRegistry",
     "get_global_registry",
     "tool",

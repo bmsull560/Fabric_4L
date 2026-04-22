@@ -54,6 +54,10 @@ class ScheduledTask:
     - retry_count: Current retry count
     - max_retries: Maximum retry attempts
     - timeout_seconds: Task timeout
+
+    Multi-tenancy (Task 2.1):
+    - tenant_id: Primary tenant identifier for RLS enforcement
+    - tenant_context: Full RequestContext dict for async propagation
     """
 
     priority: int
@@ -73,10 +77,35 @@ class ScheduledTask:
     result: dict[str, Any] | None = field(compare=False, default=None)
     error: str | None = field(compare=False, default=None)
 
+    # Multi-tenancy context (Task 2.1)
+    tenant_id: str | None = field(compare=False, default=None)
+    tenant_context: dict[str, Any] | None = field(compare=False, default=None)
+
     def __post_init__(self):
         """Ensure scheduled_time is datetime object."""
         if isinstance(self.scheduled_time, str):
             self.scheduled_time = datetime.fromisoformat(self.scheduled_time)
+
+    def get_tenant_id(self) -> str | None:
+        """Get tenant ID from task context (Task 2.1).
+
+        Returns:
+            Tenant ID if set, None otherwise
+        """
+        return self.tenant_id or self.context.get("tenant_id")
+
+    def get_full_tenant_context(self) -> dict[str, Any]:
+        """Get complete tenant context dict (Task 2.1).
+
+        Returns:
+            Tenant context dict combining tenant_context and context fields
+        """
+        result = dict(self.context)
+        if self.tenant_context:
+            result.update(self.tenant_context)
+        if self.tenant_id:
+            result["tenant_id"] = self.tenant_id
+        return result
 
 
 class TaskScheduler:
@@ -262,6 +291,53 @@ class TaskScheduler:
                     running.append(self._task_to_dict(task))
             return running
 
+    async def list_pending_tasks_by_tenant(
+        self,
+        tenant_id: str,
+    ) -> list[dict[str, Any]]:
+        """List pending tasks filtered by tenant (Task 2.1).
+
+        Args:
+            tenant_id: Tenant ID to filter by
+
+        Returns:
+            List of pending task dicts for the tenant
+        """
+        async with self._lock:
+            pending = []
+            for _, _, task in sorted(self._task_queue):
+                if task.get_tenant_id() == tenant_id:
+                    pending.append(self._task_to_dict(task))
+            return pending
+
+    async def cancel_tasks_by_tenant(self, tenant_id: str) -> int:
+        """Cancel all pending tasks for a tenant (Task 2.1).
+
+        Args:
+            tenant_id: Tenant ID to cancel tasks for
+
+        Returns:
+            Number of tasks cancelled
+        """
+        cancelled = 0
+        async with self._lock:
+            tasks_to_cancel = []
+            for i, (priority, scheduled_time, task) in enumerate(self._task_queue):
+                if task.get_tenant_id() == tenant_id and task.status == TaskStatus.PENDING:
+                    task.status = TaskStatus.CANCELLED
+                    tasks_to_cancel.append(i)
+
+            # Remove from queue (in reverse order to maintain indices)
+            for i in reversed(tasks_to_cancel):
+                self._task_queue.pop(i)
+                cancelled += 1
+
+            if tasks_to_cancel:
+                heapq.heapify(self._task_queue)
+
+        logger.info(f"Cancelled {cancelled} tasks for tenant {tenant_id}")
+        return cancelled
+
     def set_callbacks(
         self,
         on_complete: Callable[[ScheduledTask], Any] | None = None,
@@ -421,6 +497,7 @@ class TaskScheduler:
             f"Scheduling retry {task.retry_count}/{task.max_retries} for task {task.task_id} in {delay}s"
         )
 
+        # Task 2.1: Preserve tenant context in retry
         await self.schedule_task(
             ScheduledTask(
                 priority=task.priority,
@@ -434,6 +511,8 @@ class TaskScheduler:
                 retry_count=task.retry_count,
                 max_retries=task.max_retries,
                 timeout_seconds=task.timeout_seconds,
+                tenant_id=task.tenant_id,
+                tenant_context=task.tenant_context,
             )
         )
 
@@ -484,6 +563,7 @@ class TaskScheduler:
             "max_retries": task.max_retries,
             "result": task.result,
             "error": task.error,
+            "tenant_id": task.get_tenant_id(),  # Task 2.1
         }
 
     def get_stats(self) -> dict[str, Any]:

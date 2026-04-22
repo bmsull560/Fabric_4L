@@ -43,7 +43,12 @@ class EventStore:
 
 @dataclass
 class WorkflowConnection:
-    """Represents a WebSocket connection tracking its state."""
+    """Represents a WebSocket connection tracking its state.
+
+    Multi-tenancy (Task 2.2):
+    - tenant_id: Tenant identifier for connection authorization
+    - user_id: User identifier for ownership verification
+    """
 
     websocket: WebSocket
     workflow_id: str
@@ -51,6 +56,10 @@ class WorkflowConnection:
     last_event_id: str | None = None
     is_alive: bool = True
     _conn_id: str = field(default_factory=lambda: str(uuid.uuid4()), compare=False)
+
+    # Multi-tenancy context (Task 2.2)
+    tenant_id: str | None = None
+    user_id: str | None = None
 
     def __hash__(self) -> int:
         return hash(self._conn_id)
@@ -140,7 +149,12 @@ class WorkflowWebSocketManager:
         logger.info("WebSocket manager stopped")
 
     async def connect(
-        self, websocket: WebSocket, workflow_id: str, last_event_id: str | None = None
+        self,
+        websocket: WebSocket,
+        workflow_id: str,
+        last_event_id: str | None = None,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
     ) -> None:
         """Accept a new WebSocket connection for a workflow.
 
@@ -148,11 +162,17 @@ class WorkflowWebSocketManager:
             websocket: FastAPI WebSocket instance
             workflow_id: Workflow to subscribe to
             last_event_id: Optional last seen event ID for replay
+            tenant_id: Tenant identifier for authorization (Task 2.2)
+            user_id: User identifier for ownership verification (Task 2.2)
         """
         await websocket.accept()
 
         conn = WorkflowConnection(
-            websocket=websocket, workflow_id=workflow_id, last_event_id=last_event_id
+            websocket=websocket,
+            workflow_id=workflow_id,
+            last_event_id=last_event_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
         )
 
         async with self._lock:

@@ -60,15 +60,24 @@ class BaseTool(ABC):
     output_schema: type | None = None
     timeout_seconds: int = 30
     requires_auth: bool = False
+    requires_tenant: bool = False  # Task 2.3: Tenant enforcement flag
 
     def __init__(self, config: dict[str, Any] | None = None):
         """Initialize tool with optional configuration.
 
         Args:
-            config: Tool-specific configuration
+            config: Tool-specific configuration (may include tenant_id)
         """
         self.config = config or {}
         self._initialized = True
+
+    def get_tenant_id(self) -> str | None:
+        """Extract tenant_id from config (Task 2.3).
+
+        Returns:
+            Tenant ID if set in config, None otherwise
+        """
+        return self.config.get("tenant_id")
 
     @abstractmethod
     async def execute(self, input_data: Any) -> Any:
@@ -133,6 +142,55 @@ class BaseTool(ABC):
         if hasattr(result, "model_dump"):
             return result.model_dump()
         return result
+
+
+class TenantAwareTool(BaseTool):
+    """Base class for tools that require tenant context (Task 2.3).
+
+    Tools that access tenant-scoped data (knowledge graph, CRM, etc.)
+    should inherit from this class to ensure tenant isolation.
+
+    Example:
+        class QueryGraphTool(TenantAwareTool):
+            name = "query_graph"
+            requires_tenant = True
+
+            async def execute(self, input_data: QueryInput) -> QueryOutput:
+                tenant_id = self.get_tenant_id()
+                # Use tenant_id for all queries
+                ...
+    """
+
+    requires_tenant: bool = True
+
+    def validate_tenant_context(self) -> str:
+        """Validate that tenant context is present.
+
+        Returns:
+            Tenant ID if valid
+
+        Raises:
+            ToolValidationError: If tenant_id is missing and requires_tenant=True
+        """
+        tenant_id = self.get_tenant_id()
+        if tenant_id:
+            return tenant_id
+        if self.requires_tenant:
+            raise ToolValidationError(
+                f"Tool '{self.name}' requires tenant context but no tenant_id provided"
+            )
+        return ""
+
+    async def run(self, input_dict: dict[str, Any]) -> dict[str, Any]:
+        """Run tool with tenant validation (Task 2.3).
+
+        Validates tenant context before executing.
+        """
+        # Validate tenant context before execution
+        self.validate_tenant_context()
+
+        # Proceed with base run logic
+        return await super().run(input_dict)
 
 
 class ToolRegistry:
@@ -240,6 +298,15 @@ class ToolRegistry:
             ToolError: If execution fails
         """
         tool = self.get(tool_name)
+
+        # Task 2.3: Log tenant context for tools that require it
+        if tool.requires_tenant:
+            tenant_id = tool.get_tenant_id() or input_dict.get("tenant_id")
+            if tenant_id:
+                logger.debug(f"Executing tenant-aware tool '{tool_name}' for tenant {tenant_id}")
+            else:
+                logger.warning(f"Executing tenant-aware tool '{tool_name}' without tenant context")
+
         return await tool.run(input_dict)
 
     def list_tools(

@@ -289,7 +289,7 @@ class OrchestrationController:
             "timeout_seconds": settings.workflow_timeout_seconds,  # P1-25
         }
 
-        # Schedule workflow execution
+        # Schedule workflow execution (Task 2.1: Capture tenant context)
         task = ScheduledTask(
             priority=priority.value,
             scheduled_time=datetime.now(UTC),
@@ -307,6 +307,13 @@ class OrchestrationController:
                 "initial_state": initial_state,
                 "workflow_id": workflow_id,
                 "checkpoint_interval": checkpoint_interval,
+            },
+            tenant_id=tenant_id,
+            tenant_context={
+                "tenant_id": tenant_id,
+                "user_id": user_id,
+                "workflow_type": workflow_type,
+                "auth_source": "workflow_execution",
             },
         )
 

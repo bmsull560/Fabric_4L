@@ -19,6 +19,19 @@ class TenantStatus(str, Enum):
     DELETED = "deleted"
 
 
+class IsolationTier(str, Enum):
+    """Tenant data isolation tier (Task 4.1).
+
+    - SHARED: Shared schema with RLS (current)
+    - SCHEMA: Dedicated schema per tenant (future)
+    - DATABASE: Dedicated database per tenant (future)
+    """
+
+    SHARED = "shared"
+    SCHEMA = "schema"
+    DATABASE = "database"
+
+
 class UserStatus(str, Enum):
     """User lifecycle status."""
 
@@ -53,6 +66,17 @@ class TenantUpdateRequest(BaseModel):
     metadata: dict[str, Any] | None = None
 
 
+class TenantSettings(BaseModel):
+    """Tenant settings schema with isolation tier support."""
+
+    isolation_tier: IsolationTier = Field(
+        default=IsolationTier.SHARED,
+        description="Data isolation tier: shared (RLS), schema (dedicated), or database (dedicated)",
+    )
+    rate_limits: dict[str, Any] | None = None
+    feature_flags: dict[str, Any] | None = None
+
+
 class TenantModel(BaseModel):
     """Tenant representation."""
 
@@ -60,9 +84,14 @@ class TenantModel(BaseModel):
     name: str
     slug: str
     status: TenantStatus
+    isolation_tier: IsolationTier = Field(
+        default=IsolationTier.SHARED,
+        description="Current data isolation tier for this tenant",
+    )
     created_at: datetime
     updated_at: datetime
     metadata: dict[str, Any] | None = None
+    settings: TenantSettings = Field(default_factory=TenantSettings)
 
     class Config:
         from_attributes = True

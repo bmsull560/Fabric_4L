@@ -32,6 +32,9 @@ class AuditAction(str, Enum):
     MODEL_EVALUATED = "model_evaluated"
     OIDC_LOGIN = "oidc_login"
     OIDC_LOGIN_FAILED = "oidc_login_failed"
+    # Task 3.1: Tenant resolution audit logging
+    TENANT_RESOLVED = "tenant_resolved"
+    TENANT_CONTEXT_SET = "tenant_context_set"
 
 
 class AuditOutcome(str, Enum):
@@ -62,3 +65,119 @@ class AuditEvent(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class TenantResolvedDetails(BaseModel):
+    """Structured details for TENANT_RESOLVED audit events (Task 3.1).
+
+    Provides a standardized schema for tenant resolution events without
+    fragmenting the audit model into separate types.
+    """
+
+    resolution_source: str = Field(
+        ...,
+        description="How tenant was resolved: jwt_claim | api_key | service_account | unknown"
+    )
+    resolved_tenant_id: str | None = Field(
+        None,
+        description="Final tenant_id that was resolved"
+    )
+    requested_tenant_id: str | None = Field(
+        None,
+        description="Tenant_id that was originally requested (if different)"
+    )
+    user_id: str | None = Field(
+        None,
+        description="User ID if JWT authentication"
+    )
+    api_key_id: str | None = Field(
+        None,
+        description="API key ID if API key authentication"
+    )
+    service_account_id: str | None = Field(
+        None,
+        description="Service account ID if service account authentication"
+    )
+    auth_method: str = Field(
+        ...,
+        description="Authentication method: jwt | api_key | service_account | none"
+    )
+    has_org_id: bool = Field(
+        default=False,
+        description="Whether org_id was present in claims"
+    )
+    org_id: str | None = Field(
+        None,
+        description="Organization ID if present in claims"
+    )
+    tenant_role: str | None = Field(
+        None,
+        description="User's role within tenant context"
+    )
+    isolation_tier: str = Field(
+        default="shared",
+        description="Tenant isolation tier: shared | schema | database"
+    )
+    roles: list[str] = Field(
+        default_factory=list,
+        description="Roles assigned to the actor"
+    )
+    is_super_admin: bool = Field(
+        default=False,
+        description="Whether actor has super admin privileges"
+    )
+    bypass: bool = Field(
+        default=False,
+        description="Whether tenant context was bypassed (privileged access)"
+    )
+    bypass_reason: str | None = Field(
+        None,
+        description="Reason for bypass if applicable"
+    )
+    outcome: str = Field(
+        default="success",
+        description="Resolution outcome: success | failure | denied"
+    )
+    failure_reason: str | None = Field(
+        None,
+        description="Reason for failure if outcome is not success"
+    )
+    request_path: str | None = Field(
+        None,
+        description="API path being accessed"
+    )
+    request_method: str | None = Field(
+        None,
+        description="HTTP method of the request"
+    )
+
+    class Config:
+        from_attributes = True
+
+
+class TenantContextSetDetails(BaseModel):
+    """Structured details for TENANT_CONTEXT_SET audit events (Task 3.1).
+
+    Emitted when database session is configured with RLS tenant context.
+    """
+
+    tenant_id: str | None = Field(
+        None,
+        description="Tenant ID set for RLS context (empty string for bypass)"
+    )
+    isolation_tier: str = Field(
+        default="shared",
+        description="Isolation tier from request context"
+    )
+    bypass: bool = Field(
+        default=False,
+        description="Whether this is a super-admin bypass"
+    )
+    bypass_reason: str | None = Field(
+        None,
+        description="Reason for bypass if applicable"
+    )
+    context_source: str = Field(
+        default="request_context",
+        description="Source of tenant context: request_context | explicit_param | job_queue"
+    )
