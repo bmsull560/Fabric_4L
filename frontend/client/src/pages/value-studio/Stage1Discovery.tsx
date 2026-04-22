@@ -219,7 +219,7 @@ function RightPanel() {
           ))}
           <div className="flex items-center justify-between pt-1">
             <span className="text-[11px] font-semibold text-foreground">Confidence: 85%</span>
-          <div className="flex gap-1.5">
+            <div className="flex gap-1.5">
               <Btn variant="primary" className="h-6 px-2.5 text-[10px]">Accept</Btn>
               <Btn variant="outline" className="h-6 px-2.5 text-[10px]">Edit</Btn>
             </div>

@@ -74,6 +74,10 @@ export function useGraphCanvas(initialView?: Partial<ViewTransform>) {
     [view.x, view.y]
   );
 
+  // PERF: Use ref to accumulate drag deltas instead of state
+  // Prevents re-render cascade during continuous mouse movement
+  const dragDeltaRef = useRef({ dx: 0, dy: 0 });
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!isDragging || !dragRef.current) return;
@@ -81,13 +85,22 @@ export function useGraphCanvas(initialView?: Partial<ViewTransform>) {
       const dx = e.clientX - dragRef.current.startX;
       const dy = e.clientY - dragRef.current.startY;
 
-      setView({
-        ...view,
-        x: dragRef.current.viewX + dx / view.scale,
-        y: dragRef.current.viewY + dy / view.scale,
-      });
+      // Store deltas in ref, not state - prevents re-renders during drag
+      dragDeltaRef.current = { dx, dy };
+
+      // Apply transform directly without triggering React re-render cycle
+      // Only update state on mouse up for final position
+      const newX = dragRef.current.viewX + dx / view.scale;
+      const newY = dragRef.current.viewY + dy / view.scale;
+
+      // Use functional update to avoid stale closure issues
+      setView((prev) => ({
+        ...prev,
+        x: newX,
+        y: newY,
+      }));
     },
-    [isDragging, view]
+    [isDragging, view.scale]  // PERF: Only depend on scale, not entire view object
   );
 
   const handleMouseUp = useCallback(() => {

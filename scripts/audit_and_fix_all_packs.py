@@ -2,6 +2,7 @@
 """Comprehensive audit and fix of all pack variable references."""
 
 import json
+import re
 from pathlib import Path
 
 def get_formula_variables(formula):

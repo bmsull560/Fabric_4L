@@ -138,6 +138,20 @@ export {
   SkeletonForm,
 } from "./ui/SkeletonViews";
 
+// ── ValuePack Framework Components ─────────────────────────────────────────────
+
+export {
+  ValuePackCard,
+  ValuePackCardSkeleton,
+  ValuePackDetail,
+  type ValuePackFrameworkData,
+  type OntologyMapData,
+  type TemplateLibraryData,
+  type ValuePackComparisonData,
+  type ValuePackSuggestion,
+  type ProspectProfile,
+} from "./valuepack";
+
 // ── Re-export toast utilities for convenience ──────────────────────────────────
 
 export { toast } from "sonner";

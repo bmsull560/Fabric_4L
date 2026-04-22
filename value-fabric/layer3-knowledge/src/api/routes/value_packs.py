@@ -18,6 +18,18 @@ from ...db.driver import get_driver
 from ...logging_config import get_logger
 from ...api.routes.formulas import evaluate_expression
 from ._utils import increment_patch_version
+from ...models.valuepack import (
+    ValuePackCreate,
+    ValuePackUpdate,
+    ValuePackResponse,
+    ValuePackListResponse,
+    ValuePackFilter,
+    OntologyMapResponse,
+    ComposableTemplateLibraryResponse,
+    ValuePackComparisonRequest,
+    ValuePackComparisonResponse,
+    DEFAULT_VALUEPACKS,
+)
 
 logger = get_logger(__name__)
 
@@ -994,3 +1006,400 @@ async def apply_pack(
     # NOTE: apply_pack is currently an alias for execute_pack.
     # When execution logic diverges (e.g., deployment vs preview), refactor.
     return await execute_pack(pack_id, request, driver)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ValuePack Framework v1.0 - Industry-Specific Value Model Templates
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# In-memory store for now (to be replaced with Neo4j)
+_valuepack_db: dict[str, ValuePackCreate] = {}
+
+
+def _init_default_valuepacks():
+    """Initialize default ValuePacks if not already loaded."""
+    if not _valuepack_db:
+        for vp in DEFAULT_VALUEPACKS:
+            if vp:
+                _valuepack_db[vp.industry_id] = vp
+
+
+@router.get("/valuepacks", response_model=ValuePackListResponse)
+async def list_valuepacks(
+    tier: int | None = Query(None, description="Filter by tier (1, 2, or 3)"),
+    search: str | None = Query(None, description="Search in name/description"),
+    is_active: bool = Query(True, description="Only active ValuePacks"),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """List all ValuePacks with optional filtering.
+    
+    Returns paginated list of ValuePack summaries.
+    """
+    _init_default_valuepacks()
+    
+    # Filter ValuePacks
+    filtered = list(_valuepack_db.values())
+    
+    if tier:
+        filtered = [vp for vp in filtered if vp.tier.value == tier]
+    
+    if is_active is not None:
+        filtered = [vp for vp in filtered if vp.is_active == is_active]
+    
+    if search:
+        search_lower = search.lower()
+        filtered = [
+            vp for vp in filtered 
+            if (search_lower in vp.display_name.lower() or 
+                search_lower in vp.description.lower())
+        ]
+    
+    # Pagination
+    total = len(filtered)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated = filtered[start:end]
+    
+    # Convert to response format
+    items = [
+        ValuePackResponse(**vp.model_dump(), completeness_score=1.0)
+        for vp in paginated
+    ]
+    
+    return ValuePackListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=end < total
+    )
+
+
+@router.get("/valuepacks/{industry_id}", response_model=ValuePackResponse)
+async def get_valuepack(
+    industry_id: str,
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Get a specific ValuePack by industry_id.
+    
+    Returns complete ValuePack schema v1.0 data.
+    """
+    _init_default_valuepacks()
+    
+    if industry_id not in _valuepack_db:
+        raise HTTPException(status_code=404, detail=f"ValuePack not found: {industry_id}")
+    
+    vp = _valuepack_db[industry_id]
+    return ValuePackResponse(**vp.model_dump(), completeness_score=1.0)
+
+
+@router.post("/valuepacks", response_model=ValuePackResponse, status_code=201)
+async def create_valuepack(
+    request: ValuePackCreate,
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Create a new ValuePack.
+    
+    All fields must conform to ValuePack Schema v1.0.
+    """
+    _init_default_valuepacks()
+    
+    if request.industry_id in _valuepack_db:
+        raise HTTPException(
+            status_code=409, 
+            detail=f"ValuePack already exists: {request.industry_id}"
+        )
+    
+    _valuepack_db[request.industry_id] = request
+    logger.info(f"Created ValuePack: {request.industry_id}")
+    
+    return ValuePackResponse(**request.model_dump(), completeness_score=1.0)
+
+
+@router.put("/valuepacks/{industry_id}", response_model=ValuePackResponse)
+async def update_valuepack(
+    industry_id: str,
+    request: ValuePackUpdate,
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Update an existing ValuePack.
+    
+    Only provided fields are updated; others remain unchanged.
+    """
+    _init_default_valuepacks()
+    
+    if industry_id not in _valuepack_db:
+        raise HTTPException(status_code=404, detail=f"ValuePack not found: {industry_id}")
+    
+    existing = _valuepack_db[industry_id]
+    update_data = request.model_dump(exclude_unset=True)
+    
+    # Merge update into existing
+    merged = existing.model_copy(update=update_data)
+    _valuepack_db[industry_id] = merged
+    
+    logger.info(f"Updated ValuePack: {industry_id}")
+    return ValuePackResponse(**merged.model_dump(), completeness_score=1.0)
+
+
+@router.delete("/valuepacks/{industry_id}", status_code=204)
+async def delete_valuepack(
+    industry_id: str,
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Soft-delete a ValuePack (marks as inactive)."""
+    _init_default_valuepacks()
+    
+    if industry_id not in _valuepack_db:
+        raise HTTPException(status_code=404, detail=f"ValuePack not found: {industry_id}")
+    
+    _valuepack_db[industry_id].is_active = False
+    logger.info(f"Soft-deleted ValuePack: {industry_id}")
+
+
+@router.get("/valuepacks/ontology-map", response_model=OntologyMapResponse)
+async def get_ontology_map(
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Get cross-industry ontology map.
+    
+    Returns shared drivers, model types, and proof patterns across all industries.
+    """
+    _init_default_valuepacks()
+    
+    # Collect all tags and categorize
+    all_drivers = {}
+    all_models = {}
+    all_proofs = {}
+    
+    for vp in _valuepack_db.values():
+        # Drivers
+        for driver in vp.primary_value_drivers:
+            if driver.id not in all_drivers:
+                all_drivers[driver.id] = {
+                    "id": driver.id,
+                    "name": driver.name,
+                    "industries": [],
+                    "count": 0
+                }
+            all_drivers[driver.id]["industries"].append(vp.industry_id)
+            all_drivers[driver.id]["count"] += 1
+        
+        # Models
+        for model in vp.economic_model_types:
+            if model.id not in all_models:
+                all_models[model.id] = {
+                    "id": model.id,
+                    "name": model.name,
+                    "industries": [],
+                    "count": 0
+                }
+            all_models[model.id]["industries"].append(vp.industry_id)
+            all_models[model.id]["count"] += 1
+        
+        # Proof patterns
+        for proof in vp.proof_requirements:
+            if proof.id not in all_proofs:
+                all_proofs[proof.id] = {
+                    "id": proof.id,
+                    "requirement": proof.requirement,
+                    "industries": [],
+                    "count": 0
+                }
+            all_proofs[proof.id]["industries"].append(vp.industry_id)
+            all_proofs[proof.id]["count"] += 1
+    
+    # Filter to those appearing in 2+ industries
+    shared_drivers = [d for d in all_drivers.values() if d["count"] >= 2]
+    shared_models = [m for m in all_models.values() if m["count"] >= 2]
+    shared_proofs = [p for p in all_proofs.values() if p["count"] >= 2]
+    
+    # Build cross-reference matrix
+    industry_ids = list(_valuepack_db.keys())
+    matrix = {}
+    for driver_id, driver_data in all_drivers.items():
+        matrix[driver_id] = {}
+        for ind_id in industry_ids:
+            matrix[driver_id][ind_id] = 1 if ind_id in driver_data["industries"] else 0
+    
+    return OntologyMapResponse(
+        shared_drivers=shared_drivers,
+        shared_model_types=shared_models,
+        shared_proof_patterns=shared_proofs,
+        cross_reference_matrix=matrix
+    )
+
+
+@router.get("/valuepacks/composable-templates", response_model=ComposableTemplateLibraryResponse)
+async def get_composable_templates(
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Get the composable template library.
+    
+    Returns reusable calculation patterns and their industry usage.
+    """
+    _init_default_valuepacks()
+    
+    # Collect all templates
+    all_templates = {}
+    template_usage: dict[str, list[str]] = {}
+    
+    for vp in _valuepack_db.values():
+        for template in vp.composable_model_templates:
+            all_templates[template.template_id] = template
+            if template.template_id not in template_usage:
+                template_usage[template.template_id] = []
+            template_usage[template.template_id].extend(template.applicable_industries)
+    
+    return ComposableTemplateLibraryResponse(
+        templates=list(all_templates.values()),
+        template_usage=template_usage
+    )
+
+
+@router.post("/valuepacks/compare", response_model=ValuePackComparisonResponse)
+async def compare_valuepacks(
+    request: ValuePackComparisonRequest,
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Compare multiple ValuePacks side-by-side.
+    
+    Returns detailed comparison across all schema dimensions.
+    """
+    _init_default_valuepacks()
+    
+    # Validate all IDs exist
+    for ind_id in request.industry_ids:
+        if ind_id not in _valuepack_db:
+            raise HTTPException(status_code=404, detail=f"ValuePack not found: {ind_id}")
+    
+    # Get full ValuePacks
+    valuepacks = [
+        ValuePackResponse(**_valuepack_db[ind_id].model_dump(), completeness_score=1.0)
+        for ind_id in request.industry_ids
+    ]
+    
+    # Build comparison matrix
+    comparison = {}
+    
+    # Compare drivers
+    comparison["value_drivers"] = {
+        ind_id: [d.name for d in _valuepack_db[ind_id].primary_value_drivers]
+        for ind_id in request.industry_ids
+    }
+    
+    # Compare use cases
+    comparison["use_cases"] = {
+        ind_id: [uc.name for uc in _valuepack_db[ind_id].core_use_cases]
+        for ind_id in request.industry_ids
+    }
+    
+    # Compare tiers
+    comparison["tiers"] = {
+        ind_id: _valuepack_db[ind_id].tier.name
+        for ind_id in request.industry_ids
+    }
+    
+    # Find shared templates
+    shared_templates = set()
+    for vp in valuepacks:
+        for template in vp.composable_model_templates:
+            if len(template.applicable_industries) >= 2:
+                shared_templates.add(template.template_id)
+    
+    # Differentiation analysis
+    differentiation = {}
+    for ind_id in request.industry_ids:
+        vp = _valuepack_db[ind_id]
+        wins = [w.statement for w in vp.why_it_wins]
+        differentiation[ind_id] = f"Differentiated by: {', '.join(wins[:2])}"
+    
+    return ValuePackComparisonResponse(
+        valuepacks=valuepacks,
+        comparison_matrix=comparison,
+        shared_templates=list(shared_templates),
+        differentiation_analysis=differentiation
+    )
+
+
+@router.post("/valuepacks/{industry_id}/seed", status_code=201)
+async def seed_valuepack_data(
+    industry_id: str,
+    driver: AsyncDriver = Depends(get_driver),
+    api_key: APIKey = Depends(get_current_api_key),
+):
+    """Seed ValuePack data into Neo4j knowledge graph.
+    
+    Creates nodes and relationships for the ValuePack's economic graph,
+    value drivers, use cases, and ontology tags.
+    """
+    _init_default_valuepacks()
+    
+    if industry_id not in _valuepack_db:
+        raise HTTPException(status_code=404, detail=f"ValuePack not found: {industry_id}")
+    
+    vp = _valuepack_db[industry_id]
+    tenant_id = api_key.tenant_id if hasattr(api_key, 'tenant_id') else 'default'
+    
+    # Build Cypher query to create ValuePack graph
+    cypher = """
+    MERGE (vp:ValuePack {industry_id: $industry_id, tenant_id: $tenant_id})
+    SET vp.display_name = $display_name,
+        vp.tier = $tier,
+        vp.description = $description,
+        vp.version = $version,
+        vp.is_active = $is_active
+    
+    WITH vp
+    UNWIND $drivers as driver
+    MERGE (d:ValueDriver {id: driver.id, tenant_id: $tenant_id})
+    SET d.name = driver.name,
+        d.description = driver.description,
+        d.typical_impact = driver.typical_impact,
+        d.measurement_approach = driver.measurement_approach
+    MERGE (vp)-[:HAS_DRIVER]->(d)
+    
+    WITH vp
+    UNWIND $use_cases as uc
+    MERGE (u:UseCase {id: uc.id, tenant_id: $tenant_id})
+    SET u.name = uc.name,
+        u.description = uc.description,
+        u.target_persona = uc.target_persona,
+        u.business_problem = uc.business_problem
+    MERGE (vp)-[:HAS_USE_CASE]->(u)
+    
+    WITH vp
+    UNWIND $model_types as mt
+    MERGE (m:EconomicModel {id: mt.id, tenant_id: $tenant_id})
+    SET m.name = mt.name,
+        m.formula_shape = mt.formula_shape,
+        m.inputs = mt.inputs,
+        m.output_unit = mt.output_unit
+    MERGE (vp)-[:HAS_MODEL_TYPE]->(m)
+    
+    RETURN vp.industry_id as seeded_id
+    """
+    
+    params = {
+        "industry_id": vp.industry_id,
+        "tenant_id": tenant_id,
+        "display_name": vp.display_name,
+        "tier": vp.tier.value,
+        "description": vp.description,
+        "version": vp.version,
+        "is_active": vp.is_active,
+        "drivers": [d.model_dump() for d in vp.primary_value_drivers],
+        "use_cases": [uc.model_dump() for uc in vp.core_use_cases],
+        "model_types": [mt.model_dump() for mt in vp.economic_model_types],
+    }
+    
+    async with driver.session() as session:
+        result = await session.run(cypher, **params)
+        record = await result.single()
+        if not record:
+            raise HTTPException(status_code=500, detail="Failed to seed ValuePack data")
+    
+    logger.info(f"Seeded ValuePack data to Neo4j: {industry_id}")
+    return {"status": "seeded", "industry_id": industry_id}

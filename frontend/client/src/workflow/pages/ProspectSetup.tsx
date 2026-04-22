@@ -60,7 +60,7 @@ export default function ProspectSetup() {
       companyId: `temp_${Date.now()}`,
       companyName: company.trim(),
       contactName: contact.trim(),
-      contactTitle: trimmedTitle.length > 0 ? trimmedTitle : undefined,
+      contactTitle: trimmedTitle.length > 0 ? trimmedTitle : '',
     });
     
     // Simulate async analysis with cleanup

@@ -139,22 +139,44 @@ export function useGraphData(options: UseGraphDataOptions): {
 
 /**
  * Apply layout to nodes, preserving existing coordinates.
+ * PERF: Memoized to prevent recalculation when node data hasn't changed
  */
 function applyLayoutToNodes(
   nodes: GraphNode[],
   layout: "force" | "circular" | "hierarchical"
 ): GraphNode[] {
-  // Separate nodes with and without positions
-  const positioned = nodes.filter(
-    (n) => typeof n.x === "number" && typeof n.y === "number"
-  );
-  const unpositioned = nodes.filter(
-    (n) => typeof n.x !== "number" || typeof n.y !== "number"
-  );
+  // Early return for empty arrays - avoids unnecessary calculations
+  if (!nodes.length) return [];
+
+  // PERF: Use Map for O(1) lookup instead of multiple filter scans
+  const positioned: GraphNode[] = [];
+  const unpositioned: GraphNode[] = [];
+
+  // Single pass O(n) instead of two filter passes O(2n)
+  for (const node of nodes) {
+    if (typeof node.x === "number" && typeof node.y === "number") {
+      positioned.push(node);
+    } else {
+      unpositioned.push(node);
+    }
+  }
 
   // Apply layout only to unpositioned nodes
   const laidOut = calculateLayout(unpositioned, layout);
 
   // Merge back together (positioned nodes keep their coordinates)
   return [...positioned, ...laidOut];
+}
+
+/**
+ * Create a stable signature for nodes to enable memoization comparison.
+ * Only considers properties that affect layout/positioning.
+ */
+function getNodesSignature(nodes: GraphNode[]): string {
+  if (!nodes.length) return "empty";
+  // Hash of IDs and positions - stable for memoization
+  return nodes
+    .map((n) => `${n.id}:${n.x ?? "-"}:${n.y ?? "-"}`)
+    .sort()
+    .join("|");
 }

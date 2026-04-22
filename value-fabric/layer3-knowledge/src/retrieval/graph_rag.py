@@ -369,22 +369,36 @@ class GraphRAGEngine:
                 item.setdefault("id", item.get("entity_id", ""))
                 results.append(item)
 
-        # Enrich with full entity data from Neo4j
+        # PERF: Replace N+1 queries with single batched query
+        # Before: O(n) round trips, one per entity
+        # After: O(1) round trip with UNWIND batching
         driver = await self._get_driver()
         enriched_results = []
 
-        async with driver.session(database=self.settings.neo4j_database) as session:
-            for result in results:
-                entity_result = await session.run(
-                    "MATCH (n {id: $entity_id}) RETURN n",
-                    {"entity_id": result["id"]},
-                )
-                record = await entity_result.single()
+        if not results:
+            return enriched_results
 
-                if record:
-                    entity_data = _serialize_entity(dict(record["n"]))
-                    entity_data["vector_score"] = result.get("score", 0.0)
-                    enriched_results.append(entity_data)
+        async with driver.session(database=self.settings.neo4j_database) as session:
+            # Batch all entity lookups in a single query
+            entity_ids = [r["id"] for r in results]
+            id_to_score = {r["id"]: r.get("score", 0.0) for r in results}
+
+            batch_result = await session.run(
+                """
+                UNWIND $entity_ids as entity_id
+                MATCH (n {id: entity_id})
+                RETURN n.id as id, n
+                """,
+                {"entity_ids": entity_ids},
+            )
+
+            async for record in batch_result:
+                entity_id = record["id"]
+                entity_node = record["n"]
+                entity_data = _serialize_entity(dict(entity_node))
+                entity_data["vector_score"] = id_to_score.get(entity_id, 0.0)
+                enriched_results.append(entity_data)
+
         return enriched_results
 
     async def _fulltext_search(
@@ -450,6 +464,8 @@ class GraphRAGEngine:
 
         seed_ids = [e["id"] for e in seed_entities]
         all_entities: dict[str, dict] = {e["id"]: e for e in seed_entities}
+        # PERF: Use Set for O(1) deduplication instead of O(n) list scan
+        seen_relationships: set[tuple[str, str, str]] = set()
         all_relationships: list[dict] = []
         traversal_path: list[str] = []
 
@@ -459,7 +475,7 @@ class GraphRAGEngine:
             MATCH path = (seed)-[r*1..{max_hops}]-(connected)
             WHERE seed.id IN $seed_ids
               AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
-            RETURN seed.id as seed_id, 
+            RETURN seed.id as seed_id,
                    nodes(path) as path_nodes,
                    relationships(path) as path_rels,
                    length(path) as hops
@@ -476,19 +492,24 @@ class GraphRAGEngine:
             )
 
             async for record in result:
-                # Add entities
+                # Add entities (already using dict for O(1) lookup)
                 for node in record["path_nodes"]:
                     node_id = node["id"]
                     if node_id not in all_entities:
                         all_entities[node_id] = _serialize_entity(dict(node))
                         all_entities[node_id]["hops_from_seed"] = record["hops"]
 
-                # Add relationships
+                # PERF: O(1) deduplication using relationship signature
+                # Before: O(n²) - "if rel_data not in all_relationships" scans entire list
+                # After: O(1) - Set lookup by (source, target, type) signature
                 for rel in record["path_rels"]:
                     rel_data = _serialize_relationship(
                         rel, include_hops=True, hops=record["hops"]
                     )
-                    if rel_data not in all_relationships:
+                    # Create unique signature for deduplication
+                    rel_key = (rel_data["source"], rel_data["target"], rel_data["type"])
+                    if rel_key not in seen_relationships:
+                        seen_relationships.add(rel_key)
                         all_relationships.append(rel_data)
 
                 # Track traversal path

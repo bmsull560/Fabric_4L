@@ -1,4 +1,17 @@
+/**
+ * useOntology.ts - Ontology management hooks with defensive programming
+ * 
+ * DEFENSIVE PROGRAMMING: All 7 mandates applied:
+ * - M1: NULL/UNDEFINED SAFETY - Optional chaining and nullish coalescing throughout
+ * - M2: TYPE SAFETY - Zod runtime validation replaces all `as` assertions
+ * - M3: ERROR HANDLING - All mutations have onError with context logging
+ * - M4: INPUT VALIDATION - typeId, propertyId validated with Zod schemas
+ * - M5: RACE CONDITION ELIMINATION - queryClient invalidation after success
+ * - M6: RESOURCE LEAK PREVENTION - N/A (React Query manages caching)
+ * - M7: BOUNDS SAFETY - All array accesses have length checks
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { apiClient } from '@/api/client';
 import { QK } from './queryKeys';
 import { STALE_TIME } from './useApiShared';
@@ -6,75 +19,162 @@ import { STALE_TIME } from './useApiShared';
 // Layer key for Layer 2 Extraction API
 const LAYER2: 'l2' = 'l2';
 
-export interface OntologyType {
-  id: string;
-  name: string;
-  description: string;
-  properties: OntologyProperty[];
-  parentTypeId?: string;
-  childrenTypeIds?: string[];
-  createdAt: string;
-  updatedAt: string;
-  version: number;
+// ============================================================================
+// MANDATE 3: ERROR HANDLING - Safe Logging Wrapper
+// ============================================================================
+
+const MODULE_NAME = '[useOntology]';
+
+function logError(message: string, context?: Record<string, unknown>): void {
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.error(`${MODULE_NAME} ${message}`, context ?? '');
+  }
 }
 
-export interface OntologyProperty {
-  id: string;
-  name: string;
-  type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object' | 'reference';
-  description?: string;
-  required: boolean;
-  defaultValue?: unknown;
-  constraints?: PropertyConstraints;
-  referenceTypeId?: string;
+function logWarn(message: string, context?: Record<string, unknown>): void {
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.warn(`${MODULE_NAME} ${message}`, context ?? '');
+  }
 }
 
-export interface PropertyConstraints {
-  minLength?: number;
-  maxLength?: number;
-  min?: number;
-  max?: number;
-  pattern?: string;
-  enum?: string[];
+// ============================================================================
+// MANDATE 4: INPUT VALIDATION - Zod Schemas
+// ============================================================================
+
+/** Type ID must be non-empty string */
+const TypeIdSchema = z.string().min(1, 'Type ID is required');
+
+/** Property ID must be non-empty string */
+const PropertyIdSchema = z.string().min(1, 'Property ID is required');
+
+/** Relationship ID must be non-empty string */
+const RelationshipIdSchema = z.string().min(1, 'Relationship ID is required');
+
+/** Ontology name validation */
+const OntologyNameSchema = z.string().min(1).max(255);
+
+/** Version string validation */
+const VersionSchema = z.string().min(1).regex(/^\d+\.\d+\.\d+/, 'Version must be semantic (e.g., 1.0.0)');
+
+/**
+ * Validates typeId and returns normalized value or null
+ */
+function validateTypeId(typeId: string | null | undefined): string | null {
+  if (typeId === null || typeId === undefined) return null;
+  const result = TypeIdSchema.safeParse(typeId);
+  if (!result.success) {
+    logError('Invalid typeId', { typeId, error: result.error.message });
+    return null;
+  }
+  return result.data;
 }
 
-export interface TypeRelationship {
-  id: string;
-  sourceTypeId: string;
-  targetTypeId: string;
-  relationshipType: 'depends_on' | 'extends' | 'relates_to' | 'contains';
-  description?: string;
-  cardinality: 'one_to_one' | 'one_to_many' | 'many_to_many';
+/**
+ * Validates propertyId and returns normalized value
+ */
+function validatePropertyId(propertyId: string): string {
+  const result = PropertyIdSchema.safeParse(propertyId);
+  if (!result.success) {
+    const error = new Error(`Invalid propertyId: ${result.error.message}`);
+    logError('Property ID validation failed', { propertyId, error: result.error.message });
+    throw error;
+  }
+  return result.data;
 }
 
-export interface OntologySchema {
-  types: OntologyType[];
-  relationships: TypeRelationship[];
-  version: string;
-  publishedAt?: string;
-  publishedBy?: string;
-}
+// ============================================================================
+// MANDATE 2: TYPE SAFETY - Zod Schemas for Runtime Validation
+// ============================================================================
 
-export interface ValidationResult {
-  valid: boolean;
-  errors: ValidationError[];
-  warnings: ValidationWarning[];
-}
+const PropertyTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'array', 'object', 'reference']);
 
-export interface ValidationError {
-  typeId?: string;
-  propertyId?: string;
-  relationshipId?: string;
-  message: string;
-  code: string;
-}
+const PropertyConstraintsSchema = z.object({
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  pattern: z.string().optional(),
+  enum: z.array(z.string()).optional(),
+}).strict().optional();
 
-export interface ValidationWarning {
-  typeId?: string;
-  propertyId?: string;
-  message: string;
-  code: string;
-}
+const OntologyPropertySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  type: PropertyTypeSchema,
+  description: z.string().optional(),
+  required: z.boolean(),
+  defaultValue: z.unknown().optional(),
+  constraints: PropertyConstraintsSchema,
+  referenceTypeId: z.string().optional(),
+});
+
+const RelationshipTypeSchema = z.enum(['depends_on', 'extends', 'relates_to', 'contains']);
+const CardinalitySchema = z.enum(['one_to_one', 'one_to_many', 'many_to_many']);
+
+const TypeRelationshipSchema = z.object({
+  id: z.string().min(1),
+  sourceTypeId: z.string().min(1),
+  targetTypeId: z.string().min(1),
+  relationshipType: RelationshipTypeSchema,
+  description: z.string().optional(),
+  cardinality: CardinalitySchema,
+});
+
+const OntologyTypeSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string(),
+  properties: z.array(OntologyPropertySchema),
+  parentTypeId: z.string().optional(),
+  childrenTypeIds: z.array(z.string()).optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  version: z.number(),
+});
+
+const OntologySchemaSchema = z.object({
+  types: z.array(OntologyTypeSchema),
+  relationships: z.array(TypeRelationshipSchema),
+  version: z.string(),
+  publishedAt: z.string().optional(),
+  publishedBy: z.string().optional(),
+});
+
+const ValidationErrorSchema = z.object({
+  typeId: z.string().optional(),
+  propertyId: z.string().optional(),
+  relationshipId: z.string().optional(),
+  message: z.string(),
+  code: z.string(),
+});
+
+const ValidationWarningSchema = z.object({
+  typeId: z.string().optional(),
+  propertyId: z.string().optional(),
+  message: z.string(),
+  code: z.string(),
+});
+
+const ValidationResultSchema = z.object({
+  valid: z.boolean(),
+  errors: z.array(ValidationErrorSchema),
+  warnings: z.array(ValidationWarningSchema),
+});
+
+// ============================================================================
+// TypeScript Types (inferred from schemas)
+// ============================================================================
+
+export type OntologyProperty = z.infer<typeof OntologyPropertySchema>;
+export type PropertyConstraints = z.infer<typeof PropertyConstraintsSchema>;
+export type TypeRelationship = z.infer<typeof TypeRelationshipSchema>;
+export type OntologyType = z.infer<typeof OntologyTypeSchema>;
+export type OntologySchema = z.infer<typeof OntologySchemaSchema>;
+export type ValidationError = z.infer<typeof ValidationErrorSchema>;
+export type ValidationWarning = z.infer<typeof ValidationWarningSchema>;
+export type ValidationResult = z.infer<typeof ValidationResultSchema>;
 
 // Fetch full ontology schema
 export function useOntologySchema() {
@@ -90,14 +190,37 @@ export function useOntologySchema() {
 
 // Fetch single type with details
 export function useOntologyType(typeId: string | null) {
-  return useQuery({
-    queryKey: QK.ontology.type(typeId || ''),
+  // MANDATE 4: Validate at hook entry
+  const validatedTypeId = validateTypeId(typeId);
+
+  return useQuery<OntologyType | null, Error>({
+    queryKey: QK.ontology.type(validatedTypeId ?? ''),
     queryFn: async (): Promise<OntologyType | null> => {
-      if (!typeId) return null;
-      const response = await apiClient.get(`l2`, `/v1/ontology/schema/types/${typeId}`);
-      return response.data;
+      if (validatedTypeId === null) return null;
+      
+      try {
+        const response = await apiClient.get(LAYER2, `/v1/ontology/schema/types/${validatedTypeId}`);
+        
+        // MANDATE 2: Runtime validation instead of blind trust
+        const result = OntologyTypeSchema.safeParse(response.data);
+        if (!result.success) {
+          logError('Failed to parse ontology type', { 
+            typeId: validatedTypeId, 
+            error: result.error.message 
+          });
+          throw new Error(`Invalid type data received for ${validatedTypeId}`);
+        }
+        
+        return result.data;
+      } catch (error) {
+        logError('Failed to fetch ontology type', { 
+          typeId: validatedTypeId, 
+          error: error instanceof Error ? error.message : String(error) 
+        });
+        throw error;
+      }
     },
-    enabled: !!typeId,
+    enabled: validatedTypeId !== null,
     staleTime: STALE_TIME.detail,
   });
 }
@@ -106,17 +229,34 @@ export function useOntologyType(typeId: string | null) {
 export function useCreateOntologyType() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (newType: Omit<OntologyType, 'id' | 'createdAt' | 'updatedAt' | 'version'>): Promise<OntologyType> => {
+  return useMutation<OntologyType, Error, Omit<OntologyType, 'id' | 'createdAt' | 'updatedAt' | 'version'>>({
+    mutationFn: async (newType): Promise<OntologyType> => {
+      // MANDATE 4: Validate name
+      const nameResult = OntologyNameSchema.safeParse(newType.name);
+      if (!nameResult.success) {
+        throw new Error(`Invalid type name: ${nameResult.error.message}`);
+      }
+
       const response = await apiClient.post(LAYER2, '/v1/ontology/schema/types', {
         name: newType.name,
         description: newType.description,
         parent_type_id: newType.parentTypeId,
       });
-      return response.data;
+      
+      // MANDATE 2: Runtime validation
+      const result = OntologyTypeSchema.safeParse(response.data);
+      if (!result.success) {
+        logError('Failed to parse created type', { error: result.error.message });
+        throw new Error('Invalid response when creating type');
+      }
+      
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, variables) => {
+      logError('Failed to create ontology type', { name: variables.name, error: error.message });
     },
   });
 }
@@ -125,17 +265,34 @@ export function useCreateOntologyType() {
 export function useUpdateOntologyType() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (updatedType: OntologyType): Promise<OntologyType> => {
-      const response = await apiClient.put(LAYER2, `/v1/ontology/schema/types/${updatedType.id}`, {
+  return useMutation<OntologyType, Error, OntologyType>({
+    mutationFn: async (updatedType): Promise<OntologyType> => {
+      // MANDATE 4: Validate typeId
+      const validatedId = validateTypeId(updatedType.id);
+      if (validatedId === null) {
+        throw new Error('Invalid typeId: cannot update type');
+      }
+
+      const response = await apiClient.put(LAYER2, `/v1/ontology/schema/types/${validatedId}`, {
         name: updatedType.name,
         description: updatedType.description,
       });
-      return response.data;
+      
+      // MANDATE 2: Runtime validation
+      const result = OntologyTypeSchema.safeParse(response.data);
+      if (!result.success) {
+        logError('Failed to parse updated type', { typeId: validatedId, error: result.error.message });
+        throw new Error('Invalid response when updating type');
+      }
+      
+      return result.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
       queryClient.invalidateQueries({ queryKey: QK.ontology.type(variables.id) });
+    },
+    onError: (error, variables) => {
+      logError('Failed to update ontology type', { typeId: variables.id, error: error.message });
     },
   });
 }
@@ -144,12 +301,21 @@ export function useUpdateOntologyType() {
 export function useDeleteOntologyType() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (typeId: string): Promise<void> => {
-      await apiClient.delete(LAYER2, `/v1/ontology/schema/types/${typeId}`);
+  return useMutation<void, Error, string>({
+    mutationFn: async (typeId): Promise<void> => {
+      // MANDATE 4: Validate typeId
+      const validatedId = validateTypeId(typeId);
+      if (validatedId === null) {
+        throw new Error('Invalid typeId: cannot delete type');
+      }
+
+      await apiClient.delete(LAYER2, `/v1/ontology/schema/types/${validatedId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, typeId) => {
+      logError('Failed to delete ontology type', { typeId, error: error.message });
     },
   });
 }
@@ -158,16 +324,43 @@ export function useDeleteOntologyType() {
 export function useAddOntologyProperty() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ typeId, property }: { typeId: string; property: Omit<OntologyProperty, 'id'> }): Promise<OntologyProperty> => {
-      const response = await apiClient.post(LAYER2, `/v1/ontology/schema/types/${typeId}/properties`, property);
-      // Return the updated type's last property
-      const updatedType = response.data as OntologyType;
+  return useMutation<OntologyProperty, Error, { typeId: string; property: Omit<OntologyProperty, 'id'> }>({
+    mutationFn: async ({ typeId, property }): Promise<OntologyProperty> => {
+      // MANDATE 4: Validate inputs
+      const validatedTypeId = validateTypeId(typeId);
+      if (validatedTypeId === null) {
+        throw new Error('Invalid typeId: cannot add property');
+      }
+
+      const response = await apiClient.post(LAYER2, `/v1/ontology/schema/types/${validatedTypeId}/properties`, property);
+      
+      // MANDATE 2: Runtime type validation instead of `as` assertion
+      const updatedTypeResult = OntologyTypeSchema.safeParse(response.data);
+      if (!updatedTypeResult.success) {
+        logError('Failed to parse updated type', { error: updatedTypeResult.error.message });
+        throw new Error('Invalid response from server when adding property');
+      }
+      
+      const updatedType = updatedTypeResult.data;
+      
+      // MANDATE 7: BOUNDS SAFETY - Check array length before accessing last element
+      if (updatedType.properties.length === 0) {
+        logError('Updated type has no properties after add operation', { typeId: validatedTypeId });
+        throw new Error('Property was not added successfully');
+      }
+      
       return updatedType.properties[updatedType.properties.length - 1];
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.type(variables.typeId) });
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, variables) => {
+      logError('Failed to add ontology property', { 
+        typeId: variables.typeId, 
+        propertyName: variables.property.name,
+        error: error.message 
+      });
     },
   });
 }
@@ -176,14 +369,44 @@ export function useAddOntologyProperty() {
 export function useUpdateOntologyProperty() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ typeId, property }: { typeId: string; property: OntologyProperty }): Promise<OntologyProperty> => {
-      await apiClient.put(LAYER2, `/v1/ontology/schema/types/${typeId}/properties/${property.id}`, property);
-      return property;
+  return useMutation<OntologyProperty, Error, { typeId: string; property: OntologyProperty }>({
+    mutationFn: async ({ typeId, property }): Promise<OntologyProperty> => {
+      // MANDATE 4: Validate IDs
+      const validatedTypeId = validateTypeId(typeId);
+      if (validatedTypeId === null) {
+        throw new Error('Invalid typeId: cannot update property');
+      }
+      const validatedPropertyId = validatePropertyId(property.id);
+
+      const response = await apiClient.put(
+        LAYER2, 
+        `/v1/ontology/schema/types/${validatedTypeId}/properties/${validatedPropertyId}`, 
+        property
+      );
+      
+      // MANDATE 2: Runtime validation of response
+      const result = OntologyPropertySchema.safeParse(response.data);
+      if (!result.success) {
+        // If server doesn't return the property, return our input as fallback
+        logWarn('Server did not return updated property, using input', { 
+          typeId: validatedTypeId, 
+          propertyId: validatedPropertyId 
+        });
+        return property;
+      }
+      
+      return result.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.type(variables.typeId) });
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, variables) => {
+      logError('Failed to update ontology property', { 
+        typeId: variables.typeId, 
+        propertyId: variables.property.id,
+        error: error.message 
+      });
     },
   });
 }
@@ -192,13 +415,30 @@ export function useUpdateOntologyProperty() {
 export function useRemoveOntologyProperty() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ typeId, propertyId }: { typeId: string; propertyId: string }): Promise<void> => {
-      await apiClient.delete(LAYER2, `/v1/ontology/schema/types/${typeId}/properties/${propertyId}`);
+  return useMutation<void, Error, { typeId: string; propertyId: string }>({
+    mutationFn: async ({ typeId, propertyId }): Promise<void> => {
+      // MANDATE 4: Validate IDs
+      const validatedTypeId = validateTypeId(typeId);
+      if (validatedTypeId === null) {
+        throw new Error('Invalid typeId: cannot remove property');
+      }
+      const validatedPropertyId = validatePropertyId(propertyId);
+
+      await apiClient.delete(
+        LAYER2, 
+        `/v1/ontology/schema/types/${validatedTypeId}/properties/${validatedPropertyId}`
+      );
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.type(variables.typeId) });
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, variables) => {
+      logError('Failed to remove ontology property', { 
+        typeId: variables.typeId, 
+        propertyId: variables.propertyId,
+        error: error.message 
+      });
     },
   });
 }
@@ -207,8 +447,8 @@ export function useRemoveOntologyProperty() {
 export function useAddTypeRelationship() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (relationship: Omit<TypeRelationship, 'id'>): Promise<TypeRelationship> => {
+  return useMutation<TypeRelationship, Error, Omit<TypeRelationship, 'id'>>({
+    mutationFn: async (relationship): Promise<TypeRelationship> => {
       const response = await apiClient.post(LAYER2, '/v1/ontology/schema/relationships', {
         source_type_id: relationship.sourceTypeId,
         target_type_id: relationship.targetTypeId,
@@ -216,10 +456,25 @@ export function useAddTypeRelationship() {
         description: relationship.description,
         cardinality: relationship.cardinality,
       });
-      return response.data;
+      
+      // MANDATE 2: Runtime validation
+      const result = TypeRelationshipSchema.safeParse(response.data);
+      if (!result.success) {
+        logError('Failed to parse created relationship', { error: result.error.message });
+        throw new Error('Invalid response when creating relationship');
+      }
+      
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, variables) => {
+      logError('Failed to add type relationship', { 
+        sourceTypeId: variables.sourceTypeId,
+        targetTypeId: variables.targetTypeId,
+        error: error.message 
+      });
     },
   });
 }
@@ -228,25 +483,53 @@ export function useAddTypeRelationship() {
 export function useRemoveTypeRelationship() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (relationshipId: string): Promise<void> => {
-      await apiClient.delete(LAYER2, `/v1/ontology/schema/relationships/${relationshipId}`);
+  return useMutation<void, Error, string>({
+    mutationFn: async (relationshipId): Promise<void> => {
+      // MANDATE 4: Validate relationshipId
+      const result = RelationshipIdSchema.safeParse(relationshipId);
+      if (!result.success) {
+        logError('Invalid relationshipId', { relationshipId, error: result.error.message });
+        throw new Error(`Invalid relationshipId: ${result.error.message}`);
+      }
+
+      await apiClient.delete(LAYER2, `/v1/ontology/schema/relationships/${result.data}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, relationshipId) => {
+      logError('Failed to remove type relationship', { relationshipId, error: error.message });
     },
   });
 }
 
 // Validate ontology schema
 export function useValidateOntology() {
-  return useMutation({
-    mutationFn: async (schema: OntologySchema): Promise<ValidationResult> => {
+  return useMutation<ValidationResult, Error, OntologySchema>({
+    mutationFn: async (schema): Promise<ValidationResult> => {
+      // MANDATE 2: Validate input schema before sending
+      const schemaResult = OntologySchemaSchema.safeParse(schema);
+      if (!schemaResult.success) {
+        logError('Invalid ontology schema input', { error: schemaResult.error.message });
+        throw new Error(`Invalid schema: ${schemaResult.error.message}`);
+      }
+
       const response = await apiClient.post(LAYER2, '/v1/ontology/schema/validate', {
         types: schema.types,
         relationships: schema.relationships,
       });
-      return response.data;
+      
+      // MANDATE 2: Validate response
+      const result = ValidationResultSchema.safeParse(response.data);
+      if (!result.success) {
+        logError('Invalid validation response from server', { error: result.error.message });
+        throw new Error('Invalid response from validation endpoint');
+      }
+      
+      return result.data;
+    },
+    onError: (error) => {
+      logError('Ontology validation failed', { error: error.message });
     },
   });
 }
@@ -255,16 +538,44 @@ export function useValidateOntology() {
 export function usePublishOntology() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ version, comment }: { version: string; comment?: string }): Promise<{ version: string; publishedAt: string; publishedBy: string }> => {
+  return useMutation<
+    { version: string; publishedAt: string; publishedBy: string },
+    Error,
+    { version: string; comment?: string }
+  >({
+    mutationFn: async ({ version, comment }): Promise<{ version: string; publishedAt: string; publishedBy: string }> => {
+      // MANDATE 4: Validate version format
+      const versionResult = VersionSchema.safeParse(version);
+      if (!versionResult.success) {
+        logError('Invalid version format', { version, error: versionResult.error.message });
+        throw new Error(`Invalid version: ${versionResult.error.message}`);
+      }
+
       const response = await apiClient.post(LAYER2, '/v1/ontology/schema/publish', {
-        version,
+        version: versionResult.data,
         comment,
       });
-      return response.data;
+      
+      // MANDATE 2: Validate response structure
+      const PublishResponseSchema = z.object({
+        version: z.string(),
+        publishedAt: z.string(),
+        publishedBy: z.string(),
+      });
+      
+      const result = PublishResponseSchema.safeParse(response.data);
+      if (!result.success) {
+        logError('Invalid publish response', { error: result.error.message });
+        throw new Error('Invalid response from publish endpoint');
+      }
+      
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error, variables) => {
+      logError('Failed to publish ontology', { version: variables.version, error: error.message });
     },
   });
 }
@@ -273,15 +584,42 @@ export function usePublishOntology() {
 export function useImportOntology() {
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (jsonData: string): Promise<OntologySchema> => {
+  return useMutation<OntologySchema, Error, string>({
+    mutationFn: async (jsonData): Promise<OntologySchema> => {
+      // MANDATE 4: Validate JSON is parseable before sending
+      let parsedSchema: unknown;
+      try {
+        parsedSchema = JSON.parse(jsonData);
+      } catch (parseError) {
+        logError('Invalid JSON provided for import', { error: String(parseError) });
+        throw new Error('Invalid JSON: cannot parse schema');
+      }
+
+      // MANDATE 2: Validate against schema
+      const schemaResult = OntologySchemaSchema.safeParse(parsedSchema);
+      if (!schemaResult.success) {
+        logError('JSON does not match ontology schema', { error: schemaResult.error.message });
+        throw new Error(`Invalid ontology schema: ${schemaResult.error.message}`);
+      }
+
       const response = await apiClient.post(LAYER2, '/v1/ontology/schema/import', {
         schema_json: jsonData,
       });
-      return response.data;
+      
+      // MANDATE 2: Validate response
+      const result = OntologySchemaSchema.safeParse(response.data);
+      if (!result.success) {
+        logError('Invalid import response from server', { error: result.error.message });
+        throw new Error('Invalid response from import endpoint');
+      }
+      
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });
+    },
+    onError: (error) => {
+      logError('Failed to import ontology', { error: error.message });
     },
   });
 }
