@@ -189,11 +189,8 @@ export default function NarrativeTab() {
       detailContent={detailContent}
       activeTab="narrative"
       messages={messages}
-      onSendMessage={handleSendMessage}
-      suggestedActions={[
-        { label: "Regenerate all narratives", onClick: () => {} },
-        { label: "Export full value case", onClick: () => {} },
-      ]}
+      onSendMessage={sendMessage}
+      suggestedActions={suggestedActions}
     />
   );
 
