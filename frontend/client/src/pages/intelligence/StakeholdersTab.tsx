@@ -10,7 +10,8 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { Users, ChevronRight, Target, Shield, DollarSign, Wrench } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
-import RightRail, { type RightRailMode, type AgentMessage } from "@/components/workspace/RightRail";
+import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import { useAgentStream } from "@/hooks/useAgentStream";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -74,20 +75,10 @@ export default function StakeholdersTab() {
   const params = useParams<{ accountId: string }>();
   const [selectedStakeholder, setSelectedStakeholder] = useState<Stakeholder | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-
-  const handleSendMessage = (msg: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: "user", content: msg, timestamp: "Now" },
-    ]);
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { id: `a-${Date.now()}`, role: "agent", content: "Analyzing stakeholder alignment with validated signals…", timestamp: "Now" },
-      ]);
-    }, 800);
-  };
+  const { messages, sendMessage, suggestedActions } = useAgentStream({
+    activeTab: "stakeholders",
+    accountName: DEMO_ACCOUNT.accountName,
+  });
 
   const detailContent = selectedStakeholder ? (() => {
     const rc = ROLE_CONFIG[selectedStakeholder.role];
@@ -169,7 +160,8 @@ export default function StakeholdersTab() {
       detailContent={detailContent}
       activeTab="stakeholders"
       messages={messages}
-      onSendMessage={handleSendMessage}
+      onSendMessage={sendMessage}
+      suggestedActions={suggestedActions}
     />
   );
 

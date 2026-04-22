@@ -11,7 +11,8 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { Calculator, TrendingUp, TrendingDown, Settings2 } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
-import RightRail, { type RightRailMode, type AgentMessage } from "@/components/workspace/RightRail";
+import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import { useAgentStream } from "@/hooks/useAgentStream";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -63,26 +64,10 @@ export default function ValueModelTab() {
   const [scenario, setScenario] = useState<Scenario>("expected");
   const [showStrategic, setShowStrategic] = useState(true);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
-  const [messages, setMessages] = useState<AgentMessage[]>([
-    {
-      id: "1", role: "agent",
-      content: "The value model is built from 3 accepted recommendations. Total expected value: $9.10M/yr. Hard savings: $5.99M/yr. Strategic value: $3.10M/yr.",
-      timestamp: "Just now",
-    },
-  ]);
-
-  const handleSendMessage = (msg: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: "user", content: msg, timestamp: "Now" },
-    ]);
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { id: `a-${Date.now()}`, role: "agent", content: "Recalculating the model with your adjustments…", timestamp: "Now" },
-      ]);
-    }, 800);
-  };
+  const { messages, sendMessage, suggestedActions } = useAgentStream({
+    activeTab: "value-model",
+    accountName: DEMO_ACCOUNT.accountName,
+  });
 
   const visibleLines = showStrategic
     ? DEMO_VALUE_LINES
@@ -98,12 +83,8 @@ export default function ValueModelTab() {
       onModeChange={setRailMode}
       activeTab="value-model"
       messages={messages}
-      onSendMessage={handleSendMessage}
-      suggestedActions={[
-        { label: "Adjust variables", onClick: () => {} },
-        { label: "Compare scenarios", onClick: () => {} },
-        { label: "Export to Excel", onClick: () => {} },
-      ]}
+      onSendMessage={sendMessage}
+      suggestedActions={suggestedActions}
     />
   );
 

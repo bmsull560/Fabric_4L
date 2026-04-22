@@ -10,7 +10,8 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { FileText, ExternalLink, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
-import RightRail, { type RightRailMode, type AgentMessage } from "@/components/workspace/RightRail";
+import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import { useAgentStream } from "@/hooks/useAgentStream";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -89,20 +90,10 @@ export default function EvidenceTab() {
   const params = useParams<{ accountId: string }>();
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-
-  const handleSendMessage = (msg: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: "user", content: msg, timestamp: "Now" },
-    ]);
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { id: `a-${Date.now()}`, role: "agent", content: "Searching evidence library for relevant matches…", timestamp: "Now" },
-      ]);
-    }, 800);
-  };
+  const { messages, sendMessage, suggestedActions } = useAgentStream({
+    activeTab: "evidence",
+    accountName: DEMO_ACCOUNT.accountName,
+  });
 
   const verified = DEMO_EVIDENCE.filter((e) => e.verification === "verified").length;
   const avgMatch = Math.round(DEMO_EVIDENCE.reduce((s, e) => s + e.matchScore, 0) / DEMO_EVIDENCE.length);
@@ -171,7 +162,8 @@ export default function EvidenceTab() {
       detailContent={detailContent}
       activeTab="evidence"
       messages={messages}
-      onSendMessage={handleSendMessage}
+      onSendMessage={sendMessage}
+      suggestedActions={suggestedActions}
     />
   );
 

@@ -16,7 +16,8 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { Zap, CheckCircle2, AlertCircle, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
-import RightRail, { type RightRailMode, type AgentMessage } from "@/components/workspace/RightRail";
+import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import { useAgentStream } from "@/hooks/useAgentStream";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -105,26 +106,10 @@ export default function ActionPlanTab() {
   const params = useParams<{ accountId: string }>();
   const [expandedId, setExpandedId] = useState<string | null>("r1");
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
-  const [messages, setMessages] = useState<AgentMessage[]>([
-    {
-      id: "1", role: "agent",
-      content: "I've generated 3 product-anchored recommendations based on the validated intelligence. The total projected value is $3.67M/yr.",
-      timestamp: "Just now",
-    },
-  ]);
-
-  const handleSendMessage = (msg: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: "user", content: msg, timestamp: "Now" },
-    ]);
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { id: `a-${Date.now()}`, role: "agent", content: "Refining the action plan based on your input…", timestamp: "Now" },
-      ]);
-    }, 800);
-  };
+  const { messages, sendMessage, suggestedActions } = useAgentStream({
+    activeTab: "action-plan",
+    accountName: DEMO_ACCOUNT.accountName,
+  });
 
   const totalValue = "$3.67M/yr";
 
@@ -134,12 +119,8 @@ export default function ActionPlanTab() {
       onModeChange={setRailMode}
       activeTab="action-plan"
       messages={messages}
-      onSendMessage={handleSendMessage}
-      suggestedActions={[
-        { label: "Add custom recommendation", onClick: () => {} },
-        { label: "Re-prioritize by confidence", onClick: () => {} },
-        { label: "Export action plan", onClick: () => {} },
-      ]}
+      onSendMessage={sendMessage}
+      suggestedActions={suggestedActions}
     />
   );
 

@@ -24,6 +24,7 @@ import { Btn } from "@/components/WfPrimitives";
 interface AccountIntakeModalProps {
   open: boolean;
   onClose: () => void;
+  onSubmit?: (accountId: string) => void;
 }
 
 type AnalysisDepth = "fast" | "balanced" | "deep";
@@ -36,7 +37,7 @@ const DEPTH_OPTIONS: { key: AnalysisDepth; label: string; description: string }[
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
-export default function AccountIntakeModal({ open, onClose }: AccountIntakeModalProps) {
+export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountIntakeModalProps) {
   const [, navigate] = useLocation();
 
   // Form state
@@ -71,7 +72,11 @@ export default function AccountIntakeModal({ open, onClose }: AccountIntakeModal
 
     setIsSubmitting(false);
     onClose();
-    navigate(`/intelligence/${accountId}/signals`);
+    if (onSubmit) {
+      onSubmit(accountId);
+    } else {
+      navigate(`/intelligence/${accountId}/signals`);
+    }
   };
 
   return (

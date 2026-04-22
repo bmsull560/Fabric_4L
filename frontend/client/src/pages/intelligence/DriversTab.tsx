@@ -10,7 +10,8 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { GitBranch, ChevronRight } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
-import RightRail, { type RightRailMode, type AgentMessage } from "@/components/workspace/RightRail";
+import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import { useAgentStream } from "@/hooks/useAgentStream";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -46,20 +47,10 @@ export default function DriversTab() {
   const params = useParams<{ accountId: string }>();
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
-
-  const handleSendMessage = (msg: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: `u-${Date.now()}`, role: "user", content: msg, timestamp: "Now" },
-    ]);
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { id: `a-${Date.now()}`, role: "agent", content: "Processing your driver analysis request…", timestamp: "Now" },
-      ]);
-    }, 800);
-  };
+  const { messages, sendMessage, suggestedActions } = useAgentStream({
+    activeTab: "drivers",
+    accountName: DEMO_ACCOUNT.accountName,
+  });
 
   // Group drivers by parent signal
   const grouped = DEMO_DRIVERS.reduce<Record<string, Driver[]>>((acc, d) => {
@@ -118,7 +109,8 @@ export default function DriversTab() {
       detailContent={detailContent}
       activeTab="drivers"
       messages={messages}
-      onSendMessage={handleSendMessage}
+      onSendMessage={sendMessage}
+      suggestedActions={suggestedActions}
     />
   );
 

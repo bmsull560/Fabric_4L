@@ -10,7 +10,8 @@ import { useState } from "react";
 import { useParams } from "wouter";
 import { AlertTriangle, TrendingUp, Filter } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
-import RightRail, { type RightRailMode, type AgentMessage, type AgentAction } from "@/components/workspace/RightRail";
+import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
+import { useAgentStream } from "@/hooks/useAgentStream";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -55,47 +56,10 @@ export default function SignalsTab() {
   const params = useParams<{ accountId: string }>();
   const [selectedSignal, setSelectedSignal] = useState<Signal | null>(null);
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
-  const [messages, setMessages] = useState<AgentMessage[]>([
-    {
-      id: "1",
-      role: "agent",
-      content: `I've analyzed ${DEMO_ACCOUNT.accountName}'s pain signals. The top signal is Production Downtime.`,
-      timestamp: "Just now",
-    },
-    {
-      id: "2",
-      role: "agent",
-      content: "Confidence: 94% · Impact: $2.4M/yr\n\nThis represents the highest impact opportunity detected across all operational and financial signals.",
-      timestamp: "Just now",
-    },
-  ]);
-
-  const handleSendMessage = (msg: string) => {
-    const userMsg: AgentMessage = {
-      id: `u-${Date.now()}`,
-      role: "user",
-      content: msg,
-      timestamp: "Now",
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    // TODO: Send to backend agent and stream response
-    setTimeout(() => {
-      const agentMsg: AgentMessage = {
-        id: `a-${Date.now()}`,
-        role: "agent",
-        content: "I'm processing your request. This will be connected to the Intelligence pipeline in the backend.",
-        timestamp: "Now",
-      };
-      setMessages((prev) => [...prev, agentMsg]);
-    }, 800);
-  };
-
-  const suggestedActions: AgentAction[] = [
-    { label: "Generate value driver tree", onClick: () => {} },
-    { label: "Summarize evidence", onClick: () => {} },
-    { label: "Draft action plan", onClick: () => {} },
-    { label: "Compare all signals", onClick: () => {} },
-  ];
+  const { messages, sendMessage, suggestedActions } = useAgentStream({
+    activeTab: "signals",
+    accountName: DEMO_ACCOUNT.accountName,
+  });
 
   const handleSignalClick = (signal: Signal) => {
     setSelectedSignal(signal);
@@ -177,7 +141,7 @@ export default function SignalsTab() {
       detailContent={detailContent}
       activeTab="signals"
       messages={messages}
-      onSendMessage={handleSendMessage}
+      onSendMessage={sendMessage}
       suggestedActions={suggestedActions}
     />
   );
