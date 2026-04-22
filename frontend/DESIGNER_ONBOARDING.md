@@ -12,9 +12,62 @@
 | **Styling** | Tailwind CSS v4 | Utility-first with CSS variables |
 | **Components** | shadcn/ui + Radix | 50+ primitives, accessible, composable |
 | **Custom Layer** | Fabric Components | Domain-specific: `FabricCard`, `DataTable`, `StatusBadge` |
+| **Primitives** | WfPrimitives | Workflow-specific: `SectionCard`, `Btn`, `SearchInput` |
 | **Icons** | Lucide React | 1000+ consistent line icons |
 | **Theme** | Tweakcn Generated | Blue-tinted neutral palette, oklch colors |
 | **Registry** | @shadcnuikit | Premium blocks: hero sections, pricing tables, etc. |
+
+---
+
+## Product Architecture — Navigation Model
+
+Value Fabric uses a **Progressive Synthesis** navigation model. The user journey flows from understanding the prospect's world to proving the vendor's product solves their problems.
+
+### Primary Domains (Left Rail)
+
+| Domain | Purpose | Tier |
+|--------|---------|------|
+| **Home** | Dashboard with active cases and KPIs | Standard |
+| **Accounts** | Prospect/customer records; entry point for all value cases | Standard |
+| **Intelligence** | Discover and validate what matters to the prospect | Standard |
+| **Value Studio** | Build the "Why Us" business case using validated intelligence | Standard |
+| **Context Engine** | Vendor's own knowledge: Value Packs, formulas, case studies | Advanced |
+| **Deliverables** | Artifact library: exported business cases, presentations | Standard |
+| **Governance** | Audit trails, compliance, evidence lineage | Advanced |
+| **Settings** | Admin control plane: roles, variables, integrations | Admin |
+
+### Workspace Tabs
+
+**Intelligence** (account-scoped: `/intelligence/:accountId/...`)
+
+| Tab | Purpose |
+|-----|---------|
+| **Signals** | AI-surfaced pain points ranked by confidence and estimated impact |
+| **Drivers** | Root cause analysis connecting signals to underlying factors |
+| **Evidence** | Source documents, benchmarks, confidence grading |
+| **Stakeholders** | Persona-mapped framing of validated findings |
+
+**Value Studio** (account-scoped: `/studio/:accountId/...`)
+
+| Tab | Purpose |
+|-----|---------|
+| **Action Plan** | Product-anchored recommendations: "Our capability solves your pain" |
+| **Value Model** | Quantified business case with variable-driven calculation |
+| **Narrative** | Stakeholder-ready packaging of the model |
+
+### Three-Layer UI Structure
+
+The UI follows a strict three-layer separation:
+
+1. **Left Rail** — Product-level navigation (where am I?)
+2. **Center Canvas** — Workspace tabs and content (what am I doing?)
+3. **Right Rail** — Contextual support with two modes:
+   - **Detail Panel** — Inspect metadata, evidence, confidence for selected item
+   - **Agent Stream** — Conversational co-pilot with structured actions
+
+### Key Interaction: "Add to Model"
+
+The bridge between Intelligence and Value Studio is the **"Add to Model"** action. When a user validates a signal in Intelligence, they can add it to the Value Model, which carries the signal, its drivers, and its evidence into the business case.
 
 ---
 
@@ -26,6 +79,7 @@
 2. **Semantic tokens** — Use `bg-primary` not `bg-blue-500` for theme adaptability
 3. **Dark mode first** — Every component supports `.dark` class toggle
 4. **Fabric patterns** — Use domain components for consistent product UX
+5. **WfPrimitives for workflows** — Use `SectionCard`, `Btn`, `SearchInput`, `DataTable` from `WfPrimitives.tsx` in all workflow/studio pages
 
 ### Visual Language
 
@@ -92,45 +146,17 @@ All colors use **oklch** for perceptual uniformity and better dark mode transiti
 
 Located in `@/components/ui/`. Key categories:
 
-**Layout**
-- `Card` — containers with Header/Content/Footer structure
-- `Separator` — horizontal/vertical dividers
-- `ScrollArea` — custom scrollbars
-- `Resizable` — draggable panes
+**Layout**: `Card`, `Separator`, `ScrollArea`, `Resizable`
 
-**Forms**
-- `Input`, `Textarea` — text entry
-- `Select`, `Combobox` — dropdowns (Combobox = searchable)
-- `Checkbox`, `RadioGroup`, `Switch` — boolean/option selection
-- `Slider` — range selection
-- `Form` — react-hook-form integration
+**Forms**: `Input`, `Textarea`, `Select`, `Combobox`, `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Form`
 
-**Overlays**
-- `Dialog` — modal windows
-- `Sheet` — slide-out panels (right/left/top/bottom)
-- `Drawer` — mobile-style bottom sheets
-- `AlertDialog` — confirmation dialogs
-- `Popover`, `Tooltip`, `HoverCard` — contextual info
+**Overlays**: `Dialog`, `Sheet`, `Drawer`, `AlertDialog`, `Popover`, `Tooltip`, `HoverCard`
 
-**Navigation**
-- `Sidebar` — collapsible navigation
-- `Tabs` — content switching
-- `Breadcrumb` — path navigation
-- `NavigationMenu` — mega menus
-- `Command` — command palette
+**Navigation**: `Sidebar`, `Tabs`, `Breadcrumb`, `NavigationMenu`, `Command`
 
-**Data Display**
-- `Table` — HTML tables with shadcn styling
-- `Badge` — status labels
-- `Avatar` — user/profile images
-- `Skeleton` — loading placeholders
-- `Chart` — Recharts wrapper
+**Data Display**: `Table`, `Badge`, `Avatar`, `Skeleton`, `Chart`
 
-**Feedback**
-- `sonner` — toast notifications
-- `Alert` — callout messages
-- `Progress` — loading bars
-- `Spinner` — loading indicators
+**Feedback**: `sonner`, `Alert`, `Progress`, `Spinner`
 
 ### Fabric Custom Components
 
@@ -146,143 +172,16 @@ Located in `@/components/ui/fabric/`. Domain-specific patterns:
 | `FabricDialog` | Confirmation dialogs | Delete, confirm, warn actions |
 | `LoadingSkeleton` | Page-level loading | Initial page load states |
 
-### Key Patterns
+### WfPrimitives (Workflow Components)
 
-```tsx
-// Card with full composition
-<Card>
-  <CardHeader>
-    <CardTitle>Entity Name</CardTitle>
-    <CardDescription>Entity details and metadata</CardDescription>
-  </CardHeader>
-  <CardContent>
-    {/* Main content */}
-  </CardContent>
-  <CardFooter className="flex justify-end gap-2">
-    <Button variant="outline">Cancel</Button>
-    <Button>Save</Button>
-  </CardFooter>
-</Card>
+Located in `@/components/WfPrimitives.tsx`. Used in all Intelligence and Value Studio pages:
 
-// Form with validation
-<Form {...form}>
-  <form onSubmit={form.handleSubmit(onSubmit)}>
-    <FormField
-      control={form.control}
-      name="email"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>Email</FormLabel>
-          <FormControl>
-            <Input {...field} />
-          </FormControl>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
-  </form>
-</Form>
-
-// Status indicators
-<StatusBadge status="active" />     // Green
-<StatusBadge status="pending" />    // Yellow
-<StatusBadge status="error" />      // Red
-<StatusBadge status="warning" />    // Orange
-```
-
----
-
-## Iconography
-
-- **Library**: Lucide React (`lucide-react`)
-- **Style**: Consistent 24x24 grid, 2px stroke, rounded caps
-- **Usage**: Pass as components, not strings
-
-```tsx
-import { SearchIcon, CheckIcon, AlertCircleIcon } from "lucide-react"
-
-// In buttons — use data-icon prop
-<Button>
-  <SearchIcon data-icon="inline-start" />
-  Search
-</Button>
-
-// Icon-only button
-<Button size="icon" aria-label="Close">
-  <XIcon />
-</Button>
-
-// Standalone icons
-<AlertCircleIcon className="size-5 text-muted-foreground" />
-```
-
----
-
-## Spacing & Layout
-
-**Principles**:
-- Use `gap-*` for spacing (not `space-x-*` or `space-y-*`)
-- Use `size-*` for equal width/height (not `w-* h-*`)
-- Use `flex` and `grid` for layouts
-
-### Common Patterns
-
-```tsx
-// Vertical stack
-div className="flex flex-col gap-4">
-
-// Horizontal row
-div className="flex items-center gap-4">
-
-// Grid layout
-div className="grid grid-cols-3 gap-4">
-
-// Container with padding
-div className="p-4 md:p-6 lg:p-8">
-
-// Full-height layout with sidebar
-<div className="flex h-screen">
-  <Sidebar />
-  <main className="flex-1 overflow-auto">
-    {/* Page content */}
-  </main>
-</div>
-```
-
----
-
-## The shadcn Registry System
-
-### Adding Components
-
-```bash
-# From official shadcn/ui registry
-npx shadcn@latest add button
-npx shadcn@latest add dialog table select
-
-# From @shadcnuikit (premium blocks)
-npx shadcn add @shadcnuikit/hero-section
-npx shadcn add @shadcnuikit/pricing-table
-npx shadcn add @shadcnuikit/feature-section
-```
-
-### Available Block Categories (shadcnuikit)
-
-- **Hero Sections** (14 blocks) — Landing page headers
-- **Pricing Tables** (7 blocks) — SaaS pricing layouts
-- **Feature Sections** (13 blocks) — Product feature showcases
-- **Testimonials** (15 blocks) — Social proof layouts
-- **CTA Sections** (10 blocks) — Call-to-action blocks
-- **Team Sections** (5 blocks) — Team/company pages
-- **Footers** (5 blocks) — Site footer patterns
-- **Checkout Pages** (5 blocks) — E-commerce checkout
-
-### After Adding Components
-
-1. **Review the files** — Check `@/components/ui/` for new component
-2. **Verify imports** — Ensure paths use `@/components/ui/*`
-3. **Update icons** — Replace any non-lucide icons with lucide equivalents
-4. **Test in both themes** — Verify light and dark mode appearance
+| Component | Purpose | When to Use |
+|-----------|---------|-------------|
+| `SectionCard` | Panel container with title and optional subtitle | Any panel in Intelligence or Value Studio |
+| `Btn` | Standardized button with variant support | All action buttons in workflow pages |
+| `SearchInput` | Search field with icon | Any searchable list in workflow pages |
+| `DataTable` | Lightweight table with consistent styling | Data tables in workflow pages |
 
 ---
 
@@ -291,24 +190,21 @@ npx shadcn add @shadcnuikit/feature-section
 ```
 frontend/client/src/
 ├── components/
-│   ├── ui/                    # shadcn primitives
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── dialog.tsx
-│   │   └── ... (50+ files)
+│   ├── ui/                    # shadcn primitives (50+ files)
 │   ├── ui/fabric/             # Fabric custom components
-│   │   ├── FabricCard.tsx
-│   │   ├── DataTable.tsx
-│   │   ├── StatusBadge.tsx
-│   │   └── ...
-│   ├── AppShell.tsx           # Main layout shell
-│   ├── PageShell.tsx          # Page wrapper
-│   ├── TieredNav.tsx          # Navigation component
+│   ├── navigation/
+│   │   └── TieredNav.tsx      # Left rail navigation
+│   ├── AppShell.tsx           # Main layout shell (header + sidebar + main)
+│   ├── WfPrimitives.tsx       # Workflow primitive components
 │   └── ...
 ├── hooks/                     # React Query hooks
 ├── lib/
 │   └── utils.ts               # cn() utility for class merging
-├── pages/                     # Route components
+├── pages/
+│   ├── intelligence/          # Intelligence workspace tabs (planned)
+│   ├── value-studio/          # Value Studio workspace tabs
+│   └── ...                    # Other page components
+├── workflow/                  # Legacy 7-step workflow (being migrated)
 ├── stores/                    # Zustand state
 └── index.css                  # Global styles + theme variables
 ```
@@ -361,8 +257,8 @@ All components automatically adapt via CSS variables.
 ## Design Resources
 
 ### Internal
-- **shadcn-fabric Skill** — `.windsurf/skills/shadcn-fabric/SKILL.md`
-- **Styling Rules** — `.windsurf/skills/shadcn-fabric/rules/styling.md`
+- **Navigation Architecture Spec** — `docs/NAVIGATION_ARCHITECTURE.md`
+- **Implementation Plan** — `docs/IMPLEMENTATION_PLAN.md`
 - **Component Examples** — Existing pages in `frontend/client/src/pages/`
 
 ### External
@@ -427,15 +323,6 @@ Regenerate via Tweakcn if doing major changes: https://tweakcn.com
 1. Find icon at https://lucide.dev/icons/
 2. Import: `import { IconName } from "lucide-react"`
 3. Use in components
-
----
-
-## Questions?
-
-- Check existing pages for patterns
-- Review `SKILL.md` and rule files in `.windsurf/skills/shadcn-fabric/`
-- Run `npx shadcn@latest info` to see installed components
-- Use `npx shadcn@latest docs <component>` for API reference
 
 ---
 
