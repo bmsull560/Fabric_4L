@@ -264,6 +264,141 @@ class Layer3Client:
 
         return await self._make_request("GET", url, effective_tenant, allow_404=True)
 
+    async def persist_signal(
+        self,
+        signal_data: dict[str, Any],
+        tenant_id: str | None = None,
+    ) -> str:
+        """Persist a pain signal to the knowledge graph.
+
+        Args:
+            signal_data: Signal data dictionary
+            tenant_id: Tenant ID for RLS (uses default if None)
+
+        Returns:
+            Signal ID
+        """
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/signals"
+
+        result = await self._make_request("POST", url, effective_tenant, json=signal_data)
+        return result.get("signal_id", "")
+
+    async def find_matching_evidence(
+        self,
+        signal_description: str,
+        industry: str | None,
+        limit: int,
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Find evidence matching a signal description.
+
+        Args:
+            signal_description: Signal text to match
+            industry: Optional industry filter
+            limit: Maximum results
+            tenant_id: Tenant ID for RLS (uses default if None)
+
+        Returns:
+            List of evidence matches
+        """
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/evidence/search"
+
+        payload = {
+            "description": signal_description,
+            "industry": industry,
+            "limit": limit,
+        }
+
+        result = await self._make_request("POST", url, effective_tenant, json=payload)
+        return result.get("matches", [])
+
+    async def quantify_signal(
+        self,
+        signal_name: str,
+        signal_description: str,
+        impact_indicators: list[str],
+        industry: str | None,
+        prospect_data: dict[str, Any],
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Quantify signal impact using formulas.
+
+        Args:
+            signal_name: Signal name
+            signal_description: Signal description
+            impact_indicators: Impact clues
+            industry: Industry vertical
+            prospect_data: Prospect data for variables
+            tenant_id: Tenant ID for RLS (uses default if None)
+
+        Returns:
+            Quantification result
+        """
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/signals/quantify"
+
+        payload = {
+            "signal_name": signal_name,
+            "signal_description": signal_description,
+            "impact_indicators": impact_indicators,
+            "industry": industry,
+            "prospect_data": prospect_data,
+        }
+
+        return await self._make_request("POST", url, effective_tenant, json=payload) or {}
+
+    async def link_evidence(
+        self,
+        signal_id: str,
+        evidence_matches: list[dict[str, Any]],
+        tenant_id: str | None = None,
+    ) -> int:
+        """Link evidence to a signal.
+
+        Args:
+            signal_id: Target signal ID
+            evidence_matches: List of evidence matches
+            tenant_id: Tenant ID for RLS (uses default if None)
+
+        Returns:
+            Number of links created
+        """
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/signals/{signal_id}/evidence"
+
+        payload = {"evidence_matches": evidence_matches}
+
+        result = await self._make_request("POST", url, effective_tenant, json=payload)
+        return result.get("links_created", 0)
+
+    async def get_signals_for_account(
+        self,
+        account_id: str,
+        tenant_id: str | None = None,
+        category: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Get signals for an account.
+
+        Args:
+            account_id: Account identifier
+            tenant_id: Tenant ID for RLS (uses default if None)
+            category: Optional category filter
+
+        Returns:
+            List of signal data
+        """
+        effective_tenant = self._get_effective_tenant(tenant_id)
+        url = f"{self.base_url}/v1/accounts/{account_id}/signals"
+
+        params = {}
+        if category:
+            params["category"] = category
+
+        result = await self._make_request("GET", url, effective_tenant, params=params)
+        return result.get("signals", [])
+
     async def close(self) -> None:
         """Close HTTP client and release resources."""
         if self._client:

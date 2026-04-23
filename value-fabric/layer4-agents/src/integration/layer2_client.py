@@ -242,6 +242,46 @@ class Layer2ExtractionClient:
             logger.error(f"Failed to extract and ingest: {e}")
             raise Layer2ClientError(f"Failed to extract and ingest: {e}") from e
 
+    async def extract_operational_signals(
+        self,
+        prospect_data: dict[str, Any],
+        tenant_id: str,
+        trace_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Extract operational pain signals from prospect setup data.
+
+        Args:
+            prospect_data: Prospect setup information including company details,
+                         business pains, friction points, desired outcomes
+            tenant_id: Tenant identifier for scoping
+            trace_id: Optional trace ID for observability
+
+        Returns:
+            Extraction result with signals list and metadata
+        """
+        payload = {
+            "prospect_data": prospect_data,
+            "extraction_type": "operational_signals",
+            "category": "Operational",
+        }
+
+        headers = {}
+        if trace_id:
+            headers["X-Trace-ID"] = trace_id
+        headers["X-Tenant-ID"] = tenant_id
+
+        try:
+            response = await self.client.post(
+                "/v1/extract/signals",
+                json=payload,
+                headers=headers,
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to extract operational signals: {e}")
+            raise Layer2ClientError(f"Failed to extract signals: {e}") from e
+
     async def close(self) -> None:
         """Close HTTP client."""
         await self.client.aclose()

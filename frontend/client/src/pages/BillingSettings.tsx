@@ -1,4 +1,3 @@
-import React from 'react';
 import { useBillingContext } from '@/context/BillingContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,6 @@ export function BillingSettings() {
     subscribe,
     isSubscribing,
     isOpeningPortal,
-    hasFeature,
     canUpgrade,
   } = useBillingContext();
 

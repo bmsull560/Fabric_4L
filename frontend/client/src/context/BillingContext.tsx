@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { useBilling, useEntitlements, Subscription, EntitlementsResponse } from '@/hooks/useBilling';
 
 interface BillingContextType {

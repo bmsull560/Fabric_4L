@@ -1,6 +1,6 @@
 """Agent taxonomy and implementations for Layer 4.
 
-Provides 8 agent types as defined in the specification:
+Provides 8+ agent types as defined in the specification:
 - DocumentIngestionAgent
 - FinancialExtractionAgent
 - ValueTreeProjectionAgent
@@ -9,9 +9,11 @@ Provides 8 agent types as defined in the specification:
 - NarrativeSynthesisAgent
 - ProvenanceTrackingAgent
 - OrchestrationController
+- SignalDetectionAgent (Phase 3 - Operational Signals)
 """
 
 from .base import AgentCapability, AgentState, BaseAgent
+from .signal_detection import SignalDetectionAgent
 from .taxonomy import (
     AgentType,
     DocumentIngestionAgent,
@@ -40,4 +42,6 @@ __all__ = [
     "NarrativeSynthesisAgent",
     "ProvenanceTrackingAgent",
     "OrchestrationController",
+    # Phase 3: Signal Detection
+    "SignalDetectionAgent",
 ]
