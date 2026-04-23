@@ -102,9 +102,7 @@ jobs:
             --rule 'fabric-contracts/no-url-concatenation: error' \
             --rule 'fabric-contracts/no-private-imports: error' \
             --rule 'fabric-contracts/no-json-parse-agent-output: error' \
-            --format compact || true
-        continue-on-error: true
-
+            --format compact
   # ==========================================================================
   # Validate Canonical Examples
   # ==========================================================================

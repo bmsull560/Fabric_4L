@@ -40,10 +40,14 @@ module.exports = {
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
 
     // Fabric Contract overrides for frontend
-    "fabric-contracts/no-raw-tenant-query": "off",
-    "fabric-contracts/no-explicit-db-connect": "off",
-    "fabric-contracts/no-inline-middleware": "off",
-    "fabric-contracts/no-inline-tool-definition": "off",
+    // Phase 1: Enable as warnings (migrate to "error" after fixes)
+    "fabric-contracts/no-raw-tenant-query": "warn",
+    "fabric-contracts/no-explicit-db-connect": "warn",
+    "fabric-contracts/no-inline-middleware": "warn",
+    "fabric-contracts/no-inline-tool-definition": "warn",
+    // Phase 2: Already enforced
+    "fabric-contracts/no-imperative-navigation": "error",
+    "fabric-contracts/no-url-concatenation": "error",
   },
   ignorePatterns: [
     "dist/**",

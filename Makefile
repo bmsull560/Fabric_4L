@@ -27,7 +27,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests security-smoke check-deprecations ## Run all checks (lint + typecheck + tests + contracts + security + deprecations) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts) — required before PR
 	@echo "✅  All checks passed"
 
 verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
@@ -305,6 +305,11 @@ validate-env-contract: ## CI gate — validate env contract + schema
 
 check-deprecations: ## CI gate — check for overdue deprecations
 	$(PYTHON) scripts/ci/check_deprecations.py
+
+check-tool-contracts: ## CI gate — validate tool error structure (CONTRACT.md §2.4)
+	@echo "→ Checking tool contracts in Layer 4..."
+	$(PYTHON) scripts/ci/check_tool_contracts.py value-fabric/layer4-agents/src/tools/
+	@echo "✅ Tool contract check passed"
 
 # ─── Production Readiness Gates ─────────────────────────────────────────────
 

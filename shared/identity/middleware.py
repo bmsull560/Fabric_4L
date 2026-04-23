@@ -528,6 +528,128 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         return None
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Context Extraction and Validation Functions
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def extract_context_from_jwt(jwt_payload: dict) -> RequestContext:
+    """Extract request context from JWT payload.
+    
+    Args:
+        jwt_payload: Decoded JWT payload
+    
+    Returns:
+        RequestContext with tenant_id, user_id, and permissions
+    
+    Raises:
+        ValueError: If tenant_id is missing or invalid
+    """
+    # Validate tenant_id presence
+    tenant_id_str = jwt_payload.get("tenant_id")
+    if not tenant_id_str:
+        raise ValueError("tenant_id is required in JWT payload")
+    
+    # Validate tenant_id format
+    try:
+        tenant_id = UUID(tenant_id_str)
+    except (ValueError, AttributeError):
+        raise ValueError(f"Invalid UUID format for tenant_id: {tenant_id_str}")
+    
+    # Validate user_id (sub claim)
+    user_id_str = jwt_payload.get("sub")
+    if not user_id_str:
+        raise ValueError("sub (user_id) is required in JWT payload")
+    
+    # Validate user_id format and check for XSS
+    if "<" in user_id_str or ">" in user_id_str or "script" in user_id_str.lower():
+        raise ValueError(f"Invalid characters in user_id: {user_id_str}")
+    
+    try:
+        user_id = UUID(user_id_str)
+    except (ValueError, AttributeError):
+        raise ValueError(f"Invalid UUID format for user_id: {user_id_str}")
+    
+    # Extract and validate permissions
+    permissions = jwt_payload.get("permissions", [])
+    if len(permissions) > 1000:
+        raise ValueError(f"Too many permissions: {len(permissions)} (max 1000)")
+    
+    return RequestContext(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        permissions=frozenset(permissions)
+    )
+
+
+async def extract_context_from_api_key(api_key: str) -> RequestContext:
+    """Extract request context from API key.
+    
+    Args:
+        api_key: API key string
+    
+    Returns:
+        RequestContext with tenant_id and permissions
+    
+    Raises:
+        HTTPException: If API key is invalid or revoked
+    """
+    from fastapi import HTTPException, status
+    
+    # Look up API key
+    key_data = await lookup_api_key(api_key)
+    
+    if key_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or revoked API key"
+        )
+    
+    return RequestContext(
+        tenant_id=key_data["tenant_id"],
+        permissions=frozenset(key_data.get("permissions", []))
+    )
+
+
+async def lookup_api_key(api_key: str) -> dict | None:
+    """Look up API key in database.
+    
+    Args:
+        api_key: API key string
+    
+    Returns:
+        API key data with tenant_id and permissions, or None if not found
+    """
+    # TODO: Implement actual database lookup
+    # For now, return None (key not found)
+    return None
+
+
+def validate_context_consistency(jwt_context: RequestContext, header_tenant_id: str | None) -> None:
+    """Validate that tenant_id in JWT matches header (if provided).
+    
+    Args:
+        jwt_context: Context extracted from JWT
+        header_tenant_id: Tenant ID from X-Tenant-ID header (optional)
+    
+    Raises:
+        ValueError: If tenant_id values conflict
+    """
+    if header_tenant_id is None:
+        return
+    
+    try:
+        header_tenant_uuid = UUID(header_tenant_id)
+    except ValueError:
+        raise ValueError(f"Invalid UUID format in X-Tenant-ID header: {header_tenant_id}")
+    
+    if jwt_context.tenant_id != header_tenant_uuid:
+        raise ValueError(
+            f"Conflicting tenant_id: JWT has {jwt_context.tenant_id}, "
+            f"header has {header_tenant_uuid}"
+        )
+
+
 # Task 108: Export rate limiting internals for testing
 __all__ = [
     "GovernanceMiddleware",
@@ -537,4 +659,8 @@ __all__ = [
     "_tenant_rate_limit_buckets",
     "_check_redis_rate_limit",
     "MultiWorkerRateLimitError",
+    "extract_context_from_jwt",
+    "extract_context_from_api_key",
+    "validate_context_consistency",
+    "lookup_api_key",
 ]

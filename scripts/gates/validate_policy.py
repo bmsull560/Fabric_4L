@@ -18,22 +18,23 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 
-# Schema for valid policy structure
+# Schema for valid policy structure (matches prod-gates.policy.yaml)
 POLICY_SCHEMA = {
-    "required_top_level": ["version", "gates", "profiles"],
-    "required_gate_fields": ["enabled", "description", "thresholds"],
-    "required_thresholds": ["pr-fast", "mainline-full", "release-candidate"],
+    "required_top_level": ["version", "gates", "profiles", "enforcement", "severity"],
+    "required_gate_fields": ["severity", "owner", "checks", "artifacts"],
+    "valid_severities": ["blocker", "critical", "warning"],
     "valid_profiles": ["pr-fast", "mainline-full", "release-candidate"],
+    "valid_comparators": ["eq", "gte", "lte", "gt", "lt"],
     "known_gates": [
-        "contract",
-        "arch",
-        "security",
-        "chaos",
-        "smoke",
-        "agent",
-        "state",
-        "obs",
-        "release-policy",
+        "arch_conformance",
+        "security_isolation",
+        "dependency_chaos",
+        "cross_domain_smoke",
+        "agent_provenance",
+        "state_consistency",
+        "observability_readiness",
+        "release_policy",
+        "contract_drift",  # Implicit via contract-compliance workflow
     ],
 }
 
@@ -115,12 +116,29 @@ class PolicyValidator:
                 if field not in gate_config:
                     self.errors.append(f"Gate '{gate_name}' missing required field: '{field}'")
 
-            # Validate thresholds if present
-            thresholds = gate_config.get("thresholds", {})
-            if thresholds:
-                for profile in POLICY_SCHEMA["required_thresholds"]:
-                    if profile not in thresholds:
-                        self.errors.append(f"Gate '{gate_name}' missing threshold for profile: '{profile}'")
+            # Validate severity
+            severity = gate_config.get("severity", "")
+            if severity and severity not in POLICY_SCHEMA["valid_severities"]:
+                self.errors.append(f"Gate '{gate_name}' has invalid severity: '{severity}'")
+
+            # Validate checks structure
+            checks = gate_config.get("checks", {})
+            if checks:
+                for check_name, check_config in checks.items():
+                    if not isinstance(check_config, dict):
+                        self.errors.append(f"Gate '{gate_name}' check '{check_name}' must be a dict")
+                        continue
+                    if "threshold" not in check_config:
+                        self.errors.append(f"Gate '{gate_name}' check '{check_name}' missing 'threshold'")
+                    if "comparator" not in check_config:
+                        self.errors.append(f"Gate '{gate_name}' check '{check_name}' missing 'comparator'")
+                    elif check_config.get("comparator") not in POLICY_SCHEMA["valid_comparators"]:
+                        self.errors.append(f"Gate '{gate_name}' check '{check_name}' has invalid comparator")
+
+            # Validate artifacts exist
+            artifacts = gate_config.get("artifacts", [])
+            if not artifacts:
+                self.warnings.append(f"Gate '{gate_name}' has no artifacts defined")
 
     def _validate_profiles(self, policy: Dict[str, Any]) -> None:
         """Validate profiles section."""

@@ -85,8 +85,17 @@ def workload_documents(load_yaml_documents: dict) -> list[tuple[str, dict]]:
 @pytest.fixture(scope="session")
 def kustomize_build_dev(repo_root: Path, tmp_path_factory: pytest.TempPathFactory) -> str:
     """Build dev overlay and return the rendered YAML."""
-    tmp_path = tmp_path_factory.mktemp("k8s")
-    output_file = tmp_path / "dev.yaml"
+    # Check if kustomize is available
+    try:
+        result = subprocess.run(
+            ["kustomize", "version"],
+            capture_output=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            pytest.skip("kustomize not available")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pytest.skip("kustomize not available")
     
     result = subprocess.run(
         ["kustomize", "build", str(repo_root / "k8s" / "overlays" / "dev")],
@@ -96,7 +105,7 @@ def kustomize_build_dev(repo_root: Path, tmp_path_factory: pytest.TempPathFactor
     )
     
     if result.returncode != 0:
-        pytest.skip(f"kustomize not available or build failed: {result.stderr}")
+        pytest.skip(f"kustomize build failed: {result.stderr}")
     
     return result.stdout
 

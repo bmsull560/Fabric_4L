@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import contextvars
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 from uuid import UUID
+
+# Context variable for async-safe context storage
+_current_context: contextvars.ContextVar[RequestContext | None] = contextvars.ContextVar(
+    "request_context", default=None
+)
 
 # P1: Tenant isolation tier constants
 ISOLATION_TIER_SHARED = "shared"
@@ -19,7 +25,7 @@ AUTH_SOURCE_SERVICE_ACCOUNT = "service_account"
 AUTH_SOURCE_UNKNOWN = "unknown"
 
 
-@dataclass
+@dataclass(frozen=True)
 class RequestContext:
     """Context for the current request including tenant and user info.
 
@@ -134,3 +140,31 @@ class RequestContext:
             "service_account_id": self._uuid_to_str(self.service_account_id),
             "service_account_scopes": self.service_account_scopes,
         }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Context Management Functions
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def get_current_context() -> RequestContext | None:
+    """Get the current request context from async context storage.
+    
+    Returns:
+        Current RequestContext or None if not set
+    """
+    return _current_context.get()
+
+
+def set_current_context(context: RequestContext) -> None:
+    """Set the current request context in async context storage.
+    
+    Args:
+        context: RequestContext to set
+    """
+    _current_context.set(context)
+
+
+def clear_current_context() -> None:
+    """Clear the current request context from async context storage."""
+    _current_context.set(None)

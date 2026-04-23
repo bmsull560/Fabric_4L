@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
 
+from shared.identity.context import RequestContext
 from ..models.tool_schemas import ToolCategory, ToolSchema
 
 
@@ -412,3 +413,94 @@ def tool(
         return DynamicTool
 
     return decorator
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Helper Methods for Testing and Discovery
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def get_all_tools(registry: "ToolRegistry") -> dict[str, Callable]:
+    """Get all registered tools.
+    
+    Args:
+        registry: ToolRegistry instance
+    
+    Returns:
+        Dictionary mapping tool names to tool functions
+    """
+    tools = {}
+    for tool_class in registry._tools.values():
+        # Create instance and get execute method
+        tool_instance = tool_class()
+        tools[tool_class.name] = tool_instance.execute
+    return tools
+
+
+def get_tool_metadata(registry: "ToolRegistry", tool_name: str) -> dict:
+    """Get metadata for a tool.
+    
+    Args:
+        registry: ToolRegistry instance
+        tool_name: Name of tool
+    
+    Returns:
+        Tool metadata including tenant_scoped flag
+    """
+    if tool_name not in registry._tools:
+        raise ToolNotFoundError(f"Tool {tool_name} not found")
+    
+    tool_class = registry._tools[tool_name]
+    
+    # Check if tool is tenant-scoped (has tenant_id parameter)
+    import inspect
+    sig = inspect.signature(tool_class().execute)
+    tenant_scoped = "tenant_id" in sig.parameters
+    
+    return {
+        "name": tool_class.name,
+        "category": tool_class.category,
+        "description": tool_class.description,
+        "tenant_scoped": tenant_scoped,
+    }
+
+
+def get_available_tools(registry: "ToolRegistry", context: RequestContext) -> list[str]:
+    """Get tools available to user based on permissions.
+    
+    Args:
+        registry: ToolRegistry instance
+        context: Request context with permissions
+    
+    Returns:
+        List of tool names user can access
+    """
+    available = []
+    
+    for tool_name, tool_class in registry._tools.items():
+        metadata = get_tool_metadata(registry, tool_name)
+        
+        # Admin-only tools
+        admin_tools = {"delete_tenant", "suspend_tenant", "grant_permission"}
+        if tool_name in admin_tools:
+            if "admin" in context.permissions:
+                available.append(tool_name)
+            continue
+        
+        # Write tools
+        write_tools = {"update_entity", "delete_entity"}
+        if tool_name in write_tools:
+            if "write" in context.permissions or "admin" in context.permissions:
+                available.append(tool_name)
+            continue
+        
+        # Read tools (available to all authenticated users)
+        available.append(tool_name)
+    
+    return available
+
+
+# Monkey-patch methods onto ToolRegistry class
+ToolRegistry.get_all_tools = lambda self: get_all_tools(self)
+ToolRegistry.get_tool_metadata = lambda self, name: get_tool_metadata(self, name)
+ToolRegistry.get_available_tools = lambda self, context: get_available_tools(self, context)

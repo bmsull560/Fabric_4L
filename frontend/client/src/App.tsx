@@ -711,21 +711,6 @@ function Router() {
           <WorkspaceContextRedirect workspace="intelligence" />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/workflow/ai-model">
-        <Navigate to="/accounts" />
-      </Route>
-      <Route path="/workflow/driver-tree">
-        <Navigate to="/accounts" />
-      </Route>
-      <Route path="/workflow/evidence">
-        <Navigate to="/accounts" />
-      </Route>
-      <Route path="/workflow/calculator">
-        <Navigate to="/accounts" />
-      </Route>
-      <Route path="/workflow/value-case">
-        <Navigate to="/accounts" />
-      </Route>
 
       {/* ═══════════════════════════════════════════════════════════════
           LEGACY REDIRECTS — Backward Compatibility

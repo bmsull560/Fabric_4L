@@ -59,7 +59,7 @@ from ..tenants.api import (
 )
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
-from .routes import accounts, agent_stream, analysis, tools, workflows
+from .routes import accounts, agent_stream, analysis, signals, tools, workflows
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
@@ -341,6 +341,7 @@ app.include_router(workflows.router, prefix="/v1", tags=["workflows"])
 app.include_router(tools.router, prefix="/v1", tags=["tools"])
 app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
 app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
+app.include_router(signals.router, prefix="/v1", tags=["signals"])
 app.include_router(agent_stream.router, prefix="/v1", tags=["agent-stream"])
 app.include_router(crm_webhooks_router, prefix="/v1")
 app.include_router(checkpoint_router, prefix="/v1", tags=["checkpoints"])
