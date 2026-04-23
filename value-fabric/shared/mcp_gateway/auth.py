@@ -20,7 +20,7 @@ from typing import Any
 
 import httpx
 
-from .types import (
+from .mcp_types import (
     AuthenticationError,
     OAuthClientConfig,
     PKCEChallenge,

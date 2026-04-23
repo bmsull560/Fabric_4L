@@ -3,10 +3,11 @@
 import json
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 from shared.audit import AuditAction, AuditEmitter, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import get_optional_context
@@ -15,6 +16,8 @@ from ...config.settings import settings
 from ...database import get_db
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
+from ...services.account_service import AccountService
+from ...services.business_case_service import BusinessCaseService
 from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
 
@@ -68,7 +71,7 @@ class WhitespaceAnalysisResponse(BaseModel):
 class BusinessCaseRequest(BaseModel):
     """Business case generation request."""
 
-    prospect_id: str = Field(..., description="Prospect identifier")
+    account_id: UUID = Field(..., description="Account UUID identifier")
     opportunity_id: str | None = None
     sections: list[str] = Field(
         default_factory=lambda: [
@@ -141,7 +144,7 @@ async def quick_roi_analysis(
             company_size=request.company_size,
         )
 
-        result = await executor.run(
+        result = await executor.execute_workflow(
             workflow_type="roi_calculator", input_data=input_data.model_dump()
         )
 
@@ -180,7 +183,7 @@ async def quick_whitespace_analysis(
             analysis_depth=request.analysis_depth,
         )
 
-        result = await executor.run(
+        result = await executor.execute_workflow(
             workflow_type="whitespace_analysis", input_data=input_data.model_dump()
         )
 
@@ -205,6 +208,7 @@ async def generate_business_case(
     request: BusinessCaseRequest,
     background_tasks: BackgroundTasks,
     executor: WorkflowExecutor = Depends(get_executor),
+    db: AsyncSession = Depends(get_db),
 ) -> BusinessCaseResponse:
     """Generate a business case document.
 
@@ -213,26 +217,49 @@ async def generate_business_case(
     Example:
         POST /v1/cases
         {
-            "prospect_id": "prospect-001",
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
             "sections": ["executive_summary", "roi_analysis"],
             "output_format": "pdf"
         }
     """
     try:
+        account_service = AccountService(db)
+        account = await account_service.get_account(request.account_id)
+        if not account:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Account not found: {request.account_id}",
+            )
+
+        custom_inputs = dict(request.custom_inputs)
+        custom_inputs["provider_record_id"] = account.provider_record_id
+
         input_data = BusinessCaseInputData(
-            prospect_id=request.prospect_id,
+            account_id=request.account_id,
             opportunity_id=request.opportunity_id,
             sections_requested=request.sections,
             output_format=request.output_format,
-            custom_inputs=request.custom_inputs,
+            custom_inputs=custom_inputs,
         )
 
-        result = await executor.run(
+        result = await executor.execute_workflow(
             workflow_type="business_case", input_data=input_data.model_dump()
         )
 
         assemble_data = result.output_data.get("assemble_document", {})
         truth_gate = result.output_data.get("verify_truth_requirements", {})
+        case_metadata = dict(assemble_data.get("case_metadata", {}))
+        case_metadata["account_id"] = str(request.account_id)
+
+        business_case_service = BusinessCaseService(db)
+        await business_case_service.upsert_case_record(
+            case_id=result.workflow_id,
+            workflow_id=result.workflow_id,
+            account_id=request.account_id,
+            opportunity_id=request.opportunity_id,
+            status=result.status.value,
+            document_url=assemble_data.get("document_url"),
+        )
 
         return BusinessCaseResponse(
             case_id=result.workflow_id,
@@ -242,7 +269,7 @@ async def generate_business_case(
             file_size_bytes=assemble_data.get("file_size_bytes", 0),
             truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
             remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
-            case_metadata=assemble_data.get("case_metadata", {}),
+            case_metadata=case_metadata,
         )
 
     except Exception as e:

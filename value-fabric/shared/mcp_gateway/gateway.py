@@ -29,7 +29,7 @@ from .auth import OAuthHandler
 from .manifest import ManifestVerifier
 from .registry import ToolRegistry
 from .token_exchange import TokenExchanger
-from .types import (
+from .mcp_types import (
     AuthenticationError,
     DelegatedToken,
     GatewayError,

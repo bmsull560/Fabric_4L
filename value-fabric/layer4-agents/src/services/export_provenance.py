@@ -156,11 +156,19 @@ def build_export_provenance_manifest(
     actor_context: RequestContext | None,
     export_id: str,
 ) -> dict[str, Any]:
-    """Build provenance manifest JSON for case exports."""
+    """Build provenance manifest JSON for case exports.
+
+    Resolved merge preserving both:
+    - richer case snapshot / version extraction
+    - operational model/tool version metadata
+    - legacy compatibility fields
+    """
     output = workflow_result.get("output", {})
     metadata = workflow_result.get("metadata", {})
+    assemble_output = output.get("assemble_document", {})
+
     case_metadata = _first_non_empty(
-        output.get("assemble_document", {}).get("case_metadata"),
+        assemble_output.get("case_metadata"),
         output.get("case_metadata"),
         metadata.get("case_metadata"),
     ) or {}
@@ -177,6 +185,15 @@ def build_export_provenance_manifest(
 
     truth_ids = _collect_truth_ids(output, metadata, case_snapshot)
     source_pointers = _collect_source_pointers(output, metadata, case_snapshot)
+
+    threshold_decisions = _sort_primitive_list(
+        _as_list(
+            _first_non_empty(
+                case_snapshot.get("threshold_decisions"),
+                case_metadata.get("threshold_decisions"),
+            )
+        )
+    )
 
     assumptions = _sort_primitive_list(
         _as_list(
@@ -235,6 +252,18 @@ def build_export_provenance_manifest(
         "workflow_id": workflow_id,
         "truth_ids": truth_ids,
         "source_pointers": source_pointers,
+        # Legacy compatibility aliases for downstream readers expecting these names.
+        "truth_object_ids": truth_ids,
+        "source_references": source_pointers,
+        "threshold_decisions": threshold_decisions,
+        "model_versions": {
+            "openai_model": settings.openai_model,
+            "anthropic_model": settings.anthropic_model,
+            "layer4_app_version": settings.app_version,
+        },
+        "tool_versions": {
+            "export_document": "1.1.0",
+        },
         "assumptions": assumptions,
         "approvals": approvals,
         "metric_formulas": metric_formulas,
@@ -242,7 +271,8 @@ def build_export_provenance_manifest(
         "case_snapshot": {
             "version": snapshot_version,
             "version_hash": snapshot_hash,
-            "persisted_snapshot_id": case_snapshot.get("id") or case_snapshot.get("snapshot_id"),
+            "persisted_snapshot_id": case_snapshot.get("id")
+            or case_snapshot.get("snapshot_id"),
         },
     }
 
@@ -253,7 +283,9 @@ def build_export_provenance_manifest(
         claims=narrative_claims,
         metric_formulas=metric_formulas,
     )
-    deterministic_snapshot["deterministic_fingerprint"] = _hash_canonical(deterministic_snapshot)
+    deterministic_snapshot["deterministic_fingerprint"] = _hash_canonical(
+        deterministic_snapshot
+    )
 
     return {
         "provenance_schema_version": PROVENANCE_SCHEMA_VERSION,
@@ -289,3 +321,4 @@ def build_export_provenance_manifest(
             },
         },
     }
+

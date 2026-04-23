@@ -284,6 +284,40 @@ class Layer5GroundTruthClient:
             logger.warning("Layer 5 list_truths failed: %s", exc)
             return {"error": str(exc), "items": [], "total": 0}
 
+    async def validate_truth(
+        self,
+        truth_id: str,
+        action: str,
+        actor: str,
+        actor_type: str = "system",
+        organization_id: str | None = None,
+        notes: str | None = None,
+    ) -> dict[str, Any]:
+        """Apply a validation transition to a TruthObject."""
+        params: dict[str, Any] = {}
+        if organization_id:
+            params["organization_id"] = str(organization_id)
+
+        payload: dict[str, Any] = {
+            "action": action,
+            "actor": actor,
+            "actor_type": actor_type,
+        }
+        if notes:
+            payload["notes"] = notes
+
+        try:
+            resp = await self._client.post(
+                f"/api/v1/truths/{truth_id}/validate",
+                json=payload,
+                params=params,
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as exc:
+            logger.warning("Layer 5 validate_truth failed for %s: %s", truth_id, exc)
+            return {"error": str(exc), "truth_object_id": truth_id}
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------

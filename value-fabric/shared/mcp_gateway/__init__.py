@@ -21,7 +21,7 @@ from .auth import OAuthHandler, PKCEVerifier
 from .token_exchange import TokenExchanger
 from .manifest import ManifestVerifier
 from .registry import ToolRegistry
-from .types import (
+from .mcp_types import (
     ToolRequest,
     ToolResponse,
     ToolManifest,
