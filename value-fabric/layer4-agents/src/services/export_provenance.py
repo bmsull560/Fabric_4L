@@ -20,9 +20,12 @@ def build_export_provenance_manifest(
     """Build provenance manifest JSON for case exports."""
     output = workflow_result.get("output", {})
     metadata = workflow_result.get("metadata", {})
+    assemble_output = output.get("assemble_document", {})
+    case_metadata = assemble_output.get("case_metadata", {})
 
-    truth_object_ids = output.get("truth_object_ids", []) or metadata.get("truth_object_ids", [])
-    source_refs = output.get("source_references", []) or metadata.get("source_references", [])
+    truth_object_ids = case_metadata.get("truth_object_ids", [])
+    source_refs = case_metadata.get("claim_traceability", [])
+    threshold_decisions = case_metadata.get("threshold_decisions", [])
 
     workflow_id = (
         workflow_result.get("workflow_id")
@@ -38,6 +41,7 @@ def build_export_provenance_manifest(
         "workflow_id": workflow_id,
         "truth_object_ids": truth_object_ids,
         "source_references": source_refs,
+        "threshold_decisions": threshold_decisions,
         "model_versions": {
             "openai_model": settings.openai_model,
             "anthropic_model": settings.anthropic_model,

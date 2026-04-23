@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from typing import Any
 
 try:
@@ -519,6 +520,10 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         # block document delivery.
         sync_result = await self._sync_ground_truths_to_kg(state)
         assemble_result["ground_truth_sync"] = sync_result
+        claim_promotion = await self._promote_case_claims_to_truth_objects(
+            state=state,
+            sections_data=sections_data,
+        )
         assemble_result["case_metadata"] = {
             "truth_gate": {
                 "passed": gate_result.get("passed", True),
@@ -526,9 +531,206 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 "remediation_items": gate_result.get("remediation_items", []),
             },
             "truth_references": gate_result.get("truth_references", []),
+            "truth_object_ids": claim_promotion.get("truth_object_ids", []),
+            "claim_traceability": claim_promotion.get("claim_traceability", []),
+            "threshold_decisions": claim_promotion.get("threshold_decisions", []),
         }
+        assemble_result["truth_object_ids"] = claim_promotion.get("truth_object_ids", [])
+        assemble_result["claim_traceability"] = claim_promotion.get("claim_traceability", [])
+        assemble_result["threshold_decisions"] = claim_promotion.get("threshold_decisions", [])
 
         return assemble_result
+
+    def _extract_candidate_claims(
+        self,
+        sections_data: list[dict[str, Any]],
+        roi_results: dict[str, Any],
+        source_refs: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Deterministically extract candidate claims and provenance pointers."""
+        candidates: list[dict[str, Any]] = []
+        for section_index, section in enumerate(sections_data):
+            title = section.get("title", "Section")
+            content = section.get("content", "") or ""
+            for sentence in re.split(r"(?<=[.!?])\s+", content):
+                sentence_clean = sentence.strip()
+                if len(sentence_clean) < 20 or not re.search(r"(\d|%|\$)", sentence_clean):
+                    continue
+                start = content.find(sentence_clean)
+                end = start + len(sentence_clean) if start >= 0 else -1
+                candidates.append(
+                    {
+                        "claim": sentence_clean,
+                        "claim_type": "metric",
+                        "confidence": 0.62,
+                        "evidence_count": len(source_refs),
+                        "sources": source_refs,
+                        "provenance": {
+                            "section_title": title,
+                            "section_index": section_index,
+                            "content_span": {"start": max(start, 0), "end": max(end, 0)},
+                            "source_ids": [str(ref.get("id")) for ref in source_refs if ref.get("id")],
+                            "source_uris": [ref.get("uri") for ref in source_refs if ref.get("uri")],
+                        },
+                    }
+                )
+
+        roi_metric_map = {
+            "simple_roi_percent": ("roi_assumption", "Projected simple ROI is {value:.2f}%."),
+            "payback_period_months": ("metric", "Projected payback period is {value:.2f} months."),
+            "three_year_npv": ("outcome", "Projected 3-year NPV is ${value:,.2f}."),
+        }
+        for metric_key, (claim_type, template) in roi_metric_map.items():
+            value = roi_results.get(metric_key)
+            if value is None:
+                continue
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError):
+                continue
+            candidates.append(
+                {
+                    "claim": template.format(value=numeric_value),
+                    "claim_type": claim_type,
+                    "confidence": 0.8,
+                    "evidence_count": len(source_refs) + 1,
+                    "sources": source_refs,
+                    "provenance": {
+                        "roi_metric_key": metric_key,
+                        "roi_metric_value": numeric_value,
+                        "source_ids": [str(ref.get("id")) for ref in source_refs if ref.get("id")],
+                        "source_uris": [ref.get("uri") for ref in source_refs if ref.get("uri")],
+                    },
+                }
+            )
+
+        return candidates
+
+    async def _promote_case_claims_to_truth_objects(
+        self,
+        state: BusinessCaseAgentState,
+        sections_data: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Create/promote deterministic claims to Layer 5 and persist traceability."""
+        if not state.case_input:
+            return {"truth_object_ids": [], "claim_traceability": [], "threshold_decisions": []}
+
+        thresholds = state.case_input.custom_inputs.get("claim_promotion_thresholds", {})
+        min_confidence = float(thresholds.get("min_confidence", 0.75))
+        min_evidence = int(thresholds.get("min_evidence_sources", 1))
+        organization_id = self._resolve_organization_id(state)
+
+        source_refs = state.case_input.custom_inputs.get("source_references", [])
+        roi_results = state.output_data.get("run_roi", {}).get("roi_results", {})
+        candidates = self._extract_candidate_claims(sections_data, roi_results, source_refs)
+
+        service_token: str | None = os.getenv("LAYER5_SERVICE_TOKEN")
+        layer5_url: str | None = os.getenv(
+            "LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005"
+        )
+        client = Layer5GroundTruthClient(
+            base_url=layer5_url,
+            service_token=service_token,
+            tenant_id=organization_id if not service_token else None,
+        )
+
+        truth_object_ids: list[str] = []
+        claim_traceability: list[dict[str, Any]] = []
+        threshold_decisions: list[dict[str, Any]] = []
+        actor = "layer4-business-case-workflow"
+
+        try:
+            for candidate in candidates:
+                confidence = float(candidate.get("confidence", 0.0))
+                evidence_count = int(candidate.get("evidence_count", 0))
+                claim_text = str(candidate.get("claim", "")).strip()
+
+                eligible = confidence >= min_confidence and evidence_count >= min_evidence
+                decision = {
+                    "claim": claim_text,
+                    "confidence": confidence,
+                    "evidence_count": evidence_count,
+                    "min_confidence": min_confidence,
+                    "min_evidence_sources": min_evidence,
+                    "decision": "promoted" if eligible else "skipped",
+                    "reason": (
+                        "meets confidence and evidence thresholds"
+                        if eligible
+                        else "failed confidence/evidence threshold"
+                    ),
+                }
+
+                truth_id: str | None = None
+                if eligible and claim_text:
+                    existing_truths = await client.list_truths(
+                        organization_id=organization_id,
+                        claim_type=candidate.get("claim_type"),
+                        limit=100,
+                        offset=0,
+                    )
+                    existing_items = existing_truths.get("items", []) if isinstance(existing_truths, dict) else []
+                    existing_match = next(
+                        (
+                            item for item in existing_items
+                            if str(item.get("claim", "")).strip().lower() == claim_text.lower()
+                        ),
+                        None,
+                    )
+
+                    if existing_match:
+                        truth_id = str(existing_match.get("id"))
+                        decision["reason"] = "already exists in Layer 5"
+                        decision["decision"] = "existing"
+                    else:
+                        created = await client.submit_truth(
+                            claim=claim_text,
+                            claim_type=str(candidate.get("claim_type", "metric")),
+                            confidence=confidence,
+                            organization_id=organization_id,
+                            applies_to={"opportunity_id": state.case_input.opportunity_id},
+                            sources=candidate.get("sources", []),
+                            raw_extraction_data={"provenance": candidate.get("provenance", {})},
+                        )
+                        truth_id = str(created.get("id")) if isinstance(created, dict) and created.get("id") else None
+                        if truth_id:
+                            await client.validate_truth(
+                                truth_id=truth_id,
+                                action="advance_supported",
+                                actor=actor,
+                                actor_type="system",
+                                organization_id=organization_id,
+                                notes="Deterministic promotion from business case output",
+                            )
+                            if evidence_count >= 2:
+                                await client.validate_truth(
+                                    truth_id=truth_id,
+                                    action="advance_corroborated",
+                                    actor=actor,
+                                    actor_type="system",
+                                    organization_id=organization_id,
+                                    notes="Corroboration threshold met from case provenance",
+                                )
+
+                if truth_id:
+                    truth_object_ids.append(truth_id)
+
+                claim_traceability.append(
+                    {
+                        "claim": claim_text,
+                        "truth_object_id": truth_id,
+                        "provenance": candidate.get("provenance", {}),
+                        "sources": candidate.get("sources", []),
+                    }
+                )
+                threshold_decisions.append(decision)
+
+            return {
+                "truth_object_ids": sorted(set(truth_object_ids)),
+                "claim_traceability": claim_traceability,
+                "threshold_decisions": threshold_decisions,
+            }
+        finally:
+            await client.close()
 
     def _resolve_organization_id(self, state: BusinessCaseAgentState) -> str | None:
         """Resolve tenant/organization ID from state or environment."""
