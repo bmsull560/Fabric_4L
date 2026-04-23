@@ -208,27 +208,7 @@ async def export_document_tool(
     request: DocumentExportRequest,
     registry: ToolRegistry = Depends(get_tool_registry),
     workflow_executor: WorkflowExecutor = Depends(get_executor),
-<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/tools.py
-<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/tools.py
-<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/tools.py
-<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/tools.py
-<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/tools.py
-    context: RequestContext | None = Depends(get_optional_context),
-=======
     context: RequestContext = Depends(require_authenticated),
->>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/tools.py
-=======
-    context: RequestContext = Depends(require_authenticated),
->>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/tools.py
-=======
-    context: RequestContext = Depends(require_authenticated),
->>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/tools.py
-=======
-    context: RequestContext = Depends(require_authenticated),
->>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/tools.py
-=======
-    context: RequestContext = Depends(require_authenticated),
->>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/tools.py
 ) -> DocumentExportResponse:
     """Export a business case to PDF using DocumentExportTool.
 

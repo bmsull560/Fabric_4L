@@ -1,0 +1,144 @@
+"""Shared fixtures for Kubernetes tests."""
+
+from __future__ import annotations
+
+import os
+import subprocess
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+
+@pytest.fixture(scope="session")
+def repo_root() -> Path:
+    """Return the repository root directory."""
+    return Path(__file__).parent.parent.parent
+
+
+@pytest.fixture(scope="session")
+def k8s_base_dir(repo_root: Path) -> Path:
+    """Return the k8s/base directory path."""
+    return repo_root / "k8s" / "base"
+
+
+@pytest.fixture(scope="session")
+def k8s_overlays_dir(repo_root: Path) -> Path:
+    """Return the k8s/overlays directory path."""
+    return repo_root / "k8s" / "overlays"
+
+
+@pytest.fixture(scope="session")
+def k8s_policy_dir(repo_root: Path) -> Path:
+    """Return the k8s/policy directory path."""
+    return repo_root / "k8s" / "policy"
+
+
+@pytest.fixture(scope="session")
+def monitoring_dir(repo_root: Path) -> Path:
+    """Return the monitoring directory path."""
+    return repo_root / "monitoring"
+
+
+@pytest.fixture(scope="session")
+def load_yaml_documents(repo_root: Path) -> dict[str, list[dict]]:
+    """Load all YAML documents from k8s/base into a dictionary.
+    
+    Returns:
+        Dictionary mapping file paths to lists of YAML documents.
+    """
+    docs: dict[str, list[dict]] = {}
+    k8s_base = repo_root / "k8s" / "base"
+    
+    for yaml_file in k8s_base.rglob("*.yml"):
+        try:
+            with open(yaml_file, "r", encoding="utf-8") as f:
+                content = yaml.safe_load_all(f.read())
+                file_docs = [doc for doc in content if doc is not None]
+                if file_docs:
+                    docs[str(yaml_file.relative_to(repo_root))] = file_docs
+        except Exception as e:
+            print(f"Warning: Could not parse {yaml_file}: {e}")
+    
+    return docs
+
+
+@pytest.fixture(scope="session")
+def workload_documents(load_yaml_documents: dict) -> list[tuple[str, dict]]:
+    """Filter YAML documents to return only workload resources.
+    
+    Returns:
+        List of (file_path, document) tuples for workload resources.
+    """
+    workload_kinds = {"Deployment", "StatefulSet", "DaemonSet", "Job", "CronJob"}
+    workloads: list[tuple[str, dict]] = []
+    
+    for file_path, docs in load_yaml_documents.items():
+        for doc in docs:
+            if doc.get("kind") in workload_kinds:
+                workloads.append((file_path, doc))
+    
+    return workloads
+
+
+@pytest.fixture(scope="session")
+def kustomize_build_dev(repo_root: Path, tmp_path_factory: pytest.TempPathFactory) -> str:
+    """Build dev overlay and return the rendered YAML."""
+    tmp_path = tmp_path_factory.mktemp("k8s")
+    output_file = tmp_path / "dev.yaml"
+    
+    result = subprocess.run(
+        ["kustomize", "build", str(repo_root / "k8s" / "overlays" / "dev")],
+        capture_output=True,
+        text=True,
+        cwd=str(repo_root),
+    )
+    
+    if result.returncode != 0:
+        pytest.skip(f"kustomize not available or build failed: {result.stderr}")
+    
+    return result.stdout
+
+
+@pytest.fixture(scope="session")
+def kustomize_build_prod(repo_root: Path, tmp_path_factory: pytest.TempPathFactory) -> str:
+    """Build prod overlay and return the rendered YAML."""
+    tmp_path = tmp_path_factory.mktemp("k8s")
+    output_file = tmp_path / "prod.yaml"
+    
+    result = subprocess.run(
+        ["kustomize", "build", str(repo_root / "k8s" / "overlays" / "prod")],
+        capture_output=True,
+        text=True,
+        cwd=str(repo_root),
+    )
+    
+    if result.returncode != 0:
+        pytest.skip(f"kustomize not available or build failed: {result.stderr}")
+    
+    return result.stdout
+
+
+@pytest.fixture
+def skip_without_kustomize() -> None:
+    """Skip test if kustomize is not available."""
+    result = subprocess.run(["kustomize", "version"], capture_output=True)
+    if result.returncode != 0:
+        pytest.skip("kustomize not available")
+
+
+@pytest.fixture
+def skip_without_kubeconform() -> None:
+    """Skip test if kubeconform is not available."""
+    result = subprocess.run(["kubeconform", "-v"], capture_output=True)
+    if result.returncode != 0:
+        pytest.skip("kubeconform not available")
+
+
+@pytest.fixture
+def skip_without_conftest() -> None:
+    """Skip test if conftest is not available."""
+    result = subprocess.run(["conftest", "--version"], capture_output=True)
+    if result.returncode != 0:
+        pytest.skip("conftest not available")

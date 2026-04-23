@@ -167,6 +167,11 @@ def build_export_provenance_manifest(
     metadata = workflow_result.get("metadata", {})
     assemble_output = output.get("assemble_document", {})
 
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/services/export_provenance.py
+=======
+    sdes_bundle = output.get("generate_sdes", {}) or metadata.get("sdes", {})
+
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/services/export_provenance.py
     case_metadata = _first_non_empty(
         assemble_output.get("case_metadata"),
         output.get("case_metadata"),
@@ -256,6 +261,17 @@ def build_export_provenance_manifest(
         "truth_object_ids": truth_ids,
         "source_references": source_pointers,
         "threshold_decisions": threshold_decisions,
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/services/export_provenance.py
+=======
+        "sdes_references": {
+            "canonical_case_id": sdes_bundle.get("canonical_case_id"),
+            "account_id": sdes_bundle.get("account_id"),
+            "signals": [item.get("id") for item in sdes_bundle.get("signals", [])],
+            "drivers": [item.get("id") for item in sdes_bundle.get("drivers", [])],
+            "evidence": [item.get("id") for item in sdes_bundle.get("evidence", [])],
+            "stakeholders": [item.get("id") for item in sdes_bundle.get("stakeholders", [])],
+        },
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/services/export_provenance.py
         "model_versions": {
             "openai_model": settings.openai_model,
             "anthropic_model": settings.anthropic_model,

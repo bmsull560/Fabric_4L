@@ -525,6 +525,11 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         # block document delivery.
         sync_result = await self._sync_ground_truths_to_kg(state)
         assemble_result["ground_truth_sync"] = sync_result
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/workflows/business_case.py
+=======
+        sdes_bundle = state.output_data.get("generate_sdes", {})
+
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/workflows/business_case.py
         claim_promotion = await self._promote_case_claims_to_truth_objects(
             state=state,
             sections_data=sections_data,
@@ -537,6 +542,17 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 "remediation_items": gate_result.get("remediation_items", []),
             },
             "truth_references": gate_result.get("truth_references", []),
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/workflows/business_case.py
+=======
+            "sdes_references": {
+                "canonical_case_id": sdes_bundle.get("canonical_case_id"),
+                "account_id": sdes_bundle.get("account_id"),
+                "signal_count": len(sdes_bundle.get("signals", [])),
+                "driver_count": len(sdes_bundle.get("drivers", [])),
+                "evidence_count": len(sdes_bundle.get("evidence", [])),
+                "stakeholder_count": len(sdes_bundle.get("stakeholders", [])),
+            },
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/workflows/business_case.py
             "truth_object_ids": claim_promotion.get("truth_object_ids", []),
             "claim_traceability": claim_promotion.get("claim_traceability", []),
             "threshold_decisions": claim_promotion.get("threshold_decisions", []),
