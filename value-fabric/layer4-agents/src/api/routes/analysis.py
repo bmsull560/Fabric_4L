@@ -1,12 +1,22 @@
 """Analysis API routes for quick ROI and whitespace calculations."""
 
+import json
+from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
+from shared.audit import AuditAction, AuditEmitter, emit_audit_event
+from shared.identity.context import RequestContext
+from shared.identity.dependencies import get_optional_context
 
+from ...config.settings import settings
+from ...database import get_db
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
+from ...services.export_provenance import build_export_provenance_manifest
+from ...services.export_storage import generate_download_url, upload_bytes
 
 router = APIRouter()
 
@@ -271,41 +281,178 @@ async def get_business_case(
         case_metadata=assemble_data.get("case_metadata", {}),
     )
 
-
 @router.get("/cases/{case_id}/export")
 async def export_business_case(
-    case_id: str, format: str = "pdf", executor: WorkflowExecutor = Depends(get_executor)
+    case_id: str,
+    format: str = "pdf",
+    executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext | None = Depends(get_optional_context),
 ) -> dict[str, Any]:
-    """Export a generated business case."""
-    result = await executor.get_result(case_id)
+    """Export a generated business case.
 
+    This version resolves the merge conflict by preserving both:
+    1. Truth-gating / blocking behavior
+    2. Provenance manifest generation, storage upload, and audit events
+    """
+    if not settings.export_storage_endpoint:
+        raise HTTPException(status_code=503, detail="Export storage endpoint is not configured")
+
+    result = await executor.get_result(case_id)
     if not result:
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
 
-    assemble_data = result.get("output", {}).get("assemble_document", {})
-    truth_gate = result.get("output", {}).get("verify_truth_requirements", {})
+    output = result.get("output", {})
+    assemble_data = output.get("assemble_document", {})
+    truth_gate = output.get("verify_truth_requirements", {})
+
     blocked = bool(assemble_data.get("blocked")) or not truth_gate.get("passed", True)
-    truth_references = assemble_data.get("truth_references", truth_gate.get("truth_references", []))
-    remediation_items = assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])
+    truth_references = assemble_data.get(
+        "truth_references", truth_gate.get("truth_references", [])
     )
+    remediation_items = assemble_data.get(
+        "remediation_items", truth_gate.get("remediation_items", [])
+    )
+
+    document_bytes = assemble_data.get("document_bytes")
+    export_id = str(uuid4())
+
+    if blocked:
+        return {
+            "case_id": case_id,
+            "export_id": export_id,
+            "format": format,
+            "document_url": assemble_data.get("document_url"),
+            "download_ready": False,
+            "blocked": True,
+            "remediation_items": remediation_items,
+            "truth_references": truth_references,
+            "manifest": {
+                "case_id": case_id,
+                "format": format,
+                "blocked": True,
+                "truth_references": truth_references,
+                "remediation_items": remediation_items,
+                "truth_gate": {
+                    "passed": truth_gate.get("passed", False),
+                    "requirements": truth_gate.get("requirements", []),
+                },
+            },
+        }
+
+    if not document_bytes:
+        raise HTTPException(status_code=409, detail="Business case document bytes unavailable")
+
+    if not isinstance(document_bytes, bytes):
+        document_bytes = bytes(document_bytes)
+
+    workflow_id = (
+        result.get("workflow_id")
+        or result.get("metadata", {}).get("workflow_id")
+        or case_id
+    )
+    filename = f"business_case_{case_id}.{format}"
+    manifest_filename = f"business_case_{case_id}.provenance.json"
+
+    manifest = build_export_provenance_manifest(
+        case_id=case_id,
+        workflow_result=result,
+        actor_context=context,
+        export_id=export_id,
+    )
+    manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
+
+    base_prefix = f"exports/{case_id}/{export_id}"
+    object_key = f"{base_prefix}/{filename}"
+    manifest_key = f"{base_prefix}/{manifest_filename}"
+    metadata = {
+        "case-id": case_id,
+        "workflow-id": workflow_id,
+        "export-id": export_id,
+        "tenant-id": str(context.tenant_id) if context else "unknown",
+    }
+
+    content_type = "application/pdf" if format == "pdf" else "application/octet-stream"
+
+    await upload_bytes(
+        object_key=object_key,
+        content=document_bytes,
+        content_type=content_type,
+        metadata=metadata,
+    )
+    await upload_bytes(
+        object_key=manifest_key,
+        content=manifest_bytes,
+        content_type="application/json",
+        metadata=metadata,
+    )
+
+    document_url = await generate_download_url(object_key=object_key)
+    manifest_url = await generate_download_url(object_key=manifest_key)
+    expires_at = datetime.fromtimestamp(
+        datetime.now(UTC).timestamp() + settings.export_signed_url_ttl_seconds,
+        tz=UTC,
+    ).isoformat()
+
+    request_event = emit_audit_event(
+        AuditAction.EXPORT_REQUESTED,
+        tenant_id=context.tenant_id if context else None,
+        user_id=context.user_id if context else None,
+        api_key_id=context.api_key_id if context else None,
+        resource_type="BusinessCaseExport",
+        resource_id=case_id,
+        details={
+            "case_id": case_id,
+            "workflow_id": workflow_id,
+            "export_id": export_id,
+            "format": format,
+        },
+    )
+    await AuditEmitter.write_to_db(request_event, get_db)
+
+    package_event = emit_audit_event(
+        AuditAction.EXPORT_PACKAGE_GENERATED,
+        tenant_id=context.tenant_id if context else None,
+        user_id=context.user_id if context else None,
+        api_key_id=context.api_key_id if context else None,
+        resource_type="BusinessCaseExport",
+        resource_id=case_id,
+        details={
+            "case_id": case_id,
+            "workflow_id": workflow_id,
+            "export_id": export_id,
+            "pdf_object_key": object_key,
+            "manifest_object_key": manifest_key,
+            "truth_object_ids": manifest.get("truth_object_ids", []),
+            "source_references": manifest.get("source_references", []),
+        },
+    )
+    await AuditEmitter.write_to_db(package_event, get_db)
+
+    access_event = emit_audit_event(
+        AuditAction.EXPORT_DOWNLOAD_ACCESSED,
+        tenant_id=context.tenant_id if context else None,
+        user_id=context.user_id if context else None,
+        api_key_id=context.api_key_id if context else None,
+        resource_type="BusinessCaseExport",
+        resource_id=case_id,
+        details={
+            "case_id": case_id,
+            "workflow_id": workflow_id,
+            "export_id": export_id,
+            "pdf_object_key": object_key,
+        },
+    )
+    await AuditEmitter.write_to_db(access_event, get_db)
 
     return {
         "case_id": case_id,
+        "export_id": export_id,
         "format": format,
-        "document_url": assemble_data.get("document_url"),
-        "download_ready": (assemble_data.get("document_bytes") is not None) and not blocked,
-        "blocked": blocked,
+        "document_url": document_url,
+        "manifest_url": manifest_url,
+        "download_ready": True,
+        "blocked": False,
         "remediation_items": remediation_items,
         "truth_references": truth_references,
-        "manifest": {
-            "case_id": case_id,
-            "format": format,
-            "blocked": blocked,
-            "truth_references": truth_references,
-            "remediation_items": remediation_items,
-            "truth_gate": {
-                "passed": truth_gate.get("passed", not blocked),
-                "requirements": truth_gate.get("requirements", []),
-            },
-        },
+        "url_expires_at": expires_at,
     }
