@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from shared.audit import AuditAction, AuditEmitter, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
-from shared.identity.dependencies import get_optional_context
+from shared.identity.dependencies import require_authenticated
 from sqlalchemy import text
 
 from ...config.settings import settings
@@ -208,7 +208,7 @@ async def export_document_tool(
     request: DocumentExportRequest,
     registry: ToolRegistry = Depends(get_tool_registry),
     workflow_executor: WorkflowExecutor = Depends(get_executor),
-    context: RequestContext | None = Depends(get_optional_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> DocumentExportResponse:
     """Export a business case to PDF using DocumentExportTool.
 
@@ -237,6 +237,9 @@ async def export_document_tool(
             raise HTTPException(
                 status_code=404, detail=f"Business case {request.business_case_id} not found"
             )
+        case_tenant_id = result.get("metadata", {}).get("tenant_id") or result.get("tenant_id")
+        if case_tenant_id and str(case_tenant_id) != str(context.tenant_id):
+            raise HTTPException(status_code=403, detail="Cross-tenant case export denied")
 
         # Extract business case data
         output = result.get("output", {})
@@ -404,6 +407,7 @@ async def list_export_audit_events(
     case_id: str | None = None,
     workflow_id: str | None = None,
     limit: int = 100,
+    context: RequestContext = Depends(require_authenticated),
     db=Depends(get_db),
 ) -> list[ExportAuditRecord]:
     """List immutable audit records related to export governance."""
@@ -421,6 +425,8 @@ async def list_export_audit_events(
         WHERE action IN ('export.requested', 'export.package_generated', 'export.download_accessed')
     """
     params: dict[str, Any] = {"limit": limit}
+    query += " AND tenant_id = :tenant_id"
+    params["tenant_id"] = str(context.tenant_id)
     if case_id:
         query += " AND resource_id = :case_id"
         params["case_id"] = case_id
