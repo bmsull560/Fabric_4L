@@ -24,14 +24,33 @@ from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from value_fabric.layer4_agents.src.tenants.api.routes.oidc import (
-    _generate_code_challenge,
-    _generate_code_verifier,
-    _generate_nonce,
-    _generate_state,
-    oidc_callback,
-    oidc_login,
-)
+# Import paths need to be relative to pythonpath
+# OIDC routes are in layer4-agents
+import sys
+from pathlib import Path
+l4_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer4-agents" / "src")
+if l4_src not in sys.path:
+    sys.path.insert(0, l4_src)
+
+try:
+    from layer4_agents.src.tenants.api.routes.oidc import (
+        _generate_code_challenge,
+        _generate_code_verifier,
+        _generate_nonce,
+        _generate_state,
+        oidc_callback,
+        oidc_login,
+    )
+except ImportError:
+    # Direct import if package structure allows
+    from tenants.api.routes.oidc import (
+        _generate_code_challenge,
+        _generate_code_verifier,
+        _generate_nonce,
+        _generate_state,
+        oidc_callback,
+        oidc_login,
+    )
 
 
 class TestPKCEParameterGeneration:

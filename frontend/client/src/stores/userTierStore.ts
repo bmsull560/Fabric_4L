@@ -117,6 +117,61 @@ const getDefaultPermissions = (tier: UserTier): UserPermissions => {
   }
 };
 
+/**
+ * Canonical backend role to UI tier normalization
+ *
+ * Backend roles (source of truth) → Frontend tiers (presentation abstraction)
+ *
+ * Mapping:
+ * - super_admin, tenant_admin, content_admin → admin
+ * - analyst, editor, advanced → advanced
+ * - read_only, viewer, user, standard → standard
+ *
+ * SECURITY: Unknown roles fail-safe to 'standard' (lowest tier)
+ *
+ * @param role - Backend-canonical role or frontend tier
+ * @returns Normalized UI tier for feature gating
+ */
+export const normalizeRoleToTier = (role: string): UserTier => {
+  const normalizedRole = role.toLowerCase().trim();
+
+  const roleToTierMap: Record<string, UserTier> = {
+    // Backend admin roles → admin tier
+    super_admin: 'admin',
+    tenant_admin: 'admin',
+    content_admin: 'admin',
+    // Frontend admin → admin tier
+    admin: 'admin',
+    // Backend advanced roles → advanced tier
+    analyst: 'advanced',
+    // Frontend advanced → advanced tier
+    editor: 'advanced',
+    advanced: 'advanced',
+    // Backend read-only → standard tier
+    read_only: 'standard',
+    // Frontend standard → standard tier
+    viewer: 'standard',
+    user: 'standard',
+    standard: 'standard',
+    // System role (service-to-service) → standard for UI purposes
+    system: 'standard',
+  };
+
+  const tier = roleToTierMap[normalizedRole];
+
+  if (!tier) {
+    // SECURITY: Fail-safe to standard tier for unknown roles
+    // Log in development to help catch role mapping gaps
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.warn(`[normalizeRoleToTier] Unknown role "${role}" - defaulting to standard tier`);
+    }
+    return 'standard';
+  }
+
+  return tier;
+};
+
 // Routes and their required tiers — Refactored 4-Layer Navigation Taxonomy
 // 1. Context Engine → 2. Value Studio → 3. Delivery Orchestrator → 4. Governance & Trust → Admin
 const ROUTE_TIER_MAP: Record<string, UserTier> = {
@@ -307,16 +362,9 @@ export const useUserTierStore = create<UserTierState>()(
 
       setUserRole: (role) => {
         set({ userRole: role });
-        // Auto-set tier based on role
-        const roleTierMap: Record<string, UserTier> = {
-          'admin': 'admin',
-          'editor': 'advanced',
-          'analyst': 'advanced',
-          'viewer': 'standard',
-          'user': 'standard',
-        };
-        const tier = roleTierMap[role.toLowerCase()] || 'standard';
-        set({ 
+        // Normalize backend-canonical role to UI tier
+        const tier = normalizeRoleToTier(role);
+        set({
           currentTier: tier,
           permissions: getDefaultPermissions(tier)
         });

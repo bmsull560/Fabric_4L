@@ -7,12 +7,44 @@
 import { z } from 'zod';
 
 /**
+ * Backend-canonical roles from identity provider
+ * These are the source-of-truth roles from the backend permission system
+ */
+export const BackendRoles = [
+  'super_admin',
+  'tenant_admin',
+  'content_admin',
+  'analyst',
+  'read_only',
+  'system',
+] as const;
+
+/**
+ * Frontend presentation tiers (UI abstraction layer)
+ * These are normalized from backend roles for UI feature gating
+ */
+export const FrontendTiers = ['standard', 'advanced', 'admin'] as const;
+
+/**
+ * All valid role values the frontend accepts
+ * Union of backend-canonical roles and frontend presentation tiers
+ */
+export const AllRoles = [...BackendRoles, ...FrontendTiers] as const;
+
+export type BackendRole = typeof BackendRoles[number];
+export type FrontendTier = typeof FrontendTiers[number];
+export type UserRole = typeof AllRoles[number];
+
+/**
  * UserInfo schema — user identity attributes from IdP
+ *
+ * Accepts both backend-canonical roles and frontend tiers for backward compatibility.
+ * Normalization to UI tiers happens in userTierStore.setUserRole()
  */
 export const UserInfoSchema = z.object({
   id: z.string().min(1, 'User ID is required'),
   email: z.string().email('Valid email required'),
-  role: z.enum(['standard', 'advanced', 'admin']).default('standard'),
+  role: z.enum(AllRoles).default('standard'),
   tenantId: z.string().min(1, 'Tenant ID is required'),
   tenantSlug: z.string().min(1, 'Tenant slug is required'),
 });
@@ -24,6 +56,10 @@ export type UserInfo = z.infer<typeof UserInfoSchema>;
  *
  * This is the formal contract for the callback endpoint response.
  * All fields are validated to ensure type safety across the auth boundary.
+ *
+ * Note: role accepts both backend-canonical roles and frontend tiers.
+ * The backend returns canonical roles (super_admin, tenant_admin, etc.)
+ * which are normalized to UI tiers in the auth flow.
  */
 export const TokenResponseSchema = z.object({
   access_token: z.string().min(1, 'Access token is required'),
@@ -32,7 +68,7 @@ export const TokenResponseSchema = z.object({
   token_type: z.string().transform(val => val.charAt(0).toUpperCase() + val.slice(1).toLowerCase()).default('Bearer'),
   user_id: z.string().min(1, 'User ID is required'),
   email: z.string().email('Valid email required'),
-  role: z.enum(['standard', 'advanced', 'admin']).default('standard'),
+  role: z.enum(AllRoles).default('standard'),
 });
 
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;

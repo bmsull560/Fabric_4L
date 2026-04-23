@@ -67,6 +67,26 @@ emerges from interactions between agents, tools, and the knowledge graph.
 
 ---
 
+## Platform Contract (NEW — read this first)
+
+All cross-layer patterns are governed by the **Platform Contract** in
+packages/platform-contract/CONTRACT.md. Before adding any code that touches:
+
+- tenant context propagation
+- DB session creation
+- middleware / auth flow
+- tool invocation boundaries
+- agent output shapes
+- UI state / routing
+
+Read the contract. The canonical patterns are enforced in CI. Violations block merge.
+
+Key files:
+- packages/platform-contract/CONTRACT.md — the contract document
+- packages/platform-contract/src/python/canonical/ — reference Python signatures
+- packages/platform-contract/src/typescript/ — reference TypeScript types
+- docs/platform-contract/DEPRECATION_MAP.md — what not to use and when it becomes an error
+
 ## Required verification steps
 
 Before opening a PR, run:

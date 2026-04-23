@@ -1,0 +1,80 @@
+name: Platform Contract Gate
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - value-fabric/**
+      - shared/**
+      - frontend/**
+      - packages/platform-contract/**
+      - scripts/ci/platform_contract_lint.py
+      - .github/workflows/platform-contract-gate.yml
+  workflow_dispatch:
+
+concurrency:
+  group: platform-contract-gate-${ github.ref }
+  cancel-in-progress: true
+
+jobs:
+  python-lint:
+    name: Python Platform Contract Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Run Platform Contract Lint
+        run: python scripts/ci/platform_contract_lint.py
+
+  frontend-lint:
+    name: Frontend Platform Contract Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Link ESLint plugin
+        run: |
+          cd eslint-plugin-fabric-contracts
+          npm ci && npm run build
+          npm link
+          cd ../frontend
+          npm link eslint-plugin-fabric-contracts
+      - name: Run platform contract linting
+        working-directory: frontend
+        run: |
+          npx eslint src/ --ext .ts,.tsx \
+            --plugin fabric-contracts \
+            --rule "fabric-contracts/no-imperative-navigation: error" \
+            --rule "fabric-contracts/no-url-concatenation: error" \
+            --rule "fabric-contracts/no-private-imports: error" \
+            --format compact
+
+  summary:
+    name: Platform Contract Gate Summary
+    runs-on: ubuntu-latest
+    needs: [python-lint, frontend-lint]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Platform Contract Gate" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Lint | ${{ needs.python-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend Lint | ${{ needs.frontend-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Violations block merge." >> $GITHUB_STEP_SUMMARY

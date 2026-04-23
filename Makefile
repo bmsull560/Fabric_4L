@@ -7,7 +7,8 @@
         preflight up down logs check-deprecations test-backup-drills \
         gates-validate-policy gate-contract gate-arch gate-security gate-chaos \
         gate-smoke gate-agent gate-state gate-obs gate-release-policy \
-        gates-sign-manifest gates-render-summary
+        gates-sign-manifest gates-render-summary \\
+        platform-contract-lint
 
 # Strict shell settings for production safety
 .ONESHELL:
@@ -27,7 +28,7 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts) — required before PR
 	@echo "✅  All checks passed"
 
 verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
@@ -375,3 +376,8 @@ clean: ## Remove build artifacts and caches
 	find . -type d -name .ruff_cache -exec rm -rf {} + 2>/dev/null || true
 	find . -name "*.pyc" -delete 2>/dev/null || true
 	@echo "✅  Clean complete"
+
+# Platform Contract Lint
+platform-contract-lint:
+	@echo Running platform contract lint...
+	@python scripts/ci/platform_contract_lint.py

@@ -152,6 +152,51 @@ describe("useUserTierStore", () => {
 
       expect(result.current.currentTier).toBe("admin");
     });
+
+    // Backend-canonical role mapping tests
+    it("should map super_admin to admin tier", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      act(() => result.current.setUserRole("super_admin"));
+
+      expect(result.current.currentTier).toBe("admin");
+      expect(result.current.permissions.canAccessAdmin).toBe(true);
+    });
+
+    it("should map tenant_admin to admin tier", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      act(() => result.current.setUserRole("tenant_admin"));
+
+      expect(result.current.currentTier).toBe("admin");
+      expect(result.current.permissions.canManageUsers).toBe(true);
+    });
+
+    it("should map content_admin to admin tier", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      act(() => result.current.setUserRole("content_admin"));
+
+      expect(result.current.currentTier).toBe("admin");
+    });
+
+    it("should map read_only to standard tier", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      act(() => result.current.setUserRole("read_only"));
+
+      expect(result.current.currentTier).toBe("standard");
+      expect(result.current.permissions.canAccessAdmin).toBe(false);
+      expect(result.current.permissions.canAccessAdvanced).toBe(false);
+    });
+
+    it("should map system role to standard tier (fail-safe)", () => {
+      const { result } = renderHook(() => useUserTierStore());
+
+      act(() => result.current.setUserRole("system"));
+
+      expect(result.current.currentTier).toBe("standard");
+    });
   });
 
   describe("advanced mode toggle", () => {

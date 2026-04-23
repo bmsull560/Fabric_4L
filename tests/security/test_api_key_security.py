@@ -21,14 +21,32 @@ from uuid import uuid4
 
 import pytest
 
-from value_fabric.layer3_knowledge.src.auth.api_keys import (
-    APIKey,
-    APIKeyCreateRequest,
-    APIKeyManager,
-    AuthenticationResult,
-    Permission,
-    Role,
-)
+# Import paths need to be relative to pythonpath
+# API keys are in layer3-knowledge
+import sys
+from pathlib import Path
+l3_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer3-knowledge" / "src")
+if l3_src not in sys.path:
+    sys.path.insert(0, l3_src)
+
+try:
+    from layer3_knowledge.src.auth.api_keys import (
+        APIKey,
+        APIKeyCreateRequest,
+        APIKeyManager,
+        AuthenticationResult,
+        Permission,
+        Role,
+    )
+except ImportError:
+    from auth.api_keys import (
+        APIKey,
+        APIKeyCreateRequest,
+        APIKeyManager,
+        AuthenticationResult,
+        Permission,
+        Role,
+    )
 
 
 class TestAPIKeyGeneration:

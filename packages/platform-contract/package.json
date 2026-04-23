@@ -1,0 +1,19 @@
+{
+  "name": "@fabric/platform-contract",
+  "version": "1.0.0",
+  "description": "Canonical platform contract for Fabric 4L",
+  "type": "module",
+  "exports": {
+    ".": "./src/typescript/index.ts",
+    "./agent-result": "./src/typescript/agent-result.ts",
+    "./stores": "./src/typescript/stores.ts",
+    "./routing": "./src/typescript/routing.ts"
+  },
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "license": "MIT"
+}

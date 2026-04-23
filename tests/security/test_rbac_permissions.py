@@ -17,8 +17,8 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException, Request
 
-from value_fabric.shared.identity.context import RequestContext
-from value_fabric.shared.identity.dependencies import (
+from identity.context import RequestContext
+from identity.dependencies import (
     get_current_context,
     get_optional_context,
     require_all_permissions,
@@ -33,7 +33,7 @@ from value_fabric.shared.identity.dependencies import (
     require_tenant,
     require_tenant_admin,
 )
-from value_fabric.shared.identity.permissions import Permission, Role, ROLE_PERMISSIONS
+from identity.permissions import Permission, Role, ROLE_PERMISSIONS
 
 
 class TestPermissionEnum:

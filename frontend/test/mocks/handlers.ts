@@ -81,6 +81,7 @@ export const authMocks = [
     }
 
     // Return valid TokenResponse matching schema contract
+    // Uses backend-canonical role 'analyst' which normalizes to 'advanced' tier
     return HttpResponse.json({
       access_token: 'new-access-token',
       refresh_token: 'refresh-token-123',
@@ -88,7 +89,7 @@ export const authMocks = [
       token_type: 'Bearer',
       user_id: 'user-456',
       email: 'newuser@example.com',
-      role: 'advanced',
+      role: 'analyst',
     });
   }),
 ];
