@@ -208,19 +208,27 @@ class GraphRAGEngine:
     async def get_entity_context(
         self,
         entity_id: str,
+        tenant_id: str,
         hops: int = 2,
         relationship_types: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Get the neighborhood context around an entity.
+        """Retrieve N-hop neighborhood around an entity with tenant filtering.
 
         Args:
-            entity_id: Entity ID to center on
-            hops: Number of hops to traverse
-            relationship_types: Filter by relationship types
+            entity_id: Central entity ID
+            tenant_id: Tenant identifier (required for multi-tenant security)
+            hops: Number of relationship hops (default: 2)
+            relationship_types: Optional list of relationship types to traverse
 
         Returns:
             Context dictionary with entities and relationships
+
+        Raises:
+            ValueError: If tenant_id is None or empty
         """
+        if not tenant_id:
+            raise ValueError("tenant_id is required for get_entity_context")
+
         driver = await self._get_driver()
 
         # Build relationship type filter
@@ -231,7 +239,7 @@ class GraphRAGEngine:
             rel_filter = f"AND type(r) IN [{rel_types_str}]"
 
         query = f"""
-        MATCH path = (center {{id: $entity_id}})-[r*1..{hops}]-(connected)
+        MATCH path = (center {{id: $entity_id, tenant_id: $tenant_id}})-[r*1..{hops}]-(connected {{tenant_id: $tenant_id}})
         WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
         {rel_filter}
         WITH center, 
@@ -245,6 +253,7 @@ class GraphRAGEngine:
                 query,
                 {
                     "entity_id": entity_id,
+                    "tenant_id": tenant_id,
                     "min_confidence": self.settings.graphrag_min_confidence,
                 },
             )
@@ -275,41 +284,50 @@ class GraphRAGEngine:
     async def traverse_value_tree(
         self,
         start_entity_id: str,
+        tenant_id: str,
         direction: str = "both",  # up, down, both
     ) -> dict[str, Any]:
-        """Traverse the 4-layer value tree from a starting entity.
+        """Traverse the 4-layer value tree from a starting entity with tenant filtering.
 
         Args:
             start_entity_id: Entity ID to start from
+            tenant_id: Tenant identifier (required for multi-tenant security)
             direction: Tree traversal direction (up=to ValueDriver, down=to Capability)
 
         Returns:
             Value tree paths from the starting entity
+            
+        Raises:
+            ValueError: If tenant_id is None or empty
         """
+        if not tenant_id:
+            raise ValueError("tenant_id is required for traverse_value_tree")
+        
         driver = await self._get_driver()
 
         # Define traversal patterns based on the 4-layer ontology
         # Capability -> ENABLES -> UseCase -> BENEFITS -> Persona -> DRIVES -> ValueDriver
+        # All nodes in path must have matching tenant_id
         if direction == "up":
             # Towards ValueDriver (outgoing relationships)
             query = """
-            MATCH path = (start {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]->(end)
-            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
+            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]->(end {tenant_id: $tenant_id})
+            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $tenant_id)
             RETURN nodes(path) as nodes, relationships(path) as rels
             """
         elif direction == "down":
             # Towards Capability (incoming relationships)
             query = """
-            MATCH path = (end)<-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]-(start {id: $entity_id})
-            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
+            MATCH path = (end {tenant_id: $tenant_id})<-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO*1..5]-(start {id: $entity_id, tenant_id: $tenant_id})
+            WHERE ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $tenant_id)
             RETURN nodes(path) as nodes, relationships(path) as rels
             """
         else:
             # Both directions
             query = """
-            MATCH path = (start {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO|REQUIRES|DEPENDS_ON*1..5]-(end)
+            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})-[:ENABLES|BENEFITS|DRIVES|CONTRIBUTES_TO|REQUIRES|DEPENDS_ON*1..5]-(end {tenant_id: $tenant_id})
             WHERE start <> end
-              AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence)
+              AND ALL(node IN nodes(path) WHERE node.confidence >= $min_confidence AND node.tenant_id = $tenant_id)
             RETURN nodes(path) as nodes, relationships(path) as rels, start as start_node
             """
 
@@ -318,6 +336,7 @@ class GraphRAGEngine:
                 query,
                 {
                     "entity_id": start_entity_id,
+                    "tenant_id": tenant_id,
                     "min_confidence": self.settings.graphrag_min_confidence,
                 },
             )

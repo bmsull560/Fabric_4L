@@ -17,6 +17,16 @@ function Navigate({ to }: { to: string }) {
   return null;
 }
 
+// ── Prospect Setup with Navigation ───────────────────────────────────────────
+function ProspectSetupWithNav() {
+  const [, navigate] = useLocation();
+  return (
+    <ProspectSetup
+      onNavigateToWorkspace={(path) => navigate(path)}
+    />
+  );
+}
+
 // ── Route-level code splitting ────────────────────────────────────────────────
 // Existing pages (preserved)
 const LandingPage             = lazy(() => import("./pages/LandingPage"));
@@ -52,6 +62,9 @@ const WhitespaceAnalysis      = lazy(() => import("./pages/WhitespaceAnalysis"))
 const SourceConfiguration     = lazy(() => import("./pages/SourceConfiguration"));
 const NotFound                = lazy(() => import("./pages/NotFound"));
 const Login                   = lazy(() => import("./pages/Login"));
+
+// ── Workflow Pages ───────────────────────────────────────────────────────────
+const ProspectSetup           = lazy(() => import("./workflow/pages/ProspectSetup"));
 
 // ── Intelligence Workspace Tabs ──────────────────────────────────────────────
 const SignalsTab              = lazy(() => import("./pages/intelligence/SignalsTab"));
@@ -509,9 +522,21 @@ function Router() {
           <Route path="/model/value-studio/formulas"><Navigate to="/context/formulas" /></Route>
           <Route path="/model/value-studio/formulas/new"><Navigate to="/context/formulas" /></Route>
 
-          {/* Old Workflow routes → Accounts (no account context) */}
-          <Route path="/workflow"><Navigate to="/accounts" /></Route>
-          <Route path="/workflow/prospect"><Navigate to="/accounts" /></Route>
+          {/* Workflow routes */}
+          <Route path="/workflow">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary><Navigate to="/workflow/prospect" /></ErrorBoundary>
+            </RouteGuard>
+          </Route>
+          <Route path="/workflow/prospect">
+            <RouteGuard requiredTier="standard">
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoader />}>
+                  <ProspectSetupWithNav />
+                </Suspense>
+              </ErrorBoundary>
+            </RouteGuard>
+          </Route>
           <Route path="/workflow/intelligence"><Navigate to="/accounts" /></Route>
           <Route path="/workflow/ai-model"><Navigate to="/accounts" /></Route>
           <Route path="/workflow/driver-tree"><Navigate to="/accounts" /></Route>

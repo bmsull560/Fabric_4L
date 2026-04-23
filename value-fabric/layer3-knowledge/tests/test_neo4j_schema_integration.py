@@ -38,6 +38,41 @@ pytestmark = [
 TEST_NEO4J_PASSWORD = "test-password"
 
 
+async def _wait_for_neo4j_ready(container: Neo4jContainer, timeout_seconds: float = 60.0) -> None:
+    """Wait for Neo4j to be ready using driver-native retry with timeout.
+
+    Uses asyncio.wait_for to enforce a hard deadline while allowing
+    the driver's verify_connectivity to handle transient failures.
+    """
+    import asyncio
+
+    async def _check_connectivity() -> None:
+        driver = AsyncGraphDatabase.driver(
+            container.get_connection_url(),
+            auth=("neo4j", TEST_NEO4J_PASSWORD),
+        )
+        try:
+            await driver.verify_connectivity()
+        finally:
+            await driver.close()
+
+    start_time = asyncio.get_event_loop().time()
+    last_error = None
+
+    while asyncio.get_event_loop().time() - start_time < timeout_seconds:
+        try:
+            await asyncio.wait_for(_check_connectivity(), timeout=5.0)
+            return  # Success - Neo4j is ready
+        except Exception as e:
+            last_error = e
+            # Exponential backoff: 0.1s, 0.2s, 0.4s, 0.8s, then cap at 1.0s
+            elapsed = asyncio.get_event_loop().time() - start_time
+            backoff = min(0.1 * (2 ** int(elapsed / 2)), 1.0)
+            await asyncio.sleep(backoff)
+
+    raise RuntimeError(f"Neo4j failed to start within {timeout_seconds}s: {last_error}")
+
+
 @pytest_asyncio.fixture(scope="module")
 async def neo4j_container():
     """Start Neo4j container for integration tests."""
@@ -48,27 +83,11 @@ async def neo4j_container():
 
     container.start()
 
-    # Wait for Neo4j to be ready
-    import asyncio
-    max_retries = 30
-    for i in range(max_retries):
-        try:
-            driver = AsyncGraphDatabase.driver(
-                container.get_connection_url(),
-                auth=("neo4j", TEST_NEO4J_PASSWORD),
-            )
-            await driver.verify_connectivity()
-            await driver.close()
-            break
-        except Exception:
-            if i == max_retries - 1:
-                container.stop()
-                raise RuntimeError("Neo4j failed to start")
-            await asyncio.sleep(1)
-
-    yield container
-
-    container.stop()
+    try:
+        await _wait_for_neo4j_ready(container, timeout_seconds=60.0)
+        yield container
+    finally:
+        container.stop()
 
 
 @pytest_asyncio.fixture

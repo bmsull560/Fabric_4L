@@ -145,6 +145,29 @@ pytest tests/e2e/test_tenant_control_plane.py -v --e2e
 ### P3 - Performance
 - Reduced N+1 query pattern in usage tracking to single aggregate query
 
+## Test Quality Remediation
+
+Following the `test-quality-remediation` workflow, applied fixes to Phase 3 and related test files:
+
+### P0 - Critical Issues Fixed
+| File | Issue | Fix |
+|------|-------|-----|
+| `tests/e2e/test_tenant_control_plane.py` | Inline `import uuid` inside 7 test functions | Moved to module-level import |
+| `value-fabric/layer4-agents/tests/test_tiers.py` | Unused `UUID` import | Removed unused import |
+
+### P1 - Material Issues Fixed
+| File | Issue | Fix |
+|------|-------|-----|
+| `tests/security/test_cross_layer_tenant.py` | Hardcoded `"database"` string | Used `ISOLATION_TIER_DATABASE` constant |
+| `tests/security/test_cross_layer_tenant.py` | Hardcoded `"unknown"` string | Used `AUTH_SOURCE_UNKNOWN` constant |
+
+### Files Modified
+- `tests/e2e/test_tenant_control_plane.py` - 7 inline imports removed
+- `value-fabric/layer4-agents/tests/test_tiers.py` - 1 unused import removed
+- `tests/security/test_cross_layer_tenant.py` - 2 constants imported and used
+
+All modified files pass `python -m py_compile` validation.
+
 ## Integration Notes
 
 - **No billing integration** - Usage metrics collected but no Stripe/payment processing

@@ -7,7 +7,7 @@ Verifies state persistence across interruptions and container restarts.
 import os
 from datetime import datetime
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -201,15 +201,21 @@ class TestCheckpointConfiguration:
     async def test_checkpoint_config_returns_saver(self):
         """CheckpointConfig creates saver when database available."""
         # This test would require a real Postgres connection
-        # For now, we mock the connection to verify the interface
-        with patch("src.config.checkpoint.asyncpg.connect") as mock_connect:
-            mock_conn = AsyncMock()
-            mock_connect.return_value = mock_conn
-            
-            saver = await CheckpointConfig.create_saver()
-            assert saver is not None
-            # Verify connection is stored for later cleanup
-            assert hasattr(saver, '_conn')
+        # For now, we mock the connection and saver to verify the interface
+        # Create a mock AsyncPostgresSaver class that mimics the real one
+        mock_saver_cls = MagicMock()
+        mock_saver = MagicMock()
+        mock_saver_cls.return_value = mock_saver
+
+        with patch("asyncpg.connect") as mock_connect:
+            with patch.dict("sys.modules", {"langgraph.checkpoint.postgres.aio": MagicMock(AsyncPostgresSaver=mock_saver_cls)}):
+                mock_conn = AsyncMock()
+                mock_connect.return_value = mock_conn
+
+                saver = await CheckpointConfig.create_saver()
+                assert saver is not None
+                # Verify connection is stored for later cleanup
+                assert hasattr(saver, '_conn')
     
     def test_checkpoint_config_handles_url_variations(self):
         """CheckpointConfig handles different URL formats."""
@@ -227,23 +233,26 @@ class TestCheckpointConfiguration:
     @pytest.mark.asyncio
     async def test_get_checkpoint_saver_raises_connection_error_on_failure(self):
         """CheckpointConfig.get_saver() raises CheckpointConnectionError when DB unavailable.
-        
+
         This test verifies that database connection failures are properly caught
         and converted to CheckpointConnectionError, allowing callers to handle
         persistence failures gracefully.
         """
         # When database is unavailable, should raise CheckpointConnectionError
-        import asyncpg
-        with patch("src.config.checkpoint.asyncpg.connect") as mock_connect:
-            mock_connect.side_effect = asyncpg.PostgresError("Database unavailable")
-            
-            with pytest.raises(CheckpointConnectionError) as exc_info:
-                async with CheckpointConfig.get_saver() as _:
-                    pass
-            
-            # Verify the error message contains useful context
-            assert "Database connection failed" in str(exc_info.value)
-            assert "Database unavailable" in str(exc_info.value.__cause__)
+        # Patch asyncpg at the source module where connect is actually used
+        # Mock the langgraph postgres module to avoid psycopg dependency
+        with patch("asyncpg.connect") as mock_connect:
+            with patch.dict("sys.modules", {"langgraph.checkpoint.postgres.aio": MagicMock()}):
+                import asyncpg
+                mock_connect.side_effect = asyncpg.PostgresError("Database unavailable")
+
+                with pytest.raises(CheckpointConnectionError) as exc_info:
+                    async with CheckpointConfig.get_saver() as _:
+                        pass
+
+                # Verify the error message contains useful context
+                assert "Database connection failed" in str(exc_info.value)
+                assert "Database unavailable" in str(exc_info.value.__cause__)
 
     @pytest.mark.asyncio
     async def test_factory_get_checkpoint_saver_returns_none_on_db_failure(self):

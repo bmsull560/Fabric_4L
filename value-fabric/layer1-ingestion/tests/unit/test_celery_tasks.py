@@ -12,9 +12,7 @@ Tests verify:
 from __future__ import annotations
 
 import os
-import sys
 from datetime import UTC, datetime
-from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
@@ -34,17 +32,10 @@ PIPELINE_STAGE_TASKS = [
     "notification_stage",
 ]
 
-# ── Path setup ────────────────────────────────────────────────────────────────
-tests_dir = os.path.dirname(os.path.abspath(__file__))
-layer1_dir = str(Path(tests_dir).parent.parent)
-src_dir = str(Path(tests_dir).parent.parent / "src")
-for p in (layer1_dir, src_dir):
-    if p not in sys.path:
-        sys.path.insert(0, p)
-
-# Set env vars before any imports so pydantic-settings can read them
-os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+# Note: Path setup and environment variables are handled by:
+# - tests/conftest.py (sys.path manipulation)
+# - pyproject.toml [tool.pytest.ini_options] pythonpath = ["src", ".."]
+# - pytest-env or test fixtures for DATABASE_URL/REDIS_URL as needed
 
 
 # ── Celery App Configuration Tests ───────────────────────────────────────────
@@ -499,8 +490,7 @@ class TestCeleryRetrySemantics:
                 "retry_backoff must be True or an integer"
             )
 
-    @pytest.mark.asyncio
-    async def test_idempotency_of_retried_tasks(self) -> None:
+    def test_idempotency_of_retried_tasks(self) -> None:
         """Retried tasks must be idempotent - same result on retry."""
         from src.shared.tasks import compliance_check_stage
 

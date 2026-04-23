@@ -77,6 +77,7 @@ def sample_customer():
     """Sample billing customer for tests."""
     return BillingCustomer(
         id="user_123",
+        tenant_id="tenant_abc123",
         stripe_customer_id="cus_test123",
         email="test@example.com",
         name="Test User",
@@ -90,6 +91,7 @@ def sample_subscription():
     """Sample billing subscription for tests."""
     return BillingSubscription(
         id="sub_123",
+        tenant_id="tenant_abc123",
         customer_id="user_123",
         stripe_subscription_id="sub_stripe123",
         plan_id="pro",

@@ -41,9 +41,19 @@ def validate_customer_id(customer_id: str) -> str:
         )
     return customer_id
 
-from ...database import get_db
+from ...database import get_db, get_db_from_context
 from ...services.billing_service import BillingService
 from ...services.stripe_client import StripeError
+
+# Import shared identity for tenant context
+try:
+    from shared.identity.context import RequestContext
+    from shared.identity.dependencies import get_request_context
+    SHARED_IDENTITY_AVAILABLE = True
+except ImportError:
+    SHARED_IDENTITY_AVAILABLE = False
+    RequestContext = None  # type: ignore
+    get_request_context = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -94,7 +104,7 @@ class SubscriptionResponse(BaseModel):
 @router.get("/subscription", response_model=SubscriptionResponse)
 async def get_subscription(
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
 ) -> dict[str, Any]:
     """Get current subscription status for a customer.
 
@@ -132,7 +142,7 @@ async def get_subscription(
 async def create_checkout(
     request: CheckoutRequest,
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
 ) -> dict[str, str]:
     """Create a Stripe checkout session for subscription.
 
@@ -165,7 +175,7 @@ async def create_checkout(
 async def create_portal(
     request: PortalRequest,
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
 ) -> dict[str, str]:
     """Create a Stripe customer portal session.
 
@@ -199,7 +209,7 @@ async def create_portal(
 @router.get("/entitlements")
 async def get_entitlements(
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
 ) -> dict[str, Any]:
     """Get all feature entitlements for a customer.
 
@@ -217,7 +227,7 @@ async def get_entitlements(
 async def check_feature(
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
     feature_id: str = Query(..., min_length=1, max_length=64),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
 ) -> dict[str, Any]:
     """Check if a customer has access to a specific feature.
 
@@ -245,7 +255,8 @@ async def check_feature(
 async def sync_customer(
     request: CustomerSyncRequest,
     customer_id: str = Query(..., min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
 ) -> dict[str, Any]:
     """Sync customer with Stripe (create or update).
 
@@ -257,10 +268,15 @@ async def sync_customer(
         Customer record with Stripe ID if available
     """
     service = BillingService(db)
+    
+    # Extract tenant_id from context if available
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
     customer = await service.get_or_create_customer(
         customer_id=customer_id,
         email=request.email,
         name=request.name,
+        tenant_id=tenant_id,
     )
 
     await db.commit()
@@ -270,6 +286,7 @@ async def sync_customer(
         "stripe_customer_id": customer.stripe_customer_id,
         "email": customer.email,
         "name": customer.name,
+        "tenant_id": customer.tenant_id,
     }
 
 

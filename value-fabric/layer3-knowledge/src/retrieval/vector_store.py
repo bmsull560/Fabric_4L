@@ -277,17 +277,31 @@ class Neo4jVectorStore:
         all_results.sort(key=lambda x: x[1], reverse=True)
         return all_results[:top_k]
 
-    async def delete_entity(self, entity_id: str) -> bool:
-        """Remove the embedding property from an entity node."""
+    async def delete_entity(self, entity_id: str, tenant_id: str) -> bool:
+        """Remove the embedding property from an entity node with tenant filtering.
+        
+        Args:
+            entity_id: Entity identifier
+            tenant_id: Tenant identifier (required for multi-tenant security)
+            
+        Returns:
+            True if embedding was deleted, False otherwise
+            
+        Raises:
+            ValueError: If tenant_id is None or empty
+        """
+        if not tenant_id:
+            raise ValueError("tenant_id is required for delete_entity")
+        
         driver = await self._get_driver()
         query = """
-        MATCH (n {id: $id})
+        MATCH (n {id: $id, tenant_id: $tenant_id})
         REMOVE n.embedding, n.embedding_text, n.embedding_updated_at
         RETURN count(n) AS updated
         """
         try:
             async with driver.session(database=self.settings.neo4j_database) as session:
-                result = await session.run(query, {"id": entity_id})
+                result = await session.run(query, {"id": entity_id, "tenant_id": tenant_id})
                 record = await result.single()
                 return bool(record and record["updated"] > 0)
         except (ClientError, ServiceUnavailable) as exc:

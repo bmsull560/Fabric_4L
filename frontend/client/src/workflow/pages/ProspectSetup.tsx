@@ -574,7 +574,7 @@ function parsePromptText(promptText: string): ParsedPrompt {
   return { draft, visibleSections }
 }
 
-function buildStrengthenedState(state: BuilderState) {
+function buildStrengthenedState(state: BuilderState): BuilderState {
   const visibleSections = { ...state.visibleSections }
   for (const section of CORE_SECTIONS) visibleSections[section] = true
   const nextDraft =
@@ -592,7 +592,7 @@ function buildStrengthenedState(state: BuilderState) {
   }
 }
 
-function enableDeepResearchState(state: BuilderState) {
+function enableDeepResearchState(state: BuilderState): BuilderState {
   const visibleSections = { ...state.visibleSections, researchFocus: true }
   const nextDraft: ProspectSetupDraft = {
     ...state.draft,

@@ -9,10 +9,13 @@ import os
 import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
-import asyncpg
 from langgraph.checkpoint.base import BaseCheckpointSaver
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+if TYPE_CHECKING:
+    import asyncpg
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +68,7 @@ class CheckpointConfig:
         return cleaned
 
     @classmethod
-    async def create_saver(cls) -> AsyncPostgresSaver:
+    async def create_saver(cls) -> "AsyncPostgresSaver":
         """Create and initialize AsyncPostgresSaver.
 
         Creates a direct asyncpg connection for LangGraph's PostgresSaver.
@@ -86,6 +89,10 @@ class CheckpointConfig:
             ... finally:
             ...     await saver.conn.close()
         """
+        # Lazy imports to avoid import-time dependencies
+        import asyncpg
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
         url = cls._clean_url(cls.get_database_url())
         conn = await asyncpg.connect(url)
         saver = AsyncPostgresSaver(conn)
@@ -94,7 +101,7 @@ class CheckpointConfig:
         return saver
 
     @classmethod
-    async def close_saver(cls, saver: AsyncPostgresSaver | None) -> None:
+    async def close_saver(cls, saver: "AsyncPostgresSaver" | None) -> None:
         """Close the connection associated with a checkpoint saver.
 
         Args:
@@ -105,7 +112,7 @@ class CheckpointConfig:
 
     @classmethod
     @asynccontextmanager
-    async def get_saver(cls) -> AsyncGenerator[AsyncPostgresSaver, None]:
+    async def get_saver(cls) -> AsyncGenerator["AsyncPostgresSaver", None]:
         """Context manager for short-lived checkpoint saver usage.
 
         Automatically handles connection cleanup on exit.
@@ -117,6 +124,10 @@ class CheckpointConfig:
             ...     # Use saver within context
             ...     pass
         """
+        # Lazy imports to avoid import-time dependencies
+        import asyncpg
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
         conn = None
         try:
             url = cls._clean_url(cls.get_database_url())

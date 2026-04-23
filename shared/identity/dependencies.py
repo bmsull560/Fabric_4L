@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from fastapi import Depends, HTTPException, Request, status
 
+from ..audit.emitter import emit_audit_event
+from ..audit.models import AuditAction, AuditOutcome, PrivilegedAccessDetails
 from .context import RequestContext
 
 logger = logging.getLogger(__name__)
@@ -137,6 +140,11 @@ def require_privileged_access(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Privileged access requires {privilege_reason_header} header with audit reason",
                 )
+            
+            # Task 2: Initialize privileged session tracking
+            if context.privileged_session_start is None:
+                context.privileged_session_start = time.time()
+            
             # Log the privileged access attempt
             logger.warning(
                 "Privileged access by super_admin: user=%s tenant=%s reason=%s endpoint=%s",
@@ -145,6 +153,36 @@ def require_privileged_access(
                 reason,
                 request.url.path,
             )
+            
+            # Task 2: Emit CROSS_TENANT_ACCESS audit event
+            try:
+                session_duration = int(time.time() - context.privileged_session_start) if context.privileged_session_start else 0
+                
+                audit_details = PrivilegedAccessDetails(
+                    accessed_tenant_ids=list(context.accessed_tenant_ids),
+                    resource_types=["cross_tenant_query"],  # Will be updated by actual queries
+                    session_duration_seconds=session_duration,
+                    reason=reason,
+                    approval_ticket=request.headers.get("X-Approval-Ticket"),
+                    query_count=len(context.accessed_tenant_ids),
+                )
+                
+                await emit_audit_event(
+                    action=AuditAction.CROSS_TENANT_ACCESS,
+                    outcome=AuditOutcome.SUCCESS,
+                    actor_id=context.user_id,
+                    actor_type="super_admin",
+                    tenant_id=context.tenant_id,
+                    resource_type="privileged_session",
+                    resource_id=str(request.url.path),
+                    request_id=context.request_id,
+                    ip_address=request.client.host if request.client else None,
+                    user_agent=request.headers.get("User-Agent"),
+                    details=audit_details.model_dump(),
+                )
+            except Exception as e:
+                logger.error(f"Failed to emit privileged access audit event: {e}")
+                # Don't block the request if audit fails, but log it
 
         return context
 

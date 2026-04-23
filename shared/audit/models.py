@@ -39,6 +39,8 @@ class AuditAction(str, Enum):
     API_CALL = "api_call"
     LLM_USAGE = "llm_usage"
     AGENT_EXECUTION = "agent_execution"
+    # Task 2: Multi-Tenancy Hardening - Super-admin bypass audit
+    CROSS_TENANT_ACCESS = "cross_tenant_access"
 
 
 class AuditOutcome(str, Enum):
@@ -184,4 +186,57 @@ class TenantContextSetDetails(BaseModel):
     context_source: str = Field(
         default="request_context",
         description="Source of tenant context: request_context | explicit_param | job_queue"
+    )
+
+
+class PrivilegedAccessDetails(BaseModel):
+    """Structured details for CROSS_TENANT_ACCESS audit events (Task 2).
+    
+    Captures comprehensive information about super-admin bypass operations
+    for compliance and security monitoring.
+    
+    Example usage:
+        details = PrivilegedAccessDetails(
+            accessed_tenant_ids=["tenant-a", "tenant-b"],
+            resource_types=["Entity", "Relationship"],
+            session_duration_seconds=45,
+            reason="Emergency data recovery for customer incident #12345",
+            approval_ticket="JIRA-SEC-9876"
+        )
+        
+        await emit_audit_event(
+            action=AuditAction.CROSS_TENANT_ACCESS,
+            outcome=AuditOutcome.SUCCESS,
+            actor_id=admin_user_id,
+            details=details.model_dump()
+        )
+    """
+    
+    accessed_tenant_ids: list[str] = Field(
+        default_factory=list,
+        description="List of tenant IDs accessed during privileged session"
+    )
+    resource_types: list[str] = Field(
+        default_factory=list,
+        description="Types of resources accessed (Entity, Relationship, etc.)"
+    )
+    session_duration_seconds: int = Field(
+        default=0,
+        description="Duration of privileged session in seconds"
+    )
+    reason: str = Field(
+        ...,
+        description="Justification for cross-tenant access (from X-Privileged-Reason header)"
+    )
+    approval_ticket: str | None = Field(
+        None,
+        description="Optional approval ticket/incident number"
+    )
+    query_count: int = Field(
+        default=0,
+        description="Number of cross-tenant queries executed"
+    )
+    data_exported: bool = Field(
+        default=False,
+        description="Whether data was exported/downloaded"
     )

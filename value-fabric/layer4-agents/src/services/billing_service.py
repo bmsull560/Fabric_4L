@@ -41,11 +41,18 @@ class BillingService:
         customer_id: str,
         email: str,
         name: str | None = None,
+        tenant_id: str | None = None,
     ) -> BillingCustomer:
         """Get existing customer or create new one with Stripe sync.
 
         Uses retry loop with exponential backoff to handle race conditions
         where multiple concurrent requests attempt to create the same customer.
+
+        Args:
+            customer_id: Internal customer/user ID
+            email: Customer email address
+            name: Optional customer name
+            tenant_id: Optional tenant ID for multi-tenant isolation
         """
         max_retries = 3
         base_delay = 0.1
@@ -53,6 +60,7 @@ class BillingService:
         for attempt in range(max_retries):
             try:
                 # Check local DB first (within transaction)
+                # Note: RLS filters by tenant_id automatically when app.tenant_id is set
                 result = await self.db.execute(
                     select(BillingCustomer).where(BillingCustomer.id == customer_id)
                 )
@@ -84,6 +92,7 @@ class BillingService:
                 # Create local customer record within transaction
                 customer = BillingCustomer(
                     id=customer_id,
+                    tenant_id=tenant_id,
                     stripe_customer_id=stripe_customer_id,
                     email=email,
                     name=name,
@@ -91,8 +100,8 @@ class BillingService:
                 self.db.add(customer)
                 await self.db.flush()
 
-                # Create default free subscription
-                await self._create_free_subscription(customer_id)
+                # Create default free subscription with tenant_id
+                await self._create_free_subscription(customer_id, tenant_id)
                 # Note: Caller (billing.py) handles transaction commit
 
                 return customer
@@ -126,10 +135,18 @@ class BillingService:
         # Should never reach here
         raise RuntimeError(f"Failed to create customer after {max_retries} attempts")
 
-    async def _create_free_subscription(self, customer_id: str) -> BillingSubscription:
-        """Create a free tier subscription for a customer."""
+    async def _create_free_subscription(
+        self, customer_id: str, tenant_id: str | None = None
+    ) -> BillingSubscription:
+        """Create a free tier subscription for a customer.
+
+        Args:
+            customer_id: Internal customer/user ID
+            tenant_id: Optional tenant ID for multi-tenant isolation
+        """
         subscription = BillingSubscription(
             id=f"free_{customer_id}",
+            tenant_id=tenant_id,
             customer_id=customer_id,
             plan_id="free",
             status=SubscriptionStatus.ACTIVE,
@@ -255,7 +272,12 @@ class BillingService:
             await self._handle_payment_failed(event["data"]["object"])
 
         # Record event as processed
-        webhook_event = BillingWebhookEvent(id=event_id, type=event_type)
+        # Note: tenant_id is set from the subscription/customer record during processing
+        webhook_event = BillingWebhookEvent(
+            id=event_id,
+            type=event_type,
+            tenant_id=None,  # Set during event processing if available
+        )
         self.db.add(webhook_event)
         await self.db.flush()
 
@@ -282,8 +304,16 @@ class BillingService:
             subscription.stripe_subscription_id = subscription_id
             subscription.status = SubscriptionStatus.ACTIVE
         else:
+            # Get tenant_id from customer record
+            customer_result = await self.db.execute(
+                select(BillingCustomer).where(BillingCustomer.id == customer_id)
+            )
+            customer = customer_result.scalar_one_or_none()
+            tenant_id = customer.tenant_id if customer else None
+
             subscription = BillingSubscription(
                 id=f"sub_{customer_id}_{plan_id}",
+                tenant_id=tenant_id,
                 customer_id=customer_id,
                 stripe_subscription_id=subscription_id,
                 plan_id=plan_id,

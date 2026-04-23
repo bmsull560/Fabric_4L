@@ -7,7 +7,7 @@ Usage metering deferred until product semantics stabilize.
 from datetime import UTC, datetime
 from enum import Enum as PyEnum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -43,6 +43,7 @@ class BillingCustomer(Base):
     __tablename__ = "billing_customers"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)  # App user_id
+    tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     stripe_customer_id: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -60,6 +61,10 @@ class BillingCustomer(Base):
 
     __table_args__ = (
         Index("ix_billing_customers_stripe_id", "stripe_customer_id"),
+        Index("ix_billing_customers_tenant", "tenant_id"),
+        # Composite unique constraint for tenant-scoped customer lookup
+        # Different tenants can have customers with the same logical ID
+        UniqueConstraint("tenant_id", "id", name="uq_billing_customers_tenant_id"),
     )
 
     def __repr__(self) -> str:
@@ -75,6 +80,7 @@ class BillingSubscription(Base):
     __tablename__ = "billing_subscriptions"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     customer_id: Mapped[str] = mapped_column(
         String(100), ForeignKey("billing_customers.id", ondelete="CASCADE"), nullable=False
     )
@@ -98,6 +104,7 @@ class BillingSubscription(Base):
         Index("ix_billing_subscriptions_customer", "customer_id"),
         Index("ix_billing_subscriptions_status", "status"),
         Index("ix_billing_subscriptions_plan", "plan_id"),
+        Index("ix_billing_subscriptions_tenant", "tenant_id"),
     )
 
     def __repr__(self) -> str:
@@ -126,12 +133,14 @@ class BillingWebhookEvent(Base):
     __tablename__ = "billing_webhook_events"
 
     id: Mapped[str] = mapped_column(String(100), primary_key=True)  # Stripe event ID
+    tenant_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     type: Mapped[str] = mapped_column(String(100), nullable=False)
     processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     __table_args__ = (
         Index("ix_billing_webhook_events_type", "type"),
         Index("ix_billing_webhook_events_processed", "processed_at"),
+        Index("ix_billing_webhook_events_tenant", "tenant_id"),
     )
 
     def __repr__(self) -> str:

@@ -52,6 +52,10 @@ class RequestContext:
     # Service account support (Task 1.3)
     service_account_id: UUID | None = None
     service_account_scopes: list[str] = field(default_factory=list)
+    
+    # Task 2: Multi-Tenancy Hardening - Super-admin bypass tracking
+    accessed_tenant_ids: set[str] = field(default_factory=set)
+    privileged_session_start: float | None = None  # Unix timestamp
 
     # P1: Class-level validation
     _valid_isolation_tiers: ClassVar[set[str]] = VALID_ISOLATION_TIERS

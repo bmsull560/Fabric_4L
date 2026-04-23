@@ -17,6 +17,8 @@ from shared.identity.context import (
     AUTH_SOURCE_API_KEY,
     AUTH_SOURCE_JWT,
     AUTH_SOURCE_SERVICE_ACCOUNT,
+    AUTH_SOURCE_UNKNOWN,
+    ISOLATION_TIER_DATABASE,
     ISOLATION_TIER_SCHEMA,
     ISOLATION_TIER_SHARED,
     RequestContext,
@@ -60,7 +62,7 @@ class TestCrossLayerContextConsistency:
         # Layer 4 uses these constants - all layers should agree
         from shared.identity.context import VALID_ISOLATION_TIERS
 
-        valid_tiers = {ISOLATION_TIER_SHARED, ISOLATION_TIER_SCHEMA, "database"}
+        valid_tiers = {ISOLATION_TIER_SHARED, ISOLATION_TIER_SCHEMA, ISOLATION_TIER_DATABASE}
         assert VALID_ISOLATION_TIERS == valid_tiers
 
     def test_auth_source_constants_consistency(self):
@@ -69,7 +71,7 @@ class TestCrossLayerContextConsistency:
             AUTH_SOURCE_JWT,
             AUTH_SOURCE_API_KEY,
             AUTH_SOURCE_SERVICE_ACCOUNT,
-            "unknown",
+            AUTH_SOURCE_UNKNOWN,
         }
 
         ctx = RequestContext(auth_source=AUTH_SOURCE_JWT)
@@ -82,8 +84,7 @@ class TestCrossLayerContextConsistency:
 class TestLayerSpecificEnforcement:
     """Verify each layer has appropriate tenant enforcement."""
 
-    @pytest.mark.asyncio
-    async def test_layer_1_uses_sync_context(self):
+    def test_layer_1_uses_sync_context(self):
         """Layer 1 (ingestion) uses sync SQLAlchemy with context."""
         try:
             from value_fabric.layer1_ingestion.src.shared.database import (
@@ -96,8 +97,7 @@ class TestLayerSpecificEnforcement:
         except ImportError as e:
             pytest.skip(f"Layer 1 not yet migrated: {e}")
 
-    @pytest.mark.asyncio
-    async def test_layer_4_uses_async_context(self):
+    def test_layer_4_uses_async_context(self):
         """Layer 4 (agents) uses async SQLAlchemy with context."""
         from value_fabric.layer4_agents.src.database import (
             get_db_from_context,
@@ -106,8 +106,7 @@ class TestLayerSpecificEnforcement:
         assert callable(get_db_from_context)
         assert callable(get_db_with_optional_tenant)
 
-    @pytest.mark.asyncio
-    async def test_layer_5_uses_async_context(self):
+    def test_layer_5_uses_async_context(self):
         """Layer 5 (ground-truth) uses async SQLAlchemy with context."""
         try:
             from value_fabric.layer5_ground_truth.src.layer5_ground_truth.database import (
@@ -262,8 +261,7 @@ class TestGovernanceCoreContract:
 class TestLayer3Neo4jSpecifics:
     """Layer 3 Neo4j has tenant-aware enforcement through different mechanism."""
 
-    @pytest.mark.asyncio
-    async def test_neo4j_tenant_session_wrapper(self):
+    def test_neo4j_tenant_session_wrapper(self):
         """Layer 3 provides Neo4jTenantSession for graph-aware scoping."""
         try:
             from value_fabric.layer3_knowledge.src.api.dependencies_tenant import (

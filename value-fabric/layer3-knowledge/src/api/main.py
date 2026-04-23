@@ -2102,33 +2102,26 @@ async def get_entity_detail(
         # Sprint 5: Extract tenant context for multi-tenant security
         tenant_id = _extract_tenant_id(request)
 
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for entity access"
+            )
+        
         async with neo4j_driver.session() as session:
-            # Fetch main entity with tenant filtering (Sprint 5)
-            if tenant_id:
-                entity_query = """
-                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
-                    RETURN e {
-                        .id, .name, .entity_type, .domain, .status,
-                        .confidence, .confidence_label, .description,
-                        .updated_at, .source_name, .extraction_job_id,
-                        .created_at, .created_by, .properties,
-                        .validation_errors, .last_validated_at
-                    }
-                """
-                query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-            else:
-                # Fallback for non-tenant-scoped requests (deprecated)
-                entity_query = """
-                    MATCH (e:Entity {id: $entity_id})
-                    RETURN e {
-                        .id, .name, .entity_type, .domain, .status,
-                        .confidence, .confidence_label, .description,
-                        .updated_at, .source_name, .extraction_job_id,
-                        .created_at, .created_by, .properties,
-                        .validation_errors, .last_validated_at
-                    }
-                """
-                query_params = {"entity_id": entity_id}
+            # Fetch main entity with mandatory tenant filtering
+            entity_query = """
+                MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                RETURN e {
+                    .id, .name, .entity_type, .domain, .status,
+                    .confidence, .confidence_label, .description,
+                    .updated_at, .source_name, .extraction_job_id,
+                    .created_at, .created_by, .properties,
+                    .validation_errors, .last_validated_at
+                }
+            """
+            query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
             result = await session.run(entity_query, query_params)
             record = await result.single()
 
@@ -2160,23 +2153,14 @@ async def get_entity_detail(
             # Build relationships if requested
             relationships = EntityRelationships()
             if include_relationships:
-                # Outgoing relationships (Sprint 5: Add tenant filtering)
-                if tenant_id:
-                    outgoing_query = """
-                        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[r]->(target:Entity {tenant_id: $tenant_id})
-                        RETURN type(r) as rel_type, target.id as target_id,
-                               target.name as target_name, target.entity_type as target_type
-                        LIMIT 5
-                    """
-                    outgoing_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-                else:
-                    outgoing_query = """
-                        MATCH (e:Entity {id: $entity_id})-[r]->(target:Entity)
-                        RETURN type(r) as rel_type, target.id as target_id,
-                               target.name as target_name, target.entity_type as target_type
-                        LIMIT 5
-                    """
-                    outgoing_params = {"entity_id": entity_id}
+                # Outgoing relationships with mandatory tenant filtering
+                outgoing_query = """
+                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[r]->(target:Entity {tenant_id: $tenant_id})
+                    RETURN type(r) as rel_type, target.id as target_id,
+                           target.name as target_name, target.entity_type as target_type
+                    LIMIT 5
+                """
+                outgoing_params = {"entity_id": entity_id, "tenant_id": tenant_id}
                 outgoing_result = await session.run(outgoing_query, outgoing_params)
                 outgoing_records = await outgoing_result.fetch()
                 outgoing_rels = [
@@ -2189,23 +2173,14 @@ async def get_entity_detail(
                     for r in outgoing_records
                 ]
 
-                # Incoming relationships (Sprint 5: Add tenant filtering)
-                if tenant_id:
-                    incoming_query = """
-                        MATCH (source:Entity {tenant_id: $tenant_id})-[r]->(e:Entity {id: $entity_id, tenant_id: $tenant_id})
-                        RETURN type(r) as rel_type, source.id as source_id,
-                               source.name as source_name, source.entity_type as source_type
-                        LIMIT 5
-                    """
-                    incoming_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-                else:
-                    incoming_query = """
-                        MATCH (source:Entity)-[r]->(e:Entity {id: $entity_id})
-                        RETURN type(r) as rel_type, source.id as source_id,
-                               source.name as source_name, source.entity_type as source_type
-                        LIMIT 5
-                    """
-                    incoming_params = {"entity_id": entity_id}
+                # Incoming relationships with mandatory tenant filtering
+                incoming_query = """
+                    MATCH (source:Entity {tenant_id: $tenant_id})-[r]->(e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                    RETURN type(r) as rel_type, source.id as source_id,
+                           source.name as source_name, source.entity_type as source_type
+                    LIMIT 5
+                """
+                incoming_params = {"entity_id": entity_id, "tenant_id": tenant_id}
                 incoming_result = await session.run(incoming_query, incoming_params)
                 incoming_records = await incoming_result.fetch()
                 incoming_rels = [
@@ -2218,23 +2193,14 @@ async def get_entity_detail(
                     for r in incoming_records
                 ]
 
-                # Total count (Sprint 5: Add tenant filtering)
-                if tenant_id:
-                    count_query = """
-                        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
-                        OPTIONAL MATCH (e)-[r1]->(:Entity {tenant_id: $tenant_id})
-                        OPTIONAL MATCH (e)<-[r2]-(:Entity {tenant_id: $tenant_id})
-                        RETURN count(r1) + count(r2) as total
-                    """
-                    count_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-                else:
-                    count_query = """
-                        MATCH (e:Entity {id: $entity_id})
-                        OPTIONAL MATCH (e)-[r1]->(:Entity)
-                        OPTIONAL MATCH (e)<-[r2]-(:Entity)
-                        RETURN count(r1) + count(r2) as total
-                    """
-                    count_params = {"entity_id": entity_id}
+                # Total count with mandatory tenant filtering
+                count_query = """
+                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                    OPTIONAL MATCH (e)-[r1]->(:Entity {tenant_id: $tenant_id})
+                    OPTIONAL MATCH (e)<-[r2]-(:Entity {tenant_id: $tenant_id})
+                    RETURN count(r1) + count(r2) as total
+                """
+                count_params = {"entity_id": entity_id, "tenant_id": tenant_id}
                 count_result = await session.run(count_query, count_params)
                 count_record = await count_result.single()
                 total_rels = count_record["total"] if count_record else 0
@@ -2736,30 +2702,22 @@ async def _update_entity(
         Dict with success flag or error message
     """
     try:
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            return {"success": False, "error": "tenant_id is required for entity updates"}
+        
         async with driver.session() as session:
-            # Sprint 5: Add tenant_id filter for multi-tenant security
-            if tenant_id:
-                query = """
-                MATCH (n {id: $entity_id, tenant_id: $tenant_id})
-                SET n += $properties, n.updated_at = datetime()
-                RETURN n.id as entity_id
-                """
-                params = {
-                    "entity_id": operation.entity_id,
-                    "tenant_id": tenant_id,
-                    "properties": operation.properties or {},
-                }
-            else:
-                # Fallback for non-tenant-scoped operations (deprecated)
-                query = """
-                MATCH (n {id: $entity_id})
-                SET n += $properties, n.updated_at = datetime()
-                RETURN n.id as entity_id
-                """
-                params = {
-                    "entity_id": operation.entity_id,
-                    "properties": operation.properties or {},
-                }
+            # Update entity with mandatory tenant filtering
+            query = """
+            MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+            SET n += $properties, n.updated_at = datetime()
+            RETURN n.id as entity_id
+            """
+            params = {
+                "entity_id": operation.entity_id,
+                "tenant_id": tenant_id,
+                "properties": operation.properties or {},
+            }
             result = await session.run(query, params)
             record = await result.single()
             if record:
@@ -2783,23 +2741,18 @@ async def _delete_entity(
         Dict with success flag or error message
     """
     try:
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            return {"success": False, "error": "tenant_id is required for entity deletion"}
+        
         async with driver.session() as session:
-            # Sprint 5: Add tenant_id filter for multi-tenant security
-            if tenant_id:
-                query = """
-                MATCH (n {id: $entity_id, tenant_id: $tenant_id})
-                DETACH DELETE n
-                RETURN count(n) as deleted
-                """
-                params = {"entity_id": operation.entity_id, "tenant_id": tenant_id}
-            else:
-                # Fallback for non-tenant-scoped operations (deprecated)
-                query = """
-                MATCH (n {id: $entity_id})
-                DETACH DELETE n
-                RETURN count(n) as deleted
-                """
-                params = {"entity_id": operation.entity_id}
+            # Delete entity with mandatory tenant filtering
+            query = """
+            MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+            DETACH DELETE n
+            RETURN count(n) as deleted
+            """
+            params = {"entity_id": operation.entity_id, "tenant_id": tenant_id}
             result = await session.run(query, params)
             record = await result.single()
             if record and record["deleted"] > 0:
@@ -2819,15 +2772,14 @@ async def _delete_entity_by_id(
         entity_id: Entity ID to delete
         tenant_id: Optional tenant ID for multi-tenant scoping
     """
+    # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+    if not tenant_id:
+        raise ValueError("tenant_id is required for entity deletion")
+    
     async with driver.session() as session:
-        # Sprint 5: Add tenant_id filter for multi-tenant security
-        if tenant_id:
-            query = "MATCH (n {id: $entity_id, tenant_id: $tenant_id}) DETACH DELETE n"
-            params = {"entity_id": entity_id, "tenant_id": tenant_id}
-        else:
-            # Fallback for non-tenant-scoped operations (deprecated)
-            query = "MATCH (n {id: $entity_id}) DETACH DELETE n"
-            params = {"entity_id": entity_id}
+        # Delete entity with mandatory tenant filtering
+        query = "MATCH (n {id: $entity_id, tenant_id: $tenant_id}) DETACH DELETE n"
+        params = {"entity_id": entity_id, "tenant_id": tenant_id}
         await session.run(query, params)
 
 
@@ -3044,25 +2996,22 @@ async def get_provenance(
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
-        # Get entity details with parameterized query (safe from injection, Sprint 5: Add tenant_id)
-        if tenant_id:
-            entity_query = """
-            MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
-            RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
-                   e.created_at as created_at, e.source as source,
-                   e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
-            LIMIT 1
-            """
-            query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-        else:
-            entity_query = """
-            MATCH (e:Entity {id: $entity_id})
-            RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
-                   e.created_at as created_at, e.source as source,
-                   e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
-            LIMIT 1
-            """
-            query_params = {"entity_id": entity_id}
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for provenance access"
+            )
+        
+        # Get entity details with mandatory tenant filtering
+        entity_query = """
+        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+        RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
+               e.created_at as created_at, e.source as source,
+               e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
+        LIMIT 1
+        """
+        query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
         entity_result = await neo4j.execute_query(entity_query, query_params)
 
         if not entity_result:
@@ -3070,29 +3019,17 @@ async def get_provenance(
 
         record = entity_result[0]
 
-        # Build provenance steps from related audit events (Sprint 5: Add tenant_id filtering)
-        if tenant_id:
-            steps_query = """
-            MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
-            OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
-            WITH a
-            WHERE a IS NOT NULL
-            RETURN a.step as step, a.label as label, a.detail as detail,
-                   a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
-            ORDER BY a.step
-            """
-            steps_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-        else:
-            steps_query = """
-            MATCH (e:Entity {id: $entity_id})
-            OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
-            WITH a
-            WHERE a IS NOT NULL
-            RETURN a.step as step, a.label as label, a.detail as detail,
-                   a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
-            ORDER BY a.step
-            """
-            steps_params = {"entity_id": entity_id}
+        # Build provenance steps from related audit events with mandatory tenant filtering
+        steps_query = """
+        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+        OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
+        WITH a
+        WHERE a IS NOT NULL
+        RETURN a.step as step, a.label as label, a.detail as detail,
+               a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
+        ORDER BY a.step
+        """
+        steps_params = {"entity_id": entity_id, "tenant_id": tenant_id}
         steps_result = await neo4j.execute_query(steps_query, steps_params)
 
         steps = [
@@ -3551,21 +3488,20 @@ async def get_entity_subgraph(
         # Clamp depth
         depth = max(1, min(depth, 5))
 
-        # Query for root entity (Sprint 5: Add tenant_id filtering)
-        if tenant_id:
-            root_query = """
-            MATCH (n {id: $entity_id, tenant_id: $tenant_id})
-            RETURN n.id as id, n.name as label, n.type as type,
-                   n.confidence as confidence
-            """
-            root_params = {"entity_id": entity_id, "tenant_id": tenant_id}
-        else:
-            root_query = """
-            MATCH (n {id: $entity_id})
-            RETURN n.id as id, n.name as label, n.type as type,
-                   n.confidence as confidence
-            """
-            root_params = {"entity_id": entity_id}
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for value tree access"
+            )
+        
+        # Query for root entity with mandatory tenant filtering
+        root_query = """
+        MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+        RETURN n.id as id, n.name as label, n.type as type,
+               n.confidence as confidence
+        """
+        root_params = {"entity_id": entity_id, "tenant_id": tenant_id}
         root_result = await neo4j.execute_query(root_query, root_params)
 
         if not root_result:
@@ -3573,23 +3509,14 @@ async def get_entity_subgraph(
 
         root_record = root_result[0]
 
-        # Query for connected nodes up to depth (Sprint 5: Add tenant_id filtering)
-        if tenant_id:
-            subgraph_query = """
-            MATCH path = (root {id: $entity_id, tenant_id: $tenant_id})-[*1..$depth]-(connected {tenant_id: $tenant_id})
-            WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
-            RETURN root, connected, relationships(path) as rels,
-                   length(path) as path_length
-            """
-            subgraph_params = {"entity_id": entity_id, "depth": depth, "tenant_id": tenant_id}
-        else:
-            subgraph_query = """
-            MATCH path = (root {id: $entity_id})-[*1..$depth]-(connected)
-            WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
-            RETURN root, connected, relationships(path) as rels,
-                   length(path) as path_length
-            """
-            subgraph_params = {"entity_id": entity_id, "depth": depth}
+        # Query for connected nodes up to depth with mandatory tenant filtering
+        subgraph_query = """
+        MATCH path = (root {id: $entity_id, tenant_id: $tenant_id})-[*1..$depth]-(connected {tenant_id: $tenant_id})
+        WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+        RETURN root, connected, relationships(path) as rels,
+               length(path) as path_length
+        """
+        subgraph_params = {"entity_id": entity_id, "depth": depth, "tenant_id": tenant_id}
         subgraph_result = await neo4j.execute_query(subgraph_query, subgraph_params)
 
         # Collect unique nodes and edges
@@ -3738,19 +3665,20 @@ async def get_query_subgraph(
 
         # Sprint 5: Extract tenant context for multi-tenant security
         tenant_id = _extract_tenant_id(request)
+        
+        # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for graph explorer access"
+            )
 
         if center_entity_id:
-            # Center mode: expand N hops from specific entity (Sprint 5: Add tenant_id)
-            if tenant_id:
-                root_result = await neo4j.execute_query(
-                    "MATCH (root {id: $entity_id, tenant_id: $tenant_id}) RETURN root",
-                    {"entity_id": center_entity_id, "tenant_id": tenant_id}
-                )
-            else:
-                root_result = await neo4j.execute_query(
-                    "MATCH (root {id: $entity_id}) RETURN root",
-                    {"entity_id": center_entity_id}
-                )
+            # Center mode: expand N hops from specific entity with mandatory tenant filtering
+            root_result = await neo4j.execute_query(
+                "MATCH (root {id: $entity_id, tenant_id: $tenant_id}) RETURN root",
+                {"entity_id": center_entity_id, "tenant_id": tenant_id}
+            )
             if not root_result:
                 raise HTTPException(
                     status_code=404,
@@ -3767,29 +3695,17 @@ async def get_query_subgraph(
                 if validated_types:
                     rel_filter = f"AND ALL(r IN relationships(path) WHERE type(r IN [{', '.join(repr(r) for r in validated_types)}]))"
 
-            # Query for connected nodes (Sprint 5: Add tenant_id filtering)
-            if tenant_id:
-                subgraph_query = f"""
-                MATCH path = (root {{id: $entity_id, tenant_id: $tenant_id}})-[*1..{depth}]-(connected {{tenant_id: $tenant_id}})
-                WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
-                {rel_filter}
-                WITH root, connected, relationships(path) as rels, length(path) as hops
-                RETURN root, collect(DISTINCT connected) as neighbors,
-                       collect(DISTINCT rels) as paths, max(hops) as max_hops
-                LIMIT $limit
-                """
-                query_params = {"entity_id": center_entity_id, "tenant_id": tenant_id, "limit": limit}
-            else:
-                subgraph_query = f"""
-                MATCH path = (root {{id: $entity_id}})-[*1..{depth}]-(connected)
-                WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
-                {rel_filter}
-                WITH root, connected, relationships(path) as rels, length(path) as hops
-                RETURN root, collect(DISTINCT connected) as neighbors,
-                       collect(DISTINCT rels) as paths, max(hops) as max_hops
-                LIMIT $limit
-                """
-                query_params = {"entity_id": center_entity_id, "limit": limit}
+            # Query for connected nodes with mandatory tenant filtering
+            subgraph_query = f"""
+            MATCH path = (root {{id: $entity_id, tenant_id: $tenant_id}})-[*1..{depth}]-(connected {{tenant_id: $tenant_id}})
+            WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+            {rel_filter}
+            WITH root, connected, relationships(path) as rels, length(path) as hops
+            RETURN root, collect(DISTINCT connected) as neighbors,
+                   collect(DISTINCT rels) as paths, max(hops) as max_hops
+            LIMIT $limit
+            """
+            query_params = {"entity_id": center_entity_id, "tenant_id": tenant_id, "limit": limit}
             result = await neo4j.execute_query(subgraph_query, query_params)
 
             if result:
