@@ -25,10 +25,21 @@
 import { useState, useMemo, memo } from "react";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useAccountContextStore } from "@/stores/accountContextStore";
 import {
-  Building2, Radar, GitBranch, Package, FileOutput,
-  Shield, Settings, ChevronDown, ChevronRight,
-  Eye, Lock, Crown, Wrench
+  Building2,
+  Radar,
+  GitBranch,
+  Package,
+  FileOutput,
+  Shield,
+  Settings,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  Lock,
+  Crown,
+  Wrench,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -85,10 +96,30 @@ const NAV_SPINE: NavItem[] = [
     tier: "standard",
     description: "Discover and validate prospect pain signals",
     children: [
-      { id: "signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
-      { id: "drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
-      { id: "evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
-      { id: "stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
+      {
+        id: "signals",
+        label: "Signals",
+        path: "/intelligence/signals",
+        tier: "standard",
+      },
+      {
+        id: "drivers",
+        label: "Drivers",
+        path: "/intelligence/drivers",
+        tier: "standard",
+      },
+      {
+        id: "evidence",
+        label: "Evidence",
+        path: "/intelligence/evidence",
+        tier: "standard",
+      },
+      {
+        id: "stakeholders",
+        label: "Stakeholders",
+        path: "/intelligence/stakeholders",
+        tier: "standard",
+      },
     ],
   },
 
@@ -104,9 +135,24 @@ const NAV_SPINE: NavItem[] = [
     tier: "standard",
     description: "Build the product-anchored business case",
     children: [
-      { id: "action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
-      { id: "value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
-      { id: "narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
+      {
+        id: "action-plan",
+        label: "Action Plan",
+        path: "/studio/action-plan",
+        tier: "standard",
+      },
+      {
+        id: "value-model",
+        label: "Value Model",
+        path: "/studio/value-model",
+        tier: "standard",
+      },
+      {
+        id: "narrative",
+        label: "Narrative",
+        path: "/studio/narrative",
+        tier: "standard",
+      },
     ],
   },
 
@@ -122,25 +168,82 @@ const NAV_SPINE: NavItem[] = [
     tier: "standard",
     description: "Vendor knowledge: Value Packs, models, formulas",
     children: [
-      { id: "packs", label: "Value Packs", path: "/context/packs", tier: "standard" },
-      { id: "models", label: "Models", path: "/context/models", tier: "standard" },
-      { id: "formulas", label: "Formulas", path: "/context/formulas", tier: "advanced" },
-      { id: "agents", label: "Agents", path: "/context/agents", tier: "advanced" },
+      {
+        id: "packs",
+        label: "Value Packs",
+        path: "/context/packs",
+        tier: "standard",
+      },
+      {
+        id: "models",
+        label: "Models",
+        path: "/context/models",
+        tier: "standard",
+      },
+      {
+        id: "formulas",
+        label: "Formulas",
+        path: "/context/formulas",
+        tier: "advanced",
+      },
+      {
+        id: "agents",
+        label: "Agents",
+        path: "/context/agents",
+        tier: "advanced",
+      },
       {
         id: "ontology",
         label: "Ontology",
         path: "/context/ontology",
         tier: "advanced",
         children: [
-          { id: "ontology-editor", label: "Schema Editor", path: "/context/ontology", tier: "advanced" },
-          { id: "entities", label: "Entities", path: "/context/ontology/entities", tier: "advanced" },
-          { id: "graph", label: "Graph View", path: "/context/ontology/graph", tier: "advanced" },
+          {
+            id: "ontology-editor",
+            label: "Schema Editor",
+            path: "/context/ontology",
+            tier: "advanced",
+          },
+          {
+            id: "entities",
+            label: "Entities",
+            path: "/context/ontology/entities",
+            tier: "advanced",
+          },
+          {
+            id: "graph",
+            label: "Graph View",
+            path: "/context/ontology/graph",
+            tier: "advanced",
+          },
         ],
       },
-      { id: "ingestion", label: "Ingestion Jobs", path: "/context/ingestion/jobs", tier: "advanced" },
-      { id: "extraction", label: "Extraction", path: "/context/extraction", tier: "advanced" },
-      { id: "integrations", label: "Integrations", path: "/context/integrations", tier: "admin", badge: "Admin" },
-      { id: "sources", label: "Sources", path: "/context/sources", tier: "admin", badge: "Admin" },
+      {
+        id: "ingestion",
+        label: "Ingestion Jobs",
+        path: "/context/ingestion/jobs",
+        tier: "advanced",
+      },
+      {
+        id: "extraction",
+        label: "Extraction",
+        path: "/context/extraction",
+        tier: "advanced",
+      },
+      {
+        id: "integrations",
+        label: "Integrations",
+        path: "/context/integrations",
+        tier: "admin",
+        badge: "Admin",
+      },
+      {
+        id: "sources",
+        label: "Sources",
+        path: "/context/sources",
+        tier: "admin",
+        badge: "Admin",
+      },
     ],
   },
 
@@ -156,21 +259,58 @@ const NAV_SPINE: NavItem[] = [
     tier: "standard",
     description: "Packaged outputs for sharing with prospects",
     children: [
-      { id: "cases", label: "Business Cases", path: "/deliverables/cases", tier: "standard" },
-      { id: "calculators", label: "Calculators", path: "/deliverables/calculators", tier: "advanced" },
+      {
+        id: "cases",
+        label: "Business Cases",
+        path: "/deliverables/cases",
+        tier: "standard",
+      },
+      {
+        id: "calculators",
+        label: "Calculators",
+        path: "/deliverables/calculators",
+        tier: "advanced",
+      },
       {
         id: "views",
         label: "Stakeholder Views",
         path: "/deliverables/views",
         tier: "standard",
         children: [
-          { id: "cfo", label: "CFO View", path: "/deliverables/views/cfo", tier: "standard" },
-          { id: "executive", label: "Executive View", path: "/deliverables/views/executive", tier: "standard" },
-          { id: "technical", label: "Technical View", path: "/deliverables/views/technical", tier: "standard" },
+          {
+            id: "cfo",
+            label: "CFO View",
+            path: "/deliverables/views/cfo",
+            tier: "standard",
+          },
+          {
+            id: "executive",
+            label: "Executive View",
+            path: "/deliverables/views/executive",
+            tier: "standard",
+          },
+          {
+            id: "technical",
+            label: "Technical View",
+            path: "/deliverables/views/technical",
+            tier: "standard",
+          },
         ],
       },
-      { id: "api", label: "API & Webhooks", path: "/deliverables/api", tier: "admin", badge: "Admin" },
-      { id: "embeds", label: "Embeds", path: "/deliverables/embeds", tier: "admin", badge: "Admin" },
+      {
+        id: "api",
+        label: "API & Webhooks",
+        path: "/deliverables/api",
+        tier: "admin",
+        badge: "Admin",
+      },
+      {
+        id: "embeds",
+        label: "Embeds",
+        path: "/deliverables/embeds",
+        tier: "admin",
+        badge: "Admin",
+      },
     ],
   },
 
@@ -186,12 +326,43 @@ const NAV_SPINE: NavItem[] = [
     tier: "standard",
     description: "Audit, provenance, and compliance",
     children: [
-      { id: "traces", label: "Decision Traces", path: "/governance/traces", tier: "standard" },
-      { id: "evidence-gov", label: "Evidence", path: "/governance/evidence", tier: "standard" },
-      { id: "provenance", label: "Provenance", path: "/governance/provenance", tier: "advanced" },
-      { id: "integrity", label: "Integrity", path: "/governance/integrity", tier: "advanced" },
-      { id: "compliance", label: "Compliance", path: "/governance/compliance", tier: "advanced" },
-      { id: "benchmarks", label: "Benchmarks", path: "/governance/benchmarks", tier: "admin", badge: "Admin" },
+      {
+        id: "traces",
+        label: "Decision Traces",
+        path: "/governance/traces",
+        tier: "standard",
+      },
+      {
+        id: "evidence-gov",
+        label: "Evidence",
+        path: "/governance/evidence",
+        tier: "standard",
+      },
+      {
+        id: "provenance",
+        label: "Provenance",
+        path: "/governance/provenance",
+        tier: "advanced",
+      },
+      {
+        id: "integrity",
+        label: "Integrity",
+        path: "/governance/integrity",
+        tier: "advanced",
+      },
+      {
+        id: "compliance",
+        label: "Compliance",
+        path: "/governance/compliance",
+        tier: "advanced",
+      },
+      {
+        id: "benchmarks",
+        label: "Benchmarks",
+        path: "/governance/benchmarks",
+        tier: "admin",
+        badge: "Admin",
+      },
       {
         id: "audit",
         label: "Audit",
@@ -199,11 +370,27 @@ const NAV_SPINE: NavItem[] = [
         tier: "admin",
         badge: "Admin",
         children: [
-          { id: "audit-log", label: "Audit Log", path: "/governance/audit/log", tier: "admin" },
-          { id: "changes", label: "Change History", path: "/governance/audit/changes", tier: "admin" },
+          {
+            id: "audit-log",
+            label: "Audit Log",
+            path: "/governance/audit/log",
+            tier: "admin",
+          },
+          {
+            id: "changes",
+            label: "Change History",
+            path: "/governance/audit/changes",
+            tier: "admin",
+          },
         ],
       },
-      { id: "health", label: "System Health", path: "/governance/health", tier: "admin", badge: "Admin" },
+      {
+        id: "health",
+        label: "System Health",
+        path: "/governance/health",
+        tier: "admin",
+        badge: "Admin",
+      },
     ],
   },
 
@@ -226,9 +413,24 @@ const NAV_SPINE: NavItem[] = [
         path: "/settings/content",
         tier: "admin",
         children: [
-          { id: "formula-registry", label: "Formula Registry", path: "/settings/content/formulas", tier: "admin" },
-          { id: "versions", label: "Version History", path: "/settings/content/versions", tier: "admin" },
-          { id: "approvals", label: "Approval Queue", path: "/settings/content/approvals", tier: "admin" },
+          {
+            id: "formula-registry",
+            label: "Formula Registry",
+            path: "/settings/content/formulas",
+            tier: "admin",
+          },
+          {
+            id: "versions",
+            label: "Version History",
+            path: "/settings/content/versions",
+            tier: "admin",
+          },
+          {
+            id: "approvals",
+            label: "Approval Queue",
+            path: "/settings/content/approvals",
+            tier: "admin",
+          },
         ],
       },
       {
@@ -237,9 +439,24 @@ const NAV_SPINE: NavItem[] = [
         path: "/settings/data",
         tier: "admin",
         children: [
-          { id: "variables", label: "Variable Registry", path: "/settings/data/variables", tier: "admin" },
-          { id: "bindings", label: "Source Bindings", path: "/settings/data/bindings", tier: "admin" },
-          { id: "quality", label: "Quality Rules", path: "/settings/data/quality", tier: "admin" },
+          {
+            id: "variables",
+            label: "Variable Registry",
+            path: "/settings/data/variables",
+            tier: "admin",
+          },
+          {
+            id: "bindings",
+            label: "Source Bindings",
+            path: "/settings/data/bindings",
+            tier: "admin",
+          },
+          {
+            id: "quality",
+            label: "Quality Rules",
+            path: "/settings/data/quality",
+            tier: "admin",
+          },
         ],
       },
       {
@@ -248,9 +465,24 @@ const NAV_SPINE: NavItem[] = [
         path: "/settings/access",
         tier: "admin",
         children: [
-          { id: "roles", label: "Roles & Permissions", path: "/settings/access/roles", tier: "admin" },
-          { id: "teams", label: "Teams", path: "/settings/access/teams", tier: "admin" },
-          { id: "keys", label: "API Keys", path: "/settings/access/keys", tier: "admin" },
+          {
+            id: "roles",
+            label: "Roles & Permissions",
+            path: "/settings/access/roles",
+            tier: "admin",
+          },
+          {
+            id: "teams",
+            label: "Teams",
+            path: "/settings/access/teams",
+            tier: "admin",
+          },
+          {
+            id: "keys",
+            label: "API Keys",
+            path: "/settings/access/keys",
+            tier: "admin",
+          },
         ],
       },
       {
@@ -259,7 +491,12 @@ const NAV_SPINE: NavItem[] = [
         path: "/settings/system",
         tier: "admin",
         children: [
-          { id: "system-settings", label: "Settings", path: "/settings/system/settings", tier: "admin" },
+          {
+            id: "system-settings",
+            label: "Settings",
+            path: "/settings/system/settings",
+            tier: "admin",
+          },
         ],
       },
     ],
@@ -289,7 +526,10 @@ const TIER_STYLES = {
   },
 } as const;
 
-const TIER_LABELS: Record<UserTier, { label: string; description: string; icon: React.ReactNode }> = {
+const TIER_LABELS: Record<
+  UserTier,
+  { label: string; description: string; icon: React.ReactNode }
+> = {
   standard: {
     label: "Standard",
     description: "Simplified flows for business users",
@@ -323,9 +563,36 @@ interface SidebarItemProps {
   depth?: number;
 }
 
-const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: SidebarItemProps) {
+function resolveWorkspacePath(path: string, accountId: string | null): string {
+  if (!accountId) return path;
+
+  if (path === "/intelligence") return `/intelligence/${accountId}`;
+  if (path.startsWith("/intelligence/")) {
+    return path.replace("/intelligence/", `/intelligence/${accountId}/`);
+  }
+
+  if (path === "/studio") return `/studio/${accountId}`;
+  if (path.startsWith("/studio/")) {
+    return path.replace("/studio/", `/studio/${accountId}/`);
+  }
+
+  return path;
+}
+
+const SidebarItem = memo(function SidebarItem({
+  item,
+  currentTier,
+  depth = 0,
+}: SidebarItemProps) {
   const [location] = useLocation();
-  const isActive = location.startsWith(item.path);
+  const selectedAccountId = useAccountContextStore(
+    state => state.selectedAccountId
+  );
+  const resolvedPath = useMemo(
+    () => resolveWorkspacePath(item.path, selectedAccountId),
+    [item.path, selectedAccountId]
+  );
+  const isActive = location.startsWith(resolvedPath);
   const [open, setOpen] = useState(isActive);
 
   const tierStyle = TIER_STYLES[item.tier];
@@ -345,7 +612,7 @@ const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: 
 
   return (
     <div className="group">
-      <Link href={item.path}>
+      <Link href={resolvedPath}>
         <div
           className={cn(
             "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all select-none cursor-pointer",
@@ -355,7 +622,7 @@ const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: 
             item.tier === "admin" && !isActive && "hover:bg-destructive/5",
             depth > 0 && "py-1.5 text-[11px]"
           )}
-          onClick={(e) => {
+          onClick={e => {
             if (hasVisibleChildren) {
               e.preventDefault();
               setOpen(o => !o);
@@ -363,13 +630,25 @@ const SidebarItem = memo(function SidebarItem({ item, currentTier, depth = 0 }: 
           }}
         >
           {item.icon && (
-            <span className={cn("shrink-0", isActive ? tierStyle.icon : "text-muted-foreground group-hover:text-muted-foreground/80")}>
+            <span
+              className={cn(
+                "shrink-0",
+                isActive
+                  ? tierStyle.icon
+                  : "text-muted-foreground group-hover:text-muted-foreground/80"
+              )}
+            >
               {item.icon}
             </span>
           )}
           <span className="flex-1 truncate">{item.label}</span>
           {item.badge && (
-            <span className={cn("text-[9px] px-1.5 py-0.5 rounded border font-semibold", tierStyle.badge)}>
+            <span
+              className={cn(
+                "text-[9px] px-1.5 py-0.5 rounded border font-semibold",
+                tierStyle.badge
+              )}
+            >
               {item.badge}
             </span>
           )}
@@ -418,21 +697,30 @@ function TierSwitcher({
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors"
       >
-        <div className={cn(
-          "w-8 h-8 rounded-lg flex items-center justify-center",
-          currentTier === "standard" && "bg-primary/10 text-primary",
-          currentTier === "advanced" && "bg-accent/10 text-accent",
-          currentTier === "admin" && "bg-destructive/10 text-destructive",
-        )}>
+        <div
+          className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center",
+            currentTier === "standard" && "bg-primary/10 text-primary",
+            currentTier === "advanced" && "bg-accent/10 text-accent",
+            currentTier === "admin" && "bg-destructive/10 text-destructive"
+          )}
+        >
           {TIER_LABELS[currentTier].icon}
         </div>
         <div className="flex-1 text-left">
-          <p className="text-[12px] font-semibold text-foreground">{TIER_LABELS[currentTier].label} Mode</p>
-          <p className="text-[10px] text-muted-foreground truncate">{TIER_LABELS[currentTier].description}</p>
+          <p className="text-[12px] font-semibold text-foreground">
+            {TIER_LABELS[currentTier].label} Mode
+          </p>
+          <p className="text-[10px] text-muted-foreground truncate">
+            {TIER_LABELS[currentTier].description}
+          </p>
         </div>
         <ChevronDown
           size={14}
-          className={cn("text-muted-foreground transition-transform", isExpanded && "rotate-180")}
+          className={cn(
+            "text-muted-foreground transition-transform",
+            isExpanded && "rotate-180"
+          )}
         />
       </button>
 
@@ -441,7 +729,9 @@ function TierSwitcher({
           <div className="flex items-center justify-between py-2 px-2 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
               <Wrench size={12} className="text-accent" />
-              <span className="text-[11px] font-medium text-foreground">Advanced Mode</span>
+              <span className="text-[11px] font-medium text-foreground">
+                Advanced Mode
+              </span>
             </div>
             <button
               onClick={() => onAdvancedModeToggle(!isAdvancedModeEnabled)}
@@ -450,15 +740,17 @@ function TierSwitcher({
                 isAdvancedModeEnabled ? "bg-accent" : "bg-muted-foreground/30"
               )}
             >
-              <span className={cn(
-                "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform",
-                isAdvancedModeEnabled ? "translate-x-5" : "translate-x-0.5"
-              )} />
+              <span
+                className={cn(
+                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform",
+                  isAdvancedModeEnabled ? "translate-x-5" : "translate-x-0.5"
+                )}
+              />
             </button>
           </div>
 
           <div className="space-y-1">
-            {(Object.keys(TIER_LABELS) as UserTier[]).map((tier) => (
+            {(Object.keys(TIER_LABELS) as UserTier[]).map(tier => (
               <button
                 key={tier}
                 onClick={() => {
@@ -469,25 +761,39 @@ function TierSwitcher({
                 className={cn(
                   "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-[11px] font-medium transition-colors",
                   currentTier === tier
-                    ? tier === "standard" ? "bg-primary/10 text-primary" :
-                      tier === "advanced" ? "bg-accent/10 text-accent" :
-                      "bg-destructive/10 text-destructive"
+                    ? tier === "standard"
+                      ? "bg-primary/10 text-primary"
+                      : tier === "advanced"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-destructive/10 text-destructive"
                     : "text-muted-foreground hover:bg-muted",
                   tier === "admin" && "opacity-50 cursor-not-allowed"
                 )}
               >
-                <span className={cn(
-                  "w-5 h-5 rounded flex items-center justify-center",
-                  tier === "standard" ? "bg-primary/10 text-primary" :
-                  tier === "advanced" ? "bg-accent/10 text-accent" :
-                  "bg-destructive/10 text-destructive"
-                )}>
-                  {tier === "standard" ? <Eye size={10} /> :
-                   tier === "advanced" ? <Wrench size={10} /> :
-                   <Lock size={10} />}
+                <span
+                  className={cn(
+                    "w-5 h-5 rounded flex items-center justify-center",
+                    tier === "standard"
+                      ? "bg-primary/10 text-primary"
+                      : tier === "advanced"
+                        ? "bg-accent/10 text-accent"
+                        : "bg-destructive/10 text-destructive"
+                  )}
+                >
+                  {tier === "standard" ? (
+                    <Eye size={10} />
+                  ) : tier === "advanced" ? (
+                    <Wrench size={10} />
+                  ) : (
+                    <Lock size={10} />
+                  )}
                 </span>
-                <span className="flex-1 text-left">{TIER_LABELS[tier].label}</span>
-                {tier === "admin" && <Lock size={10} className="text-muted-foreground" />}
+                <span className="flex-1 text-left">
+                  {TIER_LABELS[tier].label}
+                </span>
+                {tier === "admin" && (
+                  <Lock size={10} className="text-muted-foreground" />
+                )}
               </button>
             ))}
           </div>
@@ -506,7 +812,10 @@ export function TieredNav({
   onAdvancedModeToggle = () => {},
 }: TieredNavProps) {
   const effectiveTier = useMemo<UserTier>(
-    () => (currentTier === "standard" && isAdvancedModeEnabled ? "advanced" : currentTier),
+    () =>
+      currentTier === "standard" && isAdvancedModeEnabled
+        ? "advanced"
+        : currentTier,
     [currentTier, isAdvancedModeEnabled]
   );
 
@@ -519,11 +828,7 @@ export function TieredNav({
     <aside className="w-[240px] shrink-0 bg-card border-r border-border overflow-y-auto z-20 flex flex-col h-full">
       <div className="flex-1 py-4 px-2 space-y-1">
         {visibleNavItems.map(item => (
-          <SidebarItem
-            key={item.id}
-            item={item}
-            currentTier={currentTier}
-          />
+          <SidebarItem key={item.id} item={item} currentTier={currentTier} />
         ))}
       </div>
 
