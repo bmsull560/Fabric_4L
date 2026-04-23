@@ -30,6 +30,12 @@ export interface AgentMessage {
   content: string;
   timestamp: string;
   actions?: AgentAction[];
+  metadata?: {
+    traceId?: string;
+    workflowId?: string;
+    tenantId?: string;
+    auditEventId?: string;
+  };
 }
 
 export interface AgentAction {
@@ -167,6 +173,14 @@ function AgentStream({
             >
               {msg.content}
             </div>
+            {msg.role === "agent" && msg.metadata && (
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                {msg.metadata.traceId && <span className="mr-2">Trace: {msg.metadata.traceId}</span>}
+                {msg.metadata.workflowId && <span className="mr-2">Workflow: {msg.metadata.workflowId}</span>}
+                {msg.metadata.tenantId && <span className="mr-2">Tenant: {msg.metadata.tenantId}</span>}
+                {msg.metadata.auditEventId && <span>Audit: {msg.metadata.auditEventId}</span>}
+              </div>
+            )}
             {msg.actions && msg.actions.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
                 {msg.actions.map((action, i) => (
