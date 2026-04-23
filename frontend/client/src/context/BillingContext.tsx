@@ -3,6 +3,7 @@ import { useBilling, useEntitlements, Subscription, EntitlementsResponse } from 
 
 interface BillingContextType {
   // Current subscription
+  customerId: string;
   subscription: Subscription | undefined;
   isLoading: boolean;
   error: Error | null;
@@ -42,6 +43,7 @@ export function BillingProvider({ children, customerId }: BillingProviderProps) 
   const canUpgrade = billing.subscription?.plan_id !== 'enterprise';
 
   const value: BillingContextType = {
+    customerId,
     subscription: billing.subscription,
     isLoading: billing.isLoading,
     error: billing.error as Error | null,

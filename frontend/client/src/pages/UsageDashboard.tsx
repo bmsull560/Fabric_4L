@@ -13,11 +13,9 @@ import { formatDate, formatRelativeTime } from '@/lib/formatters';
 import { AlertTriangle, RefreshCw, Activity } from 'lucide-react';
 
 export function UsageDashboard() {
-  const { subscription } = useBillingContext();
-  const customerId = subscription?.id || '';
+  const { customerId } = useBillingContext();
 
-  const { metrics, events, isLoading, isLoadingEvents, error, refetch, overageStatus } =
-    useUsage(customerId);
+  const { metrics, events, isLoading, isLoadingEvents, refetch } = useUsage(customerId);
 
   const [showAllEvents, setShowAllEvents] = useState(false);
   const displayedEvents = showAllEvents ? events : events.slice(0, 10);
