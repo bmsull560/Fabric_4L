@@ -9,6 +9,7 @@
  */
 import { useState, useCallback } from "react";
 import type { AgentMessage, AgentAction } from "@/components/workspace/RightRail";
+import { apiClient } from "@/api/client";
 
 // ── System Prompts by Tab ────────────────────────────────────────────────────
 
@@ -106,13 +107,17 @@ export function getDefaultSuggestedActions(activeTab: string): AgentAction[] {
 
 interface UseAgentStreamOptions {
   activeTab: string;
+  accountId?: string;
   accountName?: string;
+  accountTier?: string;
   initialMessages?: AgentMessage[];
 }
 
 export function useAgentStream({
   activeTab,
+  accountId,
   accountName = "this account",
+  accountTier,
   initialMessages,
 }: UseAgentStreamOptions) {
   const [messages, setMessages] = useState<AgentMessage[]>(
@@ -127,6 +132,9 @@ export function useAgentStream({
   );
   const [isStreaming, setIsStreaming] = useState(false);
 
+  const devFallbackEnabled =
+    import.meta.env.DEV && import.meta.env.VITE_AGENT_STREAM_DEV_FALLBACK === "true";
+
   const sendMessage = useCallback(
     async (userInput: string) => {
       // Add user message
@@ -140,7 +148,6 @@ export function useAgentStream({
       setIsStreaming(true);
 
       try {
-        // Build conversation history for the API
         const systemPrompt =
           TAB_SYSTEM_PROMPTS[activeTab] ??
           "You are ValuePilot, an AI co-pilot for value selling. Keep responses concise.";
@@ -154,35 +161,56 @@ export function useAgentStream({
           { role: "user" as const, content: userInput },
         ];
 
-        // Call the backend agent endpoint (falls back to OpenAI-compatible API)
-        const response = await fetch("/api/agent/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: conversationMessages,
-            context: { activeTab, accountName },
-          }),
-        });
+        const response = (await apiClient.post("l4", "/agent-stream/chat", {
+          messages: conversationMessages,
+          activeTab,
+          account: {
+            accountId,
+            accountName,
+            accountTier,
+          },
+        })) as {
+          data?: {
+            content?: string;
+            metadata?: {
+              trace_id?: string;
+              workflow_id?: string;
+              tenant_id?: string;
+              audit_event_id?: string;
+            };
+          };
+        };
 
-        let agentContent: string;
-
-        if (response.ok) {
-          const data = await response.json();
-          agentContent = data.content ?? data.choices?.[0]?.message?.content ?? "I received your message but couldn't generate a response.";
-        } else {
-          // Fallback: generate a context-aware response locally
-          agentContent = generateFallbackResponse(activeTab, userInput);
-        }
+        const data = response.data;
+        const agentContent =
+          data.content ?? "I received your message but couldn't generate a response.";
 
         const agentMsg: AgentMessage = {
           id: `a-${Date.now()}`,
           role: "agent",
           content: agentContent,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          metadata: {
+            traceId: data.metadata?.trace_id,
+            workflowId: data.metadata?.workflow_id,
+            tenantId: data.metadata?.tenant_id,
+            auditEventId: data.metadata?.audit_event_id,
+          },
         };
         setMessages((prev) => [...prev, agentMsg]);
       } catch {
-        // Network error — use fallback
+        if (!devFallbackEnabled) {
+          const errorMsg: AgentMessage = {
+            id: `a-${Date.now()}`,
+            role: "agent",
+            content:
+              "I couldn't reach the agent service right now. Please retry in a moment.",
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          };
+          setMessages((prev) => [...prev, errorMsg]);
+          return;
+        }
+
         const fallbackMsg: AgentMessage = {
           id: `a-${Date.now()}`,
           role: "agent",
@@ -194,7 +222,7 @@ export function useAgentStream({
         setIsStreaming(false);
       }
     },
-    [activeTab, accountName, messages]
+    [activeTab, accountId, accountName, accountTier, devFallbackEnabled, messages]
   );
 
   const suggestedActions = getDefaultSuggestedActions(activeTab);
