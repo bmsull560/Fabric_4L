@@ -69,6 +69,10 @@ class BusinessCaseRequest(BaseModel):
         ]
     )
     output_format: str = Field(default="pdf", description="Output format (pdf, docx, html)")
+    custom_inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional custom inputs, including truth_requirements and organization_id",
+    )
 
 
 class BusinessCaseResponse(BaseModel):
@@ -88,6 +92,9 @@ class BusinessCaseResponse(BaseModel):
     document_url: str | None = None
     page_count: int = 0
     file_size_bytes: int = 0
+    truth_references: list[dict[str, Any]] = Field(default_factory=list)
+    remediation_items: list[dict[str, Any]] = Field(default_factory=list)
+    case_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 def get_executor() -> WorkflowExecutor:
@@ -207,6 +214,7 @@ async def generate_business_case(
             opportunity_id=request.opportunity_id,
             sections_requested=request.sections,
             output_format=request.output_format,
+            custom_inputs=request.custom_inputs,
         )
 
         result = await executor.run(
@@ -214,6 +222,7 @@ async def generate_business_case(
         )
 
         assemble_data = result.output_data.get("assemble_document", {})
+        truth_gate = result.output_data.get("verify_truth_requirements", {})
 
         return BusinessCaseResponse(
             case_id=result.workflow_id,
@@ -221,6 +230,9 @@ async def generate_business_case(
             document_url=assemble_data.get("document_url"),
             page_count=assemble_data.get("page_count", 0),
             file_size_bytes=assemble_data.get("file_size_bytes", 0),
+            truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
+            remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
+            case_metadata=assemble_data.get("case_metadata", {}),
         )
 
     except Exception as e:
@@ -239,6 +251,7 @@ async def get_business_case(
 
     output = result.get("output", {})
     assemble_data = output.get("assemble_document", {})
+    truth_gate = output.get("verify_truth_requirements", {})
     narrative_data = output.get("synthesize_narrative", {})
 
     return BusinessCaseResponse(
@@ -253,6 +266,9 @@ async def get_business_case(
         recommendations=assemble_data.get("recommendations", []),
         created_at=result.get("created_at"),
         status=result.get("status", "unknown"),
+        truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
+        remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
+        case_metadata=assemble_data.get("case_metadata", {}),
     )
 
 
@@ -267,10 +283,29 @@ async def export_business_case(
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
 
     assemble_data = result.get("output", {}).get("assemble_document", {})
+    truth_gate = result.get("output", {}).get("verify_truth_requirements", {})
+    blocked = bool(assemble_data.get("blocked")) or not truth_gate.get("passed", True)
+    truth_references = assemble_data.get("truth_references", truth_gate.get("truth_references", []))
+    remediation_items = assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])
+    )
 
     return {
         "case_id": case_id,
         "format": format,
         "document_url": assemble_data.get("document_url"),
-        "download_ready": assemble_data.get("document_bytes") is not None,
+        "download_ready": (assemble_data.get("document_bytes") is not None) and not blocked,
+        "blocked": blocked,
+        "remediation_items": remediation_items,
+        "truth_references": truth_references,
+        "manifest": {
+            "case_id": case_id,
+            "format": format,
+            "blocked": blocked,
+            "truth_references": truth_references,
+            "remediation_items": remediation_items,
+            "truth_gate": {
+                "passed": truth_gate.get("passed", not blocked),
+                "requirements": truth_gate.get("requirements", []),
+            },
+        },
     }

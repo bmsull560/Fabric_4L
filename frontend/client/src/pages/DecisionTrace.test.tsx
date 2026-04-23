@@ -99,11 +99,12 @@ describe('DecisionTrace', () => {
 
     // Wait for audit log entries to render (not just the header)
     await waitFor(() => {
-      expect(screen.getByText('business_case')).toBeInTheDocument();
+      expect(screen.getAllByText('business_case').length).toBeGreaterThan(0);
     });
 
     // Click on View button to select entity (use findByRole for specificity)
-    const viewButton = await screen.findByRole('button', { name: /view/i });
+    const viewButtons = await screen.findAllByRole('button', { name: /view/i });
+    const viewButton = viewButtons[0];
     await userEvent.click(viewButton);
 
     // Now provenance timeline should appear

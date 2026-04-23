@@ -8,6 +8,7 @@ import { Shield, Download, CheckCircle2, Loader2 } from "lucide-react";
 import { PageHeader, Btn, Toolbar, SectionCard, StatusBadge, DataTable } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProvenanceTrail, useAuditLogs, useExportProvenance, type AuditLogEntry, type AuditLogFilter } from "@/hooks/useProvenance";
+import { useBusinessCase } from "@/hooks/useDocuments";
 
 function formatTimestamp(timestamp: string): string {
   const date = new Date(timestamp);
@@ -17,12 +18,14 @@ function formatTimestamp(timestamp: string): string {
 export default function DecisionTrace() {
   const [searchParams] = useSearchParams();
   const entityIdFromUrl = searchParams.get("entityId") || searchParams.get("caseId");
+  const caseIdFromUrl = searchParams.get("caseId");
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(entityIdFromUrl);
   const [sourceFilter, setSourceFilter] = useState<AuditLogFilter['source']>("all");
 
   const { data: auditLogs, isLoading: isLoadingAudit } = useAuditLogs({ source: sourceFilter });
   const { data: provenanceTrail, isLoading: isLoadingProvenance } = useProvenanceTrail(selectedEntityId);
   const exportMutation = useExportProvenance();
+  const { data: governanceCase } = useBusinessCase(caseIdFromUrl);
 
   const isLoading = isLoadingAudit || (selectedEntityId && isLoadingProvenance);
 
@@ -186,6 +189,38 @@ export default function DecisionTrace() {
           </Btn>
         )}
       </Toolbar>
+
+      {governanceCase?.truth_references && governanceCase.truth_references.length > 0 && (
+        <SectionCard title="Truth References" className="mb-5">
+          <div className="space-y-2">
+            {governanceCase.truth_references.map((truthRef, idx) => {
+              const ref = truthRef as Record<string, unknown>;
+              return (
+                <div key={`${String(ref.truth_object_id || idx)}`} className="rounded-md border border-neutral-200 p-3 text-[12px]">
+                  <div className="font-semibold text-neutral-800">Requirement: {String(ref.requirement || ref.claim || "Truth reference")}</div>
+                  <div className="text-neutral-600 mt-1">
+                    ID: <span className="font-mono text-[11px]">{String(ref.truth_object_id || "n/a")}</span>
+                  </div>
+                  <div className="text-neutral-600">
+                    Status: {String(ref.status || "unknown")} · Maturity: {String(ref.maturity_level || "n/a")}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {governanceCase.remediation_items && governanceCase.remediation_items.length > 0 && (
+            <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">
+              <div className="font-semibold mb-1">Remediation Required</div>
+              <ul className="list-disc pl-5 space-y-1">
+                {governanceCase.remediation_items.map((item, idx) => {
+                  const rem = item as Record<string, unknown>;
+                  return <li key={`${idx}-${String(rem.type || "rem")}`}>{String(rem.message || rem.requirement || "Action required")}</li>;
+                })}
+              </ul>
+            </div>
+          )}
+        </SectionCard>
+      )}
 
       <div className="flex gap-5">
         {/* Trace list */}

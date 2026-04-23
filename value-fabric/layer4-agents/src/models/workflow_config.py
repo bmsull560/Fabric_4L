@@ -236,6 +236,12 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
         ),
         NodeConfig(id="run_roi", name="Run ROI Calculation", node_type=NodeType.AGENT),
         NodeConfig(
+            id="verify_truth_requirements",
+            name="Verify Truth Requirements",
+            node_type=NodeType.TOOL,
+            tool_name="verify_truth_requirements",
+        ),
+        NodeConfig(
             id="generate_narrative",
             name="Generate Narrative",
             node_type=NodeType.LLM,
@@ -251,7 +257,8 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
     ],
     edges=[
         EdgeConfig(source="gather_inputs", target="run_roi"),
-        EdgeConfig(source="run_roi", target="generate_narrative"),
+        EdgeConfig(source="run_roi", target="verify_truth_requirements"),
+        EdgeConfig(source="verify_truth_requirements", target="generate_narrative"),
         EdgeConfig(source="generate_narrative", target="assemble"),
         EdgeConfig(source="assemble", target="end"),
     ],
