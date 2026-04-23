@@ -80,6 +80,8 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         if tool_name == "gather_case_inputs":
             return await self._execute_gather_inputs(state)
+        elif tool_name == "generate_sdes_bundle":
+            return await self._execute_generate_sdes_bundle(state)
         elif tool_name == "verify_truth_requirements":
             return await self._execute_verify_truth_requirements(state)
 
@@ -133,6 +135,117 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             "sections_requested": state.case_input.sections_requested,
             "output_format": state.case_input.output_format,
         }
+
+    async def _execute_generate_sdes_bundle(self, state: BusinessCaseAgentState) -> dict[str, Any]:
+        """Generate and persist the SDES (signals/drivers/evidence/stakeholders) bundle."""
+        if not state.case_input:
+            return {"error": "No business case input configured"}
+
+        gathered = state.output_data.get("gather_inputs", {})
+        prospect = gathered.get("prospect", {}) or {}
+        profile = prospect.get("profile", {}) or {}
+        interactions = gathered.get("interactions", {}) or {}
+        interaction_items = interactions.get("interactions", [])
+        lead_score = gathered.get("lead_score", {}) or {}
+
+        canonical_case_id = (
+            state.case_input.custom_inputs.get("canonical_case_id")
+            or state.workflow_id
+        )
+        account_id = (
+            state.case_input.custom_inputs.get("account_id")
+            or state.case_input.custom_inputs.get("canonical_account_id")
+            or state.case_input.prospect_id
+        )
+
+        signals = [
+            {
+                "id": "engagement_score",
+                "name": "Engagement Score",
+                "value": lead_score.get("score", 0),
+                "confidence": lead_score.get("confidence", 0.0),
+                "source": "score_lead",
+            },
+            {
+                "id": "interaction_count",
+                "name": "Recent Interactions",
+                "value": len(interaction_items),
+                "confidence": 1.0,
+                "source": "fetch_interaction_history",
+            },
+        ]
+
+        drivers = [
+            {
+                "id": "revenue_growth",
+                "name": "Revenue Growth Opportunity",
+                "description": "Potential upside modeled via ROI calculator.",
+                "source": "business_case_workflow",
+            },
+            {
+                "id": "cost_reduction",
+                "name": "Operational Cost Reduction",
+                "description": "Expected savings from automation and process optimization.",
+                "source": "business_case_workflow",
+            },
+        ]
+
+        evidence = [
+            {
+                "id": "account_profile",
+                "type": "profile",
+                "reference": profile.get("name", state.case_input.prospect_id),
+                "metadata": {
+                    "industry": profile.get("industry"),
+                    "annual_revenue": profile.get("annual_revenue"),
+                },
+            }
+        ]
+        for idx, interaction in enumerate(interaction_items[:5]):
+            evidence.append(
+                {
+                    "id": f"interaction_{idx + 1}",
+                    "type": "interaction",
+                    "reference": interaction.get("summary")
+                    or interaction.get("type")
+                    or f"interaction-{idx + 1}",
+                    "metadata": {"timestamp": interaction.get("timestamp")},
+                }
+            )
+
+        stakeholders = [
+            {
+                "id": "primary_account",
+                "name": profile.get("name", "Prospect Account"),
+                "role": "account",
+                "account_id": account_id,
+            }
+        ]
+        for contact in profile.get("key_contacts", [])[:5]:
+            stakeholders.append(
+                {
+                    "id": str(contact.get("id") or contact.get("email") or contact.get("name")),
+                    "name": contact.get("name", "Unknown Contact"),
+                    "role": contact.get("title", "stakeholder"),
+                    "account_id": account_id,
+                }
+            )
+
+        sdes_bundle = {
+            "canonical_case_id": canonical_case_id,
+            "account_id": account_id,
+            "signals": signals,
+            "drivers": drivers,
+            "evidence": evidence,
+            "stakeholders": stakeholders,
+        }
+        state.case_record = {
+            "canonical_case_id": canonical_case_id,
+            "account_id": account_id,
+            "sdes": sdes_bundle,
+        }
+
+        return sdes_bundle
 
     async def _execute_roi_subworkflow(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Execute ROI calculation as sub-workflow."""
@@ -519,6 +632,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         # block document delivery.
         sync_result = await self._sync_ground_truths_to_kg(state)
         assemble_result["ground_truth_sync"] = sync_result
+        sdes_bundle = state.output_data.get("generate_sdes", {})
         assemble_result["case_metadata"] = {
             "truth_gate": {
                 "passed": gate_result.get("passed", True),
@@ -526,6 +640,14 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 "remediation_items": gate_result.get("remediation_items", []),
             },
             "truth_references": gate_result.get("truth_references", []),
+            "sdes_references": {
+                "canonical_case_id": sdes_bundle.get("canonical_case_id"),
+                "account_id": sdes_bundle.get("account_id"),
+                "signal_count": len(sdes_bundle.get("signals", [])),
+                "driver_count": len(sdes_bundle.get("drivers", [])),
+                "evidence_count": len(sdes_bundle.get("evidence", [])),
+                "stakeholder_count": len(sdes_bundle.get("stakeholders", [])),
+            },
         }
 
         return assemble_result

@@ -234,6 +234,12 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
             node_type=NodeType.TOOL,
             tool_name="gather_case_inputs",
         ),
+        NodeConfig(
+            id="generate_sdes",
+            name="Generate SDES Intelligence Bundle",
+            node_type=NodeType.TOOL,
+            tool_name="generate_sdes_bundle",
+        ),
         NodeConfig(id="run_roi", name="Run ROI Calculation", node_type=NodeType.AGENT),
         NodeConfig(
             id="verify_truth_requirements",
@@ -256,7 +262,8 @@ BUSINESS_CASE_WORKFLOW_CONFIG = WorkflowConfig(
         NodeConfig(id="end", name="End", node_type=NodeType.END),
     ],
     edges=[
-        EdgeConfig(source="gather_inputs", target="run_roi"),
+        EdgeConfig(source="gather_inputs", target="generate_sdes"),
+        EdgeConfig(source="generate_sdes", target="run_roi"),
         EdgeConfig(source="run_roi", target="verify_truth_requirements"),
         EdgeConfig(source="verify_truth_requirements", target="generate_narrative"),
         EdgeConfig(source="generate_narrative", target="assemble"),

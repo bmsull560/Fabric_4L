@@ -349,6 +349,7 @@ class BusinessCaseAgentState(BaseAgentState):
     case_input: BusinessCaseInputData | None = None
     sections_generated: list[BusinessCaseSection] = Field(default_factory=list)
     roi_results: dict[str, Any] | None = None
+    case_record: dict[str, Any] = Field(default_factory=dict)
     assembled_document: bytes | None = None
     document_url: str | None = None
 

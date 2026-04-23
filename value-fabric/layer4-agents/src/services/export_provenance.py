@@ -23,6 +23,7 @@ def build_export_provenance_manifest(
 
     truth_object_ids = output.get("truth_object_ids", []) or metadata.get("truth_object_ids", [])
     source_refs = output.get("source_references", []) or metadata.get("source_references", [])
+    sdes_bundle = output.get("generate_sdes", {}) or metadata.get("sdes", {})
 
     workflow_id = (
         workflow_result.get("workflow_id")
@@ -38,6 +39,14 @@ def build_export_provenance_manifest(
         "workflow_id": workflow_id,
         "truth_object_ids": truth_object_ids,
         "source_references": source_refs,
+        "sdes_references": {
+            "canonical_case_id": sdes_bundle.get("canonical_case_id"),
+            "account_id": sdes_bundle.get("account_id"),
+            "signals": [item.get("id") for item in sdes_bundle.get("signals", [])],
+            "drivers": [item.get("id") for item in sdes_bundle.get("drivers", [])],
+            "evidence": [item.get("id") for item in sdes_bundle.get("evidence", [])],
+            "stakeholders": [item.get("id") for item in sdes_bundle.get("stakeholders", [])],
+        },
         "model_versions": {
             "openai_model": settings.openai_model,
             "anthropic_model": settings.anthropic_model,

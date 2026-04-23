@@ -104,6 +104,7 @@ class BusinessCaseResponse(BaseModel):
     file_size_bytes: int = 0
     truth_references: list[dict[str, Any]] = Field(default_factory=list)
     remediation_items: list[dict[str, Any]] = Field(default_factory=list)
+    sdes: dict[str, Any] = Field(default_factory=dict)
     case_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -233,6 +234,7 @@ async def generate_business_case(
 
         assemble_data = result.output_data.get("assemble_document", {})
         truth_gate = result.output_data.get("verify_truth_requirements", {})
+        sdes_bundle = result.output_data.get("generate_sdes", {})
 
         return BusinessCaseResponse(
             case_id=result.workflow_id,
@@ -242,6 +244,7 @@ async def generate_business_case(
             file_size_bytes=assemble_data.get("file_size_bytes", 0),
             truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
             remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
+            sdes=sdes_bundle,
             case_metadata=assemble_data.get("case_metadata", {}),
         )
 
@@ -262,6 +265,7 @@ async def get_business_case(
     output = result.get("output", {})
     assemble_data = output.get("assemble_document", {})
     truth_gate = output.get("verify_truth_requirements", {})
+    sdes_bundle = output.get("generate_sdes", {})
     narrative_data = output.get("synthesize_narrative", {})
 
     return BusinessCaseResponse(
@@ -278,6 +282,7 @@ async def get_business_case(
         status=result.get("status", "unknown"),
         truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
         remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
+        sdes=sdes_bundle,
         case_metadata=assemble_data.get("case_metadata", {}),
     )
 
