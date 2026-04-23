@@ -1,17 +1,19 @@
-import { Badge, type BadgeProps } from '@/components/ui/badge';
+import type { ComponentProps } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { CheckCircle, Clock, XCircle } from 'lucide-react';
 
 type ChargeStatus = 'succeeded' | 'pending' | 'failed';
+type BadgeVariant = ComponentProps<typeof Badge>['variant'];
 
-interface ChargeStatusBadgeProps extends Omit<BadgeProps, 'children'> {
+interface ChargeStatusBadgeProps extends Omit<ComponentProps<typeof Badge>, 'children'> {
   status: ChargeStatus | string;
   showIcon?: boolean;
 }
 
 const statusConfig: Record<
   ChargeStatus,
-  { label: string; variant: BadgeProps['variant']; className: string; icon: typeof CheckCircle }
+  { label: string; variant: BadgeVariant; className: string; icon: typeof CheckCircle }
 > = {
   succeeded: {
     label: 'Succeeded',

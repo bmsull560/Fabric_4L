@@ -68,8 +68,8 @@ export function useUsageSummary(customerId: string) {
       const response = await apiClient.get(
         'l4',
         `/billing/usage?customer_id=${encodeURIComponent(customerId)}`
-      );
-      return response.data as { metrics: UsageMetric[] };
+      ) as { data: { metrics: UsageMetric[] } };
+      return response.data;
     },
     enabled: !!customerId,
     staleTime: STALE_TIME.detail,
@@ -87,8 +87,8 @@ export function useUsageLimits(customerId: string) {
       const response = await apiClient.get(
         'l4',
         `/billing/limits?customer_id=${encodeURIComponent(customerId)}`
-      );
-      return response.data as { limits: UsageLimit[] };
+      ) as { data: { limits: UsageLimit[] } };
+      return response.data;
     },
     enabled: !!customerId,
     staleTime: STALE_TIME.detail,
@@ -106,11 +106,11 @@ export function useUsageEvents(customerId: string) {
       const response = await apiClient.get(
         'l4',
         `/billing/events?customer_id=${encodeURIComponent(customerId)}`
-      );
-      return response.data as { events: UsageEvent[] };
+      ) as { data: { events: UsageEvent[] } };
+      return response.data;
     },
     enabled: !!customerId,
-    staleTime: STALE_TIME.default,
+    staleTime: STALE_TIME.list,
   });
 }
 
@@ -126,7 +126,7 @@ export function useCheckLimits(customerId: string) {
       return withApiError(
         apiClient
           .post('l4', `/billing/check?customer_id=${encodeURIComponent(customerId)}`, params)
-          .then((r) => r.data as OverageCheck),
+          .then((r) => (r as { data: OverageCheck }).data),
         BaseApiError
       );
     },

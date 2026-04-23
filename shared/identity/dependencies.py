@@ -1,11 +1,14 @@
-"""FastAPI dependencies for authentication and authorization."""
-
-from __future__ import annotations
+"""FastAPI dependencies for identity and authorization."""
 
 import logging
-import time
+import os
+from typing import Annotated
+from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, Header, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
+from pydantic import ValidationError
 
 from ..audit.emitter import emit_audit_event
 from ..audit.models import AuditAction, AuditOutcome, PrivilegedAccessDetails
@@ -236,3 +239,45 @@ def require_any_permission(*permissions: str):
         )
 
     return _check_any_permission
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Startup Validation
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+def validate_jwt_config() -> None:
+    """Validate JWT configuration for production safety.
+    
+    Raises:
+        ValueError: If JWT is misconfigured in production
+    """
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    jwt_secret = os.getenv("JWT_SECRET", "")
+    jwt_issuer = os.getenv("JWT_ISSUER", "")
+    jwt_audience = os.getenv("JWT_AUDIENCE", "")
+    
+    if environment == "production":
+        if not jwt_secret:
+            raise ValueError(
+                "JWT_SECRET is required in production. "
+                "Tokens cannot be verified without a secret."
+            )
+        
+        if len(jwt_secret) < 32:
+            raise ValueError(
+                "JWT_SECRET must be at least 32 characters in production. "
+                "Weak secrets are vulnerable to brute force attacks."
+            )
+        
+        if not jwt_issuer:
+            raise ValueError(
+                "JWT_ISSUER is required in production. "
+                "Missing issuer allows tokens from any source to be accepted."
+            )
+        
+        if not jwt_audience:
+            raise ValueError(
+                "JWT_AUDIENCE is required in production. "
+                "Missing audience allows tokens intended for other services."
+            )

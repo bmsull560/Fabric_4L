@@ -7,59 +7,57 @@ import { InvoiceStatusBadge } from '@/components/billing/InvoiceStatusBadge';
 import { InvoiceDetailDrawer } from '@/components/billing/InvoiceDetailDrawer';
 import { useInvoiceList, useInvoiceDetail, type Invoice } from '@/hooks/useInvoices';
 import { useBillingContext } from '@/context/BillingContext';
+import type { DataTableColumn } from '@/components/ui/fabric/DataTable';
 import { formatDate, formatCurrency } from '@/lib/formatters';
 import { Eye, FileText } from 'lucide-react';
-import type { ColumnDef } from '@tanstack/react-table';
 
 export function InvoiceList() {
-  const { subscription } = useBillingContext();
-  const customerId = subscription?.id || '';
+  const { customerId } = useBillingContext();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInvoiceList(customerId);
+  const { data, isLoading } = useInvoiceList(customerId);
 
-  const { data: invoiceDetail } = useInvoiceDetail(selectedInvoice?.id || '');
+  const { data: invoiceDetail } = useInvoiceDetail(customerId, selectedInvoice?.id || null);
 
-  const invoices = data?.pages.flatMap((page) => page.invoices) || [];
+  const invoices = data?.invoices || [];
 
-  const columns: ColumnDef<Invoice>[] = [
+  const columns: DataTableColumn<Invoice>[] = [
     {
-      accessorKey: 'invoice_number',
+      key: 'invoice_number',
       header: 'Invoice #',
-      cell: ({ row }) => (
+      render: (invoice: Invoice) => (
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{row.original.invoice_number}</span>
+          <span className="font-medium">{invoice.invoice_number}</span>
         </div>
       ),
     },
     {
-      accessorKey: 'status',
+      key: 'status',
       header: 'Status',
-      cell: ({ row }) => <InvoiceStatusBadge status={row.original.status} />,
+      render: (invoice: Invoice) => <InvoiceStatusBadge status={invoice.status} />,
     },
     {
-      accessorKey: 'period',
+      key: 'period',
       header: 'Period',
-      cell: ({ row }) => (
+      render: (invoice: Invoice) => (
         <span className="text-sm text-muted-foreground">
-          {formatDate(row.original.period_start)} - {formatDate(row.original.period_end)}
+          {formatDate(invoice.period_start)} - {formatDate(invoice.period_end)}
         </span>
       ),
     },
     {
-      accessorKey: 'total_dollars',
+      key: 'total_dollars',
       header: 'Amount',
-      cell: ({ row }) => (
-        <span className="font-medium">{formatCurrency(row.original.total_dollars)}</span>
+      render: (invoice: Invoice) => (
+        <span className="font-medium">{formatCurrency(invoice.total_dollars)}</span>
       ),
     },
     {
-      accessorKey: 'amount_due_dollars',
+      key: 'amount_due_dollars',
       header: 'Balance',
-      cell: ({ row }) => {
-        const due = row.original.amount_due_dollars;
+      render: (invoice: Invoice) => {
+        const due = invoice.amount_due_dollars;
         if (due <= 0) {
           return <span className="text-green-600 font-medium">Paid</span>;
         }
@@ -71,17 +69,18 @@ export function InvoiceList() {
       },
     },
     {
-      accessorKey: 'due_date',
+      key: 'due_date',
       header: 'Due Date',
-      cell: ({ row }) => formatDate(row.original.due_date),
+      render: (invoice: Invoice) => formatDate(invoice.due_date),
     },
     {
-      id: 'actions',
-      cell: ({ row }) => (
+      key: 'actions',
+      header: 'Actions',
+      render: (invoice: Invoice) => (
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setSelectedInvoice(row.original)}
+          onClick={() => setSelectedInvoice(invoice)}
         >
           <Eye className="h-4 w-4 mr-1" />
           View
@@ -121,18 +120,11 @@ export function InvoiceList() {
             </div>
           ) : (
             <>
-              <DataTable columns={columns} data={invoices} />
-              {hasNextPage && (
-                <div className="flex justify-center mt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => fetchNextPage()}
-                    disabled={isFetchingNextPage}
-                  >
-                    {isFetchingNextPage ? 'Loading...' : 'Load More'}
-                  </Button>
-                </div>
-              )}
+              <DataTable
+                columns={columns}
+                data={invoices}
+                keyExtractor={(invoice) => invoice.id}
+              />
             </>
           )}
         </CardContent>

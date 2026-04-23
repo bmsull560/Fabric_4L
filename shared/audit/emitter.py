@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
+import os
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
+
+import httpx
 
 from .models import AuditAction, AuditEvent, AuditOutcome
 
@@ -165,4 +167,48 @@ def emit_audit_event_sync(
         logger.warning(
             "Cannot emit audit event: no event loop running. "
             "Use emit_audit_event() in async contexts."
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Startup Validation
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+async def validate_audit_config() -> None:
+    """Validate audit sink configuration for production safety.
+    
+    Raises:
+        ValueError: If audit sink is misconfigured in production
+    """
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    audit_sink_url = os.getenv("AUDIT_SINK_URL", "")
+    audit_sink_timeout = int(os.getenv("AUDIT_SINK_TIMEOUT", "5"))
+    
+    if environment == "production":
+        if not audit_sink_url:
+            raise ValueError(
+                "AUDIT_SINK_URL is required in production. "
+                "Privileged operations must be audited for compliance."
+            )
+        
+        # Test connectivity to audit sink
+        try:
+            async with httpx.AsyncClient(timeout=audit_sink_timeout) as client:
+                response = await client.get(f"{audit_sink_url}/health")
+                if response.status_code >= 500:
+                    raise ValueError(
+                        f"Audit sink is unreachable: HTTP {response.status_code}. "
+                        "Cannot start without functional audit logging."
+                    )
+        except httpx.RequestError as e:
+            raise ValueError(
+                f"Audit sink is unreachable: {e}. "
+                "Cannot start without functional audit logging."
+            )
+    elif environment == "development" and not audit_sink_url:
+        logger.warning(
+            "AUDIT_SINK_URL is not configured in development mode. "
+            "Audit events will be logged locally only. "
+            "This is not compliant for production."
         )

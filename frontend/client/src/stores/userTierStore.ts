@@ -255,6 +255,10 @@ const ROUTE_TIER_MAP: Record<string, UserTier> = {
   // System Settings
   '/admin/system': 'admin',
   '/admin/system/settings': 'admin',
+  '/settings/system/billing': 'admin',
+  '/settings/system/billing/usage': 'admin',
+  '/settings/system/billing/invoices': 'admin',
+  '/settings/system/billing/payments': 'admin',
 
   // ═══════════════════════════════════════════════════════════════
   // LEGACY REDIRECTS (maintain for backward compatibility)

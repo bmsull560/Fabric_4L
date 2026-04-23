@@ -1,7 +1,5 @@
-"""Docker Compose for MCP Gateway integration tests.
-
-Provides containerized MCP servers for realistic integration testing.
-"""
+# Docker Compose for MCP Gateway integration tests.
+# Provides containerized MCP servers for realistic integration testing.
 
 version: '3.8'
 

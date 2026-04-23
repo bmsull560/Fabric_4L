@@ -99,11 +99,11 @@ export function useInvoiceList(customerId: string, options: { limit?: number; of
       const response = await apiClient.get(
         'l4',
         `/billing/invoices?customer_id=${encodeURIComponent(customerId)}&limit=${limit}&offset=${offset}`
-      );
-      return response.data as { invoices: Invoice[]; pagination: { limit: number; offset: number } };
+      ) as { data: { invoices: Invoice[]; pagination: { limit: number; offset: number } } };
+      return response.data;
     },
     enabled: !!customerId,
-    staleTime: STALE_TIME.default,
+    staleTime: STALE_TIME.list,
   });
 }
 
@@ -118,8 +118,8 @@ export function useInvoiceDetail(customerId: string, invoiceId: string | null) {
       const response = await apiClient.get(
         'l4',
         `/billing/invoices/${encodeURIComponent(invoiceId)}?customer_id=${encodeURIComponent(customerId)}`
-      );
-      return response.data as Invoice & { items: InvoiceItem[]; charges: Charge[] };
+      ) as { data: Invoice & { items: InvoiceItem[]; charges: Charge[] } };
+      return response.data;
     },
     enabled: !!customerId && !!invoiceId,
     staleTime: STALE_TIME.detail,
@@ -138,11 +138,11 @@ export function useChargeList(customerId: string, options: { limit?: number; off
       const response = await apiClient.get(
         'l4',
         `/billing/charges?customer_id=${encodeURIComponent(customerId)}&limit=${limit}&offset=${offset}`
-      );
-      return response.data as { charges: Charge[]; pagination: { limit: number; offset: number } };
+      ) as { data: { charges: Charge[]; pagination: { limit: number; offset: number } } };
+      return response.data;
     },
     enabled: !!customerId,
-    staleTime: STALE_TIME.default,
+    staleTime: STALE_TIME.list,
   });
 }
 
@@ -160,8 +160,8 @@ export function useInvoices(customerId: string) {
       const response = await apiClient.get(
         'l4',
         `/billing/invoices/${encodeURIComponent(invoiceId)}?customer_id=${encodeURIComponent(customerId)}`
-      );
-      return response.data as Invoice & { items: InvoiceItem[]; charges: Charge[] };
+      ) as { data: Invoice & { items: InvoiceItem[]; charges: Charge[] } };
+      return response.data;
     },
     [customerId]
   );

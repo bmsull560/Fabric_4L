@@ -7,6 +7,7 @@ import {
 } from "@/components";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
+import { BillingProvider } from "./context/BillingContext";
 import { useUserTierStore, type UserTier } from "@/hooks";
 import { Route, useLocation, useParams } from "wouter";
 import { useAccountContextStore } from "@/stores/accountContextStore";
@@ -55,6 +56,18 @@ const PackManagement = lazy(() => import("./pages/admin/PackManagement"));
 const PermissionsAdmin = lazy(() => import("./pages/admin/PermissionsAdmin"));
 const PlatformSettings = lazy(() => import("./pages/admin/PlatformSettings"));
 const HealthMonitor = lazy(() => import("./pages/admin/HealthMonitor"));
+const BillingSettings = lazy(() =>
+  import("./pages/BillingSettings").then(module => ({ default: module.BillingSettings }))
+);
+const UsageDashboard = lazy(() =>
+  import("./pages/UsageDashboard").then(module => ({ default: module.UsageDashboard }))
+);
+const InvoiceList = lazy(() =>
+  import("./pages/InvoiceList").then(module => ({ default: module.InvoiceList }))
+);
+const PaymentHistory = lazy(() =>
+  import("./pages/PaymentHistory").then(module => ({ default: module.PaymentHistory }))
+);
 const MyModels = lazy(() => import("./pages/MyModels"));
 const BusinessCaseList = lazy(() => import("./pages/BusinessCaseList"));
 const OpportunityFinder = lazy(() => import("./pages/OpportunityFinder"));
@@ -158,6 +171,16 @@ function WorkspaceContextRedirect({
       ? resolvedTabCandidate
       : "action-plan";
   return <Navigate to={`/studio/${selectedAccountId}/${tab}`} />;
+}
+
+function BillingRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuthContext();
+
+  if (!user?.id) {
+    return <Navigate to="/home" />;
+  }
+
+  return <BillingProvider customerId={user.id}>{children}</BillingProvider>;
 }
 
 // ── Route Guard ──────────────────────────────────────────────────────────────
@@ -637,6 +660,34 @@ function Router() {
       <Route path="/settings/system/settings">
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
           <PlatformSettings />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/system/billing">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin">
+          <BillingRoute>
+            <BillingSettings />
+          </BillingRoute>
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/system/billing/usage">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin">
+          <BillingRoute>
+            <UsageDashboard />
+          </BillingRoute>
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/system/billing/invoices">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin">
+          <BillingRoute>
+            <InvoiceList />
+          </BillingRoute>
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/system/billing/payments">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin">
+          <BillingRoute>
+            <PaymentHistory />
+          </BillingRoute>
         </AuthenticatedRoute>
       </Route>
 

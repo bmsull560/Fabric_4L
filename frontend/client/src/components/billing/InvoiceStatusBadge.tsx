@@ -1,17 +1,19 @@
-import { Badge, type BadgeProps } from '@/components/ui/badge';
+import type { ComponentProps } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { CheckCircle, Clock, FileText, XCircle, AlertCircle } from 'lucide-react';
 
 type InvoiceStatus = 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
+type BadgeVariant = ComponentProps<typeof Badge>['variant'];
 
-interface InvoiceStatusBadgeProps extends Omit<BadgeProps, 'children'> {
+interface InvoiceStatusBadgeProps extends Omit<ComponentProps<typeof Badge>, 'children'> {
   status: InvoiceStatus | string;
   showIcon?: boolean;
 }
 
 const statusConfig: Record<
   InvoiceStatus,
-  { label: string; variant: BadgeProps['variant']; className: string; icon: typeof CheckCircle }
+  { label: string; variant: BadgeVariant; className: string; icon: typeof CheckCircle }
 > = {
   paid: {
     label: 'Paid',

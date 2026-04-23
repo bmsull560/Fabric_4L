@@ -23,10 +23,9 @@ const PaymentMethodIcon = ({ type }: { type: string | null }) => {
 };
 
 export function PaymentHistory() {
-  const { subscription } = useBillingContext();
-  const customerId = subscription?.id || '';
+  const { customerId } = useBillingContext();
 
-  const { data, isLoading, error, refetch } = useChargeList(customerId);
+  const { data, isLoading, refetch } = useChargeList(customerId);
   const charges = data?.charges || [];
 
   return (

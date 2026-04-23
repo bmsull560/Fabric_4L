@@ -10,6 +10,7 @@ Extends rate limiter to support tenant-level quotas with:
 """
 
 import logging
+import os
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -23,6 +24,35 @@ logger = logging.getLogger(__name__)
 
 # Redis key TTL multiplier - keys live 2x window size for cleanup buffer
 TTL_MULTIPLIER = 2
+
+
+def validate_redis_config() -> None:
+    """Validate Redis configuration for production safety.
+    
+    Raises:
+        ValueError: If Redis is misconfigured in production
+    """
+    redis_url = os.getenv("REDIS_URL", "")
+    environment = os.getenv("ENVIRONMENT", "").lower()
+    
+    if environment == "production":
+        if not redis_url:
+            raise ValueError(
+                "REDIS_URL is required in production for tenant-scoped rate limiting. "
+                "In-memory fallback is not safe for multi-worker deployments."
+            )
+        
+        # Validate URL format
+        if not (redis_url.startswith("redis://") or redis_url.startswith("rediss://")):
+            raise ValueError(
+                f"Invalid REDIS_URL format: {redis_url}. "
+                "Must start with redis:// or rediss://"
+            )
+    elif environment == "development" and not redis_url:
+        logger.warning(
+            "REDIS_URL is not configured in development mode. "
+            "Using in-memory fallback. This is not safe for production."
+        )
 
 
 class TenantTier(str, Enum):
