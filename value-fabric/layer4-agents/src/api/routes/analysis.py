@@ -9,7 +9,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 from shared.audit import AuditAction, AuditEmitter, emit_audit_event
 from shared.identity.context import RequestContext
-from shared.identity.dependencies import get_optional_context
+from shared.identity.dependencies import require_authenticated
 
 from ...config.settings import settings
 from ...database import get_db
@@ -107,6 +107,23 @@ class BusinessCaseResponse(BaseModel):
     case_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class BusinessCaseUpdateRequest(BaseModel):
+    """Business case update request."""
+
+    workflow_id: str | None = None
+    account_id: str | None = None
+    updates: dict[str, Any] = Field(default_factory=dict)
+
+
+class BusinessCaseApprovalRequest(BaseModel):
+    """Business case approval request."""
+
+    workflow_id: str | None = None
+    account_id: str | None = None
+    approved: bool = True
+    notes: str | None = None
+
+
 def get_executor() -> WorkflowExecutor:
     """Get workflow executor instance."""
     from .main import workflow_executor
@@ -116,9 +133,22 @@ def get_executor() -> WorkflowExecutor:
     return workflow_executor
 
 
+def _assert_case_tenant_access(case_id: str, result: dict[str, Any], context: RequestContext) -> None:
+    """Ensure caller can access this case under tenant scoping rules."""
+    metadata = result.get("metadata", {}) if isinstance(result, dict) else {}
+    case_tenant_id = metadata.get("tenant_id") or result.get("tenant_id")
+    if case_tenant_id and str(case_tenant_id) != str(context.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access denied for case {case_id}: tenant scope mismatch",
+        )
+
+
 @router.post("/analysis/roi", response_model=ROIAnalysisResponse)
 async def quick_roi_analysis(
-    request: ROIAnalysisRequest, executor: WorkflowExecutor = Depends(get_executor)
+    request: ROIAnalysisRequest,
+    executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext = Depends(require_authenticated),
 ) -> ROIAnalysisResponse:
     """Quick ROI analysis for a prospect.
 
@@ -142,7 +172,10 @@ async def quick_roi_analysis(
         )
 
         result = await executor.run(
-            workflow_type="roi_calculator", input_data=input_data.model_dump()
+            workflow_type="roi_calculator",
+            input_data=input_data.model_dump(),
+            tenant_id=str(context.tenant_id),
+            user_id=context.user_id,
         )
 
         aggregate = result.output_data.get("aggregate", {})
@@ -160,7 +193,9 @@ async def quick_roi_analysis(
 
 @router.post("/analysis/whitespace", response_model=WhitespaceAnalysisResponse)
 async def quick_whitespace_analysis(
-    request: WhitespaceAnalysisRequest, executor: WorkflowExecutor = Depends(get_executor)
+    request: WhitespaceAnalysisRequest,
+    executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext = Depends(require_authenticated),
 ) -> WhitespaceAnalysisResponse:
     """Quick whitespace analysis for a prospect.
 
@@ -181,7 +216,10 @@ async def quick_whitespace_analysis(
         )
 
         result = await executor.run(
-            workflow_type="whitespace_analysis", input_data=input_data.model_dump()
+            workflow_type="whitespace_analysis",
+            input_data=input_data.model_dump(),
+            tenant_id=str(context.tenant_id),
+            user_id=context.user_id,
         )
 
         score_data = result.output_data.get("score_opportunity", {})
@@ -205,6 +243,7 @@ async def generate_business_case(
     request: BusinessCaseRequest,
     background_tasks: BackgroundTasks,
     executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
     """Generate a business case document.
 
@@ -228,8 +267,28 @@ async def generate_business_case(
         )
 
         result = await executor.run(
-            workflow_type="business_case", input_data=input_data.model_dump()
+            workflow_type="business_case",
+            input_data=input_data.model_dump(),
+            tenant_id=str(context.tenant_id),
+            user_id=context.user_id,
         )
+
+        workflow_id = getattr(result, "workflow_id", None) or request.custom_inputs.get("workflow_id")
+        account_id = request.custom_inputs.get("account_id")
+        event = emit_audit_event(
+            AuditAction.BUSINESS_CASE_GENERATED,
+            tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            api_key_id=context.api_key_id,
+            resource_type="BusinessCase",
+            resource_id=workflow_id,
+            details={
+                "case_id": workflow_id,
+                "workflow_id": workflow_id,
+                "account_id": account_id,
+            },
+        )
+        background_tasks.add_task(AuditEmitter.write_to_db, event, get_db)
 
         assemble_data = result.output_data.get("assemble_document", {})
         truth_gate = result.output_data.get("verify_truth_requirements", {})
@@ -251,13 +310,16 @@ async def generate_business_case(
 
 @router.get("/cases/{case_id}", response_model=BusinessCaseResponse)
 async def get_business_case(
-    case_id: str, executor: WorkflowExecutor = Depends(get_executor)
+    case_id: str,
+    executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
     """Get a generated business case by ID."""
     result = await executor.get_result(case_id)
 
     if not result:
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
+    _assert_case_tenant_access(case_id, result, context)
 
     output = result.get("output", {})
     assemble_data = output.get("assemble_document", {})
@@ -281,12 +343,97 @@ async def get_business_case(
         case_metadata=assemble_data.get("case_metadata", {}),
     )
 
+
+@router.patch("/cases/{case_id}")
+async def update_business_case(
+    case_id: str,
+    request: BusinessCaseUpdateRequest,
+    background_tasks: BackgroundTasks,
+    executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    """Record business case updates with immutable audit trail."""
+    result = await executor.get_result(case_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
+    _assert_case_tenant_access(case_id, result, context)
+
+    workflow_id = request.workflow_id or result.get("workflow_id") or case_id
+    output = result.get("output", {})
+    account_id = request.account_id or output.get("assemble_document", {}).get("case_metadata", {}).get("account_id")
+
+    event = emit_audit_event(
+        AuditAction.BUSINESS_CASE_UPDATED,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
+        resource_type="BusinessCase",
+        resource_id=case_id,
+        details={
+            "case_id": case_id,
+            "workflow_id": workflow_id,
+            "account_id": account_id,
+            "updates": request.updates,
+        },
+    )
+    background_tasks.add_task(AuditEmitter.write_to_db, event, get_db)
+
+    return {
+        "case_id": case_id,
+        "workflow_id": workflow_id,
+        "account_id": account_id,
+        "updated": True,
+    }
+
+
+@router.post("/cases/{case_id}/approve")
+async def approve_business_case(
+    case_id: str,
+    request: BusinessCaseApprovalRequest,
+    background_tasks: BackgroundTasks,
+    executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
+    """Record business case approval decisions with immutable audit trail."""
+    result = await executor.get_result(case_id)
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
+    _assert_case_tenant_access(case_id, result, context)
+
+    workflow_id = request.workflow_id or result.get("workflow_id") or case_id
+    output = result.get("output", {})
+    account_id = request.account_id or output.get("assemble_document", {}).get("case_metadata", {}).get("account_id")
+
+    event = emit_audit_event(
+        AuditAction.BUSINESS_CASE_APPROVED,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
+        resource_type="BusinessCase",
+        resource_id=case_id,
+        details={
+            "case_id": case_id,
+            "workflow_id": workflow_id,
+            "account_id": account_id,
+            "approved": request.approved,
+            "notes": request.notes,
+        },
+    )
+    background_tasks.add_task(AuditEmitter.write_to_db, event, get_db)
+
+    return {
+        "case_id": case_id,
+        "workflow_id": workflow_id,
+        "account_id": account_id,
+        "approved": request.approved,
+    }
+
 @router.get("/cases/{case_id}/export")
 async def export_business_case(
     case_id: str,
     format: str = "pdf",
     executor: WorkflowExecutor = Depends(get_executor),
-    context: RequestContext | None = Depends(get_optional_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Export a generated business case.
 
@@ -300,6 +447,7 @@ async def export_business_case(
     result = await executor.get_result(case_id)
     if not result:
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
+    _assert_case_tenant_access(case_id, result, context)
 
     output = result.get("output", {})
     assemble_data = output.get("assemble_document", {})
@@ -368,7 +516,7 @@ async def export_business_case(
         "case-id": case_id,
         "workflow-id": workflow_id,
         "export-id": export_id,
-        "tenant-id": str(context.tenant_id) if context else "unknown",
+        "tenant-id": str(context.tenant_id),
     }
 
     content_type = "application/pdf" if format == "pdf" else "application/octet-stream"
@@ -395,9 +543,9 @@ async def export_business_case(
 
     request_event = emit_audit_event(
         AuditAction.EXPORT_REQUESTED,
-        tenant_id=context.tenant_id if context else None,
-        user_id=context.user_id if context else None,
-        api_key_id=context.api_key_id if context else None,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -405,15 +553,16 @@ async def export_business_case(
             "workflow_id": workflow_id,
             "export_id": export_id,
             "format": format,
+            "account_id": assemble_data.get("case_metadata", {}).get("account_id"),
         },
     )
     await AuditEmitter.write_to_db(request_event, get_db)
 
     package_event = emit_audit_event(
         AuditAction.EXPORT_PACKAGE_GENERATED,
-        tenant_id=context.tenant_id if context else None,
-        user_id=context.user_id if context else None,
-        api_key_id=context.api_key_id if context else None,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -424,15 +573,16 @@ async def export_business_case(
             "manifest_object_key": manifest_key,
             "truth_object_ids": manifest.get("truth_object_ids", []),
             "source_references": manifest.get("source_references", []),
+            "account_id": assemble_data.get("case_metadata", {}).get("account_id"),
         },
     )
     await AuditEmitter.write_to_db(package_event, get_db)
 
     access_event = emit_audit_event(
         AuditAction.EXPORT_DOWNLOAD_ACCESSED,
-        tenant_id=context.tenant_id if context else None,
-        user_id=context.user_id if context else None,
-        api_key_id=context.api_key_id if context else None,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -440,6 +590,7 @@ async def export_business_case(
             "workflow_id": workflow_id,
             "export_id": export_id,
             "pdf_object_key": object_key,
+            "account_id": assemble_data.get("case_metadata", {}).get("account_id"),
         },
     )
     await AuditEmitter.write_to_db(access_event, get_db)
