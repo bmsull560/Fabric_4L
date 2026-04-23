@@ -1,0 +1,92 @@
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/api/client';
+
+const CASE_STORAGE_PREFIX = 'vf.workspace.case';
+
+interface CaseRecord {
+  case_id?: string;
+  id?: string;
+}
+
+function getStoredCaseId(accountId: string): string | null {
+  return window.localStorage.getItem(`${CASE_STORAGE_PREFIX}.${accountId}`);
+}
+
+function setStoredCaseId(accountId: string, caseId: string) {
+  window.localStorage.setItem(`${CASE_STORAGE_PREFIX}.${accountId}`, caseId);
+}
+
+export function useCanonicalCaseId(accountId: string | null) {
+  return useQuery<string | null>({
+    queryKey: ['workspace', 'case-id', accountId],
+    enabled: Boolean(accountId),
+    queryFn: async () => {
+      if (!accountId) return null;
+
+      const stored = getStoredCaseId(accountId);
+      if (stored) return stored;
+
+      const lookup = await apiClient.get('l4', `/analysis/cases?account_id=${encodeURIComponent(accountId)}`);
+      const items = Array.isArray(lookup.data) ? lookup.data : (lookup.data?.items ?? []);
+      const existing = (items[0] ?? {}) as CaseRecord;
+      const existingCaseId = existing.case_id || existing.id;
+      if (existingCaseId) {
+        setStoredCaseId(accountId, existingCaseId);
+        return existingCaseId;
+      }
+
+      const created = await apiClient.post('l4', '/analysis/cases', {
+        account_id: accountId,
+        title: `Account ${accountId} workspace`,
+      });
+      const createdCaseId = String(created.data?.case_id ?? created.data?.id ?? '');
+      if (!createdCaseId) throw new Error('Unable to create case for account workspace');
+      setStoredCaseId(accountId, createdCaseId);
+      return createdCaseId;
+    },
+  });
+}
+
+export function useWorkspaceTabQuery<TData>(caseId: string | null, tabKey: string) {
+  return useQuery<TData>({
+    queryKey: ['workspace', 'tab', caseId, tabKey],
+    enabled: Boolean(caseId),
+    queryFn: async () => {
+      if (!caseId) throw new Error('Missing case_id');
+      const response = await apiClient.get('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`);
+      return response.data as TData;
+    },
+  });
+}
+
+export function usePersistWorkspaceTab(tabKey: string) {
+  return useMutation({
+    mutationFn: async ({ caseId, payload }: { caseId: string; payload: unknown }) => {
+      await apiClient.post('l4', '/workflows', {
+        workflow_type: 'workspace_tab_persist',
+        name: `Persist ${tabKey}`,
+        input: {
+          case_id: caseId,
+          tab: tabKey,
+          payload,
+        },
+      });
+
+      const response = await apiClient.put('l4', `/analysis/cases/${caseId}/workspace/${tabKey}`, payload);
+      return response.data;
+    },
+  });
+}
+
+export function useValidateEvidenceClaim() {
+  return useMutation({
+    mutationFn: async ({ caseId, evidenceId, claim }: { caseId: string; evidenceId: string; claim: string }) => {
+      const response = await apiClient.post('l5', '/claims/validate', {
+        case_id: caseId,
+        evidence_id: evidenceId,
+        claim,
+      });
+      return response.data;
+    },
+  });
+}
