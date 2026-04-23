@@ -1,0 +1,167 @@
+name: Prod Readiness Gates
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main, "release/**" ]
+  workflow_dispatch:
+
+env:
+  POLICY_FILE: .fabric/prod-gates.policy.yaml
+  ARTIFACT_DIR: artifacts
+
+jobs:
+  determine-profile:
+    runs-on: ubuntu-latest
+    outputs:
+      profile: ${{ steps.profile.outputs.profile }}
+    steps:
+      - id: profile
+        run: |
+          if [[ "${GITHUB_REF}" == refs/heads/main ]]; then
+            echo "profile=mainline-full" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF}" == refs/heads/release/* ]]; then
+            echo "profile=release-candidate" >> $GITHUB_OUTPUT
+          else
+            echo "profile=pr-fast" >> $GITHUB_OUTPUT
+          fi
+
+  setup:
+    runs-on: ubuntu-latest
+    needs: [determine-profile]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create artifact directories
+        run: |
+          mkdir -p ${ARTIFACT_DIR}/{arch,security,chaos,smoke,agent,state,obs,release}
+      - name: Validate policy schema
+        run: make gates-validate-policy POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: setup-artifacts
+          path: artifacts/
+
+  arch-conformance:
+    runs-on: ubuntu-latest
+    needs: [determine-profile, setup]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run architecture conformance gate
+        run: make gate-arch PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arch-artifacts
+          path: artifacts/arch/
+
+  security-isolation:
+    runs-on: ubuntu-latest
+    needs: [determine-profile, setup]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run security & isolation gate
+        run: make gate-security PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: security-artifacts
+          path: artifacts/security/
+
+  dependency-chaos:
+    if: needs.determine-profile.outputs.profile != 'pr-fast'
+    runs-on: ubuntu-latest
+    needs: [determine-profile, setup]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run dependency chaos gate
+        run: make gate-chaos PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chaos-artifacts
+          path: artifacts/chaos/
+
+  cross-domain-smoke:
+    if: needs.determine-profile.outputs.profile != 'pr-fast'
+    runs-on: ubuntu-latest
+    needs: [determine-profile, setup]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run cross-domain smoke gate
+        run: make gate-smoke PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifacts
+          path: artifacts/smoke/
+
+  agent-provenance:
+    runs-on: ubuntu-latest
+    needs: [determine-profile, setup]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run agent provenance gate
+        run: make gate-agent PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-artifacts
+          path: artifacts/agent/
+
+  state-consistency:
+    runs-on: ubuntu-latest
+    needs: [determine-profile, setup]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run state consistency gate
+        run: make gate-state PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: state-artifacts
+          path: artifacts/state/
+
+  observability-readiness:
+    if: needs.determine-profile.outputs.profile != 'pr-fast'
+    runs-on: ubuntu-latest
+    needs: [determine-profile, setup]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run observability readiness gate
+        run: make gate-obs PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: obs-artifacts
+          path: artifacts/obs/
+
+  release-policy:
+    runs-on: ubuntu-latest
+    needs:
+      - determine-profile
+      - arch-conformance
+      - security-isolation
+      - agent-provenance
+      - state-consistency
+      - dependency-chaos
+      - cross-domain-smoke
+      - observability-readiness
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+      - name: Evaluate release policy
+        run: make gate-release-policy PROFILE=${{ needs.determine-profile.outputs.profile }} POLICY_FILE=${POLICY_FILE}
+      - name: Sign release manifest
+        if: success() && needs.determine-profile.outputs.profile != 'pr-fast'
+        run: make gates-sign-manifest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: artifacts/release/
+
+  prod-readiness-summary:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [release-policy]
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Build PR summary
+        run: make gates-render-summary
+      - name: Publish summary
+        run: cat artifacts/release/summary.md >> $GITHUB_STEP_SUMMARY

@@ -15,6 +15,7 @@ from sqlalchemy import text
 
 from ...config.settings import settings
 from ...database import get_db
+from ...engine.executor import WorkflowExecutor
 from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
 from ...tools import create_default_registry
@@ -55,6 +56,15 @@ class ToolInvokeResponse(BaseModel):
 def get_tool_registry() -> ToolRegistry:
     """Get tool registry instance."""
     return create_default_registry()
+
+
+def get_executor() -> WorkflowExecutor:
+    """Get workflow executor instance used by export endpoints."""
+    from .main import workflow_executor
+
+    if workflow_executor is None:
+        raise HTTPException(status_code=503, detail="Workflow executor not initialized")
+    return workflow_executor
 
 
 @router.get("/tools", response_model=list[ToolListResponse])
@@ -197,6 +207,7 @@ class ExportAuditRecord(BaseModel):
 async def export_document_tool(
     request: DocumentExportRequest,
     registry: ToolRegistry = Depends(get_tool_registry),
+    workflow_executor: WorkflowExecutor = Depends(get_executor),
     context: RequestContext = Depends(require_authenticated),
 ) -> DocumentExportResponse:
     """Export a business case to PDF using DocumentExportTool.
@@ -219,12 +230,6 @@ async def export_document_tool(
                 status_code=503,
                 detail="Export storage endpoint is not configured",
             )
-
-        # Get business case data from workflow executor
-        from .main import workflow_executor
-
-        if not workflow_executor:
-            raise HTTPException(status_code=503, detail="Workflow executor not available")
 
         result = await workflow_executor.get_result(request.business_case_id)
 

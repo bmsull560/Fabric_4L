@@ -1,7 +1,6 @@
 """Plan and feature configuration for billing.
 
-Defines available plans and their entitlements.
-Usage-based features are excluded in minimal scope (boolean features only).
+Defines available plans, their entitlements, and usage limits for overage detection.
 """
 
 from dataclasses import dataclass, field
@@ -40,18 +39,43 @@ class Feature:
 
 
 @dataclass(frozen=True)
+class UsageLimit:
+    """Usage limit definition for a metric.
+
+    Attributes:
+        metric_name: The metric this limit applies to (e.g., 'api_calls', 'tokens')
+        included_amount: Amount included in plan per period
+        period: Billing period ('monthly', 'yearly')
+        overage_rate: Cost per unit over limit (e.g., 0.01 per API call)
+        hard_limit: If True, requests are blocked when limit reached
+        warning_threshold: Percentage of limit to trigger warning (e.g., 80)
+    """
+    metric_name: str
+    included_amount: float
+    period: str = "monthly"  # 'monthly' or 'yearly'
+    overage_rate: float = 0.0  # Cost per unit over limit
+    hard_limit: bool = False  # If True, reject when exceeded
+    warning_threshold: float = 80.0  # Warn at % of limit
+
+
+@dataclass(frozen=True)
 class Plan:
-    """Plan definition with included features."""
+    """Plan definition with included features and usage limits."""
 
     id: str
     name: str
     description: str
     features: frozenset[str] = field(default_factory=frozenset)
     stripe_price_id: str | None = None  # Set via env var
+    usage_limits: dict[str, UsageLimit] = field(default_factory=dict)  # metric_name -> limit
 
     def has_feature(self, feature_id: str) -> bool:
         """Check if this plan includes a feature."""
         return feature_id in self.features or "*" in self.features
+
+    def get_usage_limit(self, metric_name: str) -> UsageLimit | None:
+        """Get usage limit for a metric."""
+        return self.usage_limits.get(metric_name)
 
 
 # Feature registry
@@ -109,6 +133,89 @@ FEATURES: dict[str, Feature] = {
     ),
 }
 
+# Usage limit definitions
+USAGE_LIMITS = {
+    "free": {
+        "api_calls": UsageLimit(
+            metric_name="api_calls",
+            included_amount=1000,
+            period="monthly",
+            overage_rate=0.0,
+            hard_limit=True,
+            warning_threshold=80.0,
+        ),
+        "tokens": UsageLimit(
+            metric_name="tokens",
+            included_amount=100_000,
+            period="monthly",
+            overage_rate=0.0,
+            hard_limit=True,
+            warning_threshold=80.0,
+        ),
+        "storage_gb": UsageLimit(
+            metric_name="storage_gb",
+            included_amount=1.0,
+            period="monthly",
+            overage_rate=0.0,
+            hard_limit=True,
+            warning_threshold=80.0,
+        ),
+    },
+    "pro": {
+        "api_calls": UsageLimit(
+            metric_name="api_calls",
+            included_amount=50_000,
+            period="monthly",
+            overage_rate=0.001,  # $0.001 per call = $10 per 10k
+            hard_limit=False,
+            warning_threshold=80.0,
+        ),
+        "tokens": UsageLimit(
+            metric_name="tokens",
+            included_amount=5_000_000,
+            period="monthly",
+            overage_rate=0.00002,  # $0.02 per 1k tokens
+            hard_limit=False,
+            warning_threshold=80.0,
+        ),
+        "storage_gb": UsageLimit(
+            metric_name="storage_gb",
+            included_amount=50.0,
+            period="monthly",
+            overage_rate=0.1,  # $0.10 per GB
+            hard_limit=False,
+            warning_threshold=80.0,
+        ),
+    },
+    "enterprise": {
+        "api_calls": UsageLimit(
+            metric_name="api_calls",
+            included_amount=float("inf"),  # Unlimited
+            period="monthly",
+            overage_rate=0.0,
+            hard_limit=False,
+            warning_threshold=90.0,
+        ),
+        "tokens": UsageLimit(
+            metric_name="tokens",
+            included_amount=float("inf"),
+            period="monthly",
+            overage_rate=0.0,
+            hard_limit=False,
+            warning_threshold=90.0,
+        ),
+        "storage_gb": UsageLimit(
+            metric_name="storage_gb",
+            included_amount=float("inf"),
+            period="monthly",
+            overage_rate=0.0,
+            hard_limit=False,
+            warning_threshold=90.0,
+        ),
+    },
+}
+
+
 # Plan definitions
 PLANS: dict[str, Plan] = {
     "free": Plan(
@@ -120,6 +227,7 @@ PLANS: dict[str, Plan] = {
             FeatureId.KNOWLEDGE_GRAPH,
             FeatureId.FORMULA_BUILDER,
         }),
+        usage_limits=USAGE_LIMITS["free"],
     ),
     "pro": Plan(
         id="pro",
@@ -133,12 +241,14 @@ PLANS: dict[str, Plan] = {
             FeatureId.PRIORITY_SUPPORT,
             FeatureId.TEAM_COLLABORATION,
         }),
+        usage_limits=USAGE_LIMITS["pro"],
     ),
     "enterprise": Plan(
         id="enterprise",
         name="Enterprise",
         description="Full platform access with custom integrations and dedicated support",
         features=frozenset({"*"}),  # All features
+        usage_limits=USAGE_LIMITS["enterprise"],
     ),
 }
 

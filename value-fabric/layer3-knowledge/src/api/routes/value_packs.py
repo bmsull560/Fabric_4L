@@ -8,7 +8,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, Literal, TypedDict
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from neo4j import AsyncDriver
 from pydantic import BaseModel, Field
 
@@ -32,6 +32,26 @@ from ...models.valuepack import (
 )
 
 logger = get_logger(__name__)
+
+
+# SECURITY: Tenant context extraction for multi-tenant isolation
+def _extract_tenant_id(request: Request | None) -> str | None:
+    """Extract tenant_id from request context for multi-tenant security.
+
+    Returns None if tenant context is unavailable.
+
+    Args:
+        request: FastAPI Request object with optional state.context
+
+    Returns:
+        Normalized tenant_id string or None
+    """
+    if not request:
+        return None
+    ctx = getattr(request.state, "context", None)
+    if ctx and ctx.tenant_id:
+        return str(ctx.tenant_id)
+    return None
 
 # Status constants for Value Packs
 STATUS_DRAFT = "draft"
@@ -390,26 +410,47 @@ async def _get_pack_detail(
 
 @router.get("/packs", response_model=list[PackSummary])
 async def list_packs(
-    industry: str | None = Query(None, description="Filter by industry"),
-    status: str | None = Query(None, description="Filter by status"),
-    category: str | None = Query(None, description="Filter by category"),
-    search: str | None = Query(None, description="Search by name or description"),
-    limit: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE, description="Maximum results to return"),
+    industry: str | None = None,
+    status: str | None = None,
+    category: str | None = None,
+    search: str | None = None,
+    limit: int = Query(default=50, ge=1, le=100),
     driver: AsyncDriver = Depends(get_driver),
+    fastapi_request: Request = None,  # SECURITY: For tenant context extraction
 ):
-    """List available Value Packs."""
-    query = """
+    """List Value Packs with optional filtering."""
+    # SECURITY: Extract tenant context for multi-tenant isolation
+    tenant_id = _extract_tenant_id(fastapi_request)
+
+    # Build query dynamically with tenant scoping
+    where_clauses = ["vp.tenant_id = $tenant_id"]  # SECURITY: Mandatory tenant filter
+    params: dict[str, Any] = {"limit": limit, "tenant_id": tenant_id}
+
+    if industry:
+        where_clauses.append("vp.industry = $industry")
+        params["industry"] = industry
+    if status:
+        where_clauses.append("vp.status = $status")
+        params["status"] = status
+    if category:
+        where_clauses.append("vp.category = $category")
+        params["category"] = category
+    if search:
+        where_clauses.append(
+            "(vp.name CONTAINS $search OR vp.description CONTAINS $search)"
+        )
+        params["search"] = search
+
+    where_clause = " AND ".join(where_clauses)
+
+    # SECURITY: All related nodes filtered by tenant_id
+    query = f"""
     MATCH (vp:ValuePack)
-    WHERE ($industry IS NULL OR vp.industry = $industry)
-      AND ($status IS NULL OR vp.status = $status)
-      AND ($category IS NULL OR vp.category = $category)
-      AND ($search IS NULL OR 
-           toLower(vp.name) CONTAINS toLower($search) OR 
-           toLower(vp.description) CONTAINS toLower($search))
-    OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver)
-    OPTIONAL MATCH (vp)-[:hasFormula]->(f:Formula)
-    OPTIONAL MATCH (vp)-[:hasBenchmark]->(b:BenchmarkDataset)
-    OPTIONAL MATCH (vp)-[:hasWorkflow]->(w:Workflow)
+    WHERE {where_clause}
+    OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver {{tenant_id: $tenant_id}})
+    OPTIONAL MATCH (vp)-[:hasFormula]->(f:Formula {{tenant_id: $tenant_id}})
+    OPTIONAL MATCH (vp)-[:hasBenchmark]->(b:BenchmarkDataset {{tenant_id: $tenant_id}})
+    OPTIONAL MATCH (vp)-[:hasWorkflow]->(w:Workflow {{tenant_id: $tenant_id}})
     RETURN vp,
            count(DISTINCT vd) as driver_count,
            count(DISTINCT f) as formula_count,
@@ -420,14 +461,7 @@ async def list_packs(
     """
 
     async with driver.session() as session:
-        result = await session.run(
-            query,
-            industry=industry,
-            status=status,
-            category=category,
-            search=search,
-            limit=limit,
-        )
+        result = await session.run(query, **params)
         records = await result.data()
 
         return [
@@ -455,10 +489,15 @@ async def list_packs(
 async def get_pack(
     pack_id: str,
     driver: AsyncDriver = Depends(get_driver),
+    fastapi_request: Request = None,  # SECURITY: For tenant context extraction
 ):
     """Get Value Pack by ID."""
     _validate_pack_id(pack_id)
-    pack = await _get_pack_detail(driver, pack_id)
+
+    # SECURITY: Extract tenant context for multi-tenant isolation
+    tenant_id = _extract_tenant_id(fastapi_request)
+
+    pack = await _get_pack_detail(driver, pack_id, tenant_id)
     if not pack:
         raise HTTPException(status_code=404, detail="Pack not found")
     return pack
@@ -623,23 +662,25 @@ def _build_update_params(
 
 
 async def _update_pack_relationships(
-    tx, pack_id: str, request: PackUpdateRequest
+    tx, pack_id: str, request: PackCreateRequest | PackUpdateRequest,
+    tenant_id: str | None = None
 ) -> None:
-    """Update pack relationships if provided in request.
+    """Helper to update pack relationships during create/update.
 
     Validates target entities exist before creating relationships.
+    SECURITY: All relationship operations are tenant-scoped.
     """
     if request.driver_ids is not None:
         await _update_relationships(
-            tx, pack_id, "hasDriver", "ValueDriver", request.driver_ids
+            tx, pack_id, "hasDriver", "ValueDriver", request.driver_ids, tenant_id
         )
     if request.formula_ids is not None:
         await _update_relationships(
-            tx, pack_id, "hasFormula", "Formula", request.formula_ids
+            tx, pack_id, "hasFormula", "Formula", request.formula_ids, tenant_id
         )
     if request.benchmark_ids is not None:
         await _update_relationships(
-            tx, pack_id, "hasBenchmark", "BenchmarkDataset", request.benchmark_ids
+            tx, pack_id, "hasBenchmark", "BenchmarkDataset", request.benchmark_ids, tenant_id
         )
 
 
@@ -649,32 +690,37 @@ async def update_pack(
     request: PackUpdateRequest,
     driver: AsyncDriver = Depends(get_driver),
     api_key: APIKey = Depends(get_current_api_key),
+    fastapi_request: Request = None,  # SECURITY: For tenant context extraction
 ):
     """Update a Value Pack. Requires authentication."""
     _validate_pack_id(pack_id)
 
-    # Verify pack exists
-    check_query = "MATCH (vp:ValuePack {id: $pack_id}) RETURN vp"
+    # SECURITY: Extract tenant context for multi-tenant isolation
+    tenant_id = _extract_tenant_id(fastapi_request)
+
+    # SECURITY: Verify pack exists with tenant scoping
+    check_query = "MATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id}) RETURN vp"
     async with driver.session() as session:
-        result = await session.run(check_query, pack_id=pack_id)
+        result = await session.run(check_query, pack_id=pack_id, tenant_id=tenant_id)
         if not await result.single():
             raise HTTPException(status_code=404, detail="Pack not found")
 
     # Build and execute update
     set_clauses, params = _build_update_params(request, pack_id)
     update_query = f"""
-    MATCH (vp:ValuePack {{id: $pack_id}})
+    MATCH (vp:ValuePack {{id: $pack_id, tenant_id: $tenant_id}})
     SET {", ".join(set_clauses)}
     RETURN vp
     """
+    params["tenant_id"] = tenant_id
 
     async with driver.session() as session:
         async with session.begin_transaction() as tx:
             await tx.run(update_query, **params)
-            await _update_pack_relationships(tx, pack_id, request)
+            await _update_pack_relationships(tx, pack_id, request, tenant_id)
 
         # Re-query for consistent view with relationships
-        pack = await _get_pack_detail(driver, pack_id)
+        pack = await _get_pack_detail(driver, pack_id, tenant_id)
         if not pack:
             raise HTTPException(status_code=500, detail="Failed to update pack")
         return pack

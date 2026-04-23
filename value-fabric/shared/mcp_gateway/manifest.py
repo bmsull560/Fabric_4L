@@ -17,7 +17,7 @@ import logging
 from dataclasses import asdict
 from typing import Any
 
-from .types import ManifestValidationError, ToolManifest
+from .mcp_types import ManifestValidationError, ToolManifest
 
 logger = logging.getLogger(__name__)
 

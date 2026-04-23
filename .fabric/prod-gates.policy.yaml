@@ -1,0 +1,222 @@
+version: "1.0"
+policy_name: "fabric-4l-production-approval"
+last_updated: "2026-04-23"
+
+metadata:
+  owner_team: "platform-engineering"
+  escalation_channel: "#release-war-room"
+  docs_url: "docs/production-readiness.md"
+
+enforcement:
+  mode: "fail-closed" # fail-open is forbidden for release branches
+  staleness_window_hours:
+    pr: 24
+    release: 12
+  block_on_missing_artifacts: true
+  require_signed_manifest: true
+
+severity:
+  blocker:
+    blocks_release: true
+    max_allowed_failures: 0
+  critical:
+    blocks_release: true
+    max_allowed_failures: 0
+  warning:
+    blocks_release: false
+    max_allowed_failures: 9999
+
+profiles:
+  pr-fast:
+    enabled_gates:
+      - arch_conformance
+      - security_isolation
+      - agent_provenance
+      - state_consistency
+    max_runtime_minutes: 15
+  mainline-full:
+    enabled_gates:
+      - arch_conformance
+      - security_isolation
+      - dependency_chaos
+      - cross_domain_smoke
+      - agent_provenance
+      - state_consistency
+      - observability_readiness
+      - release_policy
+    max_runtime_minutes: 60
+  release-candidate:
+    enabled_gates:
+      - arch_conformance
+      - security_isolation
+      - dependency_chaos
+      - cross_domain_smoke
+      - agent_provenance
+      - state_consistency
+      - observability_readiness
+      - release_policy
+    max_runtime_minutes: 75
+    additional_requirements:
+      - rollback_drill_passed
+      - evidence_bundle_complete
+
+gates:
+  arch_conformance:
+    owner: "architecture-council"
+    severity: "blocker"
+    checks:
+      contract_drift:
+        threshold: 0
+        comparator: "eq"
+      forbidden_layer_dependencies:
+        threshold: 0
+        comparator: "eq"
+      missing_required_middleware_on_critical_endpoints:
+        threshold: 0
+        comparator: "eq"
+    artifacts:
+      - "artifacts/arch/report.json"
+      - "artifacts/arch/summary.md"
+
+  security_isolation:
+    owner: "security-engineering"
+    severity: "blocker"
+    checks:
+      successful_cross_tenant_access_attempts:
+        threshold: 0
+        comparator: "eq"
+      successful_privilege_escalations:
+        threshold: 0
+        comparator: "eq"
+      critical_endpoints_with_isolation_test_coverage_percent:
+        threshold: 100
+        comparator: "gte"
+    artifacts:
+      - "artifacts/security/report.json"
+      - "artifacts/security/summary.md"
+      - "artifacts/security/failed-cases/*.json"
+
+  dependency_chaos:
+    owner: "sre"
+    severity: "critical"
+    checks:
+      unhandled_exceptions_during_fault_injection:
+        threshold: 0
+        comparator: "eq"
+      degraded_mode_p95_latency_ms:
+        threshold: 2500
+        comparator: "lte"
+      structured_error_response_compliance_percent:
+        threshold: 100
+        comparator: "gte"
+      recovery_time_seconds:
+        threshold: 300
+        comparator: "lte"
+    artifacts:
+      - "artifacts/chaos/report.json"
+      - "artifacts/chaos/summary.md"
+
+  cross_domain_smoke:
+    owner: "qa-platform"
+    severity: "blocker"
+    checks:
+      tier1_workflow_pass_rate_percent:
+        threshold: 100
+        comparator: "gte"
+      unexpected_state_transitions:
+        threshold: 0
+        comparator: "eq"
+      cross_domain_integrity_violations:
+        threshold: 0
+        comparator: "eq"
+    artifacts:
+      - "artifacts/smoke/report.json"
+      - "artifacts/smoke/summary.md"
+
+  agent_provenance:
+    owner: "ai-platform"
+    severity: "blocker"
+    checks:
+      response_schema_validity_percent:
+        threshold: 100
+        comparator: "gte"
+      critical_claims_with_provenance_percent:
+        threshold: 100
+        comparator: "gte"
+      provenance_resolution_success_percent:
+        threshold: 99.5
+        comparator: "gte"
+      unsupported_claim_rate_percent:
+        threshold: 0.5
+        comparator: "lte"
+    artifacts:
+      - "artifacts/agent/report.json"
+      - "artifacts/agent/summary.md"
+      - "artifacts/agent/samples/*.json"
+
+  state_consistency:
+    owner: "application-platform"
+    severity: "blocker"
+    checks:
+      state_enum_mismatches:
+        threshold: 0
+        comparator: "eq"
+      illegal_transitions_accepted:
+        threshold: 0
+        comparator: "eq"
+      reconciliation_success_percent:
+        threshold: 99.9
+        comparator: "gte"
+    artifacts:
+      - "artifacts/state/report.json"
+      - "artifacts/state/summary.md"
+
+  observability_readiness:
+    owner: "sre-observability"
+    severity: "critical"
+    checks:
+      critical_services_with_trace_correlation_percent:
+        threshold: 100
+        comparator: "gte"
+      required_sli_dashboards_present_percent:
+        threshold: 100
+        comparator: "gte"
+      alert_test_pass_percent:
+        threshold: 99
+        comparator: "gte"
+      rollback_rto_seconds:
+        threshold: 600
+        comparator: "lte"
+    artifacts:
+      - "artifacts/obs/report.json"
+      - "artifacts/obs/summary.md"
+      - "artifacts/obs/dashboard-export.json"
+
+  release_policy:
+    owner: "release-engineering"
+    severity: "blocker"
+    checks:
+      blocker_failures:
+        threshold: 0
+        comparator: "eq"
+      critical_failures:
+        threshold: 0
+        comparator: "eq"
+      missing_artifacts:
+        threshold: 0
+        comparator: "eq"
+      stale_gate_results:
+        threshold: 0
+        comparator: "eq"
+    artifacts:
+      - "artifacts/release/policy-eval.json"
+      - "artifacts/release/manifest.json"
+
+auto_remediation:
+  create_ticket_on_failure: true
+  ticket_system: "jira"
+  default_priority_by_severity:
+    blocker: "P0"
+    critical: "P1"
+    warning: "P2"
+  include_artifacts_in_ticket: true

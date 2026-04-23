@@ -6,7 +6,7 @@ Defines typed state schemas for all workflow types in Layer 4.
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Annotated, Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
@@ -312,13 +312,13 @@ class BusinessCaseInputData(BaseModel):
     """Input data for business case generation workflow.
 
     Attributes:
-        prospect_id: CRM identifier
+        account_id: Account UUID identifier
         opportunity_id: CRM opportunity identifier
         sections_requested: Which sections to include
         output_format: Desired output format
     """
 
-    prospect_id: str
+    account_id: UUID
     opportunity_id: str | None = None
     sections_requested: list[str] = Field(
         default_factory=lambda: [

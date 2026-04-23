@@ -45,6 +45,7 @@ def validate_customer_id(customer_id: str) -> str:
 
 from ...database import get_db, get_db_from_context
 from ...services.billing_service import BillingService
+from ...services.overage_service import OverageService
 from ...services.stripe_client import StripeError
 from ...services.usage_service import UsageService, UsageValidationError
 
@@ -580,3 +581,222 @@ async def list_usage_events(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve usage events",
         )
+
+
+@router.post("/usage/{customer_id}/sync")
+async def sync_usage_to_stripe(
+    customer_id: str,
+    metric_name: str | None = None,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Sync pending usage events to Stripe MeterEvents.
+
+    Aggregates pending usage and reports to Stripe for metered billing.
+    Requires Stripe customer to be linked and STRIPE_METER_EVENTS_ENABLED=true.
+
+    Args:
+        customer_id: Customer to sync usage for
+        metric_name: Optional metric filter (syncs all if omitted)
+
+    Returns:
+        Sync summary with counts and Stripe responses
+
+    Raises:
+        400: Validation error or no Stripe customer linked
+        402: Stripe not configured
+    """
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
+    service = UsageService(db, tenant_id=tenant_id)
+    
+    try:
+        result = await service.sync_to_stripe(
+            customer_id=customer_id,
+            metric_name=metric_name,
+        )
+        
+        await db.commit()
+        
+        # Check for errors in result
+        if "error" in result and result["synced"] == 0:
+            if "No Stripe customer ID" in result["error"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"error": result["error"], "action": "Sync customer with Stripe first via /billing/sync-customer"},
+                )
+            if "Stripe not configured" in result["error"]:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail={"error": "Stripe MeterEvents not configured"},
+                )
+        
+        return result
+        
+    except UsageValidationError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": e.message},
+        )
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Stripe sync failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to sync usage to Stripe",
+        )
+
+
+# ============================================================================
+# Overage Detection & Limits
+# ============================================================================
+
+@router.get("/limits/{customer_id}")
+async def get_usage_limits(
+    customer_id: str,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Get current usage and limits for a customer.
+
+    Returns all configured limits and current usage percentages.
+    Use this to show progress bars or warnings in the UI.
+
+    Args:
+        customer_id: Customer to check
+
+    Returns:
+        Usage limits and current consumption for all metrics
+    """
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
+    service = OverageService(db, tenant_id=tenant_id)
+    
+    try:
+        quota_check = await service.check_all_limits(customer_id)
+        
+        return {
+            "customer_id": quota_check.customer_id,
+            "plan_id": quota_check.plan_id,
+            "all_limits_ok": quota_check.all_limits_ok,
+            "warnings": quota_check.warnings,
+            "total_overage_cost": quota_check.total_overage_cost,
+            "metrics": [
+                {
+                    "metric_name": check.metric_name,
+                    "current_usage": check.current_usage,
+                    "limit": check.limit if check.limit != float("inf") else None,
+                    "percentage_used": check.percentage_used,
+                    "remaining": check.remaining,
+                    "overage": check.overage,
+                    "overage_cost": check.overage_cost,
+                    "warning_triggered": check.warning_triggered,
+                    "limit_exceeded": check.limit_exceeded,
+                    "period": {
+                        "start": check.period_start.isoformat(),
+                        "end": check.period_end.isoformat(),
+                    },
+                }
+                for check in quota_check.checks
+            ],
+        }
+        
+    except Exception as e:
+        logger.exception(f"Usage limits check failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve usage limits",
+        )
+
+
+@router.post("/limits/{customer_id}/check")
+async def check_request_allowed(
+    customer_id: str,
+    metric_name: str,
+    quantity: float = Query(1.0, ge=0),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Check if a request should be allowed based on usage limits.
+
+    Use this endpoint before processing expensive operations to validate
+    that the customer has quota remaining. Returns 402 Payment Required
+    if the hard limit is exceeded.
+
+    Args:
+        customer_id: Customer making the request
+        metric_name: Metric being consumed
+        quantity: Amount to be consumed
+
+    Returns:
+        Validation result with allow/deny decision
+
+    Raises:
+        402: Hard limit exceeded (upgrade required)
+        400: Invalid request
+    """
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
+    service = OverageService(db, tenant_id=tenant_id)
+    
+    try:
+        result = await service.validate_request(customer_id, metric_name, quantity)
+        
+        if not result["allowed"]:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail={
+                    "error": result["error"],
+                    "metric": metric_name,
+                    "limit": result["limit"],
+                    "current_usage": result["current_usage"],
+                    "overage": result["overage"],
+                    "upgrade_required": True,
+                },
+            )
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Request validation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to validate request",
+        )
+
+
+@router.get("/plans/{plan_id}/limits")
+async def get_plan_limits(
+    plan_id: str,
+) -> dict[str, Any]:
+    """Get the configured usage limits for a plan.
+
+    Returns the limits configuration without customer-specific usage data.
+    Useful for displaying plan details in pricing pages.
+
+    Args:
+        plan_id: Plan identifier (free, pro, enterprise)
+
+    Returns:
+        Plan limits configuration
+    """
+    from ...config.plans import get_plan
+    
+    plan = get_plan(plan_id)
+    if not plan:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Plan not found: {plan_id}",
+        )
+    
+    service = OverageService(None, tenant_id=None)  # No DB needed
+    limits = service.get_plan_limits(plan_id)
+    
+    return {
+        "plan_id": plan_id,
+        "plan_name": plan.name,
+        "limits": limits,
+    }

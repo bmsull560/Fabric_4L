@@ -1,5 +1,14 @@
 """Security package initialization."""
 
+from .query_validator import (
+    QueryValidator,
+    ValidationFinding,
+    ValidationSeverity,
+    UnscopedQueryError,
+    UnsafePatternError,
+    ValidatedNeo4jSession,
+    create_validated_session,
+)
 from .monitor import (
     AlertStatus,
     AnomalyDetector,
@@ -18,6 +27,15 @@ from .monitor import (
 )
 
 __all__ = [
+    # Query Validator
+    "QueryValidator",
+    "ValidationFinding",
+    "ValidationSeverity",
+    "UnscopedQueryError",
+    "UnsafePatternError",
+    "ValidatedNeo4jSession",
+    "create_validated_session",
+    # Security Monitor
     "ThreatLevel",
     "ThreatType",
     "DetectionMethod",

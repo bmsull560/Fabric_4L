@@ -19,6 +19,7 @@ from .billing import (
     PlanId,
     SubscriptionStatus,
 )
+from .business_case_record import BusinessCaseRecord
 from .agent_state import (
     AgentState,
     BaseAgentState,
@@ -99,6 +100,7 @@ __all__ = [
     "BillingWebhookEvent",
     "PlanId",
     "SubscriptionStatus",
+    "BusinessCaseRecord",
     # Agent State
     "AgentState",
     "BaseAgentState",

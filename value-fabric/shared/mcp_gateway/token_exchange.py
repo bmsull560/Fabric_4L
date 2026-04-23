@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 
 import httpx
 
-from .types import DelegatedToken, GatewayError
+from .mcp_types import DelegatedToken, GatewayError
 
 logger = logging.getLogger(__name__)
 

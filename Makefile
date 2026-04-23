@@ -1,10 +1,13 @@
-.PHONY: help verify lint lint-layer1 lint-layer2 lint-layer3 lint-layer4 \
+.PHONY: help verify verify-strict lint lint-layer1 lint-layer2 lint-layer3 lint-layer4 \
         lint-layer5 lint-layer6 typecheck typecheck-layer1 typecheck-layer2 \
         typecheck-layer3 typecheck-layer4 typecheck-layer5 typecheck-layer6 \
-        test contract-tests test-layer1 test-layer2 test-layer3 test-layer4 \
+        test contract-tests contract-drift contract-lint test-layer1 test-layer2 test-layer3 test-layer4 \
         test-frontend build migrate evals perf-test perf-eval clean sdk \
         check-env check-env-backend check-env-frontend validate-env-contract \
-        preflight up down logs check-deprecations test-backup-drills
+        preflight up down logs check-deprecations test-backup-drills \
+        gates-validate-policy gate-contract gate-arch gate-security gate-chaos \
+        gate-smoke gate-agent gate-state gate-obs gate-release-policy \
+        gates-sign-manifest gates-render-summary
 
 # Strict shell settings for production safety
 .ONESHELL:
@@ -302,6 +305,55 @@ validate-env-contract: ## CI gate — validate env contract + schema
 
 check-deprecations: ## CI gate — check for overdue deprecations
 	$(PYTHON) scripts/ci/check_deprecations.py
+
+# ─── Production Readiness Gates ─────────────────────────────────────────────
+
+POLICY_FILE ?= .fabric/prod-gates.policy.yaml
+GATE_PROFILE ?= pr-fast
+
+gates-validate-policy: ## Validate the production gates policy schema
+	$(PYTHON) scripts/gates/validate_policy.py --policy $(POLICY_FILE)
+
+gate-contract: ## Run contract compliance gate (ESLint + drift detection)
+	$(PYTHON) scripts/gates/run_contract.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+contract-drift: ## Detect drift between CONTRACT.md and codebase
+	@echo "→ Running contract drift detection..."
+	$(PYTHON) scripts/gates/run_contract.py --profile mainline-full --policy $(POLICY_FILE) --drift-only
+
+contract-lint: ## Run ESLint contract rules across all packages
+	@echo "→ Running contract lint rules..."
+	cd frontend/client && npm run lint -- --ext .ts,.tsx --rule 'fabric-contracts/no-tenant-id-parameter: error' --rule 'fabric-contracts/no-req-tenant-access: error' --rule 'fabric-contracts/no-raw-tenant-query: error' --rule 'fabric-contracts/no-explicit-db-connect: error' --rule 'fabric-contracts/no-inline-middleware: error' --rule 'fabric-contracts/no-inline-tool-definition: error' --rule 'fabric-contracts/no-throw-in-tool: error' --rule 'fabric-contracts/no-json-parse-agent-output: error' --rule 'fabric-contracts/no-imperative-navigation: error' --rule 'fabric-contracts/no-url-concatenation: error' --rule 'fabric-contracts/no-private-imports: error' --rule 'fabric-contracts/no-circular-dependencies: error' 2>/dev/null || echo "⚠️  Contract ESLint plugin not yet installed"
+
+gate-arch: ## Run architecture conformance gate
+	$(PYTHON) scripts/gates/run_arch.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gate-security: ## Run security compliance gate
+	$(PYTHON) scripts/gates/run_security.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gate-chaos: ## Run chaos engineering gate
+	$(PYTHON) scripts/gates/run_chaos.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gate-smoke: ## Run smoke test gate
+	$(PYTHON) scripts/gates/run_smoke.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gate-agent: ## Run agent evaluation gate
+	$(PYTHON) scripts/gates/run_agent.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gate-state: ## Run state management gate
+	$(PYTHON) scripts/gates/run_state.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gate-obs: ## Run observability gate
+	$(PYTHON) scripts/gates/run_obs.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gate-release-policy: ## Evaluate release policy compliance
+	$(PYTHON) scripts/gates/evaluate_release.py --profile $(GATE_PROFILE) --policy $(POLICY_FILE)
+
+gates-sign-manifest: ## Sign the release manifest
+	$(PYTHON) scripts/gates/sign_manifest.py --manifest artifacts/release/manifest.json
+
+gates-render-summary: ## Render the gates summary report
+	$(PYTHON) scripts/gates/render_summary.py --input artifacts --output artifacts/release/summary.md
 
 # ─── Backup/DR Tests ─────────────────────────────────────────────────────────
 
