@@ -38,6 +38,53 @@ class AccountService:
     # List & Search
     # ========================================================================
 
+    async def create_account(
+        self,
+        *,
+        provider: CRMProvider,
+        provider_record_id: str,
+        name: str,
+        domain: str | None = None,
+        industry: str | None = None,
+        region: str | None = None,
+        company_size: int | None = None,
+        owner_id: str | None = None,
+        owner_name: str | None = None,
+        owner_email: str | None = None,
+        stage: str | None = None,
+        segment: str | None = None,
+    ) -> Account:
+        """Create a new account record."""
+        existing = await self.get_account_by_provider_id(provider, provider_record_id)
+        if existing:
+            raise ValueError(
+                f"Account already exists for provider={provider.value} provider_record_id={provider_record_id}"
+            )
+
+        account = Account(
+            provider=provider.value,
+            provider_record_id=provider_record_id,
+            name=name,
+            normalized_name=name.strip().lower(),
+            domain=domain,
+            industry=industry,
+            region=region,
+            company_size=company_size,
+            owner_id=owner_id,
+            owner_name=owner_name,
+            owner_email=owner_email,
+            stage=stage,
+            segment=segment,
+            sync_status=SyncStatus.PENDING.value,
+            opportunities=[],
+            contacts=[],
+        )
+
+        self.db.add(account)
+        await self.db.commit()
+        await self.db.refresh(account)
+        return account
+
     async def list_accounts(
         self,
         provider: CRMProvider | None = None,

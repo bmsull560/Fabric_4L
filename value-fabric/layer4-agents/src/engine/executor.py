@@ -324,6 +324,62 @@ class OrchestrationController:
             workflow_id, timeout_seconds=settings.workflow_timeout_seconds
         )
 
+    async def run(
+        self,
+        workflow_type: str,
+        input_data: dict[str, Any],
+        workflow_id: str | None = None,
+        priority: TaskPriority = TaskPriority.NORMAL,
+        tenant_id: str | None = None,
+        user_id: str | None = None,
+        checkpoint_interval: int = 5,
+    ) -> AgentState:
+        """Backward-compatible workflow entrypoint.
+
+        Routes and older callers historically used ``run(...)``. This method
+        delegates to ``execute_workflow(...)`` so all call sites share the
+        same durable orchestration path.
+        """
+        return await self.execute_workflow(
+            workflow_type=workflow_type,
+            input_data=input_data,
+            workflow_id=workflow_id,
+            priority=priority,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            checkpoint_interval=checkpoint_interval,
+        )
+
+    async def get_result(self, workflow_id: str) -> dict[str, Any] | None:
+        """Get a durable workflow result by workflow ID.
+
+        Reads persisted workflow state via ``StateManager`` and returns a
+        route-friendly shape used by analysis/tools endpoints.
+        """
+        state = await self.state_manager.load_state(workflow_id)
+        if not state:
+            return None
+
+        persisted_metadata = dict(state.metadata or {})
+        if "workflow_id" not in persisted_metadata:
+            persisted_metadata["workflow_id"] = state.workflow_id
+        if "workflow_type" not in persisted_metadata:
+            persisted_metadata["workflow_type"] = (
+                state.workflow_type.value
+                if hasattr(state.workflow_type, "value")
+                else str(state.workflow_type)
+            )
+
+        return {
+            "workflow_id": state.workflow_id,
+            "output": dict(state.output_data or {}),
+            "metadata": persisted_metadata,
+            "status": state.status.value if hasattr(state.status, "value") else str(state.status),
+            "created_at": state.started_at.isoformat() if state.started_at else None,
+            "started_at": state.started_at.isoformat() if state.started_at else None,
+            "completed_at": state.completed_at.isoformat() if state.completed_at else None,
+        }
+
     async def schedule_workflow(
         self,
         workflow_type: str,
@@ -854,5 +910,5 @@ class OrchestrationController:
         logger.error(f"Task {task.task_id} failed: {exception}")
 
 
-# Backward compatibility alias
+# Backward compatibility alias for route dependency typing.
 WorkflowExecutor = OrchestrationController
