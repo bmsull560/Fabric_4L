@@ -35,6 +35,9 @@ export interface BusinessCase {
   document_url?: string;
   page_count: number;
   file_size_bytes: number;
+  truth_references?: Array<Record<string, unknown>>;
+  remediation_items?: Array<Record<string, unknown>>;
+  case_metadata?: Record<string, unknown>;
 }
 
 // Constants for document operations
@@ -63,7 +66,16 @@ export function useBusinessCaseExport() {
   return useMutation({
     mutationFn: async ({ caseId, format = 'pdf' }: { caseId: string; format?: string }) => {
       const response = await apiClient.get('l4', `${L4_ANALYSIS_PREFIX}/cases/${caseId}/export?format=${format}`);
-      return response.data as { case_id: string; format: string; document_url?: string; download_ready: boolean };
+      return response.data as {
+        case_id: string;
+        format: string;
+        document_url?: string;
+        download_ready: boolean;
+        blocked?: boolean;
+        remediation_items?: Array<Record<string, unknown>>;
+        truth_references?: Array<Record<string, unknown>>;
+        manifest?: Record<string, unknown>;
+      };
     },
   });
 }

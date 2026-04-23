@@ -79,6 +79,10 @@ class BusinessCaseRequest(BaseModel):
         ]
     )
     output_format: str = Field(default="pdf", description="Output format (pdf, docx, html)")
+    custom_inputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional custom inputs, including truth_requirements and organization_id",
+    )
 
 
 class BusinessCaseResponse(BaseModel):
@@ -98,6 +102,9 @@ class BusinessCaseResponse(BaseModel):
     document_url: str | None = None
     page_count: int = 0
     file_size_bytes: int = 0
+    truth_references: list[dict[str, Any]] = Field(default_factory=list)
+    remediation_items: list[dict[str, Any]] = Field(default_factory=list)
+    case_metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 def get_executor() -> WorkflowExecutor:
@@ -217,6 +224,7 @@ async def generate_business_case(
             opportunity_id=request.opportunity_id,
             sections_requested=request.sections,
             output_format=request.output_format,
+            custom_inputs=request.custom_inputs,
         )
 
         result = await executor.run(
@@ -224,6 +232,7 @@ async def generate_business_case(
         )
 
         assemble_data = result.output_data.get("assemble_document", {})
+        truth_gate = result.output_data.get("verify_truth_requirements", {})
 
         return BusinessCaseResponse(
             case_id=result.workflow_id,
@@ -231,6 +240,9 @@ async def generate_business_case(
             document_url=assemble_data.get("document_url"),
             page_count=assemble_data.get("page_count", 0),
             file_size_bytes=assemble_data.get("file_size_bytes", 0),
+            truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
+            remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
+            case_metadata=assemble_data.get("case_metadata", {}),
         )
 
     except Exception as e:
@@ -249,6 +261,7 @@ async def get_business_case(
 
     output = result.get("output", {})
     assemble_data = output.get("assemble_document", {})
+    truth_gate = output.get("verify_truth_requirements", {})
     narrative_data = output.get("synthesize_narrative", {})
 
     return BusinessCaseResponse(
@@ -263,8 +276,10 @@ async def get_business_case(
         recommendations=assemble_data.get("recommendations", []),
         created_at=result.get("created_at"),
         status=result.get("status", "unknown"),
+        truth_references=assemble_data.get("truth_references", truth_gate.get("truth_references", [])),
+        remediation_items=assemble_data.get("remediation_items", truth_gate.get("remediation_items", [])),
+        case_metadata=assemble_data.get("case_metadata", {}),
     )
-
 
 @router.get("/cases/{case_id}/export")
 async def export_business_case(
@@ -273,25 +288,68 @@ async def export_business_case(
     executor: WorkflowExecutor = Depends(get_executor),
     context: RequestContext | None = Depends(get_optional_context),
 ) -> dict[str, Any]:
-    """Export a generated business case."""
+    """Export a generated business case.
+
+    This version resolves the merge conflict by preserving both:
+    1. Truth-gating / blocking behavior
+    2. Provenance manifest generation, storage upload, and audit events
+    """
     if not settings.export_storage_endpoint:
         raise HTTPException(status_code=503, detail="Export storage endpoint is not configured")
 
     result = await executor.get_result(case_id)
-
     if not result:
         raise HTTPException(status_code=404, detail=f"Business case {case_id} not found")
 
-    assemble_data = result.get("output", {}).get("assemble_document", {})
+    output = result.get("output", {})
+    assemble_data = output.get("assemble_document", {})
+    truth_gate = output.get("verify_truth_requirements", {})
+
+    blocked = bool(assemble_data.get("blocked")) or not truth_gate.get("passed", True)
+    truth_references = assemble_data.get(
+        "truth_references", truth_gate.get("truth_references", [])
+    )
+    remediation_items = assemble_data.get(
+        "remediation_items", truth_gate.get("remediation_items", [])
+    )
+
     document_bytes = assemble_data.get("document_bytes")
+    export_id = str(uuid4())
+
+    if blocked:
+        return {
+            "case_id": case_id,
+            "export_id": export_id,
+            "format": format,
+            "document_url": assemble_data.get("document_url"),
+            "download_ready": False,
+            "blocked": True,
+            "remediation_items": remediation_items,
+            "truth_references": truth_references,
+            "manifest": {
+                "case_id": case_id,
+                "format": format,
+                "blocked": True,
+                "truth_references": truth_references,
+                "remediation_items": remediation_items,
+                "truth_gate": {
+                    "passed": truth_gate.get("passed", False),
+                    "requirements": truth_gate.get("requirements", []),
+                },
+            },
+        }
+
     if not document_bytes:
         raise HTTPException(status_code=409, detail="Business case document bytes unavailable")
 
     if not isinstance(document_bytes, bytes):
         document_bytes = bytes(document_bytes)
 
-    workflow_id = result.get("workflow_id") or result.get("metadata", {}).get("workflow_id") or case_id
-    export_id = str(uuid4())
+    workflow_id = (
+        result.get("workflow_id")
+        or result.get("metadata", {}).get("workflow_id")
+        or case_id
+    )
     filename = f"business_case_{case_id}.{format}"
     manifest_filename = f"business_case_{case_id}.provenance.json"
 
@@ -313,10 +371,12 @@ async def export_business_case(
         "tenant-id": str(context.tenant_id) if context else "unknown",
     }
 
+    content_type = "application/pdf" if format == "pdf" else "application/octet-stream"
+
     await upload_bytes(
         object_key=object_key,
         content=document_bytes,
-        content_type="application/pdf",
+        content_type=content_type,
         metadata=metadata,
     )
     await upload_bytes(
@@ -340,9 +400,15 @@ async def export_business_case(
         api_key_id=context.api_key_id if context else None,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
-        details={"case_id": case_id, "workflow_id": workflow_id, "export_id": export_id, "format": format},
+        details={
+            "case_id": case_id,
+            "workflow_id": workflow_id,
+            "export_id": export_id,
+            "format": format,
+        },
     )
     await AuditEmitter.write_to_db(request_event, get_db)
+
     package_event = emit_audit_event(
         AuditAction.EXPORT_PACKAGE_GENERATED,
         tenant_id=context.tenant_id if context else None,
@@ -361,6 +427,7 @@ async def export_business_case(
         },
     )
     await AuditEmitter.write_to_db(package_event, get_db)
+
     access_event = emit_audit_event(
         AuditAction.EXPORT_DOWNLOAD_ACCESSED,
         tenant_id=context.tenant_id if context else None,
@@ -368,7 +435,12 @@ async def export_business_case(
         api_key_id=context.api_key_id if context else None,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
-        details={"case_id": case_id, "workflow_id": workflow_id, "export_id": export_id, "pdf_object_key": object_key},
+        details={
+            "case_id": case_id,
+            "workflow_id": workflow_id,
+            "export_id": export_id,
+            "pdf_object_key": object_key,
+        },
     )
     await AuditEmitter.write_to_db(access_event, get_db)
 
@@ -379,5 +451,8 @@ async def export_business_case(
         "document_url": document_url,
         "manifest_url": manifest_url,
         "download_ready": True,
+        "blocked": False,
+        "remediation_items": remediation_items,
+        "truth_references": truth_references,
         "url_expires_at": expires_at,
     }

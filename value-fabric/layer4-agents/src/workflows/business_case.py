@@ -80,6 +80,8 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         if tool_name == "gather_case_inputs":
             return await self._execute_gather_inputs(state)
+        elif tool_name == "verify_truth_requirements":
+            return await self._execute_verify_truth_requirements(state)
 
         elif tool_name == "assemble_document":
             return await self._execute_assemble_document(state)
@@ -168,6 +170,16 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         """
         if not state.case_input:
             return {"error": "No business case input configured", "sections": []}
+
+        gate_result = state.output_data.get("verify_truth_requirements", {})
+        if gate_result and not gate_result.get("passed", True):
+            return {
+                "error": "Narrative generation blocked by truth verification gate",
+                "blocked": True,
+                "sections": [],
+                "remediation_items": gate_result.get("remediation_items", []),
+                "truth_references": gate_result.get("truth_references", []),
+            }
 
         # Check feature flag for enhanced narrative generation (Task 83: is_enabled usage)
         enhanced_mode = is_enabled(
@@ -269,10 +281,188 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             "section_count": len(sections_generated),
         }
 
+    async def _execute_verify_truth_requirements(
+        self, state: BusinessCaseAgentState
+    ) -> dict[str, Any]:
+        """Verify required claims/metrics against Layer 5 TruthObjects."""
+        if not state.case_input:
+            return {"error": "No business case input configured", "passed": False}
+
+        requirements = state.case_input.custom_inputs.get("truth_requirements", [])
+        if not requirements:
+            return {"passed": True, "requirements": [], "truth_references": [], "remediation_items": []}
+
+        organization_id = self._resolve_organization_id(state)
+        service_token: str | None = os.getenv("LAYER5_SERVICE_TOKEN")
+        layer5_url: str | None = os.getenv(
+            "LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005"
+        )
+        min_maturity = min(
+            [int(req.get("min_maturity", 0)) for req in requirements if req.get("min_maturity") is not None],
+            default=0,
+        )
+        min_confidence = min(
+            [float(req.get("min_confidence", 0.0)) for req in requirements if req.get("min_confidence") is not None],
+            default=0.0,
+        )
+
+        client = Layer5GroundTruthClient(
+            base_url=layer5_url,
+            service_token=service_token,
+            tenant_id=organization_id if not service_token else None,
+        )
+
+        status_rank = {"extracted": 0, "supported": 1, "corroborated": 2, "approved": 3, "disputed": -1}
+        truth_references: list[dict[str, Any]] = []
+        remediation_items: list[dict[str, Any]] = []
+        requirement_results: list[dict[str, Any]] = []
+        all_passed = True
+
+        try:
+            truths_result = await client.list_truths(
+                organization_id=organization_id,
+                min_maturity=min_maturity,
+                min_confidence=min_confidence,
+                applies_to_opportunity=state.case_input.opportunity_id,
+                limit=200,
+                offset=0,
+            )
+            truths = truths_result.get("items", []) if isinstance(truths_result, dict) else []
+
+            for req in requirements:
+                required_status = str(req.get("min_status", "corroborated")).lower()
+                required_maturity = int(req.get("min_maturity", 3))
+                required_confidence = float(req.get("min_confidence", 0.0))
+                required_sources = int(req.get("min_sources", 2))
+                label = req.get("label") or req.get("claim") or req.get("metric") or "required-claim"
+                required = bool(req.get("required", True))
+
+                def _match(truth: dict[str, Any]) -> bool:
+                    claim_q = str(req.get("claim", "")).strip().lower()
+                    metric_q = str(req.get("metric", "")).strip().lower()
+                    claim_text = str(truth.get("claim", "")).lower()
+                    if claim_q and claim_q in claim_text:
+                        return True
+                    if metric_q and (
+                        metric_q in claim_text
+                        or metric_q == str(truth.get("claim_type", "")).lower()
+                    ):
+                        return True
+                    return False
+
+                matches = [t for t in truths if _match(t)]
+                if not matches:
+                    if required:
+                        all_passed = False
+                        remediation_items.append(
+                            {
+                                "type": "missing_evidence",
+                                "requirement": label,
+                                "message": "No matching TruthObject found. Add supporting evidence.",
+                            }
+                        )
+                    requirement_results.append({"requirement": label, "passed": False, "match_count": 0})
+                    continue
+
+                best = sorted(
+                    matches,
+                    key=lambda t: (
+                        status_rank.get(str(t.get("status", "")).lower(), -1),
+                        int(t.get("maturity_level", 0)),
+                        float(t.get("confidence", 0.0)),
+                        int(t.get("source_count", 0)),
+                    ),
+                    reverse=True,
+                )[0]
+
+                status_ok = status_rank.get(str(best.get("status", "")).lower(), -1) >= status_rank.get(required_status, 2)
+                maturity_ok = int(best.get("maturity_level", 0)) >= required_maturity
+                confidence_ok = float(best.get("confidence", 0.0)) >= required_confidence
+                sources_ok = int(best.get("source_count", 0)) >= required_sources
+                passed = status_ok and maturity_ok and confidence_ok
+
+                truth_references.append(
+                    {
+                        "requirement": label,
+                        "truth_object_id": str(best.get("id")),
+                        "claim": best.get("claim"),
+                        "claim_type": best.get("claim_type"),
+                        "status": best.get("status"),
+                        "maturity_level": best.get("maturity_level"),
+                        "confidence": best.get("confidence"),
+                        "source_count": best.get("source_count", 0),
+                        "freshness": best.get("freshness"),
+                    }
+                )
+                requirement_results.append(
+                    {
+                        "requirement": label,
+                        "passed": passed,
+                        "status_ok": status_ok,
+                        "maturity_ok": maturity_ok,
+                        "confidence_ok": confidence_ok,
+                        "sources_ok": sources_ok,
+                        "truth_object_id": str(best.get("id")),
+                    }
+                )
+
+                if required and not passed:
+                    all_passed = False
+                    if not sources_ok:
+                        remediation_items.append(
+                            {
+                                "type": "insufficient_corroboration",
+                                "requirement": label,
+                                "message": "Evidence exists but corroboration is insufficient. Add independent sources.",
+                            }
+                        )
+                    elif required_status == "approved" and str(best.get("status", "")).lower() != "approved":
+                        remediation_items.append(
+                            {
+                                "type": "approval_pending",
+                                "requirement": label,
+                                "message": "Evidence is not yet approved. Complete governance approval in Layer 5.",
+                            }
+                        )
+                    else:
+                        remediation_items.append(
+                            {
+                                "type": "verification_gap",
+                                "requirement": label,
+                                "message": "Evidence does not meet required status/maturity/confidence thresholds.",
+                            }
+                        )
+
+            return {
+                "passed": all_passed,
+                "requirements": requirement_results,
+                "truth_references": truth_references,
+                "remediation_items": remediation_items,
+                "organization_id": organization_id,
+            }
+        finally:
+            await client.close()
+
     async def _execute_assemble_document(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Assemble sections into final document, then sync ground truths to KG."""
         if not state.case_input:
             return {"error": "No business case input configured"}
+
+        gate_result = state.output_data.get("verify_truth_requirements", {})
+        if gate_result and not gate_result.get("passed", True):
+            return {
+                "blocked": True,
+                "error": "Final narrative/export blocked: required claims are not verified",
+                "remediation_items": gate_result.get("remediation_items", []),
+                "truth_references": gate_result.get("truth_references", []),
+                "case_metadata": {
+                    "truth_gate": {
+                        "passed": False,
+                        "requirements": gate_result.get("requirements", []),
+                    },
+                    "truth_references": gate_result.get("truth_references", []),
+                },
+            }
 
         sections_data = state.output_data.get("generate_narrative", {}).get("sections", [])
 
@@ -329,8 +519,31 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         # block document delivery.
         sync_result = await self._sync_ground_truths_to_kg(state)
         assemble_result["ground_truth_sync"] = sync_result
+        assemble_result["case_metadata"] = {
+            "truth_gate": {
+                "passed": gate_result.get("passed", True),
+                "requirements": gate_result.get("requirements", []),
+                "remediation_items": gate_result.get("remediation_items", []),
+            },
+            "truth_references": gate_result.get("truth_references", []),
+        }
 
         return assemble_result
+
+    def _resolve_organization_id(self, state: BusinessCaseAgentState) -> str | None:
+        """Resolve tenant/organization ID from state or environment."""
+        organization_id: str | None = None
+
+        if state.case_input and state.case_input.custom_inputs:
+            organization_id = state.case_input.custom_inputs.get("organization_id")
+
+        if not organization_id and state.metadata:
+            organization_id = state.metadata.get("tenant_id")
+
+        if not organization_id:
+            organization_id = os.getenv("LAYER5_DEFAULT_ORG_ID")
+
+        return organization_id
 
     async def _sync_ground_truths_to_kg(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Best-effort sync of approved TruthObjects to the KG via Layer 5.
@@ -342,16 +555,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
         Returns a dict with sync statistics or an ``error`` key.
         """
-        organization_id: str | None = None
-
-        if state.case_input and state.case_input.custom_inputs:
-            organization_id = state.case_input.custom_inputs.get("organization_id")
-
-        if not organization_id and state.metadata:
-            organization_id = state.metadata.get("tenant_id")
-
-        if not organization_id:
-            organization_id = os.getenv("LAYER5_DEFAULT_ORG_ID")
+        organization_id = self._resolve_organization_id(state)
 
         # Resolve service token for Layer 5 auth
         service_token: str | None = os.getenv("LAYER5_SERVICE_TOKEN")
