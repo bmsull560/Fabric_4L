@@ -571,6 +571,39 @@ class TestOrchestrationControllerWorkflowLifecycle:
         active = await controller.list_active_workflows()
         assert isinstance(active, list)
 
+    @pytest.mark.asyncio
+    async def test_get_result_returns_route_compatible_shape_from_persisted_state(self) -> None:
+        """get_result should read persisted state and return route-compatible keys."""
+        from src.engine.executor import OrchestrationController
+        from src.engine.state_manager import StateManager
+
+        mock_registry = _make_mock_tool_registry()
+        state_manager = StateManager()
+        controller = OrchestrationController(
+            tool_registry=mock_registry,
+            state_manager=state_manager,
+        )
+
+        state = ROIAgentState(
+            workflow_id="wf-result-001",
+            input_data={"prospect_id": "p-001", "value_driver_ids": ["vd-001"]},
+            output_data={"assemble_document": {"title": "Business Case"}},
+            metadata={"source": "persisted-store"},
+            status=WorkflowStatus.COMPLETED,
+        )
+        await state_manager.save_state("wf-result-001", state)
+
+        result = await controller.get_result("wf-result-001")
+
+        assert result is not None
+        assert result["workflow_id"] == "wf-result-001"
+        assert result["status"] == "completed"
+        assert result["output"] == {"assemble_document": {"title": "Business Case"}}
+        assert result["metadata"]["source"] == "persisted-store"
+        assert "created_at" in result
+        assert "started_at" in result
+        assert "completed_at" in result
+
 
 # ── State Transition Edge Case Tests ──────────────────────────────────────────
 class TestWorkflowStateTransitions:

@@ -141,7 +141,7 @@ async def quick_roi_analysis(
             company_size=request.company_size,
         )
 
-        result = await executor.run(
+        result = await executor.execute_workflow(
             workflow_type="roi_calculator", input_data=input_data.model_dump()
         )
 
@@ -180,7 +180,7 @@ async def quick_whitespace_analysis(
             analysis_depth=request.analysis_depth,
         )
 
-        result = await executor.run(
+        result = await executor.execute_workflow(
             workflow_type="whitespace_analysis", input_data=input_data.model_dump()
         )
 
@@ -227,7 +227,7 @@ async def generate_business_case(
             custom_inputs=request.custom_inputs,
         )
 
-        result = await executor.run(
+        result = await executor.execute_workflow(
             workflow_type="business_case", input_data=input_data.model_dump()
         )
 
