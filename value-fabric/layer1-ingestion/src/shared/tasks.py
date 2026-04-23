@@ -953,7 +953,7 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
                     fallback_reason=quality.fallback_reason,
                 )
 
-                browser_result = await _execute_browser_path(url, routing_decision.stagehand_config)
+                browser_result = asyncio.run(_execute_browser_path(url, routing_decision.stagehand_config))
 
                 decision_record.final_path = "fallback"
                 decision_record.status_code = browser_result.get("status_code")
@@ -968,7 +968,7 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
 
         else:  # RouteType.BROWSER
             # Direct browser path
-            browser_result = await _execute_browser_path(url, routing_decision.stagehand_config)
+            browser_result = asyncio.run(_execute_browser_path(url, routing_decision.stagehand_config))
 
             decision_record.final_path = "browser"
             decision_record.status_code = browser_result.get("status_code")

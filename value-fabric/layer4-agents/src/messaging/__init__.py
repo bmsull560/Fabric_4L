@@ -5,6 +5,20 @@ Provides pub/sub messaging, message routing, and inter-agent communication.
 
 from .bus import InMemoryMessageBus, MessageBus, RedisMessageBus
 from .router import MessageRouter
+from .signal_events import (
+    BaseSignalEvent,
+    ErrorCategory,
+    SignalCompletedEvent,
+    SignalDiscoveredEvent,
+    SignalEvent,
+    SignalEventType,
+    SignalFailedEvent,
+    StreamCompleteEvent,
+    create_signal_completed_event,
+    create_signal_discovered_event,
+    create_signal_failed_event,
+    create_stream_complete_event,
+)
 from .types import AgentMessage, MessagePriority, MessageType
 
 __all__ = [
@@ -15,4 +29,17 @@ __all__ = [
     "InMemoryMessageBus",
     "RedisMessageBus",
     "MessageRouter",
+    # Signal Events
+    "BaseSignalEvent",
+    "SignalDiscoveredEvent",
+    "SignalCompletedEvent",
+    "SignalFailedEvent",
+    "StreamCompleteEvent",
+    "SignalEvent",
+    "SignalEventType",
+    "ErrorCategory",
+    "create_signal_discovered_event",
+    "create_signal_completed_event",
+    "create_signal_failed_event",
+    "create_stream_complete_event",
 ]

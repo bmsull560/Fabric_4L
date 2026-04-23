@@ -145,6 +145,9 @@ ENTITY_TYPES = [
     "ValuePack",
     "Variable",
     "BenchmarkDataset",
+    # Signal Extraction (Phase 3 - Operational Signals Vertical Slice)
+    "PainSignal",
+    "Evidence",
 ]
 
 # Relationship types (aligned with value_fabric_ontology_schema.py spec)
@@ -194,6 +197,11 @@ RELATIONSHIP_TYPES = [
     "belongsToPack",  # Variable/Formula -> ValuePack
     "usedIn",  # Variable -> Formula
     "dependsOn",  # Formula -> Formula
+    # Signal Extraction Relationships (Phase 3)
+    "exhibits",  # Account -> PainSignal
+    "supportedBy",  # PainSignal -> Evidence
+    "quantifiedBy",  # PainSignal -> Formula
+    "mapsTo",  # PainSignal -> ValueDriver
 ]
 
 # Current retrieval set for vector similarity search.
@@ -203,6 +211,8 @@ VECTOR_INDEX_ENTITY_TYPES = [
     "UseCase",
     "Persona",
     "ValueDriver",
+    # Phase 3: Evidence vector search for signal matching
+    "Evidence",
 ]
 
 # Constraints for data integrity
@@ -239,6 +249,9 @@ CONSTRAINTS: list[Constraint] = [
     Constraint("valuepack_id_tenant", "ValuePack", ["id", "tenant_id"], "unique"),
     Constraint("variable_id_tenant", "Variable", ["id", "tenant_id"], "unique"),
     Constraint("benchmarkdataset_id_tenant", "BenchmarkDataset", ["id", "tenant_id"], "unique"),
+    # Phase 3: Signal extraction constraints
+    Constraint("painsignal_id_tenant", "PainSignal", ["id", "tenant_id"], "unique"),
+    Constraint("evidence_id_tenant", "Evidence", ["id", "tenant_id"], "unique"),
     # NOTE: Property existence constraints require Neo4j Enterprise Edition.
     # For Community Edition compatibility, we use composite unique constraints
     # and rely on application-level validation for tenant_id presence.
@@ -265,6 +278,9 @@ TENANT_CONSTRAINTS: list[Constraint] = [
     Constraint("valuepack_tenant_id", "ValuePack", "tenant_id", "exists"),
     Constraint("variable_tenant_id", "Variable", "tenant_id", "exists"),
     Constraint("formula_tenant_id", "Formula", "tenant_id", "exists"),
+    # Phase 3: Signal extraction tenant constraints (Enterprise only)
+    Constraint("painsignal_tenant_id", "PainSignal", "tenant_id", "exists"),
+    Constraint("evidence_tenant_id", "Evidence", "tenant_id", "exists"),
 ]
 
 # Indexes for query performance
@@ -343,6 +359,22 @@ INDEXES: list[Index] = [
     Index("variable_fulltext", "Variable", ["name", "description"], "fulltext"),
     Index("benchmarkdataset_name_idx", "BenchmarkDataset", ["name"], "btree"),
     Index("benchmarkdataset_industry_idx", "BenchmarkDataset", ["industry"], "btree"),
+    # Phase 3: Signal extraction indexes
+    Index("painsignal_tenant_idx", "PainSignal", ["tenant_id"], "btree"),
+    Index("painsignal_account_idx", "PainSignal", ["account_id"], "btree"),
+    Index("painsignal_tenant_id_idx", "PainSignal", ["tenant_id", "id"], "btree"),
+    Index("painsignal_category_idx", "PainSignal", ["category"], "btree"),
+    Index("painsignal_confidence_idx", "PainSignal", ["confidence_score"], "btree"),
+    Index("painsignal_name_idx", "PainSignal", ["name"], "btree"),
+    Index("painsignal_fulltext", "PainSignal", ["name", "description"], "fulltext"),
+    # Evidence indexes for vector search
+    Index("evidence_tenant_idx", "Evidence", ["tenant_id"], "btree"),
+    Index("evidence_tenant_id_idx", "Evidence", ["tenant_id", "id"], "btree"),
+    Index("evidence_type_idx", "Evidence", ["evidence_type"], "btree"),
+    Index("evidence_industry_idx", "Evidence", ["industry"], "btree"),
+    Index("evidence_fulltext", "Evidence", ["title", "content"], "fulltext"),
+    # Vector index for evidence semantic search
+    Index("evidence_embedding_idx", "Evidence", ["embedding"], "vector"),
 ]
 
 # Schema initialization order

@@ -10,10 +10,28 @@
  * 3. Implement the business logic in the implementation function
  * 4. Update required_permissions
  * 5. Adjust version and timeout as needed
+ *
+ * @types/node required for process.env access
  */
 
 import { defineTool, toolRegistry, type ToolExecutionContext } from "./registry";
 import { success, error, type ToolResult } from "../errors/error-shape";
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Tool name - single source of truth */
+const TOOL_NAME = "example_customer_crud";
+
+/** Tool version - semver */
+const TOOL_VERSION = "1.0.0";
+
+/** Default timeout for tool execution */
+const DEFAULT_TIMEOUT_MS = 30000;
+
+/** Customer ID pattern for validation */
+const CUSTOMER_ID_PATTERN = /^cust_[a-z0-9]+$/;
 
 // ============================================================================
 // Input/Output Types
@@ -86,7 +104,7 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
   // -------------------------------------------------------------------------
   // 1. Tool Name - unique identifier in registry
   // -------------------------------------------------------------------------
-  name: "example_customer_crud",
+  name: TOOL_NAME,
 
   // -------------------------------------------------------------------------
   // 2. Description - minimum 50 characters, include:
@@ -165,12 +183,12 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
   // -------------------------------------------------------------------------
   // 6. Version - follow semver, increment on any behavior change
   // -------------------------------------------------------------------------
-  version: "1.0.0",
+  version: TOOL_VERSION,
 
   // -------------------------------------------------------------------------
   // 7. Timeout - maximum execution time before cancellation
   // -------------------------------------------------------------------------
-  timeout_ms: 30000,
+  timeout_ms: DEFAULT_TIMEOUT_MS,
 
   // -------------------------------------------------------------------------
   // 8. Supports Partial - true if tool can return partial results
@@ -210,13 +228,21 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
         {
           execution_time_ms: Date.now() - startTime,
           tenant_id: "unknown",
-          tool_version: "1.0.0",
+          tool_version: TOOL_VERSION,
           trace_id: ctx.trace_id,
         }
       );
     }
 
     const tenantId = ctx.tenant_context.tenant_id;
+
+    // Helper to build consistent metadata
+    const buildMetadata = (executionTimeMs: number) => ({
+      execution_time_ms: executionTimeMs,
+      tenant_id: tenantId,
+      tool_version: ctx.tool_version,
+      trace_id: ctx.trace_id,
+    });
 
     try {
       // -----------------------------------------------------------------------
@@ -225,6 +251,19 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
       // Schema validation happens automatically before implementation is called
       // Add business logic validation here
       // -----------------------------------------------------------------------
+      // Validate customer_id format (defense in depth beyond schema)
+      if (!CUSTOMER_ID_PATTERN.test(input.customer_id)) {
+        return error<ExampleToolOutput>(
+          {
+            code: "VALIDATION_FAILED",
+            message: `Invalid customer_id format: "${input.customer_id}"`,
+            recoverable: true,
+            details: { field: "customer_id", pattern: "^cust_[a-z0-9]+$" },
+          },
+          buildMetadata(Date.now() - startTime)
+        );
+      }
+
       if (input.operation === "update" && !input.data) {
         return error<ExampleToolOutput>(
           {
@@ -233,12 +272,7 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
             recoverable: true,
             details: { field: "data", operation: input.operation },
           },
-          {
-            execution_time_ms: Date.now() - startTime,
-            tenant_id: tenantId,
-            tool_version: ctx.tool_version,
-            trace_id: ctx.trace_id,
-          }
+          buildMetadata(Date.now() - startTime)
         );
       }
 
@@ -264,12 +298,7 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
             recoverable: false,
             details: { customer_id: input.customer_id, tenant_id: tenantId },
           },
-          {
-            execution_time_ms: Date.now() - startTime,
-            tenant_id: tenantId,
-            tool_version: ctx.tool_version,
-            trace_id: ctx.trace_id,
-          }
+          buildMetadata(Date.now() - startTime)
         );
       }
 
@@ -307,12 +336,7 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
           },
           operation: input.operation,
         },
-        {
-          execution_time_ms: Date.now() - startTime,
-          tenant_id: tenantId,
-          tool_version: ctx.tool_version,
-          trace_id: ctx.trace_id,
-        }
+        buildMetadata(Date.now() - startTime)
       );
     } catch (unexpectedError) {
       // -----------------------------------------------------------------------
@@ -321,7 +345,8 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
       // CONTRACT.md §2.4: Never let exceptions escape - always return ToolResult
       // Log the full error internally, return safe message to agent
       // -----------------------------------------------------------------------
-      console.error(`[Tool Error] example_customer_crud:`, unexpectedError);
+      // Log structured error for observability
+      console.error(`[Tool Error] ${TOOL_NAME}:`, unexpectedError);
 
       return error<ExampleToolOutput>(
         {
@@ -333,12 +358,7 @@ export const exampleTool = defineTool<ExampleToolInput, ExampleToolOutput>({
             error_type: unexpectedError instanceof Error ? unexpectedError.name : "Unknown",
           },
         },
-        {
-          execution_time_ms: Date.now() - startTime,
-          tenant_id: tenantId,
-          tool_version: ctx.tool_version,
-          trace_id: ctx.trace_id,
-        }
+        buildMetadata(Date.now() - startTime)
       );
     }
   },
@@ -407,7 +427,7 @@ async function deleteCustomerFromDatabase(
  */
 export function registerExampleTool(): void {
   toolRegistry.register(exampleTool);
-  console.log("[Tool] Registered example_customer_crud");
+  console.log(`[Tool] Registered ${TOOL_NAME}`);
 }
 
 // Auto-register when imported (for development)

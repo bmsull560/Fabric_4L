@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.io/schemas/signal.json",
+  "title": "PainSignal",
+  "description": "Canonical schema for pain signals discovered during prospect analysis",
+  "type": "object",
+  "required": [
+    "id",
+    "account_id",
+    "tenant_id",
+    "name",
+    "category",
+    "description",
+    "confidence_score",
+    "confidence_explanation"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for the signal (UUID v4)"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "Foreign key to the account this signal belongs to"
+    },
+    "tenant_id": {
+      "type": "string",
+      "description": "Tenant identifier for multi-tenant scoping"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Human-readable name of the signal (e.g., 'Production Downtime')"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Operational",
+        "Workforce",
+        "Quality",
+        "Cost",
+        "Supply Chain",
+        "Risk"
+      ],
+      "description": "Signal category for the vertical slice"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Detailed explanation of the signal and its business impact"
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Confidence level from 0.0 to 1.0"
+    },
+    "confidence_explanation": {
+      "type": "string",
+      "description": "LLM-generated rationale for the confidence score"
+    },
+    "impact_value": {
+      "type": "number",
+      "description": "Quantified impact (e.g., 2400000 for $2.4M)"
+    },
+    "impact_unit": {
+      "type": "string",
+      "enum": [
+        "USD/year",
+        "USD/month",
+        "% capacity",
+        "% efficiency",
+        "hours/week",
+        "FTE",
+        "Audit risk"
+      ],
+      "description": "Unit of measurement for the impact value"
+    },
+    "impact_formula_id": {
+      "type": "string",
+      "description": "Reference to the formula applied for quantification"
+    },
+    "trend_direction": {
+      "type": "string",
+      "enum": [
+        "increasing",
+        "decreasing",
+        "stable",
+        "new"
+      ],
+      "description": "Trend direction based on historical analysis"
+    },
+    "trend_explanation": {
+      "type": "string",
+      "description": "Rationale for the trend direction"
+    },
+    "evidence_matches": {
+      "type": "array",
+      "description": "Supporting evidence from knowledge base",
+      "items": {
+        "$ref": "#/definitions/EvidenceMatch"
+      }
+    },
+    "executive_hypothesis": {
+      "type": "string",
+      "description": "Narrative synthesis for executive consumption"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when signal was created"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when signal was last updated"
+    },
+    "source_prompt_id": {
+      "type": "string",
+      "description": "Trace back to the ProspectSetup submission that generated this signal"
+    },
+    "extraction_trace_id": {
+      "type": "string",
+      "description": "OpenTelemetry trace ID for observability"
+    }
+  },
+  "definitions": {
+    "EvidenceMatch": {
+      "type": "object",
+      "required": [
+        "evidence_id",
+        "evidence_type",
+        "title",
+        "match_score",
+        "match_reasoning"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "description": "Unique identifier for the evidence"
+        },
+        "evidence_type": {
+          "type": "string",
+          "enum": [
+            "case_study",
+            "benchmark",
+            "roi_calculator",
+            "industry_report"
+          ],
+          "description": "Type of evidence"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the evidence"
+        },
+        "match_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Relevance score from 0 to 100"
+        },
+        "match_reasoning": {
+          "type": "string",
+          "description": "Explanation of why this evidence supports the signal"
+        },
+        "relevance_quote": {
+          "type": "string",
+          "description": "Direct quote from the evidence source"
+        }
+      }
+    }
+  }
+}

@@ -174,6 +174,78 @@ async def test_analytics_centrality_endpoint_exists(client: AsyncClient):
 
 
 # ============================================================================
+# Subgraph Endpoint (New Implementation)
+# ============================================================================
+
+SUBGRAPH_RESPONSE_SCHEMA = {
+    "type": "object",
+    "required": ["nodes", "edges"],
+    "properties": {
+        "nodes": {
+            "type": "array",
+            "items": GRAPH_NODE_SCHEMA
+        },
+        "edges": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["source", "target", "type"],
+                "properties": {
+                    "source": {"type": "string"},
+                    "target": {"type": "string"},
+                    "type": {"type": "string"},
+                    "properties": {"type": "object"},
+                }
+            }
+        },
+        "stats": {"type": "object"},
+        "depth": {"type": "integer"},
+    }
+}
+
+
+@pytest.mark.asyncio
+async def test_graph_subgraph_endpoint_exists(client: AsyncClient):
+    """Verify GET /v1/graph/subgraph is implemented with query mode."""
+    response = await client.get(
+        "/v1/graph/subgraph",
+        params={"query": "AI", "depth": 1, "limit": 50}
+    )
+    assert response.status_code != 404, "Subgraph endpoint should exist"
+    assert response.status_code in [200, 400, 422], \
+        f"Expected 200, 400, or 422, got {response.status_code}"
+
+
+@pytest.mark.asyncio
+async def test_graph_subgraph_center_mode_exists(client: AsyncClient):
+    """Verify GET /v1/graph/subgraph works with center_entity_id mode."""
+    response = await client.get(
+        "/v1/graph/subgraph",
+        params={"center_entity_id": "test-entity-123", "depth": 2, "limit": 100}
+    )
+    assert response.status_code != 404, "Subgraph center mode should exist"
+    assert response.status_code in [200, 400, 404, 422], \
+        f"Expected 200, 400, 404, or 422, got {response.status_code}"
+
+
+@pytest.mark.asyncio
+async def test_graph_subgraph_returns_valid_schema(client: AsyncClient):
+    """Validate subgraph endpoint returns schema-compliant response."""
+    response = await client.get(
+        "/v1/graph/subgraph",
+        params={"query": "test", "depth": 1, "limit": 10}
+    )
+    if response.status_code == 200:
+        data = response.json()
+        jsonschema.validate(data, SUBGRAPH_RESPONSE_SCHEMA)
+        # Validate coherent structure: edges reference valid nodes
+        node_ids = {node["id"] for node in data["nodes"]}
+        for edge in data["edges"]:
+            assert edge["source"] in node_ids, f"Edge source {edge['source']} not in nodes"
+            assert edge["target"] in node_ids, f"Edge target {edge['target']} not in nodes"
+
+
+# ============================================================================
 # GraphRAG Endpoints
 # ============================================================================
 

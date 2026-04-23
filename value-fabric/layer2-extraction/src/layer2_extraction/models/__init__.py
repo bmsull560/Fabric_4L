@@ -4,10 +4,15 @@ from .extraction_cost import ExtractionCost, JobCostSummary
 from .extraction_response import (
     CapabilityExtractionResponse,
     FeatureExtractionResponse,
+    OperationalSignalExtractionResponse,
     PersonaExtractionResponse,
     RelationshipExtractionResponse,
     UseCaseExtractionResponse,
     ValueDriverExtractionResponse,
+)
+from .operational_signal_extraction import (
+    ExtractionMetadata,
+    OperationalSignal,
 )
 from .ontology import (
     Capability,
@@ -55,4 +60,7 @@ __all__ = [
     "ValueDriverExtractionResponse",
     "FeatureExtractionResponse",
     "RelationshipExtractionResponse",
+    "OperationalSignalExtractionResponse",
+    "OperationalSignal",
+    "ExtractionMetadata",
 ]

@@ -19,6 +19,12 @@ from .schema import (
     get_all_constraints,
     get_all_indexes,
 )
+from .services import (
+    EvidenceSearchService,
+    QuantificationResult,
+    SignalPersistenceService,
+    SignalQuantificationService,
+)
 
 __version__ = "0.1.0"
 
@@ -50,4 +56,9 @@ __all__ = [
     "CentralityAnalyzer",
     "CommunityDetector",
     "SimilarityAnalyzer",
+    # Signal Services (Phase 3)
+    "SignalPersistenceService",
+    "SignalQuantificationService",
+    "EvidenceSearchService",
+    "QuantificationResult",
 ]

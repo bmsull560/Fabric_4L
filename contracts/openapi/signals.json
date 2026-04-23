@@ -1,0 +1,457 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ValueFabric Signals API",
+    "description": "API for pain signal discovery, streaming, and retrieval",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/v1/prospects/setup": {
+      "post": {
+        "summary": "Submit prospect setup and trigger signal detection",
+        "description": "Accepts prospect setup data and initiates asynchronous signal detection. Returns immediately with prospect_id. Signals are generated asynchronously and streamed via WebSocket.",
+        "operationId": "create_prospect_setup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProspectSetupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Prospect setup accepted, signal detection initiated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProspectSetupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request payload"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/accounts/{account_id}/signals": {
+      "get": {
+        "summary": "Get signals for an account",
+        "description": "Retrieves persisted pain signals for a specific account with optional filtering",
+        "operationId": "get_account_signals",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Account identifier"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Operational",
+                "Workforce",
+                "Quality",
+                "Cost",
+                "Supply Chain",
+                "Risk"
+              ],
+              "default": "Operational"
+            },
+            "description": "Filter by signal category"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of signals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PainSignal"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Account not found"
+          }
+        }
+      }
+    },
+    "/v1/signals/stream/{prospect_id}": {
+      "get": {
+        "summary": "WebSocket endpoint for real-time signal streaming",
+        "description": "Streams signal discovery events in real-time. Events include signal_discovered (partial and complete), signal_completed, signal_failed, and stream_complete.",
+        "operationId": "signal_stream_websocket",
+        "parameters": [
+          {
+            "name": "prospect_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Prospect identifier from setup submission"
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket upgrade accepted"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ProspectSetupRequest": {
+        "type": "object",
+        "required": [
+          "company_name",
+          "business_pain"
+        ],
+        "properties": {
+          "company_name": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "company_domain": {
+            "type": "string",
+            "description": "Company domain"
+          },
+          "industry": {
+            "type": "string",
+            "description": "Industry vertical"
+          },
+          "account_context": {
+            "type": "string",
+            "description": "Combined context string"
+          },
+          "buying_context": {
+            "type": "string",
+            "description": "Current buying situation"
+          },
+          "why_now": {
+            "type": "string",
+            "description": "Urgency catalyst"
+          },
+          "known_initiative": {
+            "type": "string",
+            "description": "Known initiative name"
+          },
+          "business_pain": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Known or suspected business pains"
+          },
+          "current_friction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Current friction points"
+          },
+          "desired_outcomes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Desired business outcomes"
+          },
+          "stakeholders": {
+            "type": "object",
+            "properties": {
+              "economic_buyer": {
+                "type": "string"
+              },
+              "champion": {
+                "type": "string"
+              },
+              "evaluator": {
+                "type": "string"
+              },
+              "compliance": {
+                "type": "string"
+              }
+            }
+          },
+          "source_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Uploaded files and attachments"
+          },
+          "output_type": {
+            "type": "string",
+            "enum": [
+              "account_brief",
+              "discovery_prep",
+              "value_hypotheses",
+              "executive_summary"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "Fast",
+              "Balanced",
+              "Deep"
+            ],
+            "default": "Balanced"
+          },
+          "enrichment_depth": {
+            "type": "string",
+            "enum": [
+              "light",
+              "standard",
+              "deep"
+            ],
+            "default": "standard"
+          },
+          "run_web_enrichment": {
+            "type": "boolean",
+            "default": false
+          },
+          "freeform_prompt": {
+            "type": "string",
+            "description": "Raw prompt text from user"
+          }
+        }
+      },
+      "ProspectSetupResponse": {
+        "type": "object",
+        "required": [
+          "prospect_id",
+          "account_id"
+        ],
+        "properties": {
+          "prospect_id": {
+            "type": "string",
+            "description": "Unique identifier for this prospect setup"
+          },
+          "account_id": {
+            "type": "string",
+            "description": "Account identifier (existing or newly created)"
+          },
+          "signals_will_stream": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether signals will be streamed via WebSocket"
+          },
+          "stream_url": {
+            "type": "string",
+            "description": "WebSocket URL for signal streaming"
+          }
+        }
+      },
+      "PainSignal": {
+        "type": "object",
+        "required": [
+          "id",
+          "account_id",
+          "tenant_id",
+          "name",
+          "category",
+          "description",
+          "confidence_score",
+          "confidence_explanation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "Operational",
+              "Workforce",
+              "Quality",
+              "Cost",
+              "Supply Chain",
+              "Risk"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "confidence_score": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
+          "confidence_explanation": {
+            "type": "string"
+          },
+          "impact_value": {
+            "type": "number"
+          },
+          "impact_unit": {
+            "type": "string",
+            "enum": [
+              "USD/year",
+              "USD/month",
+              "% capacity",
+              "% efficiency",
+              "hours/week",
+              "FTE",
+              "Audit risk"
+            ]
+          },
+          "impact_formula_id": {
+            "type": "string"
+          },
+          "trend_direction": {
+            "type": "string",
+            "enum": [
+              "increasing",
+              "decreasing",
+              "stable",
+              "new"
+            ]
+          },
+          "trend_explanation": {
+            "type": "string"
+          },
+          "evidence_matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMatch"
+            }
+          },
+          "executive_hypothesis": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_prompt_id": {
+            "type": "string"
+          },
+          "extraction_trace_id": {
+            "type": "string"
+          }
+        }
+      },
+      "EvidenceMatch": {
+        "type": "object",
+        "required": [
+          "evidence_id",
+          "evidence_type",
+          "title",
+          "match_score",
+          "match_reasoning"
+        ],
+        "properties": {
+          "evidence_id": {
+            "type": "string"
+          },
+          "evidence_type": {
+            "type": "string",
+            "enum": [
+              "case_study",
+              "benchmark",
+              "roi_calculator",
+              "industry_report"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "match_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "match_reasoning": {
+            "type": "string"
+          },
+          "relevance_quote": {
+            "type": "string"
+          }
+        }
+      },
+      "SignalStreamEvent": {
+        "type": "object",
+        "required": [
+          "event_type",
+          "timestamp"
+        ],
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "signal_discovered",
+              "signal_completed",
+              "signal_failed",
+              "stream_complete"
+            ]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/PainSignal"
+          },
+          "partial": {
+            "type": "boolean",
+            "description": "True if signal data is still being populated"
+          },
+          "signal_id": {
+            "type": "string"
+          },
+          "error_category": {
+            "type": "string",
+            "enum": [
+              "extraction",
+              "enrichment",
+              "persistence",
+              "unknown"
+            ]
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "retryable": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

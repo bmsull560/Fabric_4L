@@ -1,0 +1,44 @@
+{
+  "name": "eslint-plugin-fabric-contracts",
+  "version": "1.0.0",
+  "description": "ESLint plugin enforcing Fabric 4L canonical contracts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "commonjs",
+  "files": [
+    "dist/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src/",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "fabric",
+    "contracts",
+    "architecture"
+  ],
+  "author": "Fabric 4L Team",
+  "license": "MIT",
+  "peerDependencies": {
+    "eslint": ">=8.0.0"
+  },
+  "devDependencies": {
+    "@types/eslint": "^8.44.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@typescript-eslint/rule-tester": "^6.0.0",
+    "@typescript-eslint/types": "^8.59.0",
+    "eslint": "^8.50.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.2.0"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^6.0.0"
+  }
+}

@@ -82,6 +82,17 @@ from .workflow_config import (
     NodeType,
     WorkflowConfig,
 )
+from .pain_signal import (
+    ErrorCategory,
+    EvidenceMatch,
+    EvidenceType,
+    ImpactUnit,
+    PainSignal,
+    PainSignalCreate,
+    PainSignalUpdate,
+    SignalCategory,
+    TrendDirection,
+)
 
 __all__ = [
     # Account Models
@@ -154,4 +165,14 @@ __all__ = [
     "SendNotificationOutput",
     "ValidateInputInput",
     "ValidateInputOutput",
+    # Pain Signal Models
+    "PainSignal",
+    "PainSignalCreate",
+    "PainSignalUpdate",
+    "EvidenceMatch",
+    "EvidenceType",
+    "ImpactUnit",
+    "SignalCategory",
+    "TrendDirection",
+    "ErrorCategory",
 ]

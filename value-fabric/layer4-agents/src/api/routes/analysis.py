@@ -144,8 +144,46 @@ async def quick_roi_analysis(
             company_size=request.company_size,
         )
 
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
         result = await executor.execute_workflow(
             workflow_type="roi_calculator", input_data=input_data.model_dump()
+=======
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+        result = await executor.run(
+            workflow_type="roi_calculator",
+            input_data=input_data.model_dump(),
+            tenant_id=str(context.tenant_id),
+            user_id=context.user_id,
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
         )
 
         aggregate = result.output_data.get("aggregate", {})
@@ -183,8 +221,46 @@ async def quick_whitespace_analysis(
             analysis_depth=request.analysis_depth,
         )
 
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
         result = await executor.execute_workflow(
             workflow_type="whitespace_analysis", input_data=input_data.model_dump()
+=======
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+        result = await executor.run(
+            workflow_type="whitespace_analysis",
+            input_data=input_data.model_dump(),
+            tenant_id=str(context.tenant_id),
+            user_id=context.user_id,
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
         )
 
         score_data = result.output_data.get("score_opportunity", {})
@@ -209,6 +285,30 @@ async def generate_business_case(
     background_tasks: BackgroundTasks,
     executor: WorkflowExecutor = Depends(get_executor),
     db: AsyncSession = Depends(get_db),
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+    context: RequestContext = Depends(require_authenticated),
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
 ) -> BusinessCaseResponse:
     """Generate a business case document.
 
@@ -242,8 +342,44 @@ async def generate_business_case(
             custom_inputs=custom_inputs,
         )
 
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
+<<<<<<< C:/Users/BBB/Fabric_4L/value-fabric/layer4-agents/src/api/routes/analysis.py
         result = await executor.execute_workflow(
             workflow_type="business_case", input_data=input_data.model_dump()
+=======
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+=======
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
+        result = await executor.run(
+            workflow_type="business_case",
+            input_data=input_data.model_dump(),
+            tenant_id=str(context.tenant_id),
+            user_id=context.user_id,
+        )
+
+        workflow_id = getattr(result, "workflow_id", None) or request.custom_inputs.get("workflow_id")
+        account_id = request.custom_inputs.get("account_id")
+        event = emit_audit_event(
+            AuditAction.BUSINESS_CASE_GENERATED,
+            tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            api_key_id=context.api_key_id,
+            resource_type="BusinessCase",
+            resource_id=workflow_id,
+            details={
+                "case_id": workflow_id,
+                "workflow_id": workflow_id,
+                "account_id": account_id,
+            },
+>>>>>>> C:/Users/BBB/.windsurf/worktrees/Fabric_4L/Fabric_4L-de8927c6/value-fabric/layer4-agents/src/api/routes/analysis.py
         )
 
         assemble_data = result.output_data.get("assemble_document", {})

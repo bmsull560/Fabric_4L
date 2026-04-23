@@ -1,6 +1,72 @@
-# Phase 1 Implementation Summary
+# Contract Tests Implementation Summary
 
-## Completed Tasks (Phase 1 Week 1)
+## Phase A Week 1 - Critical Path Completion (2026-04-23)
+
+### Task 1: Fixed SyntaxError in tasks.py ✅
+
+**Problem:** `crawl_url_with_routing` Celery task used `await` inside synchronous function.
+
+**Fix Applied:**
+- Line 956: `await _execute_browser_path(...)` → `asyncio.run(_execute_browser_path(...))`
+- Line 971: Same fix for BROWSER route path
+
+**Verification:** `python -m py_compile tasks.py` passes.
+
+---
+
+### Task 2: Security Test Environment Setup ✅
+
+**Files Created:**
+1. **`tests/security/.env.example`** - Template for JWT_SECRET and test DB config
+2. **`tests/security/README.md`** - Setup instructions and troubleshooting guide
+
+**Files Modified:**
+- `tests/security/conftest.py` - Standardized on `JWT_SECRET` env var (with fallback to `TEST_JWT_SECRET`)
+
+**Environment Variables Documented:**
+- `JWT_SECRET` (required, min 32 chars)
+- `TEST_DATABASE_URL`, `REDIS_HOST`, `NEO4J_URI`
+
+---
+
+### Task 3: API Contract Tests Expansion ✅
+
+**Files Modified:**
+- `tests/contract/conftest.py` - Added `layer4_client` fixture with L4 API URL
+
+**Files Created:**
+- **`tests/contract/test_layer4_contract.py`** (235 lines)
+  - 8 workflow endpoint tests (create, list, status, result, cancel, resume, pause, events)
+  - 5 tool registry tests (list, category filter, search, schema, invoke)
+  - 3 agent endpoint tests (list, get, execute)
+  - 3 billing/cost tests (usage, costs, export)
+  - 3 schema validation tests (tools array, workflow fields, tool invoke response)
+
+**Files Enhanced:**
+- `tests/contract/test_layer3_contract.py` - Added subgraph endpoint tests:
+  - `test_graph_subgraph_endpoint_exists` - Query mode
+  - `test_graph_subgraph_center_mode_exists` - Center entity mode
+  - `test_graph_subgraph_returns_valid_schema` - Schema validation with edge coherence
+
+---
+
+## Test Coverage Summary
+
+| Layer | Test File | Tests | Status |
+|-------|-----------|-------|--------|
+| L3 | `test_layer3_contract.py` | 13+ | ✅ Expanded |
+| L3 | `test_l3_formulas_contract.py` | 6 | ✅ Complete |
+| L3 | `test_l3_graph_contract.py` | 7 | ✅ Complete |
+| L3 | `test_l3_value_trees_contract.py` | 6 | ✅ Complete |
+| L4 | `test_l4_workflows_contract.py` | 9 | ✅ Complete |
+| L4 | `test_layer4_contract.py` | 22 | ✅ New |
+| L5 | `test_layer5_contract.py` | 5 | ✅ Complete |
+| Cross | `test_l2_l3_contract.py` | 3 | ✅ Complete |
+| **Total** | | **71+ contract tests** | ✅ |
+
+---
+
+## Previous Phase 1 Work
 
 ### Authentication Testing (Task 1.2.3, 1.2.5)
 

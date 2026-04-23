@@ -800,3 +800,517 @@ async def get_plan_limits(
         "plan_name": plan.name,
         "limits": limits,
     }
+
+
+# ============================================================================
+# Invoice Management
+# ============================================================================
+
+class CreateInvoiceRequest(BaseModel):
+    """Request to create a new invoice."""
+    customer_id: str = Field(..., description="Customer being invoiced")
+    period_start: datetime = Field(..., description="Billing period start")
+    period_end: datetime = Field(..., description="Billing period end")
+    invoice_number: str | None = Field(None, description="Optional invoice number")
+    subscription_id: str | None = Field(None, description="Optional subscription link")
+    currency: str = Field(default="USD", description="Currency code")
+    description: str | None = Field(None, description="Invoice description")
+
+
+class AddInvoiceItemRequest(BaseModel):
+    """Request to add an invoice line item."""
+    description: str = Field(..., description="Line item description")
+    amount_cents: int = Field(..., ge=0, description="Amount in cents")
+    quantity: float = Field(default=1.0, gt=0, description="Quantity")
+    unit_amount_cents: int | None = Field(None, description="Price per unit in cents")
+    type: str = Field(default="one_time", description="Item type: subscription, metered, one_time, proration")
+    usage_quantity: float | None = Field(None, description="Usage quantity for metered items")
+    usage_metric: str | None = Field(None, description="Usage metric for metered items")
+    tax_cents: int = Field(default=0, ge=0, description="Tax amount in cents")
+    discount_cents: int = Field(default=0, ge=0, description="Discount amount in cents")
+
+
+class RecordChargeRequest(BaseModel):
+    """Request to record a charge."""
+    customer_id: str = Field(..., description="Customer being charged")
+    amount_cents: int = Field(..., gt=0, description="Charge amount in cents")
+    status: str = Field(default="succeeded", description="Charge status")
+    invoice_id: str | None = Field(None, description="Linked invoice ID")
+    stripe_charge_id: str | None = Field(None, description="Stripe charge ID")
+    payment_method_id: str | None = Field(None, description="Payment method ID")
+    payment_method_type: str | None = Field(None, description="Payment method type")
+    description: str | None = Field(None, description="Charge description")
+
+
+@router.get("/invoices")
+async def list_invoices(
+    customer_id: str | None = Query(None),
+    status: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """List invoices with optional filters.
+
+    Returns paginated list of invoices for the tenant, optionally filtered
+    by customer and status.
+    """
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        invoices = await service.list_invoices(
+            customer_id=customer_id,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+        
+        return {
+            "invoices": [
+                {
+                    "id": inv.id,
+                    "invoice_number": inv.invoice_number,
+                    "customer_id": inv.customer_id,
+                    "status": inv.status,
+                    "currency": inv.currency,
+                    "total_cents": inv.total,
+                    "total_dollars": inv.total_dollars,
+                    "amount_due_cents": inv.amount_due,
+                    "amount_due_dollars": inv.amount_due_dollars,
+                    "period_start": inv.period_start.isoformat(),
+                    "period_end": inv.period_end.isoformat(),
+                    "due_date": inv.due_date.isoformat() if inv.due_date else None,
+                    "created_at": inv.created_at.isoformat(),
+                    "paid_at": inv.paid_at.isoformat() if inv.paid_at else None,
+                    "item_count": len(inv.items),
+                }
+                for inv in invoices
+            ],
+            "pagination": {"limit": limit, "offset": offset},
+        }
+    except Exception as e:
+        logger.exception(f"Failed to list invoices: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve invoices",
+        )
+
+
+@router.post("/invoices")
+async def create_invoice(
+    request: CreateInvoiceRequest,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Create a new invoice.
+
+    Creates a draft invoice for the specified customer and billing period.
+    Add line items via POST /invoices/{id}/items, then finalize via POST /invoices/{id}/finalize.
+    """
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        invoice = await service.create_invoice(
+            customer_id=request.customer_id,
+            period_start=request.period_start,
+            period_end=request.period_end,
+            invoice_number=request.invoice_number,
+            subscription_id=request.subscription_id,
+            currency=request.currency,
+            description=request.description,
+        )
+        
+        await db.commit()
+        
+        return {
+            "id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "customer_id": invoice.customer_id,
+            "status": invoice.status,
+            "total_cents": invoice.total,
+            "total_dollars": invoice.total_dollars,
+            "created_at": invoice.created_at.isoformat(),
+        }
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Failed to create invoice: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create invoice",
+        )
+
+
+@router.get("/invoices/{invoice_id}")
+async def get_invoice(
+    invoice_id: str,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Get invoice details including line items and charges."""
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        invoice = await service.get_invoice(invoice_id, include_items=True, include_charges=True)
+        
+        if not invoice:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Invoice not found",
+            )
+        
+        return {
+            "id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "customer_id": invoice.customer_id,
+            "status": invoice.status,
+            "currency": invoice.currency,
+            "subtotal_cents": invoice.subtotal,
+            "tax_cents": invoice.tax,
+            "total_cents": invoice.total,
+            "total_dollars": invoice.total_dollars,
+            "amount_paid_cents": invoice.amount_paid,
+            "amount_due_cents": invoice.amount_due,
+            "amount_due_dollars": invoice.amount_due_dollars,
+            "balance_cents": invoice.balance,
+            "period_start": invoice.period_start.isoformat(),
+            "period_end": invoice.period_end.isoformat(),
+            "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
+            "created_at": invoice.created_at.isoformat(),
+            "paid_at": invoice.paid_at.isoformat() if invoice.paid_at else None,
+            "description": invoice.description,
+            "hosted_invoice_url": invoice.hosted_invoice_url,
+            "invoice_pdf_url": invoice.invoice_pdf_url,
+            "items": [
+                {
+                    "id": item.id,
+                    "type": item.type,
+                    "description": item.description,
+                    "quantity": float(item.quantity),
+                    "unit_amount_cents": item.unit_amount,
+                    "amount_cents": item.amount,
+                    "amount_dollars": item.amount_dollars,
+                    "usage_quantity": float(item.usage_quantity) if item.usage_quantity else None,
+                    "usage_metric": item.usage_metric,
+                    "tax_cents": item.tax_amount,
+                    "discount_cents": item.discount_amount,
+                }
+                for item in invoice.items
+            ],
+            "charges": [
+                {
+                    "id": charge.id,
+                    "status": charge.status,
+                    "amount_cents": charge.amount,
+                    "amount_dollars": charge.amount_dollars,
+                    "stripe_charge_id": charge.stripe_charge_id,
+                    "payment_method_type": charge.payment_method_type,
+                    "created_at": charge.created_at.isoformat(),
+                }
+                for charge in invoice.charges
+            ],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to get invoice: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve invoice",
+        )
+
+
+@router.post("/invoices/{invoice_id}/items")
+async def add_invoice_item(
+    invoice_id: str,
+    request: AddInvoiceItemRequest,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Add a line item to an invoice."""
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        item = await service.add_invoice_item(
+            invoice_id=invoice_id,
+            description=request.description,
+            amount=request.amount_cents,
+            quantity=request.quantity,
+            unit_amount=request.unit_amount_cents,
+            item_type=request.type,
+            usage_quantity=request.usage_quantity,
+            usage_metric=request.usage_metric,
+            tax_amount=request.tax_cents,
+            discount_amount=request.discount_cents,
+        )
+        
+        await db.commit()
+        
+        return {
+            "id": item.id,
+            "invoice_id": item.invoice_id,
+            "type": item.type,
+            "description": item.description,
+            "amount_cents": item.amount,
+            "amount_dollars": item.amount_dollars,
+        }
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Failed to add invoice item: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add invoice item",
+        )
+
+
+@router.post("/invoices/{invoice_id}/finalize")
+async def finalize_invoice(
+    invoice_id: str,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Finalize a draft invoice (make it open/payable).
+
+    Recalculates totals from line items and changes status to 'open'.
+    """
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        invoice = await service.finalize_invoice(invoice_id)
+        await db.commit()
+        
+        return {
+            "id": invoice.id,
+            "status": invoice.status,
+            "total_cents": invoice.total,
+            "total_dollars": invoice.total_dollars,
+            "amount_due_cents": invoice.amount_due,
+            "amount_due_dollars": invoice.amount_due_dollars,
+        }
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Failed to finalize invoice: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to finalize invoice",
+        )
+
+
+@router.post("/invoices/{invoice_id}/void")
+async def void_invoice(
+    invoice_id: str,
+    reason: str | None = Query(None, description="Void reason"),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Void an invoice."""
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        invoice = await service.void_invoice(invoice_id, reason=reason)
+        await db.commit()
+        
+        return {
+            "id": invoice.id,
+            "status": invoice.status,
+            "voided_at": invoice.voided_at.isoformat() if invoice.voided_at else None,
+        }
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Failed to void invoice: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to void invoice",
+        )
+
+
+# ============================================================================
+# Charge Management
+# ============================================================================
+
+@router.get("/charges")
+async def list_charges(
+    customer_id: str | None = Query(None),
+    invoice_id: str | None = Query(None),
+    status: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """List charge records."""
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        charges = await service.list_charges(
+            customer_id=customer_id,
+            invoice_id=invoice_id,
+            status=status,
+            limit=limit,
+            offset=offset,
+        )
+        
+        return {
+            "charges": [
+                {
+                    "id": chg.id,
+                    "customer_id": chg.customer_id,
+                    "invoice_id": chg.invoice_id,
+                    "status": chg.status,
+                    "amount_cents": chg.amount,
+                    "amount_dollars": chg.amount_dollars,
+                    "amount_refunded_cents": chg.amount_refunded,
+                    "net_amount_cents": chg.net_amount,
+                    "stripe_charge_id": chg.stripe_charge_id,
+                    "payment_method_type": chg.payment_method_type,
+                    "failure_code": chg.failure_code,
+                    "failure_message": chg.failure_message,
+                    "receipt_url": chg.receipt_url,
+                    "created_at": chg.created_at.isoformat(),
+                }
+                for chg in charges
+            ],
+            "pagination": {"limit": limit, "offset": offset},
+        }
+    except Exception as e:
+        logger.exception(f"Failed to list charges: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve charges",
+        )
+
+
+@router.post("/charges")
+async def record_charge(
+    request: RecordChargeRequest,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Record a charge attempt."""
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        charge = await service.record_charge(
+            customer_id=request.customer_id,
+            amount=request.amount_cents,
+            status=request.status,
+            invoice_id=request.invoice_id,
+            stripe_charge_id=request.stripe_charge_id,
+            payment_method_id=request.payment_method_id,
+            payment_method_type=request.payment_method_type,
+            description=request.description,
+        )
+        
+        await db.commit()
+        
+        return {
+            "id": charge.id,
+            "status": charge.status,
+            "amount_cents": charge.amount,
+            "amount_dollars": charge.amount_dollars,
+            "stripe_charge_id": charge.stripe_charge_id,
+            "created_at": charge.created_at.isoformat(),
+        }
+    except ValueError as e:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Failed to record charge: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to record charge",
+        )
+
+
+# ============================================================================
+# Reporting
+# ============================================================================
+
+@router.get("/reports/revenue")
+async def get_revenue_summary(
+    period_start: datetime,
+    period_end: datetime,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Get revenue summary for a period.
+
+    Returns aggregated invoice and charge totals for the specified period.
+    """
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        summary = await service.get_revenue_summary(period_start, period_end)
+        return summary
+    except Exception as e:
+        logger.exception(f"Failed to get revenue summary: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve revenue summary",
+        )
+
+
+@router.get("/customers/{customer_id}/balance")
+async def get_customer_balance(
+    customer_id: str,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Get customer balance summary.
+
+    Returns open invoice amounts and lifetime payment totals.
+    """
+    from ...services.invoice_service import InvoiceService
+    
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    service = InvoiceService(db, tenant_id=tenant_id)
+    
+    try:
+        balance = await service.get_customer_balance(customer_id)
+        return balance
+    except Exception as e:
+        logger.exception(f"Failed to get customer balance: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve customer balance",
+        )

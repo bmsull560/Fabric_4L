@@ -87,14 +87,14 @@ function getEnvVar(name: string, fallback: string): string {
 // Base API path - layer prefixes must include /v1 to match backend OpenAPI routes
 const API_BASE = getEnvVar('VITE_API_BASE', '/api');
 
-// Layer prefixes include /v1 to align with backend routes (e.g., /v1/graph/subgraph)
+// Layer prefixes (without /v1 - it's included in VITE_API_BASE)
 const LAYER_PREFIXES = {
-  l1: getEnvVar('VITE_L1_PREFIX', '/v1/ingest'),
-  l2: getEnvVar('VITE_L2_PREFIX', '/v1/extract'),
-  l3: getEnvVar('VITE_L3_PREFIX', '/v1/graph'),
-  l4: getEnvVar('VITE_L4_PREFIX', '/v1/agents'),
-  l5: getEnvVar('VITE_L5_PREFIX', '/v1/truths'),
-  l6: getEnvVar('VITE_L6_PREFIX', '/v1/benchmarks'),
+  l1: getEnvVar('VITE_L1_PREFIX', '/ingest'),
+  l2: getEnvVar('VITE_L2_PREFIX', '/extract'),
+  l3: getEnvVar('VITE_L3_PREFIX', '/graph'),
+  l4: getEnvVar('VITE_L4_PREFIX', '/agents'),
+  l5: getEnvVar('VITE_L5_PREFIX', '/truths'),
+  l6: getEnvVar('VITE_L6_PREFIX', '/benchmarks'),
 } as const;
 
 /**

@@ -10,7 +10,8 @@ import redis
 from fastapi.testclient import TestClient
 
 # Test configuration constants
-TEST_JWT_SECRET = os.getenv("TEST_JWT_SECRET", "test-secret-key")
+# JWT_SECRET is the canonical env var name used across CI and all layers
+TEST_JWT_SECRET = os.getenv("JWT_SECRET", os.getenv("TEST_JWT_SECRET", "test-secret-key"))
 DEFAULT_REDIS_PORT = 6379
 DEFAULT_REDIS_DB = 0
 
