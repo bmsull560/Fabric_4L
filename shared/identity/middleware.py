@@ -239,6 +239,14 @@ class MultiWorkerRateLimitError(RuntimeError):
         )
 
 
+class SuspendedTenantError(Exception):
+    """Raised when tenant is suspended and cannot access resources."""
+
+    def __init__(self, tenant_id: str):
+        self.tenant_id = tenant_id
+        super().__init__(f"Tenant {tenant_id} is suspended. Please contact support.")
+
+
 class GovernanceMiddleware(BaseHTTPMiddleware):
     """Middleware to handle authentication, authorization, and rate limiting (Task 84)."""
 
@@ -249,6 +257,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         jwt_secret: str | None = None,
         on_rate_limit_hit: Callable[[str, str], None] | None = None,
         tenant_settings_lookup: Callable[[UUID], Awaitable[dict | None]] | None = None,
+        tenant_status_lookup: Callable[[UUID], Awaitable[str | None]] | None = None,
         enable_per_tenant_rate_limiting: bool = True,  # Task 84: Enable by default
         redis_client: redis.Redis | None = None,
     ):
@@ -257,6 +266,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self.jwt_secret = jwt_secret
         self.on_rate_limit_hit = on_rate_limit_hit
         self.tenant_settings_lookup = tenant_settings_lookup
+        self.tenant_status_lookup = tenant_status_lookup  # Task 1.4: For suspended tenant checks
         self.enable_per_tenant_rate_limiting = enable_per_tenant_rate_limiting
 
         # Multi-worker safety check (Task 84 Hardening)
@@ -271,6 +281,28 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         """Process request with auth, context, and optional rate limiting (Task 84)."""
         context = await self._authenticate(request)
         request.state.context = context
+
+        # Task 1.4: Check tenant status (suspended/pending/deleted)
+        if context.tenant_id:
+            tenant_status = await self._check_tenant_status(context.tenant_id)
+            if tenant_status == "suspended":
+                logger.warning("Access denied for suspended tenant %s", context.tenant_id)
+                return Response(
+                    content="Tenant is suspended. Please contact support.",
+                    status_code=403,
+                )
+            if tenant_status == "pending":
+                logger.warning("Access denied for pending tenant %s", context.tenant_id)
+                return Response(
+                    content="Tenant is pending activation. Please complete onboarding.",
+                    status_code=403,
+                )
+            if tenant_status == "deleted":
+                logger.warning("Access denied for deleted tenant %s", context.tenant_id)
+                return Response(
+                    content="Tenant not found.",
+                    status_code=404,
+                )
 
         # Task 84: Per-tenant rate limiting
         if self.enable_per_tenant_rate_limiting and context.tenant_id:
@@ -334,6 +366,27 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         # Fall back to in-memory for single-worker dev/test
         return _check_tenant_rate_limit(tenant_id_str, rpm)
 
+    async def _check_tenant_status(self, tenant_id: UUID) -> str | None:
+        """Check tenant status for access control (Task 1.4).
+
+        Args:
+            tenant_id: Tenant UUID
+
+        Returns:
+            Tenant status string (active, suspended, pending, deleted) or None if not found
+        """
+        if not self.tenant_status_lookup:
+            # If no lookup function provided, assume active (backward compatibility)
+            return "active"
+
+        try:
+            status = await self.tenant_status_lookup(tenant_id)
+            return status or "active"
+        except Exception as e:
+            logger.warning("Failed to check tenant status for %s: %s", tenant_id, e)
+            # Fail safe - deny access if we can't verify status
+            return None
+
     async def _authenticate(self, request: Request) -> RequestContext:
         """Authenticate request and build context with standardized tenant claims (Task 1.1)."""
         context = RequestContext()
@@ -380,7 +433,17 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     context.permissions = list(set(perms))
 
         # Extract request ID
-        context.request_id = request.headers.get("X-Request-ID") or str(UUID())
+        context.request_id = request.headers.get("X-Request-ID") or str(uuid4())
+
+        # P2: Validate context state
+        validation_errors = context.validate()
+        if validation_errors:
+            logger.warning(
+                "RequestContext validation failed: %s (tenant=%s, user=%s)",
+                ", ".join(validation_errors),
+                context.tenant_id,
+                context.user_id,
+            )
 
         # Task 3.1: Emit tenant resolution audit event
         await self._emit_tenant_resolution_audit(request, context)
@@ -469,6 +532,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 __all__ = [
     "GovernanceMiddleware",
     "RateLimitExceeded",
+    "SuspendedTenantError",
     "_check_tenant_rate_limit",
     "_tenant_rate_limit_buckets",
     "_check_redis_rate_limit",

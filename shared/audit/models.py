@@ -35,6 +35,10 @@ class AuditAction(str, Enum):
     # Task 3.1: Tenant resolution audit logging
     TENANT_RESOLVED = "tenant_resolved"
     TENANT_CONTEXT_SET = "tenant_context_set"
+    # Phase 3: Usage tracking audit actions
+    API_CALL = "api_call"
+    LLM_USAGE = "llm_usage"
+    AGENT_EXECUTION = "agent_execution"
 
 
 class AuditOutcome(str, Enum):

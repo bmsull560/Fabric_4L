@@ -210,7 +210,7 @@ class ScrapingTarget(Base):
 
     # Primary Identifiers
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
@@ -305,8 +305,8 @@ class ScrapingTarget(Base):
     jobs = relationship("ScrapingJob", back_populates="target", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index("idx_scraping_targets_org_status", "organization_id", "status"),
-        Index("idx_scraping_targets_created", "organization_id", "created_at"),
+        Index("idx_scraping_targets_tenant_status", "tenant_id", "status"),
+        Index("idx_scraping_targets_created", "tenant_id", "created_at"),
     )
 
 
@@ -321,7 +321,7 @@ class ScrapingJob(Base):
 
     # Primary Identifiers
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     target_id = Column(
         UUID(as_uuid=True),
         ForeignKey("scraping_targets.id", ondelete="CASCADE"),
@@ -379,7 +379,7 @@ class ScrapingJob(Base):
     compliance_logs = relationship("ComplianceLog", back_populates="job")
 
     __table_args__ = (
-        Index("idx_scraping_jobs_org_status", "organization_id", "status"),
+        Index("idx_scraping_jobs_tenant_status", "tenant_id", "status"),
         Index("idx_scraping_jobs_target", "target_id", "created_at"),
         Index("idx_scraping_jobs_status_created", "status", "created_at"),
     )
@@ -397,7 +397,7 @@ class JobStageDetail(Base):
         nullable=False,
         index=True,
     )
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
 
     stage = Column(String(50), nullable=False)  # PipelineStage value
     status = Column(
@@ -434,7 +434,7 @@ class JobError(Base):
         nullable=False,
         index=True,
     )
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
 
     stage = Column(String(50), nullable=False)  # PipelineStage where error occurred
     error_code = Column(String(100), nullable=False)
@@ -471,7 +471,7 @@ class RawContent(Base):
         nullable=False,
         index=True,
     )
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     target_id = Column(
         UUID(as_uuid=True),
         ForeignKey("scraping_targets.id", ondelete="SET NULL"),
@@ -542,8 +542,8 @@ class RawContent(Base):
 
     __table_args__ = (
         Index("idx_raw_content_job_status", "job_id", "processing_status"),
-        Index("idx_raw_content_org_domain", "organization_id", "source_domain"),
-        Index("idx_raw_content_hash", "organization_id", "content_hash"),
+        Index("idx_raw_content_tenant_domain", "tenant_id", "source_domain"),
+        Index("idx_raw_content_hash", "tenant_id", "content_hash"),
     )
 
 
@@ -566,7 +566,7 @@ class ExtractedData(Base):
         nullable=False,
         index=True,
     )
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     target_id = Column(
         UUID(as_uuid=True),
         ForeignKey("scraping_targets.id", ondelete="SET NULL"),
@@ -627,7 +627,7 @@ class ExtractedData(Base):
 
     __table_args__ = (
         Index("idx_extracted_data_job", "job_id", "created_at"),
-        Index("idx_extracted_data_org_quality", "organization_id", "validation_data_quality_score"),
+        Index("idx_extracted_data_tenant_quality", "tenant_id", "validation_data_quality_score"),
     )
 
 
@@ -638,7 +638,7 @@ class ComplianceLog(Base):
 
     # Primary Identifiers
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     job_id = Column(
         UUID(as_uuid=True),
         ForeignKey("scraping_jobs.id", ondelete="SET NULL"),
@@ -714,7 +714,7 @@ class ComplianceLog(Base):
     job = relationship("ScrapingJob", back_populates="compliance_logs")
 
     __table_args__ = (
-        Index("idx_compliance_logs_org_event", "organization_id", "event_type"),
+        Index("idx_compliance_logs_tenant_event", "tenant_id", "event_type"),
         Index("idx_compliance_logs_timestamp", "created_at"),
         Index("idx_compliance_logs_job", "job_id", "created_at"),
     )
@@ -761,8 +761,8 @@ class ProxyPool(Base):
     )
 
     __table_args__ = (
-        Index("idx_proxy_pools_org", "organization_id", "created_at"),
-        UniqueConstraint("organization_id", "name", name="uq_proxy_pool_org_name"),
+        Index("idx_proxy_pools_tenant", "tenant_id", "created_at"),
+        UniqueConstraint("tenant_id", "name", name="uq_proxy_pool_tenant_name"),
     )
 
 
@@ -773,7 +773,7 @@ class RobotsTxtCache(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     domain = Column(String(255), nullable=False, unique=True, index=True)
-    organization_id = Column(
+    tenant_id = Column(
         UUID(as_uuid=True), nullable=False, index=True
     )  # Added for multi-tenancy
 
@@ -788,7 +788,7 @@ class RobotsTxtCache(Base):
     is_valid = Column(Boolean, default=True)
     parse_error = Column(Text, nullable=True)
 
-    __table_args__ = (Index("idx_robots_txt_cache_org", "organization_id", "domain"),)
+    __table_args__ = (Index("idx_robots_txt_cache_tenant", "tenant_id", "domain"),)
 
 
 # =============================================================================
@@ -802,7 +802,7 @@ class CrawlQueueItem(Base):
     __tablename__ = "crawl_queue"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    organization_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # Added
+    tenant_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     job_id = Column(
         UUID(as_uuid=True),
         ForeignKey("scraping_jobs.id", ondelete="CASCADE"),
@@ -831,8 +831,8 @@ class CrawlQueueItem(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("organization_id", "job_id", "url", name="uq_crawl_queue_org_job_url"),
-        Index("idx_crawl_queue_org_job_status", "organization_id", "job_id", "status"),
+        UniqueConstraint("tenant_id", "job_id", "url", name="uq_crawl_queue_tenant_job_url"),
+        Index("idx_crawl_queue_tenant_job_status", "tenant_id", "job_id", "status"),
         Index("idx_crawl_queue_next_retry", "status", "next_retry_at"),
         Index("idx_crawl_queue_domain_priority", "domain", "priority"),
     )
@@ -844,7 +844,7 @@ class CrawlQueueItem(Base):
 
 
 def create_scraping_target(
-    organization_id: uuid.UUID,
+    tenant_id: uuid.UUID,
     name: str,
     url: str,
     target_type: TargetType,
@@ -860,7 +860,7 @@ def create_scraping_target(
 ) -> ScrapingTarget:
     """Factory function to create a new scraping target."""
     return ScrapingTarget(
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         name=name,
         url=url,
         target_type=target_type.value,
@@ -877,7 +877,7 @@ def create_scraping_target(
 
 
 def create_scraping_job(
-    organization_id: uuid.UUID,
+    tenant_id: uuid.UUID,
     target_id: uuid.UUID,
     created_by: uuid.UUID,
     configuration: dict,
@@ -887,7 +887,7 @@ def create_scraping_job(
 ) -> ScrapingJob:
     """Factory function to create a new scraping job."""
     return ScrapingJob(
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         target_id=target_id,
         created_by=created_by,
         configuration=configuration,
@@ -898,14 +898,14 @@ def create_scraping_job(
 
 
 def create_proxy_pool(
-    organization_id: uuid.UUID,
+    tenant_id: uuid.UUID,
     name: str,
     proxies: list[dict] | None = None,
     rotation_strategy: ProxyRotationStrategy = ProxyRotationStrategy.ROUND_ROBIN,
 ) -> ProxyPool:
     """Factory function to create a proxy pool."""
     return ProxyPool(
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         name=name,
         proxies=proxies or [],
         rotation_strategy=rotation_strategy.value,

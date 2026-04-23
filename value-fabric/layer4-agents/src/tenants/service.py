@@ -86,6 +86,131 @@ async def get_tenant(db: AsyncSession, tenant_id: UUID) -> TenantModel | None:
     return _tenant_to_model(tenant) if tenant else None
 
 
+async def get_tenant_status(db: AsyncSession, tenant_id: UUID) -> str | None:
+    """Get tenant status for middleware checks.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+
+    Returns:
+        Tenant status string (active, suspended, pending, deleted) or None if not found
+    """
+    result = await db.execute(
+        select(Tenant.status).where(Tenant.id == tenant_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_tenant_by_slug(db: AsyncSession, slug: str) -> TenantModel | None:
+    """Get tenant by slug.
+
+    Args:
+        db: Database session
+        slug: Tenant slug
+
+    Returns:
+        Tenant model or None if not found
+    """
+    result = await db.execute(select(Tenant).where(Tenant.slug == slug))
+    tenant = result.scalar_one_or_none()
+    return _tenant_to_model(tenant) if tenant else None
+
+
+async def update_tenant(
+    db: AsyncSession,
+    tenant_id: UUID,
+    *,
+    name: str | None = None,
+    settings_update: dict | None = None,
+) -> TenantModel | None:
+    """Update tenant settings.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+        name: New name (optional)
+        settings_update: Settings to merge (optional)
+
+    Returns:
+        Updated tenant model or None if not found
+    """
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        return None
+
+    if name is not None:
+        tenant.name = name
+
+    if settings_update is not None:
+        current_settings = tenant.settings or {}
+        current_settings.update(settings_update)
+        tenant.settings = current_settings
+
+    tenant.updated_at = datetime.now(UTC)
+    await db.flush()
+    return _tenant_to_model(tenant)
+
+
+async def count_users(db: AsyncSession, tenant_id: UUID) -> int:
+    """Count active users in tenant for tier limit checking.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+
+    Returns:
+        Number of active users
+    """
+    result = await db.execute(
+        select(func.count())
+        .where(User.tenant_id == tenant_id)
+        .where(User.status != "deleted")
+    )
+    return result.scalar() or 0
+
+
+async def count_api_keys(db: AsyncSession, tenant_id: UUID) -> int:
+    """Count enabled API keys in tenant for tier limit checking.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+
+    Returns:
+        Number of enabled API keys
+    """
+    result = await db.execute(
+        select(func.count())
+        .where(APIKey.tenant_id == tenant_id)
+        .where(APIKey.enabled.is_(True))
+    )
+    return result.scalar() or 0
+
+
+async def get_tier_api_key_limit(db: AsyncSession, tenant_id: UUID) -> int | None:
+    """Get API key limit for tenant's tier.
+
+    Args:
+        db: Database session
+        tenant_id: Tenant UUID
+
+    Returns:
+        API key limit or None for unlimited
+    """
+    from ...tiers import get_tier_limit
+
+    tenant = await get_tenant(db, tenant_id)
+    if not tenant:
+        return None
+
+    settings = tenant.settings or {}
+    tier_id = settings.get("tier_id", "free")
+
+    return get_tier_limit(tier_id, "max_users")  # Reuse max_users for API keys
+
+
 async def get_tenant_settings(db: AsyncSession, tenant_id: UUID) -> dict | None:
     """Get tenant settings JSONB for rate limiting (Task 84).
 
@@ -129,6 +254,44 @@ async def update_tenant(
     tenant.updated_at = datetime.now(UTC)
     await db.flush()
     return _tenant_to_model(tenant)
+
+
+async def update_tenant_status(
+    db: AsyncSession,
+    tenant_id: UUID,
+    status: str,
+    *,
+    reason: str | None = None,
+) -> bool:
+    """Update tenant status directly.
+
+    Args:
+        db: Database session
+        tenant_id: UUID of tenant to update
+        status: New status value (pending, active, suspended, deleted)
+        reason: Optional reason for status change
+
+    Returns:
+        True if status was updated, False if tenant not found
+    """
+    result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        return False
+
+    old_status = tenant.status
+    tenant.status = status
+    tenant.updated_at = datetime.now(UTC)
+    await db.flush()
+
+    logger.info(
+        "Updated tenant %s status: %s -> %s (reason: %s)",
+        tenant_id,
+        old_status,
+        status,
+        reason or "unspecified",
+    )
+    return True
 
 
 async def delete_tenant(db: AsyncSession, tenant_id: UUID) -> bool:

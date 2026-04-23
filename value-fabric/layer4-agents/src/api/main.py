@@ -49,7 +49,14 @@ from ..registry.api.routes import router as models_router
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
 from ..tenants import get_tenant_settings, lookup_api_key_by_hash
-from ..tenants.api import api_keys_router, tenants_router, users_router
+from ..tenants.api import (
+    admin_router,
+    api_keys_router,
+    provisioning_router,
+    registration_router,
+    tenants_router,
+    users_router,
+)
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
 from .routes import accounts, analysis, tools, workflows
@@ -346,6 +353,13 @@ app.include_router(tenants_router, prefix="/v1")
 app.include_router(users_router, prefix="/v1")
 app.include_router(api_keys_router, prefix="/v1")
 app.include_router(oidc_router)
+
+# Phase 2: Provisioning routes
+app.include_router(provisioning_router, prefix="/v1")
+
+# Phase 3: Self-service control plane routes
+app.include_router(registration_router, prefix="/v1")
+app.include_router(admin_router, prefix="/v1")
 app.include_router(models_router, prefix="/v1")
 app.include_router(feature_flags_router, prefix="/v1")
 

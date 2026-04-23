@@ -104,7 +104,7 @@ class ModelVersion(Base):
         default=lambda: uuid.uuid4(),
         comment="Globally unique model version identifier",
     )
-    organization_id = Column(
+    tenant_id = Column(
         UUID,
         nullable=False,
         index=True,
@@ -258,14 +258,14 @@ class ModelVersion(Base):
     # -------------------------------------------------------------------------
     __table_args__ = (
         Index(
-            "ix_model_versions_org_provider_name",
-            "organization_id",
+            "ix_model_versions_tenant_provider_name",
+            "tenant_id",
             "provider",
             "name",
         ),
         Index(
-            "ix_model_versions_org_default",
-            "organization_id",
+            "ix_model_versions_tenant_default",
+            "tenant_id",
             "is_default",
         ),
     )
@@ -295,7 +295,7 @@ class ModelDeployment(Base):
         default=lambda: uuid.uuid4(),
         comment="Globally unique deployment identifier",
     )
-    organization_id = Column(
+    tenant_id = Column(
         UUID,
         nullable=False,
         index=True,
@@ -423,14 +423,14 @@ class ModelDeployment(Base):
     # -------------------------------------------------------------------------
     __table_args__ = (
         Index(
-            "ix_model_deployments_org_env_default",
-            "organization_id",
+            "ix_model_deployments_tenant_env_default",
+            "tenant_id",
             "environment",
             "is_default_for_env",
         ),
         Index(
-            "ix_model_deployments_org_env_status",
-            "organization_id",
+            "ix_model_deployments_tenant_env_status",
+            "tenant_id",
             "environment",
             "status",
         ),
@@ -461,7 +461,7 @@ class ModelEvaluation(Base):
         default=lambda: uuid.uuid4(),
         comment="Globally unique evaluation identifier",
     )
-    organization_id = Column(
+    tenant_id = Column(
         UUID,
         nullable=False,
         index=True,
@@ -566,13 +566,13 @@ class ModelEvaluation(Base):
     # -------------------------------------------------------------------------
     __table_args__ = (
         Index(
-            "ix_model_evaluations_org_benchmark",
-            "organization_id",
+            "ix_model_evaluations_tenant_benchmark",
+            "tenant_id",
             "benchmark_name",
         ),
         Index(
-            "ix_model_evaluations_org_model",
-            "organization_id",
+            "ix_model_evaluations_tenant_model",
+            "tenant_id",
             "model_version_id",
         ),
     )

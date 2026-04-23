@@ -89,6 +89,26 @@ class RequestContext:
         """Check if auth_source is a valid value."""
         return self.auth_source in self._valid_auth_sources
 
+    def validate(self) -> list[str]:
+        """Validate context state and return list of validation errors.
+        
+        Returns:
+            List of validation error messages (empty if valid)
+        """
+        errors = []
+        
+        if not self.is_isolation_tier_valid():
+            errors.append(f"Invalid isolation_tier: {self.isolation_tier}")
+        
+        if not self.is_auth_source_valid():
+            errors.append(f"Invalid auth_source: {self.auth_source}")
+        
+        # Validate service account consistency
+        if self.service_account_id and not self.service_account_scopes:
+            errors.append("Service account must have scopes")
+        
+        return errors
+
     @staticmethod
     def _uuid_to_str(uuid_val: UUID | None) -> str | None:
         """P2: Helper to serialize UUID to string."""

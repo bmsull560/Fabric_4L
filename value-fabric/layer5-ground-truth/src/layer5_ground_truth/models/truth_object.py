@@ -177,7 +177,7 @@ class TruthObject(Base):
         default=lambda: uuid.uuid4(),
         comment="Globally unique truth object identifier",
     )
-    organization_id = Column(
+    tenant_id = Column(
         UUID,
         nullable=False,
         index=True,
@@ -445,7 +445,7 @@ class TruthSource(Base):
         nullable=False,
         index=True,
     )
-    organization_id = Column(UUID, nullable=False, index=True)
+    tenant_id = Column(UUID, nullable=False, index=True)
 
     # Source identification
     source_type = Column(

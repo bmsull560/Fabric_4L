@@ -9,9 +9,28 @@ from typing import Any
 
 from sqlalchemy import JSON, DateTime, Index, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ...database import Base
+
+
+class TenantStatus(str, Enum):
+    """Tenant lifecycle status with transition validation."""
+
+    PENDING = "pending"  # Initial state after registration
+    ACTIVE = "active"    # Fully operational
+    SUSPENDED = "suspended"  # Access blocked but data preserved
+    DELETED = "deleted"  # Soft-deleted (purged after retention period)
+
+
+# Valid status transitions
+# Format: {current_status: {allowed_next_statuses}}
+VALID_STATUS_TRANSITIONS = {
+    TenantStatus.PENDING: {TenantStatus.ACTIVE, TenantStatus.DELETED},
+    TenantStatus.ACTIVE: {TenantStatus.SUSPENDED, TenantStatus.DELETED},
+    TenantStatus.SUSPENDED: {TenantStatus.ACTIVE, TenantStatus.DELETED},
+    TenantStatus.DELETED: set(),  # Terminal state - no transitions allowed
+}
 
 
 class IsolationTier(str, Enum):
@@ -26,6 +45,25 @@ class IsolationTier(str, Enum):
     SHARED = "shared"
     SCHEMA = "schema"
     DATABASE = "database"
+
+
+def validate_status_transition(current_status: str, new_status: str) -> bool:
+    """Validate if a status transition is allowed.
+
+    Args:
+        current_status: Current tenant status
+        new_status: Requested new status
+
+    Returns:
+        True if transition is valid, False otherwise
+    """
+    try:
+        current = TenantStatus(current_status)
+        new = TenantStatus(new_status)
+    except ValueError:
+        return False
+
+    return new in VALID_STATUS_TRANSITIONS.get(current, set())
 
 
 class Tenant(Base):
@@ -60,8 +98,8 @@ class Tenant(Base):
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
-        default="active",
-        comment="Lifecycle status: active | suspended | deleted",
+        default=TenantStatus.PENDING.value,
+        comment="Lifecycle status: pending | active | suspended | deleted",
     )
 
     settings: Mapped[dict[str, Any]] = mapped_column(
@@ -100,3 +138,54 @@ class Tenant(Base):
 
     def __repr__(self) -> str:
         return f"<Tenant(id={self.id}, slug={self.slug!r}, status={self.status!r})>"
+
+    # -------------------------------------------------------------------------
+    # Status lifecycle methods
+    # -------------------------------------------------------------------------
+
+    def is_active(self) -> bool:
+        """Check if tenant is active and can be accessed."""
+        return self.status == TenantStatus.ACTIVE.value
+
+    def is_suspended(self) -> bool:
+        """Check if tenant is suspended."""
+        return self.status == TenantStatus.SUSPENDED.value
+
+    def is_deleted(self) -> bool:
+        """Check if tenant is soft-deleted."""
+        return self.status == TenantStatus.DELETED.value
+
+    def is_pending(self) -> bool:
+        """Check if tenant is pending provisioning."""
+        return self.status == TenantStatus.PENDING.value
+
+    def can_transition_to(self, new_status: str) -> bool:
+        """Check if transition to new_status is valid."""
+        return validate_status_transition(self.status, new_status)
+
+    def transition_status(self, new_status: str) -> bool:
+        """Attempt to transition to new status.
+
+        Args:
+            new_status: Target status
+
+        Returns:
+            True if transition was successful, False if invalid
+        """
+        if not self.can_transition_to(new_status):
+            return False
+        self.status = new_status
+        self.updated_at = datetime.now(UTC)
+        return True
+
+    def activate(self) -> bool:
+        """Activate tenant (pending -> active or suspended -> active)."""
+        return self.transition_status(TenantStatus.ACTIVE.value)
+
+    def suspend(self) -> bool:
+        """Suspend tenant (active -> suspended)."""
+        return self.transition_status(TenantStatus.SUSPENDED.value)
+
+    def mark_deleted(self) -> bool:
+        """Soft-delete tenant."""
+        return self.transition_status(TenantStatus.DELETED.value)

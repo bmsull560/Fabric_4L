@@ -30,6 +30,36 @@ from sqlalchemy.orm import DeclarativeBase
 # P1: Module-level logger for audit emission errors
 logger = logging.getLogger(__name__)
 
+# Task 1.6: Tenant context validation metrics
+_tenant_validation_metrics = {
+    "validations_total": 0,
+    "validation_failures": 0,
+    "uuid_format_errors": 0,
+    "missing_context_errors": 0,
+    "empty_tenant_errors": 0,
+}
+
+
+def get_tenant_validation_metrics() -> dict[str, int]:
+    """Get tenant validation metrics for monitoring.
+    
+    Returns:
+        Dictionary of validation metric counters
+    """
+    return _tenant_validation_metrics.copy()
+
+
+def reset_tenant_validation_metrics() -> None:
+    """Reset tenant validation metrics. Used for testing."""
+    _tenant_validation_metrics.update({
+        "validations_total": 0,
+        "validation_failures": 0,
+        "uuid_format_errors": 0,
+        "missing_context_errors": 0,
+        "empty_tenant_errors": 0,
+    })
+
+
 try:
     from shared.identity.context import RequestContext
     from shared.identity.dependencies import get_request_context
@@ -165,26 +195,41 @@ class TenantContextError(Exception):
 # Set to False only for admin/system operations with proper role validation
 FAIL_SAFE_MODE = True
 
+# Reserved tenant keywords for system/admin operations
+RESERVED_TENANT_KEYWORDS = frozenset({'system', 'admin', 'internal'})
+
 
 def validate_tenant_id(tenant_id: UUID | str | None) -> str:
     """Validate tenant_id format and return normalized string.
     
     SECURITY: Strict validation to prevent tenant confusion attacks.
+    Tracks metrics for validation monitoring.
     
     Args:
-        tenant_id: Tenant identifier to validate
+        tenant_id: Tenant identifier to validate (UUID object, UUID string, or None)
         
     Returns:
-        Normalized tenant ID string
+        Normalized tenant ID string (lowercase UUID format or reserved keyword)
         
     Raises:
         TenantContextError: If tenant_id is invalid or missing in fail-safe mode
+    
+    Examples:
+        >>> validate_tenant_id(UUID('550e8400-e29b-41d4-a716-446655440000'))
+        '550e8400-e29b-41d4-a716-446655440000'
+        >>> validate_tenant_id('system')
+        'system'
     """
+    _tenant_validation_metrics["validations_total"] += 1
+    
     if tenant_id is None:
+        _tenant_validation_metrics["missing_context_errors"] += 1
+        _tenant_validation_metrics["validation_failures"] += 1
         if FAIL_SAFE_MODE:
             raise TenantContextError(
-                "Tenant context is mandatory in fail-safe mode. "
-                "Use explicit admin role context for system operations."
+                "Tenant context is mandatory. Ensure request includes valid tenant_id "
+                "in JWT token or X-Tenant-ID header. For admin operations, use "
+                "get_db_with_optional_tenant() with require_super_admin() dependency."
             )
         return ""
     
@@ -193,17 +238,22 @@ def validate_tenant_id(tenant_id: UUID | str | None) -> str:
     
     # Fail-safe: empty tenant_id is not allowed
     if not normalized:
+        _tenant_validation_metrics["empty_tenant_errors"] += 1
+        _tenant_validation_metrics["validation_failures"] += 1
         raise TenantContextError(
             "Empty tenant_id is not allowed. Provide a valid tenant context."
         )
     
     # Validate UUID format for strict tenant isolation
-    if normalized.lower() not in ('system', 'admin', 'internal'):
+    if normalized.lower() not in RESERVED_TENANT_KEYWORDS:
         try:
             UUID(normalized)
         except ValueError:
+            _tenant_validation_metrics["uuid_format_errors"] += 1
+            _tenant_validation_metrics["validation_failures"] += 1
             raise TenantContextError(
-                f"Invalid tenant_id format: {normalized}. Expected UUID."
+                f"Invalid tenant_id format: '{normalized}'. Expected valid UUID or "
+                f"reserved keyword ({', '.join(sorted(RESERVED_TENANT_KEYWORDS))})."
             )
     
     return normalized

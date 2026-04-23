@@ -39,6 +39,37 @@ from .dependencies import (
     get_whitespace_analysis_agent,
     init_app_state,
 )
+
+# Neo4j tenant-aware dependencies (Sprint 5)
+try:
+    from .dependencies_tenant import (
+        Neo4jTenantSession,
+        get_neo4j_with_tenant,
+        get_neo4j_with_optional_tenant,
+    )
+    NEO4J_TENANT_AVAILABLE = True
+except ImportError:
+    NEO4J_TENANT_AVAILABLE = False
+
+
+def _extract_tenant_id(request: Request | None) -> str | None:
+    """Extract tenant_id from request context for multi-tenant security.
+    
+    Sprint 5: Centralized helper to eliminate code duplication across endpoints.
+    Returns None if tenant context is unavailable or NEO4J_TENANT_AVAILABLE is False.
+    
+    Args:
+        request: FastAPI Request object with optional state.context
+        
+    Returns:
+        Normalized tenant_id string or None
+    """
+    if not request or not NEO4J_TENANT_AVAILABLE:
+        return None
+    ctx = getattr(request.state, "context", None)
+    if ctx and ctx.tenant_id:
+        return str(ctx.tenant_id)
+    return None
 from .exceptions import (
     AuthenticationError,
     AuthorizationError,
@@ -2051,6 +2082,7 @@ async def get_entity_detail(
     include_provenance: bool = Query(True, description="Include provenance chain"),
     include_relationships: bool = Query(True, description="Include related entities"),
     neo4j_driver=Depends(get_neo4j_driver),
+    request: Request = None,  # Sprint 5: For tenant context extraction
 ):
     """Get full entity detail for inspection/drawer views.
 
@@ -2067,19 +2099,37 @@ async def get_entity_detail(
     **Response:** Returns EntityDetail with full canonical contract.
     """
     try:
+        # Sprint 5: Extract tenant context for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+
         async with neo4j_driver.session() as session:
-            # Fetch main entity
-            entity_query = """
-                MATCH (e:Entity {id: $entity_id})
-                RETURN e {
-                    .id, .name, .entity_type, .domain, .status,
-                    .confidence, .confidence_label, .description,
-                    .updated_at, .source_name, .extraction_job_id,
-                    .created_at, .created_by, .properties,
-                    .validation_errors, .last_validated_at
-                }
-            """
-            result = await session.run(entity_query, {"entity_id": entity_id})
+            # Fetch main entity with tenant filtering (Sprint 5)
+            if tenant_id:
+                entity_query = """
+                    MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                    RETURN e {
+                        .id, .name, .entity_type, .domain, .status,
+                        .confidence, .confidence_label, .description,
+                        .updated_at, .source_name, .extraction_job_id,
+                        .created_at, .created_by, .properties,
+                        .validation_errors, .last_validated_at
+                    }
+                """
+                query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+            else:
+                # Fallback for non-tenant-scoped requests (deprecated)
+                entity_query = """
+                    MATCH (e:Entity {id: $entity_id})
+                    RETURN e {
+                        .id, .name, .entity_type, .domain, .status,
+                        .confidence, .confidence_label, .description,
+                        .updated_at, .source_name, .extraction_job_id,
+                        .created_at, .created_by, .properties,
+                        .validation_errors, .last_validated_at
+                    }
+                """
+                query_params = {"entity_id": entity_id}
+            result = await session.run(entity_query, query_params)
             record = await result.single()
 
             if not record:
@@ -2110,14 +2160,24 @@ async def get_entity_detail(
             # Build relationships if requested
             relationships = EntityRelationships()
             if include_relationships:
-                # Outgoing relationships
-                outgoing_query = """
-                    MATCH (e:Entity {id: $entity_id})-[r]->(target:Entity)
-                    RETURN type(r) as rel_type, target.id as target_id,
-                           target.name as target_name, target.entity_type as target_type
-                    LIMIT 5
-                """
-                outgoing_result = await session.run(outgoing_query, {"entity_id": entity_id})
+                # Outgoing relationships (Sprint 5: Add tenant filtering)
+                if tenant_id:
+                    outgoing_query = """
+                        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})-[r]->(target:Entity {tenant_id: $tenant_id})
+                        RETURN type(r) as rel_type, target.id as target_id,
+                               target.name as target_name, target.entity_type as target_type
+                        LIMIT 5
+                    """
+                    outgoing_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+                else:
+                    outgoing_query = """
+                        MATCH (e:Entity {id: $entity_id})-[r]->(target:Entity)
+                        RETURN type(r) as rel_type, target.id as target_id,
+                               target.name as target_name, target.entity_type as target_type
+                        LIMIT 5
+                    """
+                    outgoing_params = {"entity_id": entity_id}
+                outgoing_result = await session.run(outgoing_query, outgoing_params)
                 outgoing_records = await outgoing_result.fetch()
                 outgoing_rels = [
                     RelationshipPreview(
@@ -2129,14 +2189,24 @@ async def get_entity_detail(
                     for r in outgoing_records
                 ]
 
-                # Incoming relationships
-                incoming_query = """
-                    MATCH (source:Entity)-[r]->(e:Entity {id: $entity_id})
-                    RETURN type(r) as rel_type, source.id as source_id,
-                           source.name as source_name, source.entity_type as source_type
-                    LIMIT 5
-                """
-                incoming_result = await session.run(incoming_query, {"entity_id": entity_id})
+                # Incoming relationships (Sprint 5: Add tenant filtering)
+                if tenant_id:
+                    incoming_query = """
+                        MATCH (source:Entity {tenant_id: $tenant_id})-[r]->(e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                        RETURN type(r) as rel_type, source.id as source_id,
+                               source.name as source_name, source.entity_type as source_type
+                        LIMIT 5
+                    """
+                    incoming_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+                else:
+                    incoming_query = """
+                        MATCH (source:Entity)-[r]->(e:Entity {id: $entity_id})
+                        RETURN type(r) as rel_type, source.id as source_id,
+                               source.name as source_name, source.entity_type as source_type
+                        LIMIT 5
+                    """
+                    incoming_params = {"entity_id": entity_id}
+                incoming_result = await session.run(incoming_query, incoming_params)
                 incoming_records = await incoming_result.fetch()
                 incoming_rels = [
                     RelationshipPreview(
@@ -2148,14 +2218,24 @@ async def get_entity_detail(
                     for r in incoming_records
                 ]
 
-                # Total count
-                count_query = """
-                    MATCH (e:Entity {id: $entity_id})
-                    OPTIONAL MATCH (e)-[r1]->(:Entity)
-                    OPTIONAL MATCH (e)<-[r2]-(:Entity)
-                    RETURN count(r1) + count(r2) as total
-                """
-                count_result = await session.run(count_query, {"entity_id": entity_id})
+                # Total count (Sprint 5: Add tenant filtering)
+                if tenant_id:
+                    count_query = """
+                        MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+                        OPTIONAL MATCH (e)-[r1]->(:Entity {tenant_id: $tenant_id})
+                        OPTIONAL MATCH (e)<-[r2]-(:Entity {tenant_id: $tenant_id})
+                        RETURN count(r1) + count(r2) as total
+                    """
+                    count_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+                else:
+                    count_query = """
+                        MATCH (e:Entity {id: $entity_id})
+                        OPTIONAL MATCH (e)-[r1]->(:Entity)
+                        OPTIONAL MATCH (e)<-[r2]-(:Entity)
+                        RETURN count(r1) + count(r2) as total
+                    """
+                    count_params = {"entity_id": entity_id}
+                count_result = await session.run(count_query, count_params)
                 count_record = await count_result.single()
                 total_rels = count_record["total"] if count_record else 0
 
@@ -2397,6 +2477,7 @@ async def compare_entities(
 async def batch_entity_operations(
     request: BatchEntityRequest,
     neo4j_driver=Depends(get_neo4j_driver),
+    fastapi_request: Request = None,  # Sprint 5: For tenant context
 ):
     """Execute batch entity operations (create/update/delete).
 
@@ -2410,6 +2491,9 @@ async def batch_entity_operations(
 
     # For atomic mode, we'll track and rollback if needed
     created_entities = []
+
+    # Sprint 5: Extract tenant context for multi-tenant security
+    tenant_id = _extract_tenant_id(fastapi_request)
 
     try:
         for i, operation in enumerate(request.operations):
@@ -2433,8 +2517,8 @@ async def batch_entity_operations(
                     )
 
                 elif operation.operation == "update":
-                    # Update entity
-                    result = await _update_entity(neo4j_driver, operation)
+                    # Update entity (Sprint 5: Pass tenant_id for security)
+                    result = await _update_entity(neo4j_driver, operation, tenant_id)
                     if result["success"]:
                         successful += 1
                     else:
@@ -2450,8 +2534,8 @@ async def batch_entity_operations(
                     )
 
                 elif operation.operation == "delete":
-                    # Delete entity
-                    result = await _delete_entity(neo4j_driver, operation)
+                    # Delete entity (Sprint 5: Pass tenant_id for security)
+                    result = await _delete_entity(neo4j_driver, operation, tenant_id)
                     if result["success"]:
                         successful += 1
                     else:
@@ -2486,7 +2570,7 @@ async def batch_entity_operations(
             )
             for entity_id in created_entities:
                 try:
-                    await _delete_entity_by_id(neo4j_driver, entity_id)
+                    await _delete_entity_by_id(neo4j_driver, entity_id, tenant_id)
                 except Exception as e:
                     logger.error(f"Rollback error for entity {entity_id}: {e}")
 
@@ -2638,30 +2722,45 @@ async def _create_entity(driver, operation: BatchEntityOperation) -> dict[str, A
         return {"success": False, "error": str(e)}
 
 
-async def _update_entity(driver, operation: BatchEntityOperation) -> dict[str, Any]:
+async def _update_entity(
+    driver, operation: BatchEntityOperation, tenant_id: str | None = None
+) -> dict[str, Any]:
     """Update a single entity in Neo4j.
 
     Args:
         driver: Neo4j async driver
         operation: Batch entity operation with entity_id and properties
+        tenant_id: Optional tenant ID for multi-tenant scoping
 
     Returns:
         Dict with success flag or error message
     """
     try:
         async with driver.session() as session:
-            query = """
-            MATCH (n {id: $entity_id})
-            SET n += $properties, n.updated_at = datetime()
-            RETURN n.id as entity_id
-            """
-            result = await session.run(
-                query,
-                {
+            # Sprint 5: Add tenant_id filter for multi-tenant security
+            if tenant_id:
+                query = """
+                MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+                SET n += $properties, n.updated_at = datetime()
+                RETURN n.id as entity_id
+                """
+                params = {
+                    "entity_id": operation.entity_id,
+                    "tenant_id": tenant_id,
+                    "properties": operation.properties or {},
+                }
+            else:
+                # Fallback for non-tenant-scoped operations (deprecated)
+                query = """
+                MATCH (n {id: $entity_id})
+                SET n += $properties, n.updated_at = datetime()
+                RETURN n.id as entity_id
+                """
+                params = {
                     "entity_id": operation.entity_id,
                     "properties": operation.properties or {},
-                },
-            )
+                }
+            result = await session.run(query, params)
             record = await result.single()
             if record:
                 return {"success": True}
@@ -2670,24 +2769,38 @@ async def _update_entity(driver, operation: BatchEntityOperation) -> dict[str, A
         return {"success": False, "error": str(e)}
 
 
-async def _delete_entity(driver, operation: BatchEntityOperation) -> dict[str, Any]:
+async def _delete_entity(
+    driver, operation: BatchEntityOperation, tenant_id: str | None = None
+) -> dict[str, Any]:
     """Delete a single entity from Neo4j.
 
     Args:
         driver: Neo4j async driver
         operation: Batch entity operation with entity_id
+        tenant_id: Optional tenant ID for multi-tenant scoping
 
     Returns:
         Dict with success flag or error message
     """
     try:
         async with driver.session() as session:
-            query = """
-            MATCH (n {id: $entity_id})
-            DETACH DELETE n
-            RETURN count(n) as deleted
-            """
-            result = await session.run(query, {"entity_id": operation.entity_id})
+            # Sprint 5: Add tenant_id filter for multi-tenant security
+            if tenant_id:
+                query = """
+                MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+                DETACH DELETE n
+                RETURN count(n) as deleted
+                """
+                params = {"entity_id": operation.entity_id, "tenant_id": tenant_id}
+            else:
+                # Fallback for non-tenant-scoped operations (deprecated)
+                query = """
+                MATCH (n {id: $entity_id})
+                DETACH DELETE n
+                RETURN count(n) as deleted
+                """
+                params = {"entity_id": operation.entity_id}
+            result = await session.run(query, params)
             record = await result.single()
             if record and record["deleted"] > 0:
                 return {"success": True}
@@ -2696,16 +2809,26 @@ async def _delete_entity(driver, operation: BatchEntityOperation) -> dict[str, A
         return {"success": False, "error": str(e)}
 
 
-async def _delete_entity_by_id(driver, entity_id: str) -> None:
+async def _delete_entity_by_id(
+    driver, entity_id: str, tenant_id: str | None = None
+) -> None:
     """Delete entity by ID (used for atomic rollback).
 
     Args:
         driver: Neo4j async driver
         entity_id: Entity ID to delete
+        tenant_id: Optional tenant ID for multi-tenant scoping
     """
     async with driver.session() as session:
-        query = "MATCH (n {id: $entity_id}) DETACH DELETE n"
-        await session.run(query, {"entity_id": entity_id})
+        # Sprint 5: Add tenant_id filter for multi-tenant security
+        if tenant_id:
+            query = "MATCH (n {id: $entity_id, tenant_id: $tenant_id}) DETACH DELETE n"
+            params = {"entity_id": entity_id, "tenant_id": tenant_id}
+        else:
+            # Fallback for non-tenant-scoped operations (deprecated)
+            query = "MATCH (n {id: $entity_id}) DETACH DELETE n"
+            params = {"entity_id": entity_id}
+        await session.run(query, params)
 
 
 # Agent endpoints (from value_fabric_backend_logic_specifications.md)
@@ -2898,11 +3021,15 @@ async def agent_workflow(
 async def get_provenance(
     entity_id: str,
     app_state: AppState = Depends(get_app_state),
+    request: Request = None,  # Sprint 5: For tenant context
 ):
     """Get full provenance trail for an entity."""
     # Validate entity_id
     if not entity_id or not entity_id.strip():
         raise HTTPException(status_code=400, detail="entity_id is required")
+
+    # Sprint 5: Extract tenant context for multi-tenant security
+    tenant_id = _extract_tenant_id(request)
 
     # Sanitize entity_id to prevent injection
     entity_id = entity_id.strip()
@@ -2917,34 +3044,56 @@ async def get_provenance(
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
-        # Get entity details with parameterized query (safe from injection)
-        entity_query = """
-        MATCH (e:Entity {id: $entity_id})
-        RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
-               e.created_at as created_at, e.source as source,
-               e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
-        LIMIT 1
-        """
-        entity_result = await neo4j.execute_query(
-            entity_query, {"entity_id": entity_id}
-        )
+        # Get entity details with parameterized query (safe from injection, Sprint 5: Add tenant_id)
+        if tenant_id:
+            entity_query = """
+            MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+            RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
+                   e.created_at as created_at, e.source as source,
+                   e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
+            LIMIT 1
+            """
+            query_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+        else:
+            entity_query = """
+            MATCH (e:Entity {id: $entity_id})
+            RETURN e.id as entity_id, e.type as entity_type, e.name as entity_name,
+                   e.created_at as created_at, e.source as source,
+                   e.extraction_job_id as extraction_job_id, e.confidence as confidence_score
+            LIMIT 1
+            """
+            query_params = {"entity_id": entity_id}
+        entity_result = await neo4j.execute_query(entity_query, query_params)
 
         if not entity_result:
             raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
 
         record = entity_result[0]
 
-        # Build provenance steps from related audit events (OPTIONAL MATCH handles missing schema)
-        steps_query = """
-        MATCH (e:Entity {id: $entity_id})
-        OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
-        WITH a
-        WHERE a IS NOT NULL
-        RETURN a.step as step, a.label as label, a.detail as detail,
-               a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
-        ORDER BY a.step
-        """
-        steps_result = await neo4j.execute_query(steps_query, {"entity_id": entity_id})
+        # Build provenance steps from related audit events (Sprint 5: Add tenant_id filtering)
+        if tenant_id:
+            steps_query = """
+            MATCH (e:Entity {id: $entity_id, tenant_id: $tenant_id})
+            OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
+            WITH a
+            WHERE a IS NOT NULL
+            RETURN a.step as step, a.label as label, a.detail as detail,
+                   a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
+            ORDER BY a.step
+            """
+            steps_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+        else:
+            steps_query = """
+            MATCH (e:Entity {id: $entity_id})
+            OPTIONAL MATCH (e)-[:AUDIT_OF]->(a:AuditEvent)
+            WITH a
+            WHERE a IS NOT NULL
+            RETURN a.step as step, a.label as label, a.detail as detail,
+                   a.timestamp as timestamp, a.agent as agent, a.entity_id as step_entity_id
+            ORDER BY a.step
+            """
+            steps_params = {"entity_id": entity_id}
+        steps_result = await neo4j.execute_query(steps_query, steps_params)
 
         steps = [
             ProvenanceStep(
@@ -3384,6 +3533,7 @@ async def get_entity_subgraph(
     entity_id: str,
     depth: int = 2,
     app_state: AppState = Depends(get_app_state),
+    request: Request = None,  # Sprint 5: For tenant context
 ) -> SubgraphResponse:
     """Get subgraph centered on a specific entity.
 
@@ -3395,32 +3545,52 @@ async def get_entity_subgraph(
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
+        # Sprint 5: Extract tenant context for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+
         # Clamp depth
         depth = max(1, min(depth, 5))
 
-        # Query for root entity
-        root_query = """
-        MATCH (n {id: $entity_id})
-        RETURN n.id as id, n.name as label, n.type as type,
-               n.confidence as confidence
-        """
-        root_result = await neo4j.execute_query(root_query, {"entity_id": entity_id})
+        # Query for root entity (Sprint 5: Add tenant_id filtering)
+        if tenant_id:
+            root_query = """
+            MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+            RETURN n.id as id, n.name as label, n.type as type,
+                   n.confidence as confidence
+            """
+            root_params = {"entity_id": entity_id, "tenant_id": tenant_id}
+        else:
+            root_query = """
+            MATCH (n {id: $entity_id})
+            RETURN n.id as id, n.name as label, n.type as type,
+                   n.confidence as confidence
+            """
+            root_params = {"entity_id": entity_id}
+        root_result = await neo4j.execute_query(root_query, root_params)
 
         if not root_result:
             raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
 
         root_record = root_result[0]
 
-        # Query for connected nodes up to depth
-        subgraph_query = """
-        MATCH path = (root {id: $entity_id})-[*1..$depth]-(connected)
-        WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
-        RETURN root, connected, relationships(path) as rels,
-               length(path) as path_length
-        """
-        subgraph_result = await neo4j.execute_query(
-            subgraph_query, {"entity_id": entity_id, "depth": depth}
-        )
+        # Query for connected nodes up to depth (Sprint 5: Add tenant_id filtering)
+        if tenant_id:
+            subgraph_query = """
+            MATCH path = (root {id: $entity_id, tenant_id: $tenant_id})-[*1..$depth]-(connected {tenant_id: $tenant_id})
+            WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+            RETURN root, connected, relationships(path) as rels,
+                   length(path) as path_length
+            """
+            subgraph_params = {"entity_id": entity_id, "depth": depth, "tenant_id": tenant_id}
+        else:
+            subgraph_query = """
+            MATCH path = (root {id: $entity_id})-[*1..$depth]-(connected)
+            WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+            RETURN root, connected, relationships(path) as rels,
+                   length(path) as path_length
+            """
+            subgraph_params = {"entity_id": entity_id, "depth": depth}
+        subgraph_result = await neo4j.execute_query(subgraph_query, subgraph_params)
 
         # Collect unique nodes and edges
         nodes_map: dict[str, GraphNode] = {}
@@ -3534,6 +3704,7 @@ async def get_query_subgraph(
     hybrid_search=Depends(get_hybrid_search),
     graph_rag=Depends(get_graph_rag),
     app_state: AppState = Depends(get_app_state),
+    request: Request = None,  # Sprint 5: For tenant context
 ) -> SubgraphResponse:
     """
     Get a coherent subgraph based on query or center entity.
@@ -3565,12 +3736,21 @@ async def get_query_subgraph(
         edges: list[GraphEdge] = []
         root_id = center_entity_id or ""
 
+        # Sprint 5: Extract tenant context for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+
         if center_entity_id:
-            # Center mode: expand N hops from specific entity
-            root_result = await neo4j.execute_query(
-                "MATCH (root {id: $entity_id}) RETURN root",
-                {"entity_id": center_entity_id}
-            )
+            # Center mode: expand N hops from specific entity (Sprint 5: Add tenant_id)
+            if tenant_id:
+                root_result = await neo4j.execute_query(
+                    "MATCH (root {id: $entity_id, tenant_id: $tenant_id}) RETURN root",
+                    {"entity_id": center_entity_id, "tenant_id": tenant_id}
+                )
+            else:
+                root_result = await neo4j.execute_query(
+                    "MATCH (root {id: $entity_id}) RETURN root",
+                    {"entity_id": center_entity_id}
+                )
             if not root_result:
                 raise HTTPException(
                     status_code=404,
@@ -3587,20 +3767,30 @@ async def get_query_subgraph(
                 if validated_types:
                     rel_filter = f"AND ALL(r IN relationships(path) WHERE type(r IN [{', '.join(repr(r) for r in validated_types)}]))"
 
-            # Query for connected nodes
-            subgraph_query = f"""
-            MATCH path = (root {{id: $entity_id}})-[*1..{depth}]-(connected)
-            WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
-            {rel_filter}
-            WITH root, connected, relationships(path) as rels, length(path) as hops
-            RETURN root, collect(DISTINCT connected) as neighbors,
-                   collect(DISTINCT rels) as paths, max(hops) as max_hops
-            LIMIT $limit
-            """
-            result = await neo4j.execute_query(
-                subgraph_query,
-                {"entity_id": center_entity_id, "limit": limit}
-            )
+            # Query for connected nodes (Sprint 5: Add tenant_id filtering)
+            if tenant_id:
+                subgraph_query = f"""
+                MATCH path = (root {{id: $entity_id, tenant_id: $tenant_id}})-[*1..{depth}]-(connected {{tenant_id: $tenant_id}})
+                WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+                {rel_filter}
+                WITH root, connected, relationships(path) as rels, length(path) as hops
+                RETURN root, collect(DISTINCT connected) as neighbors,
+                       collect(DISTINCT rels) as paths, max(hops) as max_hops
+                LIMIT $limit
+                """
+                query_params = {"entity_id": center_entity_id, "tenant_id": tenant_id, "limit": limit}
+            else:
+                subgraph_query = f"""
+                MATCH path = (root {{id: $entity_id}})-[*1..{depth}]-(connected)
+                WHERE root.id IS NOT NULL AND connected.id IS NOT NULL
+                {rel_filter}
+                WITH root, connected, relationships(path) as rels, length(path) as hops
+                RETURN root, collect(DISTINCT connected) as neighbors,
+                       collect(DISTINCT rels) as paths, max(hops) as max_hops
+                LIMIT $limit
+                """
+                query_params = {"entity_id": center_entity_id, "limit": limit}
+            result = await neo4j.execute_query(subgraph_query, query_params)
 
             if result:
                 record = result[0]
