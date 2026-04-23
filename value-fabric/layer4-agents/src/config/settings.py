@@ -201,6 +201,38 @@ class Settings(BaseSettings):
         description="Stripe Price ID for Enterprise plan"
     )
 
+    # ==========================================================================
+    # Export Object Storage (S3/MinIO)
+    # ==========================================================================
+    export_storage_endpoint: str | None = Field(
+        default=None,
+        description="S3/MinIO endpoint URL for export package uploads"
+    )
+    export_storage_region: str = Field(
+        default="us-east-1",
+        description="S3 region for export object storage"
+    )
+    export_storage_bucket: str = Field(
+        default="value-fabric-exports",
+        description="Bucket for exported case artifacts"
+    )
+    export_storage_access_key: str = Field(
+        default="",
+        description="Access key for S3/MinIO export uploads"
+    )
+    export_storage_secret_key: str = Field(
+        default="",
+        description="Secret key for S3/MinIO export uploads"
+    )
+    export_storage_use_ssl: bool = Field(
+        default=True,
+        description="Whether to use TLS for object storage endpoint"
+    )
+    export_signed_url_ttl_seconds: int = Field(
+        default=900,
+        description="Signed URL TTL for export downloads in seconds"
+    )
+
     @property
     def is_billing_configured(self) -> bool:
         """Check if Stripe billing is properly configured."""
