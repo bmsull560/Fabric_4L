@@ -245,6 +245,8 @@ const DEFAULT_ACTIVITIES: ActivityItem[] = [
 
 const MODE_OPTIONS: PromptMode[] = ["Fast", "Balanced", "Deep"]
 
+const MESSAGE_CLEAR_TIMEOUT_MS = 5000
+
 const DELIVERABLE_OPTIONS: { label: string; value: DeliverableType }[] = [
   { label: "Account brief", value: "account_brief" },
   { label: "Discovery prep", value: "discovery_prep" },
@@ -1319,7 +1321,10 @@ export default function ProspectSetup({
       const result = await onAttachContent?.()
       const attachments = createAttachmentItems(result, state.attachments.length)
       dispatch({ type: "ATTACHMENTS_ADDED", attachments })
-    } catch {
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[ProspectSetup] Attach content failed:", error)
+      }
       dispatch({ type: "SUBMIT_ERROR", message: "Unable to attach content. Please try again." })
     }
   }, [onAttachContent, state.attachments.length])
@@ -1340,8 +1345,9 @@ export default function ProspectSetup({
         const payload = buildPayload(state)
         
         // Update workflow store with prospect info
+        const tempId = `temp_${Date.now()}`
         setProspect({
-          companyId: state.draft.companyName ? `temp_${Date.now()}` : `temp_${Date.now()}`,
+          companyId: state.draft.companyName ? tempId : tempId,
           companyName: state.draft.companyName || "",
           contactName: state.draft.stakeholders.economicBuyer || state.draft.stakeholders.champion || "",
           contactTitle: "",
@@ -1367,7 +1373,10 @@ export default function ProspectSetup({
           setCurrentStep(STEPS.INTELLIGENCE)
           navigate("/workflow/intelligence")
         }
-      } catch {
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[ProspectSetup] Form submission failed:", error)
+        }
         dispatch({ type: "SUBMIT_ERROR", message: "Unable to launch intelligence. Please review the input and try again." })
       }
     },
@@ -1392,7 +1401,7 @@ export default function ProspectSetup({
 
   React.useEffect(() => {
     if (!liveMessage) return
-    const timeout = window.setTimeout(() => dispatch({ type: "CLEAR_MESSAGES" }), 5000)
+    const timeout = window.setTimeout(() => dispatch({ type: "CLEAR_MESSAGES" }), MESSAGE_CLEAR_TIMEOUT_MS)
     return () => window.clearTimeout(timeout)
   }, [liveMessage])
 

@@ -1,7 +1,11 @@
-"""Stripe SDK client configuration and initialization."""
+"""Stripe SDK client configuration and initialization.
+
+Includes support for Stripe MeterEvents (usage-based billing).
+"""
 
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -81,3 +85,215 @@ def get_price_id(plan_id: str) -> str | None:
         logger.warning(f"Price ID not configured for plan: {plan_id}")
 
     return price_id
+
+
+# MeterEvents configuration for usage-based billing
+STRIPE_METER_API_KEY = os.environ.get("STRIPE_METER_API_KEY", "")  # Can be separate from main key
+STRIPE_METER_EVENTS_ENABLED = os.environ.get("STRIPE_METER_EVENTS_ENABLED", "false").lower() == "true"
+
+# Map internal metric names to Stripe event names
+STRIPE_METER_EVENT_MAP = {
+    "api_calls": "api_requests",
+    "tokens": "llm_tokens",
+    "bytes": "data_processed",
+    "compute_hours": "compute_time",
+    "storage_gb": "storage_usage",
+}
+
+
+class StripeMeterEventError(Exception):
+    """Raised when a Stripe MeterEvent call fails."""
+    pass
+
+
+def report_meter_event(
+    stripe_customer_id: str,
+    metric_name: str,
+    quantity: float,
+    timestamp: datetime | None = None,
+    event_id: str | None = None,
+) -> dict[str, Any]:
+    """Report a usage event to Stripe for metered billing.
+
+    Uses Stripe's MeterEvents API for usage-based billing.
+    https://stripe.com/docs/api/billing/meter-event
+
+    Args:
+        stripe_customer_id: Stripe customer ID (cus_*)
+        metric_name: Internal metric name (e.g., 'api_calls', 'tokens')
+        quantity: Numeric quantity consumed
+        timestamp: Optional event timestamp (defaults to now)
+        event_id: Optional unique identifier for idempotency
+
+    Returns:
+        Stripe MeterEvent response
+
+    Raises:
+        StripeNotConfiguredError: If Stripe is not configured
+        StripeMeterEventError: If the API call fails
+    """
+    if not STRIPE_METER_EVENTS_ENABLED:
+        logger.debug("Stripe MeterEvents disabled - skipping meter reporting")
+        return {"skipped": True, "reason": "disabled"}
+
+    stripe = get_stripe()
+
+    # Map internal metric to Stripe event name
+    stripe_event_name = STRIPE_METER_EVENT_MAP.get(metric_name, metric_name)
+
+    # Prepare payload
+    payload = {
+        "event_name": stripe_event_name,
+        "payload": {
+            "value": str(int(quantity)),  # Stripe requires string integer
+            "stripe_customer_id": stripe_customer_id,
+        },
+        "identifier": event_id or f"evt_{stripe_customer_id}_{datetime.now(timezone.utc).timestamp()}",
+    }
+
+    # Add timestamp if provided
+    if timestamp:
+        payload["timestamp"] = int(timestamp.timestamp())
+
+    try:
+        # Use meter events API
+        meter_event = stripe.billing.meter_event.create(**payload)
+        logger.debug(
+            f"MeterEvent reported: {stripe_event_name}={quantity} for {stripe_customer_id}"
+        )
+        return {
+            "id": meter_event.id,
+            "event_name": meter_event.event_name,
+            "status": meter_event.status,
+            "stripe_customer_id": stripe_customer_id,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to report meter event: {e}")
+        raise StripeMeterEventError(f"Stripe MeterEvent failed: {e}") from e
+
+
+def get_billing_meter(
+    meter_id: str | None = None,
+    meter_name: str | None = None,
+) -> dict[str, Any] | None:
+    """Get or list Stripe billing meters.
+
+    Args:
+        meter_id: Specific meter ID to retrieve
+        meter_name: Filter meters by name
+
+    Returns:
+        Meter details or None
+    """
+    if not STRIPE_METER_EVENTS_ENABLED:
+        return None
+
+    stripe = get_stripe()
+
+    try:
+        if meter_id:
+            meter = stripe.billing.meter.retrieve(meter_id)
+            return {
+                "id": meter.id,
+                "display_name": meter.display_name,
+                "event_name": meter.event_name,
+                "status": meter.status,
+            }
+        else:
+            # List meters
+            meters = stripe.billing.meter.list()
+            return [
+                {
+                    "id": m.id,
+                    "display_name": m.display_name,
+                    "event_name": m.event_name,
+                    "status": m.status,
+                }
+                for m in meters.data
+            ]
+
+    except Exception as e:
+        logger.error(f"Failed to get billing meter: {e}")
+        return None
+
+
+async def sync_usage_to_stripe(
+    db_session: Any,
+    tenant_id: str,
+    customer_id: str,
+    metric_name: str,
+    stripe_customer_id: str,
+) -> dict[str, Any]:
+    """Sync pending usage events to Stripe MeterEvents.
+
+    This is a background task that aggregates pending usage and reports
+    to Stripe for metered billing.
+
+    Args:
+        db_session: Database session for querying events
+        tenant_id: Tenant ID for scoping
+        customer_id: Internal customer ID
+        metric_name: Metric to sync
+        stripe_customer_id: Stripe customer ID
+
+    Returns:
+        Sync summary with counts
+    """
+    from sqlalchemy import func, select
+    from ..models.billing import BillingUsageEvent, UsageEventStatus
+
+    # Query pending events
+    query = select(
+        func.sum(BillingUsageEvent.quantity).label("total"),
+        func.count(BillingUsageEvent.id).label("count"),
+    ).where(
+        BillingUsageEvent.tenant_id == tenant_id,
+        BillingUsageEvent.customer_id == customer_id,
+        BillingUsageEvent.metric_name == metric_name,
+        BillingUsageEvent.status == UsageEventStatus.PENDING,
+    )
+
+    result = await db_session.execute(query)
+    row = result.one()
+    total_quantity = float(row.total or 0)
+    event_count = row.count or 0
+
+    if total_quantity <= 0:
+        return {"synced": 0, "total_quantity": 0, "stripe_response": None}
+
+    # Report to Stripe
+    try:
+        stripe_response = report_meter_event(
+            stripe_customer_id=stripe_customer_id,
+            metric_name=metric_name,
+            quantity=total_quantity,
+        )
+
+        # Mark events as processed
+        update_query = select(BillingUsageEvent).where(
+            BillingUsageEvent.tenant_id == tenant_id,
+            BillingUsageEvent.customer_id == customer_id,
+            BillingUsageEvent.metric_name == metric_name,
+            BillingUsageEvent.status == UsageEventStatus.PENDING,
+        )
+
+        events_result = await db_session.execute(update_query)
+        events = events_result.scalars().all()
+
+        processed_at = datetime.now(timezone.utc)
+        for event in events:
+            event.status = UsageEventStatus.PROCESSED
+            event.processed_at = processed_at
+
+        await db_session.flush()
+
+        return {
+            "synced": event_count,
+            "total_quantity": total_quantity,
+            "stripe_response": stripe_response,
+        }
+
+    except StripeMeterEventError as e:
+        logger.error(f"Failed to sync usage to Stripe: {e}")
+        return {"synced": 0, "total_quantity": total_quantity, "error": str(e)}

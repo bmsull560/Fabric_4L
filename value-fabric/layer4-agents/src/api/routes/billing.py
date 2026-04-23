@@ -1,9 +1,11 @@
 """Billing API routes for Stripe integration.
 
 Provides endpoints for subscription management, customer portal,
-and entitlement checks. Minimal scope: checkout, portal, webhooks.
+entitlement checks, and usage-based billing. Includes high-throughput
+usage event ingestion with idempotency and tenant isolation.
 """
 
+from datetime import datetime
 import logging
 import os
 import re
@@ -44,6 +46,7 @@ def validate_customer_id(customer_id: str) -> str:
 from ...database import get_db, get_db_from_context
 from ...services.billing_service import BillingService
 from ...services.stripe_client import StripeError
+from ...services.usage_service import UsageService, UsageValidationError
 
 # Import shared identity for tenant context
 try:
@@ -348,3 +351,232 @@ async def stripe_webhook(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Webhook processing failed",
         ) from e
+
+
+# ============================================================================
+# Usage Metering Endpoints
+# ============================================================================
+
+@router.post("/events")
+async def ingest_usage_event(
+    request: UsageEventRequest,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Ingest a single usage event for billing.
+
+    Args:
+        request: Usage event details
+
+    Returns:
+        Ingested event with ID and status
+
+    Raises:
+        400: Validation error
+        409: Duplicate event (idempotency conflict)
+    """
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
+    service = UsageService(db, tenant_id=tenant_id)
+    
+    try:
+        event = await service.ingest_event(
+            event_id=request.event_id,
+            customer_id=request.customer_id,
+            event_name=request.event_name,
+            metric_name=request.metric_name,
+            quantity=request.quantity,
+            unit=request.unit,
+            timestamp=request.timestamp,
+            metadata=request.metadata,
+        )
+        
+        await db.commit()
+        
+        return {
+            "id": event.id,
+            "event_id": event.event_id,
+            "status": event.status,
+            "tenant_id": event.tenant_id,
+            "customer_id": event.customer_id,
+            "metric_name": event.metric_name,
+            "quantity": event.quantity,
+            "timestamp": event.timestamp.isoformat(),
+            "created_at": event.created_at.isoformat(),
+        }
+        
+    except UsageValidationError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": e.message, "field": e.field},
+        )
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Usage event ingestion failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to ingest usage event",
+        )
+
+
+@router.post("/events/batch")
+async def ingest_usage_batch(
+    request: UsageBatchRequest,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Ingest multiple usage events in a batch.
+
+    Args:
+        request: Batch of usage events (max 1000)
+
+    Returns:
+        Summary with counts of created, duplicate, and error events
+
+    Raises:
+        400: Batch validation error
+    """
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
+    service = UsageService(db, tenant_id=tenant_id)
+    
+    try:
+        # Convert Pydantic models to dicts for the service
+        events_data = [event.model_dump() for event in request.events]
+        result = await service.ingest_batch(events_data)
+        
+        await db.commit()
+        
+        return {
+            "created": result["created"],
+            "duplicates": result["duplicates"],
+            "errors": result["errors"],
+            "error_details": result.get("error_details"),
+        }
+        
+    except UsageValidationError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": e.message, "field": e.field},
+        )
+    except Exception as e:
+        await db.rollback()
+        logger.exception(f"Batch ingestion failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process batch",
+        )
+
+
+@router.get("/usage/{customer_id}/summary")
+async def get_usage_summary(
+    customer_id: str,
+    metric_name: str,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> dict[str, Any]:
+    """Get aggregated usage summary for a customer and metric.
+
+    Args:
+        customer_id: Customer to query
+        metric_name: Metric to aggregate
+        start_date: Start of period (ISO format)
+        end_date: End of period (ISO format)
+
+    Returns:
+        Usage summary with total quantity and event count
+    """
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
+    service = UsageService(db, tenant_id=tenant_id)
+    
+    try:
+        summary = await service.get_usage_summary(
+            customer_id=customer_id,
+            metric_name=metric_name,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return summary
+        
+    except UsageValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": e.message},
+        )
+    except Exception as e:
+        logger.exception(f"Usage summary failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve usage summary",
+        )
+
+
+@router.get("/usage/{customer_id}/events")
+async def list_usage_events(
+    customer_id: str,
+    metric_name: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db_from_context if SHARED_IDENTITY_AVAILABLE else get_db),
+    context: "RequestContext" = Depends(get_request_context) if SHARED_IDENTITY_AVAILABLE else None,  # type: ignore
+) -> list[dict[str, Any]]:
+    """List individual usage events for a customer.
+
+    Args:
+        customer_id: Customer to query
+        metric_name: Optional metric filter
+        start_date: Optional start date filter
+        end_date: Optional end date filter
+        limit: Maximum results (1-1000)
+        offset: Pagination offset
+
+    Returns:
+        List of usage events
+    """
+    tenant_id = context.tenant_id if (SHARED_IDENTITY_AVAILABLE and context) else None
+    
+    service = UsageService(db, tenant_id=tenant_id)
+    
+    try:
+        events = await service.list_customer_usage(
+            customer_id=customer_id,
+            metric_name=metric_name,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
+            offset=offset,
+        )
+        
+        return [
+            {
+                "id": e.id,
+                "event_id": e.event_id,
+                "event_name": e.event_name,
+                "metric_name": e.metric_name,
+                "quantity": e.quantity,
+                "unit": e.unit,
+                "timestamp": e.timestamp.isoformat(),
+                "status": e.status,
+                "metadata": e.metadata,
+            }
+            for e in events
+        ]
+        
+    except UsageValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": e.message},
+        )
+    except Exception as e:
+        logger.exception(f"Usage events listing failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve usage events",
+        )

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, memo, Suspense, useEffect } from "react";
 import {
   AppShell,
   ErrorBoundary,
@@ -37,7 +37,6 @@ const IngestionJobs           = lazy(() => import("./pages/IngestionJobs"));
 const OntologyEditor          = lazy(() => import("./pages/OntologyEditor"));
 const EntityBrowser           = lazy(() => import("./pages/EntityBrowser"));
 const EntityDetail            = lazy(() => import("./pages/EntityDetail"));
-const ValueTreeExplorer       = lazy(() => import("./pages/ValueTreeExplorer"));
 const FormulaBuilder          = lazy(() => import("./pages/FormulaBuilder"));
 const FormulaList             = lazy(() => import("./pages/FormulaList"));
 const GraphExplorer           = lazy(() => import("./pages/GraphExplorer"));
@@ -81,7 +80,7 @@ const NarrativeTab            = lazy(() => import("./pages/studio/NarrativeTab")
 function PageLoader() {
   return (
     <div className="flex items-center justify-center h-full min-h-[200px]">
-      <div className="w-6 h-6 rounded-full border-2 border-neutral-300 border-t-neutral-700 animate-spin" />
+      <div className="w-6 h-6 rounded-full border-2 border-border border-t-primary animate-spin" />
     </div>
   );
 }
@@ -103,18 +102,27 @@ function StudioRedirect() {
 // ── Route Guard ──────────────────────────────────────────────────────────────
 type RequiredUserTier = Exclude<UserTier, 'unknown'>;
 
-function RouteGuard({
-  children,
-  requiredTier = "standard",
-}: {
+interface RouteGuardProps {
   children: React.ReactNode;
   requiredTier?: RequiredUserTier;
-}) {
+}
+
+function RouteGuard({ children, requiredTier = "standard" }: RouteGuardProps) {
   const [location] = useLocation();
   const { isAuthenticated, isLoading } = useAuthContext();
   const canAccessRouteWithReason = useUserTierStore(state => state.canAccessRouteWithReason);
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-border border-t-primary animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) return <Navigate to="/login" />;
 
   let accessDecision;
@@ -133,6 +141,29 @@ function RouteGuard({
   return <>{children}</>;
 }
 
+// ── Authenticated Route Wrapper ─────────────────────────────────────────────
+interface AuthenticatedRouteProps {
+  children: React.ReactNode;
+  requiredTier?: RequiredUserTier;
+  currentTier: RequiredUserTier;
+  effectiveTier: RequiredUserTier;
+}
+
+const AuthenticatedRoute = memo(function AuthenticatedRoute({
+  children,
+  requiredTier = "standard",
+  currentTier,
+  effectiveTier,
+}: AuthenticatedRouteProps) {
+  return (
+    <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
+      <RouteGuard requiredTier={requiredTier}>
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </RouteGuard>
+    </AppShell>
+  );
+});
+
 // ── Router ───────────────────────────────────────────────────────────────────
 
 function Router() {
@@ -143,10 +174,13 @@ function Router() {
   const currentTier: RequiredUserTier = rawCurrentTier === 'unknown' ? 'standard' : rawCurrentTier;
   const effectiveTier: RequiredUserTier = rawEffectiveTier === 'unknown' ? 'standard' : rawEffectiveTier;
 
+  // Pre-bound tier props for AuthenticatedRoute to avoid passing on every render
+  const tierProps = { currentTier, effectiveTier };
+
   return (
     <Suspense fallback={<PageLoader />}>
       {/* ═══════════════════════════════════════════════════════════════
-          PUBLIC ROUTES — Outside AppShell
+          PUBLIC ROUTES — No AppShell
           ═══════════════════════════════════════════════════════════════ */}
       <Route path="/">
         {isAuthenticated ? <Navigate to="/home" /> : <LandingPage />}
@@ -159,456 +193,340 @@ function Router() {
       </Route>
 
       {/* ═══════════════════════════════════════════════════════════════
-          AUTHENTICATED ROUTES — Inside AppShell with RouteGuard
+          HOME & COMMAND CENTER
           ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/home">
+        <AuthenticatedRoute {...tierProps}><ValueNarrativeHome /></AuthenticatedRoute>
+      </Route>
+      <Route path="/command-center">
+        <AuthenticatedRoute {...tierProps}><CommandCenter /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          1. ACCOUNTS — Entry Point
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/accounts">
+        <AuthenticatedRoute {...tierProps}><Accounts /></AuthenticatedRoute>
+      </Route>
+      <Route path="/accounts/:id">
+        <AuthenticatedRoute {...tierProps}><Accounts /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          2. INTELLIGENCE — Discovery Workspace
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/intelligence/:accountId">
+        <AuthenticatedRoute {...tierProps}><IntelligenceRedirect /></AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/signals">
+        <AuthenticatedRoute {...tierProps}><SignalsTab /></AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/drivers">
+        <AuthenticatedRoute {...tierProps}><DriversTab /></AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/evidence">
+        <AuthenticatedRoute {...tierProps}><EvidenceTab /></AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/stakeholders">
+        <AuthenticatedRoute {...tierProps}><StakeholdersTab /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          3. VALUE STUDIO — Synthesis Workspace
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/studio/:accountId">
+        <AuthenticatedRoute {...tierProps}><StudioRedirect /></AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/:accountId/action-plan">
+        <AuthenticatedRoute {...tierProps}><ActionPlanTab /></AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/:accountId/value-model">
+        <AuthenticatedRoute {...tierProps}><ValueModelTab /></AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/:accountId/narrative">
+        <AuthenticatedRoute {...tierProps}><NarrativeTab /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          4. CONTEXT ENGINE — Vendor Knowledge Base
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/context">
+        <Navigate to="/context/packs" />
+      </Route>
+      <Route path="/context/packs">
+        <AuthenticatedRoute {...tierProps}><ValuePacks /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/models">
+        <AuthenticatedRoute {...tierProps}><MyModels /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/formulas">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><FormulaList /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/formulas/new">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><FormulaBuilder isNew /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/formulas/:formulaId">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><FormulaBuilder /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/agents">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><AgentWorkflows /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/ontology">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><OntologyEditor /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/ontology/entities">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><EntityBrowser /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/ontology/entities/:entityId">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><EntityDetail /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/ontology/graph">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><GraphExplorer /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/ingestion/jobs">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><IngestionJobs /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/extraction">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><ExtractionEngine /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/integrations">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><Integrations /></AuthenticatedRoute>
+      </Route>
+      <Route path="/context/sources">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><SourceConfiguration /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          5. DELIVERABLES — Activation Layer
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/deliverables">
+        <Navigate to="/deliverables/cases" />
+      </Route>
+      <Route path="/deliverables/cases">
+        <AuthenticatedRoute {...tierProps}><BusinessCaseList /></AuthenticatedRoute>
+      </Route>
+      <Route path="/deliverables/cases/:caseId">
+        <AuthenticatedRoute {...tierProps}><BusinessCase /></AuthenticatedRoute>
+      </Route>
+      <Route path="/deliverables/calculators">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><InteractiveBusinessCase /></AuthenticatedRoute>
+      </Route>
+      <Route path="/deliverables/views/cfo">
+        <AuthenticatedRoute {...tierProps}><BusinessCase /></AuthenticatedRoute>
+      </Route>
+      <Route path="/deliverables/views/executive">
+        <AuthenticatedRoute {...tierProps}><BusinessCase /></AuthenticatedRoute>
+      </Route>
+      <Route path="/deliverables/views/technical">
+        <AuthenticatedRoute {...tierProps}><BusinessCase /></AuthenticatedRoute>
+      </Route>
+      <Route path="/deliverables/api">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><Integrations /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          6. GOVERNANCE — Trust Layer
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/governance">
+        <Navigate to="/governance/traces" />
+      </Route>
+      <Route path="/governance/traces">
+        <AuthenticatedRoute {...tierProps}><DecisionTrace /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/evidence">
+        <AuthenticatedRoute {...tierProps}><DecisionTrace /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/provenance">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><DecisionTrace /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/integrity">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><DecisionTrace /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/compliance">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced"><DecisionTrace /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/benchmarks">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><BenchmarkPolicies /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/audit">
+        <Navigate to="/governance/audit/log" />
+      </Route>
+      <Route path="/governance/audit/log">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><DecisionTrace /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/audit/changes">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><DecisionTrace /></AuthenticatedRoute>
+      </Route>
+      <Route path="/governance/health">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><HealthMonitor /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          7. SETTINGS — Tenant Configuration (Admin)
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/settings">
+        <Navigate to="/settings/content/formulas" />
+      </Route>
+      <Route path="/settings/content">
+        <Navigate to="/settings/content/formulas" />
+      </Route>
+      <Route path="/settings/content/formulas">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><FormulaGovernance /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/content/versions">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><FormulaGovernance /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/content/approvals">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><FormulaGovernance /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/data">
+        <Navigate to="/settings/data/variables" />
+      </Route>
+      <Route path="/settings/data/variables">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><VariableRegistry /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/data/bindings">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><VariableRegistry /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/data/quality">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><VariableRegistry /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/access">
+        <Navigate to="/settings/access/roles" />
+      </Route>
+      <Route path="/settings/access/roles">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><PermissionsAdmin /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/access/teams">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><PermissionsAdmin /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/access/keys">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><PermissionsAdmin /></AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/system/settings">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin"><PlatformSettings /></AuthenticatedRoute>
+      </Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          WORKFLOWS
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/workflow">
+        <AuthenticatedRoute {...tierProps} requiredTier="standard"><Navigate to="/workflow/prospect" /></AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/prospect">
+        <AuthenticatedRoute {...tierProps} requiredTier="standard">
+          <Suspense fallback={<PageLoader />}>
+            <ProspectSetupWithNav />
+          </Suspense>
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/intelligence"><Navigate to="/accounts" /></Route>
+      <Route path="/workflow/ai-model"><Navigate to="/accounts" /></Route>
+      <Route path="/workflow/driver-tree"><Navigate to="/accounts" /></Route>
+      <Route path="/workflow/evidence"><Navigate to="/accounts" /></Route>
+      <Route path="/workflow/calculator"><Navigate to="/accounts" /></Route>
+      <Route path="/workflow/value-case"><Navigate to="/accounts" /></Route>
+
+      {/* ═══════════════════════════════════════════════════════════════
+          LEGACY REDIRECTS — Backward Compatibility
+          ═══════════════════════════════════════════════════════════════ */}
+      {/* Old Discover routes */}
+      <Route path="/discover"><Navigate to="/accounts" /></Route>
+      <Route path="/discover/accounts"><Navigate to="/accounts" /></Route>
+      <Route path="/discover/accounts/:id"><Navigate to="/accounts" /></Route>
+      <Route path="/discover/jobs"><Navigate to="/context/ingestion/jobs" /></Route>
+      <Route path="/discover/extraction"><Navigate to="/context/extraction" /></Route>
+      <Route path="/discover/knowledge"><Navigate to="/context/ontology" /></Route>
+      <Route path="/discover/knowledge/entities"><Navigate to="/context/ontology/entities" /></Route>
+      <Route path="/discover/knowledge/graph"><Navigate to="/context/ontology/graph" /></Route>
+      <Route path="/discover/knowledge/ontology"><Navigate to="/context/ontology" /></Route>
+      <Route path="/discover/integrations"><Navigate to="/context/integrations" /></Route>
+      <Route path="/discover/sources"><Navigate to="/context/sources" /></Route>
+
+      {/* Old Library routes */}
+      <Route path="/library"><Navigate to="/context/packs" /></Route>
+      <Route path="/library/packs"><Navigate to="/context/packs" /></Route>
+      <Route path="/library/models"><Navigate to="/context/models" /></Route>
+      <Route path="/library/authoring"><Navigate to="/settings/content/formulas" /></Route>
+
+      {/* Old Model/Value Studio routes */}
+      <Route path="/model"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/discovery"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/mapping"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/modeling"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/validation"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/narrative"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/tracking"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/explorer"><Navigate to="/accounts" /></Route>
+      <Route path="/model/value-studio/formulas"><Navigate to="/context/formulas" /></Route>
+      <Route path="/model/value-studio/formulas/new"><Navigate to="/context/formulas" /></Route>
+
+      {/* Old Deliver routes */}
+      <Route path="/deliver"><Navigate to="/deliverables/cases" /></Route>
+      <Route path="/deliver/cases"><Navigate to="/deliverables/cases" /></Route>
+      <Route path="/deliver/opportunities"><Navigate to="/accounts" /></Route>
+      <Route path="/deliver/whitespace"><Navigate to="/accounts" /></Route>
+      <Route path="/deliver/agents"><Navigate to="/context/agents" /></Route>
+      <Route path="/deliver/cases/explore"><Navigate to="/deliverables/calculators" /></Route>
+
+      {/* Old Evidence routes */}
+      <Route path="/evidence"><Navigate to="/governance/traces" /></Route>
+      <Route path="/evidence/traces"><Navigate to="/governance/traces" /></Route>
+      <Route path="/evidence/export"><Navigate to="/governance/evidence" /></Route>
+      <Route path="/evidence/lineage"><Navigate to="/governance/provenance" /></Route>
+      <Route path="/evidence/compliance"><Navigate to="/governance/compliance" /></Route>
+      <Route path="/evidence/changelog"><Navigate to="/governance/audit/changes" /></Route>
+
+      {/* Old Trust routes */}
+      <Route path="/trust"><Navigate to="/governance/traces" /></Route>
+      <Route path="/trust/traces"><Navigate to="/governance/traces" /></Route>
+      <Route path="/trust/evidence"><Navigate to="/governance/evidence" /></Route>
+      <Route path="/trust/provenance"><Navigate to="/governance/provenance" /></Route>
+      <Route path="/trust/integrity"><Navigate to="/governance/integrity" /></Route>
+      <Route path="/trust/compliance"><Navigate to="/governance/compliance" /></Route>
+      <Route path="/trust/benchmarks"><Navigate to="/governance/benchmarks" /></Route>
+      <Route path="/trust/audit"><Navigate to="/governance/audit/log" /></Route>
+      <Route path="/trust/audit/log"><Navigate to="/governance/audit/log" /></Route>
+      <Route path="/trust/audit/changes"><Navigate to="/governance/audit/changes" /></Route>
+      <Route path="/trust/health"><Navigate to="/governance/health" /></Route>
+
+      {/* Old Admin routes */}
+      <Route path="/admin"><Navigate to="/settings/content/formulas" /></Route>
+      <Route path="/admin/content"><Navigate to="/settings/content/formulas" /></Route>
+      <Route path="/admin/content/formulas"><Navigate to="/settings/content/formulas" /></Route>
+      <Route path="/admin/content/versions"><Navigate to="/settings/content/versions" /></Route>
+      <Route path="/admin/content/approvals"><Navigate to="/settings/content/approvals" /></Route>
+      <Route path="/admin/content/benchmarks"><Navigate to="/governance/benchmarks" /></Route>
+      <Route path="/admin/data"><Navigate to="/settings/data/variables" /></Route>
+      <Route path="/admin/data/variables"><Navigate to="/settings/data/variables" /></Route>
+      <Route path="/admin/data/bindings"><Navigate to="/settings/data/bindings" /></Route>
+      <Route path="/admin/data/quality"><Navigate to="/settings/data/quality" /></Route>
+      <Route path="/admin/access"><Navigate to="/settings/access/roles" /></Route>
+      <Route path="/admin/access/roles"><Navigate to="/settings/access/roles" /></Route>
+      <Route path="/admin/access/teams"><Navigate to="/settings/access/teams" /></Route>
+      <Route path="/admin/access/keys"><Navigate to="/settings/access/keys" /></Route>
+      <Route path="/admin/system/settings"><Navigate to="/settings/system/settings" /></Route>
+      <Route path="/admin/system/audit"><Navigate to="/governance/audit/log" /></Route>
+      <Route path="/admin/system/health"><Navigate to="/governance/health" /></Route>
+
+      {/* Old Studio routes */}
+      <Route path="/studio"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/deals"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/build"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/build/discovery"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/build/mapping"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/build/modeling"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/build/validation"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/build/narrative"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/build/tracking"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/trees"><Navigate to="/accounts" /></Route>
+      <Route path="/studio/scenarios"><Navigate to="/accounts" /></Route>
+
+      {/* ─── Catch-all ─── */}
       <Route>
         <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
-
-          {/* ─── HOME ─── */}
-          <Route path="/home">
-            <RouteGuard>
-              <ErrorBoundary><ValueNarrativeHome /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/command-center">
-            <RouteGuard>
-              <ErrorBoundary><CommandCenter /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              1. ACCOUNTS — Entry Point
-              ═══════════════════════════════════════════════════════════════ */}
-          <Route path="/accounts">
-            <RouteGuard>
-              <ErrorBoundary><Accounts /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/accounts/:id">
-            <RouteGuard>
-              <ErrorBoundary><Accounts /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              2. INTELLIGENCE — Discovery Workspace (Account-Scoped)
-              Tabs: Signals → Drivers → Evidence → Stakeholders
-              ═══════════════════════════════════════════════════════════════ */}
-          <Route path="/intelligence/:accountId">
-            <RouteGuard>
-              <IntelligenceRedirect />
-            </RouteGuard>
-          </Route>
-          <Route path="/intelligence/:accountId/signals">
-            <RouteGuard>
-              <ErrorBoundary><SignalsTab /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/intelligence/:accountId/drivers">
-            <RouteGuard>
-              <ErrorBoundary><DriversTab /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/intelligence/:accountId/evidence">
-            <RouteGuard>
-              <ErrorBoundary><EvidenceTab /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/intelligence/:accountId/stakeholders">
-            <RouteGuard>
-              <ErrorBoundary><StakeholdersTab /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              3. VALUE STUDIO — Synthesis Workspace (Account-Scoped)
-              Tabs: Action Plan → Value Model → Narrative
-              ═══════════════════════════════════════════════════════════════ */}
-          <Route path="/studio/:accountId">
-            <RouteGuard>
-              <StudioRedirect />
-            </RouteGuard>
-          </Route>
-          <Route path="/studio/:accountId/action-plan">
-            <RouteGuard>
-              <ErrorBoundary><ActionPlanTab /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/studio/:accountId/value-model">
-            <RouteGuard>
-              <ErrorBoundary><ValueModelTab /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/studio/:accountId/narrative">
-            <RouteGuard>
-              <ErrorBoundary><NarrativeTab /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              4. CONTEXT ENGINE — Vendor Knowledge Base
-              ═══════════════════════════════════════════════════════════════ */}
-          <Route path="/context">
-            <Navigate to="/context/packs" />
-          </Route>
-          <Route path="/context/packs">
-            <RouteGuard>
-              <ErrorBoundary><ValuePacks /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/models">
-            <RouteGuard>
-              <ErrorBoundary><MyModels /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/formulas">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><FormulaList /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/formulas/new">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><FormulaBuilder isNew /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/formulas/:formulaId">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><FormulaBuilder /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/agents">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><AgentWorkflows /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/ontology">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><OntologyEditor /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/ontology/entities">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><EntityBrowser /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/ontology/entities/:entityId">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><EntityDetail /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/ontology/graph">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><GraphExplorer /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/ingestion/jobs">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><IngestionJobs /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/extraction">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><ExtractionEngine /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/integrations">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><Integrations /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/context/sources">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><SourceConfiguration /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              5. DELIVERABLES — Activation Layer
-              ═══════════════════════════════════════════════════════════════ */}
-          <Route path="/deliverables">
-            <Navigate to="/deliverables/cases" />
-          </Route>
-          <Route path="/deliverables/cases">
-            <RouteGuard>
-              <ErrorBoundary><BusinessCaseList /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/deliverables/cases/:caseId">
-            <RouteGuard>
-              <ErrorBoundary><BusinessCase /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/deliverables/calculators">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><InteractiveBusinessCase /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/deliverables/views/cfo">
-            <RouteGuard>
-              <ErrorBoundary><BusinessCase /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/deliverables/views/executive">
-            <RouteGuard>
-              <ErrorBoundary><BusinessCase /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/deliverables/views/technical">
-            <RouteGuard>
-              <ErrorBoundary><BusinessCase /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/deliverables/api">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><Integrations /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              6. GOVERNANCE — Trust Layer
-              ═══════════════════════════════════════════════════════════════ */}
-          <Route path="/governance">
-            <Navigate to="/governance/traces" />
-          </Route>
-          <Route path="/governance/traces">
-            <RouteGuard>
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/evidence">
-            <RouteGuard>
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/provenance">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/integrity">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/compliance">
-            <RouteGuard requiredTier="advanced">
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/benchmarks">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><BenchmarkPolicies /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/audit">
-            <Navigate to="/governance/audit/log" />
-          </Route>
-          <Route path="/governance/audit/log">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/audit/changes">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><DecisionTrace /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/governance/health">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><HealthMonitor /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              7. SETTINGS — Tenant Configuration (Admin)
-              ═══════════════════════════════════════════════════════════════ */}
-          <Route path="/settings">
-            <Navigate to="/settings/content/formulas" />
-          </Route>
-          <Route path="/settings/content">
-            <Navigate to="/settings/content/formulas" />
-          </Route>
-          <Route path="/settings/content/formulas">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><FormulaGovernance /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/content/versions">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><FormulaGovernance /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/content/approvals">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><FormulaGovernance /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/data">
-            <Navigate to="/settings/data/variables" />
-          </Route>
-          <Route path="/settings/data/variables">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><VariableRegistry /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/data/bindings">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><VariableRegistry /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/data/quality">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><VariableRegistry /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/access">
-            <Navigate to="/settings/access/roles" />
-          </Route>
-          <Route path="/settings/access/roles">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><PermissionsAdmin /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/access/teams">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><PermissionsAdmin /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/access/keys">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><PermissionsAdmin /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/settings/system/settings">
-            <RouteGuard requiredTier="admin">
-              <ErrorBoundary><PlatformSettings /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-
-          {/* ═══════════════════════════════════════════════════════════════
-              LEGACY REDIRECTS — Backward Compatibility
-              All old routes redirect to their new canonical homes.
-              ═══════════════════════════════════════════════════════════════ */}
-
-          {/* Old Discover routes → Accounts / Context */}
-          <Route path="/discover"><Navigate to="/accounts" /></Route>
-          <Route path="/discover/accounts"><Navigate to="/accounts" /></Route>
-          <Route path="/discover/accounts/:id"><Navigate to="/accounts" /></Route>
-          <Route path="/discover/jobs"><Navigate to="/context/ingestion/jobs" /></Route>
-          <Route path="/discover/extraction"><Navigate to="/context/extraction" /></Route>
-          <Route path="/discover/knowledge"><Navigate to="/context/ontology" /></Route>
-          <Route path="/discover/knowledge/entities"><Navigate to="/context/ontology/entities" /></Route>
-          <Route path="/discover/knowledge/graph"><Navigate to="/context/ontology/graph" /></Route>
-          <Route path="/discover/knowledge/ontology"><Navigate to="/context/ontology" /></Route>
-          <Route path="/discover/integrations"><Navigate to="/context/integrations" /></Route>
-          <Route path="/discover/sources"><Navigate to="/context/sources" /></Route>
-
-          {/* Old Library routes → Context */}
-          <Route path="/library"><Navigate to="/context/packs" /></Route>
-          <Route path="/library/packs"><Navigate to="/context/packs" /></Route>
-          <Route path="/library/models"><Navigate to="/context/models" /></Route>
-          <Route path="/library/authoring"><Navigate to="/settings/content/formulas" /></Route>
-
-          {/* Old Model/Value Studio routes → Accounts (no account context) */}
-          <Route path="/model"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/discovery"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/mapping"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/modeling"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/validation"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/narrative"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/tracking"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/explorer"><Navigate to="/accounts" /></Route>
-          <Route path="/model/value-studio/formulas"><Navigate to="/context/formulas" /></Route>
-          <Route path="/model/value-studio/formulas/new"><Navigate to="/context/formulas" /></Route>
-
-          {/* Workflow routes */}
-          <Route path="/workflow">
-            <RouteGuard requiredTier="standard">
-              <ErrorBoundary><Navigate to="/workflow/prospect" /></ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/workflow/prospect">
-            <RouteGuard requiredTier="standard">
-              <ErrorBoundary>
-                <Suspense fallback={<PageLoader />}>
-                  <ProspectSetupWithNav />
-                </Suspense>
-              </ErrorBoundary>
-            </RouteGuard>
-          </Route>
-          <Route path="/workflow/intelligence"><Navigate to="/accounts" /></Route>
-          <Route path="/workflow/ai-model"><Navigate to="/accounts" /></Route>
-          <Route path="/workflow/driver-tree"><Navigate to="/accounts" /></Route>
-          <Route path="/workflow/evidence"><Navigate to="/accounts" /></Route>
-          <Route path="/workflow/calculator"><Navigate to="/accounts" /></Route>
-          <Route path="/workflow/value-case"><Navigate to="/accounts" /></Route>
-
-          {/* Old Deliver routes → Deliverables */}
-          <Route path="/deliver"><Navigate to="/deliverables/cases" /></Route>
-          <Route path="/deliver/cases"><Navigate to="/deliverables/cases" /></Route>
-          <Route path="/deliver/opportunities"><Navigate to="/accounts" /></Route>
-          <Route path="/deliver/whitespace"><Navigate to="/accounts" /></Route>
-          <Route path="/deliver/agents"><Navigate to="/context/agents" /></Route>
-          <Route path="/deliver/cases/explore"><Navigate to="/deliverables/calculators" /></Route>
-
-          {/* Old Evidence routes → Governance */}
-          <Route path="/evidence"><Navigate to="/governance/traces" /></Route>
-          <Route path="/evidence/traces"><Navigate to="/governance/traces" /></Route>
-          <Route path="/evidence/export"><Navigate to="/governance/evidence" /></Route>
-          <Route path="/evidence/lineage"><Navigate to="/governance/provenance" /></Route>
-          <Route path="/evidence/compliance"><Navigate to="/governance/compliance" /></Route>
-          <Route path="/evidence/changelog"><Navigate to="/governance/audit/changes" /></Route>
-
-          {/* Old Trust routes → Governance */}
-          <Route path="/trust"><Navigate to="/governance/traces" /></Route>
-          <Route path="/trust/traces"><Navigate to="/governance/traces" /></Route>
-          <Route path="/trust/evidence"><Navigate to="/governance/evidence" /></Route>
-          <Route path="/trust/provenance"><Navigate to="/governance/provenance" /></Route>
-          <Route path="/trust/integrity"><Navigate to="/governance/integrity" /></Route>
-          <Route path="/trust/compliance"><Navigate to="/governance/compliance" /></Route>
-          <Route path="/trust/benchmarks"><Navigate to="/governance/benchmarks" /></Route>
-          <Route path="/trust/audit"><Navigate to="/governance/audit/log" /></Route>
-          <Route path="/trust/audit/log"><Navigate to="/governance/audit/log" /></Route>
-          <Route path="/trust/audit/changes"><Navigate to="/governance/audit/changes" /></Route>
-          <Route path="/trust/health"><Navigate to="/governance/health" /></Route>
-
-          {/* Old Admin routes → Settings */}
-          <Route path="/admin"><Navigate to="/settings/content/formulas" /></Route>
-          <Route path="/admin/content"><Navigate to="/settings/content/formulas" /></Route>
-          <Route path="/admin/content/formulas"><Navigate to="/settings/content/formulas" /></Route>
-          <Route path="/admin/content/versions"><Navigate to="/settings/content/versions" /></Route>
-          <Route path="/admin/content/approvals"><Navigate to="/settings/content/approvals" /></Route>
-          <Route path="/admin/content/benchmarks"><Navigate to="/governance/benchmarks" /></Route>
-          <Route path="/admin/data"><Navigate to="/settings/data/variables" /></Route>
-          <Route path="/admin/data/variables"><Navigate to="/settings/data/variables" /></Route>
-          <Route path="/admin/data/bindings"><Navigate to="/settings/data/bindings" /></Route>
-          <Route path="/admin/data/quality"><Navigate to="/settings/data/quality" /></Route>
-          <Route path="/admin/access"><Navigate to="/settings/access/roles" /></Route>
-          <Route path="/admin/access/roles"><Navigate to="/settings/access/roles" /></Route>
-          <Route path="/admin/access/teams"><Navigate to="/settings/access/teams" /></Route>
-          <Route path="/admin/access/keys"><Navigate to="/settings/access/keys" /></Route>
-          <Route path="/admin/system/settings"><Navigate to="/settings/system/settings" /></Route>
-          <Route path="/admin/system/audit"><Navigate to="/governance/audit/log" /></Route>
-          <Route path="/admin/system/health"><Navigate to="/governance/health" /></Route>
-
-          {/* Old Studio routes (non-account-scoped) → Accounts */}
-          <Route path="/studio"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/deals"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/build"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/build/discovery"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/build/mapping"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/build/modeling"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/build/validation"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/build/narrative"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/build/tracking"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/trees"><Navigate to="/accounts" /></Route>
-          <Route path="/studio/scenarios"><Navigate to="/accounts" /></Route>
-
-          {/* ─── Catch-all ─── */}
-          <Route>
-            <ErrorBoundary><NotFound /></ErrorBoundary>
-          </Route>
+          <ErrorBoundary><NotFound /></ErrorBoundary>
         </AppShell>
       </Route>
     </Suspense>

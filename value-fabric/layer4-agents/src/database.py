@@ -10,6 +10,7 @@ SECURITY: Fail-safe tenant isolation - tenant context is mandatory
 
 import logging
 import os
+import warnings
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from uuid import UUID
@@ -289,10 +290,18 @@ async def set_tenant_context(session: AsyncSession, tenant_id: UUID | str | None
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency for database sessions (without RLS).
-    
+
+    DEPRECATED: Use get_db_from_context() for all new endpoints.
+    This function is kept only for health checks and will be removed.
+
     SECURITY: Use only for health checks or admin operations with proper
-    role authentication. All production endpoints should use get_db_with_tenant.
+    role authentication. All production endpoints should use get_db_from_context.
     """
+    warnings.warn(
+        "get_db() is deprecated. Use get_db_from_context() for proper tenant isolation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # SECURITY: Bypass tenant validation for health checks (admin role required in DB)
     factory = get_session_factory()
     async with factory() as session:
@@ -311,7 +320,10 @@ async def get_db_with_tenant(
 ) -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session with RLS tenant context.
-    
+
+    DEPRECATED: Use get_db_from_context() which extracts tenant from RequestContext
+    set by GovernanceMiddleware. This direct header parsing is error-prone.
+
     SECURITY: Mandatory tenant context - X-Tenant-ID header is required.
     Fail-safe: Rejects requests without explicit tenant identification.
 
@@ -323,10 +335,15 @@ async def get_db_with_tenant(
         @router.get("/accounts/{id}")
         async def get_account(id: UUID, db: AsyncSession = Depends(get_db_with_tenant)):
             ...
-    
+
     Raises:
         HTTPException: 400 if X-Tenant-ID header is missing or invalid
     """
+    warnings.warn(
+        "get_db_with_tenant() is deprecated. Use get_db_from_context() for proper tenant context propagation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     try:
         # SECURITY: Fail-safe validation via validate_tenant_id
         # This checks for empty values and validates UUID format
@@ -424,6 +441,9 @@ async def get_db_with_optional_tenant(
 ) -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency for DB sessions with optional tenant context (Task 1.3).
 
+    DEPRECATED: Use get_db_from_context() combined with require_super_admin() for
+    admin operations. This separate function creates inconsistency in tenant handling.
+
     This is for super-admin operations that may cross tenant boundaries.
     For regular endpoints, use get_db_from_context() which enforces tenant context.
 
@@ -442,6 +462,11 @@ async def get_db_with_optional_tenant(
     Raises:
         HTTPException: 400 if non-super-admin tries to use without tenant context
     """
+    warnings.warn(
+        "get_db_with_optional_tenant() is deprecated. Use get_db_from_context() for consistency.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if not SHARED_IDENTITY_AVAILABLE:
         raise RuntimeError("shared.identity package required for get_db_with_optional_tenant")
 
@@ -506,6 +531,9 @@ async def get_tiered_db_session(
 ) -> AsyncGenerator[AsyncSession, None]:
     """Get database session with appropriate isolation based on tenant tier.
 
+    DEPRECATED: Use get_db_from_context() which handles tier awareness internally.
+    This separate factory is redundant and creates confusion about which to use.
+
     This factory routes to the correct session implementation based on
     the tenant's isolation tier:
     - "shared": Uses RLS with SET LOCAL app.tenant_id
@@ -521,6 +549,11 @@ async def get_tiered_db_session(
         HTTPException: 501 if unimplemented tier requested
         TenantContextError: If tenant_id is invalid
     """
+    warnings.warn(
+        "get_tiered_db_session() is deprecated. Use get_db_from_context() for consistency.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # Validate tenant ID
     validated_id = validate_tenant_id(tenant_id)
 
@@ -583,6 +616,9 @@ async def db_session(
 ) -> AsyncGenerator[AsyncSession, None]:
     """Async context manager for use outside of FastAPI request lifecycle.
 
+    DEPRECATED: Use get_db_from_context() with FastAPI's Depends() for all
+    endpoint handlers. For background tasks, inject RequestContext explicitly.
+
     SECURITY: Fail-safe by default - tenant context is mandatory.
 
     Args:
@@ -590,10 +626,15 @@ async def db_session(
         require_tenant: If True (default), enforce mandatory tenant context.
                        Set to False only for admin/system operations with
                        proper role authentication.
-    
+
     Raises:
         TenantContextError: If tenant_id is missing/invalid and require_tenant=True
     """
+    warnings.warn(
+        "db_session() is deprecated. Use get_db_from_context() for consistency.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     # SECURITY: Enforce mandatory tenant context by default
     if require_tenant:
         # This will raise TenantContextError in fail-safe mode if tenant_id is invalid

@@ -251,19 +251,27 @@ async def _update_relationships(
     rel_type: str,
     target_label: str,
     target_ids: list[str],
+    tenant_id: str | None = None,
 ) -> None:
     """Update pack relationships, validating target entities exist.
 
+    SECURITY: All queries include tenant_id filtering to prevent cross-tenant access.
+
     Raises HTTPException if any target_id doesn't exist.
     """
-    # Validate all targets exist
+    # Validate all targets exist with tenant scoping
     if target_ids:
+        # SECURITY: Add tenant_id filter if available
+        tenant_filter = "{tenant_id: $tenant_id}" if tenant_id else ""
         check_query = f"""
         UNWIND $target_ids as target_id
-        MATCH (t:{target_label} {{id: target_id}})
+        MATCH (t:{target_label} {{id: target_id, tenant_id: $tenant_id}})
         RETURN collect(t.id) as found_ids
         """
-        result = await tx.run(check_query, target_ids=target_ids)
+        params = {"target_ids": target_ids}
+        if tenant_id:
+            params["tenant_id"] = tenant_id
+        result = await tx.run(check_query, params)
         record = await result.single()
         found_ids = set(record["found_ids"]) if record else set()
         missing = set(target_ids) - found_ids
@@ -273,35 +281,40 @@ async def _update_relationships(
                 detail=f"{target_label} IDs not found: {sorted(missing)}"
             )
 
-    # Delete existing relationships
+    # Delete existing relationships with tenant scoping
     delete_query = f"""
-    MATCH (vp:ValuePack {{id: $pack_id}})
+    MATCH (vp:ValuePack {{id: $pack_id, tenant_id: $tenant_id}})
     OPTIONAL MATCH (vp)-[r:{rel_type}]->()
     DELETE r
     """
-    await tx.run(delete_query, pack_id=pack_id)
+    await tx.run(delete_query, pack_id=pack_id, tenant_id=tenant_id)
 
-    # Create new relationships
+    # Create new relationships with tenant scoping
     create_query = f"""
-    MATCH (vp:ValuePack {{id: $pack_id}})
+    MATCH (vp:ValuePack {{id: $pack_id, tenant_id: $tenant_id}})
     UNWIND $target_ids as target_id
-    MATCH (t:{target_label} {{id: target_id}})
+    MATCH (t:{target_label} {{id: target_id, tenant_id: $tenant_id}})
     CREATE (vp)-[:{rel_type}]->(t)
     """
-    await tx.run(create_query, pack_id=pack_id, target_ids=target_ids)
+    await tx.run(create_query, pack_id=pack_id, target_ids=target_ids, tenant_id=tenant_id)
 
 
-async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> PackDetail | None:
+async def _get_pack_detail(
+    driver: AsyncDriver, pack_id: str, tenant_id: str | None = None
+) -> PackDetail | None:
     """Get full pack detail from Neo4j.
+
+    SECURITY: Query includes tenant_id filtering to prevent cross-tenant access.
 
     Returns None if pack not found, PackDetail with related entities otherwise.
     """
+    # SECURITY: Tenant-scoped query to prevent cross-tenant data leakage
     query = """
-    MATCH (vp:ValuePack {id: $pack_id})
-    OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver)
-    OPTIONAL MATCH (vp)-[:hasFormula]->(f:Formula)
-    OPTIONAL MATCH (vp)-[:hasBenchmark]->(b:BenchmarkDataset)
-    OPTIONAL MATCH (vp)-[:hasWorkflow]->(w:Workflow)
+    MATCH (vp:ValuePack {id: $pack_id, tenant_id: $tenant_id})
+    OPTIONAL MATCH (vp)-[:hasDriver]->(vd:ValueDriver {tenant_id: $tenant_id})
+    OPTIONAL MATCH (vp)-[:hasFormula]->(f:Formula {tenant_id: $tenant_id})
+    OPTIONAL MATCH (vp)-[:hasBenchmark]->(b:BenchmarkDataset {tenant_id: $tenant_id})
+    OPTIONAL MATCH (vp)-[:hasWorkflow]->(w:Workflow {tenant_id: $tenant_id})
     RETURN vp,
            collect(DISTINCT vd) as drivers,
            collect(DISTINCT f) as formulas,
@@ -310,7 +323,7 @@ async def _get_pack_detail(driver: AsyncDriver, pack_id: str) -> PackDetail | No
     """
 
     async with driver.session() as session:
-        result = await session.run(query, pack_id=pack_id)
+        result = await session.run(query, pack_id=pack_id, tenant_id=tenant_id)
         record = await result.single()
 
         if not record:
