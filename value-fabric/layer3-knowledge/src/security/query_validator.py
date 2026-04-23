@@ -10,21 +10,19 @@ Security Model:
 - Composite constraints on (id, tenant_id) provide defense-in-depth
 
 Usage:
-    from security.query_validator import QueryValidator, ValidationError
+    >>> from security.query_validator import QueryValidator, ValidationError
+    >>> 
+    >>> validator = QueryValidator()
+    >>> 
+    >>> # Valid query - has tenant_id predicate
+    >>> validator.validate('MATCH (e:Entity {id: $id, tenant_id: $tenant_id}) RETURN e')
+    []
     
-    validator = QueryValidator()
-    
-    # Valid query - has tenant_id predicate
-    validator.validate("""
-        MATCH (e:Entity {id: $id, tenant_id: $tenant_id})
-        RETURN e
-    """)  # OK
-    
-    # Invalid query - missing tenant_id
-    validator.validate("""
-        MATCH (e:Entity {id: $id})
-        RETURN e
-    """)  # Raises UnscopedQueryError
+    >>> # Invalid query - missing tenant_id
+    >>> try:
+    ...     validator.validate('MATCH (e:Entity {id: $id}) RETURN e')
+    ... except UnscopedQueryError:
+    ...     print("Query rejected - missing tenant_id")
 """
 
 from __future__ import annotations
@@ -100,18 +98,14 @@ class QueryValidator:
         >>> validator = QueryValidator()
         >>> 
         >>> # This query is safe - has tenant_id
-        >>> validator.validate("""
-        ...     MATCH (e:Entity {id: $id, tenant_id: $tenant_id})
-        ...     RETURN e
-        ... """)
-        True
+        >>> validator.validate('MATCH (e:Entity {id: $id, tenant_id: $tenant_id}) RETURN e')
+        []
         
         >>> # This query is unsafe - missing tenant_id
-        >>> validator.validate("""
-        ...     MATCH (e:Entity {id: $id})
-        ...     RETURN e
-        ... """)
-        UnscopedQueryError: Entity MATCH missing tenant_id filter
+        >>> try:
+        ...     validator.validate('MATCH (e:Entity {id: $id}) RETURN e')
+        ... except UnscopedQueryError:
+        ...     print("Query rejected - missing tenant_id")
     """
     
     # Pattern to match MATCH clauses for Entity nodes

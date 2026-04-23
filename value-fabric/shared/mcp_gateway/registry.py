@@ -10,7 +10,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from .types import ToolAccessDeniedError, ToolManifest, ToolRequest
+from .mcp_types import ToolAccessDeniedError, ToolManifest, ToolRequest
 
 logger = logging.getLogger(__name__)
 

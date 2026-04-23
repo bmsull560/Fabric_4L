@@ -1332,6 +1332,163 @@ export const valuePackMocks = [
   }),
 ];
 
+// ===== Health Monitor Mocks (L4) =====
+
+export const healthMocks = [
+  // System health endpoint
+  http.get(`${API_BASE}${L4_PREFIX}/health`, async () => {
+    await delay(100);
+    return HttpResponse.json({
+      overall_status: 'healthy',
+      services: [
+        { name: 'l1-ingestion', status: 'healthy', response_time_ms: 45, last_check: new Date().toISOString() },
+        { name: 'l2-extraction', status: 'healthy', response_time_ms: 120, last_check: new Date().toISOString() },
+        { name: 'l3-knowledge', status: 'healthy', response_time_ms: 80, last_check: new Date().toISOString() },
+        { name: 'l4-agents', status: 'healthy', response_time_ms: 60, last_check: new Date().toISOString() },
+        { name: 'l5-ground-truth', status: 'healthy', response_time_ms: 55, last_check: new Date().toISOString() },
+      ],
+      summary: { healthy: 5, degraded: 0, unhealthy: 0, unknown: 0 },
+      timestamp: new Date().toISOString(),
+    });
+  }),
+
+  // Health alerts endpoint
+  http.get(`${API_BASE}${L4_PREFIX}/health/alerts`, async () => {
+    await delay(100);
+    return HttpResponse.json([
+      {
+        id: 'alert-1',
+        severity: 'info',
+        service: 'l1-ingestion',
+        message: 'All systems operational',
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+      },
+    ]);
+  }),
+];
+
+// ===== Tenant Settings Mocks (L4) =====
+
+export const tenantSettingsMocks = [
+  http.get(`${API_BASE}${L4_PREFIX}/tenant/settings`, async () => {
+    await delay(100);
+    return HttpResponse.json({
+      tenant_id: 'test-tenant-123',
+      name: 'Test Tenant',
+      slug: 'test-tenant',
+      tier: 'advanced',
+      features: {
+        advanced_mode: true,
+        beta_features: false,
+      },
+      limits: {
+        max_workflows: 100,
+        max_entities: 10000,
+      },
+    });
+  }),
+];
+
+// ===== User Management Mocks (L4) =====
+
+export const userMocks = [
+  http.get(`${API_BASE}${L4_PREFIX}/users`, async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const role = url.searchParams.get('role');
+
+    let users = [
+      {
+        id: 'user-1',
+        email: 'admin@example.com',
+        name: 'Admin User',
+        role: 'admin',
+        status: 'active',
+        created_at: '2024-01-01T00:00:00Z',
+        last_login: '2024-01-15T10:00:00Z',
+      },
+      {
+        id: 'user-2',
+        email: 'user@example.com',
+        name: 'Standard User',
+        role: 'standard',
+        status: 'active',
+        created_at: '2024-01-05T00:00:00Z',
+        last_login: '2024-01-14T09:00:00Z',
+      },
+    ];
+
+    if (role) {
+      users = users.filter(u => u.role === role);
+    }
+
+    return HttpResponse.json(users);
+  }),
+
+  http.get(`${API_BASE}${L4_PREFIX}/users/:id`, async ({ params }) => {
+    await delay(100);
+    const id = params.id as string;
+    return HttpResponse.json({
+      id,
+      email: 'user@example.com',
+      name: 'Test User',
+      role: 'standard',
+      status: 'active',
+      created_at: '2024-01-01T00:00:00Z',
+      last_login: '2024-01-15T10:00:00Z',
+    });
+  }),
+
+  // API Keys management
+  http.get(`${API_BASE}${L4_PREFIX}/api-keys`, async () => {
+    await delay(100);
+    return HttpResponse.json([
+      {
+        id: 'key-1',
+        name: 'Production API Key',
+        key_prefix: 'pk_live_',
+        permissions: ['read', 'write'],
+        created_at: '2024-01-01T00:00:00Z',
+        last_used: '2024-01-15T10:00:00Z',
+        expires_at: null,
+      },
+      {
+        id: 'key-2',
+        name: 'Read-only Key',
+        key_prefix: 'pk_test_',
+        permissions: ['read'],
+        created_at: '2024-01-05T00:00:00Z',
+        last_used: '2024-01-14T09:00:00Z',
+        expires_at: '2024-12-31T00:00:00Z',
+      },
+    ]);
+  }),
+
+  http.post(`${API_BASE}${L4_PREFIX}/api-keys`, async ({ request }) => {
+    await delay(150);
+    const body = (await request.json()) as { name?: string; permissions?: string[] };
+    return HttpResponse.json({
+      id: `key-${Date.now()}`,
+      name: body?.name || 'New API Key',
+      key: `pk_live_${Math.random().toString(36).substring(2, 15)}`,
+      permissions: body?.permissions || ['read'],
+      created_at: new Date().toISOString(),
+      last_used: null,
+      expires_at: null,
+    }, { status: 201 });
+  }),
+
+  http.delete(`${API_BASE}${L4_PREFIX}/api-keys/:id`, async ({ params }) => {
+    await delay(100);
+    return HttpResponse.json({
+      id: params.id,
+      deleted: true,
+      deleted_at: new Date().toISOString(),
+    });
+  }),
+];
+
 // ===== Error Simulation Mocks =====
 
 export const errorMocks = [
@@ -1363,5 +1520,8 @@ export const handlers = [
   ...businessCaseMocks,
   ...valuePackMocks,
   ...valueTreeMocks,
+  ...healthMocks,
+  ...tenantSettingsMocks,
+  ...userMocks,
   ...errorMocks,
 ];

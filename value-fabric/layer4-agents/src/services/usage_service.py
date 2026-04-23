@@ -187,6 +187,7 @@ class UsageService:
             created_at=datetime.now(UTC),
         )
 
+        stripe_response = None
         try:
             self.db.add(event)
             await self.db.flush()
@@ -194,6 +195,17 @@ class UsageService:
                 f"Usage event ingested: {event_id} for customer {customer_id}, "
                 f"metric {metric_name}, quantity {quantity}"
             )
+
+            # Optionally report to Stripe for real-time metering
+            stripe_response = await self._report_to_stripe(
+                customer_id=customer_id,
+                metric_name=metric_name,
+                quantity=quantity,
+                event_id=event_id,
+            )
+
+            # Attach stripe response to event for return
+            event._stripe_response = stripe_response
             return event
 
         except IntegrityError as e:
@@ -202,6 +214,8 @@ class UsageService:
             existing = await self._get_event_by_idempotency(event_id)
             if existing:
                 logger.debug(f"Duplicate usage event detected: {event_id}, returning existing")
+                # Mark as duplicate
+                existing._stripe_response = {"skipped": True, "reason": "duplicate"}
                 return existing
             raise
 
@@ -442,3 +456,120 @@ class UsageService:
 
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+
+    async def sync_to_stripe(
+        self,
+        customer_id: str,
+        metric_name: str | None = None,
+    ) -> dict[str, Any]:
+        """Sync pending usage events to Stripe MeterEvents.
+
+        Aggregates pending events and reports to Stripe for metered billing.
+        Marks events as PROCESSED after successful reporting.
+
+        Args:
+            customer_id: Customer to sync usage for
+            metric_name: Optional metric filter (syncs all if None)
+
+        Returns:
+            Sync summary with counts and Stripe response
+        """
+        from ..services.stripe_client import (
+            StripeMeterEventError,
+            StripeNotConfiguredError,
+            report_meter_event,
+        )
+
+        if not self.tenant_id:
+            raise UsageValidationError("tenant_id is required", field="tenant_id")
+
+        # Get Stripe customer ID
+        stripe_customer_id = await self._get_stripe_customer_id(customer_id)
+        if not stripe_customer_id:
+            return {
+                "synced": 0,
+                "error": f"No Stripe customer ID found for {customer_id}",
+            }
+
+        # Build query for pending events
+        query = select(
+            BillingUsageEvent.metric_name,
+            func.sum(BillingUsageEvent.quantity).label("total_quantity"),
+            func.count(BillingUsageEvent.id).label("event_count"),
+        ).where(
+            BillingUsageEvent.tenant_id == self.tenant_id,
+            BillingUsageEvent.customer_id == customer_id,
+            BillingUsageEvent.status == UsageEventStatus.PENDING,
+        ).group_by(BillingUsageEvent.metric_name)
+
+        if metric_name:
+            query = query.where(BillingUsageEvent.metric_name == metric_name)
+
+        result = await self.db.execute(query)
+        metrics_to_sync = result.all()
+
+        if not metrics_to_sync:
+            return {"synced": 0, "message": "No pending events to sync"}
+
+        sync_results = []
+        total_synced = 0
+
+        for row in metrics_to_sync:
+            metric = row.metric_name
+            quantity = float(row.total_quantity)
+            count = row.event_count
+
+            try:
+                # Report to Stripe
+                stripe_response = report_meter_event(
+                    stripe_customer_id=stripe_customer_id,
+                    metric_name=metric,
+                    quantity=quantity,
+                )
+
+                # Mark events as processed
+                update_query = select(BillingUsageEvent).where(
+                    BillingUsageEvent.tenant_id == self.tenant_id,
+                    BillingUsageEvent.customer_id == customer_id,
+                    BillingUsageEvent.metric_name == metric,
+                    BillingUsageEvent.status == UsageEventStatus.PENDING,
+                )
+
+                events_result = await self.db.execute(update_query)
+                events = events_result.scalars().all()
+
+                processed_at = datetime.now(UTC)
+                for event in events:
+                    event.status = UsageEventStatus.PROCESSED
+                    event.processed_at = processed_at
+
+                await self.db.flush()
+
+                sync_results.append({
+                    "metric": metric,
+                    "quantity": quantity,
+                    "events": count,
+                    "stripe_status": stripe_response.get("status", "unknown"),
+                })
+                total_synced += count
+
+            except StripeMeterEventError as e:
+                sync_results.append({
+                    "metric": metric,
+                    "quantity": quantity,
+                    "events": count,
+                    "error": str(e),
+                })
+            except StripeNotConfiguredError as e:
+                return {
+                    "synced": 0,
+                    "error": "Stripe not configured",
+                    "details": str(e),
+                }
+
+        return {
+            "synced": total_synced,
+            "customer_id": customer_id,
+            "stripe_customer_id": stripe_customer_id,
+            "metrics": sync_results,
+        }
