@@ -21,6 +21,7 @@ from ..schemas.accounts import (
     AccountListItemSchema,
     AccountListResponse,
     AccountSearchRequest,
+    CreateAccountRequest,
     ContactSchema,
     OpportunitySchema,
     SyncAccountsRequest,
@@ -158,6 +159,33 @@ async def list_accounts(
         page_size=page_size,
         has_more=(page * page_size) < total,
     )
+
+
+@router.post("", response_model=AccountDetailSchema, status_code=status.HTTP_201_CREATED)
+async def create_account(
+    request: CreateAccountRequest,
+    db: AsyncSession = Depends(get_db),
+) -> AccountDetailSchema:
+    """Create an account with a UUID primary identifier."""
+    service = AccountService(db)
+    try:
+        account = await service.create_account(
+            provider=request.provider,
+            provider_record_id=request.provider_record_id,
+            name=request.name,
+            domain=request.domain,
+            industry=request.industry,
+            region=request.region,
+            company_size=request.company_size,
+            owner_id=request.owner_id,
+            owner_name=request.owner_name,
+            owner_email=request.owner_email,
+            stage=request.stage,
+            segment=request.segment,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return to_detail_schema(account)
 
 
 @router.post("/search", response_model=AccountListResponse)

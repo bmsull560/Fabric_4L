@@ -11,6 +11,7 @@ Tests the accounts-first CRM integration API contract:
 
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -21,7 +22,9 @@ from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
 
 from src.api.main import app
+from src.api.routes.analysis import get_executor
 from src.database import Base, get_db
+from src.models.business_case_record import BusinessCaseRecord
 from src.models.account import Account, AccountSyncStatus, CRMProvider, SyncStatus
 
 
@@ -179,6 +182,80 @@ async def test_list_accounts_empty(client: AsyncClient):
     assert data["total"] == 0
     assert data["page"] == 1
     assert not data["has_more"]
+
+
+@pytest.mark.asyncio
+async def test_create_account(client: AsyncClient):
+    """POST /v1/accounts creates an account with UUID primary key."""
+    response = await client.post(
+        "/v1/accounts",
+        json={
+            "provider": "salesforce",
+            "provider_record_id": "sf-acc-new-001",
+            "name": "NewCo",
+            "domain": "newco.example",
+            "industry": "Software",
+        },
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["id"]
+    assert body["name"] == "NewCo"
+    assert body["provider"] == "salesforce"
+    assert body["provider_record_id"] == "sf-acc-new-001"
+
+
+@pytest.mark.asyncio
+async def test_create_case_from_existing_account(client: AsyncClient, sample_account: Account, test_db: AsyncSession):
+    """POST /v1/cases accepts account_id and persists account-case linkage."""
+    mock_result = SimpleNamespace(
+        workflow_id="wf-case-001",
+        status=SimpleNamespace(value="completed"),
+        output_data={
+            "assemble_document": {
+                "document_url": "https://example.com/cases/wf-case-001.pdf",
+                "page_count": 5,
+                "file_size_bytes": 1024,
+                "case_metadata": {},
+            },
+            "verify_truth_requirements": {},
+        },
+    )
+
+    class _Executor:
+        async def run(self, workflow_type: str, input_data: dict):
+            assert workflow_type == "business_case"
+            assert input_data["account_id"] == str(sample_account.id)
+            assert input_data["custom_inputs"]["provider_record_id"] == sample_account.provider_record_id
+            return mock_result
+
+    app.dependency_overrides[get_executor] = lambda: _Executor()
+    try:
+        response = await client.post(
+            "/v1/cases",
+            json={"account_id": str(sample_account.id), "sections": ["executive_summary"]},
+        )
+    finally:
+        app.dependency_overrides.pop(get_executor, None)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["case_id"] == "wf-case-001"
+    assert payload["case_metadata"]["account_id"] == str(sample_account.id)
+
+    persisted = await test_db.get(BusinessCaseRecord, "wf-case-001")
+    assert persisted is not None
+    assert str(persisted.account_id) == str(sample_account.id)
+
+
+@pytest.mark.asyncio
+async def test_create_case_rejects_non_uuid_account_id(client: AsyncClient):
+    """POST /v1/cases rejects non-UUID account_id values."""
+    response = await client.post(
+        "/v1/cases",
+        json={"account_id": "not-a-uuid", "sections": ["executive_summary"]},
+    )
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio

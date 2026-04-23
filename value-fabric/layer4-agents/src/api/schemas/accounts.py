@@ -118,6 +118,23 @@ class AccountSearchRequest(BaseModel):
     sort_order: str = Field("desc", pattern="^(asc|desc)$")
 
 
+class CreateAccountRequest(BaseModel):
+    """Account creation request."""
+
+    provider: CRMProvider
+    provider_record_id: str = Field(..., min_length=1, max_length=100)
+    name: str = Field(..., min_length=1, max_length=255)
+    domain: str | None = Field(None, max_length=255)
+    industry: str | None = Field(None, max_length=100)
+    region: str | None = Field(None, max_length=100)
+    company_size: int | None = Field(None, ge=0)
+    owner_id: str | None = Field(None, max_length=100)
+    owner_name: str | None = Field(None, max_length=255)
+    owner_email: str | None = Field(None, max_length=255)
+    stage: str | None = Field(None, max_length=50)
+    segment: str | None = Field(None, max_length=100)
+
+
 # ============================================================================
 # Detail Response Schema
 # ============================================================================

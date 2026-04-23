@@ -219,7 +219,7 @@ class TestBusinessCaseGeneratorWorkflow:
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
 
         input_data = {
-            "prospect_id": "prospect-001",
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
             "sections_requested": ["executive_summary", "roi_analysis"],
             "output_format": "pdf",
         }
@@ -227,7 +227,7 @@ class TestBusinessCaseGeneratorWorkflow:
 
         assert isinstance(state, BusinessCaseAgentState)
         assert state.status == WorkflowStatus.PENDING
-        assert state.case_input.prospect_id == "prospect-001"
+        assert str(state.case_input.account_id) == "550e8400-e29b-41d4-a716-446655440000"
         assert "executive_summary" in state.case_input.sections_requested
         assert state.output_data == {}
         assert state.errors == []
@@ -255,7 +255,7 @@ class TestBusinessCaseGeneratorWorkflow:
 
         # Build a state with pre-populated gather_inputs and run_roi output
         input_data = {
-            "prospect_id": "prospect-001",
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
             "sections_requested": ["executive_summary", "roi_analysis"],
             "output_format": "pdf",
         }
@@ -309,7 +309,7 @@ class TestBusinessCaseGeneratorWorkflow:
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
 
         input_data = {
-            "prospect_id": "prospect-001",
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
             "sections_requested": ["executive_summary"],
             "output_format": "pdf",
         }
@@ -334,7 +334,7 @@ class TestBusinessCaseGeneratorWorkflow:
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
 
         input_data = {
-            "prospect_id": "prospect-001",
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
             "sections_requested": ["executive_summary"],
             "output_format": "pdf",
         }
