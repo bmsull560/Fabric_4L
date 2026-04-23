@@ -62,6 +62,9 @@ class AuditAction(str, Enum):
     WORKFLOW_FAILED = "workflow.failed"
     BUSINESS_CASE_GENERATED = "business_case.generated"
     ROI_CALCULATED = "roi.calculated"
+    EXPORT_REQUESTED = "export.requested"
+    EXPORT_PACKAGE_GENERATED = "export.package_generated"
+    EXPORT_DOWNLOAD_ACCESSED = "export.download_accessed"
 
     # ── Integrations ─────────────────────────────────────────────────────────
     WEBHOOK_RECEIVED = "webhook.received"
