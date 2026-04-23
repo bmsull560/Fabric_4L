@@ -184,3 +184,159 @@ async def close_db() -> None:
         await _engine.dispose()
         _engine = None
         _session_factory = None
+
+
+# ---------------------------------------------------------------------------
+# Sprint 5: Context-aware database session for async layers (Task 5.2.2)
+# ---------------------------------------------------------------------------
+
+from fastapi import Depends, HTTPException, status
+from sqlalchemy import text
+
+from uuid import UUID
+
+try:
+    from shared.identity.context import RequestContext
+    from shared.identity.dependencies import get_request_context
+    SHARED_IDENTITY_AVAILABLE = True
+except ImportError:
+    SHARED_IDENTITY_AVAILABLE = False
+    RequestContext = None  # type: ignore
+    get_request_context = None  # type: ignore
+
+
+class TenantContextError(Exception):
+    """Raised when tenant context is missing or invalid."""
+    pass
+
+
+def validate_tenant_id(tenant_id: UUID | str | None) -> str:
+    """Validate tenant_id format and return normalized string.
+
+    SECURITY: Strict validation to prevent tenant confusion attacks.
+    """
+    if tenant_id is None:
+        raise TenantContextError(
+            "Tenant context is mandatory. "
+            "Use explicit admin role context for system operations."
+        )
+
+    normalized = str(tenant_id).strip()
+    if not normalized:
+        raise TenantContextError("Empty tenant_id is not allowed.")
+
+    # Validate UUID format
+    if normalized.lower() not in ('system', 'admin', 'internal'):
+        try:
+            UUID(normalized)
+        except ValueError:
+            raise TenantContextError(f"Invalid tenant_id format: {normalized}")
+
+    return normalized
+
+
+async def get_db_from_context(
+    context: "RequestContext" = Depends(get_request_context),  # type: ignore
+) -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency for DB session with tenant from RequestContext (Sprint 5).
+
+    SECURITY: Uses RequestContext set by GovernanceMiddleware.
+    Fail-safe: Rejects requests without explicit tenant identification.
+
+    Usage::
+
+        @router.get("/items")
+        async def list_items(
+            db: AsyncSession = Depends(get_db_from_context),
+            context: RequestContext = Depends(get_request_context)
+        ):
+            ...
+
+    Raises:
+        HTTPException: 400 if tenant context is missing
+    """
+    if not SHARED_IDENTITY_AVAILABLE:
+        raise RuntimeError(
+            "shared.identity required for get_db_from_context"
+        )
+
+    if not context or not context.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tenant context required. Ensure request passed through GovernanceMiddleware.",
+        )
+
+    try:
+        tenant_id = validate_tenant_id(context.tenant_id)
+    except TenantContextError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    factory = get_session_factory()
+    async with factory() as session:
+        await session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id}
+        )
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_db_with_optional_tenant(
+    context: "RequestContext" = Depends(get_request_context),  # type: ignore
+) -> AsyncGenerator[AsyncSession, None]:
+    """DB session with optional tenant for super-admin operations (Sprint 5).
+
+    SECURITY: Must be combined with privileged access checks.
+    Super-admins can bypass tenant context for cross-tenant operations.
+
+    Usage::
+
+        @router.get("/admin/all-tenants")
+        async def get_all_tenants(
+            db: AsyncSession = Depends(get_db_with_optional_tenant),
+            context: RequestContext = Depends(require_request_context)
+        ):
+            ...
+
+    Raises:
+        HTTPException: 400 if non-super-admin without tenant context
+    """
+    if not SHARED_IDENTITY_AVAILABLE:
+        raise RuntimeError(
+            "shared.identity required for get_db_with_optional_tenant"
+        )
+
+    factory = get_session_factory()
+    async with factory() as session:
+        if context.is_super_admin():
+            await session.execute(text("SET LOCAL app.tenant_id = ''"))
+        elif context.tenant_id:
+            try:
+                tenant_id = validate_tenant_id(context.tenant_id)
+            except TenantContextError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(e),
+                ) from e
+            await session.execute(
+                text("SET LOCAL app.tenant_id = :tenant_id"),
+                {"tenant_id": tenant_id}
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tenant context required or super_admin role.",
+            )
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

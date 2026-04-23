@@ -124,7 +124,7 @@ typecheck: ## Type-check all Python layers with mypy (fails fast on first error)
 
 # ─── Testing ──────────────────────────────────────────────────────────────────
 
-test: test-layer1 test-layer2 test-layer3 test-layer4 ## Run all backend unit tests
+test: test-layer1 test-layer2 test-layer3 test-layer4 test-layer5 test-layer6 ## Run all backend unit tests
 
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
@@ -168,6 +168,9 @@ test-layer4: ## Run Layer 4 tests
 test-layer5: ## Run Layer 5 tests
 	cd value-fabric/layer5-ground-truth && python scripts/check_no_duplicate_modules.py
 	cd value-fabric/layer5-ground-truth && $(PYTEST) tests/
+
+test-layer6: ## Run Layer 6 tests
+	cd value-fabric/layer6-benchmarks && $(PYTEST) tests/
 
 test-frontend: ## Run frontend unit tests
 	cd frontend && pnpm run test

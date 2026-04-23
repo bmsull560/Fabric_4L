@@ -249,3 +249,135 @@ def get_db_with_tenant_from_context(
     """
     with get_db_session(tenant_id=tenant_id, require_tenant=True) as session:
         yield session
+
+
+# ---------------------------------------------------------------------------
+# Sprint 5: Context-aware database session for sync layers (Task 5.2.1)
+# ---------------------------------------------------------------------------
+
+from fastapi import Depends, HTTPException, status
+
+try:
+    from shared.identity.middleware_sync import (
+        SyncRequestContext,
+        get_request_context_sync,
+        require_request_context_sync,
+    )
+    SYNC_IDENTITY_AVAILABLE = True
+except ImportError:
+    SYNC_IDENTITY_AVAILABLE = False
+    SyncRequestContext = None  # type: ignore
+    get_request_context_sync = None  # type: ignore
+    require_request_context_sync = None  # type: ignore
+
+
+def get_db_from_context_sync(
+    context: "SyncRequestContext" = Depends(get_request_context_sync),  # type: ignore
+) -> Generator[Session, None, None]:
+    """FastAPI dependency for DB session with tenant from RequestContext (Sprint 5).
+
+    SECURITY: Uses RequestContext set by GovernanceMiddlewareSync.
+    Fail-safe: Rejects requests without explicit tenant identification.
+
+    Usage::
+
+        @router.get("/items")
+        async def list_items(
+            db: Session = Depends(get_db_from_context_sync),
+            context: SyncRequestContext = Depends(get_request_context_sync)
+        ):
+            ...
+
+    Raises:
+        HTTPException: 400 if tenant context is missing
+    """
+    if not SYNC_IDENTITY_AVAILABLE:
+        raise RuntimeError(
+            "shared.identity.middleware_sync required for get_db_from_context_sync"
+        )
+
+    if not context or not context.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Tenant context required. Ensure request passed through GovernanceMiddlewareSync.",
+        )
+
+    # Validate tenant ID
+    try:
+        tenant_id = validate_tenant_id(context.tenant_id)
+    except TenantContextError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+
+    # Create session with RLS context
+    session = SessionLocal()
+    try:
+        session.execute(
+            text("SET LOCAL app.tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id}
+        )
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def get_db_with_optional_tenant_sync(
+    context: "SyncRequestContext" = Depends(get_request_context_sync),  # type: ignore
+) -> Generator[Session, None, None]:
+    """DB session with optional tenant for super-admin operations (Sprint 5).
+
+    SECURITY: Must be combined with privileged access checks.
+    Super-admins can bypass tenant context for cross-tenant operations.
+
+    Usage::
+
+        @router.get("/admin/all-tenants")
+        async def get_all_tenants(
+            db: Session = Depends(get_db_with_optional_tenant_sync),
+            context: SyncRequestContext = Depends(require_request_context_sync)
+        ):
+            ...
+
+    Raises:
+        HTTPException: 400 if non-super-admin without tenant context
+    """
+    if not SYNC_IDENTITY_AVAILABLE:
+        raise RuntimeError(
+            "shared.identity.middleware_sync required for get_db_with_optional_tenant_sync"
+        )
+
+    session = SessionLocal()
+    try:
+        # Super admins can bypass tenant context
+        if context.is_super_admin():
+            session.execute(text("SET LOCAL app.tenant_id = ''"))
+        elif context.tenant_id:
+            try:
+                tenant_id = validate_tenant_id(context.tenant_id)
+            except TenantContextError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(e),
+                ) from e
+            session.execute(
+                text("SET LOCAL app.tenant_id = :tenant_id"),
+                {"tenant_id": tenant_id}
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tenant context required or super_admin role.",
+            )
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()

@@ -1,0 +1,344 @@
+"""Sync-compatible governance middleware for SQLAlchemy sync layers (Layers 1, 2).
+
+This provides the same governance contract as the async middleware but works
+with synchronous SQLAlchemy and WSGI-style request processing.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import threading
+from typing import Any, Callable, Optional
+from uuid import UUID, uuid4
+
+# Thread-local storage for sync context
+_thread_local = threading.local()
+
+logger = logging.getLogger(__name__)
+
+
+class SyncRequestContext:
+    """Sync-compatible request context (mirrors async RequestContext).
+
+    This is a simplified sync version that stores the same data as the
+    async RequestContext but without dataclass dependencies that may vary.
+    """
+
+    def __init__(
+        self,
+        tenant_id: UUID | None = None,
+        user_id: UUID | None = None,
+        api_key_id: UUID | None = None,
+        roles: list[str] | None = None,
+        permissions: list[str] | None = None,
+        request_id: str | None = None,
+        org_id: UUID | None = None,
+        tenant_role: str | None = None,
+        isolation_tier: str = "shared",
+        auth_source: str = "unknown",
+        service_account_id: UUID | None = None,
+        service_account_scopes: list[str] | None = None,
+    ):
+        self.tenant_id = tenant_id
+        self.user_id = user_id
+        self.api_key_id = api_key_id
+        self.roles = roles or []
+        self.permissions = permissions or []
+        self.request_id = request_id or str(uuid4())
+        self.org_id = org_id
+        self.tenant_role = tenant_role
+        self.isolation_tier = isolation_tier
+        self.auth_source = auth_source
+        self.service_account_id = service_account_id
+        self.service_account_scopes = service_account_scopes or []
+
+    def has_permission(self, permission: str) -> bool:
+        """Check if context has specific permission."""
+        return permission in self.permissions
+
+    def is_super_admin(self) -> bool:
+        """Check if user is super admin."""
+        return "super_admin" in self.roles
+
+    def is_tenant_admin(self) -> bool:
+        """Check if user is tenant admin."""
+        return "tenant_admin" in self.roles or "super_admin" in self.roles
+
+    def is_service_account(self) -> bool:
+        """Check if context represents a service account."""
+        return self.service_account_id is not None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert context to dictionary."""
+        return {
+            "tenant_id": str(self.tenant_id) if self.tenant_id else None,
+            "user_id": str(self.user_id) if self.user_id else None,
+            "api_key_id": str(self.api_key_id) if self.api_key_id else None,
+            "roles": self.roles,
+            "permissions": self.permissions,
+            "request_id": self.request_id,
+            "org_id": str(self.org_id) if self.org_id else None,
+            "tenant_role": self.tenant_role,
+            "isolation_tier": self.isolation_tier,
+            "auth_source": self.auth_source,
+            "service_account_id": str(self.service_account_id) if self.service_account_id else None,
+            "service_account_scopes": self.service_account_scopes,
+        }
+
+
+class GovernanceMiddlewareSync:
+    """Sync SQLAlchemy-compatible governance middleware.
+
+    This middleware provides the same tenant resolution and governance
+    features as the async version but for synchronous layers (1, 2).
+
+    Usage (Flask/FastAPI with sync SQLAlchemy):
+        from shared.identity.middleware_sync import GovernanceMiddlewareSync
+
+        app = Flask(__name__)
+        middleware = GovernanceMiddlewareSync(app, api_key_resolver=lookup_key)
+
+    Or as WSGI middleware:
+        app = GovernanceMiddlewareSync(app, api_key_resolver=lookup_key)
+    """
+
+    # Paths that bypass all authentication checks
+    _PUBLIC_PATHS: frozenset[str] = frozenset({
+        "/health",
+        "/health/detailed",
+        "/metrics",
+        "/docs",
+        "/openapi.json",
+        "/redoc",
+        "/",
+    })
+
+    def __init__(
+        self,
+        app: Any,
+        api_key_resolver: Callable[[str], dict | None] | None = None,
+        jwt_secret: str | None = None,
+    ) -> None:
+        """Initialize sync governance middleware.
+
+        Args:
+            app: WSGI application or Flask/FastAPI app
+            api_key_resolver: Sync callable to resolve API keys
+            jwt_secret: Secret for JWT verification
+        """
+        self.app = app
+        self._api_key_resolver = api_key_resolver
+        self._jwt_secret = jwt_secret or os.getenv("JWT_SECRET", "")
+        self._allow_query_param = os.getenv("ALLOW_TENANT_QUERY_PARAM", "false").lower() == "true"
+
+    def __call__(self, environ: dict, start_response: Callable) -> Any:
+        """WSGI entry point."""
+        from urllib.parse import parse_qs
+
+        request_path = environ.get("PATH_INFO", "")
+
+        # Check if public path
+        if self._is_public_path(request_path):
+            return self.app(environ, start_response)
+
+        # Resolve identity
+        auth_header = environ.get("HTTP_AUTHORIZATION")
+        api_key_header = environ.get("HTTP_X_API_KEY")
+        x_tenant_header = environ.get("HTTP_X_TENANT_ID")
+
+        # Parse query string for dev/test fallback
+        query_params = {}
+        if self._allow_query_param:
+            query_string = environ.get("QUERY_STRING", "")
+            if query_string:
+                query_params = {k: v[0] if v else "" for k, v in parse_qs(query_string).items()}
+
+        ctx = self._resolve_identity_sync(
+            auth_header=auth_header,
+            api_key_header=api_key_header,
+            x_tenant_header=x_tenant_header,
+            query_params=query_params,
+            request_path=request_path,
+            request_method=environ.get("REQUEST_METHOD"),
+        )
+
+        # Store in thread-local for downstream access
+        _thread_local.request_context = ctx
+        _thread_local.request_id = ctx.request_id if ctx else str(uuid4())
+
+        try:
+            return self.app(environ, start_response)
+        finally:
+            # Clean up thread-local
+            _thread_local.request_context = None
+            _thread_local.request_id = None
+
+    def _is_public_path(self, path: str) -> bool:
+        """Return True if path should bypass authentication."""
+        return path in self._PUBLIC_PATHS or path.startswith("/docs") or path.startswith("/redoc")
+
+    def _resolve_identity_sync(
+        self,
+        *,
+        auth_header: str | None = None,
+        api_key_header: str | None = None,
+        x_tenant_header: str | None = None,
+        query_params: dict[str, Any] | None = None,
+        request_path: str | None = None,
+        request_method: str | None = None,
+    ) -> SyncRequestContext | None:
+        """Sync version of identity resolution."""
+        from .jwt import decode_jwt
+
+        # 1. Bearer JWT
+        if auth_header and auth_header.startswith("Bearer "):
+            token_str = auth_header[7:]
+            if not token_str.startswith("vf_"):  # Not an API key
+                try:
+                    payload = decode_jwt(token_str, self._jwt_secret)
+                    if payload:
+                        return self._build_context_from_jwt_sync(payload)
+                except Exception as e:
+                    logger.debug("JWT resolution failed: %s", e)
+                    return None
+
+        # 2. X-API-Key header
+        if api_key_header and self._api_key_resolver:
+            try:
+                record = self._api_key_resolver(api_key_header)
+                if record and record.get("enabled", True):
+                    return self._build_context_from_api_key_sync(record)
+            except Exception as e:
+                logger.debug("API key resolution failed: %s", e)
+
+        # 3. X-Tenant-ID (service-to-service)
+        if x_tenant_header:
+            try:
+                tenant_id = UUID(x_tenant_header)
+                return SyncRequestContext(
+                    tenant_id=tenant_id,
+                    user_id="service",
+                    roles=["system"],
+                    auth_source="header",
+                )
+            except ValueError:
+                logger.debug("Invalid X-Tenant-ID: %s", x_tenant_header)
+
+        # 4. Query param fallback (dev/test only)
+        if self._allow_query_param and query_params:
+            qp_tenant = query_params.get("tenant_id")
+            if qp_tenant:
+                try:
+                    tenant_id = UUID(qp_tenant)
+                    return SyncRequestContext(
+                        tenant_id=tenant_id,
+                        roles=["read_only"],
+                        auth_source="query_param",
+                    )
+                except ValueError:
+                    logger.debug("Invalid tenant_id in query param: %s", qp_tenant)
+
+        return None
+
+    def _build_context_from_jwt_sync(self, payload: dict[str, Any]) -> SyncRequestContext:
+        """Build SyncRequestContext from JWT payload."""
+        tenant_id = UUID(payload.get("tenant_id")) if payload.get("tenant_id") else None
+        user_id = UUID(payload.get("sub")) if payload.get("sub") else None
+        org_id = UUID(payload.get("org_id")) if payload.get("org_id") else None
+
+        service_account_id = None
+        service_account_scopes = []
+        auth_source = payload.get("auth_source", "jwt_claim")
+
+        svc_id = payload.get("service_account_id")
+        if svc_id:
+            service_account_id = UUID(svc_id)
+            service_account_scopes = payload.get("scopes", [])
+            auth_source = "service_account"
+
+        roles = payload.get("roles", [])
+        permissions = self._derive_permissions_sync(roles)
+
+        return SyncRequestContext(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            org_id=org_id,
+            tenant_role=payload.get("tenant_role"),
+            isolation_tier=payload.get("isolation_tier", "shared"),
+            roles=roles,
+            permissions=permissions,
+            auth_source=auth_source,
+            service_account_id=service_account_id,
+            service_account_scopes=service_account_scopes,
+        )
+
+    def _build_context_from_api_key_sync(self, record: dict[str, Any]) -> SyncRequestContext:
+        """Build SyncRequestContext from API key record."""
+        tenant_id = UUID(str(record["tenant_id"])) if record.get("tenant_id") else None
+        user_id = UUID(str(record["user_id"])) if record.get("user_id") else None
+
+        role = record.get("role", "read_only")
+        roles = [role]
+
+        permissions = self._derive_permissions_sync(roles)
+        custom_perms = record.get("permissions", [])
+        if custom_perms:
+            permissions = list(set(permissions + custom_perms))
+
+        return SyncRequestContext(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            api_key_id=record.get("key_id"),
+            roles=roles,
+            permissions=permissions,
+            auth_source="api_key",
+        )
+
+    def _derive_permissions_sync(self, roles: list[str]) -> list[str]:
+        """Derive permissions from roles."""
+        try:
+            from .permissions import get_permissions_for_role
+
+            perms = []
+            for role in roles:
+                perms.extend(get_permissions_for_role(role))
+            return list(set(perms))
+        except ImportError:
+            return []
+
+
+def get_request_context_sync() -> SyncRequestContext | None:
+    """Get current request context from thread-local storage.
+
+    Use this in sync code paths to access the resolved tenant context.
+
+    Example:
+        from shared.identity.middleware_sync import get_request_context_sync
+
+        def my_handler():
+            ctx = get_request_context_sync()
+            if ctx:
+                print(f"Tenant: {ctx.tenant_id}")
+    """
+    return getattr(_thread_local, "request_context", None)
+
+
+def get_tenant_id_sync() -> UUID | None:
+    """Get current tenant ID from thread-local storage."""
+    ctx = get_request_context_sync()
+    return ctx.tenant_id if ctx else None
+
+
+def require_request_context_sync() -> SyncRequestContext:
+    """Require a request context or raise RuntimeError.
+
+    Raises:
+        RuntimeError: If no request context is set
+    """
+    ctx = get_request_context_sync()
+    if ctx is None:
+        raise RuntimeError(
+            "No request context available. Ensure GovernanceMiddlewareSync is installed."
+        )
+    return ctx
