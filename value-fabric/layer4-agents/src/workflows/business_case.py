@@ -39,7 +39,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
     Example:
         workflow = BusinessCaseGeneratorWorkflow(tool_registry)
         initial_state = workflow.create_initial_state({
-            "prospect_id": "prospect-001",
+            "account_id": "550e8400-e29b-41d4-a716-446655440000",
             "sections_requested": ["executive_summary", "roi_analysis"],
             "output_format": "pdf"
         })
@@ -107,7 +107,8 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         if not state.case_input:
             return {"error": "No business case input configured"}
 
-        prospect_id = state.case_input.prospect_id
+        account_id = str(state.case_input.account_id)
+        prospect_id = state.case_input.custom_inputs.get("provider_record_id", account_id)
 
         # Fetch prospect data
         prospect_data = await self.tool_registry.execute(
@@ -127,6 +128,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         lead_score = await self.tool_registry.execute("score_lead", {"prospect_id": prospect_id})
 
         return {
+            "account_id": account_id,
             "prospect": prospect_data,
             "interactions": interactions,
             "lead_score": lead_score,
@@ -139,7 +141,8 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         if not state.case_input:
             return {"error": "No business case input configured"}
 
-        prospect_id = state.case_input.prospect_id
+        account_id = str(state.case_input.account_id)
+        prospect_id = state.case_input.custom_inputs.get("provider_record_id", account_id)
 
         # Create ROI workflow state
         roi_input_data = {
@@ -156,6 +159,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
 
             return {
                 "status": "completed",
+                "account_id": account_id,
                 "roi_results": roi_result.output_data.get("aggregate", {}),
                 "detailed_calculations": roi_result.calculation_results,
             }
@@ -456,6 +460,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 "remediation_items": gate_result.get("remediation_items", []),
                 "truth_references": gate_result.get("truth_references", []),
                 "case_metadata": {
+                    "account_id": str(state.case_input.account_id),
                     "truth_gate": {
                         "passed": False,
                         "requirements": gate_result.get("requirements", []),
@@ -520,6 +525,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         sync_result = await self._sync_ground_truths_to_kg(state)
         assemble_result["ground_truth_sync"] = sync_result
         assemble_result["case_metadata"] = {
+            "account_id": str(state.case_input.account_id),
             "truth_gate": {
                 "passed": gate_result.get("passed", True),
                 "requirements": gate_result.get("requirements", []),

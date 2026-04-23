@@ -285,7 +285,7 @@ class TestBusinessCaseAgentState:
     def test_business_case_state_creation(self):
         """Business case state can be created with input data."""
         input_data = BusinessCaseInputData(
-            prospect_id="prospect-789",
+            account_id="550e8400-e29b-41d4-a716-446655440000",
             opportunity_id="opp-001",
             sections_requested=["executive_summary", "roi_analysis"],
             output_format="pdf",
@@ -297,7 +297,7 @@ class TestBusinessCaseAgentState:
         )
         
         assert state.workflow_type == WorkflowType.BUSINESS_CASE
-        assert state.case_input.prospect_id == "prospect-789"
+        assert str(state.case_input.account_id) == "550e8400-e29b-41d4-a716-446655440000"
         assert state.case_input.output_format == "pdf"
         assert state.sections_generated == []
 
@@ -306,7 +306,7 @@ class TestBusinessCaseAgentState:
         """Output format must be one of valid values."""
         with pytest.raises(ValueError, match="output_format"):
             BusinessCaseInputData(
-                prospect_id="prospect-789",
+                account_id="550e8400-e29b-41d4-a716-446655440000",
                 output_format="invalid_format",
             )
 
