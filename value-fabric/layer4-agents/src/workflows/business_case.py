@@ -202,14 +202,20 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
             }
         ]
         for idx, interaction in enumerate(interaction_items[:5]):
+            interaction_reference = (
+                interaction.get("summary")
+                or interaction.get("subject")
+                or interaction.get("notes")
+                or interaction.get("type")
+                or f"interaction-{idx + 1}"
+            )
+            interaction_timestamp = interaction.get("timestamp") or interaction.get("date")
             evidence.append(
                 {
                     "id": f"interaction_{idx + 1}",
                     "type": "interaction",
-                    "reference": interaction.get("summary")
-                    or interaction.get("type")
-                    or f"interaction-{idx + 1}",
-                    "metadata": {"timestamp": interaction.get("timestamp")},
+                    "reference": interaction_reference,
+                    "metadata": {"timestamp": interaction_timestamp},
                 }
             )
 
