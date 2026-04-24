@@ -1,0 +1,101 @@
+# Production Readiness Gate — CI Workflow Template
+#
+# Pytest is the single source of truth. Each job runs one gate domain.
+# A non-zero exit code blocks the release. No runners, no policy engines.
+#
+# Customize:
+#   - Python version
+#   - pip install dependencies
+#   - Add/remove gate jobs to match your test directories
+#   - Adjust the ship-decision required gates
+
+name: production-readiness
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  gate-security:
+    name: "Gate: Security & Tenant Isolation"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest PyJWT
+      - run: python -m pytest tests/security/ -v --tb=short --no-header -p no:randomly
+
+  gate-state:
+    name: "Gate: State Consistency"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest tests/state/ -v --tb=short --no-header -p no:randomly
+
+  gate-config:
+    name: "Gate: Startup Validation"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - run: python -m pytest tests/config/ -v --tb=short --no-header -p no:randomly
+
+  # Uncomment as you implement Pillars 3-6:
+  #
+  # gate-chaos:
+  #   name: "Gate: Degraded Dependencies"
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-python@v5
+  #       with:
+  #         python-version: "3.11"
+  #     - run: pip install pytest
+  #     - run: python -m pytest tests/chaos/ -v --tb=short --no-header
+  #
+  # gate-smoke:
+  #   name: "Gate: Workflow Smoke Tests"
+  #   ...
+  #
+  # gate-agent:
+  #   name: "Gate: Evidence & Provenance"
+  #   ...
+  #
+  # gate-obs:
+  #   name: "Gate: Observability & Audit"
+  #   ...
+
+  ship-decision:
+    name: "Ship Decision"
+    needs: [gate-security, gate-state, gate-config]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Evaluate gates
+        run: |
+          echo "=== Production Readiness Gate Results ==="
+          FAILED=0
+          for result in "${{ needs.gate-security.result }}" \
+                        "${{ needs.gate-state.result }}" \
+                        "${{ needs.gate-config.result }}"; do
+            if [ "$result" != "success" ]; then
+              FAILED=1
+            fi
+          done
+          if [ "$FAILED" -eq 1 ]; then
+            echo "BLOCKED — one or more gates failed"
+            exit 1
+          fi
+          echo "APPROVED — all gates passed"
