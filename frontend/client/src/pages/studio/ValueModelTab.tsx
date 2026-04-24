@@ -5,7 +5,7 @@ import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentStream } from "@/hooks/useAgentStream";
 import { useAccount } from "@/hooks/useAccounts";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,15 @@ export default function ValueModelTab() {
   const visibleLines = useMemo(() => showStrategic ? lines : lines.filter((l) => l.category === "hard"), [showStrategic, lines]);
   const total = visibleLines.reduce((s, l) => s + l[scenario], 0);
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading value model…</div>;
+  const generateMutation = useGenerateWorkspaceIntelligence();
+
+  useEffect(() => {
+    if (caseId && lines.length === 0 && !isLoading && !generateMutation.isPending) {
+      generateMutation.mutate(caseId);
+    }
+  }, [caseId, lines.length, isLoading]);
+
+  if (isLoading || generateMutation.isPending) return <div className="p-6 text-sm text-muted-foreground">{generateMutation.isPending ? "Generating value model..." : "Loading value model…"}</div>;
   if (error || !account) return <div className="p-6 text-sm text-destructive">Failed to load value model.</div>;
 
   return <ValueStudioShellComponent account={{ accountName: account.name, industry: account.industry ?? "Unknown", revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="value-model" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} />}>

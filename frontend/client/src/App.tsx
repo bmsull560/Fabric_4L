@@ -8,7 +8,7 @@ import {
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
 import { BillingProvider } from "./context/BillingContext";
-import { useUserTierStore, type UserTier } from "@/hooks";
+import { useUserTierStore, useCreateAccount, type UserTier } from "@/hooks";
 import { Route, useLocation, useParams } from "wouter";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 
@@ -24,7 +24,30 @@ function Navigate({ to }: { to: string }) {
 // ── Prospect Setup with Navigation ───────────────────────────────────────────
 function ProspectSetupWithNav() {
   const [, navigate] = useLocation();
-  return <ProspectSetup onNavigateToWorkspace={path => navigate(path)} />;
+  const createAccount = useCreateAccount();
+
+  const handleCreateSetup = async (payload: {
+    companyName: string;
+    industry?: string;
+    painPoints?: string[];
+    stakeholders?: Record<string, string>;
+  }) => {
+    const result = await createAccount.mutateAsync({
+      name: payload.companyName,
+      industry: payload.industry,
+      stage: 'prospect',
+      enrichment_input: payload.painPoints?.join('\n'),
+    });
+    return { accountId: result.account.id };
+  };
+
+  return (
+    <ProspectSetup
+      onNavigateToWorkspace={path => navigate(path)}
+      onCreateSetup={handleCreateSetup}
+      isSubmitting={createAccount.isPending}
+    />
+  );
 }
 
 // ── Route-level code splitting ────────────────────────────────────────────────
@@ -75,6 +98,7 @@ const WhitespaceAnalysis = lazy(() => import("./pages/WhitespaceAnalysis"));
 const SourceConfiguration = lazy(() => import("./pages/SourceConfiguration"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
 
 // ── Workflow Pages ───────────────────────────────────────────────────────────
 const ProspectSetup = lazy(() => import("./workflow/pages/ProspectSetup"));
@@ -283,6 +307,9 @@ function Router() {
       </Route>
       <Route path="/login/callback">
         <Login />
+      </Route>
+      <Route path="/signup">
+        <Signup />
       </Route>
 
       {/* ═══════════════════════════════════════════════════════════════

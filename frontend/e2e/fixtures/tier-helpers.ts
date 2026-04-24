@@ -13,27 +13,49 @@ import { Page } from '@playwright/test';
 export type UserTier = 'standard' | 'advanced' | 'admin';
 
 /**
+ * Backend-canonical roles from identity provider
+ */
+export type BackendRole =
+  | 'super_admin'
+  | 'tenant_admin'
+  | 'content_admin'
+  | 'analyst'
+  | 'read_only'
+  | 'system'
+  | 'admin'
+  | 'advanced'
+  | 'standard';
+
+/**
  * Set the user tier in localStorage (simulating login/role assignment)
  *
  * This works because the app uses Zustand with persist middleware
  * to store tier state in localStorage under the key 'user-tier-storage'.
+ *
+ * @param page - Playwright page object
+ * @param tier - Frontend presentation tier
+ * @param backendRole - Optional backend-canonical role (defaults to tier value)
  */
-export async function setUserTier(page: Page, tier: UserTier): Promise<void> {
-  await page.evaluate((userTier) => {
+export async function setUserTier(
+  page: Page,
+  tier: UserTier,
+  backendRole?: BackendRole
+): Promise<void> {
+  await page.evaluate((params: { userTier: UserTier; role: string }) => {
     const storeKey = 'user-tier-storage';
     const storeState = {
       state: {
-        currentTier: userTier,
-        isAdvancedModeEnabled: userTier !== 'standard',
-        userRole: userTier,
+        currentTier: params.userTier,
+        isAdvancedModeEnabled: params.userTier !== 'standard',
+        userRole: params.role,
       },
       version: 0,
     };
     localStorage.setItem(storeKey, JSON.stringify(storeState));
 
     // Also set a flag for tests to detect
-    localStorage.setItem('test-user-tier', userTier);
-  }, tier);
+    localStorage.setItem('test-user-tier', params.userTier);
+  }, { userTier: tier, role: backendRole || tier });
 
   // Reload to pick up the new tier state
   await page.reload();

@@ -11,19 +11,21 @@
 import { AuthClient, authClient } from './authClient';
 import { AuthError, AuthErrorCategory } from '../schemas/auth';
 
+import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
+
 // Mock fetch globally
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 // Mock localStorage and sessionStorage
 const mockLocalStorage = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
 };
 const mockSessionStorage = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
 };
 
 Object.defineProperty(window, 'localStorage', { value: mockLocalStorage });
@@ -34,7 +36,7 @@ describe('AuthClient', () => {
 
   beforeEach(() => {
     client = new AuthClient();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('initiateLogin', () => {
@@ -44,7 +46,7 @@ describe('AuthClient', () => {
         state: 'abc123',
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -59,7 +61,7 @@ describe('AuthClient', () => {
     });
 
     it('should throw NETWORK error on fetch failure', async () => {
-      (fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+      (fetch as Mock).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(
         client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
@@ -74,7 +76,7 @@ describe('AuthClient', () => {
     });
 
     it('should throw AUTHENTICATION error on 401', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (fetch as Mock).mockResolvedValueOnce({
         ok: false,
         status: 401,
         json: () => Promise.resolve({ detail: 'Invalid tenant' }),
@@ -90,7 +92,7 @@ describe('AuthClient', () => {
     });
 
     it('should throw VALIDATION error on other errors', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (fetch as Mock).mockResolvedValueOnce({
         ok: false,
         status: 500,
         json: () => Promise.resolve({ detail: 'Server error' }),
@@ -105,7 +107,7 @@ describe('AuthClient', () => {
     });
 
     it('should throw MALFORMED_RESPONSE on invalid JSON', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.reject(new Error('Invalid JSON')),
       });
@@ -120,7 +122,7 @@ describe('AuthClient', () => {
 
     it('should encode redirect URI properly', async () => {
       const redirectUri = 'https://localhost:3000/callback?param=value';
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ authorization_url: 'https://example.com', state: 'state' }),
       });
@@ -144,7 +146,7 @@ describe('AuthClient', () => {
         role: 'analyst',
       };
 
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -163,7 +165,7 @@ describe('AuthClient', () => {
     });
 
     it('should encode special characters in code and state', async () => {
-      (fetch as jest.Mock).mockResolvedValueOnce({
+      (fetch as Mock).mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
           access_token: 'token',

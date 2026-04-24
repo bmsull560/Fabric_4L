@@ -19,10 +19,6 @@ import yaml
 class TestKubeconformValidation:
     """Tests for kubeconform schema validation."""
 
-    @pytest.mark.skipif(
-        subprocess.run(["kubeconform", "-v"], capture_output=True).returncode != 0,
-        reason="kubeconform not available"
-    )
     def test_dev_manifest_schema_valid(
         self, repo_root: Path, kustomize_build_dev: str, skip_without_kubeconform
     ) -> None:
@@ -41,10 +37,6 @@ class TestKubeconformValidation:
         
         assert result.returncode == 0, f"Dev manifest schema validation failed: {result.stderr}"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kubeconform", "-v"], capture_output=True).returncode != 0,
-        reason="kubeconform not available"
-    )
     def test_prod_manifest_schema_valid(
         self, repo_root: Path, kustomize_build_prod: str, skip_without_kubeconform
     ) -> None:
@@ -67,10 +59,6 @@ class TestKubeconformValidation:
 class TestConftestPolicyValidation:
     """Tests for conftest/OPA policy validation."""
 
-    @pytest.mark.skipif(
-        subprocess.run(["conftest", "--version"], capture_output=True).returncode != 0,
-        reason="conftest not available"
-    )
     def test_dev_passes_security_policies(
         self, repo_root: Path, kustomize_build_dev: str, skip_without_conftest
     ) -> None:
@@ -89,10 +77,6 @@ class TestConftestPolicyValidation:
         
         assert result.returncode == 0, f"Dev policy validation failed: {result.stdout}{result.stderr}"
 
-    @pytest.mark.skipif(
-        subprocess.run(["conftest", "--version"], capture_output=True).returncode != 0,
-        reason="conftest not available"
-    )
     def test_prod_passes_security_policies(
         self, repo_root: Path, kustomize_build_prod: str, skip_without_conftest
     ) -> None:
@@ -111,10 +95,6 @@ class TestConftestPolicyValidation:
         
         assert result.returncode == 0, f"Prod policy validation failed: {result.stdout}{result.stderr}"
 
-    @pytest.mark.skipif(
-        subprocess.run(["conftest", "--version"], capture_output=True).returncode != 0,
-        reason="conftest not available"
-    )
     def test_prod_no_raw_secrets(
         self, repo_root: Path, kustomize_build_prod: str, skip_without_conftest
     ) -> None:
@@ -124,10 +104,6 @@ class TestConftestPolicyValidation:
         secrets = [d for d in docs if d and d.get("kind") == "Secret"]
         assert len(secrets) == 0, f"Found {len(secrets)} raw Secret resources in prod - use ExternalSecret only"
 
-    @pytest.mark.skipif(
-        subprocess.run(["conftest", "--version"], capture_output=True).returncode != 0,
-        reason="conftest not available"
-    )
     def test_prod_has_external_secrets(
         self, repo_root: Path, kustomize_build_prod: str, skip_without_conftest
     ) -> None:
@@ -141,12 +117,8 @@ class TestConftestPolicyValidation:
 class TestKubectlDryRun:
     """Tests for kubectl dry-run validation."""
 
-    @pytest.mark.skipif(
-        subprocess.run(["kubectl", "version", "--client"], capture_output=True).returncode != 0,
-        reason="kubectl not available"
-    )
     def test_dev_client_dry_run(
-        self, repo_root: Path, kustomize_build_dev: str
+        self, repo_root: Path, kustomize_build_dev: str, skip_without_kubectl
     ) -> None:
         """[1e] Dev manifest passes kubectl client-side dry-run."""
         import tempfile
@@ -163,12 +135,8 @@ class TestKubectlDryRun:
         
         assert result.returncode == 0, f"Dev client dry-run failed: {result.stderr}"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kubectl", "version", "--client"], capture_output=True).returncode != 0,
-        reason="kubectl not available"
-    )
     def test_prod_client_dry_run(
-        self, repo_root: Path, kustomize_build_prod: str
+        self, repo_root: Path, kustomize_build_prod: str, skip_without_kubectl
     ) -> None:
         """[1e] Prod manifest passes kubectl client-side dry-run."""
         import tempfile

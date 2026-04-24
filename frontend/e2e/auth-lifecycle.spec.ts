@@ -18,24 +18,39 @@ test.describe('Authentication Lifecycle', () => {
       await page.goto('/login');
     });
 
-    test('should display login form with tenant input', async ({ page }) => {
-      await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
-      await expect(page.getByLabel(/tenant/i)).toBeVisible();
-      await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+    test('should display login form with email and password fields', async ({ page }) => {
+      await expect(page.getByTestId('login-heading')).toBeVisible();
+      await expect(page.getByTestId('login-email')).toBeVisible();
+      await expect(page.getByTestId('login-password')).toBeVisible();
+      await expect(page.getByTestId('login-submit')).toBeVisible();
     });
 
-    test('should validate empty tenant submission', async ({ page }) => {
-      await page.getByRole('button', { name: /sign in/i }).click();
-      await expect(page.getByText(/tenant is required/i)).toBeVisible();
+    test('should display SSO provider buttons', async ({ page }) => {
+      await expect(page.getByTestId('sso-google')).toBeVisible();
+      await expect(page.getByTestId('sso-microsoft')).toBeVisible();
     });
 
-    test('should validate invalid tenant format', async ({ page }) => {
-      await page.getByLabel(/tenant/i).fill('Invalid Tenant Name!');
-      await page.getByRole('button', { name: /sign in/i }).click();
-      await expect(page.getByText(/invalid tenant format/i)).toBeVisible();
+    test('should validate empty email submission', async ({ page }) => {
+      await page.getByTestId('login-submit').click();
+      await expect(page.getByText(/please enter your email/i)).toBeVisible();
     });
 
-    test('should show loading state during login initiation', async ({ page }) => {
+    test('should validate empty password submission', async ({ page }) => {
+      await page.getByTestId('login-email').fill('user@example.com');
+      await page.getByTestId('login-submit').click();
+      await expect(page.getByText(/please enter your password/i)).toBeVisible();
+    });
+
+    test('should not clear email on error', async ({ page }) => {
+      await page.getByTestId('login-email').fill('user@example.com');
+      await page.getByTestId('login-password').fill('wrong');
+      await page.getByTestId('login-submit').click();
+
+      // After error, email should still be populated
+      await expect(page.getByTestId('login-email')).toHaveValue('user@example.com');
+    });
+
+    test('should show loading state during SSO initiation', async ({ page }) => {
       // Mock slow API response
       await page.route('**/auth/oidc/**/login', async (route) => {
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -48,14 +63,12 @@ test.describe('Authentication Lifecycle', () => {
         });
       });
 
-      await page.getByLabel(/tenant/i).fill('valid-tenant');
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByTestId('sso-google').click();
 
-      await expect(page.getByRole('button', { name: /sign in/i })).toBeDisabled();
-      await expect(page.getByText(/loading/i)).toBeVisible();
+      await expect(page.getByText(/authenticating/i)).toBeVisible();
     });
 
-    test('should display error on login initiation failure', async ({ page }) => {
+    test('should display error on SSO initiation failure', async ({ page }) => {
       await page.route('**/auth/oidc/**/login', (route) => {
         route.fulfill({
           status: 404,
@@ -63,15 +76,24 @@ test.describe('Authentication Lifecycle', () => {
         });
       });
 
-      await page.getByLabel(/tenant/i).fill('nonexistent-tenant');
-      await page.getByRole('button', { name: /sign in/i }).click();
+      await page.getByTestId('sso-google').click();
 
-      await expect(page.getByText(/tenant not found/i)).toBeVisible();
+      await expect(page.getByText(/not found/i)).toBeVisible();
     });
 
-    test('should store state in sessionStorage before redirect', async ({ page }) => {
-      await page.route('**/auth/oidc/**/login', (route) => {
-        route.fulfill({
+    test('should store state in sessionStorage before SSO redirect', async ({ page }) => {
+      // Setup route handler that verifies state before fulfilling
+      let stateVerified = false;
+      await page.route('**/auth/oidc/**/login', async (route) => {
+        // Check sessionStorage BEFORE fulfilling (prevents race with redirect)
+        const oidcState = await page.evaluate(() => sessionStorage.getItem('oidcState'));
+        const tenantSlug = await page.evaluate(() => sessionStorage.getItem('oidcTenantSlug'));
+
+        if (oidcState === 'test-state-123' && tenantSlug === 'google') {
+          stateVerified = true;
+        }
+
+        await route.fulfill({
           status: 200,
           body: JSON.stringify({
             authorization_url: 'https://example.com/auth',
@@ -80,25 +102,36 @@ test.describe('Authentication Lifecycle', () => {
         });
       });
 
-      await page.getByLabel(/tenant/i).fill('test-tenant');
+      // Prevent actual redirect to IdP
+      await page.route('https://example.com/auth', (route) => route.abort());
 
-      // Setup redirect interception
-      let redirectUrl: string | null = null;
-      await page.route('https://example.com/auth', (route) => {
-        redirectUrl = route.request().url();
-        route.abort(); // Prevent actual redirect
-      });
+      await page.getByTestId('sso-google').click();
 
-      await page.getByRole('button', { name: /sign in/i }).click();
+      // Wait for route handler to complete
+      await page.waitForTimeout(100);
 
-      // Check sessionStorage
-      const state = await page.evaluate(() => sessionStorage.getItem('oidcState'));
-      const tenantSlug = await page.evaluate(() =>
-        sessionStorage.getItem('oidcTenantSlug'),
-      );
+      expect(stateVerified).toBe(true);
+    });
 
-      expect(state).toBe('test-state-123');
-      expect(tenantSlug).toBe('test-tenant');
+    test('should have proper autocomplete attributes', async ({ page }) => {
+      await expect(page.getByTestId('login-email')).toHaveAttribute('autocomplete', 'username');
+      await expect(page.getByTestId('login-password')).toHaveAttribute('autocomplete', 'current-password');
+    });
+
+    test('should have password show/hide toggle', async ({ page }) => {
+      const passwordInput = page.getByTestId('login-password');
+      await expect(passwordInput).toHaveAttribute('type', 'password');
+
+      // Click the toggle button
+      await page.getByTestId('password-toggle').click();
+      await expect(passwordInput).toHaveAttribute('type', 'text');
+
+      await page.getByTestId('password-toggle').click();
+      await expect(passwordInput).toHaveAttribute('type', 'password');
+    });
+
+    test('should have link to signup page', async ({ page }) => {
+      await expect(page.getByTestId('link-to-signup')).toHaveAttribute('href', '/signup');
     });
   });
 
@@ -362,25 +395,12 @@ test.describe('Authentication Lifecycle', () => {
       // Should be redirected to login with return URL
       await expect(page).toHaveURL(/\/login/);
 
-      // Setup successful login
-      await page.route('**/auth/oidc/**/login', (route) => {
-        route.fulfill({
-          status: 200,
-          body: JSON.stringify({
-            authorization_url: 'https://example.com/auth',
-            state: 'test-state',
-          }),
-        });
-      });
-
-      await page.getByLabel(/tenant/i).fill('test-tenant');
-
       // The redirect should preserve the return URL
       await page.evaluate(() => {
         sessionStorage.setItem('postLoginRedirect', '/admin/users');
       });
 
-      // After successful callback, should redirect to original page
+      // Simulate successful authentication (after SSO callback)
       await page.evaluate(() => {
         localStorage.setItem('accessToken', 'valid-jwt-token');
         localStorage.setItem(

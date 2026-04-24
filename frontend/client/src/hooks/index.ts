@@ -54,6 +54,7 @@ export {
 export {
   useAccounts,
   useAccount,
+  useCreateAccount,
   useAccountFilterOptions,
   type Account,
   type CRMProvider,

@@ -113,8 +113,17 @@ def kustomize_build_dev(repo_root: Path, tmp_path_factory: pytest.TempPathFactor
 @pytest.fixture(scope="session")
 def kustomize_build_prod(repo_root: Path, tmp_path_factory: pytest.TempPathFactory) -> str:
     """Build prod overlay and return the rendered YAML."""
-    tmp_path = tmp_path_factory.mktemp("k8s")
-    output_file = tmp_path / "prod.yaml"
+    # Check if kustomize is available
+    try:
+        result = subprocess.run(
+            ["kustomize", "version"],
+            capture_output=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            pytest.skip("kustomize not available")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pytest.skip("kustomize not available")
     
     result = subprocess.run(
         ["kustomize", "build", str(repo_root / "k8s" / "overlays" / "prod")],
@@ -124,7 +133,7 @@ def kustomize_build_prod(repo_root: Path, tmp_path_factory: pytest.TempPathFacto
     )
     
     if result.returncode != 0:
-        pytest.skip(f"kustomize not available or build failed: {result.stderr}")
+        pytest.skip(f"kustomize build failed: {result.stderr}")
     
     return result.stdout
 
@@ -132,22 +141,42 @@ def kustomize_build_prod(repo_root: Path, tmp_path_factory: pytest.TempPathFacto
 @pytest.fixture
 def skip_without_kustomize() -> None:
     """Skip test if kustomize is not available."""
-    result = subprocess.run(["kustomize", "version"], capture_output=True)
-    if result.returncode != 0:
+    try:
+        result = subprocess.run(["kustomize", "version"], capture_output=True, timeout=5)
+        if result.returncode != 0:
+            pytest.skip("kustomize not available")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         pytest.skip("kustomize not available")
 
 
 @pytest.fixture
 def skip_without_kubeconform() -> None:
     """Skip test if kubeconform is not available."""
-    result = subprocess.run(["kubeconform", "-v"], capture_output=True)
-    if result.returncode != 0:
+    try:
+        result = subprocess.run(["kubeconform", "-v"], capture_output=True, timeout=5)
+        if result.returncode != 0:
+            pytest.skip("kubeconform not available")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         pytest.skip("kubeconform not available")
 
 
 @pytest.fixture
 def skip_without_conftest() -> None:
     """Skip test if conftest is not available."""
-    result = subprocess.run(["conftest", "--version"], capture_output=True)
-    if result.returncode != 0:
+    try:
+        result = subprocess.run(["conftest", "--version"], capture_output=True, timeout=5)
+        if result.returncode != 0:
+            pytest.skip("conftest not available")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         pytest.skip("conftest not available")
+
+
+@pytest.fixture
+def skip_without_kubectl() -> None:
+    """Skip test if kubectl is not available."""
+    try:
+        result = subprocess.run(["kubectl", "version", "--client"], capture_output=True, timeout=5)
+        if result.returncode != 0:
+            pytest.skip("kubectl not available")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pytest.skip("kubectl not available")

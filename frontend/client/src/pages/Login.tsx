@@ -1,62 +1,66 @@
 /**
  * Login Page — OIDC Authentication Entry Point
- * 
+ *
+ * Uses shadcn login-04 block layout (card with form + image panel).
+ *
+ * Codemap coverage:
+ *  Trace 1 — Frontend Login Initiation: SSO buttons → AuthContext.initiateLogin()
+ *  Trace 2 — OIDC Callback: code+state → handleCallback() → JWT + role
+ *  Trace 3 — Role Normalization: handled by AuthContext → userTierStore
+ *
  * Flow:
- * 1. User enters/selects tenant slug
- * 2. Clicks "Sign In" → calls /auth/oidc/{tenant}/login
- * 3. Backend returns authorization_url with PKCE parameters
- * 4. Redirect browser to IdP (Google, Azure AD, Okta, etc.)
- * 5. IdP redirects back to /login/callback with code+state
- * 6. Frontend exchanges code for JWT via backend callback
- * 7. Store JWT, redirect to original route (or /home)
- * 
- * Post-Login Redirect Preservation:
- * - Captures `?redirect=` query param on initial load
- * - Stores intended destination before IdP redirect
- * - Restores to original route after successful callback
+ * 1a. Email/password — dev bypass in dev, placeholder for production auth
+ * 1b. SSO button → initiateLogin(tenantSlug) → IdP redirect (Trace 1)
+ * 2.  /login/callback → handleCallback(code, state) → JWT exchange (Trace 2)
+ * 3.  Role sync → userTierStore.setUserRole() (Trace 3)
+ * 4.  Redirect to stored destination or /home
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useLocation, useSearch } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, LogIn, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
-import { useI18n } from "@/i18n";
-import { SSOButtons } from '../components/auth/SSOButtons';
+import { LoginForm } from '../components/login-form';
+import { SSO_PROVIDER_TENANT, getSSOTenantSlug } from '../config/auth';
 
 export default function Login() {
-  const { t } = useI18n();
   const [, navigate] = useLocation();
   const search = useSearch();
-  const { isAuthenticated, isLoading, initiateLogin, handleCallback } = useAuthContext();
-  
-  const [tenantSlug, setTenantSlug] = useState('');
+  const {
+    isAuthenticated, isLoading,
+    initiateLogin, handleCallback, devBypass,
+  } = useAuthContext();
+
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Check if we're handling a callback (URL has code and state)
+  // ── Trace 2: OIDC Callback handling ──────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(search);
     const code = params.get('code');
     const state = params.get('state');
     const redirect = params.get('redirect');
+    const signup = params.get('signup');
 
-    // Store intended destination before initiating login
+    // Show success message after signup redirect
+    if (signup === 'success') {
+      setSuccessMessage('Account created successfully. Please sign in.');
+      // Clean up URL
+      navigate('/login', { replace: true });
+    }
+
+    // Preserve intended destination before IdP redirect
     if (redirect && !code) {
       sessionStorage.setItem('postLoginRedirect', redirect);
     }
 
     if (code && state) {
-      // Handle OIDC callback
       handleCallbackFlow(code, state);
     }
-  }, [search]);
+  }, [search, navigate]);
 
-  // Redirect if already authenticated (preserve original destination)
+  // Skip login if already authenticated (Skill §3: "Skip login if session valid")
   useEffect(() => {
     if (isAuthenticated && !isLoading) {
       const redirect = sessionStorage.getItem('postLoginRedirect');
@@ -65,6 +69,11 @@ export default function Login() {
     }
   }, [isAuthenticated, isLoading, navigate]);
 
+  /**
+   * Trace 2: Exchange authorization code for JWT.
+   * AuthContext.handleCallback validates CSRF state against sessionStorage,
+   * calls AuthClient.exchangeCodeForTokens, persists session, and syncs role.
+   */
   const handleCallbackFlow = async (code: string, state: string) => {
     setIsLoggingIn(true);
     setError(null);
@@ -72,118 +81,105 @@ export default function Login() {
     try {
       const success = await handleCallback(code, state);
       if (success) {
-        // Restore post-login redirect after successful callback
         const redirect = sessionStorage.getItem('postLoginRedirect');
         sessionStorage.removeItem('postLoginRedirect');
         navigate(redirect || '/home');
       } else {
-        setError(t("login.errors.authFailed"));
+        setError('Authentication failed. Please try again.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("login.errors.authFailedGeneric"));
+      setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!tenantSlug.trim()) {
-      setError(t("login.errors.tenantRequired"));
-      return;
-    }
-
+  /**
+   * Email/password handler.
+   * In dev mode: uses devBypass for instant auth.
+   * In production: placeholder until backend email/password endpoint exists.
+   */
+  const handleLogin = useCallback(async (_email: string, _password: string) => {
     setIsLoggingIn(true);
     setError(null);
 
     try {
-      await initiateLogin(tenantSlug.trim());
-      // Page will redirect to IdP, no need to handle success here
+      if (import.meta.env.DEV && devBypass) {
+        devBypass();
+        navigate('/home');
+      } else {
+        setError('Email/password login is not yet configured. Use SSO or contact your admin.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  }, [devBypass, navigate]);
+
+  /**
+   * Trace 1: SSO button → OIDC redirect.
+   * Maps provider key ("google" | "microsoft") to a tenant slug, then calls
+   * AuthContext.initiateLogin(tenantSlug) which:
+   *   1c. Calls AuthClient.initiateLogin() → fetch /auth/oidc/{tenant}/login
+   *   1e. Stores CSRF state in sessionStorage
+   *   1f. Redirects browser to IdP authorization URL
+   */
+  const handleSSOProvider = useCallback(async (provider: string) => {
+    setIsLoggingIn(true);
+    setError(null);
+
+    const tenantSlug = getSSOTenantSlug(provider);
+    if (!tenantSlug) {
+      setError(`SSO provider "${provider}" is not configured.`);
+      setIsLoggingIn(false);
+      return;
+    }
+
+    try {
+      await initiateLogin(tenantSlug);
+      // Browser will redirect to IdP — page unloads here
     } catch (err) {
       setIsLoggingIn(false);
-      setError(err instanceof Error ? err.message : t("login.errors.initiateFailed"));
+      if (err instanceof Error && err.message.toLowerCase().includes('not found')) {
+        setError(`SSO provider not found. Please contact your administrator.`);
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not connect to SSO provider. Try again or use email/password.');
+      }
     }
-  };
+  }, [initiateLogin]);
+
+  const handleDevBypass = useCallback(() => {
+    devBypass?.();
+    navigate('/home');
+  }, [devBypass, navigate]);
 
   // Show loading state while checking auth or handling callback
   if (isLoading || isLoggingIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/50">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 flex flex-col items-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-muted-foreground">
-              {isLoggingIn ? t("login.authenticating") : t("login.loading")}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+          <p className="text-muted-foreground" role="status">
+            {isLoggingIn ? 'Authenticating...' : 'Loading...'}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">{t("login.signIn")}</CardTitle>
-          <CardDescription>
-            {t("login.cardDescription")}
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tenant">{t("login.tenantLabel")}</Label>
-              <Input
-                id="tenant"
-                type="text"
-                placeholder={t("login.tenantPlaceholder")}
-                value={tenantSlug}
-                onChange={(e) => setTenantSlug(e.target.value)}
-                disabled={isLoggingIn}
-                autoFocus
-              />
-              <p className="text-sm text-muted-foreground">
-                {t("login.tenantHelp")}
-              </p>
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={isLoggingIn || !tenantSlug.trim()}
-            >
-              {isLoggingIn ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("login.submitting")}
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  {t("login.submit")}
-                </>
-              )}
-            </Button>
-          </form>
-
-          {/* SSO Providers — Enabled after Task 69 backend completion */}
-          <SSOButtons className="mt-6" enabled={true} />
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>{t("login.footer")}</p>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+      <div className="w-full max-w-sm md:max-w-4xl">
+        <LoginForm
+          onLogin={handleLogin}
+          onSSOProvider={handleSSOProvider}
+          onDevBypass={handleDevBypass}
+          isLoading={isLoggingIn}
+          error={error}
+          successMessage={successMessage}
+        />
+      </div>
     </div>
   );
 }

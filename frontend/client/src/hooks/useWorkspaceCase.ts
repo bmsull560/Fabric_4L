@@ -90,3 +90,26 @@ export function useValidateEvidenceClaim() {
     },
   });
 }
+
+/**
+ * Generate workspace intelligence data (signals, drivers, evidence, stakeholders)
+ * for a case. Should be called when workspace is first loaded with empty data.
+ */
+export function useGenerateWorkspaceIntelligence() {
+  return useMutation({
+    mutationFn: async (caseId: string) => {
+      const response = await apiClient.post('l4', `/analysis/cases/${caseId}/workspace/generate`, {});
+      return response.data as {
+        case_id: string;
+        account_id: string;
+        generated: boolean;
+        stats: {
+          signals: number;
+          drivers: number;
+          evidence: number;
+          stakeholders: number;
+        };
+      };
+    },
+  });
+}

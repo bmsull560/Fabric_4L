@@ -218,10 +218,56 @@ export function useAccountFilterOptions() {
   });
 }
 
+export interface CreateAccountParams {
+  name: string;
+  domain?: string;
+  industry?: string;
+  stage?: string;
+  region?: string;
+  employees?: number;
+  annual_revenue?: number;
+  headquarters?: string;
+  website?: string;
+  enrichment_input?: string;
+}
+
+export interface CreateAccountResponse {
+  account: Account;
+  workflow_id?: string;
+}
+
 export interface SyncAccountsParams {
   provider?: CRMProvider;
   account_ids?: string[];
   force_refresh?: boolean;
+}
+
+export function useCreateAccount() {
+  const queryClient = useQueryClient();
+
+  return useMutation<CreateAccountResponse, AccountApiError, CreateAccountParams>({
+    mutationFn: async (params) => {
+      const response = await apiClient.post('l4', '/accounts', {
+        name: params.name,
+        domain: params.domain,
+        industry: params.industry,
+        stage: params.stage || 'prospect',
+        region: params.region,
+        employees: params.employees,
+        annual_revenue: params.annual_revenue,
+        headquarters: params.headquarters,
+        website: params.website,
+        enrichment_input: params.enrichment_input,
+      });
+      return response.data as CreateAccountResponse;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QK.accounts.all });
+    },
+    onError: (error) => {
+      console.error('[useCreateAccount] Failed:', error.message);
+    },
+  });
 }
 
 export function useSyncAccounts() {

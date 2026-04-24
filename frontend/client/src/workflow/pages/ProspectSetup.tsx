@@ -162,6 +162,8 @@ type ProspectPromptBuilderProps = {
   onAttachContent?: () => AttachResult | Promise<AttachResult>
   onOpenVoiceInput?: () => void
   onNavigateToWorkspace?: (path: string, accountId: string) => void
+  /** External control of submitting state (e.g., from API mutation) */
+  isSubmitting?: boolean
 }
 
 type BuilderState = {
@@ -1235,6 +1237,7 @@ export default function ProspectSetup({
   onAttachContent,
   onOpenVoiceInput,
   onNavigateToWorkspace,
+  isSubmitting: externalIsSubmitting,
 }: ProspectPromptBuilderProps) {
   const [, navigate] = useLocation()
   const { setProspect, setCurrentStep } = useWorkflowStore()
@@ -1244,6 +1247,10 @@ export default function ProspectSetup({
     { initialValue, initialCompany },
     ({ initialValue, initialCompany }) => getInitialState(initialValue, initialCompany)
   )
+  
+  // Use external isSubmitting if provided, otherwise fall back to internal state
+  const isSubmitting = externalIsSubmitting ?? state.isSubmitting
+  
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const helperId = React.useId()
   const statusId = React.useId()
@@ -1338,7 +1345,7 @@ export default function ProspectSetup({
   const handleFormSubmit = React.useCallback(
     async (event?: React.FormEvent<HTMLFormElement>) => {
       event?.preventDefault()
-      if (!submitEnabled || state.isSubmitting) return
+      if (!submitEnabled || isSubmitting) return
 
       dispatch({ type: "START_SUBMIT" })
       try {
@@ -1380,7 +1387,7 @@ export default function ProspectSetup({
         dispatch({ type: "SUBMIT_ERROR", message: "Unable to launch intelligence. Please review the input and try again." })
       }
     },
-    [matchedSelectedCompany, onCreateSetup, onNavigateToWorkspace, state, submitEnabled, navigate, setProspect, setCurrentStep]
+    [matchedSelectedCompany, onCreateSetup, onNavigateToWorkspace, state, submitEnabled, navigate, setProspect, setCurrentStep, isSubmitting]
   )
 
   const handleKeyDown = React.useCallback(
@@ -1610,10 +1617,10 @@ export default function ProspectSetup({
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={!submitEnabled || state.isSubmitting}
+                    disabled={!submitEnabled || isSubmitting}
                     className={UI_BUTTON_STYLES.primary}
                   >
-                    {state.isSubmitting ? "Launching..." : "Launch Intelligence"}
+                    {isSubmitting ? "Launching..." : "Launch Intelligence"}
                     <ArrowUp className="ml-2 h-4 w-4" />
                   </Button>
                 </div>

@@ -93,7 +93,7 @@ describe('AuthProvider', () => {
       const userInfo: UserInfo = {
         id: 'user-123',
         email: 'restored@example.com',
-        role: 'admin',
+        role: 'tenant_admin',  // Backend-canonical role
         tenantId: 'tenant-1',
         tenantSlug: 'test-tenant',
       };
@@ -439,11 +439,11 @@ describe('AuthProvider', () => {
 
   describe('logout', () => {
     it('clears all auth state and storage', async () => {
-      // Set up authenticated state
+      // Set up authenticated state with backend-canonical role
       const userInfo: UserInfo = {
         id: 'user-123',
         email: 'test@example.com',
-        role: 'admin',
+        role: 'super_admin',  // Backend-canonical role
         tenantId: 'tenant-1',
         tenantSlug: 'test-tenant',
       };
@@ -522,7 +522,7 @@ describe('AuthProvider', () => {
       // Should now be authenticated as dev user
       await waitFor(() => {
         expect(screen.getByTestId('authenticated')).toHaveTextContent('authenticated');
-        expect(screen.getByTestId('user-email')).toHaveTextContent('dev@value-fabric.com');
+        expect(screen.getByTestId('user-email')).toHaveTextContent('dev@example.com');
       });
 
       // Verify token was stored
@@ -559,7 +559,8 @@ describe('AuthProvider', () => {
 
     it('logs out when token structure is invalid', async () => {
       localStorage.setItem('accessToken', 'invalid-token');
-      localStorage.setItem('userInfo', JSON.stringify({ id: 'user-1', email: 'test@test.com', role: 'standard', tenantId: 't1', tenantSlug: 'test' }));
+      // Uses backend-canonical role read_only which normalizes to standard tier
+      localStorage.setItem('userInfo', JSON.stringify({ id: 'user-1', email: 'test@test.com', role: 'read_only', tenantId: 't1', tenantSlug: 'test' }));
 
       const wrapper = createWrapper();
       render(

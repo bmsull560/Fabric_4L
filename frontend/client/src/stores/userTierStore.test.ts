@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from "@testing-library/react";
-import { useUserTierStore, getRouteTier, validateTier, isDenied, type UserTier } from "./userTierStore";
+import { useUserTierStore, getRouteTier, validateTier, isDenied, normalizeRoleToTier, type UserTier } from "./userTierStore";
 
 describe("useUserTierStore", () => {
   beforeEach(() => {
@@ -526,5 +526,87 @@ describe("getRouteTier helper", () => {
 
   it("should handle root route", () => {
     expect(getRouteTier("/")).toBe("standard");
+  });
+});
+
+describe("normalizeRoleToTier", () => {
+  // Backend-canonical role tests
+  it("should map super_admin to admin tier", () => {
+    expect(normalizeRoleToTier("super_admin")).toBe("admin");
+  });
+
+  it("should map tenant_admin to admin tier", () => {
+    expect(normalizeRoleToTier("tenant_admin")).toBe("admin");
+  });
+
+  it("should map content_admin to admin tier", () => {
+    expect(normalizeRoleToTier("content_admin")).toBe("admin");
+  });
+
+  it("should map analyst to advanced tier", () => {
+    expect(normalizeRoleToTier("analyst")).toBe("advanced");
+  });
+
+  it("should map read_only to standard tier", () => {
+    expect(normalizeRoleToTier("read_only")).toBe("standard");
+  });
+
+  it("should map system to standard tier (fail-safe)", () => {
+    expect(normalizeRoleToTier("system")).toBe("standard");
+  });
+
+  // Frontend tier passthrough tests
+  it("should pass through admin tier", () => {
+    expect(normalizeRoleToTier("admin")).toBe("admin");
+  });
+
+  it("should pass through advanced tier", () => {
+    expect(normalizeRoleToTier("advanced")).toBe("advanced");
+  });
+
+  it("should pass through standard tier", () => {
+    expect(normalizeRoleToTier("standard")).toBe("standard");
+  });
+
+  // Legacy role tests
+  it("should map editor to advanced tier", () => {
+    expect(normalizeRoleToTier("editor")).toBe("advanced");
+  });
+
+  it("should map viewer to standard tier", () => {
+    expect(normalizeRoleToTier("viewer")).toBe("standard");
+  });
+
+  it("should map user to standard tier", () => {
+    expect(normalizeRoleToTier("user")).toBe("standard");
+  });
+
+  // Case insensitivity tests
+  it("should handle uppercase backend roles", () => {
+    expect(normalizeRoleToTier("SUPER_ADMIN")).toBe("admin");
+    expect(normalizeRoleToTier("TENANT_ADMIN")).toBe("admin");
+    expect(normalizeRoleToTier("ANALYST")).toBe("advanced");
+  });
+
+  it("should handle mixed case roles", () => {
+    expect(normalizeRoleToTier("Super_Admin")).toBe("admin");
+    expect(normalizeRoleToTier("Content_Admin")).toBe("admin");
+  });
+
+  // SECURITY: Unknown role fail-safe tests
+  it("should fail-safe to standard for unknown roles", () => {
+    expect(normalizeRoleToTier("unknown")).toBe("standard");
+    expect(normalizeRoleToTier("hacker")).toBe("standard");
+    expect(normalizeRoleToTier("administrator")).toBe("standard");
+  });
+
+  it("should fail-safe to standard for empty/whitespace roles", () => {
+    expect(normalizeRoleToTier("")).toBe("standard");
+    expect(normalizeRoleToTier("   ")).toBe("standard");
+  });
+
+  it("should trim whitespace from roles", () => {
+    expect(normalizeRoleToTier("  admin  ")).toBe("admin");
+    expect(normalizeRoleToTier(" analyst ")).toBe("advanced");
   });
 });

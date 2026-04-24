@@ -5,7 +5,7 @@ import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentStream } from "@/hooks/useAgentStream";
 import { useAccount } from "@/hooks/useAccounts";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 
@@ -49,8 +49,17 @@ export default function SignalsTab() {
     accountName: account?.name ?? "Account",
   });
 
-  if (accountLoading || isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading signals…</div>;
-  if (accountError || error || !account) return <div className="p-6 text-sm text-destructive">Failed to load signal data.</div>;
+  const generateMutation = useGenerateWorkspaceIntelligence();
+
+  // Auto-generate workspace data if empty
+  useEffect(() => {
+    if (caseId && signals.length === 0 && !isLoading && !generateMutation.isPending) {
+      generateMutation.mutate(caseId);
+    }
+  }, [caseId, signals.length, isLoading]);
+
+  if (accountLoading || isLoading || generateMutation.isPending) return <div className="p-6 text-sm text-muted-foreground">{generateMutation.isPending ? "Generating intelligence..." : "Loading signals…"}</div>;
+  if (accountError || error || generateMutation.isError || !account) return <div className="p-6 text-sm text-destructive">Failed to load signal data.</div>;
 
   const detailContent = selectedSignal ? (
     <div className="space-y-4">

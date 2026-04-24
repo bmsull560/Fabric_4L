@@ -15,15 +15,9 @@ import yaml
 class TestEndToEndValidation:
     """End-to-end validation tests simulating the CI pipeline."""
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    @pytest.mark.skipif(
-        subprocess.run(["kubeconform", "-v"], capture_output=True).returncode != 0,
-        reason="kubeconform not available"
-    )
-    def test_dev_full_validation_pipeline(self, repo_root: Path) -> None:
+    def test_dev_full_validation_pipeline(
+        self, repo_root: Path, skip_without_kustomize, skip_without_kubeconform
+    ) -> None:
         """[1a, 1b, 1c, 1e] Full CI pipeline for dev overlay."""
         import tempfile
         
@@ -49,19 +43,9 @@ class TestEndToEndValidation:
         
         assert result.returncode == 0, f"Schema validation failed: {result.stderr}"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    @pytest.mark.skipif(
-        subprocess.run(["kubeconform", "-v"], capture_output=True).returncode != 0,
-        reason="kubeconform not available"
-    )
-    @pytest.mark.skipif(
-        subprocess.run(["conftest", "--version"], capture_output=True).returncode != 0,
-        reason="conftest not available"
-    )
-    def test_prod_full_validation_pipeline(self, repo_root: Path) -> None:
+    def test_prod_full_validation_pipeline(
+        self, repo_root: Path, skip_without_kustomize, skip_without_kubeconform, skip_without_conftest
+    ) -> None:
         """[1a, 1b, 1c, 1e] Full CI pipeline for prod overlay with policies."""
         import tempfile
         
@@ -103,11 +87,9 @@ class TestEndToEndValidation:
         
         assert result.returncode == 0, f"Policy validation failed: {result.stdout}{result.stderr}"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    def test_all_layers_present_in_build(self, repo_root: Path) -> None:
+    def test_all_layers_present_in_build(
+        self, repo_root: Path, skip_without_kustomize
+    ) -> None:
         """Verify all 6 Value Fabric layers are present in rendered manifests."""
         result = subprocess.run(
             ["kustomize", "build", "k8s/overlays/prod"],
@@ -140,11 +122,9 @@ class TestEndToEndValidation:
             matching = [d for d in deployments if layer in d]
             assert matching, f"Layer {layer} not found in rendered manifests"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    def test_monitoring_stack_present_in_build(self, repo_root: Path) -> None:
+    def test_monitoring_stack_present_in_build(
+        self, repo_root: Path, skip_without_kustomize
+    ) -> None:
         """Verify Prometheus and Alertmanager are present in rendered manifests."""
         result = subprocess.run(
             ["kustomize", "build", "k8s/overlays/prod"],
@@ -175,11 +155,9 @@ class TestEndToEndValidation:
 class TestEnvironmentDifferences:
     """Tests for differences between dev and prod environments."""
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    def test_prod_has_external_secrets_dev_does_not(self, repo_root: Path) -> None:
+    def test_prod_has_external_secrets_dev_does_not(
+        self, repo_root: Path, skip_without_kustomize
+    ) -> None:
         """Verify prod has ExternalSecrets and dev does not."""
         # Build dev
         dev_result = subprocess.run(
@@ -213,11 +191,9 @@ class TestEnvironmentDifferences:
         # Dev might have some, but prod should definitely have them
         assert len(prod_external_secrets) > 0, "Prod must have ExternalSecrets"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    def test_prod_has_environment_labels(self, repo_root: Path) -> None:
+    def test_prod_has_environment_labels(
+        self, repo_root: Path, skip_without_kustomize
+    ) -> None:
         """Verify all prod resources have environment=prod label."""
         result = subprocess.run(
             ["kustomize", "build", "k8s/overlays/prod"],
@@ -246,11 +222,9 @@ class TestEnvironmentDifferences:
         if missing_labels:
             pytest.fail(f"Resources missing environment=prod label:\n" + "\n".join(missing_labels))
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    def test_replica_counts_differ(self, repo_root: Path) -> None:
+    def test_replica_counts_differ(
+        self, repo_root: Path, skip_without_kustomize
+    ) -> None:
         """Verify replica counts differ between dev and prod where applicable."""
         # Build dev
         dev_result = subprocess.run(
@@ -296,11 +270,9 @@ class TestEnvironmentDifferences:
 class TestCrossComponentIntegration:
     """Tests for cross-component integration and references."""
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    def test_prometheus_references_alertmanager(self, repo_root: Path) -> None:
+    def test_prometheus_references_alertmanager(
+        self, repo_root: Path, skip_without_kustomize
+    ) -> None:
         """Verify Prometheus configuration references Alertmanager service."""
         result = subprocess.run(
             ["kustomize", "build", "k8s/overlays/prod"],
@@ -331,11 +303,9 @@ class TestCrossComponentIntegration:
         
         assert "alertmanager" in prometheus_yml, "Prometheus must reference alertmanager"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
-    def test_services_have_valid_selectors(self, repo_root: Path) -> None:
+    def test_services_have_valid_selectors(
+        self, repo_root: Path, skip_without_kustomize
+    ) -> None:
         """Verify all Services have valid selectors matching Deployments."""
         result = subprocess.run(
             ["kustomize", "build", "k8s/overlays/prod"],

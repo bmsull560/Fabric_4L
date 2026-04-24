@@ -5,7 +5,7 @@ import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentStream } from "@/hooks/useAgentStream";
 import { useAccount } from "@/hooks/useAccounts";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 
 interface Recommendation { id: string; title: string; priority: "critical" | "high" | "medium"; projectedValue: string; confidence: "high" | "medium" | "low"; horizon: string; prospectPain: string; rootDriver: string; ourCapability: string }
@@ -24,8 +24,16 @@ export default function ActionPlanTab() {
   const totalValue = useMemo(() => recommendations.reduce((sum, rec) => sum + Number((rec.projectedValue || "").replace(/[^\d.-]/g, "")), 0), [recommendations]);
   const { messages, sendMessage, suggestedActions } = useAgentStream({ activeTab: "action-plan", accountName: account?.name ?? "Account" });
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading action plan…</div>;
-  if (error || !account) return <div className="p-6 text-sm text-destructive">Failed to load action plan.</div>;
+  const generateMutation = useGenerateWorkspaceIntelligence();
+
+  useEffect(() => {
+    if (caseId && recommendations.length === 0 && !isLoading && !generateMutation.isPending) {
+      generateMutation.mutate(caseId);
+    }
+  }, [caseId, recommendations.length, isLoading]);
+
+  if (isLoading || generateMutation.isPending) return <div className="p-6 text-sm text-muted-foreground">{generateMutation.isPending ? "Generating action plan..." : "Loading action plan…"}</div>;
+  if (error || generateMutation.isError || !account) return <div className="p-6 text-sm text-destructive">Failed to load action plan.</div>;
 
   return <ValueStudioShellComponent account={{ accountName: account.name, industry: account.industry ?? "Unknown", revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="action-plan" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} />}>
     {recommendations.length === 0 ? <SectionCard title="Recommendations"><div className="text-sm text-muted-foreground">No action-plan outputs available for this case yet.</div></SectionCard> : <>

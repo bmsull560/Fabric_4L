@@ -1,4 +1,5 @@
 ---
+name: fumadocs
 description: Fumadocs documentation framework guidelines
 tags: [documentation, fumadocs, mdx, nextjs, react]
 ---

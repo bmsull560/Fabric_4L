@@ -5033,6 +5033,366 @@
           }
         }
       }
+    },
+    "/v1/valuepacks": {
+      "get": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "List ValuePacks",
+        "description": "Returns paginated list of ValuePacks with optional filtering by tier, search term",
+        "operationId": "list_valuepacks",
+        "parameters": [
+          {
+            "name": "tier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3
+              ],
+              "description": "Filter by tier"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Search in name/description"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuePackListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Create ValuePack",
+        "description": "Create a new ValuePack. All fields must conform to ValuePack Schema v1.0.",
+        "operationId": "create_valuepack",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValuePackResponse"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuePackResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "409": {
+            "description": "ValuePack already exists"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/valuepacks/{industry_id}": {
+      "get": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Get ValuePack",
+        "description": "Get a specific ValuePack by industry_id. Returns complete ValuePack schema v1.0 data.",
+        "operationId": "get_valuepack",
+        "parameters": [
+          {
+            "name": "industry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuePackResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "ValuePack not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Update ValuePack",
+        "description": "Update an existing ValuePack. Only provided fields are updated.",
+        "operationId": "update_valuepack",
+        "parameters": [
+          {
+            "name": "industry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValuePackResponse"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuePackResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "ValuePack not found"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Delete ValuePack",
+        "description": "Soft-delete a ValuePack (marks as inactive)",
+        "operationId": "delete_valuepack",
+        "parameters": [
+          {
+            "name": "industry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "ValuePack not found"
+          }
+        }
+      }
+    },
+    "/v1/valuepacks/ontology-map": {
+      "get": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Get Ontology Map",
+        "description": "Get cross-industry ontology map showing shared drivers, models, and proof patterns",
+        "operationId": "get_ontology_map",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OntologyMapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/valuepacks/composable-templates": {
+      "get": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Get Composable Templates",
+        "description": "Get the composable template library with reusable calculation patterns",
+        "operationId": "get_composable_templates",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComposableTemplateLibraryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/valuepacks/compare": {
+      "post": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Compare ValuePacks",
+        "description": "Compare multiple ValuePacks side-by-side across all schema dimensions",
+        "operationId": "compare_valuepacks",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "industry_ids"
+                ],
+                "properties": {
+                  "industry_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 2,
+                    "maxItems": 5
+                  },
+                  "dimensions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "ValuePack not found"
+          }
+        }
+      }
+    },
+    "/v1/valuepacks/{industry_id}/seed": {
+      "post": {
+        "tags": [
+          "ValuePacks"
+        ],
+        "summary": "Seed ValuePack Data",
+        "description": "Seed ValuePack data into Neo4j knowledge graph with nodes and relationships",
+        "operationId": "seed_valuepack_data",
+        "parameters": [
+          {
+            "name": "industry_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Seeded successfully"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "ValuePack not found"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -11912,6 +12272,151 @@
         ],
         "title": "ValueTreeResponse",
         "description": "Complete value tree response."
+      },
+      "ValuePackResponse": {
+        "title": "ValuePackResponse",
+        "description": "Complete ValuePack Framework v1.0 data",
+        "type": "object",
+        "required": ["industry_id", "display_name", "tier", "description", "primary_value_drivers", "core_use_cases", "economic_model_types", "proof_requirements", "why_it_wins", "endpoint_mappings", "metadata"],
+        "properties": {
+          "industry_id": {"type": "string", "description": "Unique industry slug"},
+          "display_name": {"type": "string", "description": "Human-readable industry name"},
+          "tier": {"type": "integer", "enum": [1, 2, 3], "description": "1=Immediate Traction, 2=High ROI Underserved, 3=Complex but Powerful"},
+          "description": {"type": "string", "description": "Industry overview"},
+          "primary_value_drivers": {"type": "array", "items": {"$ref": "#/components/schemas/ValueDriver"}, "maxItems": 4},
+          "core_use_cases": {"type": "array", "items": {"$ref": "#/components/schemas/CoreUseCase"}, "maxItems": 4},
+          "economic_model_types": {"type": "array", "items": {"$ref": "#/components/schemas/EconomicModelType"}, "maxItems": 4},
+          "proof_requirements": {"type": "array", "items": {"$ref": "#/components/schemas/ProofRequirement"}, "maxItems": 3},
+          "why_it_wins": {"type": "array", "items": {"$ref": "#/components/schemas/WinStatement"}, "maxItems": 3},
+          "endpoint_mappings": {"$ref": "#/components/schemas/EndpointMappings"},
+          "completeness_score": {"type": "number", "minimum": 0, "maximum": 1, "description": "Schema completeness 0-1"},
+          "metadata": {"$ref": "#/components/schemas/ValuePackMetadata"}
+        }
+      },
+      "ValueDriver": {
+        "title": "ValueDriver",
+        "type": "object",
+        "required": ["id", "name", "description", "typical_impact", "measurement_approach"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "typical_impact": {"type": "string"},
+          "measurement_approach": {"type": "string"}
+        }
+      },
+      "CoreUseCase": {
+        "title": "CoreUseCase",
+        "type": "object",
+        "required": ["id", "name", "description", "target_persona", "business_problem"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "description": {"type": "string"},
+          "target_persona": {"type": "string"},
+          "business_problem": {"type": "string"}
+        }
+      },
+      "EconomicModelType": {
+        "title": "EconomicModelType",
+        "type": "object",
+        "required": ["id", "name", "formula_shape", "inputs", "output_unit"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "formula_shape": {"type": "string", "description": "Input → Calculation → Output"},
+          "inputs": {"type": "array", "items": {"type": "string"}},
+          "output_unit": {"type": "string"},
+          "typical_range": {"type": "string"}
+        }
+      },
+      "ProofRequirement": {
+        "title": "ProofRequirement",
+        "type": "object",
+        "required": ["id", "requirement", "evidence_type", "minimum_level"],
+        "properties": {
+          "id": {"type": "string"},
+          "requirement": {"type": "string"},
+          "evidence_type": {"type": "string"},
+          "minimum_level": {"type": "integer", "minimum": 1, "maximum": 5}
+        }
+      },
+      "WinStatement": {
+        "title": "WinStatement",
+        "type": "object",
+        "required": ["statement", "differentiation", "proof_point"],
+        "properties": {
+          "statement": {"type": "string"},
+          "differentiation": {"type": "string"},
+          "proof_point": {"type": "string"}
+        }
+      },
+      "EndpointMappings": {
+        "title": "EndpointMappings",
+        "type": "object",
+        "required": ["intelligence", "ai_model", "driver_tree", "calculator", "value_case"],
+        "properties": {
+          "intelligence": {"$ref": "#/components/schemas/EndpointContribution"},
+          "ai_model": {"$ref": "#/components/schemas/EndpointContribution"},
+          "driver_tree": {"$ref": "#/components/schemas/EndpointContribution"},
+          "calculator": {"$ref": "#/components/schemas/EndpointContribution"},
+          "value_case": {"$ref": "#/components/schemas/EndpointContribution"}
+        }
+      },
+      "EndpointContribution": {
+        "title": "EndpointContribution",
+        "type": "object",
+        "required": ["enabled", "contribution_summary", "data_format"],
+        "properties": {
+          "enabled": {"type": "boolean"},
+          "contribution_summary": {"type": "string"},
+          "data_format": {"type": "string"},
+          "specific_assets": {"type": "array", "items": {"type": "string"}}
+        }
+      },
+      "ValuePackMetadata": {
+        "title": "ValuePackMetadata",
+        "type": "object",
+        "required": ["deal_size_range", "sales_cycle_length", "switching_cost", "data_richness", "feedback_loop_speed"],
+        "properties": {
+          "deal_size_range": {"type": "string"},
+          "sales_cycle_length": {"type": "string"},
+          "switching_cost": {"type": "string", "enum": ["low", "medium", "high"]},
+          "data_richness": {"type": "string", "enum": ["low", "medium", "high"]},
+          "feedback_loop_speed": {"type": "string", "enum": ["slow", "medium", "fast"]}
+        }
+      },
+      "ValuePackListResponse": {
+        "title": "ValuePackListResponse",
+        "type": "object",
+        "required": ["items", "total", "page", "page_size", "has_more"],
+        "properties": {
+          "items": {"type": "array", "items": {"$ref": "#/components/schemas/ValuePackResponse"}},
+          "total": {"type": "integer"},
+          "page": {"type": "integer"},
+          "page_size": {"type": "integer"},
+          "has_more": {"type": "boolean"}
+        }
+      },
+      "OntologyMapResponse": {
+        "title": "OntologyMapResponse",
+        "type": "object",
+        "required": ["shared_drivers", "shared_model_types", "shared_proof_patterns", "cross_reference_matrix"],
+        "properties": {
+          "shared_drivers": {"type": "array", "items": {"type": "object"}},
+          "shared_model_types": {"type": "array", "items": {"type": "object"}},
+          "shared_proof_patterns": {"type": "array", "items": {"type": "object"}},
+          "cross_reference_matrix": {"type": "object"}
+        }
+      },
+      "ComposableTemplateLibraryResponse": {
+        "title": "ComposableTemplateLibraryResponse",
+        "type": "object",
+        "required": ["templates", "template_usage"],
+        "properties": {
+          "templates": {"type": "array", "items": {"type": "object"}},
+          "template_usage": {"type": "object"}
+        }
       }
     },
     "securitySchemes": {
@@ -11961,6 +12466,10 @@
     {
       "name": "Models",
       "description": "Value model management and organization"
+    },
+    {
+      "name": "ValuePacks",
+      "description": "ValuePack Framework - industry-specific value model templates with cross-industry ontology and composable templates"
     }
   ]
 }

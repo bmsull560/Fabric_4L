@@ -234,10 +234,6 @@ class TestKustomizeProdOverlay:
 class TestKustomizeBuild:
     """Test kustomize build produces valid, complete manifests."""
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
     def test_dev_overlay_builds(self, repo_root: Path, skip_without_kustomize) -> None:
         """[1b] Dev overlay renders without errors."""
         result = subprocess.run(
@@ -258,10 +254,6 @@ class TestKustomizeBuild:
         assert "Deployment" in kinds
         assert "Service" in kinds
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
     def test_prod_overlay_builds(self, repo_root: Path, skip_without_kustomize) -> None:
         """[1b] Prod overlay renders without errors."""
         result = subprocess.run(
@@ -274,10 +266,6 @@ class TestKustomizeBuild:
         assert result.returncode == 0, f"Prod build failed: {result.stderr}"
         assert result.stdout, "Prod build produced empty output"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
     def test_prod_includes_external_secrets(self, repo_root: Path, skip_without_kustomize) -> None:
         """Verify prod build includes ExternalSecret resources."""
         result = subprocess.run(
@@ -293,10 +281,6 @@ class TestKustomizeBuild:
         assert "ExternalSecret" in kinds, "Prod must include ExternalSecret resources"
         assert "Secret" not in kinds, "Prod must not include raw Secret resources"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
     def test_prod_has_environment_label(self, repo_root: Path, skip_without_kustomize) -> None:
         """Verify all prod resources have environment=prod label."""
         result = subprocess.run(
@@ -318,10 +302,6 @@ class TestKustomizeBuild:
             assert labels.get("environment") == "prod", \
                 f"{doc.get('kind')}/{metadata.get('name')} missing environment=prod label"
 
-    @pytest.mark.skipif(
-        subprocess.run(["kustomize", "version"], capture_output=True).returncode != 0,
-        reason="kustomize not available"
-    )
     def test_prod_replicas_scaled(self, repo_root: Path, skip_without_kustomize) -> None:
         """Verify prod replica patches are applied."""
         result = subprocess.run(
