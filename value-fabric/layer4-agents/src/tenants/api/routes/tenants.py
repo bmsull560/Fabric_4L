@@ -20,7 +20,7 @@ from shared.identity.models import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ....database import get_db
+from ....database import get_db_from_context
 from ...service import (
     create_tenant,
     delete_tenant,
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/tenants", tags=["Tenants"])
 async def api_create_tenant(
     request: TenantCreateRequest,
     _ctx=Depends(require_super_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> TenantModel:
     """Create a new tenant. Requires ``super_admin`` role."""
     return await create_tenant(db, request)
@@ -48,7 +48,7 @@ async def api_list_tenants(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     _ctx=Depends(require_super_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> list[TenantModel]:
     """List all tenants. Requires ``super_admin`` role."""
     return await list_tenants(db, status=tenant_status, limit=limit, offset=offset)
@@ -58,7 +58,7 @@ async def api_list_tenants(
 async def api_get_tenant(
     tenant_id: UUID,
     _ctx=Depends(require_super_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> TenantModel:
     """Get a tenant by ID. Requires ``super_admin`` role."""
     tenant = await get_tenant(db, tenant_id)
@@ -72,7 +72,7 @@ async def api_update_tenant(
     tenant_id: UUID,
     request: TenantUpdateRequest,
     _ctx=Depends(require_super_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> TenantModel:
     """Update a tenant. Requires ``super_admin`` role."""
     tenant = await update_tenant(db, tenant_id, request)
@@ -85,7 +85,7 @@ async def api_update_tenant(
 async def api_delete_tenant(
     tenant_id: UUID,
     _ctx=Depends(require_super_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> None:
     """Soft-delete a tenant. Requires ``super_admin`` role."""
     deleted = await delete_tenant(db, tenant_id)

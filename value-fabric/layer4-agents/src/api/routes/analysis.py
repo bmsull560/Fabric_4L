@@ -10,10 +10,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from shared.audit import AuditAction, AuditEmitter, emit_audit_event
 from shared.identity.context import RequestContext
-from shared.identity.dependencies import get_optional_context
+from shared.identity.dependencies import get_optional_context, require_authenticated
 
 from ...config.settings import settings
-from ...database import get_db
+from ...database import get_db, get_db_from_context
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
 from ...services.account_service import AccountService
@@ -217,7 +217,7 @@ async def generate_business_case(
     request: BusinessCaseRequest,
     background_tasks: BackgroundTasks,
     executor: WorkflowExecutor = Depends(get_executor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_authenticated),
 ) -> BusinessCaseResponse:
     """Generate a business case document.
@@ -331,7 +331,7 @@ async def export_business_case(
     case_id: str,
     format: str = "pdf",
     executor: WorkflowExecutor = Depends(get_executor),
-    context: RequestContext | None = Depends(get_optional_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Export a generated business case.
 
@@ -413,7 +413,7 @@ async def export_business_case(
         "case-id": case_id,
         "workflow-id": workflow_id,
         "export-id": export_id,
-        "tenant-id": str(context.tenant_id) if context else "unknown",
+        "tenant-id": str(context.tenant_id),
     }
 
     content_type = "application/pdf" if format == "pdf" else "application/octet-stream"
@@ -440,9 +440,9 @@ async def export_business_case(
 
     request_event = emit_audit_event(
         AuditAction.EXPORT_REQUESTED,
-        tenant_id=context.tenant_id if context else None,
-        user_id=context.user_id if context else None,
-        api_key_id=context.api_key_id if context else None,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -456,9 +456,9 @@ async def export_business_case(
 
     package_event = emit_audit_event(
         AuditAction.EXPORT_PACKAGE_GENERATED,
-        tenant_id=context.tenant_id if context else None,
-        user_id=context.user_id if context else None,
-        api_key_id=context.api_key_id if context else None,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={
@@ -475,9 +475,9 @@ async def export_business_case(
 
     access_event = emit_audit_event(
         AuditAction.EXPORT_DOWNLOAD_ACCESSED,
-        tenant_id=context.tenant_id if context else None,
-        user_id=context.user_id if context else None,
-        api_key_id=context.api_key_id if context else None,
+        tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        api_key_id=context.api_key_id,
         resource_type="BusinessCaseExport",
         resource_id=case_id,
         details={

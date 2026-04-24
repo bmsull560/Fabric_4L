@@ -40,10 +40,35 @@ _L4_ROUTES_DIR = (
 _L4_TENANT_ROUTES_DIR = (
     _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "tenants" / "api" / "routes"
 )
+_L4_FEATURE_FLAGS_DIR = (
+    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "feature_flags" / "api"
+)
+_L4_REGISTRY_DIR = (
+    _PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src" / "registry" / "api"
+)
+
+_ALL_ROUTE_DIRS = [
+    _L4_ROUTES_DIR,
+    _L4_TENANT_ROUTES_DIR,
+    _L4_FEATURE_FLAGS_DIR,
+    _L4_REGISTRY_DIR,
+]
 
 # Routes that are explicitly allowed to use get_db (e.g. health, metrics)
-# These must be individually justified and reviewed.
-ALLOWED_GET_DB_FILES: Set[str] = set()
+# Each entry must be individually justified and reviewed.
+# oidc.py         — OIDC login/callback are pre-authentication flows (user has no JWT yet)
+# registration.py — Self-registration is pre-authentication (tenant doesn't exist yet)
+# crm_webhooks.py — Salesforce/HubSpot server-to-server calls use HMAC signature auth
+# billing.py      — Stripe webhook endpoint uses HMAC signature auth (non-webhook
+#                   endpoints now use get_db_from_context + require_authenticated)
+# provisioning.py — Webhook endpoint uses token-based auth from external systems
+ALLOWED_GET_DB_FILES: Set[str] = {
+    "oidc.py",
+    "registration.py",
+    "crm_webhooks.py",
+    "billing.py",
+    "provisioning.py",
+}
 
 # HTTP methods considered "write" / mutation operations
 WRITE_METHODS = {"post", "put", "patch", "delete"}
@@ -206,7 +231,7 @@ class TestNoDeprecatedGetDb:
         """
         violations = []
 
-        route_dirs = [_L4_ROUTES_DIR, _L4_TENANT_ROUTES_DIR]
+        route_dirs = _ALL_ROUTE_DIRS
         for route_dir in route_dirs:
             if not route_dir.exists():
                 continue
@@ -269,7 +294,7 @@ class TestNoOptionalContextOnWriteRoutes:
         """
         violations = []
 
-        route_dirs = [_L4_ROUTES_DIR, _L4_TENANT_ROUTES_DIR]
+        route_dirs = _ALL_ROUTE_DIRS
         for route_dir in route_dirs:
             if not route_dir.exists():
                 continue

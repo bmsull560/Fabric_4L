@@ -18,7 +18,7 @@ from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...database import get_db
+from ...database import get_db_from_context
 from ..service import FeatureFlagService
 
 router = APIRouter(prefix="/feature-flags", tags=["Feature Flags"])
@@ -55,7 +55,7 @@ async def list_feature_flags(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> list[FeatureFlagResponse]:
     """List feature flags for the caller's tenant."""
     # super_admin can list platform-wide flags if they omit tenant context,
@@ -84,7 +84,7 @@ async def list_feature_flags(
 async def get_feature_flag(
     flag_key: str,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> FeatureFlagResponse:
     """Get a single feature flag by key."""
     flag = await FeatureFlagService.get_flag(db, flag_key, tenant_id=ctx.tenant_id)
@@ -110,7 +110,7 @@ async def upsert_feature_flag(
     request: FeatureFlagUpsertRequest,
     background_tasks: BackgroundTasks,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> FeatureFlagResponse:
     """Create or update a feature flag."""
     updated_by = UUID(ctx.user_id) if ctx.user_id else None
@@ -145,7 +145,7 @@ async def delete_feature_flag(
     flag_key: str,
     background_tasks: BackgroundTasks,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> None:
     """Delete a feature flag."""
     deleted = await FeatureFlagService.delete_flag(

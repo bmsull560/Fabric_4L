@@ -21,7 +21,7 @@ from shared.identity.models import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ....database import get_db
+from ....database import get_db_from_context
 from ...service import (
     deactivate_user,
     get_user,
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 async def api_invite_user(
     request: UserInviteRequest,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> UserModel:
     """Invite a user to the caller's tenant. Requires ``tenant_admin`` role."""
     invited_by = UUID(ctx.user_id) if ctx.user_id else None
@@ -49,7 +49,7 @@ async def api_list_users(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> list[UserModel]:
     """List all users in the caller's tenant. Requires ``tenant_admin`` role."""
     return await list_users(db, ctx.tenant_id, limit=limit, offset=offset)
@@ -59,7 +59,7 @@ async def api_list_users(
 async def api_get_user(
     user_id: UUID,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> UserModel:
     """Get a user by ID. Requires ``tenant_admin`` role."""
     user = await get_user(db, ctx.tenant_id, user_id)
@@ -73,7 +73,7 @@ async def api_update_user(
     user_id: UUID,
     request: UserUpdateRequest,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> UserModel:
     """Update a user's role or status. Requires ``tenant_admin`` role."""
     user = await update_user(db, ctx.tenant_id, user_id, request)
@@ -86,7 +86,7 @@ async def api_update_user(
 async def api_deactivate_user(
     user_id: UUID,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> None:
     """Deactivate a user. Requires ``tenant_admin`` role."""
     deactivated = await deactivate_user(db, ctx.tenant_id, user_id)

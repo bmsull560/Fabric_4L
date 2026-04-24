@@ -10,9 +10,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.identity.context import RequestContext
-from shared.identity.dependencies import get_request_context, require_super_admin
+from shared.identity.dependencies import require_authenticated, require_super_admin
 
-from ....database import get_db
+from ....database import get_db, get_db_from_context
 from ...provisioning import (
     ProvisioningState,
     ProvisioningStatus,
@@ -66,8 +66,8 @@ class WebhookProvisioningResponse(BaseModel):
 @router.get("/status", response_model=ProvisioningStatusResponse)
 async def get_provisioning_status(
     tenant_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    context: RequestContext = Depends(get_request_context),
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> ProvisioningStatusResponse:
     """Get provisioning status for a tenant.
 
@@ -117,7 +117,7 @@ async def get_provisioning_status(
 @router.post("/retry", response_model=RetryProvisioningResponse)
 async def retry_provisioning(
     tenant_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_super_admin),
 ) -> RetryProvisioningResponse:
     """Retry failed provisioning for a tenant (super admin only).
@@ -167,6 +167,8 @@ async def retry_provisioning(
 )
 async def webhook_provisioning(
     request: WebhookProvisioningRequest,
+    # SECURITY: Webhook uses get_db intentionally — external systems
+    # authenticate via webhook token, not JWT.
     db: AsyncSession = Depends(get_db),
 ) -> WebhookProvisioningResponse:
     """Trigger provisioning via webhook (external systems).

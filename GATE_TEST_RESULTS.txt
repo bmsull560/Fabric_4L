@@ -1,0 +1,425 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.0rc1, pytest-9.0.3, pluggy-1.6.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+Using --randomly-seed=2387546648
+rootdir: /home/ubuntu/Fabric_4L
+configfile: pytest.ini
+plugins: anyio-4.13.0, xdist-3.8.0, randomly-4.1.0, timeout-2.4.0
+collecting ... collected 82 items
+
+tests/security/test_cross_tenant_api.py::TestSignalRouteTenantEnforcement::test_get_account_signals_requires_auth PASSED [  1%]
+tests/security/test_cross_tenant_api.py::TestSignalRouteTenantEnforcement::test_setup_prospect_requires_auth PASSED [  2%]
+tests/security/test_cross_tenant_api.py::TestSignalRouteTenantEnforcement::test_get_signal_by_id_requires_auth PASSED [  3%]
+tests/security/test_cross_tenant_api.py::TestTenantAdminRouteTenantEnforcement::test_admin_routes_use_tenant_scoped_db FAILED [  4%]
+tests/security/test_cross_tenant_api.py::TestTenantAdminRouteTenantEnforcement::test_api_keys_routes_use_tenant_scoped_db FAILED [  6%]
+tests/security/test_cross_tenant_api.py::TestTenantAdminRouteTenantEnforcement::test_users_routes_use_tenant_scoped_db FAILED [  7%]
+tests/security/test_cross_tenant_api.py::TestAggregateDepAudit::test_total_deprecated_get_db_count FAILED [  8%]
+tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[cancel_workflow-DELETE] FAILED [  9%]
+tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[pause_workflow-POST] FAILED [ 10%]
+tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[resume_workflow-POST] FAILED [ 12%]
+tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[create_workflow-POST] FAILED [ 13%]
+tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[get_workflow_status-GET] FAILED [ 14%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[create_account-POST] FAILED [ 15%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[search_accounts-POST] FAILED [ 17%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[create_account-POST] FAILED [ 18%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_sync_status_all-GET] FAILED [ 19%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_account-GET] FAILED [ 20%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[refresh_account-POST] FAILED [ 21%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[list_accounts-GET] FAILED [ 23%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_account_activity-GET] FAILED [ 24%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[list_accounts-GET] FAILED [ 25%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_sync_status_all-GET] FAILED [ 26%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_account_activity-GET] FAILED [ 28%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_filter_options-GET] FAILED [ 29%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_account-GET] FAILED [ 30%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[refresh_account-POST] FAILED [ 31%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[sync_accounts-POST] FAILED [ 32%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_filter_options-GET] FAILED [ 34%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[search_accounts-POST] FAILED [ 35%]
+tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[sync_accounts-POST] FAILED [ 36%]
+tests/security/test_cross_tenant_api.py::TestAnalysisRouteTenantEnforcement::test_quick_whitespace_analysis_requires_auth PASSED [ 37%]
+tests/security/test_cross_tenant_api.py::TestAnalysisRouteTenantEnforcement::test_export_business_case_requires_auth FAILED [ 39%]
+tests/security/test_cross_tenant_api.py::TestAnalysisRouteTenantEnforcement::test_generate_business_case_requires_auth PASSED [ 40%]
+tests/security/test_cross_tenant_api.py::TestAnalysisRouteTenantEnforcement::test_export_business_case_uses_tenant_scoped_db FAILED [ 41%]
+tests/security/test_tenant_context_contract.py::TestNoDeprecatedGetDb::test_no_l4_routes_use_deprecated_get_db FAILED [ 42%]
+tests/security/test_tenant_context_contract.py::TestNoDeprecatedGetDb::test_get_db_from_context_requires_tenant_id PASSED [ 43%]
+tests/security/test_tenant_context_contract.py::TestGovernanceMiddlewareContextReset::test_dispatch_resets_context_in_finally PASSED [ 45%]
+tests/security/test_tenant_context_contract.py::TestGovernanceMiddlewareContextReset::test_dispatch_resets_context_at_start PASSED [ 46%]
+tests/security/test_tenant_context_contract.py::TestImportConsistency::test_l4_routes_import_shared_identity FAILED [ 47%]
+tests/security/test_tenant_context_contract.py::TestImportConsistency::test_all_route_files_that_use_db_import_it PASSED [ 48%]
+tests/security/test_tenant_context_contract.py::TestNoOptionalContextOnWriteRoutes::test_no_write_routes_use_optional_context PASSED [ 50%]
+tests/security/test_tenant_context_contract.py::TestRequestContextIntegrity::test_request_context_accepts_uuid PASSED [ 51%]
+tests/security/test_tenant_context_contract.py::TestRequestContextIntegrity::test_context_var_isolation PASSED [ 52%]
+tests/security/test_tenant_context_contract.py::TestRequestContextIntegrity::test_require_context_raises_when_none PASSED [ 53%]
+tests/config/test_startup_tenant_validation.py::TestRLSPrerequisiteValidation::test_startup_validates_rls_prerequisites PASSED [ 54%]
+tests/config/test_startup_tenant_validation.py::TestRLSPrerequisiteValidation::test_startup_rejects_superuser_connection_in_prod FAILED [ 56%]
+tests/config/test_startup_tenant_validation.py::TestJWTSecretValidation::test_startup_rejects_missing_jwt_secret_in_prod PASSED [ 57%]
+tests/config/test_startup_tenant_validation.py::TestJWTSecretValidation::test_startup_rejects_weak_jwt_secret_in_prod FAILED [ 58%]
+tests/config/test_startup_tenant_validation.py::TestJWTSecretValidation::test_startup_rejects_default_jwt_secret_in_prod PASSED [ 59%]
+tests/config/test_startup_tenant_validation.py::TestStartupSummaryCompleteness::test_startup_summary_reports_rls_status FAILED [ 60%]
+tests/config/test_startup_tenant_validation.py::TestStartupSummaryCompleteness::test_startup_summary_reports_degraded_controls PASSED [ 62%]
+tests/config/test_startup_tenant_validation.py::TestDegradedDependencyBehavior::test_degraded_audit_still_allows_startup PASSED [ 63%]
+tests/config/test_startup_tenant_validation.py::TestDegradedDependencyBehavior::test_degraded_redis_does_not_disable_auth PASSED [ 64%]
+tests/state/test_state_alignment.py::TestNoDuplicateEnumAliases::test_workflow_type_values_are_unique FAILED [ 65%]
+tests/state/test_state_alignment.py::TestWorkflowStatusAlignment::test_frontend_workflow_status_subset_of_backend PASSED [ 67%]
+tests/state/test_state_alignment.py::TestWorkflowStatusAlignment::test_backend_workflow_status_superset_of_frontend FAILED [ 68%]
+tests/state/test_state_alignment.py::TestWorkflowStatusAlignment::test_exact_bidirectional_match FAILED [ 69%]
+tests/state/test_state_alignment.py::TestWorkflowTypeAlignment::test_backend_has_no_unreachable_workflow_types FAILED [ 70%]
+tests/state/test_state_alignment.py::TestWorkflowTypeAlignment::test_frontend_workflow_types_exist_in_backend PASSED [ 71%]
+tests/security/test_export_tenant_access.py::TestExportStorageNamespacing::test_export_storage_key_includes_tenant_id FAILED [ 73%]
+tests/security/test_export_tenant_access.py::TestExportStorageNamespacing::test_export_storage_upload_requires_tenant_metadata PASSED [ 74%]
+tests/security/test_export_tenant_access.py::TestExportAuditTrail::test_export_blocked_case_still_audited PASSED [ 75%]
+tests/security/test_export_tenant_access.py::TestExportAuditTrail::test_export_endpoint_emits_audit_event PASSED [ 76%]
+tests/security/test_export_tenant_access.py::TestProvenanceManifestStructure::test_provenance_module_imports_request_context PASSED [ 78%]
+tests/security/test_export_tenant_access.py::TestProvenanceManifestStructure::test_provenance_collects_truth_ids PASSED [ 79%]
+tests/security/test_export_tenant_access.py::TestProvenanceManifestStructure::test_provenance_collects_source_pointers PASSED [ 80%]
+tests/security/test_export_tenant_access.py::TestProvenanceManifestStructure::test_provenance_generates_content_hash PASSED [ 81%]
+tests/security/test_export_tenant_access.py::TestProvenanceManifestStructure::test_provenance_schema_version_defined PASSED [ 82%]
+tests/security/test_export_tenant_access.py::TestExportEndpointAuth::test_export_endpoint_uses_tenant_scoped_db PASSED [ 84%]
+tests/security/test_export_tenant_access.py::TestExportEndpointAuth::test_export_endpoint_requires_auth_not_optional FAILED [ 85%]
+tests/security/test_rls_enforcement.py::TestDatabaseModuleStructure::test_get_db_sets_empty_tenant_context PASSED [ 86%]
+tests/security/test_rls_enforcement.py::TestDatabaseModuleStructure::test_get_db_from_context_validates_tenant_id PASSED [ 87%]
+tests/security/test_rls_enforcement.py::TestDatabaseModuleStructure::test_validate_tenant_id_exists PASSED [ 89%]
+tests/security/test_rls_enforcement.py::TestDatabaseModuleStructure::test_get_db_from_context_sets_tenant_id PASSED [ 90%]
+tests/security/test_rls_enforcement.py::TestRLSMigrationCoverage::test_rls_tables_list_is_not_empty PASSED [ 91%]
+tests/security/test_rls_enforcement.py::TestRLSMigrationCoverage::test_all_tenant_tables_have_rls_policies FAILED [ 92%]
+tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_rls_null_tenant_id_policy_is_safe FAILED [ 93%]
+tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_rls_policy_uses_current_setting PASSED [ 95%]
+tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_rls_force_enabled PASSED [ 96%]
+tests/security/test_rls_enforcement.py::TestConnectionPoolReset::test_session_uses_set_local_not_set PASSED [ 97%]
+tests/security/test_rls_enforcement.py::TestConnectionPoolReset::test_no_raw_set_without_local PASSED [ 98%]
+tests/security/test_rls_enforcement.py::TestConnectionPoolReset::test_session_commits_or_rollbacks PASSED [100%]
+
+=================================== FAILURES ===================================
+_ TestTenantAdminRouteTenantEnforcement.test_admin_routes_use_tenant_scoped_db _
+tests/security/test_cross_tenant_api.py:316: in test_admin_routes_use_tenant_scoped_db
+    assert count == 0, (
+E   AssertionError: admin.py has 5 endpoint(s) using deprecated Depends(get_db). Admin routes manage tenant configuration — they MUST use get_db_from_context to enforce RLS.
+E   assert 5 == 0
+_ TestTenantAdminRouteTenantEnforcement.test_api_keys_routes_use_tenant_scoped_db _
+tests/security/test_cross_tenant_api.py:339: in test_api_keys_routes_use_tenant_scoped_db
+    assert count == 0, (
+E   AssertionError: api_keys.py has 3 endpoint(s) using deprecated Depends(get_db). API key routes MUST use get_db_from_context — a tenant admin could otherwise read/revoke another tenant's API keys.
+E   assert 3 == 0
+_ TestTenantAdminRouteTenantEnforcement.test_users_routes_use_tenant_scoped_db _
+tests/security/test_cross_tenant_api.py:328: in test_users_routes_use_tenant_scoped_db
+    assert count == 0, (
+E   AssertionError: users.py has 5 endpoint(s) using deprecated Depends(get_db). User management routes MUST use get_db_from_context.
+E   assert 5 == 0
+___________ TestAggregateDepAudit.test_total_deprecated_get_db_count ___________
+tests/security/test_cross_tenant_api.py:388: in test_total_deprecated_get_db_count
+    assert total == 0, (
+E   AssertionError: Found 42 total Depends(get_db) usages across L4 routes (must be 0 for production). Breakdown:
+E       value-fabric/layer4-agents/src/api/routes/accounts.py: 9 usages
+E       value-fabric/layer4-agents/src/api/routes/analysis.py: 1 usages
+E       value-fabric/layer4-agents/src/api/routes/billing.py: 1 usages
+E       value-fabric/layer4-agents/src/api/routes/crm_webhooks.py: 2 usages
+E       value-fabric/layer4-agents/src/api/routes/integrations.py: 1 usages
+E       value-fabric/layer4-agents/src/api/routes/tools.py: 1 usages
+E       value-fabric/layer4-agents/src/tenants/api/routes/admin.py: 5 usages
+E       value-fabric/layer4-agents/src/tenants/api/routes/api_keys.py: 3 usages
+E       value-fabric/layer4-agents/src/tenants/api/routes/oidc.py: 3 usages
+E       value-fabric/layer4-agents/src/tenants/api/routes/provisioning.py: 3 usages
+E       value-fabric/layer4-agents/src/tenants/api/routes/registration.py: 3 usages
+E       value-fabric/layer4-agents/src/tenants/api/routes/tenants.py: 5 usages
+E       value-fabric/layer4-agents/src/tenants/api/routes/users.py: 5 usages
+E   assert 42 == 0
+_ TestWorkflowRouteTenantEnforcement.test_workflow_endpoint_requires_auth[cancel_workflow-DELETE] _
+tests/security/test_cross_tenant_api.py:237: in test_workflow_endpoint_requires_auth
+    assert uses_auth, (
+E   AssertionError: workflows.py::cancel_workflow (DELETE) does not use require_authenticated.
+E   assert False
+_ TestWorkflowRouteTenantEnforcement.test_workflow_endpoint_requires_auth[pause_workflow-POST] _
+tests/security/test_cross_tenant_api.py:237: in test_workflow_endpoint_requires_auth
+    assert uses_auth, (
+E   AssertionError: workflows.py::pause_workflow (POST) does not use require_authenticated.
+E   assert False
+_ TestWorkflowRouteTenantEnforcement.test_workflow_endpoint_requires_auth[resume_workflow-POST] _
+tests/security/test_cross_tenant_api.py:237: in test_workflow_endpoint_requires_auth
+    assert uses_auth, (
+E   AssertionError: workflows.py::resume_workflow (POST) does not use require_authenticated.
+E   assert False
+_ TestWorkflowRouteTenantEnforcement.test_workflow_endpoint_requires_auth[create_workflow-POST] _
+tests/security/test_cross_tenant_api.py:237: in test_workflow_endpoint_requires_auth
+    assert uses_auth, (
+E   AssertionError: workflows.py::create_workflow (POST) does not use require_authenticated.
+E   assert False
+_ TestWorkflowRouteTenantEnforcement.test_workflow_endpoint_requires_auth[get_workflow_status-GET] _
+tests/security/test_cross_tenant_api.py:237: in test_workflow_endpoint_requires_auth
+    assert uses_auth, (
+E   AssertionError: workflows.py::get_workflow_status (GET) does not use require_authenticated.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[create_account-POST] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::create_account (POST) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[search_accounts-POST] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::search_accounts (POST) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[create_account-POST] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::create_account (POST) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[get_sync_status_all-GET] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::get_sync_status_all (GET) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[get_account-GET] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::get_account (GET) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[refresh_account-POST] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::refresh_account (POST) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[list_accounts-GET] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::list_accounts (GET) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[get_account_activity-GET] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::get_account_activity (GET) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[list_accounts-GET] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::list_accounts (GET) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[get_sync_status_all-GET] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::get_sync_status_all (GET) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[get_account_activity-GET] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::get_account_activity (GET) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[get_filter_options-GET] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::get_filter_options (GET) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[get_account-GET] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::get_account (GET) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[refresh_account-POST] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::refresh_account (POST) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[sync_accounts-POST] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::sync_accounts (POST) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[get_filter_options-GET] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::get_filter_options (GET) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_uses_tenant_scoped_db[search_accounts-POST] _
+tests/security/test_cross_tenant_api.py:140: in test_account_endpoint_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: accounts.py::search_accounts (POST) uses get_db instead of get_db_from_context. This means the DB session has no tenant_id set, so RLS policies are not enforced. Any authenticated user can access any tenant's accounts.
+E   assert False
+_ TestAccountsRouteTenantEnforcement.test_account_endpoint_requires_authentication[sync_accounts-POST] _
+tests/security/test_cross_tenant_api.py:158: in test_account_endpoint_requires_authentication
+    assert uses_auth or uses_scoped_db, (
+E   AssertionError: accounts.py::sync_accounts (POST) has no authentication enforcement. It uses neither require_authenticated nor get_db_from_context.
+E   assert (False or False)
+__ TestAnalysisRouteTenantEnforcement.test_export_business_case_requires_auth __
+tests/security/test_cross_tenant_api.py:207: in test_export_business_case_requires_auth
+    assert uses_auth, (
+E   AssertionError: analysis.py::export_business_case uses get_optional_context instead of require_authenticated. Export endpoints must require authentication — business case data is confidential.
+E   assert False
+_ TestAnalysisRouteTenantEnforcement.test_export_business_case_uses_tenant_scoped_db _
+tests/security/test_cross_tenant_api.py:196: in test_export_business_case_uses_tenant_scoped_db
+    assert uses_scoped, (
+E   AssertionError: analysis.py::export_business_case uses get_db instead of get_db_from_context. Business case exports could leak data across tenants.
+E   assert False
+________ TestNoDeprecatedGetDb.test_no_l4_routes_use_deprecated_get_db _________
+tests/security/test_tenant_context_contract.py:224: in test_no_l4_routes_use_deprecated_get_db
+    assert not violations, (
+E   AssertionError: Found 42 route endpoint(s) using deprecated Depends(get_db) instead of Depends(get_db_from_context). These bypass RLS tenant isolation.
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:136
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:167
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:194
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:225
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:243
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:282
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:299
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:319
+E       - value-fabric/layer4-agents/src/api/routes/accounts.py:344
+E       - value-fabric/layer4-agents/src/api/routes/analysis.py:220
+E       - value-fabric/layer4-agents/src/api/routes/billing.py:305
+E       - value-fabric/layer4-agents/src/api/routes/crm_webhooks.py:45
+E       - value-fabric/layer4-agents/src/api/routes/crm_webhooks.py:226
+E       - value-fabric/layer4-agents/src/api/routes/integrations.py:121
+E       - value-fabric/layer4-agents/src/api/routes/tools.py:407
+E       - value-fabric/layer4-agents/src/tenants/api/routes/admin.py:105
+E       - value-fabric/layer4-agents/src/tenants/api/routes/admin.py:133
+E       - value-fabric/layer4-agents/src/tenants/api/routes/admin.py:168
+E       - value-fabric/layer4-agents/src/tenants/api/routes/admin.py:210
+E       - value-fabric/layer4-agents/src/tenants/api/routes/admin.py:240
+E       - value-fabric/layer4-agents/src/tenants/api/routes/api_keys.py:30
+E       - value-fabric/layer4-agents/src/tenants/api/routes/api_keys.py:47
+E       - value-fabric/layer4-agents/src/tenants/api/routes/api_keys.py:57
+E       - value-fabric/layer4-agents/src/tenants/api/routes/oidc.py:118
+E       - value-fabric/layer4-agents/src/tenants/api/routes/oidc.py:189
+E       - value-fabric/layer4-agents/src/tenants/api/routes/oidc.py:384
+E       - value-fabric/layer4-agents/src/tenants/api/routes/provisioning.py:69
+E       - value-fabric/layer4-agents/src/tenants/api/routes/provisioning.py:120
+E       - value-fabric/layer4-agents/src/tenants/api/routes/provisioning.py:170
+E       - value-fabric/layer4-agents/src/tenants/api/routes/registration.py:88
+E       - value-fabric/layer4-agents/src/tenants/api/routes/registration.py:166
+E       - value-fabric/layer4-agents/src/tenants/api/routes/registration.py:208
+E       - value-fabric/layer4-agents/src/tenants/api/routes/tenants.py:39
+E       - value-fabric/layer4-agents/src/tenants/api/routes/tenants.py:51
+E       - value-fabric/layer4-agents/src/tenants/api/routes/tenants.py:61
+E       - value-fabric/layer4-agents/src/tenants/api/routes/tenants.py:75
+E       - value-fabric/layer4-agents/src/tenants/api/routes/tenants.py:88
+E       - value-fabric/layer4-agents/src/tenants/api/routes/users.py:40
+E       - value-fabric/layer4-agents/src/tenants/api/routes/users.py:52
+E       - value-fabric/layer4-agents/src/tenants/api/routes/users.py:62
+E       - value-fabric/layer4-agents/src/tenants/api/routes/users.py:76
+E       - value-fabric/layer4-agents/src/tenants/api/routes/users.py:89
+E   assert not [{'dep_name': 'get_db', 'file': 'value-fabric/layer4-agents/src/api/routes/accounts.py', 'line': 136}, {'dep_name': 'get_db', 'file': 'value-fabric/layer4-agents/src/api/routes/accounts.py', 'line': 167}, {'dep_name': 'get_db', 'file': 'value-fabric/layer4-agents/src/api/routes/accounts.py', 'line': 194}, {'dep_name': 'get_db', 'file': 'value-fabric/layer4-agents/src/api/routes/accounts.py', 'line': 225}, {'dep_name': 'get_db', 'file': 'value-fabric/layer4-agents/src/api/routes/accounts.py', 'line': 243}, {'dep_name': 'get_db', 'file': 'value-fabric/layer4-agents/src/api/routes/accounts.py', 'line': 282}, ...]
+_________ TestImportConsistency.test_l4_routes_import_shared_identity __________
+tests/security/test_tenant_context_contract.py:421: in test_l4_routes_import_shared_identity
+    assert not violations, (
+E   AssertionError: Found 1 route file(s) importing from deprecated tenant package:
+E       - workflows.py: imports from deprecated tenant.context
+E   assert not ['workflows.py: imports from deprecated tenant.context']
+_ TestRLSPrerequisiteValidation.test_startup_rejects_superuser_connection_in_prod _
+tests/config/test_startup_tenant_validation.py:210: in test_startup_rejects_superuser_connection_in_prod
+    assert has_superuser_check, (
+E   AssertionError: shared/security/config.py does not check for superuser connections. PostgreSQL superusers bypass ALL RLS policies. Production must verify the connection role is not a superuser.
+E   assert False
+_____ TestJWTSecretValidation.test_startup_rejects_weak_jwt_secret_in_prod _____
+tests/config/test_startup_tenant_validation.py:81: in test_startup_rejects_weak_jwt_secret_in_prod
+    assert has_length_check, (
+E   AssertionError: shared/security/config.py does not validate JWT_SECRET length. A short JWT secret is brute-forceable. Production must require at least 32 characters.
+E   assert False
+____ TestStartupSummaryCompleteness.test_startup_summary_reports_rls_status ____
+tests/config/test_startup_tenant_validation.py:137: in test_startup_summary_reports_rls_status
+    assert has_rls_info, (
+E   AssertionError: get_startup_summary() does not report RLS status. Current summary keys: ['environment', 'redis_enabled', 'audit_enabled', 'cors_mode', 'jwt_validation', 'warnings', 'degraded_controls']. The startup summary must include tenant isolation mode (shared/schema/database) and RLS enforcement status.
+E   assert False
+_______ TestNoDuplicateEnumAliases.test_workflow_type_values_are_unique ________
+tests/state/test_state_alignment.py:252: in test_workflow_type_values_are_unique
+    assert not duplicates, (
+E   AssertionError: WorkflowType has duplicate values (aliases): ["WHITESPACE_ANALYSIS_WORKFLOW = 'whitespace_analysis' (duplicate of WHITESPACE_ANALYSIS)"]. Each enum member should map to a unique string.
+E   assert not ["WHITESPACE_ANALYSIS_WORKFLOW = 'whitespace_analysis' (duplicate of WHITESPACE_ANALYSIS)"]
+_ TestWorkflowStatusAlignment.test_backend_workflow_status_superset_of_frontend _
+tests/state/test_state_alignment.py:144: in test_backend_workflow_status_superset_of_frontend
+    assert not missing_in_frontend, (
+E   AssertionError: Backend WorkflowStatus values missing from frontend TypeScript type: {'interrupted'}. Backend values: ['cancelled', 'completed', 'failed', 'interrupted', 'paused', 'pending', 'running']. Frontend values: ['cancelled', 'completed', 'failed', 'paused', 'pending', 'running'].
+E   assert not {'interrupted'}
+__________ TestWorkflowStatusAlignment.test_exact_bidirectional_match __________
+tests/state/test_state_alignment.py:170: in test_exact_bidirectional_match
+    assert self.backend_values == self.frontend_values, (
+E   AssertionError: WorkflowStatus mismatch.
+E       Only in backend:  ['interrupted']
+E       Only in frontend: []
+E   assert {'cancelled',...pending', ...} == {'cancelled',...g', 'running'}
+E     
+E     Extra items in the left set:
+E     'interrupted'
+E     
+E     Full diff:
+E       {
+E           'cancelled',...
+E     
+E     ...Full output truncated (7 lines hidden), use '-vv' to show
+___ TestWorkflowTypeAlignment.test_backend_has_no_unreachable_workflow_types ___
+tests/state/test_state_alignment.py:214: in test_backend_has_no_unreachable_workflow_types
+    assert not unexpected_unreachable, (
+E   AssertionError: Backend WorkflowType values not reachable from frontend: {'business_case_generation'}. If these are internal-only, add them to KNOWN_INTERNAL_TYPES.
+E   assert not {'business_case_generation'}
+___ TestExportStorageNamespacing.test_export_storage_key_includes_tenant_id ____
+tests/security/test_export_tenant_access.py:162: in test_export_storage_key_includes_tenant_id
+    assert has_tenant_in_key or uses_tenant_prefix, (
+E   AssertionError: export_business_case does not include tenant_id in the storage object key. Without tenant namespacing:
+E       1. Tenant A could overwrite Tenant B's export
+E       2. Signed URLs are guessable across tenants
+E       3. Bucket listing would expose cross-tenant filenames
+E   assert (None or None)
+____ TestExportEndpointAuth.test_export_endpoint_requires_auth_not_optional ____
+tests/security/test_export_tenant_access.py:75: in test_export_endpoint_requires_auth_not_optional
+    assert not uses_optional, (
+E   AssertionError: export_business_case uses get_optional_context. Export endpoints MUST use require_authenticated — business case data is confidential.
+E   assert not True
+______ TestRLSMigrationCoverage.test_all_tenant_tables_have_rls_policies _______
+tests/security/test_rls_enforcement.py:133: in test_all_tenant_tables_have_rls_policies
+    assert not missing_rls, (
+E   AssertionError: Found 7 table(s) with tenant_id column but no RLS policy:
+E       - billing_charges
+E       - billing_customers
+E       - billing_invoice_items
+E       - billing_invoices
+E       - billing_subscriptions
+E       - billing_usage_events
+E       - billing_webhook_events
+E     Tables with RLS: ['account_contacts', 'account_notes', 'account_sync_status', 'accounts', 'api_keys', 'audit_events', 'crm_sync_states', 'feature_flags', 'integrations', 'model_promotion_log', 'model_registry', 'oidc_sessions', 'tenant_isolation_tier_history', 'users']
+E     Tables with tenant_id: ['api_keys', 'billing_charges', 'billing_customers', 'billing_invoice_items', 'billing_invoices', 'billing_subscriptions', 'billing_usage_events', 'billing_webhook_events', 'integrations', 'tenant_isolation_tier_history', 'users']
+E   assert not {'billing_charges', 'billing_customers', 'billing_invoice_items', 'billing_invoices', 'billing_subscriptions', 'billing_usage_events', ...}
+________ TestRLSPolicyStructure.test_rls_null_tenant_id_policy_is_safe _________
+tests/security/test_rls_enforcement.py:273: in test_rls_null_tenant_id_policy_is_safe
+    pytest.fail(
+E   Failed: 007_add_rls_policies.py: RLS policy allows rows with NULL tenant_id to be visible to all tenants. This means any row inserted without a tenant_id is a global data leak. The policy should require tenant_id to be NOT NULL, or use a separate admin-only policy for NULL rows.
+=========================== short test summary info ============================
+FAILED tests/security/test_cross_tenant_api.py::TestTenantAdminRouteTenantEnforcement::test_admin_routes_use_tenant_scoped_db
+FAILED tests/security/test_cross_tenant_api.py::TestTenantAdminRouteTenantEnforcement::test_api_keys_routes_use_tenant_scoped_db
+FAILED tests/security/test_cross_tenant_api.py::TestTenantAdminRouteTenantEnforcement::test_users_routes_use_tenant_scoped_db
+FAILED tests/security/test_cross_tenant_api.py::TestAggregateDepAudit::test_total_deprecated_get_db_count
+FAILED tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[cancel_workflow-DELETE]
+FAILED tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[pause_workflow-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[resume_workflow-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[create_workflow-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestWorkflowRouteTenantEnforcement::test_workflow_endpoint_requires_auth[get_workflow_status-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[create_account-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[search_accounts-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[create_account-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_sync_status_all-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_account-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[refresh_account-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[list_accounts-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_account_activity-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[list_accounts-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_sync_status_all-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_account_activity-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_filter_options-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[get_account-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[refresh_account-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[sync_accounts-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[get_filter_options-GET]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_uses_tenant_scoped_db[search_accounts-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAccountsRouteTenantEnforcement::test_account_endpoint_requires_authentication[sync_accounts-POST]
+FAILED tests/security/test_cross_tenant_api.py::TestAnalysisRouteTenantEnforcement::test_export_business_case_requires_auth
+FAILED tests/security/test_cross_tenant_api.py::TestAnalysisRouteTenantEnforcement::test_export_business_case_uses_tenant_scoped_db
+FAILED tests/security/test_tenant_context_contract.py::TestNoDeprecatedGetDb::test_no_l4_routes_use_deprecated_get_db
+FAILED tests/security/test_tenant_context_contract.py::TestImportConsistency::test_l4_routes_import_shared_identity
+FAILED tests/config/test_startup_tenant_validation.py::TestRLSPrerequisiteValidation::test_startup_rejects_superuser_connection_in_prod
+FAILED tests/config/test_startup_tenant_validation.py::TestJWTSecretValidation::test_startup_rejects_weak_jwt_secret_in_prod
+FAILED tests/config/test_startup_tenant_validation.py::TestStartupSummaryCompleteness::test_startup_summary_reports_rls_status
+FAILED tests/state/test_state_alignment.py::TestNoDuplicateEnumAliases::test_workflow_type_values_are_unique
+FAILED tests/state/test_state_alignment.py::TestWorkflowStatusAlignment::test_backend_workflow_status_superset_of_frontend
+FAILED tests/state/test_state_alignment.py::TestWorkflowStatusAlignment::test_exact_bidirectional_match
+FAILED tests/state/test_state_alignment.py::TestWorkflowTypeAlignment::test_backend_has_no_unreachable_workflow_types
+FAILED tests/security/test_export_tenant_access.py::TestExportStorageNamespacing::test_export_storage_key_includes_tenant_id
+FAILED tests/security/test_export_tenant_access.py::TestExportEndpointAuth::test_export_endpoint_requires_auth_not_optional
+FAILED tests/security/test_rls_enforcement.py::TestRLSMigrationCoverage::test_all_tenant_tables_have_rls_policies
+FAILED tests/security/test_rls_enforcement.py::TestRLSPolicyStructure::test_rls_null_tenant_id_policy_is_safe
+======================== 42 failed, 40 passed in 0.89s =========================

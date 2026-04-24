@@ -9,6 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# SECURITY: Registration endpoints are pre-authentication flows.
+# New tenants/users don't have JWTs yet, so get_db (no tenant context)
+# is intentional. Tenant isolation begins AFTER registration completes.
 from ....database import get_db
 from ...email_verification import EmailVerificationService
 from ...models.tenant import Tenant, IsolationTier

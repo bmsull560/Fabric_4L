@@ -21,7 +21,6 @@ from shared.identity.dependencies import require_authenticated
 
 from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
-from ...tenant.context import get_current_tenant
 from ...workflows import list_workflow_types
 
 router = APIRouter()
@@ -217,7 +216,9 @@ def get_executor() -> OrchestrationController:
 
 @router.post("/workflows", response_model=WorkflowCreateResponse, status_code=201)
 async def create_workflow(
-    request: WorkflowCreateRequest, executor: OrchestrationController = Depends(get_executor)
+    request: WorkflowCreateRequest,
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> WorkflowCreateResponse:
     """Create and execute a new workflow - OpenAPI spec compliant.
 
@@ -271,7 +272,9 @@ async def create_workflow(
 
 @router.get("/workflows/{workflow_id}", response_model=WorkflowStatusResponse)
 async def get_workflow_status(
-    workflow_id: str, executor: OrchestrationController = Depends(get_executor)
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> WorkflowStatusResponse:
     """Get status of a workflow - OpenAPI spec compliant.
 
@@ -306,7 +309,9 @@ async def get_workflow_status(
 
 @router.get("/workflows/{workflow_id}/result")
 async def get_workflow_result(
-    workflow_id: str, executor: OrchestrationController = Depends(get_executor)
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get result of a completed workflow."""
     status = await executor.get_workflow_status(workflow_id)
@@ -331,7 +336,9 @@ async def get_workflow_result(
 
 @router.delete("/workflows/{workflow_id}")
 async def cancel_workflow(
-    workflow_id: str, executor: OrchestrationController = Depends(get_executor)
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Cancel a running workflow - OpenAPI spec compliant (DELETE method)."""
     cancelled = await executor.cancel_workflow(workflow_id)
@@ -349,6 +356,7 @@ async def resume_workflow(
     workflow_id: str,
     request: WorkflowResumeRequest,
     executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> WorkflowResumeResponse:
     """Resume a paused or interrupted workflow from its last checkpoint.
 
@@ -424,6 +432,7 @@ async def pause_workflow(
     workflow_id: str,
     request: WorkflowPauseRequest,
     executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> WorkflowPauseResponse:
     """Pause a running workflow.
 
@@ -509,12 +518,9 @@ async def list_active_workflows(
     
     Returns a paginated list of workflows with metadata for efficient client-side rendering.
     """
-    tenant = get_current_tenant()
-    if not tenant or not tenant.tenant_id:
-        raise HTTPException(status_code=403, detail="Tenant context required")
-
+    # tenant_id is guaranteed by require_authenticated dependency
     # Get all active workflows for tenant
-    all_active = await executor.list_active_workflows(tenant_id=tenant.tenant_id)
+    all_active = await executor.list_active_workflows(tenant_id=_ctx.tenant_id)
     
     # Apply status filter if specified
     if status:

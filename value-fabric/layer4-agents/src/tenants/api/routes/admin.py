@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_tenant_admin
 from shared.identity.models import UserModel
-from ....database import get_db
+from ....database import get_db_from_context
 from ...models.tenant import Tenant
 from ...models.user import User
 from ...service import get_tenant, update_tenant
@@ -102,7 +102,7 @@ def _verify_tenant_access(tenant_id: UUID, context: RequestContext) -> None:
 @router.get("/users", response_model=list[TenantUserInfo])
 async def list_tenant_users(
     tenant_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_tenant_admin),
 ) -> list[TenantUserInfo]:
     """List users in tenant (tenant_admin only)."""
@@ -130,7 +130,7 @@ async def list_tenant_users(
 async def get_tenant_usage(
     tenant_id: UUID,
     days: int = 30,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_tenant_admin),
 ) -> UsageMetricsResponse:
     """Get usage metrics for tenant."""
@@ -165,7 +165,7 @@ async def get_tenant_audit_log(
     tenant_id: UUID,
     limit: int = 100,
     offset: int = 0,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_tenant_admin),
 ) -> AuditLogResponse:
     """Get audit log for tenant."""
@@ -207,7 +207,7 @@ async def get_tenant_audit_log(
 @router.get("/settings", response_model=TenantSettingsResponse)
 async def get_tenant_settings(
     tenant_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_tenant_admin),
 ) -> TenantSettingsResponse:
     """Get tenant settings."""
@@ -237,7 +237,7 @@ async def get_tenant_settings(
 async def update_tenant_settings(
     tenant_id: UUID,
     update: TenantSettingsUpdate,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     context: RequestContext = Depends(require_tenant_admin),
 ) -> TenantSettingsUpdateResponse:
     """Update tenant settings (tenant_admin only)."""

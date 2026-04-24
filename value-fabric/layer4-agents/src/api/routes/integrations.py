@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field, field_validator
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...database import get_db
+from shared.identity.context import RequestContext
+from shared.identity.dependencies import require_authenticated
+from ...database import get_db_from_context
 from ...models.account import CRMProvider
 from ...services.integration_service import (
     IntegrationNotFoundError,
@@ -108,17 +110,9 @@ class SyncTriggerResponse(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-async def get_tenant_id(x_tenant_id: str = Header(..., alias="X-Tenant-ID")) -> str:
-    """Extract tenant ID from request header."""
-    if not x_tenant_id or not x_tenant_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="X-Tenant-ID header is required",
-        )
-    return x_tenant_id
-
-
-def get_integration_service(db: AsyncSession = Depends(get_db)) -> IntegrationService:
+def get_integration_service(
+    db: AsyncSession = Depends(get_db_from_context),
+) -> IntegrationService:
     """Dependency for integration service."""
     return IntegrationService(db)
 
@@ -130,13 +124,14 @@ def get_integration_service(db: AsyncSession = Depends(get_db)) -> IntegrationSe
 
 @router.get("", response_model=IntegrationListResponse)
 async def list_integrations(
-    tenant_id: str = Depends(get_tenant_id),
+    context: RequestContext = Depends(require_authenticated),
     service: IntegrationService = Depends(get_integration_service),
 ) -> IntegrationListResponse:
     """List all configured integrations for the tenant.
 
     Returns integrations without credentials (encrypted at rest).
     """
+    tenant_id = str(context.tenant_id)
     integrations = await service.list_integrations(tenant_id)
 
     return IntegrationListResponse(
@@ -150,7 +145,7 @@ async def list_integrations(
 @router.get("/{provider}", response_model=IntegrationStatusResponse)
 async def get_integration(
     provider: CRMProvider,
-    tenant_id: str = Depends(get_tenant_id),
+    context: RequestContext = Depends(require_authenticated),
     service: IntegrationService = Depends(get_integration_service),
 ) -> IntegrationStatusResponse:
     """Get a specific integration configuration.
@@ -158,6 +153,7 @@ async def get_integration(
     Args:
         provider: CRM provider (salesforce or hubspot)
     """
+    tenant_id = str(context.tenant_id)
     integration = await service.get_integration(tenant_id, provider)
 
     if not integration:
@@ -173,8 +169,7 @@ async def get_integration(
 async def create_or_update_integration(
     provider: CRMProvider,
     request: IntegrationCreateRequest,
-    tenant_id: str = Depends(get_tenant_id),
-    x_user_id: str | None = Header(None, alias="X-User-ID"),
+    context: RequestContext = Depends(require_authenticated),
     service: IntegrationService = Depends(get_integration_service),
 ) -> IntegrationStatusResponse:
     """Create or update an integration configuration.
@@ -188,6 +183,9 @@ async def create_or_update_integration(
         - Credentials are never returned in API responses
         - Audit logged for all changes
     """
+    tenant_id = str(context.tenant_id)
+    x_user_id = context.user_id
+
     # Build credentials dict
     credentials: dict[str, str] = {"api_key": request.api_key}
     if request.api_secret:
@@ -238,8 +236,7 @@ async def create_or_update_integration(
 @router.delete("/{provider}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_integration(
     provider: CRMProvider,
-    tenant_id: str = Depends(get_tenant_id),
-    x_user_id: str | None = Header(None, alias="X-User-ID"),
+    context: RequestContext = Depends(require_authenticated),
     service: IntegrationService = Depends(get_integration_service),
 ) -> None:
     """Delete an integration configuration.
@@ -247,6 +244,8 @@ async def delete_integration(
     Args:
         provider: CRM provider (salesforce or hubspot)
     """
+    tenant_id = str(context.tenant_id)
+    x_user_id = context.user_id
     deleted = await service.delete_integration(tenant_id, provider, user_id=x_user_id)
 
     if not deleted:
@@ -279,13 +278,14 @@ async def delete_integration(
 @router.post("/{provider}/test", response_model=ConnectionTestResponse)
 async def test_integration_connection(
     provider: CRMProvider,
-    tenant_id: str = Depends(get_tenant_id),
+    context: RequestContext = Depends(require_authenticated),
     service: IntegrationService = Depends(get_integration_service),
 ) -> ConnectionTestResponse:
     """Test the connection to a CRM provider.
 
     Uses stored credentials to verify connectivity.
     """
+    tenant_id = str(context.tenant_id)
     result = await service.test_connection(tenant_id, provider)
     return ConnectionTestResponse(**result)
 
@@ -293,8 +293,7 @@ async def test_integration_connection(
 @router.post("/{provider}/sync", response_model=SyncTriggerResponse)
 async def trigger_sync(
     provider: CRMProvider,
-    tenant_id: str = Depends(get_tenant_id),
-    x_user_id: str | None = Header(None, alias="X-User-ID"),
+    context: RequestContext = Depends(require_authenticated),
     service: IntegrationService = Depends(get_integration_service),
 ) -> SyncTriggerResponse:
     """Trigger a manual sync for an integration.
@@ -302,6 +301,8 @@ async def trigger_sync(
     Args:
         provider: CRM provider (salesforce or hubspot)
     """
+    tenant_id = str(context.tenant_id)
+    x_user_id = context.user_id
     try:
         result = await service.trigger_sync(tenant_id, provider, user_id=x_user_id)
 

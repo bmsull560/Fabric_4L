@@ -15,6 +15,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, 
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# SECURITY: CRM webhook endpoints are server-to-server calls from
+# Salesforce/HubSpot. Authentication is via HMAC signature verification,
+# not JWT. get_db (no tenant context) is intentional here.
 from ...database import get_db
 from ...models.account import CRMProvider
 from ...services.crm_sync_service import CRMSyncService

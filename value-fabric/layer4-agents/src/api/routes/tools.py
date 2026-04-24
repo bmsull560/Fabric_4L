@@ -10,11 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from shared.audit import AuditAction, AuditEmitter, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
-from shared.identity.dependencies import get_optional_context
+from shared.identity.dependencies import require_authenticated
 from sqlalchemy import text
 
 from ...config.settings import settings
-from ...database import get_db
+from ...database import get_db_from_context
 from ...engine.executor import WorkflowExecutor
 from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
@@ -291,7 +291,7 @@ async def export_document_tool(
                 "document_type": request.document_type,
             },
         )
-        await AuditEmitter.write_to_db(event, get_db)
+        await AuditEmitter.write_to_db(event, get_db_from_context)
 
         if not tool_result.get("success"):
             return DocumentExportResponse(
@@ -360,7 +360,7 @@ async def export_document_tool(
                 "source_references": manifest.get("source_references", []),
             },
         )
-        await AuditEmitter.write_to_db(package_event, get_db)
+        await AuditEmitter.write_to_db(package_event, get_db_from_context)
 
         access_event = emit_audit_event(
             AuditAction.EXPORT_DOWNLOAD_ACCESSED,
@@ -378,7 +378,7 @@ async def export_document_tool(
                 "reason": "initial_signed_url_issued",
             },
         )
-        await AuditEmitter.write_to_db(access_event, get_db)
+        await AuditEmitter.write_to_db(access_event, get_db_from_context)
 
         return DocumentExportResponse(
             success=True,
@@ -404,7 +404,8 @@ async def list_export_audit_events(
     case_id: str | None = None,
     workflow_id: str | None = None,
     limit: int = 100,
-    db=Depends(get_db),
+    db=Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> list[ExportAuditRecord]:
     """List immutable audit records related to export governance."""
     query = """

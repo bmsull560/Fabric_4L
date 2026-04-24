@@ -17,7 +17,7 @@ from shared.identity.models import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ....database import get_db
+from ....database import get_db_from_context
 from ...service import create_api_key, list_api_keys, revoke_api_key
 
 router = APIRouter(prefix="/api-keys", tags=["API Keys"])
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api-keys", tags=["API Keys"])
 async def api_create_key(
     request: APIKeyCreateRequest,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> APIKeyCreateResponse:
     """Create a new API key scoped to the caller's tenant.
 
@@ -44,7 +44,7 @@ async def api_create_key(
 async def api_list_keys(
     enabled_only: bool = Query(True),
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> list[APIKeyModel]:
     """List API keys for the caller's tenant. Requires ``tenant_admin`` role."""
     return await list_api_keys(db, ctx.tenant_id, enabled_only=enabled_only)
@@ -54,7 +54,7 @@ async def api_list_keys(
 async def api_revoke_key(
     key_id: str,
     ctx: RequestContext = Depends(require_tenant_admin),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> None:
     """Revoke an API key. Requires ``tenant_admin`` role."""
     revoked = await revoke_api_key(db, ctx.tenant_id, key_id)

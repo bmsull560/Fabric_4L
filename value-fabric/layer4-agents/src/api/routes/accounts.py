@@ -2,6 +2,9 @@
 Accounts API routes for CRM account management.
 
 Phase 1: Accounts-first operational surface with embedded opportunities/contacts.
+
+SECURITY: All endpoints use get_db_from_context for RLS tenant isolation
+          and require_authenticated for mandatory auth enforcement.
 """
 
 import logging
@@ -11,7 +14,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...database import get_db
+from shared.identity.context import RequestContext
+from shared.identity.dependencies import require_authenticated
+
+from ...database import get_db_from_context
 from ...models.account import CRMProvider, SyncStatus
 from ...services.account_service import AccountService
 from ..schemas.accounts import (
@@ -133,7 +139,8 @@ async def list_accounts(
     page_size: int = Query(20, ge=1, le=100),
     sort_by: str = Query("updated_at", pattern="^(name|updated_at|company_size|last_synced_at)$"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> AccountListResponse:
     """List accounts with filtering and pagination."""
     service = AccountService(db)
@@ -164,7 +171,8 @@ async def list_accounts(
 @router.post("", response_model=AccountDetailSchema, status_code=status.HTTP_201_CREATED)
 async def create_account(
     request: CreateAccountRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> AccountDetailSchema:
     """Create an account with a UUID primary identifier."""
     service = AccountService(db)
@@ -191,7 +199,8 @@ async def create_account(
 @router.post("/search", response_model=AccountListResponse)
 async def search_accounts(
     request: AccountSearchRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> AccountListResponse:
     """Search accounts across name, domain, and owner."""
     service = AccountService(db)
@@ -222,7 +231,8 @@ async def search_accounts(
 
 @router.get("/filters", response_model=AccountFilterOptionsResponse)
 async def get_filter_options(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> AccountFilterOptionsResponse:
     """Get available filter options for account list."""
     service = AccountService(db)
@@ -240,7 +250,8 @@ async def get_filter_options(
 
 @router.get("/sync-status", response_model=SyncStatusListResponse)
 async def get_sync_status_all(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> SyncStatusListResponse:
     """Get sync status for all CRM providers."""
     service = AccountService(db)
@@ -279,7 +290,8 @@ async def get_sync_status_all(
 @router.post("/sync", response_model=SyncAccountsResponse)
 async def sync_accounts(
     request: SyncAccountsRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> SyncAccountsResponse:
     """Trigger manual sync for accounts."""
     service = AccountService(db)
@@ -296,7 +308,8 @@ async def sync_accounts(
 @router.get("/{account_id}", response_model=AccountDetailSchema)
 async def get_account(
     account_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> AccountDetailSchema:
     """Get full account detail."""
     service = AccountService(db)
@@ -316,7 +329,8 @@ async def get_account_activity(
     account_id: UUID,
     limit: int = Query(50, ge=1, le=100),
     since_days: int = Query(90, ge=1, le=365),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> AccountActivityResponse:
     """Get account activity timeline."""
     service = AccountService(db)
@@ -341,7 +355,8 @@ async def get_account_activity(
 @router.post("/{account_id}/refresh")
 async def refresh_account(
     account_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    _ctx: RequestContext = Depends(require_authenticated),
 ) -> AccountDetailSchema:
     """Refresh account data from CRM provider."""
     service = AccountService(db)

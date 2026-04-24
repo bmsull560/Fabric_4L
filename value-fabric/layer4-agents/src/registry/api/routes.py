@@ -13,7 +13,7 @@ from shared.identity.dependencies import require_any_permission
 from shared.identity.permissions import Permission
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...database import get_db
+from ...database import get_db_from_context
 from ..service import ModelRegistryService
 
 router = APIRouter(prefix="/models", tags=["Model Registry"])
@@ -80,7 +80,7 @@ class PromotionLogResponse(BaseModel):
 async def api_register_model(
     request: ModelRegisterRequest,
     ctx: RequestContext = Depends(require_write_or_admin_models),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Register a new model version. Requires ``write:models`` or ``admin:models``."""
     model = await ModelRegistryService.register_model(
@@ -105,7 +105,7 @@ async def api_list_models(
             Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
         )
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> list[ModelVersionResponse]:
     """List model versions for the caller's tenant."""
     models = await ModelRegistryService.list_models(db, ctx.tenant_id, stage=stage)
@@ -120,7 +120,7 @@ async def api_get_model(
             Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
         )
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Get a single model version by ID."""
     model = await ModelRegistryService.get_model(db, model_id)
@@ -134,7 +134,7 @@ async def api_promote_model(
     model_id: UUID,
     request: ModelPromoteRequest,
     ctx: RequestContext = Depends(require_write_or_admin_models),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Promote a model version to a new stage."""
     from uuid import UUID as UuidType
@@ -163,7 +163,7 @@ async def api_get_promotion_history(
             Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
         )
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> list[PromotionLogResponse]:
     """Get promotion history for a model version."""
     model = await ModelRegistryService.get_model(db, model_id)
@@ -181,7 +181,7 @@ async def api_get_active_model(
             Permission.READ_MODELS, Permission.WRITE_MODELS, Permission.ADMIN_MODELS
         )
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Get the active production model for a provider."""
     model = await ModelRegistryService.get_active_production_model(db, ctx.tenant_id, provider)
@@ -209,7 +209,7 @@ async def api_record_eval_run(
             Permission.WRITE_MODELS, Permission.ADMIN_MODELS
         )
     ),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Record an evaluation run against the active production model.
 

@@ -24,6 +24,9 @@ from shared.identity.permissions import Role
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+# SECURITY: OIDC login/callback endpoints are pre-authentication flows.
+# The user does not yet have a JWT, so get_db (no tenant context) is
+# intentional here. Authentication is via OIDC provider + PKCE.
 from ....database import get_db
 from ....tenants.models.tenant import Tenant
 from ....tenants.models.user import User
