@@ -17,8 +17,8 @@ from uuid import UUID, uuid4
 import pytest
 from fastapi import HTTPException, Request
 
-from identity.context import RequestContext
-from identity.dependencies import (
+from shared.identity.context import RequestContext
+from shared.identity.dependencies import (
     get_current_context,
     get_optional_context,
     require_all_permissions,
@@ -33,7 +33,7 @@ from identity.dependencies import (
     require_tenant,
     require_tenant_admin,
 )
-from identity.permissions import Permission, Role, ROLE_PERMISSIONS
+from shared.identity.permissions import Permission, Role, ROLE_PERMISSIONS
 
 
 class TestPermissionEnum:

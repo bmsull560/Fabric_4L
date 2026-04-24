@@ -8,6 +8,7 @@ Validates that:
 4. Admission policies would block unsigned images
 """
 
+import os
 import subprocess
 from unittest.mock import Mock, patch
 

@@ -53,7 +53,9 @@ JWT_ROLES_CLAIM = os.getenv("JWT_ROLES_CLAIM", "roles")
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 _PATHS_TO_ADD = [
     str(_PROJECT_ROOT),
-    str(_PROJECT_ROOT / "value-fabric" / "shared"),
+    # NOTE: Do NOT add value-fabric/shared/ here — it shadows stdlib `secrets`.
+    # The shared package is importable as `shared.identity`, `shared.security`, etc.
+    # via the project root path above.
     str(_PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src"),
     str(_PROJECT_ROOT / "value-fabric" / "layer3-knowledge" / "src"),
     str(_PROJECT_ROOT / "value-fabric" / "layer1-ingestion" / "src"),

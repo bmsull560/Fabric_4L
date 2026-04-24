@@ -22,13 +22,13 @@ import pytest
 from fastapi import Request, Response
 from starlette.datastructures import Headers, QueryParams
 
-from identity.context import RequestContext
-from identity.middleware import (
+from shared.identity.context import RequestContext
+from shared.identity.middleware import (
     GovernanceMiddleware,
     _build_context_from_role,
     _is_public_path,
 )
-from identity.permissions import Permission, Role
+from shared.identity.permissions import Permission, Role
 
 
 class TestPublicPathBypass:

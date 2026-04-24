@@ -21,7 +21,7 @@ import jwt
 import pytest
 from fastapi import HTTPException
 
-from identity.jwt import (
+from shared.identity.jwt import (
     _DEFAULT_JWT_SECRET,
     _detect_environment,
     _get_jwt_secret,
