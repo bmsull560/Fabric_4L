@@ -1,0 +1,429 @@
+"""Root conftest.py — Production Approval Suite shared fixtures.
+
+This module provides the canonical fixture set for all tenant isolation,
+security, state consistency, and integration tests.  Every fixture uses
+deterministic, seeded values so tests are reproducible across environments.
+
+Design Rules:
+    1. Every test that touches persistence must seed mixed-tenant data in the
+       same database, graph, or cache instance.
+    2. Tests must never rely solely on route-level filtering — they must also
+       verify the persistence layer.
+    3. In CI (``CI=true``), missing infrastructure is a hard failure.
+       Locally, tests that need unavailable infra are skipped.
+    4. JWT tokens are signed with the same secret used by GovernanceMiddleware
+       in test mode so ``TestClient`` requests pass authentication.
+"""
+from __future__ import annotations
+
+import os
+import sys
+import time
+from pathlib import Path
+from typing import Any, Callable, Dict, Generator, Optional
+from uuid import UUID
+
+import jwt as pyjwt
+import pytest
+
+# ---------------------------------------------------------------------------
+# Deterministic tenant / user identifiers
+# ---------------------------------------------------------------------------
+TENANT_A_ID = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+TENANT_B_ID = UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+SYSTEM_TENANT_ID = UUID("00000000-0000-0000-0000-000000000000")
+
+USER_A_ID = "user-alpha-001"
+USER_B_ID = "user-bravo-002"
+ADMIN_USER_ID = "admin-super-001"
+
+# JWT secret shared with GovernanceMiddleware in test/dev mode
+TEST_JWT_SECRET = os.getenv("JWT_SECRET", os.getenv("TEST_JWT_SECRET", "test-secret-key"))
+TEST_JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+# Claim names matching GovernanceMiddleware defaults
+JWT_TENANT_CLAIM = os.getenv("JWT_TENANT_CLAIM", "tenant_id")
+JWT_USER_CLAIM = os.getenv("JWT_USER_CLAIM", "sub")
+JWT_ROLES_CLAIM = os.getenv("JWT_ROLES_CLAIM", "roles")
+
+
+# ---------------------------------------------------------------------------
+# Ensure value-fabric packages are importable
+# ---------------------------------------------------------------------------
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_PATHS_TO_ADD = [
+    str(_PROJECT_ROOT),
+    str(_PROJECT_ROOT / "value-fabric" / "shared"),
+    str(_PROJECT_ROOT / "value-fabric" / "layer4-agents" / "src"),
+    str(_PROJECT_ROOT / "value-fabric" / "layer3-knowledge" / "src"),
+    str(_PROJECT_ROOT / "value-fabric" / "layer1-ingestion" / "src"),
+    str(_PROJECT_ROOT / "packages" / "platform-contract" / "src" / "python"),
+]
+for p in _PATHS_TO_ADD:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+
+# ---------------------------------------------------------------------------
+# JWT Encoding
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="session")
+def jwt_encode() -> Callable[..., str]:
+    """Return a function that creates signed JWTs matching GovernanceMiddleware.
+
+    Usage::
+
+        token = jwt_encode(
+            tenant_id=TENANT_A_ID,
+            user_id=USER_A_ID,
+            roles=["analyst"],
+        )
+    """
+
+    def _encode(
+        tenant_id: UUID,
+        *,
+        user_id: Optional[str] = None,
+        roles: Optional[list[str]] = None,
+        api_key_id: Optional[str] = None,
+        extra_claims: Optional[Dict[str, Any]] = None,
+        expires_in: int = 3600,
+    ) -> str:
+        now = int(time.time())
+        payload: Dict[str, Any] = {
+            JWT_TENANT_CLAIM: str(tenant_id),
+            "iat": now,
+            "exp": now + expires_in,
+        }
+        if user_id is not None:
+            payload[JWT_USER_CLAIM] = user_id
+        if roles is not None:
+            payload[JWT_ROLES_CLAIM] = roles
+        if api_key_id is not None:
+            payload["api_key_id"] = api_key_id
+        if extra_claims:
+            payload.update(extra_claims)
+        return pyjwt.encode(payload, TEST_JWT_SECRET, algorithm=TEST_JWT_ALGORITHM)
+
+    return _encode
+
+
+# ---------------------------------------------------------------------------
+# Tenant identity fixtures
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def tenant_a_id() -> UUID:
+    """Deterministic UUID for Tenant A."""
+    return TENANT_A_ID
+
+
+@pytest.fixture
+def tenant_b_id() -> UUID:
+    """Deterministic UUID for Tenant B."""
+    return TENANT_B_ID
+
+
+@pytest.fixture
+def user_a_id() -> str:
+    return USER_A_ID
+
+
+@pytest.fixture
+def user_b_id() -> str:
+    return USER_B_ID
+
+
+@pytest.fixture
+def admin_user_id() -> str:
+    return ADMIN_USER_ID
+
+
+# ---------------------------------------------------------------------------
+# JWT Token fixtures
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def jwt_token_a(jwt_encode) -> str:
+    """Signed JWT for Tenant A / analyst role."""
+    return jwt_encode(TENANT_A_ID, user_id=USER_A_ID, roles=["analyst"])
+
+
+@pytest.fixture
+def jwt_token_b(jwt_encode) -> str:
+    """Signed JWT for Tenant B / analyst role."""
+    return jwt_encode(TENANT_B_ID, user_id=USER_B_ID, roles=["analyst"])
+
+
+@pytest.fixture
+def jwt_token_admin(jwt_encode) -> str:
+    """Signed JWT for super_admin (Tenant A context)."""
+    return jwt_encode(TENANT_A_ID, user_id=ADMIN_USER_ID, roles=["super_admin"])
+
+
+@pytest.fixture
+def jwt_token_expired(jwt_encode) -> str:
+    """JWT that expired 1 hour ago."""
+    return jwt_encode(TENANT_A_ID, user_id=USER_A_ID, roles=["analyst"], expires_in=-3600)
+
+
+@pytest.fixture
+def jwt_token_no_tenant() -> str:
+    """JWT with no tenant_id claim — must be rejected."""
+    now = int(time.time())
+    payload = {
+        JWT_USER_CLAIM: USER_A_ID,
+        JWT_ROLES_CLAIM: ["analyst"],
+        "iat": now,
+        "exp": now + 3600,
+    }
+    return pyjwt.encode(payload, TEST_JWT_SECRET, algorithm=TEST_JWT_ALGORITHM)
+
+
+@pytest.fixture
+def jwt_token_malformed_tenant() -> str:
+    """JWT with invalid (non-UUID) tenant_id — must be rejected."""
+    now = int(time.time())
+    payload = {
+        JWT_TENANT_CLAIM: "not-a-uuid",
+        JWT_USER_CLAIM: USER_A_ID,
+        JWT_ROLES_CLAIM: ["analyst"],
+        "iat": now,
+        "exp": now + 3600,
+    }
+    return pyjwt.encode(payload, TEST_JWT_SECRET, algorithm=TEST_JWT_ALGORITHM)
+
+
+# ---------------------------------------------------------------------------
+# RequestContext fixtures (for unit tests that bypass HTTP)
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def context_a():
+    """RequestContext for Tenant A — use with RequestContextManager."""
+    from identity.context import RequestContext
+    from identity.permissions import Permission, Role, get_role_permissions
+
+    return RequestContext(
+        tenant_id=TENANT_A_ID,
+        user_id=USER_A_ID,
+        roles=["analyst"],
+        permissions=get_role_permissions(Role.ANALYST),
+        source="jwt",
+    )
+
+
+@pytest.fixture
+def context_b():
+    """RequestContext for Tenant B — use with RequestContextManager."""
+    from identity.context import RequestContext
+    from identity.permissions import Permission, Role, get_role_permissions
+
+    return RequestContext(
+        tenant_id=TENANT_B_ID,
+        user_id=USER_B_ID,
+        roles=["analyst"],
+        permissions=get_role_permissions(Role.ANALYST),
+        source="jwt",
+    )
+
+
+@pytest.fixture
+def context_admin():
+    """RequestContext for super_admin."""
+    from identity.context import RequestContext
+    from identity.permissions import Permission, Role, get_role_permissions
+
+    return RequestContext(
+        tenant_id=TENANT_A_ID,
+        user_id=ADMIN_USER_ID,
+        roles=["super_admin"],
+        permissions=get_role_permissions(Role.SUPER_ADMIN),
+        source="jwt",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Auth header helpers
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def auth_headers_a(jwt_token_a) -> Dict[str, str]:
+    """HTTP headers authenticating as Tenant A."""
+    return {"Authorization": f"Bearer {jwt_token_a}"}
+
+
+@pytest.fixture
+def auth_headers_b(jwt_token_b) -> Dict[str, str]:
+    """HTTP headers authenticating as Tenant B."""
+    return {"Authorization": f"Bearer {jwt_token_b}"}
+
+
+@pytest.fixture
+def auth_headers_admin(jwt_token_admin) -> Dict[str, str]:
+    """HTTP headers authenticating as super_admin."""
+    return {"Authorization": f"Bearer {jwt_token_admin}"}
+
+
+# ---------------------------------------------------------------------------
+# Infrastructure availability helpers
+# ---------------------------------------------------------------------------
+def _check_postgres() -> bool:
+    """Return True if test PostgreSQL is reachable."""
+    try:
+        import psycopg2
+        db_url = os.getenv(
+            "TEST_DATABASE_URL",
+            "postgresql://localhost:5432/test_value_fabric",
+        )
+        conn = psycopg2.connect(db_url)
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def _check_redis() -> bool:
+    """Return True if test Redis is reachable."""
+    try:
+        import redis
+        host = os.getenv("REDIS_HOST", "localhost")
+        port = int(os.getenv("REDIS_PORT", "6379"))
+        client = redis.Redis(host=host, port=port, db=0)
+        client.ping()
+        client.close()
+        return True
+    except Exception:
+        return False
+
+
+def _check_neo4j() -> bool:
+    """Return True if test Neo4j is reachable."""
+    try:
+        from neo4j import GraphDatabase
+        uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+        user = os.getenv("NEO4J_USER", "neo4j")
+        password = os.getenv("NEO4J_PASSWORD", "password")
+        driver = GraphDatabase.driver(uri, auth=(user, password))
+        driver.verify_connectivity()
+        driver.close()
+        return True
+    except Exception:
+        return False
+
+
+@pytest.fixture(scope="session")
+def require_postgres():
+    """Skip (local) or fail (CI) if PostgreSQL is unavailable."""
+    if _check_postgres():
+        return True
+    if os.getenv("CI") == "true":
+        pytest.fail("PostgreSQL required in CI. Run: docker-compose up postgres")
+    pytest.skip("PostgreSQL not available locally")
+
+
+@pytest.fixture(scope="session")
+def require_redis():
+    """Skip (local) or fail (CI) if Redis is unavailable."""
+    if _check_redis():
+        return True
+    if os.getenv("CI") == "true":
+        pytest.fail("Redis required in CI. Run: docker-compose up redis")
+    pytest.skip("Redis not available locally")
+
+
+@pytest.fixture(scope="session")
+def require_neo4j():
+    """Skip (local) or fail (CI) if Neo4j is unavailable."""
+    if _check_neo4j():
+        return True
+    if os.getenv("CI") == "true":
+        pytest.fail("Neo4j required in CI. Run: docker-compose up neo4j")
+    pytest.skip("Neo4j not available locally")
+
+
+# ---------------------------------------------------------------------------
+# Database fixtures (require live PostgreSQL)
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def db_connection(require_postgres):
+    """Raw psycopg2 connection for RLS policy testing."""
+    import psycopg2
+    db_url = os.getenv(
+        "TEST_DATABASE_URL",
+        "postgresql://localhost:5432/test_value_fabric",
+    )
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True
+    yield conn
+    conn.close()
+
+
+@pytest.fixture
+def db_session_for_tenant(require_postgres):
+    """Factory fixture: returns a function that creates a DB session scoped to a tenant.
+
+    Usage::
+
+        session = db_session_for_tenant(TENANT_A_ID)
+        # session has SET LOCAL app.tenant_id = '<tenant_a_uuid>'
+    """
+    import psycopg2
+    db_url = os.getenv(
+        "TEST_DATABASE_URL",
+        "postgresql://localhost:5432/test_value_fabric",
+    )
+
+    connections = []
+
+    def _create(tenant_id: UUID):
+        conn = psycopg2.connect(db_url)
+        conn.autocommit = False
+        cur = conn.cursor()
+        cur.execute("SET LOCAL app.tenant_id = %s", (str(tenant_id),))
+        connections.append(conn)
+        return conn
+
+    yield _create
+
+    for conn in connections:
+        try:
+            conn.rollback()
+            conn.close()
+        except Exception:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Redis fixtures
+# ---------------------------------------------------------------------------
+@pytest.fixture
+def redis_client(require_redis):
+    """Redis client for cache / rate-limit / state isolation testing."""
+    import redis
+    host = os.getenv("REDIS_HOST", "localhost")
+    port = int(os.getenv("REDIS_PORT", "6379"))
+    db = int(os.getenv("REDIS_DB", "0"))
+    client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
+    client.ping()
+    yield client
+    client.close()
+
+
+# ---------------------------------------------------------------------------
+# Codebase introspection helpers (for contract tests)
+# ---------------------------------------------------------------------------
+@pytest.fixture(scope="session")
+def project_root() -> Path:
+    """Absolute path to the repository root."""
+    return _PROJECT_ROOT
+
+
+@pytest.fixture(scope="session")
+def all_route_files(project_root) -> list[Path]:
+    """All Python route files across all layers."""
+    return sorted(project_root.glob("value-fabric/**/api/routes/*.py"))
+
+
+@pytest.fixture(scope="session")
+def l4_route_files(project_root) -> list[Path]:
+    """L4 route files only (highest risk for tenant bypass)."""
+    return sorted(
+        (project_root / "value-fabric" / "layer4-agents" / "src" / "api" / "routes").glob("*.py")
+    )

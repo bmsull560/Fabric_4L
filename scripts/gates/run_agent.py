@@ -188,21 +188,21 @@ class AgentGate:
         if not eval_workflow.exists():
             if self.verbose:
                 print(f"⚠️  AI evals workflow not found: {eval_workflow}")
-            return self._simulate_eval_results()
+            return self._report_missing_evals()
 
         # Try to find recent evaluation results
         results_dir = Path("test-results/evals")
         if results_dir.exists():
             return self._parse_eval_results(results_dir)
 
-        return self._simulate_eval_results()
+        return self._report_missing_evals()
 
     def _parse_eval_results(self, results_dir: Path) -> Dict[str, Any]:
         """Parse evaluation results from test output."""
         # Look for latest results file
         result_files = list(results_dir.glob("*.json"))
         if not result_files:
-            return self._simulate_eval_results()
+            return self._report_missing_evals()
 
         # Get most recent file
         latest = max(result_files, key=lambda p: p.stat().st_mtime)
@@ -224,18 +224,26 @@ class AgentGate:
         except Exception as e:
             if self.verbose:
                 print(f"⚠️ Failed to parse eval results: {e}")
-            return self._simulate_eval_results()
+            return self._report_missing_evals()
 
-    def _simulate_eval_results(self) -> Dict[str, Any]:
-        """Simulate evaluation results for environments without eval pipeline."""
+    def _report_missing_evals(self) -> Dict[str, Any]:
+        """Report honest failure when evaluation pipeline is not configured.
+
+        SECURITY: This method previously returned simulated passing results,
+        which caused the agent gate to report 100% pass rate with zero real
+        evaluations. Changed to fail-closed per Production Approval Suite
+        requirements (Finding F-04).
+        """
         return {
             "metrics": {
-                "schema_validity_percent": 100.0,
-                "provenance_coverage_percent": 100.0,
-                "resolution_success_percent": 99.9,
-                "unsupported_claim_rate": 0.1,
-                "total_evaluations": 50,
-                "note": "Simulated results - AI evals pipeline not configured",
+                "schema_validity_percent": 0.0,
+                "provenance_coverage_percent": 0.0,
+                "resolution_success_percent": 0.0,
+                "unsupported_claim_rate": 100.0,
+                "total_evaluations": 0,
+                "error": "FAIL-CLOSED: No real evaluation data available. "
+                         "Configure the AI evals pipeline or provide "
+                         "test-results/evals/*.json to pass this gate.",
             },
             "samples": [],
         }

@@ -1,0 +1,38 @@
+# Production Approval Suite — Gate Targets
+# Usage: make -f tests/Makefile.gates gate-tenant
+#        make -f tests/Makefile.gates gate-all
+
+PYTEST = python3 -m pytest -v --tb=short -o "addopts="
+
+# ---------------------------------------------------------------------------
+# Pillar 1: Architecture Conformance & State Consistency
+# ---------------------------------------------------------------------------
+gate-state:
+	$(PYTEST) tests/state/test_state_alignment.py
+
+# ---------------------------------------------------------------------------
+# Pillar 2: Security & Tenant Isolation
+# ---------------------------------------------------------------------------
+gate-tenant-contract:
+	$(PYTEST) tests/security/test_tenant_context_contract.py
+
+gate-tenant-api:
+	$(PYTEST) tests/security/test_cross_tenant_api.py
+
+gate-tenant-rls:
+	$(PYTEST) tests/security/test_rls_enforcement.py
+
+gate-tenant-export:
+	$(PYTEST) tests/security/test_export_tenant_access.py
+
+gate-tenant-startup:
+	$(PYTEST) tests/config/test_startup_tenant_validation.py
+
+gate-tenant: gate-tenant-contract gate-tenant-api gate-tenant-rls gate-tenant-export gate-tenant-startup
+
+# ---------------------------------------------------------------------------
+# Aggregate: All Gates
+# ---------------------------------------------------------------------------
+gate-all: gate-state gate-tenant
+
+.PHONY: gate-state gate-tenant-contract gate-tenant-api gate-tenant-rls gate-tenant-export gate-tenant-startup gate-tenant gate-all

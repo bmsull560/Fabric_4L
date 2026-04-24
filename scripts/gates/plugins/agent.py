@@ -166,14 +166,14 @@ class AgentGate(GatePlugin):
             }
         
         except (subprocess.TimeoutExpired, FileNotFoundError):
-            return {"passed": True, "pass_rate": 1.0, "skipped": True}
+            return {"passed": False, "pass_rate": 0.0, "skipped": True, "error": "Agent evals not available — pytest timed out or not found"}
     
     def _check_golden_traces(self, workspace: Path) -> dict:
         """Check golden trace tests."""
         golden_dir = workspace / "tests/evals/golden"
         
         if not golden_dir.exists():
-            return {"passed": True, "match_rate": 1.0, "skipped": True}
+            return {"passed": False, "match_rate": 0.0, "skipped": True, "error": "Golden traces directory not found"}
         
         trace_files = list(golden_dir.glob("*.json"))
         
@@ -188,7 +188,7 @@ class AgentGate(GatePlugin):
         manifest_dir = workspace / "contracts/tool-manifests"
         
         if not manifest_dir.exists():
-            return {"valid": True, "valid_count": 0, "total_count": 0, "skipped": True}
+            return {"valid": False, "valid_count": 0, "total_count": 0, "skipped": True, "error": "Tool manifests directory not found"}
         
         manifests = list(manifest_dir.glob("*.json"))
         valid_count = 0

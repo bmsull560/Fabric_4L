@@ -164,7 +164,13 @@ class StateGate:
         return result
 
     def _run_state_validation(self) -> Dict[str, Any]:
-        """Execute state machine validation."""
+        """Execute state machine validation.
+
+        SECURITY: This method previously fabricated metrics when no tests
+        existed (max(total_tests, 10), hardcoded illegal_transitions=0,
+        hardcoded reconciliation_success_rate=99.95). Changed to fail-closed
+        per Production Approval Suite requirements (Finding F-05).
+        """
         # Run state-related tests
         state_test_dirs = [
             Path("tests/state"),
@@ -173,10 +179,22 @@ class StateGate:
 
         total_tests = 0
         passed_tests = 0
+        failed_tests = 0
+        dirs_found = 0
+        errors = []
 
         for test_dir in state_test_dirs:
             if not test_dir.exists():
+                errors.append(f"Test directory not found: {test_dir}")
                 continue
+
+            # Check directory actually contains test files
+            test_files = list(test_dir.glob("test_*.py"))
+            if not test_files:
+                errors.append(f"No test files in: {test_dir}")
+                continue
+
+            dirs_found += 1
 
             cmd = [
                 sys.executable,
@@ -196,34 +214,55 @@ class StateGate:
                 )
 
                 # Parse pass/fail counts
-                if "passed" in result.stdout:
-                    # Simple parsing
-                    lines = result.stdout.split("\n")
-                    for line in lines:
-                        if "passed" in line:
-                            # Extract numbers like "5 passed"
-                            parts = line.split()
-                            for i, part in enumerate(parts):
-                                if part.isdigit() and i + 1 < len(parts) and parts[i + 1] == "passed":
-                                    passed_tests += int(part)
-                                    total_tests += int(part)
-                                elif part.isdigit() and i + 1 < len(parts) and parts[i + 1] == "failed":
-                                    total_tests += int(part)
+                import re
+                output = result.stdout + result.stderr
+                passed_match = re.search(r'(\d+) passed', output)
+                failed_match = re.search(r'(\d+) failed', output)
+
+                if passed_match:
+                    count = int(passed_match.group(1))
+                    passed_tests += count
+                    total_tests += count
+                if failed_match:
+                    count = int(failed_match.group(1))
+                    failed_tests += count
+                    total_tests += count
 
             except Exception as e:
+                errors.append(f"State tests failed in {test_dir}: {e}")
                 if self.verbose:
-                    print(f"⚠️ State tests failed in {test_dir}: {e}")
+                    print(f"\u26a0\ufe0f State tests failed in {test_dir}: {e}")
 
         # Check for enum mismatches in shared models
         enum_mismatches = self._check_enum_consistency()
 
+        # FAIL-CLOSED: If no test directories found or no tests executed,
+        # report honest failure instead of fabricating passing metrics.
+        if total_tests == 0:
+            return {
+                "metrics": {
+                    "total_tests": 0,
+                    "passed_tests": 0,
+                    "failed_tests": 0,
+                    "state_enum_mismatches": enum_mismatches,
+                    "illegal_transitions": -1,  # -1 = untested
+                    "reconciliation_success_rate": 0.0,
+                    "error": "FAIL-CLOSED: No state consistency tests executed. "
+                             f"Issues: {'; '.join(errors)}",
+                },
+            }
+
+        # Calculate reconciliation rate from actual test results
+        reconciliation_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0.0
+
         return {
             "metrics": {
-                "total_tests": max(total_tests, 10),  # Assume at least 10 tests
+                "total_tests": total_tests,
                 "passed_tests": passed_tests,
+                "failed_tests": failed_tests,
                 "state_enum_mismatches": enum_mismatches,
-                "illegal_transitions": 0,  # Would come from chaos tests
-                "reconciliation_success_rate": 99.95 if passed_tests == max(total_tests, 10) else 98.0,
+                "illegal_transitions": failed_tests,  # Actual failures, not hardcoded 0
+                "reconciliation_success_rate": reconciliation_rate,
             },
         }
 
