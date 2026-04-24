@@ -53,7 +53,6 @@ class WorkflowType(str, Enum):
     ORCHESTRATOR = "orchestrator"
 
     # Additional spec workflows
-    WHITESPACE_ANALYSIS_WORKFLOW = "whitespace_analysis"  # Full workflow alias
     BUSINESS_CASE_GENERATION = "business_case_generation"
     DOCUMENT_INGESTION = "document_ingestion"
     FINANCIAL_EXTRACTION = "financial_extraction"

@@ -314,7 +314,8 @@ async def export_document_tool(
         manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
         manifest_filename = f"{filename.rsplit('.', 1)[0]}.provenance.json"
 
-        base_prefix = f"exports/{request.business_case_id}/{export_id}"
+        tenant_prefix = str(context.tenant_id) if context else "unknown"
+        base_prefix = f"exports/{tenant_prefix}/{request.business_case_id}/{export_id}"
         pdf_key = f"{base_prefix}/{filename}"
         manifest_key = f"{base_prefix}/{manifest_filename}"
         object_metadata = {

@@ -5,10 +5,14 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+
+# Minimum JWT secret length for production (NIST SP 800-117 recommends >= 256 bits)
+_MIN_JWT_SECRET_LENGTH = 32
 
 
 class SecurityConfig(BaseModel):
@@ -117,6 +121,74 @@ def validate_database_config() -> None:
             )
 
 
+def validate_jwt_secret_strength() -> None:
+    """Validate that JWT_SECRET meets minimum length requirements.
+
+    A short JWT secret is trivially brute-forceable.  NIST recommends
+    at least 256 bits (32 bytes) for HMAC keys.
+
+    Raises:
+        ValueError: If JWT_SECRET is too short in production
+    """
+    jwt_secret = os.getenv("JWT_SECRET", "")
+
+    if not jwt_secret:
+        # Missing JWT_SECRET is handled by validate_all_controls / jwt.py
+        return
+
+    if is_production() and len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
+        raise ValueError(
+            f"JWT_SECRET is too short ({len(jwt_secret)} chars). "
+            f"Production requires at least {_MIN_JWT_SECRET_LENGTH} characters "
+            f"(256 bits) to resist brute-force attacks. "
+            f"Generate a strong secret: python3 -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
+    elif not is_development() and len(jwt_secret) < _MIN_JWT_SECRET_LENGTH:
+        logger.warning(
+            "JWT_SECRET is only %d characters. "
+            "Production requires at least %d characters.",
+            len(jwt_secret),
+            _MIN_JWT_SECRET_LENGTH,
+        )
+
+
+def validate_database_superuser() -> None:
+    """Detect if the database connection uses a PostgreSQL superuser.
+
+    PostgreSQL superusers bypass ALL Row-Level Security policies.
+    If the application connects as a superuser, RLS provides zero
+    tenant isolation — every query sees every tenant's data.
+
+    Raises:
+        ValueError: If DATABASE_URL uses a known superuser role in production
+    """
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url:
+        return
+
+    # Extract username from connection string
+    try:
+        parsed = urlparse(database_url)
+        username = parsed.username or ""
+    except Exception:
+        username = ""
+
+    # Known PostgreSQL superuser names
+    superuser_names = {"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"}
+
+    if username.lower() in superuser_names:
+        msg = (
+            f"DATABASE_URL connects as '{username}', which is a PostgreSQL superuser. "
+            f"Superusers bypass ALL Row-Level Security policies, meaning tenant "
+            f"isolation is completely ineffective. Create a dedicated application "
+            f"role: CREATE ROLE app_user LOGIN; GRANT CONNECT ON DATABASE ... TO app_user;"
+        )
+        if is_production():
+            raise ValueError(msg)
+        else:
+            logger.warning(msg)
+
+
 def validate_environment_config() -> None:
     """Validate environment configuration for conflicts.
     
@@ -161,6 +233,7 @@ def get_startup_summary() -> dict[str, Any]:
     redis_url = os.getenv("REDIS_URL", "")
     audit_sink = os.getenv("AUDIT_SINK_URL", "")
     cors_origins = os.getenv("CORS_ORIGINS", "*")
+    database_url = os.getenv("DATABASE_URL", "")
     
     summary = {
         "environment": environment,
@@ -168,6 +241,7 @@ def get_startup_summary() -> dict[str, Any]:
         "audit_enabled": bool(audit_sink),
         "cors_mode": "restricted" if cors_origins != "*" else "permissive",
         "jwt_validation": "strict" if is_production() else "relaxed",
+        "rls_status": _get_rls_status(database_url),
         "warnings": [],
         "degraded_controls": [],
     }
@@ -187,8 +261,44 @@ def get_startup_summary() -> dict[str, Any]:
         summary["degraded_controls"].append("cors")
         if not is_development():
             summary["warnings"].append("CORS is set to wildcard - security risk")
+
+    # RLS status warnings
+    rls_status = summary["rls_status"]
+    if rls_status == "disabled":
+        summary["degraded_controls"].append("rls")
+        summary["warnings"].append(
+            "RLS is not active (non-PostgreSQL database). "
+            "Tenant isolation relies solely on application-level filtering."
+        )
+    elif rls_status == "superuser_bypass":
+        summary["degraded_controls"].append("rls")
+        summary["warnings"].append(
+            "Database connection uses a superuser role. "
+            "RLS policies exist but are bypassed for superusers."
+        )
     
     if summary["warnings"]:
         summary["warnings"].insert(0, "WARNING: Some security controls are degraded")
     
     return summary
+
+
+def _get_rls_status(database_url: str) -> str:
+    """Determine RLS status based on database configuration.
+
+    Returns one of: ``active``, ``disabled``, ``superuser_bypass``.
+    """
+    if not database_url or database_url.startswith("sqlite"):
+        return "disabled"
+
+    try:
+        parsed = urlparse(database_url)
+        username = (parsed.username or "").lower()
+    except Exception:
+        username = ""
+
+    superuser_names = {"postgres", "rdsadmin", "cloudsqladmin", "azure_superuser"}
+    if username in superuser_names:
+        return "superuser_bypass"
+
+    return "active"

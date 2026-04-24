@@ -4,7 +4,7 @@ import type { LayerKey } from './client';
 // ── L4 Workflow Types ────────────────────────────────────────────────────────
 
 export interface WorkflowCreateRequest {
-  workflow_type: 'roi_calculator' | 'whitespace_analysis' | 'business_case' | 'orchestrator';
+  workflow_type: 'roi_calculator' | 'whitespace_analysis' | 'business_case' | 'business_case_generation' | 'orchestrator';
   tenant_id: string;
   user_id: string;
   inputs?: WorkflowInputs;
@@ -43,7 +43,7 @@ export interface WorkflowStatusResponse {
   scheduler_status: string | null;
 }
 
-export type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'paused';
+export type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'paused' | 'interrupted';
 
 export interface WorkflowEvent {
   event_id: string;

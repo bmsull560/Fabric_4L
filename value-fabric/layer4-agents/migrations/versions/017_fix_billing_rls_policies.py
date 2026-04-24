@@ -50,6 +50,20 @@ BROKEN_POLICY_TABLES = [
 UNSAFE_NULL_TABLES = [
     "billing_customers",
     "billing_subscriptions",
+    "billing_usage_events",
+    "billing_webhook_events",
+]
+
+# Canonical list for gate test scanner (union of both sets above).
+# NOTE: Must be a literal list (not expression) so the regex-based
+# test scanner in test_rls_enforcement.py can parse it.
+RLS_TABLES = [
+    "billing_invoices",
+    "billing_invoice_items",
+    "billing_charges",
+    "billing_customers",
+    "billing_subscriptions",
+    "billing_usage_events",
     "billing_webhook_events",
 ]
 

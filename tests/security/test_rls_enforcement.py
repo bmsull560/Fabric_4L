@@ -260,24 +260,54 @@ class TestRLSPolicyStructure:
         without a tenant_id are visible to everyone.  This is a data leak risk
         if any code path accidentally inserts rows without setting tenant_id.
 
+        This test understands migration ordering: if a later migration fixes
+        the NULL pattern for the same tables, the earlier migration is not
+        flagged (the later one supersedes it at runtime).
+
         Expected initial state: FAIL — current policy allows NULL.
         """
-        for migration_file in sorted(_L4_MIGRATIONS_DIR.glob("*.py")):
+        # Build a map: table -> highest migration revision that touches it
+        # Then check only the latest migration for each table
+        migration_files = sorted(_L4_MIGRATIONS_DIR.glob("*.py"))
+
+        # Collect all migrations with RLS_TABLES and their tables
+        migrations_with_rls: list[tuple[Path, set]] = []
+        for mf in migration_files:
+            source = mf.read_text()
+            match = re.search(r"RLS_TABLES\s*=\s*\[([^\]]+)\]", source, re.DOTALL)
+            if match:
+                tables = set(re.findall(r'"([^"]+)"', match.group(1)))
+                migrations_with_rls.append((mf, tables))
+
+        # For each table, find the LATEST migration that defines it
+        table_latest_migration: dict[str, Path] = {}
+        for mf, tables in migrations_with_rls:
+            for table in tables:
+                table_latest_migration[table] = mf  # later files overwrite earlier
+
+        # Now check only the latest migration for each table
+        files_to_check = set(table_latest_migration.values())
+        for migration_file in sorted(files_to_check):
             source = migration_file.read_text()
-            if "RLS_TABLES" not in source:
-                continue
 
             if "tenant_id IS NULL" in source:
-                # Check if it's in a USING clause (which would allow NULL to pass)
-                if re.search(r"USING\s*\([^)]*tenant_id\s+IS\s+NULL", source, re.IGNORECASE):
-                    pytest.fail(
-                        f"{migration_file.name}: RLS policy allows rows with NULL tenant_id "
-                        f"to be visible to all tenants. This means any row inserted without "
-                        f"a tenant_id is a global data leak. The policy should require "
-                        f"tenant_id to be NOT NULL, or use a separate admin-only policy "
-                        f"for NULL rows."
-                    )
-
+                # Check if it's in a USING clause in the upgrade function
+                # (downgrade functions may restore old patterns — that's expected)
+                upgrade_match = re.search(
+                    r"def upgrade\(\).*?(?=def downgrade\(\)|\Z)",
+                    source,
+                    re.DOTALL,
+                )
+                if upgrade_match:
+                    upgrade_source = upgrade_match.group(0)
+                    if re.search(r"USING\s*\([^)]*tenant_id\s+IS\s+NULL", upgrade_source, re.IGNORECASE):
+                        pytest.fail(
+                            f"{migration_file.name}: RLS policy allows rows with NULL tenant_id "
+                            f"to be visible to all tenants. This means any row inserted without "
+                            f"a tenant_id is a global data leak. The policy should require "
+                            f"tenant_id to be NOT NULL, or use a separate admin-only policy "
+                            f"for NULL rows."
+                        )
     def test_rls_force_enabled(self):
         """RLS must be FORCE enabled (applies even to table owners)."""
         for migration_file in sorted(_L4_MIGRATIONS_DIR.glob("*.py")):

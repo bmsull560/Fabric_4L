@@ -406,7 +406,7 @@ async def export_business_case(
     )
     manifest_bytes = json.dumps(manifest, indent=2).encode("utf-8")
 
-    base_prefix = f"exports/{case_id}/{export_id}"
+    base_prefix = f"exports/{context.tenant_id}/{case_id}/{export_id}"
     object_key = f"{base_prefix}/{filename}"
     manifest_key = f"{base_prefix}/{manifest_filename}"
     metadata = {
