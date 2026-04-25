@@ -7,7 +7,7 @@ import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
 import { useAgentStream } from "@/hooks/useAgentStream";
 import { useAccount } from "@/hooks/useAccounts";
-import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
+import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 
 interface NarrativeVersion { id: string; stakeholder: string; role: string; status: "ready" | "draft" | "generating"; headline: string; summary: string; keyMetrics: { label: string; value: string }[]; lastUpdated: string }
 const STATUS_CONFIG: Record<NarrativeVersion["status"], { label: string; color: string; bg: string }> = { ready: { label: "Ready", color: "text-green-600", bg: "bg-green-500" }, draft: { label: "Draft", color: "text-orange-600", bg: "bg-orange-500" }, generating: { label: "Generating", color: "text-blue-600", bg: "bg-blue-500" } };
@@ -26,8 +26,16 @@ export default function NarrativeTab() {
 
   const { messages, sendMessage, suggestedActions } = useAgentStream({ activeTab: "narrative", accountName: account?.name ?? "Account" });
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading narratives…</div>;
-  if (error || !account) return <div className="p-6 text-sm text-destructive">Failed to load narratives.</div>;
+  const generateMutation = useGenerateWorkspaceIntelligence();
+
+  useEffect(() => {
+    if (caseId && narratives.length === 0 && !isLoading && !generateMutation.isPending) {
+      generateMutation.mutate(caseId);
+    }
+  }, [caseId, narratives.length, isLoading]);
+
+  if (isLoading || generateMutation.isPending) return <div className="p-6 text-sm text-muted-foreground">{generateMutation.isPending ? "Generating narratives..." : "Loading narratives…"}</div>;
+  if (error || generateMutation.isError || !account) return <div className="p-6 text-sm text-destructive">Failed to load narratives.</div>;
 
   const readyCount = narratives.filter((n) => n.status === "ready").length;
   const selectedStatus = selectedNarrative ? STATUS_CONFIG[selectedNarrative.status] : null;

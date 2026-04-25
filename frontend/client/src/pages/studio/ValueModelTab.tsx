@@ -40,7 +40,7 @@ export default function ValueModelTab() {
   }, [caseId, lines.length, isLoading]);
 
   if (isLoading || generateMutation.isPending) return <div className="p-6 text-sm text-muted-foreground">{generateMutation.isPending ? "Generating value model..." : "Loading value model…"}</div>;
-  if (error || !account) return <div className="p-6 text-sm text-destructive">Failed to load value model.</div>;
+  if (error || generateMutation.isError || !account) return <div className="p-6 text-sm text-destructive">Failed to load value model.</div>;
 
   return <ValueStudioShellComponent account={{ accountName: account.name, industry: account.industry ?? "Unknown", revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="value-model" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} />}>
     {lines.length === 0 ? <SectionCard title="Value Breakdown"><div className="text-sm text-muted-foreground">No value-model output available yet.</div></SectionCard> : <>
