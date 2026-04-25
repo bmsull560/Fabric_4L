@@ -6,7 +6,7 @@
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
         gate-security gate-state gate-arch gate-config gate-all \
-        platform-contract-lint
+        platform-contract-lint setup-hooks
 
 # Strict shell settings for production safety
 .ONESHELL:
@@ -309,6 +309,12 @@ check-tool-contracts: ## CI gate — validate tool error structure (CONTRACT.md 
 	@echo "→ Checking tool contracts in Layer 4..."
 	$(PYTHON) scripts/ci/check_tool_contracts.py value-fabric/layer4-agents/src/tools/
 	@echo "✅ Tool contract check passed"
+
+# ─── Developer Setup ─────────────────────────────────────────────────────────
+
+setup-hooks: ## Configure git to use .githooks/ (run once after clone)
+	@git config core.hooksPath .githooks
+	@echo "✅  Git hooks configured. Pre-push gate tests will run before every push."
 
 # ─── Production Readiness Gates ─────────────────────────────────────────────
 # Gate system: pytest is the single source of truth.

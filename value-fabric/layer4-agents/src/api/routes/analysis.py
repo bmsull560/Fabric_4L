@@ -553,7 +553,8 @@ _workspace_data: dict[str, dict[str, Any]] = {}
 @router.get("/cases", response_model=CaseListResponse)
 async def list_cases(
     account_id: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> CaseListResponse:
     """List cases for an account.
 
@@ -585,7 +586,8 @@ async def list_cases(
 @router.post("/cases", response_model=CreateCaseResponse)
 async def create_case(
     request: CreateCaseRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> CreateCaseResponse:
     """Create a new case for an account.
 
@@ -627,6 +629,7 @@ async def create_case(
 async def get_workspace_tab(
     case_id: str,
     tab_key: str,
+    context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get workspace tab data.
 
@@ -650,6 +653,7 @@ async def update_workspace_tab(
     case_id: str,
     tab_key: str,
     payload: dict[str, Any],
+    context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Update workspace tab data.
 
@@ -678,7 +682,8 @@ async def update_workspace_tab(
 async def generate_workspace_intelligence(
     case_id: str,
     executor: WorkflowExecutor = Depends(get_executor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
+    context: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Generate workspace intelligence data for a case.
 

@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────────────────────────────
+# Fabric 4L — Production Gate Pre-Push Hook
+# ──────────────────────────────────────────────────────────────────────
+# Runs the full gate test suite (82 tests, ~0.6s) before allowing a push.
+# If any gate test fails, the push is blocked.
+#
+# Why this exists:
+#   AI agents generate code fast but don't inherently know the project's
+#   security invariants (RLS enforcement, tenant isolation, auth on every
+#   endpoint, frontend/backend enum sync). This hook is the safety net
+#   that catches what agents — and humans — miss before code leaves the
+#   local machine.
+#
+# Gate domains covered:
+#   S2-A  Tenant context contract (no raw get_db, auth on every route)
+#   S2-B  Cross-tenant API isolation (workflow auth, aggregate dep audit)
+#   S2-C  RLS enforcement (policy structure, migration coverage, pool reset)
+#   S2-H  Export tenant access (auth + S3 key namespacing)
+#   S1-A  State alignment (frontend/backend enum sync)
+#   S2-J  Startup validation (JWT strength, RLS status, superuser detection)
+#
+# To activate (one-time, per clone):
+#   git config core.hooksPath .githooks
+#
+# To bypass in emergencies (use sparingly):
+#   git push --no-verify
+# ──────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo ""
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}  Fabric 4L — Production Gate Check${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# Resolve repo root (works even if invoked from a subdirectory)
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Gate test files — single source of truth
+GATE_TESTS=(
+    "tests/security/test_tenant_context_contract.py"
+    "tests/security/test_cross_tenant_api.py"
+    "tests/security/test_rls_enforcement.py"
+    "tests/security/test_export_tenant_access.py"
+    "tests/state/test_state_alignment.py"
+    "tests/config/test_startup_tenant_validation.py"
+)
+
+# Run from repo root so relative paths resolve correctly
+cd "$REPO_ROOT"
+
+echo "Running ${#GATE_TESTS[@]} gate test modules..."
+echo ""
+
+if python3 -m pytest \
+    "${GATE_TESTS[@]}" \
+    --no-header \
+    --override-ini="pythonpath=." \
+    --override-ini="addopts=" \
+    -n0 \
+    -q; then
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}  ✅ All gate tests passed. Push allowed.${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    exit 0
+else
+    echo ""
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${RED}  ❌ Gate tests FAILED. Push blocked.${NC}"
+    echo -e "${RED}${NC}"
+    echo -e "${RED}  Fix the failing tests before pushing.${NC}"
+    echo -e "${RED}  To bypass in emergencies: git push --no-verify${NC}"
+    echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    exit 1
+fi
