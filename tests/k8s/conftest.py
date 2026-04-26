@@ -116,15 +116,48 @@ def kustomize_build_dev(repo_root: Path, tmp_path_factory: pytest.TempPathFactor
         pytest.skip("kustomize not available")
     
     result = subprocess.run(
-        ["kustomize", "build", str(repo_root / "k8s" / "overlays" / "dev")],
+        ["kustomize", "build", str(repo_root / "k8s" / "envs" / "dev")],
         capture_output=True,
         text=True,
         cwd=str(repo_root),
     )
-    
+
     if result.returncode != 0:
         pytest.skip(f"kustomize build failed: {result.stderr}")
-    
+
+    return result.stdout
+
+
+@pytest.fixture(scope="session")
+def kustomize_build_staging(repo_root: Path, tmp_path_factory: pytest.TempPathFactory) -> str:
+    """Build staging overlay and return the rendered YAML."""
+    # Check if kustomize is available
+    try:
+        result = subprocess.run(
+            ["kustomize", "version"],
+            capture_output=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            pytest.skip("kustomize not available")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pytest.skip("kustomize not available")
+
+    result = subprocess.run(
+        [
+            "kustomize",
+            "build",
+            str(repo_root / "k8s" / "envs" / "staging"),
+            "--load-restrictor=LoadRestrictionsNone",
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(repo_root),
+    )
+
+    if result.returncode != 0:
+        pytest.skip(f"kustomize build failed: {result.stderr}")
+
     return result.stdout
 
 
@@ -142,17 +175,22 @@ def kustomize_build_prod(repo_root: Path, tmp_path_factory: pytest.TempPathFacto
             pytest.skip("kustomize not available")
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pytest.skip("kustomize not available")
-    
+
     result = subprocess.run(
-        ["kustomize", "build", str(repo_root / "k8s" / "overlays" / "prod")],
+        [
+            "kustomize",
+            "build",
+            str(repo_root / "k8s" / "envs" / "prod"),
+            "--load-restrictor=LoadRestrictionsNone",
+        ],
         capture_output=True,
         text=True,
         cwd=str(repo_root),
     )
-    
+
     if result.returncode != 0:
         pytest.skip(f"kustomize build failed: {result.stderr}")
-    
+
     return result.stdout
 
 

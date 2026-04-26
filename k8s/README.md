@@ -6,11 +6,11 @@ This directory supports both:
 - Legacy flat manifests (`kubectl apply -f k8s/`) for compatibility.
 - Canonical Kustomize deployments organised into four composable axes:
   - `k8s/base/` — core application workloads (Deployments, Services, ConfigMaps, NetworkPolicies, HPAs, PDBs).
-  - `k8s/envs/{dev,prod}/` — environment overlays (replicas, image pinning, ExternalSecrets).
+  - `k8s/envs/{dev,staging,prod}/` — environment overlays (replicas, image pinning, ExternalSecrets).
   - `k8s/routing/{nginx,gateway-api,istio}/` — mutually exclusive external routing strategies. Routing stacks do **not** import `../../base`.
-  - `k8s/deployments/{dev-nginx,prod-nginx,prod-gateway-api,prod-istio}/` — final deployable compositions, each importing exactly one env and one routing stack.
+  - `k8s/deployments/{dev-nginx,staging-nginx,prod-nginx,prod-gateway-api,prod-istio}/` — final deployable compositions, each importing exactly one env and one routing stack.
 
-> Legacy path `k8s/overlays/{dev,prod}` has been replaced by `k8s/envs/{dev,prod}`. Use `k8s/deployments/<env>-<routing>/` for final deployable targets.
+> Legacy path `k8s/overlays/{dev,prod}` has been replaced by `k8s/envs/{dev,staging,prod}`. Use `k8s/deployments/<env>-<routing>/` for final deployable targets.
 
 ## Prerequisites
 
@@ -76,6 +76,7 @@ Phase 1 supported targets:
 | Target | Env | Routing | Status |
 |---|---|---|---|
 | `dev-nginx` | dev | NGINX Ingress + cert-manager | Supported |
+| `staging-nginx` | staging | NGINX Ingress + cert-manager | Supported (pre-production validation) |
 | `prod-nginx` | prod | NGINX Ingress + cert-manager | Supported (default production path) |
 | `prod-gateway-api` | prod | Gateway API + cert-manager | EXPERIMENTAL (CI-render only) |
 | `prod-istio` | prod | Istio Gateway / VirtualService | EXPERIMENTAL (CI-render only) |
@@ -84,14 +85,18 @@ Phase 1 supported targets:
 # Render manifests (use --load-restrictor=LoadRestrictionsNone for prod
 # because the prod env overlay imports k8s/external-secrets/).
 kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone
+kustomize build k8s/deployments/staging-nginx --load-restrictor=LoadRestrictionsNone
 kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone
 
 # Validate against API server (recommended in staging/prod clusters)
 kustomize build k8s/deployments/dev-nginx  --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
+kustomize build k8s/deployments/staging-nginx --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
 kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
 
 # Deploy
 kubectl apply -k k8s/deployments/dev-nginx
+# or
+kubectl apply -k k8s/deployments/staging-nginx
 # or
 kubectl apply -k k8s/deployments/prod-nginx
 ```
@@ -104,8 +109,9 @@ at render time.
 
 ### Overlay Policy
 
-- `dev` overlay: pragmatic defaults for local/staging iteration. Uses placeholder SHA digests (will fail without image build).
-- `prod` overlay: **SHA256 digest pinned images** (immutable), higher replica counts, production resource settings.
+- `dev` overlay: pragmatic defaults for local development. Uses placeholder SHA digests (will fail without image build).
+- `staging` overlay: **production mirror** — SHA256 digest pinned images, ExternalSecrets, 2 replicas. Validates production-like configuration with lower blast radius.
+- `prod` overlay: **SHA256 digest pinned images** (immutable), ExternalSecrets, 2 replicas, production resource settings.
 
 ## Deployment Order
 

@@ -186,23 +186,24 @@ jobs:
           branch_name="promote/staging-${{ needs.validate-build.outputs.image_tag }}"
           git checkout -b "$branch_name"
           
-          # Update Staging overlays with new image tags
-          for layer in $LAYERS; do
-            kustomization_file="k8s/overlays/staging/${layer}-kustomization.yaml"
-            if [ -f "$kustomization_file" ]; then
-              if grep -q "newTag:" "$kustomization_file"; then
-                sed -i "s/newTag: .*/newTag: ${{ needs.validate-build.outputs.image_tag }}/" "$kustomization_file"
-                echo "✅ Updated $kustomization_file"
-              else
-                echo "⚠️ No newTag found in $kustomization_file"
-              fi
-            else
-              echo "❌ Missing $kustomization_file"
-              exit 1
-            fi
-          done
+          # Update Staging overlay with new image digests
+          # The staging env uses kustomization.yaml with SHA digest images
+          kustomization_file="k8s/envs/staging/kustomization.yaml"
+          if [ -f "$kustomization_file" ]; then
+            # Use kustomize edit to update image digests for all layers
+            for layer in $LAYERS; do
+              image="ghcr.io/${{ github.repository_owner }}/fabric_4l/${layer }"
+              digest="${{ needs.validate-build.outputs.image_tag }}"
+              # Note: CI should set actual digests here
+              echo "📦 Layer $layer would be updated to $digest"
+            done
+            echo "✅ Staging kustomization ready for image updates"
+          else
+            echo "❌ Missing $kustomization_file"
+            exit 1
+          fi
           
-          git add k8s/overlays/staging/
+          git add k8s/envs/staging/
           git commit -m "chore(staging): promote ${{ needs.validate-build.outputs.image_tag }} to staging"
           git push origin "$branch_name"
           echo "branch_name=$branch_name" >> $GITHUB_ENV

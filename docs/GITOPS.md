@@ -14,10 +14,16 @@ Value Fabric implements GitOps with:
 ┌─────────────────────────────────────────────────────────────────┐
 │                         GIT REPOSITORY                          │
 ├─────────────────────────────────────────────────────────────────┤
-│  k8s/overlays/                                                  │
-│    ├── dev/           (auto-sync, all features enabled)         │
-│    ├── staging/       (auto-sync, beta features)                │
-│    └── prod/          (manual sync, production flags)           │
+│  k8s/                                                           │
+│    ├── base/                  (core workloads)                  │
+│    ├── envs/{dev,prod}/       (env overlays)                    │
+│    ├── routing/{nginx,        (routing stacks)                  │
+│    │     gateway-api,istio}/                                    │
+│    └── deployments/           (env + routing compositions;      │
+│          dev-nginx/            ArgoCD/Flux sync targets)        │
+│          prod-nginx/                                            │
+│          prod-gateway-api/   (EXPERIMENTAL)                     │
+│          prod-istio/         (EXPERIMENTAL)                     │
 └─────────────────────────────────────────────────────────────────┘
                             │
                             ▼

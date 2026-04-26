@@ -70,6 +70,7 @@ jobs:
       - name: Schema validate supported deployments
         run: |
           kubeconform -summary -strict /tmp/k8s-renders/dev-nginx.yaml
+          kubeconform -summary -strict /tmp/k8s-renders/staging-nginx.yaml
           kubeconform -summary -strict /tmp/k8s-renders/prod-nginx.yaml
 
       - name: Schema validate experimental deployments (CRDs allowed)
@@ -88,18 +89,21 @@ jobs:
       - name: Policy validate hardening controls (conftest)
         run: |
           conftest test /tmp/k8s-renders/dev-nginx.yaml -p k8s/policy
+          conftest test /tmp/k8s-renders/staging-nginx.yaml -p k8s/policy
           conftest test /tmp/k8s-renders/prod-nginx.yaml -p k8s/policy
 
-      - name: Policy validate prod secret sourcing
+      - name: Policy validate prod/staging secret sourcing
         run: |
-          if rg -n '^kind: Secret$' /tmp/k8s-renders/prod-nginx.yaml; then
-            echo "Found raw Secret resources in prod-nginx output. Use ExternalSecret only."
-            exit 1
-          fi
-          if ! rg -n '^kind: ExternalSecret$' /tmp/k8s-renders/prod-nginx.yaml; then
-            echo "prod-nginx must include ExternalSecret resources."
-            exit 1
-          fi
+          for d in staging-nginx prod-nginx; do
+            if rg -n '^kind: Secret$' /tmp/k8s-renders/$d.yaml; then
+              echo "Found raw Secret resources in $d output. Use ExternalSecret only."
+              exit 1
+            fi
+            if ! rg -n '^kind: ExternalSecret$' /tmp/k8s-renders/$d.yaml; then
+              echo "$d must include ExternalSecret resources."
+              exit 1
+            fi
+          done
 
       - name: Routing axis checks (mutex + hostname + service-existence)
         run: |
@@ -108,6 +112,7 @@ jobs:
             --rendered-dir /tmp/k8s-renders \
             --routing-dir k8s/routing \
             --deployment dev-nginx:nginx \
+            --deployment staging-nginx:nginx \
             --deployment prod-nginx:nginx \
             --deployment prod-gateway-api:gateway-api \
             --deployment prod-istio:istio
@@ -115,6 +120,7 @@ jobs:
       - name: Client dry-run precheck (supported deployments)
         run: |
           kubectl apply --dry-run=client -f /tmp/k8s-renders/dev-nginx.yaml > /dev/null
+          kubectl apply --dry-run=client -f /tmp/k8s-renders/staging-nginx.yaml > /dev/null
           kubectl apply --dry-run=client -f /tmp/k8s-renders/prod-nginx.yaml > /dev/null
 
       - name: Preflight checks
@@ -169,11 +175,16 @@ jobs:
         run: |
           mkdir -p /tmp/k8s-renders
           kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/dev-nginx.yaml
+          kustomize build k8s/deployments/staging-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/staging-nginx.yaml
           kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/prod-nginx.yaml
 
       - name: Server-side dry-run (dev-nginx)
         run: |
           kubectl apply --dry-run=server -f /tmp/k8s-renders/dev-nginx.yaml
+
+      - name: Server-side dry-run (staging-nginx)
+        run: |
+          kubectl apply --dry-run=server -f /tmp/k8s-renders/staging-nginx.yaml
 
       - name: Server-side dry-run (prod-nginx)
         run: |

@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# staging-nginx: staging environment + NGINX Ingress routing.
+# This is a production-like pre-production deployment target.
+
+namespace: value-fabric
+
+resources:
+  - ../../envs/staging
+  - ../../routing/nginx
+  - hostname-config.yaml
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.host
+    targets:
+      - select:
+          kind: Ingress
+          name: frontend
+        fieldPaths:
+          - spec.rules.0.host
+          - spec.tls.0.hosts.0
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.apiHost
+    targets:
+      - select:
+          kind: Ingress
+          name: layer-apis
+        fieldPaths:
+          - spec.rules.0.host
+          - spec.tls.0.hosts.0

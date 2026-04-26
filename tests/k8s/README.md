@@ -183,6 +183,7 @@ The `conftest.py` provides shared fixtures:
 - `load_yaml_documents` - Dict of all YAML documents from k8s/base
 - `workload_documents` - Filtered list of workload resources only
 - `kustomize_build_dev` - Rendered dev overlay YAML
+- `kustomize_build_staging` - Rendered staging overlay YAML
 - `kustomize_build_prod` - Rendered prod overlay YAML
 - `skip_without_kustomize` - Skip marker if kustomize unavailable
 - `skip_without_kubeconform` - Skip marker if kubeconform unavailable
