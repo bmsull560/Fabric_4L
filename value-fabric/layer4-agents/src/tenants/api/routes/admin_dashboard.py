@@ -23,6 +23,7 @@ Routes:
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 from uuid import UUID
@@ -403,7 +404,7 @@ async def update_tenant_settings(
         params["name"] = updates["name"]
     if "settings" in updates:
         set_parts.append("settings = :settings::jsonb")
-        params["settings"] = str(updates["settings"]).replace("'", '"')
+        params["settings"] = json.dumps(updates["settings"])
 
     set_parts.append("updated_at = NOW()")
     set_clause = ", ".join(set_parts)

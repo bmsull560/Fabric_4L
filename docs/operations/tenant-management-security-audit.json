@@ -1,0 +1,50 @@
+[
+  {
+    "severity": "critical",
+    "category": "auth",
+    "location": "shared/identity/dependencies.py:41",
+    "finding": "require_authenticated() only checks if tenant_id or user_id is present on the RequestContext. It does not verify a token, signature, or session. If middleware fails open or is bypassed, any request with a manually constructed context (or even an empty one if defaults are exploited) is considered authenticated.",
+    "why_builder_missed_it": "The builder assumed GovernanceMiddleware would always run first and perfectly populate the context, treating the dependency as a simple downstream check rather than a true security boundary.",
+    "probe": "How did you verify that require_authenticated() actually cryptographically validates the caller's identity rather than just trusting an internal data structure?"
+  },
+  {
+    "severity": "critical",
+    "category": "injection",
+    "location": "value-fabric/layer4-agents/src/tenants/api/routes/admin_dashboard.py:405",
+    "finding": "SQL Injection vulnerability in PATCH /settings. The code dynamically constructs a SET clause and serializes the JSON settings dict using `str(updates['settings']).replace(\"'\", '\"')` before passing it to `settings = :settings::jsonb`. This naive string replacement is easily bypassed to inject arbitrary SQL or corrupt the JSONB payload.",
+    "why_builder_missed_it": "The builder was optimizing for a quick partial JSON update without using an ORM model, and wrote a quick-and-dirty string replacement to handle Python dict-to-JSON conversion instead of using `json.dumps()`.",
+    "probe": "How did you verify that the settings update payload is safe from SQL injection and valid JSONB when using string replacement instead of a proper JSON serializer?"
+  },
+  {
+    "severity": "high",
+    "category": "logic",
+    "location": "value-fabric/layer4-agents/src/tenants/provisioning.py:172",
+    "finding": "Audit emitter signature mismatch. emit_audit_event() requires `outcome` and `resource_type` parameters, but the provisioning service calls it without them. This will cause a TypeError at runtime, which is caught by the broad `except Exception as e:` block, causing the entire provisioning workflow to fail and rollback silently due to a logging error.",
+    "why_builder_missed_it": "The builder copied an older or incomplete signature for the audit emitter and didn't run the provisioning workflow end-to-end to see the TypeError.",
+    "probe": "How did you verify that the audit events in the provisioning workflow actually emit successfully without raising TypeErrors?"
+  },
+  {
+    "severity": "high",
+    "category": "privilege_escalation",
+    "location": "shared/identity/models.py:APIKeyCreateRequest",
+    "finding": "APIKeyCreateRequest accepts an arbitrary `permissions: list[str]` field with no validation. A tenant admin can create an API key and assign it any permission string (e.g., 'super_admin', 'system:all') because the route handler does not intersect the requested permissions with the caller's actual permissions or an allowed schema.",
+    "why_builder_missed_it": "The builder focused on the structural schema (Pydantic types) and tier limits, but forgot the business-logic constraint that users cannot grant permissions they don't possess.",
+    "probe": "How did you verify that a tenant admin cannot create an API key with super-admin permissions?"
+  },
+  {
+    "severity": "medium",
+    "category": "logic",
+    "location": "shared/identity/context.py:28",
+    "finding": "RequestContext is declared as `@dataclass(frozen=True)`, but dependencies.py (line 149) attempts to mutate it: `context.privileged_session_start = time.time()`. This will raise a FrozenInstanceError at runtime, breaking the privileged access flow.",
+    "why_builder_missed_it": "The builder added the frozen decorator for safety/immutability but later added session-tracking features that required mutation, without testing the privileged access path.",
+    "probe": "How did you verify that the privileged access dependency can successfully track session start times on a frozen dataclass?"
+  },
+  {
+    "severity": "medium",
+    "category": "injection",
+    "location": "value-fabric/layer4-agents/src/tenants/usage_tracking.py:309",
+    "finding": "Potential SQL injection in `_count_events_by_field`. The `group_field` parameter is interpolated directly into the SQL string via an f-string: `SELECT {group_field}, COUNT(*)`. While currently only called with hardcoded strings, this is a dangerous pattern for a shared service method.",
+    "why_builder_missed_it": "The builder needed dynamic GROUP BY columns and couldn't parameterize identifiers in standard SQL, so they used an f-string without adding an allowlist validation for the column name.",
+    "probe": "How did you verify that _count_events_by_field is safe from SQL injection if a new caller passes user-controlled input as the group_field?"
+  }
+]

@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class TenantStatus(str, Enum):
@@ -130,12 +130,37 @@ class UserModel(BaseModel):
         from_attributes = True
 
 
+# Allowed API key scopes — keys cannot grant permissions outside this set
+ALLOWED_API_KEY_SCOPES = frozenset({
+    "api:read",
+    "api:write",
+    "agent:execute",
+    "agent:read",
+    "data:read",
+    "data:write",
+    "webhook:manage",
+})
+
+
 class APIKeyCreateRequest(BaseModel):
     """Request to create an API key."""
 
     name: str = Field(..., min_length=1, max_length=255)
     permissions: list[str] | None = None
     expires_at: datetime | None = None
+
+    @field_validator("permissions")
+    @classmethod
+    def validate_permissions(cls, v: list[str] | None) -> list[str] | None:
+        """Ensure requested permissions are within the allowed scope set."""
+        if v is not None:
+            invalid = set(v) - ALLOWED_API_KEY_SCOPES
+            if invalid:
+                raise ValueError(
+                    f"Invalid API key scopes: {sorted(invalid)}. "
+                    f"Allowed: {sorted(ALLOWED_API_KEY_SCOPES)}"
+                )
+        return v
 
 
 class APIKeyCreateResponse(BaseModel):

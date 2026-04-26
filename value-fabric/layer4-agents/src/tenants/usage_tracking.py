@@ -298,6 +298,9 @@ class UsageTrackingService:
             logger.warning("Failed to count events for %s", action, exc_info=True)
             return 0
 
+    # Allowlist of columns safe to use in GROUP BY queries
+    _ALLOWED_GROUP_FIELDS = frozenset({"resource_type", "action", "outcome", "actor_id", "resource_id"})
+
     async def _count_events_by_field(
         self,
         tenant_id: UUID,
@@ -305,7 +308,16 @@ class UsageTrackingService:
         group_field: str,
         since: datetime,
     ) -> dict[str, int]:
-        """Count events grouped by a column value."""
+        """Count events grouped by a column value.
+
+        Args:
+            group_field: Must be one of _ALLOWED_GROUP_FIELDS to prevent SQL injection.
+        """
+        if group_field not in self._ALLOWED_GROUP_FIELDS:
+            raise ValueError(
+                f"Invalid group_field '{group_field}'. "
+                f"Allowed: {sorted(self._ALLOWED_GROUP_FIELDS)}"
+            )
         query = text(f"""
             SELECT {group_field}, COUNT(*)
             FROM audit_events

@@ -171,6 +171,9 @@ class TenantProvisioningService:
 
             await emit_audit_event(
                 action=AuditAction.TENANT_PROVISIONED,
+                outcome=AuditOutcome.SUCCESS,
+                resource_type="tenant",
+                resource_id=str(tenant_id),
                 tenant_id=tenant_id,
                 details={
                     "steps_completed": [s.name for s in state.completed_steps],
@@ -188,6 +191,9 @@ class TenantProvisioningService:
 
             await emit_audit_event(
                 action=AuditAction.TENANT_PROVISIONING_FAILED,
+                outcome=AuditOutcome.FAILURE,
+                resource_type="tenant",
+                resource_id=str(tenant_id),
                 tenant_id=tenant_id,
                 details={
                     "error": str(e),
@@ -235,6 +241,9 @@ class TenantProvisioningService:
 
         await emit_audit_event(
             action=AuditAction.TENANT_PROVISIONING_STEP_COMPLETE,
+            outcome=AuditOutcome.SUCCESS,
+            resource_type="tenant",
+            resource_id=str(tenant_model.id),
             tenant_id=tenant_model.id,
             details={"step": "CREATE_INFISICAL_PATH", "environments": list(result.keys())},
         )
@@ -268,6 +277,9 @@ class TenantProvisioningService:
 
         await emit_audit_event(
             action=AuditAction.TENANT_PROVISIONING_STEP_COMPLETE,
+            outcome=AuditOutcome.SUCCESS,
+            resource_type="tenant",
+            resource_id=str(tenant_model.id),
             tenant_id=tenant_model.id,
             details={"step": "SEED_DEFAULT_SECRETS", "environment": "dev"},
         )
@@ -300,6 +312,9 @@ class TenantProvisioningService:
 
         await emit_audit_event(
             action=AuditAction.TENANT_STATUS_CHANGED,
+            outcome=AuditOutcome.SUCCESS,
+            resource_type="tenant",
+            resource_id=str(tenant_model.id),
             tenant_id=tenant_model.id,
             details={
                 "old_status": tenant_model.status,
@@ -356,6 +371,9 @@ class TenantProvisioningService:
 
         await emit_audit_event(
             action=AuditAction.TENANT_PROVISIONING_ROLLBACK,
+            outcome=AuditOutcome.FAILURE,
+            resource_type="tenant",
+            resource_id=str(tenant_model.id),
             tenant_id=tenant_model.id,
             details={
                 "completed_steps": [s.name for s in state.completed_steps],

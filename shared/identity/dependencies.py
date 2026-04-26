@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from ..audit.emitter import emit_audit_event
 from ..audit.models import AuditAction, AuditOutcome, PrivilegedAccessDetails
-from .context import RequestContext
+from .context import AUTH_SOURCE_UNKNOWN, RequestContext
 
 logger = logging.getLogger(__name__)
 
@@ -35,13 +35,29 @@ async def require_authenticated(
 ) -> RequestContext:
     """Require any valid authentication.
 
+    Validates both identity presence AND that the identity was established
+    through a legitimate auth source (JWT, API key, or service account).
+    Rejects contexts with auth_source='unknown' to prevent bypass when
+    middleware fails open or is skipped.
+
     Raises:
-        HTTPException: 401 if no authentication provided
+        HTTPException: 401 if no authentication provided or auth source invalid
     """
     if not context.tenant_id and not context.user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if context.auth_source == AUTH_SOURCE_UNKNOWN:
+        logger.warning(
+            "Rejected request with unknown auth_source: tenant=%s user=%s",
+            context.tenant_id,
+            context.user_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Valid authentication token required",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return context
