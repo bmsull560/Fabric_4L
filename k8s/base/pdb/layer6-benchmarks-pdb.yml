@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: layer6-benchmarks-pdb
+  namespace: value-fabric
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: layer6-benchmarks

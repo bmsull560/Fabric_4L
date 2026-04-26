@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: layer5-ground-truth-pdb
+  namespace: value-fabric
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: layer5-ground-truth

@@ -38,11 +38,18 @@ resources:
   # Network policies for zero-trust segmentation
   - network-policies/
   # Horizontal pod autoscaling
+  - hpa/layer1-ingestion-hpa.yml
   - hpa/layer2-extraction-hpa.yml
+  - hpa/layer3-knowledge-hpa.yml
   - hpa/layer4-agents-hpa.yml
+  - hpa/layer5-ground-truth-hpa.yml
+  - hpa/layer6-benchmarks-hpa.yml
   - hpa/frontend-hpa.yml
   # Pod disruption budgets for critical services
-  - pdb/layer4-agents-pdb.yml
+  - pdb/layer1-ingestion-pdb.yml
   - pdb/layer2-extraction-pdb.yml
   - pdb/layer3-knowledge-pdb.yml
+  - pdb/layer4-agents-pdb.yml
+  - pdb/layer5-ground-truth-pdb.yml
+  - pdb/layer6-benchmarks-pdb.yml
   - pdb/frontend-pdb.yml
