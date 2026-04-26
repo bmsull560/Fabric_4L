@@ -328,7 +328,7 @@ class ValidationStateMachine:
 
         history = MaturityHistory(
             truth_object_id=truth_object.id,
-            organization_id=truth_object.organization_id,
+            tenant_id=truth_object.tenant_id,
             from_level=old_maturity,
             to_level=MaturityLevel.OPERATIONALIZED.value,
             trigger=trigger,
@@ -464,7 +464,7 @@ class ValidationStateMachine:
         # Record validation event (immutable audit)
         event = ValidationEvent(
             truth_object_id=truth_object.id,
-            organization_id=truth_object.organization_id,
+            tenant_id=truth_object.tenant_id,
             from_status=old_status,
             to_status=new_status.value,
             from_maturity=old_maturity,
@@ -481,7 +481,7 @@ class ValidationStateMachine:
         if new_maturity != old_maturity:
             history = MaturityHistory(
                 truth_object_id=truth_object.id,
-                organization_id=truth_object.organization_id,
+                tenant_id=truth_object.tenant_id,
                 from_level=old_maturity,
                 to_level=new_maturity,
                 trigger=f"status_transition:{new_status.value}",

@@ -4,10 +4,10 @@ JWT-based authentication and tenant extraction for Layer 5 Ground Truth API.
 Mirrors the pattern used by Layer 4's TenantMiddleware but implemented as
 FastAPI dependencies so they compose cleanly with endpoint signatures.
 
-Resolution order for organization_id:
+Resolution order for tenant_id:
   1. Bearer JWT  →  claims[jwt_tenant_claim]
   2. X-Tenant-ID header  (service-to-service calls)
-  3. organization_id query param  (dev / test fallback, disabled in production)
+  3. tenant_id query param  (dev / test fallback, disabled in production)
 
 The `get_current_user` dependency returns a `TokenClaims` dataclass that
 endpoints can use for RBAC checks.
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class TokenClaims:
     """Parsed and validated JWT claims."""
 
-    organization_id: UUID
+    tenant_id: UUID
     user_id: str | None = None
     roles: list[str] = field(default_factory=list)
     raw: dict = field(default_factory=dict)
@@ -101,7 +101,7 @@ def get_current_user(
     request: Request,
     authorization: str | None = Header(default=None),
     x_tenant_id: str | None = Header(default=None, alias="X-Tenant-ID"),
-    organization_id: str | None = Query(
+    tenant_id: str | None = Query(
         default=None,
         description="Tenant UUID — dev/test fallback when JWT is absent",
     ),
@@ -113,7 +113,7 @@ def get_current_user(
     Priority:
       1. Bearer JWT in Authorization header (verified with JWT_SECRET)
       2. X-Tenant-ID header (service-to-service, no user context)
-      3. organization_id query param (only when JWT_FALLBACK_TO_QUERY_PARAM=true)
+      3. tenant_id query param (only when JWT_FALLBACK_TO_QUERY_PARAM=true)
 
     Raises HTTP 401 if no valid identity can be resolved.
     """
@@ -140,7 +140,7 @@ def get_current_user(
                 roles = [roles]
 
             return TokenClaims(
-                organization_id=org_id,
+                tenant_id=org_id,
                 user_id=user_id,
                 roles=roles,
                 raw=payload,
@@ -151,7 +151,7 @@ def get_current_user(
         try:
             org_id = UUID(x_tenant_id)
             return TokenClaims(
-                organization_id=org_id,
+                tenant_id=org_id,
                 user_id="service",
                 roles=["service"],
             )
@@ -162,30 +162,30 @@ def get_current_user(
             )
 
     # ── 3. Query param fallback (dev / test only) ──────────────────────────
-    if settings.jwt_fallback_to_query_param and organization_id:
+    if settings.jwt_fallback_to_query_param and tenant_id:
         try:
-            org_id = UUID(organization_id)
+            org_id = UUID(tenant_id)
             logger.debug(
-                "Using organization_id query param fallback for tenant %s — "
+                "Using tenant_id query param fallback for tenant %s — "
                 "set JWT_FALLBACK_TO_QUERY_PARAM=false in production",
                 org_id,
             )
             return TokenClaims(
-                organization_id=org_id,
+                tenant_id=org_id,
                 user_id=None,
                 roles=[],
             )
         except (ValueError, AttributeError):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"organization_id query param is not a valid UUID: {organization_id!r}",
+                detail=f"tenant_id query param is not a valid UUID: {tenant_id!r}",
             )
 
     # ── 4. Use default tenant if configured (last resort) ─────────────────
     if settings.default_tenant_id and settings.default_tenant_id != "default":
         try:
             org_id = UUID(settings.default_tenant_id)
-            return TokenClaims(organization_id=org_id)
+            return TokenClaims(tenant_id=org_id)
         except (ValueError, AttributeError):
             pass
 
@@ -193,7 +193,7 @@ def get_current_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=(
             "Could not resolve organization identity. "
-            "Provide a valid Bearer JWT, X-Tenant-ID header, or organization_id query param."
+            "Provide a valid Bearer JWT, X-Tenant-ID header, or tenant_id query param."
         ),
         headers={"WWW-Authenticate": "Bearer"},
     )

@@ -282,26 +282,29 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         context = await self._authenticate(request)
         request.state.context = context
 
-        # Task 1.4: Check tenant status (suspended/pending/deleted)
+        # Task 1.5: Enforce tenant lifecycle status (suspended/pending/deleted)
         if context.tenant_id:
             tenant_status = await self._check_tenant_status(context.tenant_id)
             if tenant_status == "suspended":
                 logger.warning("Access denied for suspended tenant %s", context.tenant_id)
                 return Response(
-                    content="Tenant is suspended. Please contact support.",
+                    content='{"error":"tenant_suspended","detail":"Tenant is suspended. Please contact support.","tenant_id":"' + str(context.tenant_id) + '"}',
                     status_code=403,
+                    media_type="application/json",
                 )
             if tenant_status == "pending":
                 logger.warning("Access denied for pending tenant %s", context.tenant_id)
                 return Response(
-                    content="Tenant is pending activation. Please complete onboarding.",
+                    content='{"error":"tenant_pending","detail":"Tenant is pending activation. Please complete onboarding.","tenant_id":"' + str(context.tenant_id) + '"}',
                     status_code=403,
+                    media_type="application/json",
                 )
             if tenant_status == "deleted":
                 logger.warning("Access denied for deleted tenant %s", context.tenant_id)
                 return Response(
-                    content="Tenant not found.",
+                    content='{"error":"tenant_not_found","detail":"Tenant not found."}',
                     status_code=404,
+                    media_type="application/json",
                 )
 
         # Task 84: Per-tenant rate limiting

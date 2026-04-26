@@ -105,7 +105,7 @@ class Settings(BaseSettings):
         alias="JWT_ROLES_CLAIM",
         description="JWT claim key that holds the user roles list",
     )
-    # When true, a missing/invalid JWT falls back to the organization_id query param
+    # When true, a missing/invalid JWT falls back to the tenant_id query param
     # (useful for local dev and integration tests). Set false in production.
     jwt_fallback_to_query_param: bool = Field(
         default=False,

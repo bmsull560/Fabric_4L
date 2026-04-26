@@ -7,7 +7,7 @@ Core entities:
   - ModelEvaluation   : Benchmark scores for model versions
 
 Design notes:
-  - Follows Layer 5 patterns: UUID primary keys, organization_id for tenancy
+  - Follows Layer 5 patterns: UUID primary keys, tenant_id for tenancy
   - Cost tracking enables accurate billing attribution per model usage
   - Deployment model supports canary releases and traffic splitting
   - Evaluation model tracks benchmark performance over time

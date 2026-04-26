@@ -262,17 +262,26 @@ async def update_tenant_status(
     status: str,
     *,
     reason: str | None = None,
+    changed_by: str | None = None,
 ) -> bool:
-    """Update tenant status directly.
+    """Update tenant status with lifecycle validation and audit trail.
+
+    Uses the ``Tenant.transition_to()`` state machine to ensure only valid
+    transitions are executed.  Records ``status_changed_at``,
+    ``status_reason``, and ``status_changed_by`` on the tenant row.
 
     Args:
         db: Database session
         tenant_id: UUID of tenant to update
         status: New status value (pending, active, suspended, deleted)
         reason: Optional reason for status change
+        changed_by: User ID or service name that initiated the change
 
     Returns:
         True if status was updated, False if tenant not found
+
+    Raises:
+        ValueError: If the requested transition is invalid.
     """
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
@@ -280,30 +289,39 @@ async def update_tenant_status(
         return False
 
     old_status = tenant.status
-    tenant.status = status
-    tenant.updated_at = datetime.now(UTC)
+    tenant.transition_to(status, reason=reason, changed_by=changed_by)
     await db.flush()
 
     logger.info(
-        "Updated tenant %s status: %s -> %s (reason: %s)",
+        "Updated tenant %s status: %s -> %s (reason: %s, by: %s)",
         tenant_id,
         old_status,
         status,
         reason or "unspecified",
+        changed_by or "unknown",
     )
     return True
 
 
-async def delete_tenant(db: AsyncSession, tenant_id: UUID) -> bool:
-    """Soft-delete by setting status to 'deleted'."""
+async def delete_tenant(
+    db: AsyncSession,
+    tenant_id: UUID,
+    *,
+    reason: str | None = None,
+    changed_by: str | None = None,
+) -> bool:
+    """Soft-delete by transitioning status to 'deleted' via the state machine."""
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
         return False
-    tenant.status = TenantStatus.DELETED.value
-    tenant.updated_at = datetime.now(UTC)
+    tenant.transition_to(
+        TenantStatus.DELETED.value,
+        reason=reason or "soft-deleted",
+        changed_by=changed_by,
+    )
     await db.flush()
-    logger.info("Soft-deleted tenant %s", tenant_id)
+    logger.info("Soft-deleted tenant %s (reason: %s)", tenant_id, reason or "unspecified")
     return True
 
 

@@ -119,7 +119,7 @@ class TruthSourceResponse(TruthSourceCreate):
 
     id: UUID
     truth_object_id: UUID
-    organization_id: UUID
+    tenant_id: UUID
     created_at: datetime
     created_by: str | None = None
     # Map from SQLAlchemy's extra_metadata column
@@ -190,7 +190,7 @@ class TruthObjectCreate(BaseModel):
     """
     Schema for POST /truths — create a new TruthObject.
 
-    The organization_id is injected from the auth context in the router;
+    The tenant_id is injected from the auth context in the router;
     it is not accepted from the request body.
     """
 
@@ -263,7 +263,7 @@ class TruthObjectResponse(BaseModel):
     """
 
     id: UUID
-    organization_id: UUID
+    tenant_id: UUID
     claim: str
     claim_type: str
     value: dict[str, Any] | None = None
@@ -519,7 +519,7 @@ class ModelVersionResponse(BaseModel):
     """Schema for a ModelVersion in API responses."""
 
     id: UUID
-    organization_id: UUID
+    tenant_id: UUID
     name: str
     provider: str
     version: str
@@ -598,7 +598,7 @@ class ModelDeploymentResponse(BaseModel):
     """Schema for a ModelDeployment in API responses."""
 
     id: UUID
-    organization_id: UUID
+    tenant_id: UUID
     model_version_id: UUID
     environment: str
     status: str
@@ -736,7 +736,7 @@ class ModelEvaluationResponse(BaseModel):
     """Schema for a ModelEvaluation in API responses."""
 
     id: UUID
-    organization_id: UUID
+    tenant_id: UUID
     model_version_id: UUID
     benchmark_name: str
     benchmark_version: str | None

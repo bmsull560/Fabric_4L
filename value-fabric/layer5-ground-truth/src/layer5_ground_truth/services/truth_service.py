@@ -36,7 +36,7 @@ _state_machine = ValidationStateMachine()
 
 async def create_truth_object(
     db: AsyncSession,
-    organization_id: UUID,
+    tenant_id: UUID,
     claim: str,
     claim_type: ClaimType,
     confidence: float,
@@ -59,7 +59,7 @@ async def create_truth_object(
     expires_at = datetime.now(UTC) + timedelta(days=settings.default_freshness_days)
 
     truth = TruthObject(
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         claim=claim,
         claim_type=claim_type.value,
         confidence=confidence,
@@ -79,7 +79,7 @@ async def create_truth_object(
     # Record initial ValidationEvent
     initial_event = ValidationEvent(
         truth_object_id=truth.id,
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         from_status=None,
         to_status=TruthStatus.EXTRACTED.value,
         from_maturity=None,
@@ -98,7 +98,7 @@ async def create_truth_object(
         for src_data in sources:
             source = TruthSource(
                 truth_object_id=truth.id,
-                organization_id=organization_id,
+                tenant_id=tenant_id,
                 **src_data,
             )
             db.add(source)
@@ -115,7 +115,7 @@ async def create_truth_object(
     logger.info(
         "Created TruthObject %s (org=%s, status=%s, confidence=%.2f)",
         truth.id,
-        organization_id,
+        tenant_id,
         truth.status,
         confidence,
     )
@@ -130,7 +130,7 @@ async def create_truth_object(
 async def get_truth_object(
     db: AsyncSession,
     truth_id: UUID,
-    organization_id: UUID,
+    tenant_id: UUID,
 ) -> TruthObject | None:
     """Fetch a single TruthObject by ID, scoped to the organization."""
     result = await db.execute(
@@ -143,7 +143,7 @@ async def get_truth_object(
         .where(
             and_(
                 TruthObject.id == truth_id,
-                TruthObject.organization_id == organization_id,
+                TruthObject.tenant_id == tenant_id,
                 TruthObject.deleted_at.is_(None),
             )
         )
@@ -153,7 +153,7 @@ async def get_truth_object(
 
 async def list_truth_objects(
     db: AsyncSession,
-    organization_id: UUID,
+    tenant_id: UUID,
     status: TruthStatus | None = None,
     claim_type: ClaimType | None = None,
     min_maturity: int | None = None,
@@ -169,7 +169,7 @@ async def list_truth_objects(
     Returns (items, total_count) for pagination.
     """
     base_filter = and_(
-        TruthObject.organization_id == organization_id,
+        TruthObject.tenant_id == tenant_id,
         TruthObject.deleted_at.is_(None),
     )
 
@@ -219,7 +219,7 @@ async def list_truth_objects(
 async def add_source(
     db: AsyncSession,
     truth_object: TruthObject,
-    organization_id: UUID,
+    tenant_id: UUID,
     source_data: dict,
     auto_advance: bool = True,
 ) -> tuple[TruthObject, TruthSource]:
@@ -228,7 +228,7 @@ async def add_source(
     """
     source = TruthSource(
         truth_object_id=truth_object.id,
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         **source_data,
     )
     db.add(source)
@@ -306,7 +306,7 @@ async def validate_truth_object(
 # ---------------------------------------------------------------------------
 
 
-async def mark_stale_objects(db: AsyncSession, organization_id: UUID) -> int:
+async def mark_stale_objects(db: AsyncSession, tenant_id: UUID) -> int:
     """
     Mark all TruthObjects past their expires_at date as stale.
 
@@ -316,7 +316,7 @@ async def mark_stale_objects(db: AsyncSession, organization_id: UUID) -> int:
     result = await db.execute(
         select(TruthObject).where(
             and_(
-                TruthObject.organization_id == organization_id,
+                TruthObject.tenant_id == tenant_id,
                 TruthObject.deleted_at.is_(None),
                 TruthObject.is_stale.is_(False),
                 TruthObject.expires_at <= now,
@@ -331,7 +331,7 @@ async def mark_stale_objects(db: AsyncSession, organization_id: UUID) -> int:
     logger.info(
         "Marked %d TruthObjects as stale for org %s",
         len(objects),
-        organization_id,
+        tenant_id,
     )
     return len(objects)
 

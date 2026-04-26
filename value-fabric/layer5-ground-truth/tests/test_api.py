@@ -23,7 +23,7 @@ import pytest
 
 from tests.conftest import TEST_ORG_ID, make_source_payload, make_truth_payload
 
-ORG_PARAM = f"?organization_id={TEST_ORG_ID}"
+ORG_PARAM = f"?tenant_id={TEST_ORG_ID}"
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +181,7 @@ class TestGetTruth:
         truth_id = create_resp.json()["id"]
 
         other_org = uuid.uuid4()
-        resp = await client.get(f"/api/v1/truths/{truth_id}?organization_id={other_org}")
+        resp = await client.get(f"/api/v1/truths/{truth_id}?tenant_id={other_org}")
         assert resp.status_code == 404
 
 

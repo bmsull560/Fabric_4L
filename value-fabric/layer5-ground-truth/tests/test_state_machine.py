@@ -45,7 +45,7 @@ def make_truth(
 ) -> TruthObject:
     return TruthObject(
         id=uuid.uuid4(),
-        organization_id=TEST_ORG_ID,
+        tenant_id=TEST_ORG_ID,
         claim="Test claim for unit testing",
         claim_type="efficiency_gain",
         confidence=confidence,
@@ -64,7 +64,7 @@ def make_source(
     return TruthSource(
         id=uuid.uuid4(),
         truth_object_id=truth_id,
-        organization_id=TEST_ORG_ID,
+        tenant_id=TEST_ORG_ID,
         source_type=source_type,
         confidence_contribution=0.8,
         created_at=datetime.now(UTC),

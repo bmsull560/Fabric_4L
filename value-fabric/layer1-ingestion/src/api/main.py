@@ -251,7 +251,7 @@ router = APIRouter(prefix="/api/v1/ingestion")
 # =============================================================================
 
 
-def get_organization_id(request: Request) -> UUID:
+def get_tenant_id(request: Request) -> UUID:
     """Extract organization (tenant) ID from the GovernanceMiddleware context.
 
     Falls back to the X-Organization-ID header for backward compatibility
@@ -431,7 +431,7 @@ class ScrapingTargetSummary(BaseModel):
 class ScrapingTargetDetail(ScrapingTargetSummary):
     """Detailed scraping target response."""
 
-    organization_id: UUID
+    tenant_id: UUID
     description: str | None
     url_pattern: str | None
     crawl_path: str  # HTTPX Fast Path selection
@@ -583,7 +583,7 @@ class ScrapingJobDetail(BaseModel):
     """Detailed job response."""
 
     id: UUID
-    organization_id: UUID
+    tenant_id: UUID
     target_id: UUID
     configuration: dict[str, Any]
     status: str
@@ -807,11 +807,11 @@ async def list_targets(
         default="created_at", regex="^(created_at|updated_at|last_success_at|name)$"
     ),
     sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """List all scraping targets for the organization."""
-    query = db.query(ScrapingTarget).filter(ScrapingTarget.organization_id == org_id)
+    query = db.query(ScrapingTarget).filter(ScrapingTarget.tenant_id == org_id)
 
     if status:
         query = query.filter(ScrapingTarget.status == status.value)
@@ -866,7 +866,7 @@ async def list_targets(
 @router.post("/targets", response_model=ScrapingTargetDetail, status_code=201)
 async def create_target(
     request: CreateTargetRequest,
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
@@ -962,7 +962,7 @@ async def create_target(
     extraction_config["crawl_path"] = request.crawl_path.value
 
     target = create_scraping_target(
-        organization_id=org_id,
+        tenant_id=org_id,
         name=request.name,
         url=request.url,
         target_type=request.target_type,
@@ -991,12 +991,12 @@ async def create_target(
 
 @router.get("/targets/{target_id}", response_model=ScrapingTargetDetail)
 async def get_target(
-    target_id: UUID, org_id: UUID = Depends(get_organization_id), db: Session = Depends(get_db)
+    target_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
 ):
     """Get detailed information about a specific target."""
     target = (
         db.query(ScrapingTarget)
-        .filter(ScrapingTarget.id == target_id, ScrapingTarget.organization_id == org_id)
+        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
         .first()
     )
 
@@ -1010,13 +1010,13 @@ async def get_target(
 async def update_target(
     target_id: UUID,
     request: UpdateTargetRequest,
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Update a scraping target."""
     target = (
         db.query(ScrapingTarget)
-        .filter(ScrapingTarget.id == target_id, ScrapingTarget.organization_id == org_id)
+        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
         .first()
     )
 
@@ -1160,13 +1160,13 @@ async def update_target(
 async def delete_target(
     target_id: UUID,
     force: bool = Query(default=False, description="Hard delete if no jobs exist"),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Archive a scraping target (soft delete)."""
     target = (
         db.query(ScrapingTarget)
-        .filter(ScrapingTarget.id == target_id, ScrapingTarget.organization_id == org_id)
+        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
         .first()
     )
 
@@ -1196,13 +1196,13 @@ async def delete_target(
 async def validate_target(
     target_id: UUID,
     request: ValidateTargetRequest,
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Validate target configuration without executing."""
     target = (
         db.query(ScrapingTarget)
-        .filter(ScrapingTarget.id == target_id, ScrapingTarget.organization_id == org_id)
+        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
         .first()
     )
 
@@ -1255,14 +1255,14 @@ async def execute_target(
     target_id: UUID,
     request: ExecuteTargetRequest,
     background_tasks: BackgroundTasks,
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Trigger immediate execution of a target."""
     target = (
         db.query(ScrapingTarget)
-        .filter(ScrapingTarget.id == target_id, ScrapingTarget.organization_id == org_id)
+        .filter(ScrapingTarget.id == target_id, ScrapingTarget.tenant_id == org_id)
         .first()
     )
 
@@ -1292,7 +1292,7 @@ async def execute_target(
     # Create job
     correlation_id = str(uuid4())
     job = create_scraping_job(
-        organization_id=org_id,
+        tenant_id=org_id,
         target_id=target_id,
         created_by=user_id,
         configuration=configuration,
@@ -1308,7 +1308,7 @@ async def execute_target(
     # Initialize pipeline stages
     for stage in PipelineStage:
         stage_detail = JobStageDetail(
-            job_id=job.id, organization_id=org_id, stage=stage.value, status="PENDING"
+            job_id=job.id, tenant_id=org_id, stage=stage.value, status="PENDING"
         )
         db.add(stage_detail)
 
@@ -1328,7 +1328,7 @@ async def execute_target(
         status=JobStatus.QUEUED.value,
         queue_position=db.query(ScrapingJob)
         .filter(
-            ScrapingJob.organization_id == org_id,
+            ScrapingJob.tenant_id == org_id,
             ScrapingJob.status == JobStatus.QUEUED.value,
             ScrapingJob.created_at <= job.created_at,
         )
@@ -1350,7 +1350,7 @@ async def execute_target(
 async def get_target_decisions(
     target_id: UUID,
     limit: int = Query(default=50, ge=1, le=100),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Get recent crawl decisions for a target's jobs.
@@ -1363,7 +1363,7 @@ async def get_target_decisions(
     # Verify target exists and belongs to org
     target = db.query(ScrapingTarget).filter(
         ScrapingTarget.id == target_id,
-        ScrapingTarget.organization_id == org_id
+        ScrapingTarget.tenant_id == org_id
     ).first()
 
     if not target:
@@ -1402,7 +1402,7 @@ async def get_target_decisions(
 @router.get("/jobs/{job_id}/router-report", response_model=RouterQualityReportResponse)
 async def get_job_router_report(
     job_id: UUID,
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Get routing quality report for a specific job.
@@ -1415,7 +1415,7 @@ async def get_job_router_report(
     # Verify job exists and belongs to org
     job = db.query(ScrapingJob).filter(
         ScrapingJob.id == job_id,
-        ScrapingJob.organization_id == org_id
+        ScrapingJob.tenant_id == org_id
     ).first()
 
     if not job:
@@ -1443,7 +1443,7 @@ async def get_job_router_report(
 async def get_domain_fallback_stats(
     domain: str,
     days: int = Query(default=7, ge=1, le=30),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Get fallback statistics for a specific domain.
@@ -1463,7 +1463,7 @@ async def get_domain_fallback_stats(
     if not has_access:
         # Check if any target URL matches this domain
         has_target = db.query(ScrapingTarget).filter(
-            ScrapingTarget.organization_id == org_id,
+            ScrapingTarget.tenant_id == org_id,
             ScrapingTarget.url.ilike(f"%{domain}%")
         ).first()
 
@@ -1508,11 +1508,11 @@ async def list_jobs(
         default="created_at", regex="^(created_at|started_at|completed_at|priority)$"
     ),
     sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """List all scraping jobs with filtering and pagination."""
-    query = db.query(ScrapingJob).filter(ScrapingJob.organization_id == org_id)
+    query = db.query(ScrapingJob).filter(ScrapingJob.tenant_id == org_id)
 
     if target_id:
         query = query.filter(ScrapingJob.target_id == target_id)
@@ -1548,7 +1548,7 @@ async def list_jobs(
 
     status_counts = (
         db.query(ScrapingJob.status, func.count(ScrapingJob.id))
-        .filter(ScrapingJob.organization_id == org_id)
+        .filter(ScrapingJob.tenant_id == org_id)
         .group_by(ScrapingJob.status)
         .all()
     )
@@ -1589,12 +1589,12 @@ async def list_jobs(
 
 @router.get("/jobs/{job_id}", response_model=ScrapingJobDetail)
 async def get_job(
-    job_id: UUID, org_id: UUID = Depends(get_organization_id), db: Session = Depends(get_db)
+    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
 ):
     """Get detailed job information including execution stages."""
     job = (
         db.query(ScrapingJob)
-        .filter(ScrapingJob.id == job_id, ScrapingJob.organization_id == org_id)
+        .filter(ScrapingJob.id == job_id, ScrapingJob.tenant_id == org_id)
         .first()
     )
 
@@ -1617,7 +1617,7 @@ async def get_job(
 
     return ScrapingJobDetail(
         id=job.id,
-        organization_id=job.organization_id,
+        tenant_id=job.tenant_id,
         target_id=job.target_id,
         configuration=job.configuration,
         status=job.status,
@@ -1680,12 +1680,12 @@ async def get_job(
 
 @router.delete("/jobs/{job_id}", status_code=202)
 async def cancel_job(
-    job_id: UUID, org_id: UUID = Depends(get_organization_id), db: Session = Depends(get_db)
+    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
 ):
     """Cancel a running or queued job."""
     job = (
         db.query(ScrapingJob)
-        .filter(ScrapingJob.id == job_id, ScrapingJob.organization_id == org_id)
+        .filter(ScrapingJob.id == job_id, ScrapingJob.tenant_id == org_id)
         .first()
     )
 
@@ -1714,12 +1714,12 @@ async def cancel_job(
 
 @router.get("/jobs/{job_id}/progress", response_model=JobProgressResponse)
 async def get_job_progress(
-    job_id: UUID, org_id: UUID = Depends(get_organization_id), db: Session = Depends(get_db)
+    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
 ):
     """Get real-time job progress."""
     job = (
         db.query(ScrapingJob)
-        .filter(ScrapingJob.id == job_id, ScrapingJob.organization_id == org_id)
+        .filter(ScrapingJob.id == job_id, ScrapingJob.tenant_id == org_id)
         .first()
     )
 
@@ -1749,13 +1749,13 @@ async def get_job_results(
     format: str = Query(default="json", regex="^(json|csv|ndjson)$"),
     include_raw: bool = Query(default=False),
     fields: list[str] | None = Query(None),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Get extracted data results for a job."""
     job = (
         db.query(ScrapingJob)
-        .filter(ScrapingJob.id == job_id, ScrapingJob.organization_id == org_id)
+        .filter(ScrapingJob.id == job_id, ScrapingJob.tenant_id == org_id)
         .first()
     )
 
@@ -1763,7 +1763,7 @@ async def get_job_results(
         raise HTTPException(status_code=404, detail="Job not found")
 
     query = db.query(ExtractedData).filter(
-        ExtractedData.job_id == job_id, ExtractedData.organization_id == org_id
+        ExtractedData.job_id == job_id, ExtractedData.tenant_id == org_id
     )
 
     total = query.count()
@@ -1797,14 +1797,14 @@ async def retry_job(
     job_id: UUID,
     request: RetryJobRequest,
     background_tasks: BackgroundTasks,
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
     db: Session = Depends(get_db),
 ):
     """Retry a failed or partially successful job."""
     original_job = (
         db.query(ScrapingJob)
-        .filter(ScrapingJob.id == job_id, ScrapingJob.organization_id == org_id)
+        .filter(ScrapingJob.id == job_id, ScrapingJob.tenant_id == org_id)
         .first()
     )
 
@@ -1819,7 +1819,7 @@ async def retry_job(
     # Create new job with same configuration
     correlation_id = f"retry:{job_id}:{uuid4()}"
     new_job = create_scraping_job(
-        organization_id=org_id,
+        tenant_id=org_id,
         target_id=original_job.target_id,
         created_by=user_id,
         configuration=original_job.configuration,
@@ -1835,7 +1835,7 @@ async def retry_job(
     # Initialize stages
     for stage in PipelineStage:
         stage_detail = JobStageDetail(
-            job_id=new_job.id, organization_id=org_id, stage=stage.value, status="PENDING"
+            job_id=new_job.id, tenant_id=org_id, stage=stage.value, status="PENDING"
         )
         db.add(stage_detail)
 
@@ -1867,13 +1867,13 @@ async def get_raw_content(
     include_html: bool = Query(default=True),
     include_screenshot: bool = Query(default=False),
     include_har: bool = Query(default=False),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Retrieve raw content by ID."""
     content = (
         db.query(RawContent)
-        .filter(RawContent.id == content_id, RawContent.organization_id == org_id)
+        .filter(RawContent.id == content_id, RawContent.tenant_id == org_id)
         .first()
     )
 
@@ -1920,13 +1920,13 @@ async def get_raw_content(
 async def get_extracted_data(
     extracted_data_id: UUID,
     format: str = Query(default="json", regex="^(json|markdown|flattened)$"),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Retrieve extracted data by ID."""
     data = (
         db.query(ExtractedData)
-        .filter(ExtractedData.id == extracted_data_id, ExtractedData.organization_id == org_id)
+        .filter(ExtractedData.id == extracted_data_id, ExtractedData.tenant_id == org_id)
         .first()
     )
 
@@ -1966,11 +1966,11 @@ async def list_content(
     processing_status: str | None = Query(None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """List raw content with filtering."""
-    query = db.query(RawContent).filter(RawContent.organization_id == org_id)
+    query = db.query(RawContent).filter(RawContent.tenant_id == org_id)
 
     if job_id:
         query = query.filter(RawContent.job_id == job_id)
@@ -2018,11 +2018,11 @@ async def list_compliance_logs(
     job_id: UUID | None = Query(None),
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Query compliance logs."""
-    query = db.query(ComplianceLog).filter(ComplianceLog.organization_id == org_id)
+    query = db.query(ComplianceLog).filter(ComplianceLog.tenant_id == org_id)
 
     if event_type:
         types = [t.value for t in event_type]
@@ -2070,12 +2070,12 @@ async def list_compliance_logs(
 async def get_compliance_summary(
     period_start: datetime = Query(...),
     period_end: datetime = Query(...),
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Get compliance summary for organization."""
     query = db.query(ComplianceLog).filter(
-        ComplianceLog.organization_id == org_id,
+        ComplianceLog.tenant_id == org_id,
         ComplianceLog.created_at >= period_start,
         ComplianceLog.created_at <= period_end,
     )
@@ -2287,12 +2287,12 @@ async def trigger_cleanup(
 @router.post("/proxy-pools", response_model=ProxyPoolResponse)
 async def create_proxy_pool_endpoint(
     request: CreateProxyPoolRequest,
-    org_id: UUID = Depends(get_organization_id),
+    org_id: UUID = Depends(get_tenant_id),
     db: Session = Depends(get_db),
 ):
     """Create a proxy pool."""
     pool = create_proxy_pool(
-        organization_id=org_id,
+        tenant_id=org_id,
         name=request.name,
         proxies=request.proxies,
         rotation_strategy=request.rotation_strategy,
@@ -2320,7 +2320,7 @@ def _target_to_detail(target: ScrapingTarget) -> ScrapingTargetDetail:
     """Convert ScrapingTarget to ScrapingTargetDetail response."""
     return ScrapingTargetDetail(
         id=target.id,
-        organization_id=target.organization_id,
+        tenant_id=target.tenant_id,
         name=target.name,
         url=target.url,
         target_type=target.target_type,

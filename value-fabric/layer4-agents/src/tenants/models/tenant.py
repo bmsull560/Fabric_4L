@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, Index, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, Index, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -122,6 +122,24 @@ class Tenant(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
+    status_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Timestamp of the last status transition",
+    )
+
+    status_reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Human-readable reason for the last status change (e.g. 'billing overdue')",
+    )
+
+    status_changed_by: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment="User ID or service name that triggered the last status change",
+    )
+
     # Relationship to tier history (Task 4.1)
     tier_history: Mapped[list["TenantIsolationTierHistory"]] = relationship(
         "TenantIsolationTierHistory",
@@ -163,29 +181,55 @@ class Tenant(Base):
         """Check if transition to new_status is valid."""
         return validate_status_transition(self.status, new_status)
 
-    def transition_status(self, new_status: str) -> bool:
-        """Attempt to transition to new status.
+    def transition_to(
+        self,
+        new_status: str,
+        *,
+        reason: str | None = None,
+        changed_by: str | None = None,
+    ) -> None:
+        """Transition to a new lifecycle status with full audit trail.
 
         Args:
-            new_status: Target status
+            new_status: Target status (must be a valid ``TenantStatus`` value).
+            reason: Human-readable explanation (e.g. ``'billing overdue'``).
+            changed_by: User ID or service name that initiated the change.
 
-        Returns:
-            True if transition was successful, False if invalid
+        Raises:
+            ValueError: If the transition is not allowed by the state machine.
         """
         if not self.can_transition_to(new_status):
-            return False
+            raise ValueError(
+                f"Invalid status transition: {self.status!r} -> {new_status!r}. "
+                f"Allowed targets: {[s.value for s in VALID_STATUS_TRANSITIONS.get(TenantStatus(self.status), set())]}"
+            )
+        now = datetime.now(UTC)
         self.status = new_status
-        self.updated_at = datetime.now(UTC)
-        return True
+        self.status_changed_at = now
+        self.status_reason = reason
+        self.status_changed_by = changed_by
+        self.updated_at = now
 
-    def activate(self) -> bool:
+    # Convenience wrappers -------------------------------------------------------
+
+    def activate(self, *, reason: str | None = None, changed_by: str | None = None) -> None:
         """Activate tenant (pending -> active or suspended -> active)."""
-        return self.transition_status(TenantStatus.ACTIVE.value)
+        self.transition_to(TenantStatus.ACTIVE.value, reason=reason, changed_by=changed_by)
 
-    def suspend(self) -> bool:
+    def suspend(self, *, reason: str | None = None, changed_by: str | None = None) -> None:
         """Suspend tenant (active -> suspended)."""
-        return self.transition_status(TenantStatus.SUSPENDED.value)
+        self.transition_to(TenantStatus.SUSPENDED.value, reason=reason, changed_by=changed_by)
 
-    def mark_deleted(self) -> bool:
+    def mark_deleted(self, *, reason: str | None = None, changed_by: str | None = None) -> None:
         """Soft-delete tenant."""
-        return self.transition_status(TenantStatus.DELETED.value)
+        self.transition_to(TenantStatus.DELETED.value, reason=reason, changed_by=changed_by)
+
+    # Backward compat (deprecated) -----------------------------------------------
+
+    def transition_status(self, new_status: str) -> bool:
+        """DEPRECATED: Use ``transition_to()`` which raises on invalid transitions."""
+        try:
+            self.transition_to(new_status)
+            return True
+        except ValueError:
+            return False

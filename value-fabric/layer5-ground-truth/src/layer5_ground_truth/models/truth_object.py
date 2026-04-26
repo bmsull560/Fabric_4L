@@ -11,7 +11,7 @@ Design notes:
   - Uses PostgreSQL JSONB for flexible metadata storage (mirrors Layer 1 pattern)
   - UUID primary keys throughout for distributed-safe IDs
   - Soft-delete via `deleted_at` — records are never hard-deleted
-  - `organization_id` on every table for multi-tenancy isolation
+  - `tenant_id` on every table for multi-tenancy isolation
 """
 
 import uuid
@@ -389,13 +389,13 @@ class TruthObject(Base):
     # Indexes
     # -------------------------------------------------------------------------
     __table_args__ = (
-        Index("ix_truth_objects_org_status", "organization_id", "status"),
-        Index("ix_truth_objects_org_claim_type", "organization_id", "claim_type"),
-        Index("ix_truth_objects_org_maturity", "organization_id", "maturity_level"),
+        Index("ix_truth_objects_tenant_status", "tenant_id", "status"),
+        Index("ix_truth_objects_tenant_claim_type", "tenant_id", "claim_type"),
+        Index("ix_truth_objects_tenant_maturity", "tenant_id", "maturity_level"),
         # GIN indexes only work with PostgreSQL; they are skipped for other dialects
         Index("ix_truth_objects_applies_to", "applies_to", postgresql_using="gin"),
         Index("ix_truth_objects_value", "value", postgresql_using="gin"),
-        Index("ix_truth_objects_active", "organization_id", "deleted_at"),
+        Index("ix_truth_objects_active", "tenant_id", "deleted_at"),
     )
 
     def __repr__(self) -> str:
@@ -510,7 +510,7 @@ class TruthSource(Base):
     )
 
     __table_args__ = (
-        Index("ix_truth_sources_org_type", "organization_id", "source_type"),
+        Index("ix_truth_sources_tenant_type", "tenant_id", "source_type"),
         Index("ix_truth_sources_source_id", "source_id"),
     )
 
@@ -543,7 +543,7 @@ class ValidationEvent(Base):
         nullable=False,
         index=True,
     )
-    organization_id = Column(UUID, nullable=False, index=True)
+    tenant_id = Column(UUID, nullable=False, index=True)
 
     # Transition details
     from_status = Column(
@@ -592,7 +592,7 @@ class ValidationEvent(Base):
     )
 
     __table_args__ = (
-        Index("ix_validation_events_org_status", "organization_id", "to_status"),
+        Index("ix_validation_events_tenant_status", "tenant_id", "to_status"),
         Index("ix_validation_events_actor", "actor"),
     )
 
@@ -626,7 +626,7 @@ class MaturityHistory(Base):
         nullable=False,
         index=True,
     )
-    organization_id = Column(UUID, nullable=False, index=True)
+    tenant_id = Column(UUID, nullable=False, index=True)
 
     from_level = Column(Integer, nullable=True)
     to_level = Column(Integer, nullable=False)

@@ -36,10 +36,10 @@ from layer5_ground_truth.models.model_registry import (
 
 
 @pytest.fixture
-async def sample_model_version(db: AsyncSession, organization_id: str) -> ModelVersion:
+async def sample_model_version(db: AsyncSession, tenant_id: str) -> ModelVersion:
     """Create a sample model version for testing."""
     model = ModelVersion(
-        organization_id=uuid.UUID(organization_id),
+        tenant_id=uuid.UUID(tenant_id),
         name="gpt-4-turbo",
         provider=ModelProvider.OPENAI.value,
         version="1.0.0",
@@ -62,12 +62,12 @@ async def sample_model_version(db: AsyncSession, organization_id: str) -> ModelV
 @pytest.fixture
 async def sample_deployment(
     db: AsyncSession,
-    organization_id: str,
+    tenant_id: str,
     sample_model_version: ModelVersion,
 ) -> ModelDeployment:
     """Create a sample deployment for testing."""
     deployment = ModelDeployment(
-        organization_id=uuid.UUID(organization_id),
+        tenant_id=uuid.UUID(tenant_id),
         model_version_id=sample_model_version.id,
         environment=DeploymentEnvironment.DEVELOPMENT.value,
         status=DeploymentStatus.ACTIVE.value,
@@ -85,12 +85,12 @@ async def sample_deployment(
 @pytest.fixture
 async def sample_evaluation(
     db: AsyncSession,
-    organization_id: str,
+    tenant_id: str,
     sample_model_version: ModelVersion,
 ) -> ModelEvaluation:
     """Create a sample evaluation for testing."""
     evaluation = ModelEvaluation(
-        organization_id=uuid.UUID(organization_id),
+        tenant_id=uuid.UUID(tenant_id),
         model_version_id=sample_model_version.id,
         benchmark_name="mmlu",
         benchmark_version="v1",
@@ -566,13 +566,13 @@ class TestMultiTenancy:
         async_client: AsyncClient,
         auth_headers: dict,
         db: AsyncSession,
-        organization_id: str,
+        tenant_id: str,
     ) -> None:
         """Test that list only returns models for the authenticated org."""
         # Create a model for a different org directly in DB
         other_org_id = uuid.uuid4()
         other_model = ModelVersion(
-            organization_id=other_org_id,
+            tenant_id=other_org_id,
             name="other-model",
             provider=ModelProvider.OPENAI.value,
             version="1.0.0",

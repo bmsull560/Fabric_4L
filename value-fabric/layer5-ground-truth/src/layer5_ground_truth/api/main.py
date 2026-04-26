@@ -115,7 +115,7 @@ def create_app() -> FastAPI:
                 "name": "ground-truth",
                 "description": (
                     "CRUD and validation operations for TruthObject records. "
-                    "All endpoints are scoped to an organization_id for multi-tenancy."
+                    "All endpoints are scoped to an tenant_id for multi-tenancy."
                 ),
             },
             {

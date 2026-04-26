@@ -98,7 +98,7 @@ class FreshnessMonitor:
     async def check_and_mark_stale(
         self,
         db: AsyncSession,
-        organization_id: UUID | None = None,
+        tenant_id: UUID | None = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
         """
@@ -106,7 +106,7 @@ class FreshnessMonitor:
 
         Args:
             db: Database session
-            organization_id: Optional org filter (None = all orgs)
+            tenant_id: Optional org filter (None = all orgs)
             dry_run: If True, only count without updating
 
         Returns:
@@ -124,8 +124,8 @@ class FreshnessMonitor:
             )
         )
 
-        if organization_id:
-            stmt = stmt.where(TruthObject.organization_id == organization_id)
+        if tenant_id:
+            stmt = stmt.where(TruthObject.tenant_id == tenant_id)
 
         result = await db.execute(stmt)
         expired_truths = result.scalars().all()
@@ -140,7 +140,7 @@ class FreshnessMonitor:
                 # Create audit event for staleness
                 event = ValidationEvent(
                     truth_object_id=truth.id,
-                    organization_id=truth.organization_id,
+                    tenant_id=truth.tenant_id,
                     from_status=truth.status,
                     to_status=truth.status,  # Status doesn't change, just marked stale
                     from_maturity=truth.maturity_level,
@@ -183,7 +183,7 @@ class FreshnessMonitor:
     async def list_stale_truths(
         self,
         db: AsyncSession,
-        organization_id: UUID,
+        tenant_id: UUID,
         limit: int = 100,
         offset: int = 0,
     ) -> tuple[list[TruthObject], int]:
@@ -192,7 +192,7 @@ class FreshnessMonitor:
 
         Args:
             db: Database session
-            organization_id: Organization to filter by
+            tenant_id: Organization to filter by
             limit: Max results to return
             offset: Pagination offset
 
@@ -207,7 +207,7 @@ class FreshnessMonitor:
             .select_from(TruthObject)
             .where(
                 and_(
-                    TruthObject.organization_id == organization_id,
+                    TruthObject.tenant_id == tenant_id,
                     TruthObject.deleted_at.is_(None),
                     TruthObject.is_stale.is_(True),
                 )
@@ -221,7 +221,7 @@ class FreshnessMonitor:
             select(TruthObject)
             .where(
                 and_(
-                    TruthObject.organization_id == organization_id,
+                    TruthObject.tenant_id == tenant_id,
                     TruthObject.deleted_at.is_(None),
                     TruthObject.is_stale.is_(True),
                 )
@@ -238,7 +238,7 @@ class FreshnessMonitor:
     async def get_freshness_summary(
         self,
         db: AsyncSession,
-        organization_id: UUID,
+        tenant_id: UUID,
     ) -> dict[str, Any]:
         """
         Get a summary of freshness status for an organization.
@@ -249,7 +249,7 @@ class FreshnessMonitor:
 
         # Base where clause
         base_where = and_(
-            TruthObject.organization_id == organization_id,
+            TruthObject.tenant_id == tenant_id,
             TruthObject.deleted_at.is_(None),
         )
 
@@ -270,7 +270,7 @@ class FreshnessMonitor:
         expiring_soon_count = expiring_soon_result.scalar() or 0
 
         return {
-            "organization_id": str(organization_id),
+            "tenant_id": str(tenant_id),
             "timestamp": now.isoformat(),
             "summary": {
                 "stale": stale_count,
@@ -305,7 +305,7 @@ class FreshnessMonitor:
 
 async def check_freshness(
     db: AsyncSession,
-    organization_id: UUID | None = None,
+    tenant_id: UUID | None = None,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """
@@ -313,22 +313,22 @@ async def check_freshness(
 
     Args:
         db: Database session
-        organization_id: Optional org filter
+        tenant_id: Optional org filter
         dry_run: If True, only count without updating
 
     Returns:
         Dict with check results
     """
     monitor = FreshnessMonitor()
-    return await monitor.check_and_mark_stale(db, organization_id, dry_run)
+    return await monitor.check_and_mark_stale(db, tenant_id, dry_run)
 
 
 async def get_stale_truths(
     db: AsyncSession,
-    organization_id: UUID,
+    tenant_id: UUID,
     limit: int = 100,
     offset: int = 0,
 ) -> tuple[list[TruthObject], int]:
     """Convenience function to list stale truths."""
     monitor = FreshnessMonitor()
-    return await monitor.list_stale_truths(db, organization_id, limit, offset)
+    return await monitor.list_stale_truths(db, tenant_id, limit, offset)

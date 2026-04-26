@@ -51,41 +51,51 @@ Tenant context flows as an immutable request-scoped object established at the au
 
 ### 2.2 DB Session and Isolation Pattern
 
-**Status:** `proposed` | **Target:** `ratified` 2026-05-23 | **Enforcement:** 2026-06-23
+**Status:** `ratified` | **Ratified:** 2026-04-25 | **Enforcement:** 2026-06-23
 
-**Canonical Pattern:** Tiered Isolation with Pooled Shared-Schema Default and Row-Level Security
+**Canonical Pattern:** PostgreSQL Row-Level Security via `SET LOCAL app.tenant_id`
 
-The database isolation strategy matches the tenant tier specified in tenant context. Default is pooled shared-schema with mandatory tenant_id columns and RLS policies.
+All tenant-scoped database access uses shared-schema PostgreSQL with mandatory `tenant_id` columns and RLS policies enforced via `SET LOCAL app.tenant_id` at the start of every transaction. This is the **Enforced Canon** per the Unified Recommendation memo (2026-04-25).
 
 **Contract Specification:**
 
-| Tenant Tier | Isolation Model | Connection Strategy | Migration Strategy |
-|-------------|----------------|---------------------|-------------------|
-| shared (default, ~95%) | Shared schema, tenant_id column, PostgreSQL RLS | Pooled via PgBouncer; SET app.current_tenant = ? | Single migration applies to all |
-| dedicated (~4%) | Dedicated schema per tenant (tenant_{id}) | Schema-routed connection; search_path set per request | Migrations per schema |
-| enterprise (~1%) | Dedicated database instance | Separate connection pool per tenant | Migrations per database |
+| Concern | Canonical Decision | Rationale |
+|---------|-------------------|----------|
+| Isolation model | Shared schema with `tenant_id` NOT NULL column + PostgreSQL RLS | Simplest model that provides strong isolation; covers ~100% of current tenants |
+| Session variable | `SET LOCAL app.tenant_id = :tenant_id` | Transaction-scoped; automatically cleared on commit/rollback |
+| RLS policy expression | `tenant_id::text = current_setting('app.tenant_id', true)` | Consistent across all layers; `true` flag returns empty string if unset (fail-safe) |
+| Admin bypass | `SET LOCAL app.tenant_id = ''` with `admin_role` / `system_role` | Empty string bypasses RLS via dedicated admin policy; requires super_admin role |
+| FastAPI dependency | `get_db_from_context()` reads tenant from `RequestContext` | Single canonical path; context set by `GovernanceMiddleware` |
+| Background tasks | Explicit `SET LOCAL` using tenant_id from task payload | Celery/background tasks must set tenant context before any DB operation |
 
 **Contract Rules:**
-- Every tenant-scoped table must have tenant_id column with NOT NULL constraint
-- Every query must include tenant scoping via ORM automatic application
-- RLS policies on every tenant-scoped table using app.current_tenant
-- Connection acquisition through TenantAwarePool only
+- Every tenant-scoped table MUST have a `tenant_id` column with NOT NULL constraint
+- Every tenant-scoped table MUST have an RLS policy using `current_setting('app.tenant_id', true)`
+- All production endpoints MUST use `get_db_from_context()` (not `get_db()`)
 - Cross-tenant queries require BYPASS RLS role with audit logging
+- The column MUST be named `tenant_id` (not `organization_id` or variants)
 
-**Reference Implementation Pattern:**
-- Canonical: `db.getSession()` - reads tenant from async scope automatically
-- Deprecated: `db.connect(tenantId)` or `db.withTenant(tenantId)` with explicit parameter
+**Target Architecture (non-blocking, experimental):**
+
+| Tenant Tier | Isolation Model | Status |
+|-------------|----------------|--------|
+| shared (default) | Shared schema + RLS | **Enforced Canon** |
+| dedicated | Dedicated schema per tenant | Experimental (`examples/experimental/tenant-aware-pool/`) |
+| enterprise | Dedicated database instance | Experimental |
+
+> **Note:** `TenantAwarePool` and tiered isolation are preserved as target architecture in `examples/experimental/`. They are non-blocking and cannot be cited as enforced canon. See `examples/experimental/tenant-aware-pool/README.md`.
 
 **Anti-patterns being deprecated:**
+- Using `get_db()` without tenant context for production endpoints
+- Using `organization_id` instead of `tenant_id` as the column name
 - Ad-hoc tenant ID in raw SQL queries outside migrations/analytics
 - Separate connection management per service with different pooling strategies
-- tenant_id as optional/defaultable parameter
-- Cross-tenant aggregation without RLS bypass authorization
+- `db_session()` context managers that do not execute `SET LOCAL app.tenant_id`
 
 **Enforcement:**
-- ESLint: `no-raw-tenant-query` - detects raw SQL with tenant_id outside approved locations
-- ESLint: `no-explicit-db-connect` - flags db.connect() with tenant identifiers
-- Integration tests: Application-level and database-level RLS tests
+- CI: `platform_contract_lint.py` flags `Depends(get_db)` in production routes
+- Integration tests: Application-level and database-level RLS isolation tests
+- Runtime: `validate_tenant_id()` rejects empty/malformed tenant IDs (fail-safe)
 
 ---
 
@@ -500,3 +510,4 @@ Status progression: proposed → ratified → enforced
 | Date | Author | Change | Rationale |
 |------|--------|--------|-----------|
 | 2026-04-23 | Platform Team | Initial draft | Establish canonical contracts for six cross-layer concerns |
+| 2026-04-25 | Platform Team | Ratify Section 2.2 | RLS via SET LOCAL ratified as Enforced Canon per Unified Recommendation memo; TenantAwarePool moved to experimental |

@@ -144,7 +144,7 @@ def compliance_check_stage(self, job_id: UUID):
 
                 # Log compliance check
                 log = ComplianceLog(
-                    organization_id=job.organization_id,
+                    tenant_id=job.tenant_id,
                     job_id=job_id,
                     target_id=job.target_id,
                     event_type=ComplianceEventType.ROBOTS_TXT_CHECK.value,
@@ -329,7 +329,7 @@ def content_capture_stage(self, prev_result: dict):
             existing = (
                 session.query(RawContent)
                 .filter(
-                    RawContent.organization_id == job.organization_id,
+                    RawContent.tenant_id == job.tenant_id,
                     RawContent.content_hash == content_hash,
                 )
                 .first()
@@ -340,7 +340,7 @@ def content_capture_stage(self, prev_result: dict):
             # Create RawContent record
             raw_content = RawContent(
                 job_id=job_id,
-                organization_id=job.organization_id,
+                tenant_id=job.tenant_id,
                 target_id=job.target_id,
                 source_url=url,
                 source_final_url=capture_result.final_url,
@@ -433,7 +433,7 @@ def ai_extraction_stage(self, prev_result: dict):
                 "extraction_method": method.lower(),
                 "source_id": str(raw_content_id),
                 "job_id": str(job_id),
-                "tenant_id": str(job.organization_id),  # Pass tenant for isolation
+                "tenant_id": str(job.tenant_id),  # Pass tenant for isolation
                 "options": {
                     "model": extraction_config.get("model", settings.openai_model),
                     "temperature": extraction_config.get("temperature", 0.0),
@@ -455,7 +455,7 @@ def ai_extraction_stage(self, prev_result: dict):
                         timeout=120.0,
                         headers={
                             "Content-Type": "application/json",
-                            "X-Tenant-ID": str(job.organization_id),
+                            "X-Tenant-ID": str(job.tenant_id),
                         },
                     )
                     response.raise_for_status()
@@ -541,7 +541,7 @@ def post_processing_stage(self, prev_result: dict):
                     # Log PII detection
                     if scan_result:
                         log = ComplianceLog(
-                            organization_id=job.organization_id,
+                            tenant_id=job.tenant_id,
                             job_id=job_id,
                             target_id=job.target_id,
                             event_type=ComplianceEventType.PII_DETECTED.value,
@@ -636,7 +636,7 @@ def storage_stage(self, prev_result: dict):
                     # Create ExtractedData record
                     extracted = ExtractedData(
                         job_id=job_id,
-                        organization_id=job.organization_id,
+                        tenant_id=job.tenant_id,
                         target_id=job.target_id,
                         raw_content_id=raw_content.id,
                         extraction_method=config.get("extraction_config", {}).get(
@@ -770,7 +770,7 @@ def _fail_job(job_id: UUID, error: str, stage: PipelineStage):
         # Create error record
         error_record = JobError(
             job_id=job_id,
-            organization_id=job.organization_id if job else None,
+            tenant_id=job.tenant_id if job else None,
             stage=stage.value,
             error_code="PIPELINE_ERROR",
             error_message=error,
@@ -860,7 +860,7 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
             if not job:
                 raise ValueError(f"Job {job_id} not found")
 
-            tenant_id = str(job.organization_id) if job.organization_id else None
+            tenant_id = str(job.tenant_id) if job.tenant_id else None
             target = session.query(ScrapingTarget).get(job.target_id)
             target_config = target.configuration if target else {}
 

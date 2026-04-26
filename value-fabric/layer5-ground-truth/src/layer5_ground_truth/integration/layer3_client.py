@@ -86,7 +86,7 @@ class Layer3Client:
     async def sync_truth_object(
         self,
         truth_object_id: UUID,
-        organization_id: UUID,
+        tenant_id: UUID,
         claim: str,
         claim_type: str,
         confidence: float,
@@ -102,7 +102,7 @@ class Layer3Client:
         Returns the KG node ID on success, None on failure.
 
         The node is created with the Cypher pattern:
-          MERGE (g:GroundTruth {truth_object_id: $id, organization_id: $org_id})
+          MERGE (g:GroundTruth {truth_object_id: $id, tenant_id: $org_id})
           SET g += $properties
           RETURN g.id
         """
@@ -116,7 +116,7 @@ class Layer3Client:
             "node_type": "GroundTruth",
             "properties": {
                 "truth_object_id": str(truth_object_id),
-                "organization_id": str(organization_id),
+                "tenant_id": str(tenant_id),
                 "claim": claim,
                 "claim_type": claim_type,
                 "confidence": confidence,
@@ -126,7 +126,7 @@ class Layer3Client:
                 "value": value,
                 "applies_to": applies_to,
             },
-            "merge_keys": ["truth_object_id", "organization_id"],
+            "merge_keys": ["truth_object_id", "tenant_id"],
         }
 
         # Retry with exponential backoff for transient failures
@@ -294,7 +294,7 @@ class Layer3Client:
     async def get_entity_context(
         self,
         entity_id: str,
-        organization_id: UUID,
+        tenant_id: UUID,
     ) -> dict[str, Any] | None:
         """
         Fetch entity metadata from Layer 3 to enrich a TruthObject.
@@ -305,7 +305,7 @@ class Layer3Client:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 resp = await client.get(
                     f"{self._base_url}/api/v1/entities/{entity_id}",
-                    params={"organization_id": str(organization_id)},
+                    params={"tenant_id": str(tenant_id)},
                     headers=self._headers,
                 )
                 if resp.status_code == 404:
@@ -335,7 +335,7 @@ class Layer3Client:
         for obj in truth_objects:
             node_id = await self.sync_truth_object(
                 truth_object_id=obj["id"],
-                organization_id=obj["organization_id"],
+                tenant_id=obj["tenant_id"],
                 claim=obj["claim"],
                 claim_type=obj["claim_type"],
                 confidence=obj["confidence"],

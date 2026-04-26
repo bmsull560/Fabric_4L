@@ -133,10 +133,64 @@ def upgrade():
         'model_evaluations',
         ['tenant_id', 'model_version_id'],
     )
+    
+    # validation_events
+    op.alter_column(
+        'validation_events',
+        'organization_id',
+        new_column_name='tenant_id',
+        existing_type=sa.UUID(),
+        existing_nullable=False,
+    )
+    op.execute('DROP INDEX IF EXISTS ix_validation_events_org_status')
+    op.create_index(
+        'ix_validation_events_tenant_status',
+        'validation_events',
+        ['tenant_id', 'to_status'],
+    )
+    
+    # maturity_history
+    op.alter_column(
+        'maturity_history',
+        'organization_id',
+        new_column_name='tenant_id',
+        existing_type=sa.UUID(),
+        existing_nullable=False,
+    )
+    op.create_index(
+        'ix_maturity_history_tenant_id',
+        'maturity_history',
+        ['tenant_id'],
+    )
 
 
 def downgrade():
     """Revert tenant_id columns back to organization_id."""
+    
+    # maturity_history
+    op.drop_index('ix_maturity_history_tenant_id', table_name='maturity_history')
+    op.alter_column(
+        'maturity_history',
+        'tenant_id',
+        new_column_name='organization_id',
+        existing_type=sa.UUID(),
+        existing_nullable=False,
+    )
+    
+    # validation_events
+    op.drop_index('ix_validation_events_tenant_status', table_name='validation_events')
+    op.alter_column(
+        'validation_events',
+        'tenant_id',
+        new_column_name='organization_id',
+        existing_type=sa.UUID(),
+        existing_nullable=False,
+    )
+    op.create_index(
+        'ix_validation_events_org_status',
+        'validation_events',
+        ['organization_id', 'to_status'],
+    )
     
     # model_evaluations
     op.drop_index('ix_model_evaluations_tenant_id', table_name='model_evaluations')

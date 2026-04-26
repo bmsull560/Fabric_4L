@@ -73,7 +73,7 @@ class TestFreshnessMonitor:
         # Create a truth that expired yesterday
         expired_truth = TruthObject(
             id=UUID("11111111-1111-1111-1111-111111111111"),
-            organization_id=org_id,
+            tenant_id=org_id,
             claim="Expired claim",
             claim_type=ClaimType.OTHER.value,
             confidence=0.8,
@@ -122,7 +122,7 @@ class TestFreshnessMonitor:
         # Create an expired truth
         expired_truth = TruthObject(
             id=UUID("22222222-2222-2222-2222-222222222222"),
-            organization_id=org_id,
+            tenant_id=org_id,
             claim="Expired claim dry run",
             claim_type=ClaimType.OTHER.value,
             confidence=0.8,
@@ -157,7 +157,7 @@ class TestFreshnessMonitor:
         # Create a truth that's already stale
         already_stale = TruthObject(
             id=UUID("33333333-3333-3333-3333-333333333333"),
-            organization_id=org_id,
+            tenant_id=org_id,
             claim="Already stale",
             claim_type=ClaimType.OTHER.value,
             confidence=0.8,
@@ -188,7 +188,7 @@ class TestFreshnessMonitor:
         # Create a truth with no expiry
         no_expiry = TruthObject(
             id=UUID("44444444-4444-4444-4444-444444444444"),
-            organization_id=org_id,
+            tenant_id=org_id,
             claim="No expiry set",
             claim_type=ClaimType.OTHER.value,
             confidence=0.8,
@@ -219,7 +219,7 @@ class TestFreshnessMonitor:
         for i in range(3):
             truth = TruthObject(
                 id=UUID(f"55555555-5555-5555-5555-a{i:011d}"),
-                organization_id=org_id,
+                tenant_id=org_id,
                 claim=f"Stale truth {i}",
                 claim_type=ClaimType.OTHER.value,
                 confidence=0.8,
@@ -234,7 +234,7 @@ class TestFreshnessMonitor:
         # Create a non-stale truth
         fresh_truth = TruthObject(
             id=UUID("66666666-6666-6666-6666-666666666666"),
-            organization_id=org_id,
+            tenant_id=org_id,
             claim="Fresh truth",
             claim_type=ClaimType.OTHER.value,
             confidence=0.8,
@@ -266,7 +266,7 @@ class TestFreshnessMonitor:
         for i in range(2):
             truth = TruthObject(
                 id=UUID(f"77777777-7777-7777-7777-a{i:011d}"),
-                organization_id=org_id,
+                tenant_id=org_id,
                 claim=f"Stale truth {i}",
                 claim_type=ClaimType.OTHER.value,
                 confidence=0.8,
@@ -282,7 +282,7 @@ class TestFreshnessMonitor:
         for i in range(3):
             truth = TruthObject(
                 id=UUID(f"88888888-8888-8888-8888-a{i:011d}"),
-                organization_id=org_id,
+                tenant_id=org_id,
                 claim=f"Fresh truth {i}",
                 claim_type=ClaimType.OTHER.value,
                 confidence=0.8,
@@ -297,7 +297,7 @@ class TestFreshnessMonitor:
         # Create 1 truth expiring soon
         expiring_soon = TruthObject(
             id=UUID("99999999-9999-9999-9999-999999999999"),
-            organization_id=org_id,
+            tenant_id=org_id,
             claim="Expiring soon",
             claim_type=ClaimType.OTHER.value,
             confidence=0.8,
@@ -317,7 +317,7 @@ class TestFreshnessMonitor:
         assert summary["summary"]["fresh"] == 4  # 3 fresh + 1 expiring soon
         assert summary["summary"]["expiring_soon"] == 1
         assert summary["summary"]["total"] == 6
-        assert summary["organization_id"] == str(org_id)
+        assert summary["tenant_id"] == str(org_id)
 
     async def test_convenience_functions(
         self,
@@ -329,7 +329,7 @@ class TestFreshnessMonitor:
         # Create an expired truth
         expired = TruthObject(
             id=UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-            organization_id=org_id,
+            tenant_id=org_id,
             claim="Expired",
             claim_type=ClaimType.OTHER.value,
             confidence=0.8,

@@ -80,14 +80,14 @@ async def create_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TruthObjectResponse:
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
     sources_data = (
         [s.model_dump() for s in payload.sources] if payload.sources else None
     )
 
     truth = await create_truth_object(
         db=db,
-        organization_id=organization_id,  # resolved from JWT
+        tenant_id=tenant_id,  # resolved from JWT
         claim=payload.claim,
         claim_type=payload.claim_type,
         confidence=payload.confidence,
@@ -100,7 +100,7 @@ async def create_truth(
     )
 
     # Reload with eager-loaded relationships for the response
-    truth = await get_truth_object(db, truth.id, organization_id)
+    truth = await get_truth_object(db, truth.id, tenant_id)
 
     # Best-effort KG sync for high-confidence objects
     settings = get_settings()
@@ -112,7 +112,7 @@ async def create_truth(
         client = get_layer3_client()
         node_id = await client.sync_truth_object(
             truth_object_id=truth.id,
-            organization_id=organization_id,
+            tenant_id=tenant_id,
             claim=truth.claim,
             claim_type=truth.claim_type,
             confidence=truth.confidence,
@@ -175,10 +175,10 @@ async def list_truths(
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> TruthObjectListResponse:
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
     items, total = await list_truth_objects(
         db=db,
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         status=status_filter,
         claim_type=claim_type,
         min_maturity=min_maturity,
@@ -235,8 +235,8 @@ async def get_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TruthObjectResponse:
-    organization_id = caller.organization_id
-    truth = await get_truth_object(db, truth_id, organization_id)
+    tenant_id = caller.tenant_id
+    truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -271,8 +271,8 @@ async def validate_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ValidateResponse:
-    organization_id = caller.organization_id
-    truth = await get_truth_object(db, truth_id, organization_id)
+    tenant_id = caller.tenant_id
+    truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -306,7 +306,7 @@ async def validate_truth(
         client = get_layer3_client()
         node_id = await client.sync_truth_object(
             truth_object_id=truth.id,
-            organization_id=organization_id,
+            tenant_id=tenant_id,
             claim=truth.claim,
             claim_type=truth.claim_type,
             confidence=truth.confidence,
@@ -359,8 +359,8 @@ async def add_truth_source(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TruthSourceResponse:
-    organization_id = caller.organization_id
-    truth = await get_truth_object(db, truth_id, organization_id)
+    tenant_id = caller.tenant_id
+    truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -370,7 +370,7 @@ async def add_truth_source(
     _, source = await add_source(
         db=db,
         truth_object=truth,
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         source_data=payload.model_dump(),
     )
 
@@ -393,8 +393,8 @@ async def get_audit_trail(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ValidationEventResponse]:
-    organization_id = caller.organization_id
-    truth = await get_truth_object(db, truth_id, organization_id)
+    tenant_id = caller.tenant_id
+    truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -419,9 +419,9 @@ async def delete_truth(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
     deleted_by = caller.user_id
-    truth = await get_truth_object(db, truth_id, organization_id)
+    truth = await get_truth_object(db, truth_id, tenant_id)
     if not truth:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -447,7 +447,7 @@ async def sync_to_kg(
     caller: TokenClaims = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
     from sqlalchemy import and_, select
 
     from ..models.truth_object import TruthObject
@@ -455,7 +455,7 @@ async def sync_to_kg(
     result = await db.execute(
         select(TruthObject).where(
             and_(
-                TruthObject.organization_id == organization_id,
+                TruthObject.tenant_id == tenant_id,
                 TruthObject.status == "approved",
                 TruthObject.kg_node_id.is_(None),
                 TruthObject.deleted_at.is_(None),
@@ -470,7 +470,7 @@ async def sync_to_kg(
     for truth in pending:
         node_id = await client.sync_truth_object(
             truth_object_id=truth.id,
-            organization_id=truth.organization_id,
+            tenant_id=truth.tenant_id,
             claim=truth.claim,
             claim_type=truth.claim_type,
             confidence=truth.confidence,
@@ -579,10 +579,10 @@ async def check_stale(
 ) -> dict:
     from ..services.freshness_monitor import check_freshness
 
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
     result = await check_freshness(
         db=db,
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         dry_run=dry_run,
     )
     return result
@@ -607,10 +607,10 @@ async def list_stale(
     from ..services.freshness_monitor import get_stale_truths
     from .schemas import TruthObjectSummary
 
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
     items, total = await get_stale_truths(
         db=db,
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         limit=limit,
         offset=offset,
     )
@@ -657,9 +657,9 @@ async def freshness_summary(
 ) -> dict:
     from ..services.freshness_monitor import FreshnessMonitor
 
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
     monitor = FreshnessMonitor()
-    return await monitor.get_freshness_summary(db, organization_id)
+    return await monitor.get_freshness_summary(db, tenant_id)
 
 
 # ---------------------------------------------------------------------------

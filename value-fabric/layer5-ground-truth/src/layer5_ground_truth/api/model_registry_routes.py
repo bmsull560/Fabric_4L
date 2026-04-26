@@ -73,13 +73,13 @@ async def create_model_version(
     db: AsyncSession = Depends(get_db),
 ) -> ModelVersionResponse:
     """Register a new model version."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     # Check for duplicate (org + provider + name + version)
     existing = await db.execute(
         select(ModelVersion).where(
             and_(
-                ModelVersion.organization_id == organization_id,
+                ModelVersion.tenant_id == tenant_id,
                 ModelVersion.provider == payload.provider.value,
                 ModelVersion.name == payload.name,
                 ModelVersion.version == payload.version,
@@ -98,7 +98,7 @@ async def create_model_version(
         await db.execute(
             select(ModelVersion).where(
                 and_(
-                    ModelVersion.organization_id == organization_id,
+                    ModelVersion.tenant_id == tenant_id,
                     ModelVersion.provider == payload.provider.value,
                     ModelVersion.is_default.is_(True),
                 )
@@ -107,7 +107,7 @@ async def create_model_version(
         # Note: Actual update done after commit in production; simplified here
 
     model = ModelVersion(
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         name=payload.name,
         provider=payload.provider.value,
         version=payload.version,
@@ -133,7 +133,7 @@ async def create_model_version(
         model.provider,
         model.name,
         model.version,
-        organization_id,
+        tenant_id,
     )
 
     return ModelVersionResponse.model_validate(model)
@@ -155,11 +155,11 @@ async def list_model_versions(
     offset: int = Query(default=0, ge=0),
 ) -> ModelVersionListResponse:
     """List model versions with filtering."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     query = select(ModelVersion).where(
         and_(
-            ModelVersion.organization_id == organization_id,
+            ModelVersion.tenant_id == tenant_id,
             ModelVersion.deprecated_at.is_(None),
         )
     )
@@ -204,13 +204,13 @@ async def get_model_version(
     db: AsyncSession = Depends(get_db),
 ) -> ModelVersionResponse:
     """Get a model version by ID."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     result = await db.execute(
         select(ModelVersion).where(
             and_(
                 ModelVersion.id == model_id,
-                ModelVersion.organization_id == organization_id,
+                ModelVersion.tenant_id == tenant_id,
             )
         )
     )
@@ -238,13 +238,13 @@ async def deprecate_model_version(
     db: AsyncSession = Depends(get_db),
 ) -> ModelVersionResponse:
     """Deprecate a model version."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     result = await db.execute(
         select(ModelVersion).where(
             and_(
                 ModelVersion.id == model_id,
-                ModelVersion.organization_id == organization_id,
+                ModelVersion.tenant_id == tenant_id,
             )
         )
     )
@@ -274,7 +274,7 @@ async def deprecate_model_version(
         model.provider,
         model.name,
         model.version,
-        organization_id,
+        tenant_id,
         model.deprecation_reason,
     )
 
@@ -293,14 +293,14 @@ async def set_default_model_version(
     db: AsyncSession = Depends(get_db),
 ) -> ModelVersionResponse:
     """Set a model version as default for its provider."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     # Get the target model
     result = await db.execute(
         select(ModelVersion).where(
             and_(
                 ModelVersion.id == model_id,
-                ModelVersion.organization_id == organization_id,
+                ModelVersion.tenant_id == tenant_id,
             )
         )
     )
@@ -322,7 +322,7 @@ async def set_default_model_version(
     await db.execute(
         select(ModelVersion).where(
             and_(
-                ModelVersion.organization_id == organization_id,
+                ModelVersion.tenant_id == tenant_id,
                 ModelVersion.provider == model.provider,
                 ModelVersion.is_default.is_(True),
                 ModelVersion.id != model_id,
@@ -339,7 +339,7 @@ async def set_default_model_version(
         model.provider,
         model.name,
         model.version,
-        organization_id,
+        tenant_id,
     )
 
     return ModelVersionResponse.model_validate(model)
@@ -363,14 +363,14 @@ async def promote_model(
     db: AsyncSession = Depends(get_db),
 ) -> PromoteModelResponse:
     """Promote a model version to an environment."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     # Verify model exists and is active
     model_result = await db.execute(
         select(ModelVersion).where(
             and_(
                 ModelVersion.id == model_id,
-                ModelVersion.organization_id == organization_id,
+                ModelVersion.tenant_id == tenant_id,
                 ModelVersion.deprecated_at.is_(None),
             )
         )
@@ -394,7 +394,7 @@ async def promote_model(
         select(ModelDeployment).where(
             and_(
                 ModelDeployment.model_version_id == model_id,
-                ModelDeployment.organization_id == organization_id,
+                ModelDeployment.tenant_id == tenant_id,
                 ModelDeployment.environment == payload.environment.value,
             )
         )
@@ -412,7 +412,7 @@ async def promote_model(
     else:
         # Create new deployment
         deployment = ModelDeployment(
-            organization_id=organization_id,
+            tenant_id=tenant_id,
             model_version_id=model_id,
             environment=payload.environment.value,
             status=DeploymentStatus.ACTIVE.value,
@@ -428,7 +428,7 @@ async def promote_model(
         await db.execute(
             select(ModelDeployment).where(
                 and_(
-                    ModelDeployment.organization_id == organization_id,
+                    ModelDeployment.tenant_id == tenant_id,
                     ModelDeployment.environment == payload.environment.value,
                     ModelDeployment.is_default_for_env.is_(True),
                     ModelDeployment.model_version_id != model_id,
@@ -472,13 +472,13 @@ async def get_model_deployments(
     db: AsyncSession = Depends(get_db),
 ) -> ModelDeploymentListResponse:
     """Get deployments for a model version."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     result = await db.execute(
         select(ModelDeployment).where(
             and_(
                 ModelDeployment.model_version_id == model_id,
-                ModelDeployment.organization_id == organization_id,
+                ModelDeployment.tenant_id == tenant_id,
             )
         )
     )
@@ -503,10 +503,10 @@ async def list_deployments(
     status: str | None = Query(default=None),
 ) -> ModelDeploymentListResponse:
     """List all deployments with optional filtering."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     query = select(ModelDeployment).where(
-        ModelDeployment.organization_id == organization_id
+        ModelDeployment.tenant_id == tenant_id
     )
 
     if environment:
@@ -536,13 +536,13 @@ async def rollback_deployment(
     db: AsyncSession = Depends(get_db),
 ) -> RollbackModelResponse:
     """Rollback a deployment."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     result = await db.execute(
         select(ModelDeployment).where(
             and_(
                 ModelDeployment.id == deployment_id,
-                ModelDeployment.organization_id == organization_id,
+                ModelDeployment.tenant_id == tenant_id,
             )
         )
     )
@@ -597,14 +597,14 @@ async def create_evaluation(
     db: AsyncSession = Depends(get_db),
 ) -> ModelEvaluationResponse:
     """Record a model evaluation."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     # Verify model exists
     model_result = await db.execute(
         select(ModelVersion).where(
             and_(
                 ModelVersion.id == payload.model_version_id,
-                ModelVersion.organization_id == organization_id,
+                ModelVersion.tenant_id == tenant_id,
             )
         )
     )
@@ -617,7 +617,7 @@ async def create_evaluation(
         )
 
     evaluation = ModelEvaluation(
-        organization_id=organization_id,
+        tenant_id=tenant_id,
         model_version_id=payload.model_version_id,
         benchmark_name=payload.benchmark_name,
         benchmark_version=payload.benchmark_version,
@@ -663,10 +663,10 @@ async def list_evaluations(
     offset: int = Query(default=0, ge=0),
 ) -> ModelEvaluationListResponse:
     """List evaluations with filtering."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     query = select(ModelEvaluation).where(
-        ModelEvaluation.organization_id == organization_id
+        ModelEvaluation.tenant_id == tenant_id
     )
 
     if model_version_id:
@@ -702,13 +702,13 @@ async def get_model_evaluations(
     db: AsyncSession = Depends(get_db),
 ) -> ModelEvaluationListResponse:
     """Get evaluations for a model version."""
-    organization_id = caller.organization_id
+    tenant_id = caller.tenant_id
 
     result = await db.execute(
         select(ModelEvaluation).where(
             and_(
                 ModelEvaluation.model_version_id == model_id,
-                ModelEvaluation.organization_id == organization_id,
+                ModelEvaluation.tenant_id == tenant_id,
             )
         )
     )

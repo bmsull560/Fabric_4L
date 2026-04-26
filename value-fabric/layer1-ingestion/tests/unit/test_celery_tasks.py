@@ -255,7 +255,7 @@ class TestComplianceCheckStage:
             "url": "https://example.com",
             "compliance": {"respect_robots_txt": False},  # Skip robots check
         }
-        mock_job.organization_id = uuid4()
+        mock_job.tenant_id = uuid4()
         mock_job.target_id = uuid4()
 
         mock_session = MagicMock()
@@ -347,7 +347,7 @@ class TestCeleryRetryBehavior:
         mock_job = Mock()
         mock_job.status = "PENDING"
         mock_job.configuration = None  # Missing config
-        mock_job.organization_id = uuid4()
+        mock_job.tenant_id = uuid4()
         mock_job.target_id = uuid4()
 
         mock_session = MagicMock()
@@ -498,7 +498,7 @@ class TestCeleryRetrySemantics:
         mock_job = Mock()
         mock_job.status = "PENDING"
         mock_job.configuration = {"url": "https://example.com", "compliance": {}}
-        mock_job.organization_id = uuid4()
+        mock_job.tenant_id = uuid4()
         mock_job.target_id = uuid4()
 
         mock_session = MagicMock()

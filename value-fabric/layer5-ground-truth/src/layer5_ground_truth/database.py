@@ -129,12 +129,27 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     FastAPI dependency that yields an async database session.
 
+    .. warning::
+
+        DEPRECATED — Use ``get_db_from_context`` for all new endpoints.
+        This dependency does NOT set ``SET LOCAL app.tenant_id``, so RLS
+        policies will block all rows.  It is retained only for the
+        ``init_db`` / health-check paths that run before tenant context
+        is available.
+
     Usage::
 
         @router.get("/truths/{id}")
         async def get_truth(id: UUID, db: AsyncSession = Depends(get_db)):
             ...
     """
+    import warnings
+    warnings.warn(
+        "get_db() does not enforce RLS tenant context. "
+        "Use get_db_from_context() for tenant-scoped queries.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     factory = get_session_factory()
     async with factory() as session:
         try:
@@ -151,10 +166,26 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 @asynccontextmanager
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Async context manager for use outside of FastAPI request lifecycle."""
+async def db_session(tenant_id: str | None = None) -> AsyncGenerator[AsyncSession, None]:
+    """Async context manager for use outside of FastAPI request lifecycle.
+
+    Args:
+        tenant_id: UUID string of the tenant.  When provided, the session
+            executes ``SET LOCAL app.tenant_id`` so that PostgreSQL RLS
+            policies are enforced.  Omitting ``tenant_id`` is only valid
+            for system-level operations (migrations, health checks).
+
+    Raises:
+        TenantContextError: If ``tenant_id`` is provided but invalid.
+    """
     factory = get_session_factory()
     async with factory() as session:
+        if tenant_id is not None:
+            validated = validate_tenant_id(tenant_id)
+            await session.execute(
+                text("SET LOCAL app.tenant_id = :tid"),
+                {"tid": validated},
+            )
         try:
             yield session
             await session.commit()

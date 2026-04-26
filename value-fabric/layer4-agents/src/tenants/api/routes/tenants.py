@@ -1,10 +1,13 @@
 """Tenant management API routes (super_admin only).
 
-POST   /v1/tenants               — create tenant
-GET    /v1/tenants               — list tenants
-GET    /v1/tenants/{tenant_id}   — get tenant
-PATCH  /v1/tenants/{tenant_id}   — update tenant
-DELETE /v1/tenants/{tenant_id}   — soft-delete tenant
+POST   /v1/tenants                          — create tenant
+GET    /v1/tenants                          — list tenants
+GET    /v1/tenants/{tenant_id}              — get tenant
+PATCH  /v1/tenants/{tenant_id}              — update tenant
+DELETE /v1/tenants/{tenant_id}              — soft-delete tenant
+POST   /v1/tenants/{tenant_id}/suspend      — suspend tenant
+POST   /v1/tenants/{tenant_id}/activate     — activate tenant
+POST   /v1/tenants/{tenant_id}/status       — change status with reason
 """
 
 from __future__ import annotations
@@ -12,6 +15,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from shared.identity.dependencies import require_super_admin
 from shared.identity.models import (
     TenantCreateRequest,
@@ -27,7 +31,15 @@ from ...service import (
     get_tenant,
     list_tenants,
     update_tenant,
+    update_tenant_status,
 )
+
+
+class StatusChangeRequest(BaseModel):
+    """Request body for tenant status change endpoints."""
+    reason: str | None = Field(None, description="Human-readable reason for the status change")
+    changed_by: str | None = Field(None, description="User ID or service name initiating the change")
+
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
@@ -91,3 +103,75 @@ async def api_delete_tenant(
     deleted = await delete_tenant(db, tenant_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle endpoints (Phase 1, Task 1.7)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{tenant_id}/suspend", response_model=TenantModel)
+async def api_suspend_tenant(
+    tenant_id: UUID,
+    body: StatusChangeRequest | None = None,
+    _ctx=Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db_from_context),
+) -> TenantModel:
+    """Suspend a tenant (active -> suspended). Requires ``super_admin`` role."""
+    reason = body.reason if body else None
+    changed_by = body.changed_by if body else None
+    try:
+        updated = await update_tenant_status(
+            db, tenant_id, "suspended", reason=reason, changed_by=changed_by,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
+    tenant = await get_tenant(db, tenant_id)
+    return tenant
+
+
+@router.post("/{tenant_id}/activate", response_model=TenantModel)
+async def api_activate_tenant(
+    tenant_id: UUID,
+    body: StatusChangeRequest | None = None,
+    _ctx=Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db_from_context),
+) -> TenantModel:
+    """Activate a tenant (pending/suspended -> active). Requires ``super_admin`` role."""
+    reason = body.reason if body else None
+    changed_by = body.changed_by if body else None
+    try:
+        updated = await update_tenant_status(
+            db, tenant_id, "active", reason=reason, changed_by=changed_by,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
+    tenant = await get_tenant(db, tenant_id)
+    return tenant
+
+
+@router.post("/{tenant_id}/status", response_model=TenantModel)
+async def api_change_tenant_status(
+    tenant_id: UUID,
+    target_status: str = Query(..., description="Target status: active, suspended, deleted"),
+    body: StatusChangeRequest | None = None,
+    _ctx=Depends(require_super_admin),
+    db: AsyncSession = Depends(get_db_from_context),
+) -> TenantModel:
+    """Change tenant status with reason and audit trail. Requires ``super_admin`` role."""
+    reason = body.reason if body else None
+    changed_by = body.changed_by if body else None
+    try:
+        updated = await update_tenant_status(
+            db, tenant_id, target_status, reason=reason, changed_by=changed_by,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not updated:
+        raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
+    tenant = await get_tenant(db, tenant_id)
+    return tenant

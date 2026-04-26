@@ -49,7 +49,7 @@ TEST_ORG_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def organization_id() -> str:
+def tenant_id() -> str:
     """Return test organization ID as string for model registry tests."""
     return str(TEST_ORG_ID)
 
@@ -128,9 +128,9 @@ async def client(db) -> AsyncGenerator[AsyncClient, None]:
         yield db
 
     def override_get_current_user():
-        """Return test user with organization_id for auth bypass."""
+        """Return test user with tenant_id for auth bypass."""
         return TokenClaims(
-            organization_id=TEST_ORG_ID,
+            tenant_id=TEST_ORG_ID,
             user_id="test-user",
             roles=["admin"],
         )

@@ -22,14 +22,14 @@ class TestScrapingJob:
         created_by = uuid4()
         
         job = create_scraping_job(
-            organization_id=org_id,
+            tenant_id=org_id,
             target_id=target_id,
             created_by=created_by,
             configuration={'url': 'https://example.com'}
         )
         
         assert job.target_id == target_id
-        assert job.organization_id == org_id
+        assert job.tenant_id == org_id
         assert job.configuration['url'] == 'https://example.com'
     
     def test_job_status_enum(self):
@@ -49,7 +49,7 @@ class TestScrapingTarget:
         created_by = uuid4()
         
         target = create_scraping_target(
-            organization_id=org_id,
+            tenant_id=org_id,
             name='Test Target',
             url='https://example.com',
             target_type=TargetType.SINGLE_PAGE,
@@ -73,7 +73,7 @@ class TestCrawlQueueItem:
         
         item = CrawlQueueItem(
             job_id=job_id,
-            organization_id=org_id,
+            tenant_id=org_id,
             url='https://example.com/page',
             domain='example.com',
             depth=1,
@@ -100,7 +100,7 @@ class TestRawContent:
         
         content = RawContent(
             job_id=job_id,
-            organization_id=org_id,
+            tenant_id=org_id,
             source_url='https://example.com/page',
             source_domain='example.com',
             source_http_status=200,
