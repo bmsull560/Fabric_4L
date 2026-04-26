@@ -119,9 +119,41 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("L5: Prometheus metrics initialized")
     app.state.metrics = metrics
 
+    # Initialize Redis client for rate limiting (async context)
+    app.state.redis_rate_limiter = None
+    try:
+        import redis.asyncio as redis
+        from shared.identity.rate_limiter import RedisRateLimiter
+
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Validate connection before using for rate limiting
+        await redis_client.ping()
+        app.state.redis_rate_limiter = RedisRateLimiter(redis_client)
+        logger.info("L5: Redis rate limiter initialized")
+    except Exception as e:
+        env = os.getenv("ENVIRONMENT", "development")
+        redis_required = os.getenv("REDIS_RATE_LIMITING_REQUIRED", "false").lower() == "true"
+        
+        if redis_required or env in ("production", "staging"):
+            logger.error(f"L5: Redis rate limiting required but unavailable: {e}")
+            raise RuntimeError(f"Redis rate limiting required in {env} but unavailable: {e}")
+        
+        logger.warning(f"L5: Redis rate limiter disabled - {e}")
+        app.state.redis_rate_limiter = None
+
     yield
 
     logger.info("Shutting down Layer 5 Ground Truth service")
+    await close_db()
+    
+    # Close Redis connection if initialized
+    if app.state.redis_rate_limiter:
+        try:
+            await app.state.redis_rate_limiter.close()
+            logger.info("L5: Redis connection closed")
+        except Exception as e:
+            logger.warning(f"L5: Error closing Redis connection: {e}")
 
     # Shutdown OpenTelemetry tracer provider to flush pending spans
     if _tracer_provider:
@@ -190,33 +222,13 @@ def create_app() -> FastAPI:
         )
         add_security_middleware(app, config=_security_config_l5)
 
-    # Initialize Redis client for rate limiting
-    redis_rate_limiter = None
-    try:
-        import redis.asyncio as redis
-        from shared.identity.rate_limiter import RedisRateLimiter
-
-        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-        redis_client = redis.from_url(redis_url, decode_responses=True)
-        # Validate connection before using for rate limiting
-        await redis_client.ping()
-        redis_rate_limiter = RedisRateLimiter(redis_client)
-        logger.info("L5: Redis rate limiter initialized")
-    except Exception as e:
-        env = os.getenv("ENVIRONMENT", "development")
-        redis_required = os.getenv("REDIS_RATE_LIMITING_REQUIRED", "false").lower() == "true"
-        
-        if redis_required or env in ("production", "staging"):
-            logger.error(f"L5: Redis rate limiting required but unavailable: {e}")
-            raise RuntimeError(f"Redis rate limiting required in {env} but unavailable: {e}")
-        
-        logger.warning(f"L5: Redis rate limiter disabled - {e}")
-        redis_rate_limiter = None
-
     # GovernanceMiddleware — provides auth and tenant context with rate limiting
     # Production/staging: fail closed if auth middleware is missing
     allow_bypass = os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() == "true"
     env = os.getenv("ENVIRONMENT", "development")
+    
+    # Get Redis rate limiter from app state (initialized in lifespan)
+    redis_rate_limiter = getattr(app.state, 'redis_rate_limiter', None)
     
     try:
         from shared.identity.middleware import GovernanceMiddleware

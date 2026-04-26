@@ -191,7 +191,7 @@ def _load_deprecation_register() -> dict:
             with open(register_path, encoding="utf-8") as f:
                 return json.load(f)
     except (OSError, json.JSONDecodeError, TypeError) as e:
-        logger.warning("Failed to load deprecation register", error=str(e))
+        logger.warning("Failed to load deprecation register: %s", e)
     return {"deprecations": []}
 
 

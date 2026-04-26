@@ -16,8 +16,7 @@ Exit codes:
 
 import sys
 from pathlib import Path
-from typing import Set, Dict, List, Any, Optional
-import os
+from typing import Set, Dict, List, Any
 
 # Use PyYAML for robust YAML parsing
 try:
@@ -67,7 +66,7 @@ def extract_secret_refs_from_deployment(deployment_path: Path) -> Set[str]:
     except yaml.YAMLError as e:
         print(f"WARNING: Failed to parse {deployment_path}: {e}")
         return secret_refs
-    except Exception as e:
+    except (OSError, PermissionError) as e:
         print(f"WARNING: Error reading {deployment_path}: {e}")
         return secret_refs
     

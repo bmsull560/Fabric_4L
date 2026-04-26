@@ -1,3 +1,8 @@
+---
+name: autonomous-test-assurance
+description: Skill definition for Level 3 autonomous test assurance agent with production invariant testing patterns and anti-patterns
+---
+
 # Autonomous Test Assurance Agent - Skill Definition
 
 ## Overview

@@ -1,4 +1,5 @@
 ---
+name: autonomous-test-assurance-agent
 description: Autonomous Level 3 agent for transforming test suites from functional confirmation into production assurance with positive, negative, and adversarial coverage
 ---
 

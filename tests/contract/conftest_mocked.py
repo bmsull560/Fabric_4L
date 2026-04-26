@@ -37,7 +37,7 @@ def _is_mock_mode() -> bool:
 
 
 @pytest.fixture
-def client() -> AsyncClient:
+async def client() -> AsyncClient:
     """Create HTTP client for Layer 3 API contract tests.
 
     Uses LAYER3_API_URL environment variable, falls back to localhost:8003.
@@ -45,34 +45,43 @@ def client() -> AsyncClient:
     """
     if _is_mock_mode() and RESPX_AVAILABLE:
         # Return client that will be intercepted by respx mock router
-        return AsyncClient(base_url="http://localhost:8003", timeout=10.0)
+        async with AsyncClient(base_url="http://localhost:8003", timeout=10.0) as client:
+            yield client
+        return
 
     # Default: real client (requires running service)
     base_url = os.getenv("LAYER3_API_URL", "http://localhost:8003").rstrip("/")
     timeout = float(os.getenv("CONTRACT_TEST_TIMEOUT", "10.0"))
-    return AsyncClient(base_url=base_url, timeout=timeout)
+    async with AsyncClient(base_url=base_url, timeout=timeout) as client:
+        yield client
 
 
 @pytest.fixture
-def layer4_client() -> AsyncClient:
+async def layer4_client() -> AsyncClient:
     """Create HTTP client for Layer 4 Agents API tests."""
     if _is_mock_mode() and RESPX_AVAILABLE:
-        return AsyncClient(base_url="http://localhost:8004", timeout=10.0)
+        async with AsyncClient(base_url="http://localhost:8004", timeout=10.0) as client:
+            yield client
+        return
 
     base_url = os.getenv("LAYER4_API_URL", "http://localhost:8004").rstrip("/")
     timeout = float(os.getenv("CONTRACT_TEST_TIMEOUT", "10.0"))
-    return AsyncClient(base_url=base_url, timeout=timeout)
+    async with AsyncClient(base_url=base_url, timeout=timeout) as client:
+        yield client
 
 
 @pytest.fixture
-def layer5_client() -> AsyncClient:
+async def layer5_client() -> AsyncClient:
     """Create HTTP client for Layer 5 Ground Truth API tests."""
     if _is_mock_mode() and RESPX_AVAILABLE:
-        return AsyncClient(base_url="http://localhost:8005", timeout=10.0)
+        async with AsyncClient(base_url="http://localhost:8005", timeout=10.0) as client:
+            yield client
+        return
 
     base_url = os.getenv("LAYER5_API_URL", "http://localhost:8005").rstrip("/")
     timeout = float(os.getenv("CONTRACT_TEST_TIMEOUT", "10.0"))
-    return AsyncClient(base_url=base_url, timeout=timeout)
+    async with AsyncClient(base_url=base_url, timeout=timeout) as client:
+        yield client
 
 
 # Example respx mock configuration for L3 entity endpoints
@@ -91,6 +100,18 @@ def mock_l3_entities():
         pytest.skip("respx not installed - run: pip install respx>=0.20.0")
 
     with respx.mock(base_url="http://localhost:8003") as router:
+        # Mock subgraph endpoint (coherent nodes + edges in single call)
+        router.get("/v1/graph/subgraph").mock(
+            return_value=Response(
+                200,
+                json={
+                    "nodes": [{"id": "test-entity-123", "type": "test"}],
+                    "edges": [],
+                    "stats": {"total_nodes": 1, "total_edges": 0, "depth": 1},
+                }
+            )
+        )
+
         # Mock entity traverse endpoint
         router.post("/v1/entity/traverse").mock(
             return_value=Response(

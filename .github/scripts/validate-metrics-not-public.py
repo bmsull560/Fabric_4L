@@ -13,7 +13,7 @@ Exit codes:
 import re
 import sys
 from pathlib import Path
-from typing import List, Set
+from typing import List
 
 try:
     import yaml
@@ -203,10 +203,15 @@ _INTERNAL_IP_PATTERNS = [
     "allow 172.31",
     "allow 192.168.",
     "allow 127.0.0.1",
+    "allow 169.254.",  # Link-local (EC2 metadata, etc.)
+    "allow ::1",  # IPv6 localhost
+    "allow fc00:",  # IPv6 unique local
+    "allow fd00:",  # IPv6 unique local
     "deny all",
     "internal",
     "listen 127",
     "listen 10.",
+    "listen [::1]",
 ]
 
 

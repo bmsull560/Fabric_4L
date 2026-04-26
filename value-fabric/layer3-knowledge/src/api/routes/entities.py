@@ -126,7 +126,7 @@ async def list_entities(
         )
 
     except Exception as e:
-        logger.error("Entity listing failed", error=str(e))
+        logger.error("Entity listing failed: %s", e)
         raise HTTPException(status_code=500, detail="Entity listing failed. Please try again later.")
 
 
@@ -217,7 +217,7 @@ async def get_entity_detail(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Entity detail retrieval failed", error=str(e), entity_id=entity_id)
+        logger.error("Entity detail retrieval failed for %s: %s", entity_id, e)
         raise HTTPException(status_code=500, detail="Entity detail retrieval failed. Please try again later.")
 
 
@@ -288,7 +288,7 @@ async def query_entities(
         )
 
     except Exception as e:
-        logger.error("Entity query failed", error=str(e))
+        logger.error("Entity query failed: %s", e)
         raise HTTPException(status_code=500, detail="Entity query failed. Please try again later.")
 
 
@@ -317,5 +317,5 @@ async def traverse_value_tree(
         )
 
     except Exception as e:
-        logger.error("Value tree traversal failed", error=str(e), root_id=request.root_entity_id)
+        logger.error("Value tree traversal failed for %s: %s", request.root_entity_id, e)
         raise HTTPException(status_code=500, detail="Value tree traversal failed. Please try again later.")

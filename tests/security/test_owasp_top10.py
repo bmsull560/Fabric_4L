@@ -312,6 +312,8 @@ class TestInjection:
         if response.status_code == 200:
             response_text = response.text
             assert "root:" not in response_text, "XXE vulnerability: file contents exposed"
+        elif response.status_code not in [400, 403, 404, 422]:
+            pytest.fail(f"Unexpected status code: {response.status_code}")
 
     def test_template_injection_blocked(self, client: TestClient, tenant_a_token):
         """P0: Server-Side Template Injection (SSTI) is blocked."""
@@ -339,6 +341,8 @@ class TestInjection:
                 assert "49" not in str(description), (
                     f"SSTI vulnerability: template expression executed"
                 )
+            elif response.status_code not in [201, 400, 403, 422]:
+                pytest.fail(f"Unexpected status code: {response.status_code}")
 
     def test_ldap_injection_blocked(self, client: TestClient):
         """P0: LDAP injection patterns are blocked."""
@@ -435,13 +439,9 @@ class TestInsecureDesign:
             json={"tenant_id": "some-tenant"},
         )
 
-        # Should require additional confirmation or MFA
-        if response.status_code == 200:
-            assert False, "High-risk operation allowed without confirmation - insecure design"
-
         # Should require MFA or confirmation token
         assert response.status_code in [403, 401, 400], (
-            "Sensitive operation should require confirmation/MFA"
+            "High-risk operation allowed without confirmation/MFA - insecure design"
         )
 
     def test_resource_exhaustion_protection(self, client: TestClient, admin_user_token):
