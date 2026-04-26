@@ -126,14 +126,16 @@ add_security_middleware(app, config=_security_config_l2)
 redis_rate_limiter = None
 try:
     import redis.asyncio as redis
-    from integration.job_store import RedisJobStore
-    
+
     redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
     redis_client = redis.from_url(redis_url, decode_responses=True)
+    # Validate connection before using for rate limiting
+    redis_client.ping()
     redis_rate_limiter = RedisRateLimiter(redis_client)
     logger.info("L2: Redis rate limiter initialized")
 except Exception as e:
     logger.warning(f"L2: Redis not available for rate limiting: {e}")
+    redis_rate_limiter = None
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
 app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=redis_rate_limiter)

@@ -13,9 +13,9 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 try:
     from shared.security import add_security_middleware, SecurityConfig
@@ -30,6 +30,7 @@ except ImportError:
 
 from ..config import get_settings
 from ..database import close_db, init_db
+from ..metrics import initialize_metrics, MetricsMiddleware, get_metrics
 from .router import router
 
 # ---------------------------------------------------------------------------
@@ -76,6 +77,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 logger.error("L5: Vault unreachable — cannot start in production without secrets backend")
                 raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
             logger.info("L5: Vault connectivity verified")
+
+    # Initialize Prometheus metrics
+    metrics = initialize_metrics()
+    if metrics:
+        logger.info("L5: Prometheus metrics initialized")
+    app.state.metrics = metrics
 
     yield
 
@@ -146,13 +153,16 @@ def create_app() -> FastAPI:
     try:
         import redis.asyncio as redis
         from shared.identity.rate_limiter import RedisRateLimiter
-        
+
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
         redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Validate connection before using for rate limiting
+        redis_client.ping()
         redis_rate_limiter = RedisRateLimiter(redis_client)
         logger.info("L5: Redis rate limiter initialized")
     except Exception as e:
         logger.warning(f"L5: Redis not available for rate limiting: {e}")
+        redis_rate_limiter = None
 
     # GovernanceMiddleware — provides auth and tenant context with rate limiting
     try:
@@ -184,13 +194,37 @@ def create_app() -> FastAPI:
 
     # Mount the API routers
     app.include_router(router)
-    
+
+    # Add metrics middleware if available
+    if app.state.metrics:
+        metrics_middleware = MetricsMiddleware(app.state.metrics)
+        app.middleware("http")(metrics_middleware)
+        logger.info("L5: Metrics middleware installed")
+
     # Mount the Model Registry router
     try:
         from .model_registry_routes import router as model_registry_router
         app.include_router(model_registry_router)
     except ImportError:
         logging.getLogger(__name__).warning("Model Registry router not available")
+
+    # Prometheus metrics endpoint
+    @app.get("/metrics", tags=["Monitoring"], include_in_schema=False)
+    async def metrics_endpoint(request: Request):
+        """Prometheus metrics endpoint."""
+        metrics = get_metrics()
+        if not metrics:
+            return Response(
+                content="Metrics collection is disabled", status_code=503, media_type="text/plain"
+            )
+        try:
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse(content=metrics.get_metrics(), media_type="text/plain; version=0.0.4; charset=utf-8")
+        except Exception as e:
+            logger.error(f"Error generating metrics: {e}")
+            return Response(
+                content=f"Error generating metrics: {e}", status_code=500, media_type="text/plain"
+            )
 
     # Root redirect to docs
     @app.get("/", include_in_schema=False)
@@ -201,6 +235,7 @@ def create_app() -> FastAPI:
                 "version": "0.1.0",
                 "docs": "/docs",
                 "health": "/api/v1/health",
+                "metrics": "/metrics",
             }
         )
 

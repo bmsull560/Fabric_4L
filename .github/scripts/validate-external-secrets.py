@@ -41,14 +41,19 @@ def extract_secret_refs_from_deployment(deployment_path: Path) -> Set[str]:
     content = deployment_path.read_text()
     secret_refs = set()
 
-    # Match secretKeyRef patterns
-    # Matches: name: <secret-name>
-    pattern = r'secretKeyRef:\s*\n\s*name:\s*([\w-]+)'
-    matches = re.findall(pattern, content)
-    secret_refs.update(matches)
+    # Match secretKeyRef patterns - handles both multi-line and inline YAML
+    # Pattern 1: Multi-line format (standard Kubernetes YAML)
+    #   secretKeyRef:
+    #     name: <secret-name>
+    multiline_pattern = r'secretKeyRef:\s*\n\s*name:\s*([\w-]+)'
+    secret_refs.update(re.findall(multiline_pattern, content))
 
-    # Also match secrets referenced in env.valueFrom.configMapKeyRef is NOT a secret
-    # Only secretKeyRef counts as a secret reference
+    # Pattern 2: Inline format with braces
+    #   secretKeyRef: {name: <secret-name>, key: ...}
+    inline_pattern = r'secretKeyRef:\s*\{[^}]*name:\s*([\w-]+)'
+    secret_refs.update(re.findall(inline_pattern, content))
+
+    # Note: configMapKeyRef references are NOT secrets and are intentionally ignored
 
     return secret_refs
 
@@ -70,12 +75,19 @@ def extract_external_secret_targets(external_secrets_dir: Path) -> Dict[str, str
         content = yaml_file.read_text()
 
         # Find target secret names in ExternalSecret manifests
-        # Matches: name: <target-secret-name> under target:
-        target_pattern = r'target:\s*\n(?:[^\n]*\n)*?\s*name:\s*([\w-]+)'
-        matches = re.findall(target_pattern, content)
-
-        for match in matches:
-            targets[match] = yaml_file.name
+        # Split by document boundary to avoid cross-document matching
+        documents = content.split('---')
+        for doc in documents:
+            # Only process documents that contain ExternalSecret kind
+            if 'kind: ExternalSecret' not in doc:
+                continue
+            # Match target.name within the same document only
+            # Pattern: target: followed by name: <secret-name>
+            # Constrained to stay within document boundaries
+            target_pattern = r'target:[^{\n]*(?:\n\s+[^\n]*)*?\n\s+name:\s*([\w-]+)'
+            matches = re.findall(target_pattern, doc)
+            for match in matches:
+                targets[match] = yaml_file.name
 
     return targets
 

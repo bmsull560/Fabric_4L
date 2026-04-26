@@ -1,6 +1,7 @@
 """Prometheus metrics collection for Layer 5 Ground Truth."""
 
 import logging
+import time
 from typing import Any
 
 from prometheus_client import (
@@ -223,6 +224,37 @@ class PrometheusMetrics:
         if not self.config.enabled:
             return ""
         return generate_latest(self.config.registry).decode("utf-8")
+
+
+class MetricsMiddleware:
+    """ASGI middleware to collect HTTP request metrics."""
+
+    def __init__(self, metrics: PrometheusMetrics):
+        self.metrics = metrics
+
+    async def __call__(self, request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        duration = time.time() - start_time
+
+        endpoint = request.url.path
+        if endpoint.endswith("/"):
+            endpoint = endpoint[:-1]
+        if not endpoint:
+            endpoint = "/"
+
+        self.metrics.increment_requests_total(
+            method=request.method, endpoint=endpoint, status_code=response.status_code
+        )
+        self.metrics.observe_request_duration(
+            duration=duration, method=request.method, endpoint=endpoint
+        )
+
+        if response.status_code >= 400:
+            error_type = "client_error" if response.status_code < 500 else "server_error"
+            self.metrics.increment_errors(error_type=error_type, component="http")
+
+        return response
 
 
 _metrics: PrometheusMetrics | None = None

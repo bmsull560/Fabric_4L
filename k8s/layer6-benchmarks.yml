@@ -7,7 +7,7 @@ metadata:
     app: layer6-benchmarks
     component: layer6
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: layer6-benchmarks
@@ -26,9 +26,35 @@ spec:
           envFrom:
             - configMapRef:
                 name: value-fabric-config
+            - secretRef:
+                name: layer6-db-credentials
+                optional: false
+            - secretRef:
+                name: layer6-interlayer
+                optional: false
           env:
             - name: PORT
               value: "8006"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: layer6-db-credentials
+                  key: DATABASE_URL
+            - name: DATABASE_URL_SYNC
+              valueFrom:
+                secretKeyRef:
+                  name: layer6-db-credentials
+                  key: DATABASE_URL_SYNC
+            - name: LAYER3_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: layer6-interlayer
+                  key: LAYER3_API_KEY
+            - name: LAYER5_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: layer6-interlayer
+                  key: LAYER5_API_KEY
           resources:
             requests:
               memory: "128Mi"

@@ -150,6 +150,58 @@ jobs:
 
           echo "✓ All Neo4j queries have tenant_id isolation"
 
+      - name: Check rate limiting configuration in all layers
+        run: |
+          echo "Checking rate limiting in all layers..."
+          
+          # Check Layer 1
+          if ! grep -q "RedisRateLimiter" value-fabric/layer1-ingestion/src/api/main.py; then
+            echo "ERROR: Layer 1 missing RedisRateLimiter"
+            exit 1
+          fi
+          echo "✓ Layer 1 has RedisRateLimiter"
+          
+          # Check Layer 2
+          if ! grep -q "RedisRateLimiter" value-fabric/layer2-extraction/src/layer2_extraction/api/main.py; then
+            echo "ERROR: Layer 2 missing RedisRateLimiter"
+            exit 1
+          fi
+          echo "✓ Layer 2 has RedisRateLimiter"
+          
+          # Check Layer 4
+          if ! grep -q "RedisRateLimiter" value-fabric/layer4-agents/src/api/main.py; then
+            echo "ERROR: Layer 4 missing RedisRateLimiter"
+            exit 1
+          fi
+          echo "✓ Layer 4 has RedisRateLimiter"
+          
+          # Check Layer 5
+          if ! grep -q "RedisRateLimiter" value-fabric/layer5-ground-truth/src/layer5_ground_truth/api/main.py; then
+            echo "ERROR: Layer 5 missing RedisRateLimiter"
+            exit 1
+          fi
+          echo "✓ Layer 5 has RedisRateLimiter"
+          
+          echo "✓ All layers have rate limiting configured"
+
+      - name: Check Layer 1 database pooling is configurable
+        run: |
+          echo "Checking Layer 1 database connection pool configuration..."
+          
+          if ! grep -q "os.getenv.*DB_POOL_SIZE" value-fabric/layer1-ingestion/src/shared/database.py; then
+            echo "ERROR: Layer 1 database pool_size not configurable via environment"
+            exit 1
+          fi
+          echo "✓ Layer 1 pool_size reads from DB_POOL_SIZE env var"
+          
+          if ! grep -q "os.getenv.*DB_MAX_OVERFLOW" value-fabric/layer1-ingestion/src/shared/database.py; then
+            echo "ERROR: Layer 1 max_overflow not configurable via environment"
+            exit 1
+          fi
+          echo "✓ Layer 1 max_overflow reads from DB_MAX_OVERFLOW env var"
+          
+          echo "✓ Layer 1 database pooling is configurable via environment"
+
       - name: Run smoke tests
         env:
           TEST_DATABASE_URL: postgresql://test:test@localhost:5432/test_value_fabric
