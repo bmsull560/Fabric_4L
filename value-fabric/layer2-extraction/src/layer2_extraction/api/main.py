@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from layer2_extraction.api.deps import RequestContext
 from shared.identity.middleware import GovernanceMiddleware
+from shared.identity.rate_limiter import RedisRateLimiter
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from shared.secrets import load_infisical_secrets
@@ -121,8 +122,21 @@ _security_config_l2 = SecurityConfig(
 )
 add_security_middleware(app, config=_security_config_l2)
 
+# Initialize Redis client for rate limiting
+redis_rate_limiter = None
+try:
+    import redis.asyncio as redis
+    from integration.job_store import RedisJobStore
+    
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+    redis_client = redis.from_url(redis_url, decode_responses=True)
+    redis_rate_limiter = RedisRateLimiter(redis_client)
+    logger.info("L2: Redis rate limiter initialized")
+except Exception as e:
+    logger.warning(f"L2: Redis not available for rate limiting: {e}")
+
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
-app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=redis_rate_limiter)
 
 # Add metrics middleware if available — INNERMOST
 if metrics:

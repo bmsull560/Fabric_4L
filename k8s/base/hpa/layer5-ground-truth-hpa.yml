@@ -9,7 +9,7 @@ spec:
     kind: Deployment
     name: layer5-ground-truth
   minReplicas: 2
-  maxReplicas: 4
+  maxReplicas: 6
   metrics:
     - type: Resource
       resource:
@@ -17,6 +17,12 @@ spec:
         target:
           type: Utilization
           averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
   behavior:
     scaleDown:
       stabilizationWindowSeconds: 300

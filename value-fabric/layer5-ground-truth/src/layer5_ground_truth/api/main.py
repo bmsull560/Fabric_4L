@@ -141,13 +141,31 @@ def create_app() -> FastAPI:
         )
         add_security_middleware(app, config=_security_config_l5)
 
-    # GovernanceMiddleware — provides auth and tenant context
+    # Initialize Redis client for rate limiting
+    redis_rate_limiter = None
+    try:
+        import redis.asyncio as redis
+        from shared.identity.rate_limiter import RedisRateLimiter
+        
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+        redis_rate_limiter = RedisRateLimiter(redis_client)
+        logger.info("L5: Redis rate limiter initialized")
+    except Exception as e:
+        logger.warning(f"L5: Redis not available for rate limiting: {e}")
+
+    # GovernanceMiddleware — provides auth and tenant context with rate limiting
     try:
         from shared.identity.middleware import GovernanceMiddleware
 
-        app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+        app.add_middleware(
+            GovernanceMiddleware, 
+            api_key_resolver=None,
+            rate_limiter=redis_rate_limiter
+        )
+        logger.info("L5: GovernanceMiddleware with rate limiting initialized")
     except ImportError:
-        logging.getLogger(__name__).warning(
+        logger.warning(
             "shared.identity not importable — GovernanceMiddleware skipped in L5."
         )
 

@@ -108,6 +108,11 @@ jobs:
             fi
           done
 
+      - name: Validate ExternalSecret coverage for all layers
+        run: |
+          echo "Validating that all layer secret references have ExternalSecret coverage..."
+          python3 .github/scripts/validate-external-secrets.py
+
       - name: Routing axis checks (mutex + hostname + service-existence)
         run: |
           pip install pyyaml

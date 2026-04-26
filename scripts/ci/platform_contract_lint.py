@@ -37,8 +37,13 @@ def should_skip_dir(dirname: str) -> bool:
     return dirname in SKIP_DIRS
 
 
-def scan_file(path: str):
-    violations = []
+def scan_file(path: str) -> list[tuple]:
+    """Scan a Python file for contract violations.
+    
+    Returns list of tuples: (level, path, line, name, description, [deadline])
+    where level is 'ERROR' or 'WARN'.
+    """
+    violations: list[tuple] = []
     try:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()

@@ -4,6 +4,7 @@ P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
 SECURITY: Fail-safe tenant isolation - tenant context is mandatory
 """
 
+import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from uuid import UUID
@@ -14,9 +15,18 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .config import settings
 
-# Create engine
+# Database connection pool configuration from environment
+# Tune these based on your load: pool_size + max_overflow = max concurrent connections
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+
+# Create engine with configurable pool settings
 engine = create_engine(
-    settings.database_url, pool_size=5, max_overflow=10, pool_pre_ping=True, echo=settings.debug
+    settings.database_url, 
+    pool_size=DB_POOL_SIZE, 
+    max_overflow=DB_MAX_OVERFLOW, 
+    pool_pre_ping=True, 
+    echo=settings.debug
 )
 
 # Session factory

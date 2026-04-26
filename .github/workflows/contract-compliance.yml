@@ -178,7 +178,9 @@ jobs:
   generate-openapi:
     name: Generate OpenAPI from Code
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
         layer: [layer3-knowledge, layer5-ground-truth]
         include:
@@ -212,15 +214,28 @@ jobs:
         run: |
           python -c "
           import sys
-          sys.path.insert(0, 'src')
-          from ${{ matrix.module }} import app
           import json
-          openapi = app.openapi()
-          with open('generated-openapi.json', 'w') as f:
-              json.dump(openapi, f, indent=2)
-          print(f'Generated OpenAPI for ${{ matrix.layer }}')
-          print(f'Paths: {len(openapi.get(\"paths\", {}))}')
-          " || echo "Failed to generate OpenAPI - will compare manually"
+          import traceback
+          
+          sys.path.insert(0, 'src')
+          
+          try:
+              from ${{ matrix.module }} import app
+              openapi = app.openapi()
+              with open('generated-openapi.json', 'w') as f:
+                  json.dump(openapi, f, indent=2)
+              print(f'✅ Generated OpenAPI for ${{ matrix.layer }}')
+              print(f'   Paths: {len(openapi.get(\"paths\", {}))}')
+              sys.exit(0)
+          except ImportError as e:
+              print(f'❌ Failed to import app for ${{ matrix.layer }}: {e}')
+              traceback.print_exc()
+              sys.exit(1)
+          except Exception as e:
+              print(f'❌ Failed to generate OpenAPI for ${{ matrix.layer }}: {e}')
+              traceback.print_exc()
+              sys.exit(1)
+          "
 
       - name: Upload generated spec
         uses: actions/upload-artifact@v4
@@ -233,7 +248,9 @@ jobs:
     name: Detect OpenAPI Drift
     needs: generate-openapi
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     strategy:
+      fail-fast: false
       matrix:
         layer: [layer3-knowledge, layer5-ground-truth]
 
@@ -287,8 +304,10 @@ jobs:
   openapi-contract-tests:
     name: OpenAPI Contract Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: generate-openapi
     strategy:
+      fail-fast: false
       matrix:
         layer: [layer3, layer5]
         include:
