@@ -1,0 +1,60 @@
+graph TB
+    subgraph "Layer 4 — Agent Services"
+        ENR[Account Enrichment<br/>Pipeline]
+        VHE[Value Hypothesis<br/>Engine]
+        NBS[Narrative Builder<br/>Service]
+        IO[Intelligence<br/>Orchestrator]
+    end
+
+    subgraph "Layer 3 — Knowledge Graph"
+        PPG[Product Portfolio<br/>Graph]
+        EL[Evidence<br/>Library]
+        CIA[Competitive Intel<br/>Analyzer]
+        ROI[ROI Calculator<br/>Service]
+    end
+
+    subgraph "External Sources"
+        SEC[SEC EDGAR]
+        WEB[Web Crawl]
+        DOM[Domain Lookup]
+        NEWS[News Scan]
+    end
+
+    subgraph "Deliverables"
+        BRIEF[Account<br/>Briefing]
+        DEAL[Deal Readiness<br/>Score]
+        PIPE[Pipeline<br/>Intelligence]
+    end
+
+    SEC --> ENR
+    WEB --> ENR
+    DOM --> ENR
+    NEWS --> ENR
+
+    ENR --> VHE
+    PPG --> VHE
+    VHE --> NBS
+    CIA --> NBS
+    ROI --> NBS
+    EL --> NBS
+
+    NBS --> IO
+    VHE --> IO
+    CIA --> IO
+    ROI --> IO
+    EL --> IO
+    ENR --> IO
+
+    IO --> BRIEF
+    IO --> DEAL
+    IO --> PIPE
+
+    classDef l4 fill:#4A90D9,stroke:#2C5F8A,color:#fff
+    classDef l3 fill:#50B86C,stroke:#2D7A42,color:#fff
+    classDef ext fill:#E8A838,stroke:#B07D28,color:#fff
+    classDef out fill:#9B59B6,stroke:#6C3483,color:#fff
+
+    class ENR,VHE,NBS,IO l4
+    class PPG,EL,CIA,ROI l3
+    class SEC,WEB,DOM,NEWS ext
+    class BRIEF,DEAL,PIPE out
