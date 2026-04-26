@@ -1,0 +1,50 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: value-fabric
+
+resources:
+  - ../../base
+  - ../../external-secrets/vault-integration.yml
+  - ../../external-secrets/vault-database-dynamic.yml
+
+labels:
+  - pairs:
+      environment: prod
+
+patches:
+  - path: prod-replicas-patch.yml
+
+# Production images use SHA digest pinning (immutable).
+# CI updates digests via: kustomize edit set image "name@sha256:digest"
+# Example: kustomize edit set image "ghcr.io/bmsull560/fabric_4l/layer4-agents@sha256:abc123..."
+images:
+  # Base images (resolved to digests in CI/CD)
+  - name: value-fabric/layer1-ingestion
+    newName: ghcr.io/bmsull560/fabric_4l/layer1-ingestion
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: value-fabric/layer2-extraction
+    newName: ghcr.io/bmsull560/fabric_4l/layer2-extraction
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: value-fabric/layer3-knowledge
+    newName: ghcr.io/bmsull560/fabric_4l/layer3-knowledge
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: value-fabric/layer4-agents
+    newName: ghcr.io/bmsull560/fabric_4l/layer4-agents
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: value-fabric/layer5-ground-truth
+    newName: ghcr.io/bmsull560/fabric_4l/layer5-ground-truth
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: value-fabric/layer6-benchmarks
+    newName: ghcr.io/bmsull560/fabric_4l/layer6-benchmarks
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: value-fabric/frontend
+    newName: ghcr.io/bmsull560/fabric_4l/frontend
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  # Infrastructure images (use specific versions, not :latest)
+  - name: postgres
+    newTag: "15.10-alpine"
+  - name: redis
+    newTag: "7.4-alpine"
+  - name: neo4j
+    newTag: "5.25-community"
