@@ -1,0 +1,23 @@
+# Test Dependencies for Fabric_4L
+# Install with: pip install -r tests/requirements.txt
+
+# HTTP client for contract tests
+httpx>=0.27.0
+
+# pytest plugins
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-timeout>=2.2.0
+pytest-randomly>=3.15.0
+pytest-xdist>=3.5.0
+
+# Test utilities
+factory-boy>=3.3.0
+faker>=20.0.0
+
+# Async testing
+anyio>=4.0.0
+
+# Mocking for HTTP requests (enables CI contract tests without running services)
+respx>=0.20.0

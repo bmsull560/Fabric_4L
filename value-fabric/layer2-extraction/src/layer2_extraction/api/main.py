@@ -5,6 +5,8 @@ Provides REST API endpoints for:
 - Batch extraction jobs
 - Ontology queries
 - Extraction status and results
+
+P1-29: OpenTelemetry tracing integration for observability.
 """
 
 import asyncio
@@ -27,6 +29,14 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
+
+# P1-29: OpenTelemetry imports for distributed tracing
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from layer2_extraction.api.deps import RequestContext
 from shared.identity.middleware import GovernanceMiddleware
@@ -74,11 +84,41 @@ logger = logging.getLogger(__name__)
 # App start time for uptime calculation
 _app_start_time = time.time()
 
+# P1-29: OpenTelemetry tracer provider (initialized on startup)
+_tracer_provider: TracerProvider | None = None
+
+
+def init_telemetry() -> TracerProvider | None:
+    """Initialize OpenTelemetry tracing if endpoint configured.
+
+    P1-29: OpenTelemetry integration for distributed tracing.
+    """
+    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not otel_endpoint:
+        return None
+
+    resource = Resource.create({SERVICE_NAME: "layer2-extraction"})
+    provider = TracerProvider(resource=resource)
+
+    exporter = OTLPSpanExporter(
+        endpoint=f"{otel_endpoint}/v1/traces"
+    )
+    processor = BatchSpanProcessor(exporter)
+    provider.add_span_processor(processor)
+
+    trace.set_tracer_provider(provider)
+    return provider
+
 # WebSocket manager for real-time pipeline streaming
 _ws_manager = get_pipeline_ws_manager()
 
 # Initialize Prometheus metrics
 metrics = initialize_metrics()
+
+# P1-29: Initialize OpenTelemetry
+_tracer_provider = init_telemetry()
+if _tracer_provider:
+    logger.info("L2: OpenTelemetry tracing initialized")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -144,6 +184,11 @@ app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=red
 if metrics:
     metrics_middleware = MetricsMiddleware(metrics)
     app.middleware("http")(metrics_middleware)
+
+# P1-29: Instrument FastAPI with OpenTelemetry (after all middleware)
+if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+    FastAPIInstrumentor.instrument_app(app)
+    logger.info("L2: FastAPI instrumented with OpenTelemetry")
 
 # Include WebSocket router for real-time pipeline streaming
 app.include_router(websocket_router, prefix="/v1")

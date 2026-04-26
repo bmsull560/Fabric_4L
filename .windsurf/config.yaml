@@ -3,3 +3,18 @@ auto_review:
   on_save: true
   interval_minutes: 5
   max_fixes_per_session: 3
+
+autonomous_test_assurance:
+  enabled: true
+  max_tests_per_session: 10
+  auto_run_broader_gate: true
+  require_negative_tests: true
+  severity_threshold: P1
+  phases:
+    - inspection
+    - invariant_extraction
+    - gap_analysis
+    - test_authoring
+    - refactoring
+    - verification
+    - reporting

@@ -41,6 +41,9 @@ infra/helm/ @value-fabric/sre-leads @value-fabric/infrastructure-leads
 .github/workflows/deploy*.yml @value-fabric/sre-leads @value-fabric/maintainers
 .github/workflows/build*.yml @value-fabric/sre-leads @value-fabric/backend-leads
 
+# Validation scripts - require security review for any changes
+.github/scripts/ @value-fabric/security-leads @value-fabric/sre-leads
+
 # Container configurations
 **/Dockerfile @value-fabric/sre-leads @value-fabric/backend-leads
 .dockerignore @value-fabric/sre-leads

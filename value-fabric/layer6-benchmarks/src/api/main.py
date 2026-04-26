@@ -1,6 +1,7 @@
 """Layer 6 Benchmark Service - FastAPI main application.
 
 Standalone service on port 8006 for comparative intelligence.
+P1-29: OpenTelemetry tracing integration for observability.
 """
 
 import logging
@@ -17,7 +18,15 @@ except ImportError:
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import make_asgi_app
+from fastapi.responses import Response
+
+# P1-29: OpenTelemetry imports for distributed tracing
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 try:
     from shared.security import add_security_middleware, SecurityConfig
@@ -25,7 +34,7 @@ except ImportError:
     add_security_middleware = None
     SecurityConfig = None
 
-from ..metrics import initialize_metrics
+from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
     MANUFACTURING_BENCHMARK_SEED,
     BenchmarkDataset,
@@ -36,6 +45,31 @@ from .routes import benchmarks, system
 
 # In-memory storage (replace with Neo4j in production)
 _benchmark_store: Dict[str, BenchmarkDataset] = {}
+
+# P1-29: OpenTelemetry tracer provider (initialized on startup)
+_tracer_provider: TracerProvider | None = None
+
+
+def init_telemetry() -> TracerProvider | None:
+    """Initialize OpenTelemetry tracing if endpoint configured.
+
+    P1-29: OpenTelemetry integration for distributed tracing.
+    """
+    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not otel_endpoint:
+        return None
+
+    resource = Resource.create({SERVICE_NAME: "layer6-benchmarks"})
+    provider = TracerProvider(resource=resource)
+
+    exporter = OTLPSpanExporter(
+        endpoint=f"{otel_endpoint}/v1/traces"
+    )
+    processor = BatchSpanProcessor(exporter)
+    provider.add_span_processor(processor)
+
+    trace.set_tracer_provider(provider)
+    return provider
 
 
 def _init_seed_data():
@@ -76,11 +110,24 @@ def _init_seed_data():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    global _tracer_provider
+
+    # P1-29: Initialize OpenTelemetry
+    _tracer_provider = init_telemetry()
+    if _tracer_provider:
+        logger.info("L6: OpenTelemetry tracing initialized")
+
     # Initialize Prometheus metrics
     metrics = initialize_metrics()
     if metrics:
         logger.info("Prometheus metrics initialized")
     app.state.metrics = metrics
+
+    # Add metrics middleware if available
+    if metrics:
+        metrics_middleware = MetricsMiddleware(metrics)
+        app.middleware("http")(metrics_middleware)
+        logger.info("L6: Metrics middleware installed")
 
     # Startup
     _init_seed_data()
@@ -99,6 +146,11 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# P1-29: Instrument FastAPI with OpenTelemetry (after app creation)
+if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+    FastAPIInstrumentor.instrument_app(app)
+    logger.info("L6: FastAPI instrumented with OpenTelemetry")
 
 # SecurityMiddleware — input validation and security headers (before CORS)
 # L6 has no skip paths — all endpoints require strict validation
@@ -143,9 +195,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount Prometheus metrics endpoint at /metrics
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
+# Custom metrics endpoint using our PrometheusMetrics class
+@app.get("/metrics", include_in_schema=False)
+async def metrics_endpoint(request: Request):
+    """Prometheus-compatible metrics endpoint."""
+    metrics = get_metrics()
+
+    if not metrics:
+        return Response(
+            content="# Metrics collection is disabled",
+            status_code=503,
+            media_type="text/plain"
+        )
+
+    try:
+        metrics_data = metrics.get_metrics()
+        return Response(
+            content=metrics_data,
+            media_type="text/plain; version=0.0.4; charset=utf-8"
+        )
+    except Exception as e:
+        logger.error(f"Error generating metrics: {e}")
+        return Response(
+            content=f"# Error: {e}",
+            status_code=500,
+            media_type="text/plain"
+        )
 
 
 # Pydantic models for API (defined in schemas.py to avoid circular imports)

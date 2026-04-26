@@ -10,6 +10,7 @@ import time
 from typing import Callable
 
 import jwt as jwt_lib
+import pytest
 from fastapi.testclient import TestClient
 
 # UUID pattern for IDOR prevention tests
@@ -37,20 +38,24 @@ class TestBrokenAccessControl:
             json={"name": "idor-test-entity"},
         )
 
-        if create_response.status_code == 201:
-            entity = create_response.json()
-            entity_id = entity.get("id")
+        # Fail explicitly if entity creation fails - cannot test IDOR without entity
+        assert create_response.status_code == 201, (
+            f"Entity creation failed with status {create_response.status_code} - cannot test IDOR"
+        )
+        entity = create_response.json()
+        entity_id = entity.get("id")
+        assert entity_id, "Entity ID not returned in response"
 
-            # Tenant B attempts to access Tenant A's entity by ID
-            idor_response = client.get(
-                f"/api/v1/entities/{entity_id}",
-                headers={"Authorization": f"Bearer {tenant_b_token}"},
-            )
+        # Tenant B attempts to access Tenant A's entity by ID
+        idor_response = client.get(
+            f"/api/v1/entities/{entity_id}",
+            headers={"Authorization": f"Bearer {tenant_b_token}"},
+        )
 
-            # Should be blocked - Tenant B should not see Tenant A's entity
-            assert idor_response.status_code in [403, 404], (
-                f"IDOR vulnerability: Tenant B accessed Tenant A's entity {entity_id}"
-            )
+        # Should be blocked - Tenant B should not see Tenant A's entity
+        assert idor_response.status_code in [403, 404], (
+            f"IDOR vulnerability: Tenant B accessed Tenant A's entity {entity_id}"
+        )
 
     def test_idor_prevention_via_uuid_randomization(self, client: TestClient, tenant_a_token: str):
         """P0: Entity IDs use unpredictable UUIDs, not sequential integers."""
@@ -62,15 +67,20 @@ class TestBrokenAccessControl:
                 headers={"Authorization": f"Bearer {tenant_a_token}"},
                 json={"name": f"uuid-test-{i}"},
             )
-            if response.status_code == 201:
-                entity_ids.append(response.json().get("id"))
+            # Fail explicitly if entity creation fails
+            assert response.status_code == 201, (
+                f"Entity creation failed with status {response.status_code} - cannot test UUID pattern"
+            )
+            entity_id = response.json().get("id")
+            assert entity_id, f"Entity ID not returned for entity {i}"
+            entity_ids.append(entity_id)
 
-        # Verify IDs are UUIDs (not sequential)
+        # Verify all IDs are UUIDs (not sequential)
+        assert len(entity_ids) == 3, f"Expected 3 entities, got {len(entity_ids)}"
         for entity_id in entity_ids:
-            if entity_id:
-                assert UUID_PATTERN.match(str(entity_id)), (
-                    f"Entity ID {entity_id} is not a UUID - vulnerable to ID enumeration"
-                )
+            assert UUID_PATTERN.match(str(entity_id)), (
+                f"Entity ID {entity_id} is not a UUID - vulnerable to ID enumeration"
+            )
 
     def test_path_traversal_blocked(self, client: TestClient, admin_user_token):
         """P0: Path traversal attacks in file paths are blocked."""
@@ -133,11 +143,19 @@ class TestBrokenAccessControl:
             },
         )
 
-        if response.status_code == 201:
+        # Either: request is rejected due to protected fields
+        # Or: if accepted, protected fields must be stripped
+        if response.status_code in [400, 403, 422]:
+            # Request rejected - mass assignment protection working
+            pass
+        elif response.status_code == 201:
+            # Request accepted - verify protected fields were stripped
             entity = response.json()
-            # Verify protected fields were not set
             assert entity.get("role") != "admin", "Mass assignment vulnerability: role was set"
             assert entity.get("is_admin") is not True, "Mass assignment vulnerability: is_admin was set"
+            assert "password_hash" not in entity, "Mass assignment vulnerability: password_hash was set"
+        else:
+            pytest.fail(f"Unexpected status code: {response.status_code}")
 
 
 class TestCryptographicFailures:

@@ -408,14 +408,16 @@ class AddSourceRequest(TruthSourceCreate):
 
 
 class HealthResponse(BaseModel):
-    """Health check response."""
+    """Health check response - public endpoint returns only safe fields."""
 
     status: str
     version: str
     timestamp: datetime
-    database: str
-    layer3_connected: bool
-    layer3_url: str
+    # Optional internal fields - NOT returned by public health endpoint
+    # Use internal readiness endpoint for dependency details
+    database: str | None = None
+    layer3_connected: bool | None = None
+    layer3_url: str | None = None
 
 
 # ---------------------------------------------------------------------------

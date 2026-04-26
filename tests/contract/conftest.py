@@ -5,6 +5,11 @@ Environment Variables:
     LAYER3_API_URL: Layer 3 Knowledge API base URL (default: http://localhost:8003)
     LAYER5_API_URL: Layer 5 Ground Truth API base URL (default: http://localhost:8005)
     CONTRACT_TEST_TIMEOUT: Request timeout in seconds (default: 10.0)
+    CONTRACT_TEST_MODE: Set to 'mock' to use mocked fixtures (see conftest_mocked.py)
+
+Note:
+    For CI environments without running services, use conftest_mocked.py which provides
+    respx-based mocked fixtures. Install test dependencies: pip install -r tests/requirements.txt
 """
 
 import os

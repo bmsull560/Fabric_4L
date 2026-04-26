@@ -674,8 +674,7 @@ async def freshness_summary(
     tags=["system"],
 )
 async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
-    settings = get_settings()
-
+    """Public health check - returns minimal safe information only."""
     # Check DB connectivity
     db_status = "ok"
     try:
@@ -689,11 +688,17 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
     client = get_layer3_client()
     l3_connected = await client.ping()
 
+    # Determine overall status - do not expose internal details
+    overall_status = "ok" if db_status == "ok" else "degraded"
+    if not l3_connected:
+        overall_status = "degraded"
+
+    # Public response: only status, version, timestamp
+    # Do NOT expose: database connection details, layer3 URL, internal endpoints
     return HealthResponse(
-        status="ok" if db_status == "ok" else "degraded",
+        status=overall_status,
         version="0.1.0",
         timestamp=datetime.now(UTC),
-        database=db_status,
-        layer3_connected=l3_connected,
-        layer3_url=settings.layer3_base_url,
+        # Internal fields omitted for security - public health checks 
+        # should not expose dependency topology or configuration
     )

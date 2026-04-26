@@ -1,4 +1,7 @@
-"""FastAPI application for Layer 3: Knowledge Graph & Semantic Layer."""
+"""FastAPI application for Layer 3: Knowledge Graph & Semantic Layer.
+
+P1-29: OpenTelemetry tracing integration for observability.
+"""
 
 import json
 import logging
@@ -17,6 +20,14 @@ import psutil
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
+
+# P1-29: OpenTelemetry imports for distributed tracing
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from ..config import get_settings
 from ..logging_config import get_logger, setup_logging
@@ -287,9 +298,42 @@ def _get_settings_with_fallback() -> Any:
         )
 
 
+# P1-29: OpenTelemetry tracer provider (initialized on startup)
+_tracer_provider: TracerProvider | None = None
+
+
+def init_telemetry() -> TracerProvider | None:
+    """Initialize OpenTelemetry tracing if endpoint configured.
+
+    P1-29: OpenTelemetry integration for distributed tracing.
+    """
+    otel_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not otel_endpoint:
+        return None
+
+    resource = Resource.create({SERVICE_NAME: "layer3-knowledge"})
+    provider = TracerProvider(resource=resource)
+
+    exporter = OTLPSpanExporter(
+        endpoint=f"{otel_endpoint}/v1/traces"
+    )
+    processor = BatchSpanProcessor(exporter)
+    provider.add_span_processor(processor)
+
+    trace.set_tracer_provider(provider)
+    return provider
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    global _tracer_provider
+
+    # P1-29: Initialize OpenTelemetry
+    _tracer_provider = init_telemetry()
+    if _tracer_provider:
+        logger.info("L3: OpenTelemetry tracing initialized")
+
     # Setup structured logging
     settings = get_settings()
     setup_logging(settings)
@@ -515,6 +559,11 @@ app = FastAPI(
         },
     ],
 )
+
+# P1-29: Instrument FastAPI with OpenTelemetry (after app creation)
+if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
+    FastAPIInstrumentor.instrument_app(app)
+    logger.info("L3: FastAPI instrumented with OpenTelemetry")
 
 
 # Include routers from routes modules

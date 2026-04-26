@@ -112,6 +112,8 @@ jobs:
         run: |
           # NOTE: Validates source files in k8s/ directory, not rendered manifests.
           # If kustomize patches modify secrets, ensure validation covers final output.
+          echo "Running self-test for validation script..."
+          python3 .github/scripts/validate-external-secrets.py --self-test
           echo "Validating that all layer secret references have ExternalSecret coverage..."
           python3 .github/scripts/validate-external-secrets.py
 
@@ -119,6 +121,12 @@ jobs:
         run: |
           echo "Validating that all layers with prometheus_metrics.py expose /metrics endpoint..."
           python3 .github/scripts/validate-metrics-wiring.py
+
+      - name: Validate /metrics is not publicly routable
+        run: |
+          echo "Validating that /metrics endpoint is not exposed through public ingress..."
+          pip install pyyaml
+          python3 .github/scripts/validate-metrics-not-public.py
 
       - name: Routing axis checks (mutex + hostname + service-existence)
         run: |

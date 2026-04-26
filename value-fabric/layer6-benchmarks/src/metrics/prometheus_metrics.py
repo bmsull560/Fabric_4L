@@ -171,3 +171,54 @@ def initialize_metrics(config: Optional[MetricsConfig] = None) -> Optional[Prome
     _metrics = PrometheusMetrics(config)
     logger.info("Layer 6 Prometheus metrics initialized")
     return _metrics
+
+
+class MetricsMiddleware:
+    """FastAPI middleware for collecting Prometheus HTTP metrics."""
+
+    def __init__(self, metrics: PrometheusMetrics):
+        self.metrics = metrics
+
+    async def __call__(self, request, call_next):
+        """Process request and collect metrics."""
+        import time
+
+        start_time = time.time()
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+        except Exception as e:
+            status_code = 500
+            raise
+        finally:
+            duration = time.time() - start_time
+
+            # Normalize endpoint path
+            endpoint = request.url.path
+            if endpoint.endswith("/"):
+                endpoint = endpoint[:-1]
+            if not endpoint:
+                endpoint = "/"
+
+            # Record metrics
+            self.metrics.increment_requests_total(
+                method=request.method,
+                endpoint=endpoint,
+                status_code=status_code
+            )
+            self.metrics.observe_request_duration(
+                duration=duration,
+                method=request.method,
+                endpoint=endpoint
+            )
+
+            # Track errors
+            if status_code >= 400:
+                error_type = "client_error" if status_code < 500 else "server_error"
+                self.metrics.increment_errors(error_type=error_type, component="http")
+
+        return response
+
+    async def dispatch(self, request, call_next):
+        """Starlette-compatible dispatch method."""
+        return await self.__call__(request, call_next)

@@ -1,6 +1,7 @@
 """Prometheus metrics collection for Layer 5 Ground Truth."""
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -227,21 +228,99 @@ class PrometheusMetrics:
 
 
 class MetricsMiddleware:
-    """ASGI middleware to collect HTTP request metrics."""
+    """ASGI middleware to collect HTTP request metrics with path normalization."""
+
+    # High-entropy patterns to collapse (UUIDs, numeric IDs, hashes)
+    UUID_PATTERN = re.compile(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        re.IGNORECASE
+    )
+    HASH_PATTERN = re.compile(r'^[0-9a-f]{32,}$', re.IGNORECASE)
+    NUMERIC_PATTERN = re.compile(r'^\d+$')
+    
+    # Known route templates for L5 Ground Truth API
+    KNOWN_ROUTES = {
+        "/api/v1/truths": "/api/v1/truths",
+        "/api/v1/truths/{truth_id}": "/api/v1/truths/{id}",
+        "/api/v1/truths/{truth_id}/validate": "/api/v1/truths/{id}/validate",
+        "/api/v1/truths/{truth_id}/sources": "/api/v1/truths/{id}/sources",
+        "/api/v1/truths/{truth_id}/audit": "/api/v1/truths/{id}/audit",
+        "/api/v1/maturity-ladder": "/api/v1/maturity-ladder",
+        "/api/v1/health": "/api/v1/health",
+        "/api/v1/truths/sync-kg": "/api/v1/truths/sync-kg",
+        "/api/v1/truths/check-stale": "/api/v1/truths/check-stale",
+        "/api/v1/truths/stale": "/api/v1/truths/stale",
+        "/api/v1/truths/freshness-summary": "/api/v1/truths/freshness-summary",
+        "/metrics": "/metrics",
+        "/docs": "/docs",
+        "/redoc": "/redoc",
+        "/openapi.json": "/openapi.json",
+        "/": "/",
+    }
 
     def __init__(self, metrics: PrometheusMetrics):
         self.metrics = metrics
+
+    def _normalize_path(self, path: str) -> str:
+        """
+        Normalize URL path to low-cardinality route template.
+        
+        Strategy:
+        1. Match against known route templates
+        2. Collapse UUIDs, numeric IDs, and hashes to placeholders
+        3. Limit total path segments
+        """
+        if not path or path == "/":
+            return "/"
+        
+        # Remove trailing slash
+        path = path.rstrip("/")
+        
+        # Check for exact match in known routes
+        if path in self.KNOWN_ROUTES:
+            return self.KNOWN_ROUTES[path]
+        
+        # Split and normalize path segments
+        segments = path.split("/")
+        normalized = []
+        
+        for segment in segments:
+            if not segment:
+                continue
+            
+            # Collapse UUIDs
+            if self.UUID_PATTERN.match(segment):
+                normalized.append("{id}")
+            # Collapse long hex hashes
+            elif self.HASH_PATTERN.match(segment):
+                normalized.append("{hash}")
+            # Collapse numeric IDs (but preserve common API segments)
+            elif self.NUMERIC_PATTERN.match(segment):
+                # Don't collapse 'v1' in '/api/v1/'
+                if segment == "1" and normalized and normalized[-1] == "v":
+                    normalized.append(segment)
+                else:
+                    normalized.append("{id}")
+            else:
+                normalized.append(segment)
+        
+        # Rebuild path
+        result = "/" + "/".join(normalized)
+        
+        # Limit cardinality by capping path depth for unknown paths
+        max_segments = 6
+        if len(normalized) > max_segments:
+            result = "/" + "/".join(normalized[:max_segments]) + "/{...}"
+        
+        return result
 
     async def __call__(self, request, call_next):
         start_time = time.time()
         response = await call_next(request)
         duration = time.time() - start_time
 
-        endpoint = request.url.path
-        if endpoint.endswith("/"):
-            endpoint = endpoint[:-1]
-        if not endpoint:
-            endpoint = "/"
+        # Normalize the endpoint path for metrics
+        endpoint = self._normalize_path(request.url.path)
 
         self.metrics.increment_requests_total(
             method=request.method, endpoint=endpoint, status_code=response.status_code

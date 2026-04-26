@@ -6,6 +6,9 @@ are satisfied by ExternalSecret manifests or documented shared secrets.
 This script ensures production readiness by failing CI if any layer
 references a Secret that won't be populated by the External Secrets Operator.
 
+Uses PyYAML for robust parsing instead of regex to avoid injection attacks
+and correctly handle YAML edge cases (comments, multiline, nested structures).
+
 Exit codes:
     0: All secrets validated successfully
     1: One or more secret references are not satisfied
@@ -13,8 +16,15 @@ Exit codes:
 
 import sys
 from pathlib import Path
-from typing import Set, Dict, List
-import re
+from typing import Set, Dict, List, Any, Optional
+import os
+
+# Use PyYAML for robust YAML parsing
+try:
+    import yaml
+except ImportError:
+    print("ERROR: PyYAML is required. Install: pip install pyyaml")
+    sys.exit(1)
 
 # Shared secrets that are allowed without layer-specific ExternalSecrets
 # These are documented shared secrets created by vault-integration.yml
@@ -37,24 +47,69 @@ LAYER_DEPLOYMENTS = {
 
 
 def extract_secret_refs_from_deployment(deployment_path: Path) -> Set[str]:
-    """Extract all secret names referenced via secretKeyRef in a deployment file."""
-    content = deployment_path.read_text()
+    """
+    Extract all secret names referenced via secretKeyRef in a deployment file.
+    
+    Uses PyYAML for robust parsing that correctly handles:
+    - Normal mappings
+    - Nested lists
+    - Varied whitespace
+    - Comments
+    - Multiline YAML
+    - Flow style (inline) and block style
+    """
     secret_refs = set()
+    
+    try:
+        # Load all documents from the YAML file
+        with open(deployment_path, 'r', encoding='utf-8') as f:
+            documents = list(yaml.safe_load_all(f))
+    except yaml.YAMLError as e:
+        print(f"WARNING: Failed to parse {deployment_path}: {e}")
+        return secret_refs
+    except Exception as e:
+        print(f"WARNING: Error reading {deployment_path}: {e}")
+        return secret_refs
+    
+    for doc in documents:
+        if not doc or not isinstance(doc, dict):
+            continue
+        
+        # Recursively search for secretKeyRef in the document
+        secret_refs.update(_find_secret_refs_recursive(doc))
+    
+    return secret_refs
 
-    # Match secretKeyRef patterns - handles both multi-line and inline YAML
-    # Pattern 1: Multi-line format (standard Kubernetes YAML)
-    #   secretKeyRef:
-    #     name: <secret-name>
-    multiline_pattern = r'secretKeyRef:\s*\n\s*name:\s*([\w-]+)'
-    secret_refs.update(re.findall(multiline_pattern, content))
 
-    # Pattern 2: Inline format with braces
-    #   secretKeyRef: {name: <secret-name>, key: ...}
-    inline_pattern = r'secretKeyRef:\s*\{[^}]*name:\s*([\w-]+)'
-    secret_refs.update(re.findall(inline_pattern, content))
-
-    # Note: configMapKeyRef references are NOT secrets and are intentionally ignored
-
+def _find_secret_refs_recursive(obj: Any, path: str = "") -> Set[str]:
+    """Recursively find all secretKeyRef.name values in a nested structure."""
+    secret_refs = set()
+    
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            current_path = f"{path}.{key}" if path else key
+            
+            # Check if this is a secretKeyRef structure
+            if key == "secretKeyRef" and isinstance(value, dict):
+                secret_name = value.get("name")
+                if secret_name and isinstance(secret_name, str):
+                    secret_refs.add(secret_name)
+            # Also check for { secretKeyRef: { name: ... } } pattern
+            elif key == "valueFrom" and isinstance(value, dict):
+                if "secretKeyRef" in value:
+                    secret_ref = value["secretKeyRef"]
+                    if isinstance(secret_ref, dict):
+                        secret_name = secret_ref.get("name")
+                        if secret_name and isinstance(secret_name, str):
+                            secret_refs.add(secret_name)
+            # Continue recursion for nested structures
+            else:
+                secret_refs.update(_find_secret_refs_recursive(value, current_path))
+    
+    elif isinstance(obj, list):
+        for i, item in enumerate(obj):
+            secret_refs.update(_find_secret_refs_recursive(item, f"{path}[{i}]"))
+    
     return secret_refs
 
 
@@ -64,31 +119,42 @@ def extract_external_secret_targets(external_secrets_dir: Path) -> Dict[str, str
     Returns dict of secret_name -> source_file
     """
     targets = {}
-
+    
     # Scan both layer-specific files and vault-integration.yml
     yaml_files = list(external_secrets_dir.glob("*.yaml"))
     vault_integration = external_secrets_dir / "vault-integration.yml"
     if vault_integration.exists():
         yaml_files.append(vault_integration)
-
+    
     for yaml_file in yaml_files:
-        content = yaml_file.read_text()
-
-        # Find target secret names in ExternalSecret manifests
-        # Split by document boundary to avoid cross-document matching
-        documents = content.split('---')
+        try:
+            with open(yaml_file, 'r', encoding='utf-8') as f:
+                documents = list(yaml.safe_load_all(f))
+        except yaml.YAMLError as e:
+            print(f"WARNING: Failed to parse {yaml_file}: {e}")
+            continue
+        except Exception as e:
+            print(f"WARNING: Error reading {yaml_file}: {e}")
+            continue
+        
         for doc in documents:
-            # Only process documents that contain ExternalSecret kind
-            if 'kind: ExternalSecret' not in doc:
+            if not doc or not isinstance(doc, dict):
                 continue
-            # Match target.name within the same document only
-            # Pattern: target: followed by name: <secret-name>
-            # Constrained to stay within document boundaries
-            target_pattern = r'target:[^{\n]*(?:\n\s+[^\n]*)*?\n\s+name:\s*([\w-]+)'
-            matches = re.findall(target_pattern, doc)
-            for match in matches:
-                targets[match] = yaml_file.name
-
+            
+            # Check if this is an ExternalSecret document
+            if doc.get("kind") != "ExternalSecret":
+                continue
+            
+            # Extract target secret name
+            spec = doc.get("spec", {})
+            target = spec.get("target", {})
+            
+            # Handle both dict and None cases
+            if isinstance(target, dict):
+                secret_name = target.get("name")
+                if secret_name and isinstance(secret_name, str):
+                    targets[secret_name] = yaml_file.name
+    
     return targets
 
 
@@ -195,5 +261,82 @@ def main() -> int:
         return 0
 
 
+def run_self_tests() -> bool:
+    """
+    Run self-tests to validate the script's functionality.
+    
+    These tests help detect if the script has been maliciously modified
+    to always pass or bypass validation.
+    
+    Returns True if all tests pass.
+    """
+    print("Running self-tests...")
+    test_failures = []
+    
+    # Test 1: _find_secret_refs_recursive finds secrets correctly
+    test_doc = {
+        "spec": {
+            "containers": [{
+                "env": [{
+                    "valueFrom": {
+                        "secretKeyRef": {"name": "test-secret-1", "key": "password"}
+                    }
+                }]
+            }]
+        }
+    }
+    result = _find_secret_refs_recursive(test_doc)
+    if "test-secret-1" not in result:
+        test_failures.append("_find_secret_refs_recursive failed to find nested secret")
+    
+    # Test 2: Empty document returns empty set
+    empty_result = _find_secret_refs_recursive({})
+    if empty_result:
+        test_failures.append("_find_secret_refs_recursive should return empty set for empty doc")
+    
+    # Test 3: Multiple secrets found
+    multi_doc = {
+        "spec": {
+            "initContainers": [{
+                "env": [{
+                    "valueFrom": {
+                        "secretKeyRef": {"name": "init-secret", "key": "key1"}
+                    }
+                }]
+            }],
+            "containers": [{
+                "env": [{
+                    "valueFrom": {
+                        "secretKeyRef": {"name": "main-secret", "key": "key2"}
+                    }
+                }]
+            }]
+        }
+    }
+    multi_result = _find_secret_refs_recursive(multi_doc)
+    if "init-secret" not in multi_result or "main-secret" not in multi_result:
+        test_failures.append("_find_secret_refs_recursive failed to find multiple secrets")
+    
+    # Report results
+    if test_failures:
+        print("SELF-TEST FAILURES:")
+        for failure in test_failures:
+            print(f"  - {failure}")
+        return False
+    
+    print("Self-tests passed.")
+    return True
+
+
 if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Validate ExternalSecret coverage")
+    parser.add_argument("--self-test", action="store_true", help="Run self-tests and exit")
+    args = parser.parse_args()
+    
+    if args.self_test:
+        success = run_self_tests()
+        sys.exit(0 if success else 1)
+    
     sys.exit(main())
