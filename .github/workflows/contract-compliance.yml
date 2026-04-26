@@ -2,6 +2,11 @@
 # Validates that code follows Fabric 4L canonical contracts
 #
 # CONTRACT.md §3.3 - Lint and CI Enforcement Strategy
+#
+# This workflow consolidates the former platform-contract-gate.yml
+# (Python + frontend lint) and the original contract-compliance.yml
+# (ESLint plugin tests + frontend lint + canonical examples) into a
+# single authoritative CI gate.
 
 name: Contract Compliance
 
@@ -12,8 +17,10 @@ on:
       - 'frontend/**'
       - 'examples/canonical/**'
       - 'eslint-plugin-fabric-contracts/**'
-      - 'shared/mcp_gateway/**'
+      - 'shared/**'
       - 'value-fabric/**/src/**'
+      - 'packages/platform-contract/**'
+      - 'scripts/ci/platform_contract_lint.py'
       - '.github/workflows/contract-compliance.yml'
   schedule:
     # Run daily at 03:00 UTC
@@ -103,6 +110,7 @@ jobs:
             --rule 'fabric-contracts/no-private-imports: error' \
             --rule 'fabric-contracts/no-json-parse-agent-output: error' \
             --format compact
+
   # ==========================================================================
   # Validate Canonical Examples
   # ==========================================================================
@@ -140,12 +148,32 @@ jobs:
             --format compact
 
   # ==========================================================================
+  # Python Backend Contract Lint (merged from platform-contract-gate.yml)
+  # ==========================================================================
+  python-lint:
+    name: Python Platform Contract Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Run Platform Contract Lint
+        run: python scripts/ci/platform_contract_lint.py
+
+  # ==========================================================================
   # Summary Report
   # ==========================================================================
   summary:
     name: Contract Compliance Summary
     runs-on: ubuntu-latest
-    needs: [plugin-tests, lint-frontend, validate-canonical]
+    needs: [plugin-tests, lint-frontend, validate-canonical, python-lint]
     if: always()
 
     steps:
@@ -158,6 +186,7 @@ jobs:
           echo "| Plugin Tests | ${{ needs.plugin-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Lint Frontend | ${{ needs.lint-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Validate Canonical | ${{ needs.validate-canonical.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Lint | ${{ needs.python-lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Contract Enforcement" >> $GITHUB_STEP_SUMMARY
           echo "- **Tenant Isolation**: no-tenant-id-parameter, no-req-tenant-access, no-raw-tenant-query" >> $GITHUB_STEP_SUMMARY
@@ -166,3 +195,4 @@ jobs:
           echo "- **LLM Output**: no-json-parse-agent-output" >> $GITHUB_STEP_SUMMARY
           echo "- **UI State**: no-imperative-navigation, no-url-concatenation" >> $GITHUB_STEP_SUMMARY
           echo "- **Public API**: no-private-imports, no-circular-dependencies" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend**: platform_contract_lint.py (Python)" >> $GITHUB_STEP_SUMMARY
