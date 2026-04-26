@@ -231,6 +231,15 @@ class Account(Base):
     )
 
     # -----------------------------------------------------------------------
+    # Multi-Tenancy
+    # -----------------------------------------------------------------------
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="default",
+        comment="Tenant identifier for RLS isolation",
+    )
+
+    # -----------------------------------------------------------------------
     # Embedded Related Data (Phase 1: JSONB, not separate tables)
     # -----------------------------------------------------------------------
 
@@ -240,6 +249,50 @@ class Account(Base):
 
     contacts: Mapped[list[dict[str, Any]]] = mapped_column(
         JSON, nullable=False, default=list, comment="Embedded contacts from CRM provider"
+    )
+
+    # -----------------------------------------------------------------------
+    # Enrichment Data (Data Intelligence Layer Phase 1)
+    # -----------------------------------------------------------------------
+
+    enrichment_status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending",
+        comment="Enrichment state: pending, in_progress, enriched, failed, stale",
+    )
+
+    enriched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+        comment="Last successful enrichment timestamp",
+    )
+
+    enrichment_sources: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list,
+        comment="List of sources used for enrichment (e.g., sec_edgar, web_crawl)",
+    )
+
+    tech_stack: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True,
+        comment="Detected technology stack: {category: [technologies]}",
+    )
+
+    executives: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list,
+        comment="Key executives: [{name, title, linkedin_url, email}]",
+    )
+
+    financials: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON, nullable=True,
+        comment="Financial data from SEC/public sources: {revenue, growth_rate, margins, fiscal_year}",
+    )
+
+    competitive_landscape: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list,
+        comment="Known competitors: [{name, domain, overlap_areas}]",
+    )
+
+    pain_signals: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list,
+        comment="Detected pain signals: [{signal, source, confidence, detected_at}]",
     )
 
     # -----------------------------------------------------------------------
@@ -260,6 +313,9 @@ class Account(Base):
         Index("ix_accounts_segment", "segment"),
         # Composite index for list queries: synced accounts by update time
         Index("ix_accounts_provider_sync_updated", "provider", "sync_status", "updated_at"),
+        # Enrichment indexes
+        Index("ix_accounts_enrichment_status", "enrichment_status"),
+        Index("ix_accounts_tenant_id", "tenant_id"),
     )
 
     def __repr__(self) -> str:

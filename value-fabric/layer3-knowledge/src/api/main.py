@@ -521,9 +521,11 @@ app = FastAPI(
 from .routes import (
     benchmarks,
     entities,
+    evidence,
     formula_governance,
     formulas,
     models,
+    products,
     value_packs,
     value_trees,
     variables,
@@ -538,6 +540,8 @@ app.include_router(variables.router, prefix="/v1")
 app.include_router(benchmarks.router, prefix="/v1")
 app.include_router(models.router, prefix="/v1")
 app.include_router(entities.router, prefix="/v1")  # Refactored from main.py
+app.include_router(products.router, prefix="/v1")  # Data Intelligence Layer Phase 1
+app.include_router(evidence.router, prefix="/v1")  # Data Intelligence Layer Phase 1 — Evidence Library
 
 
 @app.middleware("http")

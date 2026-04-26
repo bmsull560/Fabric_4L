@@ -10,8 +10,10 @@ try:
     from . import (
         _utils,
         benchmarks,
+        evidence,
         formula_governance,
         formulas,
+        products,
         value_packs,
         value_trees,
         variables,
@@ -29,5 +31,7 @@ __all__ = [
     "formula_governance",
     "variables",
     "benchmarks",
+    "products",
+    "evidence",
     "_utils",
 ]
