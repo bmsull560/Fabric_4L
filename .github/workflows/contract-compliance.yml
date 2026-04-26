@@ -1,12 +1,13 @@
 # Contract Compliance Check
-# Validates that code follows Fabric 4L canonical contracts
+# Validates that code follows Fabric 4L canonical contracts and detects API drift
 #
 # CONTRACT.md §3.3 - Lint and CI Enforcement Strategy
 #
-# This workflow consolidates the former platform-contract-gate.yml
-# (Python + frontend lint) and the original contract-compliance.yml
-# (ESLint plugin tests + frontend lint + canonical examples) into a
-# single authoritative CI gate.
+# This workflow consolidates:
+# - Former platform-contract-gate.yml (Python + frontend lint)
+# - Original contract-compliance.yml (ESLint plugin tests + frontend lint + canonical examples)
+# - Former contract-drift-check.yml (OpenAPI drift detection)
+# Into a single authoritative CI gate.
 
 name: Contract Compliance
 
@@ -19,11 +20,15 @@ on:
       - 'eslint-plugin-fabric-contracts/**'
       - 'shared/**'
       - 'value-fabric/**/src/**'
+      - 'value-fabric/**/src/api/**'
+      - 'value-fabric/**/api/**'
       - 'packages/platform-contract/**'
+      - 'contracts/openapi/**'
+      - 'tests/contracts/**'
       - 'scripts/ci/platform_contract_lint.py'
       - '.github/workflows/contract-compliance.yml'
   schedule:
-    # Run daily at 03:00 UTC
+    # Run daily at 03:00 UTC (consolidated from 02:00 and 03:00)
     - cron: '0 3 * * *'
   workflow_dispatch:
 
@@ -168,12 +173,167 @@ jobs:
         run: python scripts/ci/platform_contract_lint.py
 
   # ==========================================================================
+  # OpenAPI Drift Detection (merged from contract-drift-check.yml)
+  # ==========================================================================
+  generate-openapi:
+    name: Generate OpenAPI from Code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        layer: [layer3-knowledge, layer5-ground-truth]
+        include:
+          - layer: layer3-knowledge
+            port: 8003
+            module: layer3_knowledge.api.main:app
+          - layer: layer5-ground-truth
+            port: 8005
+            module: layer5_ground_truth.api.main:app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install fastapi uvicorn pydantic
+          if [ "${{ matrix.layer }}" = "layer3-knowledge" ]; then
+            pip install neo4j python-dotenv httpx psutil
+          elif [ "${{ matrix.layer }}" = "layer5-ground-truth" ]; then
+            pip install sqlalchemy asyncpg
+          fi
+
+      - name: Generate OpenAPI spec from code
+        working-directory: ./value-fabric/${{ matrix.layer }}
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, 'src')
+          from ${{ matrix.module }} import app
+          import json
+          openapi = app.openapi()
+          with open('generated-openapi.json', 'w') as f:
+              json.dump(openapi, f, indent=2)
+          print(f'Generated OpenAPI for ${{ matrix.layer }}')
+          print(f'Paths: {len(openapi.get(\"paths\", {}))}')
+          " || echo "Failed to generate OpenAPI - will compare manually"
+
+      - name: Upload generated spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-openapi-${{ matrix.layer }}
+          path: value-fabric/${{ matrix.layer }}/generated-openapi.json
+          retention-days: 7
+
+  detect-drift:
+    name: Detect OpenAPI Drift
+    needs: generate-openapi
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        layer: [layer3-knowledge, layer5-ground-truth]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download generated spec
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-openapi-${{ matrix.layer }}
+          path: generated/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compare OpenAPI specs
+        id: compare
+        run: |
+          pip install jsondiff
+          python scripts/compare_openapi.py \
+            contracts/openapi/${{ matrix.layer }}.json \
+            generated/generated-openapi.json \
+            --output drift-report-${{ matrix.layer }}.md \
+            --exit-code || EXIT_CODE=$?
+          echo "exit_code=${EXIT_CODE:-0}" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with drift report
+        if: github.event_name == 'pull_request' && steps.compare.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('drift-report-${{ matrix.layer }}.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔍 API Contract Drift Detected: ${{ matrix.layer }}\n\n${report}`
+            });
+
+      - name: Fail on drift
+        if: steps.compare.outputs.exit_code != '0'
+        run: |
+          echo "::error::API contract drift detected in ${{ matrix.layer }}"
+          cat drift-report-${{ matrix.layer }}.md
+          exit 1
+
+  openapi-contract-tests:
+    name: OpenAPI Contract Tests
+    runs-on: ubuntu-latest
+    needs: generate-openapi
+    strategy:
+      matrix:
+        layer: [layer3, layer5]
+        include:
+          - layer: layer3
+            test_path: tests/contracts/test_layer3_contract.py
+            port: 8003
+          - layer: layer5
+            test_path: tests/contracts/test_layer5_contract.py
+            port: 8005
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-asyncio httpx
+
+      - name: Run contract tests
+        run: |
+          pytest ${{ matrix.test_path }} -v --tb=short
+        env:
+          FAIL_ON_CONTRACT_VIOLATION: "true"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: contract-test-results-${{ matrix.layer }}
+          path: |
+            .pytest_cache/
+            test-results.xml
+
+  # ==========================================================================
   # Summary Report
   # ==========================================================================
   summary:
     name: Contract Compliance Summary
     runs-on: ubuntu-latest
-    needs: [plugin-tests, lint-frontend, validate-canonical, python-lint]
+    needs: [plugin-tests, lint-frontend, validate-canonical, python-lint, generate-openapi, detect-drift, openapi-contract-tests]
     if: always()
 
     steps:
@@ -181,6 +341,7 @@ jobs:
         run: |
           echo "## Contract Compliance Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Code Quality Checks" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Plugin Tests | ${{ needs.plugin-tests.result }} |" >> $GITHUB_STEP_SUMMARY
@@ -188,11 +349,18 @@ jobs:
           echo "| Validate Canonical | ${{ needs.validate-canonical.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Python Lint | ${{ needs.python-lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### OpenAPI Contract Checks" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Generate OpenAPI | ${{ needs.generate-openapi.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Detect Drift | ${{ needs.detect-drift.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Contract Tests | ${{ needs.openapi-contract-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Contract Enforcement" >> $GITHUB_STEP_SUMMARY
           echo "- **Tenant Isolation**: no-tenant-id-parameter, no-req-tenant-access, no-raw-tenant-query" >> $GITHUB_STEP_SUMMARY
-          echo "- **Database Session**: no-explicit-db-connect" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database Session**: no-explicit-db-connect, get_db_with_tenant (warn until 2026-06-01)" >> $GITHUB_STEP_SUMMARY
           echo "- **Tool Invocation**: no-inline-middleware, no-inline-tool-definition, no-throw-in-tool" >> $GITHUB_STEP_SUMMARY
           echo "- **LLM Output**: no-json-parse-agent-output" >> $GITHUB_STEP_SUMMARY
           echo "- **UI State**: no-imperative-navigation, no-url-concatenation" >> $GITHUB_STEP_SUMMARY
           echo "- **Public API**: no-private-imports, no-circular-dependencies" >> $GITHUB_STEP_SUMMARY
-          echo "- **Backend**: platform_contract_lint.py (Python)" >> $GITHUB_STEP_SUMMARY
+          echo "- **OpenAPI Drift**: Auto-detection via spec comparison" >> $GITHUB_STEP_SUMMARY

@@ -95,6 +95,61 @@ jobs:
           fi
           echo "✓ TEST_JWT_SECRET is configured"
 
+      - name: Check Neo4j tenant isolation in queries
+        run: |
+          echo "Checking for unfiltered Neo4j MATCH queries..."
+
+          # File to check
+          MAIN_FILE="value-fabric/layer3-knowledge/src/api/main.py"
+
+          # Find MATCH queries that don't have tenant_id filtering
+          # Look for MATCH patterns without {tenant_id: or tenant_id in WHERE
+          violations=0
+
+          # Check for MATCH (e:Entity) without tenant_id filter
+          while IFS= read -r line; do
+            # Skip lines that already have tenant_id
+            if echo "$line" | grep -q "tenant_id"; then
+              continue
+            fi
+            # Check if this is a MATCH line in an endpoint function
+            if echo "$line" | grep -q "MATCH"; then
+              echo "POTENTIAL_VIOLATION: $line"
+              ((violations++)) || true
+            fi
+          done < <(grep -n "MATCH" "$MAIN_FILE")
+
+          # More targeted check: find MATCH queries in list_entities and get_full_graph
+          # that don't have tenant_id in the query or params
+          echo ""
+          echo "Checking critical endpoints for tenant isolation..."
+
+          # Extract the list_entities function and check for tenant_id
+          if grep -A 200 "async def list_entities" "$MAIN_FILE" | grep -q "MATCH (e:Entity)" | grep -v "tenant_id"; then
+            echo "ERROR: list_entities has unfiltered MATCH (e:Entity) query"
+            ((violations++)) || true
+          fi
+
+          # Check that tenant_id is required in both endpoints
+          if ! grep -A 50 "async def list_entities" "$MAIN_FILE" | grep -q "tenant_id is required"; then
+            echo "ERROR: list_entities does not require tenant_id"
+            ((violations++)) || true
+          fi
+
+          if ! grep -A 50 "async def get_full_graph" "$MAIN_FILE" | grep -q "tenant_id is required"; then
+            echo "ERROR: get_full_graph does not require tenant_id"
+            ((violations++)) || true
+          fi
+
+          if [ "$violations" -gt 0 ]; then
+            echo ""
+            echo "FAIL: Found $violations Neo4j tenant isolation violations"
+            echo "All MATCH queries must include tenant_id filtering"
+            exit 1
+          fi
+
+          echo "✓ All Neo4j queries have tenant_id isolation"
+
       - name: Run smoke tests
         env:
           TEST_DATABASE_URL: postgresql://test:test@localhost:5432/test_value_fabric

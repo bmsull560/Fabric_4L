@@ -107,7 +107,7 @@ With the meta-decision resolved, every file question answers itself.
 **Keep and relocate:**
 
 * Python canonical implementations → move to `examples/canonical/python/` and align with the runtime `@tool` decorator so they are correct references, not parallel ones
-* `platform_contract_lint.py` → rename to `check_platform_contracts.py`, wire into existing CI alongside `check_tool_contracts.py` (covers DB session, context, and raw-dict patterns the tool check doesn't)
+* `platform_contract_lint.py` → kept as canonical lint script, already wired into `contract-compliance.yml` (covers DB session, context, and raw-dict patterns); removed duplicate `check_platform_contracts.py`
 * TypeScript type definitions in `packages/platform-contract/src/typescript/` → keep as the packageable type surface; have `examples/canonical/` TS files import from it
 
 **Rewrite:**

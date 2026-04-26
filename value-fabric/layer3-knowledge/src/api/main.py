@@ -1903,6 +1903,7 @@ async def list_entities(
     sort_by: str = Query("updated_at", description="Field to sort by: name, updated_at, confidence, entity_type, status"),
     sort_order: str = Query("desc", description="Sort direction: asc or desc"),
     neo4j_driver=Depends(get_neo4j_driver),
+    request: Request = None,  # Sprint 5: For tenant context extraction
 ):
     """List entities with server-backed filtering and sorting.
 
@@ -1923,9 +1924,19 @@ async def list_entities(
     **Response:** Returns EntityListResponse with canonical EntitySummary objects.
     """
     try:
+        # Sprint 5: Extract tenant context for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+
+        # Require tenant_id for multi-tenant security
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for entity listing"
+            )
+
         # Build dynamic Cypher query based on filters
-        where_clauses = []
-        params: dict[str, Any] = {}
+        where_clauses = ["e.tenant_id = $tenant_id"]  # Mandatory tenant filter
+        params: dict[str, Any] = {"tenant_id": tenant_id}
 
         if search_text:
             where_clauses.append("(toLower(e.name) CONTAINS toLower($search_text) OR toLower(e.description) CONTAINS toLower($search_text))")
@@ -2037,21 +2048,21 @@ async def list_entities(
             available_sources = []
             if summaries:
                 domains_query = """
-                    MATCH (e:Entity)
+                    MATCH (e:Entity {tenant_id: $tenant_id})
                     WHERE e.domain IS NOT NULL
                     RETURN collect(DISTINCT e.domain) as domains
                 """
-                domains_result = await session.run(domains_query)
+                domains_result = await session.run(domains_query, {"tenant_id": tenant_id})
                 domains_record = await domains_result.single()
                 if domains_record:
                     available_domains = domains_record["domains"]
 
                 sources_query = """
-                    MATCH (e:Entity)
+                    MATCH (e:Entity {tenant_id: $tenant_id})
                     WHERE e.source_name IS NOT NULL
                     RETURN collect(DISTINCT e.source_name) as sources
                 """
-                sources_result = await session.run(sources_query)
+                sources_result = await session.run(sources_query, {"tenant_id": tenant_id})
                 sources_record = await sources_result.single()
                 if sources_record:
                     available_sources = sources_record["sources"]
@@ -3328,6 +3339,7 @@ async def export_document(
 async def get_full_graph(
     limit: int = 1000,
     app_state: AppState = Depends(get_app_state),
+    request: Request = None,  # Sprint 5: For tenant context extraction
 ) -> GraphResponse:
     """Get the full knowledge graph for visualization.
 
@@ -3338,15 +3350,25 @@ async def get_full_graph(
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
-        # Query for nodes with limit
+        # Sprint 5: Extract tenant context for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+
+        # Require tenant_id for multi-tenant security
+        if not tenant_id:
+            raise HTTPException(
+                status_code=400,
+                detail="tenant_id is required for graph access"
+            )
+
+        # Query for nodes with limit and tenant filter
         nodes_query = """
-        MATCH (n)
+        MATCH (n {tenant_id: $tenant_id})
         WHERE n.id IS NOT NULL
         RETURN n.id as id, n.name as label, n.type as type,
                n.confidence as confidence, n.x as x, n.y as y
         LIMIT $limit
         """
-        nodes_result = await neo4j.execute_query(nodes_query, {"limit": limit})
+        nodes_result = await neo4j.execute_query(nodes_query, {"tenant_id": tenant_id, "limit": limit})
 
         nodes = []
         node_ids = set()
@@ -3368,15 +3390,15 @@ async def get_full_graph(
             nodes.append(node)
             node_ids.add(r.get("id"))
 
-        # Query for edges between returned nodes
+        # Query for edges between returned nodes with tenant filter
         edges_query = """
-        MATCH (a)-[r]->(b)
+        MATCH (a {tenant_id: $tenant_id})-[r]->(b {tenant_id: $tenant_id})
         WHERE a.id IN $node_ids AND b.id IN $node_ids
         RETURN a.id as source, b.id as target, type(r) as rel_type,
                r.weight as weight
         """
         edges_result = await neo4j.execute_query(
-            edges_query, {"node_ids": list(node_ids)}
+            edges_query, {"tenant_id": tenant_id, "node_ids": list(node_ids)}
         )
 
         edges = []
@@ -3390,12 +3412,12 @@ async def get_full_graph(
                 )
             )
 
-        # Calculate stats
-        total_nodes_query = "MATCH (n) RETURN count(n) as total"
-        total_edges_query = "MATCH ()-[r]->() RETURN count(r) as total"
+        # Calculate stats with tenant filter
+        total_nodes_query = "MATCH (n {tenant_id: $tenant_id}) RETURN count(n) as total"
+        total_edges_query = "MATCH (:Entity {tenant_id: $tenant_id})-[r]->(:Entity {tenant_id: $tenant_id}) RETURN count(r) as total"
 
-        total_nodes_result = await neo4j.execute_query(total_nodes_query)
-        total_edges_result = await neo4j.execute_query(total_edges_query)
+        total_nodes_result = await neo4j.execute_query(total_nodes_query, {"tenant_id": tenant_id})
+        total_edges_result = await neo4j.execute_query(total_edges_query, {"tenant_id": tenant_id})
 
         total_nodes = total_nodes_result[0].get("total", 0) if total_nodes_result else 0
         total_edges = total_edges_result[0].get("total", 0) if total_edges_result else 0

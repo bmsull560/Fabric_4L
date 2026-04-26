@@ -18,7 +18,7 @@ SKIP_DIRS = {"__pycache__", ".venv", "venv", "node_modules", ".git", ".pytest_ca
 # Error patterns: (pattern, regex, description)
 ERROR_PATTERNS = [
     ("get_db_usage", r"Depends\s*\(\s*get_db\b", "Use get_db_from_context() instead of get_db()"),
-    ("get_db_with_tenant_usage", r"Depends\s*\(\s*get_db_with_tenant\b", "Use get_db_from_context() instead of get_db_with_tenant()"),
+    # Note: get_db_with_tenant is WARN until 2026-06-01 per DEPRECATION_MAP.md
     ("db_session_usage", r"with\s+db_session\s*\(", "Use db_session_for_context() instead of db_session()"),
     ("old_request_state", r"request\.state\.context\b", "Use request.state.governance_context instead of request.state.context"),
     ("manual_db_commit", r"await\s*db\s*\.\s*commit\s*\(", "Route handlers MUST NOT call db.commit() or db.rollback()"),
@@ -27,6 +27,7 @@ ERROR_PATTERNS = [
 
 # Warn patterns: (pattern, regex, description, deadline)
 WARN_PATTERNS = [
+    ("get_db_with_tenant_usage", r"Depends\s*\(\s*get_db_with_tenant\b", "Use get_db_from_context() instead of get_db_with_tenant()", "2026-06-01"),
     ("raw_dict_agent_return", r"return\s*\{", "Agent execute() should return a Pydantic model or use AgentResultEnvelope", "2026-06-30"),
     ("inline_tool_definition", r"class\s*\w+Tool\s*\(.*name\s*=\s*\"\w+\"", "Tools must be defined in their own module and registered", "2026-06-15"),
 ]
