@@ -4,17 +4,17 @@ Intelligence Orchestration API routes — Data Intelligence Layer Phase 3, Task 
 Cross-layer endpoints that assemble intelligence from all DIL services
 into unified deliverables.
 
-Endpoints:
-  GET  /api/v1/intelligence/account/{id}/briefing       — Full account briefing
-  GET  /api/v1/intelligence/account/{id}/deal-readiness  — Deal readiness score
-  GET  /api/v1/intelligence/pipeline-summary             — Pipeline intelligence
+All endpoints require authentication via GovernanceMiddleware.
+Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from shared.security.dil_auth import get_verified_tenant_id
 
 router = APIRouter(prefix="/intelligence", tags=["Intelligence"])
 
@@ -22,16 +22,6 @@ router = APIRouter(prefix="/intelligence", tags=["Intelligence"])
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _extract_tenant_id(request: Request) -> str:
-    """Extract tenant_id from request state or headers."""
-    if hasattr(request.state, "tenant_id"):
-        return request.state.tenant_id
-    tenant = request.headers.get("X-Tenant-ID", "")
-    if not tenant:
-        raise HTTPException(status_code=400, detail="Missing tenant context")
-    return tenant
 
 
 def _get_neo4j_driver(request: Request):
@@ -51,6 +41,7 @@ async def get_account_briefing(
     include_narrative: bool = Query(False),
     top_n: int = Query(5, ge=1, le=20),
     roi_scenario: str = Query("moderate"),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Get a complete intelligence briefing for an account.
 
@@ -59,7 +50,6 @@ async def get_account_briefing(
     """
     from ...services.intelligence_orchestrator import IntelligenceOrchestrator
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     orchestrator = IntelligenceOrchestrator(driver)
 
@@ -75,7 +65,11 @@ async def get_account_briefing(
 
 
 @router.get("/account/{account_id}/deal-readiness")
-async def get_deal_readiness(account_id: str, request: Request):
+async def get_deal_readiness(
+    account_id: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Calculate deal readiness score for an account.
 
     Returns a weighted composite score (0-1) based on intelligence
@@ -84,7 +78,6 @@ async def get_deal_readiness(account_id: str, request: Request):
     """
     from ...services.intelligence_orchestrator import IntelligenceOrchestrator
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     orchestrator = IntelligenceOrchestrator(driver)
 
@@ -92,7 +85,10 @@ async def get_deal_readiness(account_id: str, request: Request):
 
 
 @router.get("/pipeline-summary")
-async def get_pipeline_summary(request: Request):
+async def get_pipeline_summary(
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Get aggregated intelligence across all accounts.
 
     Returns pipeline-level metrics: total accounts with hypotheses,
@@ -100,7 +96,6 @@ async def get_pipeline_summary(request: Request):
     """
     from ...services.intelligence_orchestrator import IntelligenceOrchestrator
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     orchestrator = IntelligenceOrchestrator(driver)
 

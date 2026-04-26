@@ -6,6 +6,11 @@ Provides endpoints for triggering and monitoring account enrichment:
 - POST /enrich/batch          — Enrich a batch of pending accounts
 - GET  /enrich/status         — Get enrichment coverage statistics
 - GET  /enrich/{account_id}   — Get enrichment details for an account
+
+All endpoints require authentication via GovernanceMiddleware.
+Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002).
+Account lookups are tenant-scoped to prevent IDOR (V-003).
+Batch endpoint ignores body tenant_id and uses auth context (V-004).
 """
 
 from typing import Any
@@ -14,8 +19,10 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from shared.security.dil_auth import get_verified_tenant_id
 from ...database import get_db_from_context
 from ...models.account import Account
 from ...services.enrichment_orchestrator import (
@@ -42,7 +49,7 @@ class EnrichAccountRequest(BaseModel):
 
 
 class BatchEnrichRequest(BaseModel):
-    tenant_id: str = Field(..., description="Tenant ID to enrich accounts for")
+    # V-004: tenant_id removed from body — always comes from auth context
     limit: int = Field(50, ge=1, le=500, description="Max accounts to enrich")
     force: bool = Field(False, description="Re-enrich already enriched accounts")
 
@@ -58,6 +65,31 @@ class EnrichmentStatusResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+async def _get_tenant_scoped_account(
+    db: AsyncSession, account_id: UUID, tenant_id: str
+) -> Account:
+    """Load an account by ID, scoped to the authenticated tenant.
+
+    Returns 404 (not 403) to avoid existence oracle (V-003).
+    """
+    stmt = select(Account).where(
+        Account.id == account_id,
+        Account.tenant_id == tenant_id,
+    )
+    result = await db.execute(stmt)
+    account = result.scalar_one_or_none()
+    if account is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Account {account_id} not found",
+        )
+    return account
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
@@ -65,13 +97,16 @@ class EnrichmentStatusResponse(BaseModel):
 async def enrich_account(
     account_id: UUID,
     request: EnrichAccountRequest | None = None,
+    tenant_id: str = Depends(get_verified_tenant_id),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Trigger enrichment for a single account from multiple data sources.
 
-    Enrichment sources include SEC EDGAR (financials), web crawl (tech stack),
-    domain lookup (executives), and news scan (pain signals).
+    The account must belong to the authenticated tenant (V-003).
     """
+    # V-003: Verify account belongs to this tenant before enriching
+    await _get_tenant_scoped_account(db, account_id, tenant_id)
+
     orchestrator = EnrichmentOrchestrator(db)
 
     try:
@@ -100,17 +135,18 @@ async def enrich_account(
 @router.post("/batch", summary="Enrich a batch of accounts")
 async def enrich_batch(
     request: BatchEnrichRequest,
+    tenant_id: str = Depends(get_verified_tenant_id),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Enrich a batch of accounts with pending/stale enrichment status.
 
-    Processes up to `limit` accounts for the specified tenant.
+    V-004: tenant_id always comes from auth context, never from request body.
     """
     orchestrator = EnrichmentOrchestrator(db)
 
     try:
         result = await orchestrator.enrich_batch(
-            tenant_id=request.tenant_id,
+            tenant_id=tenant_id,
             limit=request.limit,
             force=request.force,
         )
@@ -121,12 +157,12 @@ async def enrich_batch(
 
 @router.get("/status", summary="Get enrichment coverage statistics")
 async def get_enrichment_status(
-    tenant_id: str = Query(..., description="Tenant ID"),
+    tenant_id: str = Depends(get_verified_tenant_id),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> EnrichmentStatusResponse:
-    """Get enrichment coverage statistics for a tenant.
+    """Get enrichment coverage statistics for the authenticated tenant.
 
-    Returns counts of accounts by enrichment status and overall coverage percentage.
+    V-007: tenant_id comes from auth context, not query parameter.
     """
     orchestrator = EnrichmentOrchestrator(db)
 
@@ -140,16 +176,15 @@ async def get_enrichment_status(
 @router.get("/{account_id}", summary="Get enrichment details for an account")
 async def get_account_enrichment(
     account_id: UUID,
+    tenant_id: str = Depends(get_verified_tenant_id),
     db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Get the current enrichment data for a specific account.
 
-    Returns all enrichment fields: tech stack, executives, financials,
-    competitive landscape, and pain signals.
+    V-003: Account lookup is scoped to the authenticated tenant.
     """
-    account = await db.get(Account, account_id)
-    if account is None:
-        raise HTTPException(status_code=404, detail=f"Account {account_id} not found")
+    # V-003: Tenant-scoped account lookup
+    account = await _get_tenant_scoped_account(db, account_id, tenant_id)
 
     return {
         "account_id": str(account.id),

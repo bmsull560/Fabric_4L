@@ -4,20 +4,29 @@ Narrative Builder API routes — Data Intelligence Layer Phase 3, Task 3.1.
 Provides REST endpoints for generating, managing, and retrieving
 sales narratives built from intelligence data.
 
-Endpoints:
-  POST   /api/v1/narratives/generate        — Generate a new narrative
-  GET    /api/v1/narratives                  — List narratives
-  GET    /api/v1/narratives/{id}             — Get a narrative
-  PATCH  /api/v1/narratives/{id}/status      — Update narrative status
-  DELETE /api/v1/narratives/{id}             — Delete a narrative
+All endpoints require authentication via GovernanceMiddleware.
+Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002).
+Pre-fetched data is flagged as unverified (V-009).
+Status transitions are validated against an enum (V-010).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+
+from shared.security.dil_auth import (
+    get_verified_tenant_id,
+    validate_enum_value,
+    VALID_NARRATIVE_STATUSES,
+    VALID_NARRATIVE_TONES,
+    VALID_NARRATIVE_AUDIENCES,
+)
+
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/narratives", tags=["Narratives"])
 
@@ -51,13 +60,13 @@ class NarrativeGenerateRequest(BaseModel):
     roi_time_horizon_months: int = Field(36, ge=1, le=120)
     top_n_hypotheses: int = Field(5, ge=1, le=20)
     custom_next_steps: list[str] = Field(default_factory=list)
-    # Optional pre-fetched data (for orchestration layer)
-    account_data: dict[str, Any] | None = Field(None, description="Pre-fetched account data")
-    signals_data: list[dict[str, Any]] | None = Field(None, description="Pre-fetched signals")
-    hypotheses_data: list[dict[str, Any]] | None = Field(None, description="Pre-fetched hypotheses")
-    competitive_data: dict[str, Any] | None = Field(None, description="Pre-fetched competitive landscape")
-    roi_data: dict[str, Any] | None = Field(None, description="Pre-fetched ROI results")
-    evidence_data: list[dict[str, Any]] | None = Field(None, description="Pre-fetched evidence")
+    # V-009: Pre-fetched data is accepted but flagged as unverified
+    account_data: dict[str, Any] | None = Field(None, description="Pre-fetched account data (flagged as unverified)")
+    signals_data: list[dict[str, Any]] | None = Field(None, description="Pre-fetched signals (flagged as unverified)")
+    hypotheses_data: list[dict[str, Any]] | None = Field(None, description="Pre-fetched hypotheses (flagged as unverified)")
+    competitive_data: dict[str, Any] | None = Field(None, description="Pre-fetched competitive landscape (flagged as unverified)")
+    roi_data: dict[str, Any] | None = Field(None, description="Pre-fetched ROI results (flagged as unverified)")
+    evidence_data: list[dict[str, Any]] | None = Field(None, description="Pre-fetched evidence (flagged as unverified)")
 
 
 class StatusUpdateRequest(BaseModel):
@@ -71,19 +80,21 @@ class StatusUpdateRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _extract_tenant_id(request: Request) -> str:
-    """Extract tenant_id from request state or headers."""
-    if hasattr(request.state, "tenant_id"):
-        return request.state.tenant_id
-    tenant = request.headers.get("X-Tenant-ID", "")
-    if not tenant:
-        raise HTTPException(status_code=400, detail="Missing tenant context")
-    return tenant
-
-
 def _get_neo4j_driver(request: Request):
     """Get Neo4j driver from app state."""
     return request.app.state.neo4j_driver
+
+
+def _has_prefetched_data(body: NarrativeGenerateRequest) -> bool:
+    """Check if the request includes any pre-fetched data."""
+    return any([
+        body.account_data,
+        body.signals_data,
+        body.hypotheses_data,
+        body.competitive_data,
+        body.roi_data,
+        body.evidence_data,
+    ])
 
 
 # ---------------------------------------------------------------------------
@@ -92,14 +103,26 @@ def _get_neo4j_driver(request: Request):
 
 
 @router.post("/generate")
-async def generate_narrative(body: NarrativeGenerateRequest, request: Request):
-    """Generate a new sales narrative from intelligence data."""
+async def generate_narrative(
+    body: NarrativeGenerateRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
+    """Generate a new sales narrative from intelligence data.
+
+    V-009: If pre-fetched data is supplied, the narrative is tagged with
+    ``data_source: "caller_supplied"`` and ``verified: false`` so downstream
+    consumers know the numbers were not independently verified.
+    """
     from ...services.narrative_builder_service import (
         NarrativeBuilderService,
         NarrativeRequest,
     )
 
-    tenant_id = _extract_tenant_id(request)
+    # Validate tone and audience against enums
+    validate_enum_value(body.tone, VALID_NARRATIVE_TONES, "tone")
+    validate_enum_value(body.audience, VALID_NARRATIVE_AUDIENCES, "audience")
+
     driver = _get_neo4j_driver(request)
     svc = NarrativeBuilderService(driver)
 
@@ -127,6 +150,20 @@ async def generate_narrative(body: NarrativeGenerateRequest, request: Request):
         evidence_data=body.evidence_data,
     )
 
+    # V-009: Tag narratives built from caller-supplied data
+    if _has_prefetched_data(body):
+        result["data_source"] = "caller_supplied"
+        result["verified"] = False
+        logger.warning(
+            "narrative_generated_from_prefetched_data",
+            tenant_id=tenant_id,
+            account_id=body.account_id,
+            narrative_id=result.get("id"),
+        )
+    else:
+        result["data_source"] = "server_fetched"
+        result["verified"] = True
+
     return result
 
 
@@ -137,11 +174,11 @@ async def list_narratives(
     status: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """List narratives with optional filtering."""
     from ...services.narrative_builder_service import NarrativeBuilderService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = NarrativeBuilderService(driver)
 
@@ -151,11 +188,14 @@ async def list_narratives(
 
 
 @router.get("/{narrative_id}")
-async def get_narrative(narrative_id: str, request: Request):
+async def get_narrative(
+    narrative_id: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Get a specific narrative."""
     from ...services.narrative_builder_service import NarrativeBuilderService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = NarrativeBuilderService(driver)
 
@@ -167,12 +207,20 @@ async def get_narrative(narrative_id: str, request: Request):
 
 @router.patch("/{narrative_id}/status")
 async def update_narrative_status(
-    narrative_id: str, body: StatusUpdateRequest, request: Request
+    narrative_id: str,
+    body: StatusUpdateRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
-    """Update narrative status."""
+    """Update narrative status.
+
+    V-010: Status is validated against the allowed enum.
+    """
     from ...services.narrative_builder_service import NarrativeBuilderService
 
-    tenant_id = _extract_tenant_id(request)
+    # V-010: Validate status against enum
+    validate_enum_value(body.status, VALID_NARRATIVE_STATUSES, "status")
+
     driver = _get_neo4j_driver(request)
     svc = NarrativeBuilderService(driver)
 
@@ -183,11 +231,14 @@ async def update_narrative_status(
 
 
 @router.delete("/{narrative_id}")
-async def delete_narrative(narrative_id: str, request: Request):
+async def delete_narrative(
+    narrative_id: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Delete a narrative."""
     from ...services.narrative_builder_service import NarrativeBuilderService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = NarrativeBuilderService(driver)
 
