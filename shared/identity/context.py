@@ -25,7 +25,7 @@ AUTH_SOURCE_SERVICE_ACCOUNT = "service_account"
 AUTH_SOURCE_UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True)
+@dataclass
 class RequestContext:
     """Context for the current request including tenant and user info.
 
