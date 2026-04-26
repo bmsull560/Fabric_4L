@@ -1,0 +1,42 @@
+# DestinationRules: connection-pool tuning + automatic mTLS for in-mesh traffic.
+# These do not contain hostnames in the routing sense; they reference Service
+# DNS names produced by the env overlay.
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: frontend
+  namespace: value-fabric
+spec:
+  host: frontend
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 200
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: layer-apis
+  namespace: value-fabric
+spec:
+  host: "*.value-fabric.svc.cluster.local"
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http2MaxRequests: 500
+        maxRequestsPerConnection: 10
+        idleTimeout: 60s
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 60s

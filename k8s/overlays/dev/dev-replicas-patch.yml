@@ -1,2 +1,0 @@
-# Dev overlay: no replica patches needed since base defaults to 1.
-# Add resource limit relaxations or env-specific patches here as needed.

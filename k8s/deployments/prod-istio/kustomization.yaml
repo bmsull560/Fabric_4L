@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# prod-istio: prod environment + Istio routing.
+# EXPERIMENTAL: render-only in CI; not the supported production path.
+
+namespace: value-fabric
+
+resources:
+  - ../../envs/prod
+  - ../../routing/istio
+  - hostname-config.yaml
+
+replacements:
+  # Frontend host -> Istio Gateway server hosts + VirtualService hosts
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.host
+    targets:
+      - select:
+          kind: Gateway
+          name: value-fabric-gateway
+        fieldPaths:
+          - spec.servers.0.hosts.0  # HTTP listener, frontend host slot
+          - spec.servers.1.hosts.0  # HTTPS frontend listener
+      - select:
+          kind: VirtualService
+          name: frontend
+        fieldPaths:
+          - spec.hosts.0
+  # API host -> Istio Gateway server hosts + VirtualService hosts
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.apiHost
+    targets:
+      - select:
+          kind: Gateway
+          name: value-fabric-gateway
+        fieldPaths:
+          - spec.servers.0.hosts.1  # HTTP listener, api host slot
+          - spec.servers.2.hosts.0  # HTTPS api listener
+      - select:
+          kind: VirtualService
+          name: layer-apis
+        fieldPaths:
+          - spec.hosts.0

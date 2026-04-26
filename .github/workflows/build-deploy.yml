@@ -398,7 +398,7 @@ jobs:
 
       - name: Apply dev overlay manifests
         run: |
-          kustomize build k8s/overlays/dev | kubectl apply -f -
+          kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
 
       - name: Run post-deploy smoke tests
         run: |

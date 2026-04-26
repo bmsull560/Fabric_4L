@@ -1,0 +1,97 @@
+# NGINX Ingress resources.
+# Hosts use sentinel values __HOST__ (frontend) and __API_HOST__ (layer APIs).
+# These are replaced by the deployment overlay via Kustomize `replacements:`
+# keyed off a `routing-host` ConfigMap. CI fails if any sentinel survives a render.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend
+  namespace: value-fabric
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - __HOST__
+      secretName: frontend-tls
+  rules:
+    - host: __HOST__
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: layer-apis
+  namespace: value-fabric
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - __API_HOST__
+      secretName: layer-apis-tls
+  rules:
+    - host: __API_HOST__
+      http:
+        paths:
+          - path: /layer1
+            pathType: Prefix
+            backend:
+              service:
+                name: layer1-ingestion
+                port:
+                  number: 8000
+          - path: /layer2
+            pathType: Prefix
+            backend:
+              service:
+                name: layer2-extraction
+                port:
+                  number: 8000
+          - path: /layer3
+            pathType: Prefix
+            backend:
+              service:
+                name: layer3-knowledge
+                port:
+                  number: 8001
+          - path: /layer4
+            pathType: Prefix
+            backend:
+              service:
+                name: layer4-agents
+                port:
+                  number: 8000
+          - path: /layer5
+            pathType: Prefix
+            backend:
+              service:
+                name: layer5-ground-truth
+                port:
+                  number: 8005
+          - path: /layer6
+            pathType: Prefix
+            backend:
+              service:
+                name: layer6-benchmarks
+                port:
+                  number: 8006

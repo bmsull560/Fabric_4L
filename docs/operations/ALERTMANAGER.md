@@ -53,10 +53,10 @@ Prometheus → Alertmanager → Routing Tree → Notifications
 
 ```bash
 # Development
-kubectl apply -k k8s/overlays/dev
+kubectl apply -k k8s/deployments/dev-nginx
 
 # Production (with External Secrets)
-kubectl apply -k k8s/overlays/prod
+kubectl apply -k k8s/deployments/prod-nginx
 kubectl apply -f k8s/external-secrets/alertmanager-secrets.yaml
 ```
 
@@ -252,7 +252,7 @@ curl -X POST http://localhost:9093/api/v2/silences -H 'Content-Type: application
 ### Upgrading Alertmanager
 
 1. Update image tag in `k8s/base/monitoring-alertmanager.yml`
-2. Apply changes: `kubectl apply -k k8s/overlays/dev`
+2. Apply changes: `kubectl apply -k k8s/deployments/dev-nginx`
 3. Verify: `kubectl rollout status deployment/alertmanager -n value-fabric`
 
 ### Rotating Secrets

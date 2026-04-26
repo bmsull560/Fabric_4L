@@ -4,7 +4,13 @@ Production-grade Kubernetes manifests for the Value Fabric platform.
 
 This directory supports both:
 - Legacy flat manifests (`kubectl apply -f k8s/`) for compatibility.
-- Canonical Kustomize deployments (`k8s/base`, `k8s/overlays/dev`, `k8s/overlays/prod`) for production readiness.
+- Canonical Kustomize deployments organised into four composable axes:
+  - `k8s/base/` — core application workloads (Deployments, Services, ConfigMaps, NetworkPolicies, HPAs, PDBs).
+  - `k8s/envs/{dev,prod}/` — environment overlays (replicas, image pinning, ExternalSecrets).
+  - `k8s/routing/{nginx,gateway-api,istio}/` — mutually exclusive external routing strategies. Routing stacks do **not** import `../../base`.
+  - `k8s/deployments/{dev-nginx,prod-nginx,prod-gateway-api,prod-istio}/` — final deployable compositions, each importing exactly one env and one routing stack.
+
+> Legacy path `k8s/overlays/{dev,prod}` has been replaced by `k8s/envs/{dev,prod}`. Use `k8s/deployments/<env>-<routing>/` for final deployable targets.
 
 ## Prerequisites
 
@@ -62,22 +68,39 @@ kustomize edit set image "ghcr.io/bmsull560/fabric_4l/layer4-agents@sha256:abc12
 
 ## Recommended: Kustomize Deployment
 
-Deploy using overlays for environment-specific behavior.
+Deploy a final composition from `k8s/deployments/`. Each composition imports
+exactly one env overlay and exactly one routing stack.
+
+Phase 1 supported targets:
+
+| Target | Env | Routing | Status |
+|---|---|---|---|
+| `dev-nginx` | dev | NGINX Ingress + cert-manager | Supported |
+| `prod-nginx` | prod | NGINX Ingress + cert-manager | Supported (default production path) |
+| `prod-gateway-api` | prod | Gateway API + cert-manager | EXPERIMENTAL (CI-render only) |
+| `prod-istio` | prod | Istio Gateway / VirtualService | EXPERIMENTAL (CI-render only) |
 
 ```bash
-# Render manifests
-kubectl kustomize k8s/overlays/dev
-kubectl kustomize k8s/overlays/prod
+# Render manifests (use --load-restrictor=LoadRestrictionsNone for prod
+# because the prod env overlay imports k8s/external-secrets/).
+kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone
+kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone
 
 # Validate against API server (recommended in staging/prod clusters)
-kubectl apply --dry-run=server -k k8s/overlays/dev
-kubectl apply --dry-run=server -k k8s/overlays/prod
+kustomize build k8s/deployments/dev-nginx  --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
+kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
 
 # Deploy
-kubectl apply -k k8s/overlays/dev
+kubectl apply -k k8s/deployments/dev-nginx
 # or
-kubectl apply -k k8s/overlays/prod
+kubectl apply -k k8s/deployments/prod-nginx
 ```
+
+Hostnames per deployment are sourced from a single `routing-host` ConfigMap
+in each `k8s/deployments/<name>/hostname-config.yaml`. Edit that file to
+change the external hostnames; Kustomize `replacements:` propagate the
+values into every Ingress/Gateway/HTTPRoute/VirtualService/Certificate field
+at render time.
 
 ### Overlay Policy
 
@@ -94,7 +117,7 @@ kubectl apply -f namespace.yml
 
 # 2. Create secrets (dev overlay only)
 # For development:
-kubectl apply -f k8s/overlays/dev/secrets.yml
+kubectl apply -f k8s/envs/dev/secrets.yml
 
 # For production with Vault (requires External Secrets Operator):
 # kubectl apply -f k8s/external-secrets/vault-integration.yml
@@ -267,7 +290,7 @@ CI enforces a **secret default guardrail** in `.github/workflows/k8s-readiness.y
 If CI fails with a secret guardrail error:
 1. Open the file and line reported by the workflow log.
 2. Replace weak defaults with strong local-development values or wire the value from your secrets manager.
-3. Do **not** keep placeholder values in non-template manifests (`k8s/secrets.yml`, overlays, or base manifests).
+3. Do **not** keep placeholder values in non-template manifests (`k8s/secrets.yml`, env overlays, routing stacks, or base manifests).
 4. Keep placeholder tokens only in `k8s/secrets.yml.template`.
 5. Re-run checks locally before pushing:
    ```bash
@@ -320,4 +343,4 @@ kubectl port-forward -n value-fabric svc/layer5-ground-truth 8005:8005
 
 ## Migration Note
 
-Flat manifests are intentionally preserved during migration. New CI and production checks should target Kustomize overlays first.
+Flat manifests are intentionally preserved during migration. New CI and production checks should target `k8s/deployments/<env>-<routing>/` first.

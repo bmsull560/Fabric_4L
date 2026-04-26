@@ -1,0 +1,56 @@
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: frontend
+  namespace: value-fabric
+spec:
+  hosts:
+    - __HOST__
+  gateways:
+    - value-fabric-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: frontend
+            port:
+              number: 3000
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: layer-apis
+  namespace: value-fabric
+spec:
+  hosts:
+    - __API_HOST__
+  gateways:
+    - value-fabric-gateway
+  http:
+    - match:
+        - uri: { prefix: /layer1 }
+      route:
+        - destination: { host: layer1-ingestion, port: { number: 8000 } }
+    - match:
+        - uri: { prefix: /layer2 }
+      route:
+        - destination: { host: layer2-extraction, port: { number: 8000 } }
+    - match:
+        - uri: { prefix: /layer3 }
+      route:
+        - destination: { host: layer3-knowledge, port: { number: 8001 } }
+    - match:
+        - uri: { prefix: /layer4 }
+      route:
+        - destination: { host: layer4-agents, port: { number: 8000 } }
+    - match:
+        - uri: { prefix: /layer5 }
+      route:
+        - destination: { host: layer5-ground-truth, port: { number: 8005 } }
+    - match:
+        - uri: { prefix: /layer6 }
+      route:
+        - destination: { host: layer6-benchmarks, port: { number: 8006 } }

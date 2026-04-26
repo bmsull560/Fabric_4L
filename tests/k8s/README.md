@@ -175,7 +175,9 @@ The `conftest.py` provides shared fixtures:
 
 - `repo_root` - Path to repository root
 - `k8s_base_dir` - Path to k8s/base
-- `k8s_overlays_dir` - Path to k8s/overlays
+- `k8s_overlays_dir` - Path to k8s/envs (legacy fixture name; resolves to `k8s/envs/`)
+- `k8s_envs_dir` - Path to k8s/envs (canonical)
+- `k8s_deployments_dir` - Path to k8s/deployments
 - `k8s_policy_dir` - Path to k8s/policy
 - `monitoring_dir` - Path to monitoring
 - `load_yaml_documents` - Dict of all YAML documents from k8s/base

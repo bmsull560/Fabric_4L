@@ -1,0 +1,58 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# prod-gateway-api: prod environment + Gateway API routing.
+# EXPERIMENTAL: render-only in CI; not the supported production path.
+
+namespace: value-fabric
+
+resources:
+  - ../../envs/prod
+  - ../../routing/gateway-api
+  - hostname-config.yaml
+
+replacements:
+  # Frontend host -> Gateway listeners + HTTPRoute hostnames + Certificate dnsNames
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.host
+    targets:
+      - select:
+          kind: Gateway
+          name: value-fabric-gateway
+        fieldPaths:
+          - spec.listeners.0.hostname
+          - spec.listeners.1.hostname
+      - select:
+          kind: HTTPRoute
+          name: frontend
+        fieldPaths:
+          - spec.hostnames.0
+      - select:
+          kind: Certificate
+          name: frontend-tls
+        fieldPaths:
+          - spec.dnsNames.0
+  # API host -> Gateway listeners + HTTPRoute hostnames + Certificate dnsNames
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.apiHost
+    targets:
+      - select:
+          kind: Gateway
+          name: value-fabric-gateway
+        fieldPaths:
+          - spec.listeners.2.hostname
+          - spec.listeners.3.hostname
+      - select:
+          kind: HTTPRoute
+          name: layer-apis
+        fieldPaths:
+          - spec.hostnames.0
+      - select:
+          kind: Certificate
+          name: layer-apis-tls
+        fieldPaths:
+          - spec.dnsNames.0

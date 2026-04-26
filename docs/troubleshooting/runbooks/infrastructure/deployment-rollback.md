@@ -133,7 +133,7 @@ If using Kustomize overlays to manage image digests:
 
 ```bash
 # Revert the image digest in the prod overlay
-cd k8s/overlays/prod
+cd k8s/envs/prod
 kustomize edit set image \
   value-fabric/<service>=ghcr.io/bmsull560/fabric_4l/<service>@sha256:<previous-known-good-digest>
 

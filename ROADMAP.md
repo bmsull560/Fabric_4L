@@ -1182,7 +1182,7 @@ version_compatibility.register_migration_handler("v1", "v2", migrate_v1_to_v2_in
 
 **Implementation:**
 - Create: `k8s/base/` with Kustomize structure
-- Create: `k8s/overlays/dev/`, `k8s/overlays/prod/`
+- Create: `k8s/envs/dev/`, `k8s/envs/prod/`, `k8s/routing/{nginx,gateway-api,istio}/`, `k8s/deployments/{dev-nginx,prod-nginx,prod-gateway-api,prod-istio}/`
 
 ---
 
@@ -2008,8 +2008,8 @@ Requirements:
   - [x] Add `securityContext` to all deployments (non-root, read-only root FS) — ✅ All 7 layers: UID 1000, runAsNonRoot, readOnlyRootFilesystem, drop ALL capabilities, RuntimeDefault seccomp
   - [x] Add HPA manifests for L4, L2, Frontend — ✅ `k8s/base/hpa/` with 3 HPAs: L2 (2-6 replicas, 70% CPU), L4 (2-10 replicas, 70% CPU/80% mem), Frontend (2-8 replicas, 70% CPU)
   - [x] Add `PodDisruptionBudget` for L4 — ✅ `k8s/base/pdb/layer4-agents-pdb.yml` with minAvailable: 1
-  - [x] Pin all K8s image tags to SHA digests in prod overlay — ✅ `k8s/overlays/prod/kustomization.yaml` uses `digest: sha256:...` format
-- **Evidence:** `kubectl kustomize k8s/overlays/dev` and `prod` render successfully with all security controls
+  - [x] Pin all K8s image tags to SHA digests in prod overlay — ✅ `k8s/envs/prod/kustomization.yaml` uses `digest: sha256:...` format
+- **Evidence:** `kubectl kustomize k8s/deployments/dev-nginx` and `prod-nginx` render successfully with all security controls
 - **Refinement (2026-04-13):**
   - Fixed HPA/Deployment replica mismatch (all now start at 2 replicas)
   - Added HPA scaling behavior policies (300s scaleDown stabilization, prevents flapping)
@@ -4073,7 +4073,7 @@ The platform has achieved substantial production readiness. All Phase 1 (Tasks 2
   - [ ] `docker-compose up` starts all 6 layers + infrastructure
   - [ ] All health checks return 200
   - [ ] `python scripts/smoke/production_smoke.py` passes 6/6 stages
-  - [ ] K8s manifests render: `kubectl kustomize k8s/overlays/dev`
+  - [ ] K8s manifests render: `kubectl kustomize k8s/deployments/dev-nginx`
 - **Implementation:**
   - Verify: `value-fabric/docker-compose.yml`
   - Test: `k8s/base/` deployments

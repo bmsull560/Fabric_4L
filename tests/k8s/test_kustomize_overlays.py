@@ -107,7 +107,7 @@ class TestKustomizeBaseLayer:
 
 
 class TestKustomizeProdOverlay:
-    """Test the production Kustomize overlay (k8s/overlays/prod/)."""
+    """Test the production Kustomize overlay (k8s/envs/prod/)."""
 
     def test_prod_kustomization_extends_base(self, k8s_overlays_dir: Path) -> None:
         """[2c] Verify prod overlay inherits from base layer."""
@@ -237,7 +237,7 @@ class TestKustomizeBuild:
     def test_dev_overlay_builds(self, repo_root: Path, skip_without_kustomize) -> None:
         """[1b] Dev overlay renders without errors."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/dev"],
+            ["kustomize", "build", "k8s/envs/dev"],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -257,7 +257,12 @@ class TestKustomizeBuild:
     def test_prod_overlay_builds(self, repo_root: Path, skip_without_kustomize) -> None:
         """[1b] Prod overlay renders without errors."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -269,7 +274,12 @@ class TestKustomizeBuild:
     def test_prod_includes_external_secrets(self, repo_root: Path, skip_without_kustomize) -> None:
         """Verify prod build includes ExternalSecret resources."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -284,7 +294,12 @@ class TestKustomizeBuild:
     def test_prod_has_environment_label(self, repo_root: Path, skip_without_kustomize) -> None:
         """Verify all prod resources have environment=prod label."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -305,7 +320,12 @@ class TestKustomizeBuild:
     def test_prod_replicas_scaled(self, repo_root: Path, skip_without_kustomize) -> None:
         """Verify prod replica patches are applied."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),

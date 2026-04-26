@@ -55,36 +55,67 @@ jobs:
           sudo mv conftest /usr/local/bin/conftest
           conftest --version
 
-      - name: Render overlays
+      - name: Render deployments
         run: |
-          kustomize build k8s/overlays/dev > /tmp/dev.yaml
-          kustomize build k8s/overlays/prod > /tmp/prod.yaml
+          mkdir -p /tmp/k8s-renders
+          for d in dev-nginx prod-nginx prod-gateway-api prod-istio; do
+            kustomize build "k8s/deployments/$d" \
+              --load-restrictor=LoadRestrictionsNone \
+              > "/tmp/k8s-renders/$d.yaml"
+          done
+          # Backwards-compatible aliases consumed by older steps and scripts.
+          cp /tmp/k8s-renders/dev-nginx.yaml /tmp/dev.yaml
+          cp /tmp/k8s-renders/prod-nginx.yaml /tmp/prod.yaml
 
-      - name: Schema validate overlays
+      - name: Schema validate supported deployments
         run: |
-          kubeconform -summary -strict /tmp/dev.yaml
-          kubeconform -summary -strict /tmp/prod.yaml
+          kubeconform -summary -strict /tmp/k8s-renders/dev-nginx.yaml
+          kubeconform -summary -strict /tmp/k8s-renders/prod-nginx.yaml
+
+      - name: Schema validate experimental deployments (CRDs allowed)
+        run: |
+          # Gateway API and Istio CRDs are not part of the default schema set.
+          # Use the upstream CRDs-catalog so Gateway/HTTPRoute/VirtualService
+          # are recognized; missing schemas are tolerated for vendor CRDs.
+          SCHEMAS='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          kubeconform -summary -ignore-missing-schemas \
+            -schema-location default -schema-location "$SCHEMAS" \
+            /tmp/k8s-renders/prod-gateway-api.yaml
+          kubeconform -summary -ignore-missing-schemas \
+            -schema-location default -schema-location "$SCHEMAS" \
+            /tmp/k8s-renders/prod-istio.yaml
 
       - name: Policy validate hardening controls (conftest)
         run: |
-          conftest test /tmp/dev.yaml -p k8s/policy
-          conftest test /tmp/prod.yaml -p k8s/policy
+          conftest test /tmp/k8s-renders/dev-nginx.yaml -p k8s/policy
+          conftest test /tmp/k8s-renders/prod-nginx.yaml -p k8s/policy
 
       - name: Policy validate prod secret sourcing
         run: |
-          if rg -n '^kind: Secret$' /tmp/prod.yaml; then
-            echo "Found raw Secret resources in prod overlay output. Use ExternalSecret only."
+          if rg -n '^kind: Secret$' /tmp/k8s-renders/prod-nginx.yaml; then
+            echo "Found raw Secret resources in prod-nginx output. Use ExternalSecret only."
             exit 1
           fi
-          if ! rg -n '^kind: ExternalSecret$' /tmp/prod.yaml; then
-            echo "Prod overlay must include ExternalSecret resources."
+          if ! rg -n '^kind: ExternalSecret$' /tmp/k8s-renders/prod-nginx.yaml; then
+            echo "prod-nginx must include ExternalSecret resources."
             exit 1
           fi
 
-      - name: Client dry-run precheck
+      - name: Routing axis checks (mutex + hostname + service-existence)
         run: |
-          kubectl apply --dry-run=client -f /tmp/dev.yaml > /dev/null
-          kubectl apply --dry-run=client -f /tmp/prod.yaml > /dev/null
+          pip install pyyaml
+          python3 scripts/ci/k8s_routing_check.py \
+            --rendered-dir /tmp/k8s-renders \
+            --routing-dir k8s/routing \
+            --deployment dev-nginx:nginx \
+            --deployment prod-nginx:nginx \
+            --deployment prod-gateway-api:gateway-api \
+            --deployment prod-istio:istio
+
+      - name: Client dry-run precheck (supported deployments)
+        run: |
+          kubectl apply --dry-run=client -f /tmp/k8s-renders/dev-nginx.yaml > /dev/null
+          kubectl apply --dry-run=client -f /tmp/k8s-renders/prod-nginx.yaml > /dev/null
 
       - name: Preflight checks
         run: |
@@ -127,13 +158,26 @@ jobs:
           kubectl cluster-info
           kubectl get nodes
 
-      - name: Server-side dry-run (dev overlay)
+      - name: Install kustomize
         run: |
-          kubectl apply --dry-run=server -k k8s/overlays/dev
+          curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz -o kustomize.tar.gz
+          echo "366c0e6b8f2571be6d034a5627e18b43f32a074eb89d4f740fdda80fa7d8bf3e  kustomize.tar.gz" | sha256sum -c
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
 
-      - name: Server-side dry-run (prod overlay)
+      - name: Render supported deployments
         run: |
-          kubectl apply --dry-run=server -k k8s/overlays/prod
+          mkdir -p /tmp/k8s-renders
+          kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/dev-nginx.yaml
+          kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone > /tmp/k8s-renders/prod-nginx.yaml
+
+      - name: Server-side dry-run (dev-nginx)
+        run: |
+          kubectl apply --dry-run=server -f /tmp/k8s-renders/dev-nginx.yaml
+
+      - name: Server-side dry-run (prod-nginx)
+        run: |
+          kubectl apply --dry-run=server -f /tmp/k8s-renders/prod-nginx.yaml
 
       - name: Upload rendered manifests on failure
         if: failure()

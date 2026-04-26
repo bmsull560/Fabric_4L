@@ -1,0 +1,30 @@
+# cert-manager Certificates for the Gateway API listeners.
+# Requires cert-manager Gateway API integration (cert-manager v1.13+ with
+# --feature-gates=ExperimentalGatewayAPISupport=true) OR cert-manager Gateway
+# shim. Operators can swap to a different issuer reference here.
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: frontend-tls
+  namespace: value-fabric
+spec:
+  secretName: frontend-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - __HOST__
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: layer-apis-tls
+  namespace: value-fabric
+spec:
+  secretName: layer-apis-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - __API_HOST__

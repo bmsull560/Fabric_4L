@@ -80,7 +80,7 @@ function Write-VerboseLog {
 # 1. Validate Kustomize Build
 Write-Host "[1/8] Validating Kustomize manifests..." -ForegroundColor Yellow
 try {
-    $kustomizeOutput = kubectl kustomize k8s/overlays/dev 2>&1
+    $kustomizeOutput = kubectl kustomize k8s/deployments/dev-nginx 2>&1
     if ($LASTEXITCODE -eq 0) {
         Write-Host "  ✓ Kustomize build successful" -ForegroundColor Green
         $validationResults.Manifests = $true

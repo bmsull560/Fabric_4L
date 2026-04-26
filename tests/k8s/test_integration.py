@@ -23,7 +23,7 @@ class TestEndToEndValidation:
         
         # Step 1: Kustomize build [1a]
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/dev"],
+            ["kustomize", "build", "k8s/envs/dev"],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -51,7 +51,12 @@ class TestEndToEndValidation:
         
         # Step 1: Kustomize build [1a]
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -92,7 +97,12 @@ class TestEndToEndValidation:
     ) -> None:
         """Verify all 6 Value Fabric layers are present in rendered manifests."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -127,7 +137,12 @@ class TestEndToEndValidation:
     ) -> None:
         """Verify Prometheus and Alertmanager are present in rendered manifests."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -161,7 +176,7 @@ class TestEnvironmentDifferences:
         """Verify prod has ExternalSecrets and dev does not."""
         # Build dev
         dev_result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/dev"],
+            ["kustomize", "build", "k8s/envs/dev"],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -170,7 +185,12 @@ class TestEnvironmentDifferences:
         
         # Build prod
         prod_result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -196,7 +216,12 @@ class TestEnvironmentDifferences:
     ) -> None:
         """Verify all prod resources have environment=prod label."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -228,7 +253,7 @@ class TestEnvironmentDifferences:
         """Verify replica counts differ between dev and prod where applicable."""
         # Build dev
         dev_result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/dev"],
+            ["kustomize", "build", "k8s/envs/dev"],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -237,7 +262,12 @@ class TestEnvironmentDifferences:
         
         # Build prod
         prod_result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -275,7 +305,12 @@ class TestCrossComponentIntegration:
     ) -> None:
         """Verify Prometheus configuration references Alertmanager service."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -308,7 +343,12 @@ class TestCrossComponentIntegration:
     ) -> None:
         """Verify all Services have valid selectors matching Deployments."""
         result = subprocess.run(
-            ["kustomize", "build", "k8s/overlays/prod"],
+            [
+                "kustomize",
+                "build",
+                "k8s/envs/prod",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
             capture_output=True,
             text=True,
             cwd=str(repo_root),

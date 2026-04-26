@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 5m
-  path: ./k8s/overlays/prod
+  path: ./k8s/deployments/prod-nginx
   prune: true
   sourceRef:
     kind: GitRepository

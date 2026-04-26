@@ -57,7 +57,7 @@ deploy-ephemeral-and-smoke:
     - Create kind cluster
     - Run preflight checks
     - Load SHA-tagged images
-    - Apply k8s/overlays/dev manifests
+    - Apply k8s/deployments/dev-nginx manifests
     - Run post-deploy smoke checks (L1-L5 + frontend)
 ```
 
@@ -80,7 +80,7 @@ deploy-ephemeral-and-smoke:
 
 ```bash
 # 1. Apply rendered manifests
-kubectl apply -k k8s/overlays/prod
+kubectl apply -k k8s/deployments/prod-nginx
 
 # 2. Monitor rollout
 kubectl rollout status deployment/<service> -n prod --timeout=300s

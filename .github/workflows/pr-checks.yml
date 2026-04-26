@@ -574,13 +574,13 @@ jobs:
           sudo mv kustomize /usr/local/bin/kustomize
           kustomize version
 
-      - name: Server-side dry-run (dev overlay)
+      - name: Server-side dry-run (dev-nginx deployment)
         run: |
-          kustomize build k8s/overlays/dev | kubectl apply --dry-run=server -f -
+          kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
 
-      - name: Server-side dry-run (prod overlay)
+      - name: Server-side dry-run (prod-nginx deployment)
         run: |
-          kustomize build k8s/overlays/prod | kubectl apply --dry-run=server -f -
+          kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
 
   # Contract tests — required PR gate, no secrets needed
   contract-checks:
@@ -886,7 +886,7 @@ jobs:
         run: |
           if command -v kubectl &> /dev/null; then
             echo "Testing kustomize build for dev overlay..."
-            kubectl kustomize k8s/overlays/dev 2>&1 | grep -q "alertmanager" && echo "✓ Alertmanager manifests found in kustomize build"
+            kubectl kustomize k8s/deployments/dev-nginx 2>&1 | grep -q "alertmanager" && echo "✓ Alertmanager manifests found in kustomize build"
           else
             echo "⚠️ kubectl not available, skipping kustomize validation"
           fi

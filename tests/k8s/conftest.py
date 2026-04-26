@@ -25,8 +25,26 @@ def k8s_base_dir(repo_root: Path) -> Path:
 
 @pytest.fixture(scope="session")
 def k8s_overlays_dir(repo_root: Path) -> Path:
-    """Return the k8s/overlays directory path."""
-    return repo_root / "k8s" / "overlays"
+    """Return the k8s/envs directory path.
+
+    Historically named `k8s_overlays_dir`; the underlying directory was
+    renamed from `k8s/overlays/` to `k8s/envs/` when the repo adopted the
+    composable axes layout (base / envs / routing / deployments). Keeping the
+    fixture name avoids touching every test that consumes it.
+    """
+    return repo_root / "k8s" / "envs"
+
+
+@pytest.fixture(scope="session")
+def k8s_envs_dir(repo_root: Path) -> Path:
+    """Return the k8s/envs directory path (canonical name)."""
+    return repo_root / "k8s" / "envs"
+
+
+@pytest.fixture(scope="session")
+def k8s_deployments_dir(repo_root: Path) -> Path:
+    """Return the k8s/deployments directory path."""
+    return repo_root / "k8s" / "deployments"
 
 
 @pytest.fixture(scope="session")
