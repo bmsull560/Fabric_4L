@@ -3,31 +3,20 @@
 Provides CRUD operations for Products and Features, capability linking,
 signal-to-product matching, and portfolio analytics.
 
-All endpoints are tenant-scoped via the X-Tenant-ID header.
+All endpoints require authentication via GovernanceMiddleware.
+Tenant identity is extracted from the verified JWT/API-key context,
+never from raw headers (V-001, V-002 remediation).
 """
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from shared.security.dil_auth import get_verified_tenant_id
 from ..dependencies import get_neo4j_driver
 
 router = APIRouter(prefix="/products", tags=["products"])
-
-
-def _extract_tenant_id(
-    request: Request,
-    x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
-) -> str:
-    """Extract tenant_id from header or request context."""
-    if x_tenant_id:
-        return x_tenant_id.strip()
-    # Fall back to RequestContext if middleware populated it
-    ctx = getattr(request.state, "context", None)
-    if ctx and getattr(ctx, "tenant_id", None):
-        return str(ctx.tenant_id)
-    raise HTTPException(status_code=400, detail="X-Tenant-ID header is required")
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +138,7 @@ async def get_product_service(driver=Depends(get_neo4j_driver)):
 @router.post("", response_model=dict, status_code=201)
 async def create_product(
     body: ProductCreateRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Create a new product in the knowledge graph."""
@@ -175,7 +164,7 @@ async def list_products(
     industry: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """List products with optional filtering."""
@@ -187,7 +176,7 @@ async def list_products(
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
     product_id: str,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Get a product by ID with its features and capabilities."""
@@ -201,7 +190,7 @@ async def get_product(
 async def update_product(
     product_id: str,
     body: ProductUpdateRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Update a product's properties."""
@@ -217,7 +206,7 @@ async def update_product(
 @router.delete("/{product_id}", status_code=204)
 async def delete_product(
     product_id: str,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Delete a product and its orphaned features."""
@@ -234,7 +223,7 @@ async def delete_product(
 async def add_feature(
     product_id: str,
     body: FeatureCreateRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Add a feature to a product."""
@@ -257,7 +246,7 @@ async def add_feature(
 async def remove_feature(
     product_id: str,
     feature_id: str,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Remove a feature from a product."""
@@ -274,7 +263,7 @@ async def remove_feature(
 async def link_capability(
     product_id: str,
     body: CapabilityLinkRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Link a product to a capability with a strength score."""
@@ -293,7 +282,7 @@ async def link_capability(
 async def unlink_capability(
     product_id: str,
     capability_id: str,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Remove a product-capability link."""
@@ -310,7 +299,7 @@ async def unlink_capability(
 async def match_signals(
     account_id: str | None = Query(None),
     min_confidence: float = Query(0.5, ge=0.0, le=1.0),
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Match pain signals to products via shared capabilities.
@@ -329,7 +318,7 @@ async def match_signals(
 
 @router.get("/analytics/summary", response_model=PortfolioSummaryResponse)
 async def portfolio_summary(
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Get a summary of the product portfolio."""
@@ -338,7 +327,7 @@ async def portfolio_summary(
 
 @router.get("/analytics/coverage", response_model=list[CapabilityCoverageItem])
 async def capability_coverage(
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     service=Depends(get_product_service),
 ):
     """Show capability coverage: which are addressed by products, which are gaps."""

@@ -28,6 +28,7 @@ import structlog
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from shared.security.dil_auth import SSRFBlockedError, validate_url_safe
 from ..models.account import Account
 
 logger = structlog.get_logger()
@@ -446,6 +447,18 @@ class EnrichmentOrchestrator:
         # Ensure URL has protocol
         if not url.startswith(("http://", "https://")):
             url = f"https://{url}"
+
+        # V-005: SSRF protection — validate URL before making outbound request
+        try:
+            validate_url_safe(url)
+        except SSRFBlockedError as e:
+            logger.warning(
+                "ssrf_blocked_web_crawl",
+                account_id=str(account.id),
+                url=url,
+                reason=str(e),
+            )
+            return {"success": False, "error": f"URL blocked by security policy: {e.reason}"}
 
         client = await self._get_http_client()
 

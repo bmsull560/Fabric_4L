@@ -19,33 +19,18 @@ Routes:
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ...services.case_study_service import CaseStudyService, CaseStudy
 from ...services.evidence_search import EvidenceSearchService
+from shared.security.dil_auth import get_verified_tenant_id
 from ..dependencies import get_neo4j_driver
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/evidence", tags=["evidence"])
 
-
-# ---------------------------------------------------------------------------
-# Helper: Extract tenant_id from header (same pattern as other L3 routes)
-# ---------------------------------------------------------------------------
-
-def _extract_tenant_id(
-    request: Request,
-    x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
-) -> str:
-    """Extract tenant_id from header or request context."""
-    if x_tenant_id:
-        return x_tenant_id.strip()
-    ctx = getattr(request.state, "context", None)
-    if ctx and getattr(ctx, "tenant_id", None):
-        return str(ctx.tenant_id)
-    raise HTTPException(status_code=400, detail="X-Tenant-ID header is required")
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +95,7 @@ class SemanticSearchRequest(BaseModel):
 @router.post("/case-studies", summary="Create a case study")
 async def create_case_study(
     request: CreateCaseStudyRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, Any]:
     """Create a new case study in the evidence library.
@@ -143,7 +128,7 @@ async def create_case_study(
 
 @router.get("/case-studies", summary="Search case studies")
 async def search_case_studies(
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     industry: str | None = Query(None, description="Filter by industry"),
     company_size: str | None = Query(None, description="Filter by company size"),
     product: str | None = Query(None, description="Filter by product name"),
@@ -177,7 +162,7 @@ async def search_case_studies(
 @router.get("/case-studies/{case_study_id}", summary="Get a case study")
 async def get_case_study(
     case_study_id: str,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, Any]:
     """Get a case study by ID with linked products and signals."""
@@ -194,7 +179,7 @@ async def get_case_study(
 async def update_case_study(
     case_study_id: str,
     request: UpdateCaseStudyRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, Any]:
     """Update a case study's properties."""
@@ -215,7 +200,7 @@ async def update_case_study(
 @router.delete("/case-studies/{case_study_id}", summary="Delete a case study")
 async def delete_case_study(
     case_study_id: str,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, str]:
     """Delete a case study and its relationships."""
@@ -235,7 +220,7 @@ async def delete_case_study(
 @router.post("/case-studies/bulk-import", summary="Bulk import case studies")
 async def bulk_import_case_studies(
     request: BulkImportRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, Any]:
     """Import multiple case studies in a single operation.
@@ -261,7 +246,7 @@ async def bulk_import_case_studies(
 
 @router.get("/stats/by-industry", summary="Case study counts by industry")
 async def stats_by_industry(
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, int]:
     """Get case study counts grouped by industry."""
@@ -271,7 +256,7 @@ async def stats_by_industry(
 
 @router.get("/stats/by-product", summary="Case study counts by product")
 async def stats_by_product(
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, int]:
     """Get case study counts grouped by product."""
@@ -286,7 +271,7 @@ async def stats_by_product(
 @router.post("/search", summary="Semantic evidence search")
 async def semantic_search(
     request: SemanticSearchRequest,
-    tenant_id: str = Depends(_extract_tenant_id),
+    tenant_id: str = Depends(get_verified_tenant_id),
     driver=Depends(get_neo4j_driver),
 ) -> dict[str, Any]:
     """Search evidence using vector similarity.

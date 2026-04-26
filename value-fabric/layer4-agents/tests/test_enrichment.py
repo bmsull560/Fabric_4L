@@ -29,9 +29,9 @@ _mock_database.get_db_from_context = AsyncMock()
 
 # Pre-populate sys.modules with mocks for problematic imports
 for mod_name in [
-    "shared", "shared.audit", "shared.identity",
+    "shared.audit", "shared.identity",
     "shared.identity.dependencies", "shared.identity.context",
-    "shared.security", "shared.error_handling",
+    "shared.error_handling",
     "langgraph", "langgraph.checkpoint", "langgraph.checkpoint.base",
     "langgraph.checkpoint.memory", "langgraph.graph",
     "src.config.checkpoint",

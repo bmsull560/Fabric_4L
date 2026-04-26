@@ -4,17 +4,10 @@ Competitive Intelligence API routes — Data Intelligence Layer Phase 2, Task 2.
 Provides REST endpoints for managing competitors, battlecards, win/loss records,
 and competitive landscape analysis.
 
-Endpoints:
-  POST   /api/v1/competitive/competitors              — Add a competitor
-  GET    /api/v1/competitive/competitors               — List competitors
-  GET    /api/v1/competitive/competitors/{id}          — Get competitor detail
-  PUT    /api/v1/competitive/competitors/{id}          — Update a competitor
-  DELETE /api/v1/competitive/competitors/{id}          — Delete a competitor
-  POST   /api/v1/competitive/competitors/{id}/battlecards — Add a battlecard
-  GET    /api/v1/competitive/competitors/{id}/battlecards — Get battlecards
-  POST   /api/v1/competitive/win-loss                  — Record a win/loss
-  GET    /api/v1/competitive/landscape                 — Competitive landscape analysis
-  GET    /api/v1/competitive/win-loss/summary          — Win/loss summary
+All endpoints require authentication via GovernanceMiddleware.
+Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002).
+Competitor updates use an allowlisted field set (V-006).
+Win/loss outcomes are validated against an enum (V-011).
 """
 
 from __future__ import annotations
@@ -24,7 +17,23 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from shared.security.dil_auth import (
+    get_verified_tenant_id,
+    AllowlistedFieldUpdate,
+    validate_enum_value,
+    VALID_WIN_LOSS_OUTCOMES,
+)
+
 router = APIRouter(prefix="/competitive", tags=["Competitive Intelligence"])
+
+# V-006: Allowlisted fields for competitor updates
+_COMPETITOR_UPDATER = AllowlistedFieldUpdate(
+    allowed={
+        "name", "description", "domain", "strengths", "weaknesses",
+        "market_position", "pricing_tier", "target_segments", "founded_year",
+    },
+    strict=True,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -83,16 +92,6 @@ class WinLossRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _extract_tenant_id(request: Request) -> str:
-    """Extract tenant_id from request state or headers."""
-    if hasattr(request.state, "tenant_id"):
-        return request.state.tenant_id
-    tenant = request.headers.get("X-Tenant-ID", "")
-    if not tenant:
-        raise HTTPException(status_code=400, detail="Missing tenant context")
-    return tenant
-
-
 def _get_neo4j_driver(request: Request):
     """Get Neo4j driver from app state."""
     return request.app.state.neo4j_driver
@@ -104,11 +103,14 @@ def _get_neo4j_driver(request: Request):
 
 
 @router.post("/competitors")
-async def add_competitor(body: CompetitorCreateRequest, request: Request):
+async def add_competitor(
+    body: CompetitorCreateRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Add a new competitor to the knowledge graph."""
     from ...services.competitive_intel_service import CompetitorCreate, CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
@@ -133,11 +135,11 @@ async def list_competitors(
     market_position: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """List competitors with optional filtering."""
     from ...services.competitive_intel_service import CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
@@ -150,11 +152,14 @@ async def list_competitors(
 
 
 @router.get("/competitors/{competitor_id}")
-async def get_competitor(competitor_id: str, request: Request):
+async def get_competitor(
+    competitor_id: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Get a competitor with related products and battlecards."""
     from ...services.competitive_intel_service import CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
@@ -169,30 +174,45 @@ async def update_competitor(
     competitor_id: str,
     body: CompetitorUpdateRequest,
     request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
-    """Update a competitor's properties."""
+    """Update a competitor's properties.
+
+    Only allowlisted fields are accepted (V-006 remediation).
+    """
     from ...services.competitive_intel_service import CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
-    updates = body.model_dump(exclude_none=True)
-    if not updates:
+    raw_updates = body.model_dump(exclude_none=True)
+    if not raw_updates:
         raise HTTPException(status_code=400, detail="No updates provided")
 
-    result = await svc.update_competitor(tenant_id, competitor_id, updates)
+    # V-006: Validate field names against allowlist before passing to service
+    try:
+        safe_updates, _, _ = _COMPETITOR_UPDATER.build("c", raw_updates)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+    if not safe_updates:
+        raise HTTPException(status_code=422, detail="No valid fields in update")
+
+    result = await svc.update_competitor(tenant_id, competitor_id, safe_updates)
     if not result:
         raise HTTPException(status_code=404, detail="Competitor not found")
     return {"status": "updated", **result}
 
 
 @router.delete("/competitors/{competitor_id}")
-async def delete_competitor(competitor_id: str, request: Request):
+async def delete_competitor(
+    competitor_id: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Delete a competitor and its battlecards."""
     from ...services.competitive_intel_service import CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
@@ -212,11 +232,11 @@ async def add_battlecard(
     competitor_id: str,
     body: BattlecardCreateRequest,
     request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Create a battlecard for a competitor + product pair."""
     from ...services.competitive_intel_service import BattlecardCreate, CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
@@ -238,11 +258,11 @@ async def get_battlecards(
     competitor_id: str,
     request: Request,
     product_id: str | None = Query(None),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Get battlecards for a competitor."""
     from ...services.competitive_intel_service import CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
@@ -255,16 +275,19 @@ async def get_battlecards(
 
 
 @router.post("/win-loss")
-async def record_win_loss(body: WinLossRequest, request: Request):
+async def record_win_loss(
+    body: WinLossRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Record a competitive win or loss."""
     from ...services.competitive_intel_service import CompetitiveIntelService, WinLossRecord
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
-    if body.outcome not in ("won", "lost"):
-        raise HTTPException(status_code=400, detail="Outcome must be 'won' or 'lost'")
+    # V-011: Validate outcome against enum
+    validate_enum_value(body.outcome, VALID_WIN_LOSS_OUTCOMES, "outcome")
 
     wl = WinLossRecord(
         competitor_id=body.competitor_id,
@@ -279,11 +302,13 @@ async def record_win_loss(body: WinLossRequest, request: Request):
 
 
 @router.get("/win-loss/summary")
-async def get_win_loss_summary(request: Request):
+async def get_win_loss_summary(
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Get aggregated win/loss data across all competitors."""
     from ...services.competitive_intel_service import CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 
@@ -299,11 +324,11 @@ async def get_win_loss_summary(request: Request):
 async def get_competitive_landscape(
     request: Request,
     product_id: str | None = Query(None),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Analyze the competitive landscape."""
     from ...services.competitive_intel_service import CompetitiveIntelService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = CompetitiveIntelService(driver)
 

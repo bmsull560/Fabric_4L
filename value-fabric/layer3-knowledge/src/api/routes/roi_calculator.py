@@ -4,22 +4,18 @@ ROI Calculator API routes — Data Intelligence Layer Phase 2, Task 2.3.
 Provides REST endpoints for calculating ROI projections, managing templates,
 comparing scenarios, and retrieving industry benchmarks.
 
-Endpoints:
-  POST   /api/v1/roi/calculate          — Calculate ROI from inputs
-  POST   /api/v1/roi/compare            — Compare multiple scenarios
-  GET    /api/v1/roi/templates           — List ROI templates
-  POST   /api/v1/roi/templates           — Create an ROI template
-  GET    /api/v1/roi/calculations        — List saved calculations
-  GET    /api/v1/roi/calculations/{id}   — Get a saved calculation
-  GET    /api/v1/roi/benchmarks/{industry} — Get industry benchmarks
+All endpoints require authentication via GovernanceMiddleware.
+Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+
+from shared.security.dil_auth import get_verified_tenant_id
 
 router = APIRouter(prefix="/roi", tags=["ROI Calculator"])
 
@@ -91,16 +87,6 @@ class TemplateCreateRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _extract_tenant_id(request: Request) -> str:
-    """Extract tenant_id from request state or headers."""
-    if hasattr(request.state, "tenant_id"):
-        return request.state.tenant_id
-    tenant = request.headers.get("X-Tenant-ID", "")
-    if not tenant:
-        raise HTTPException(status_code=400, detail="Missing tenant context")
-    return tenant
-
-
 def _get_neo4j_driver(request: Request):
     """Get Neo4j driver from app state."""
     return request.app.state.neo4j_driver
@@ -112,14 +98,17 @@ def _get_neo4j_driver(request: Request):
 
 
 @router.post("/calculate")
-async def calculate_roi(body: ROICalculateRequest, request: Request):
+async def calculate_roi(
+    body: ROICalculateRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Calculate ROI from inputs.
 
     Optionally saves the calculation to the knowledge graph if save=True.
     """
     from ...services.roi_calculator_service import ROICalculatorService, ROIInputs
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
@@ -185,11 +174,14 @@ async def calculate_roi(body: ROICalculateRequest, request: Request):
 
 
 @router.post("/compare")
-async def compare_scenarios(body: ScenarioCompareRequest, request: Request):
+async def compare_scenarios(
+    body: ScenarioCompareRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Compare ROI across multiple scenarios."""
     from ...services.roi_calculator_service import ROICalculatorService, ROIInputs
 
-    _extract_tenant_id(request)  # Validate tenant
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
@@ -228,11 +220,11 @@ async def list_templates(
     industry: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """List available ROI templates."""
     from ...services.roi_calculator_service import ROICalculatorService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
@@ -242,11 +234,14 @@ async def list_templates(
 
 
 @router.post("/templates")
-async def create_template(body: TemplateCreateRequest, request: Request):
+async def create_template(
+    body: TemplateCreateRequest,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Create a new ROI calculation template."""
     from ...services.roi_calculator_service import ROICalculatorService, ROITemplateCreate
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
@@ -273,11 +268,11 @@ async def list_calculations(
     account_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """List saved ROI calculations."""
     from ...services.roi_calculator_service import ROICalculatorService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
@@ -287,11 +282,14 @@ async def list_calculations(
 
 
 @router.get("/calculations/{calc_id}")
-async def get_calculation(calc_id: str, request: Request):
+async def get_calculation(
+    calc_id: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Get a saved ROI calculation."""
     from ...services.roi_calculator_service import ROICalculatorService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
@@ -307,11 +305,14 @@ async def get_calculation(calc_id: str, request: Request):
 
 
 @router.get("/benchmarks/{industry}")
-async def get_industry_benchmarks(industry: str, request: Request):
+async def get_industry_benchmarks(
+    industry: str,
+    request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
     """Get industry-specific benchmarks for ROI assumptions."""
     from ...services.roi_calculator_service import ROICalculatorService
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 

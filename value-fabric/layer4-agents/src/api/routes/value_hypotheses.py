@@ -5,14 +5,9 @@ Provides REST endpoints for generating, retrieving, ranking, and validating
 value hypotheses. These endpoints orchestrate the ValueHypothesisEngine
 service and expose its capabilities to the frontend and other consumers.
 
-Endpoints:
-  POST   /api/v1/hypotheses/generate          — Generate hypotheses for an account
-  GET    /api/v1/hypotheses/{hypothesis_id}    — Get a single hypothesis
-  GET    /api/v1/hypotheses/account/{account_id} — List hypotheses for an account
-  POST   /api/v1/hypotheses/{hypothesis_id}/validate — Validate/reject a hypothesis
-  DELETE /api/v1/hypotheses/{hypothesis_id}    — Delete a hypothesis
-  GET    /api/v1/hypotheses/summary            — Aggregate hypothesis statistics
-  POST   /api/v1/hypotheses/rank               — Re-rank a set of hypotheses
+All endpoints require authentication via GovernanceMiddleware.
+Tenant identity is extracted from the verified JWT/API-key context (V-001, V-002).
+Hypothesis status transitions are validated against an enum (V-008).
 """
 
 from __future__ import annotations
@@ -21,6 +16,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
+
+from shared.security.dil_auth import (
+    get_verified_tenant_id,
+    validate_enum_value,
+    VALID_HYPOTHESIS_STATUSES,
+)
 
 router = APIRouter(prefix="/hypotheses", tags=["Value Hypotheses"])
 
@@ -55,23 +56,13 @@ class ValidateHypothesisRequest(BaseModel):
 
 class RankHypothesesRequest(BaseModel):
     """Request to re-rank hypotheses."""
-    hypothesis_ids: list[str] = Field(..., min_length=1)
+    hypothesis_ids: list[str] = Field(..., min_length=1, max_length=200)
     strategy: str = Field("balanced", description="Ranking strategy")
 
 
 # ---------------------------------------------------------------------------
-# Helper: Extract tenant ID
+# Helper
 # ---------------------------------------------------------------------------
-
-
-def _extract_tenant_id(request: Request) -> str:
-    """Extract tenant_id from request state or headers."""
-    if hasattr(request.state, "tenant_id"):
-        return request.state.tenant_id
-    tenant = request.headers.get("X-Tenant-ID", "")
-    if not tenant:
-        raise HTTPException(status_code=400, detail="Missing tenant context")
-    return tenant
 
 
 def _get_neo4j_driver(request: Request):
@@ -88,15 +79,15 @@ def _get_neo4j_driver(request: Request):
 async def generate_hypotheses(
     body: GenerateHypothesesRequest,
     request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Generate value hypotheses for an account.
 
-    Traverses the knowledge graph to find signal→capability→product paths,
+    Traverses the knowledge graph to find signal->capability->product paths,
     enriches with evidence, and returns ranked hypotheses.
     """
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     engine = ValueHypothesisEngine(driver)
 
@@ -120,11 +111,11 @@ async def generate_hypotheses(
 async def get_hypothesis(
     hypothesis_id: str,
     request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Get a single value hypothesis with full detail."""
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     engine = ValueHypothesisEngine(driver)
 
@@ -142,11 +133,11 @@ async def get_account_hypotheses(
     status: str | None = Query(None, description="Filter by status"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """List all hypotheses for an account with optional filtering."""
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     engine = ValueHypothesisEngine(driver)
 
@@ -164,21 +155,17 @@ async def validate_hypothesis(
     hypothesis_id: str,
     body: ValidateHypothesisRequest,
     request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Validate, reject, or provide feedback on a hypothesis."""
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     engine = ValueHypothesisEngine(driver)
 
-    # Validate status transition
-    valid_statuses = {"validated", "rejected", "converted", None}
-    if body.new_status not in valid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status. Must be one of: {valid_statuses - {None}}",
-        )
+    # V-008: Validate status transition against enum
+    if body.new_status is not None:
+        validate_enum_value(body.new_status, VALID_HYPOTHESIS_STATUSES, "new_status")
 
     result = await engine.validate_hypothesis(
         tenant_id,
@@ -198,11 +185,11 @@ async def validate_hypothesis(
 async def delete_hypothesis(
     hypothesis_id: str,
     request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Delete a value hypothesis."""
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     engine = ValueHypothesisEngine(driver)
 
@@ -217,11 +204,11 @@ async def delete_hypothesis(
 async def get_hypothesis_summary(
     request: Request,
     account_id: str | None = Query(None),
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Get aggregate statistics about hypotheses."""
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     engine = ValueHypothesisEngine(driver)
 
@@ -232,11 +219,11 @@ async def get_hypothesis_summary(
 async def rank_hypotheses(
     body: RankHypothesesRequest,
     request: Request,
+    tenant_id: str = Depends(get_verified_tenant_id),
 ):
     """Re-rank a set of hypotheses using a specified strategy."""
     from ...services.value_hypothesis_engine import ValueHypothesisEngine
 
-    tenant_id = _extract_tenant_id(request)
     driver = _get_neo4j_driver(request)
     engine = ValueHypothesisEngine(driver)
 
