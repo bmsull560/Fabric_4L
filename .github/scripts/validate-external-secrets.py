@@ -16,7 +16,7 @@ Exit codes:
 
 import sys
 from pathlib import Path
-from typing import Set, Dict, List, Any
+from typing import Any, Dict, List, Set
 
 # Use PyYAML for robust YAML parsing
 try:

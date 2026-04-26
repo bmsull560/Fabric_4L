@@ -162,23 +162,31 @@ _security_config_l2 = SecurityConfig(
 )
 add_security_middleware(app, config=_security_config_l2)
 
-# Initialize Redis client for rate limiting
-redis_rate_limiter = None
-try:
-    import redis.asyncio as redis
+# Redis rate limiter - initialized in startup event
+redis_rate_limiter: RedisRateLimiter | None = None
 
-    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
-    redis_client = redis.from_url(redis_url, decode_responses=True)
-    # Validate connection before using for rate limiting
-    redis_client.ping()
-    redis_rate_limiter = RedisRateLimiter(redis_client)
-    logger.info("L2: Redis rate limiter initialized")
-except Exception as e:
-    logger.warning(f"L2: Redis not available for rate limiting: {e}")
-    redis_rate_limiter = None
+
+async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
+    """Initialize Redis client for rate limiting."""
+    try:
+        import redis.asyncio as redis
+        from shared.identity.rate_limiter import RedisRateLimiter
+
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+        # Validate connection before using for rate limiting
+        await redis_client.ping()
+        limiter = RedisRateLimiter(redis_client)
+        logger.info("L2: Redis rate limiter initialized")
+        return limiter
+    except Exception as e:
+        logger.warning(f"L2: Redis not available for rate limiting: {e}")
+        return None
+
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
-app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=redis_rate_limiter)
+# Note: redis_rate_limiter is set during startup
+app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=None)
 
 # Add metrics middleware if available — INNERMOST
 if metrics:
@@ -192,6 +200,15 @@ if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
 
 # Include WebSocket router for real-time pipeline streaming
 app.include_router(websocket_router, prefix="/v1")
+
+# Extraction configuration constants
+DEFAULT_CHUNK_SIZE = 2000
+DEFAULT_CHUNK_OVERLAP = 200
+DEFAULT_CONFIDENCE_THRESHOLD = 0.75
+RELATIONSHIP_CONFIDENCE_OFFSET = 0.05  # Slightly lower threshold for relationships
+DEFAULT_SIMILARITY_THRESHOLD = 0.85
+PROGRESS_REPORT_INTERVAL = 10  # Report progress every N chunks
+DEFAULT_RDF_OUTPUT_DIR = "/tmp/rdf"
 
 # Lazy initialization of extractors to avoid import-time side effects
 _entity_extractor = None
@@ -228,9 +245,9 @@ class ExtractRequest(BaseModel):
     extraction_config: dict = Field(
         default_factory=lambda: {
             "entity_types": ["Capability", "UseCase", "Persona", "ValueDriver"],
-            "confidence_threshold": 0.75,
-            "chunk_size": 2000,
-            "chunk_overlap": 200,
+            "confidence_threshold": DEFAULT_CONFIDENCE_THRESHOLD,
+            "chunk_size": DEFAULT_CHUNK_SIZE,
+            "chunk_overlap": DEFAULT_CHUNK_OVERLAP,
         }
     )
 
@@ -308,7 +325,6 @@ job_store: JobStore = build_job_store()
 RETRY_POLL_SECONDS = int(os.getenv("INGESTION_RETRY_POLL_SECONDS", "30"))
 RETRY_BASE_SECONDS = int(os.getenv("INGESTION_RETRY_BASE_SECONDS", "60"))
 MAX_INGESTION_RETRIES = int(os.getenv("INGESTION_MAX_RETRIES", "5"))
-_retry_task: asyncio.Task | None = None
 _UNSET = object()
 
 try:
@@ -409,8 +425,8 @@ async def _queue_for_retry(
     retry_count: int,
 ) -> None:
     delay_seconds = RETRY_BASE_SECONDS * max(1, 2 ** max(retry_count - 1, 0))
-    next_retry_at = datetime.utcnow().timestamp() + delay_seconds
-    next_retry_dt = datetime.utcfromtimestamp(next_retry_at)
+    next_retry_ts = datetime.now(UTC).timestamp() + delay_seconds
+    next_retry_dt = datetime.fromtimestamp(next_retry_ts, tz=UTC)
     result_json, relationships_json = _serialize_artifacts(artifacts)
 
     await pending_ingestion_store.enqueue(
@@ -460,7 +476,7 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
                 ingestion_status="completed",
                 last_error=None,
                 next_retry_at=None,
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(UTC),
             )
 
             # Get updated job for retry count
@@ -516,7 +532,7 @@ async def _attempt_ingestion(job_id: str, source_url: str, artifacts: Extraction
 
 
 async def _process_pending_ingestions() -> None:
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     records: list[PendingIngestionRecord] = await pending_ingestion_store.get_due(now)
     for record in records:
         if not await job_store.exists(record.job_id):
@@ -525,7 +541,7 @@ async def _process_pending_ingestions() -> None:
                     job_id=record.job_id,
                     extraction_status="completed",
                     ingestion_status="queued",
-                    created_at=datetime.utcnow().isoformat(),
+                    created_at=datetime.now(UTC).isoformat(),
                     entities_extracted=0,
                     relationships_extracted=0,
                     retry_count=record.retry_count,
@@ -552,13 +568,12 @@ async def _process_pending_ingestions() -> None:
                     retry_count=retry_count,
                     last_error="Layer 3 unavailable after max retries",
                     next_retry_at=None,
-                    completed_at=datetime.utcnow(),
+                    completed_at=datetime.now(UTC),
                 )
             else:
                 delay_seconds = RETRY_BASE_SECONDS * (2 ** max(record.retry_count, 0))
-                next_retry_at = datetime.utcfromtimestamp(
-                    datetime.utcnow().timestamp() + delay_seconds
-                )
+                next_retry_ts = datetime.now(UTC).timestamp() + delay_seconds
+                next_retry_at = datetime.fromtimestamp(next_retry_ts, tz=UTC)
                 await pending_ingestion_store.reschedule(
                     job_id=record.job_id,
                     retry_count=retry_count,
@@ -607,6 +622,15 @@ _VAULT_UNREACHABLE_ERROR = "Vault unreachable — cannot start in production wit
 
 @app.on_event("startup")
 async def startup_event() -> None:
+    global redis_rate_limiter, _retry_task
+    
+    # Initialize Redis rate limiter
+    redis_rate_limiter = await _init_redis_rate_limiter()
+    
+    # Update GovernanceMiddleware with rate limiter if available
+    # Note: In FastAPI, middleware is already added but we can update the reference
+    # for any code that accesses redis_rate_limiter directly
+    
     # Production Vault smoke gate (fail fast before starting other resources)
     if os.getenv("ENVIRONMENT", "development") == "production":
         vault_addr = os.getenv("VAULT_ADDR")
@@ -618,7 +642,6 @@ async def startup_event() -> None:
                 raise RuntimeError(_VAULT_UNREACHABLE_ERROR)
             logger.info("L2: Vault connectivity verified")
 
-    global _retry_task
     if _retry_task is None:
         _retry_task = asyncio.create_task(_pending_ingestion_retry_loop())
 
@@ -675,7 +698,7 @@ async def run_extraction(
                 job_id=job_id,
                 extraction_status="pending",
                 ingestion_status="skipped",
-                created_at=datetime.utcnow().isoformat(),
+                created_at=datetime.now(UTC).isoformat(),
                 entities_extracted=0,
                 relationships_extracted=0,
                 retry_count=0,
@@ -694,16 +717,16 @@ async def run_extraction(
 
     try:
         # Stage 1: Chunking
-        step1 = ExtractionStep(step_name="chunking", started_at=datetime.utcnow())
+        step1 = ExtractionStep(step_name="chunking", started_at=datetime.now(UTC))
 
-        chunk_size = config.get("chunk_size", 2000)
-        chunk_overlap = config.get("chunk_overlap", 200)
+        chunk_size = config.get("chunk_size", DEFAULT_CHUNK_SIZE)
+        chunk_overlap = config.get("chunk_overlap", DEFAULT_CHUNK_OVERLAP)
 
         chunks = chunk_markdown(
             content, source_url=source_url, chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
 
-        step1.completed_at = datetime.utcnow()
+        step1.completed_at = datetime.now(UTC)
         activity.add_step(step1)
 
         # Broadcast chunking complete
@@ -724,7 +747,7 @@ async def run_extraction(
             metadata={"total_chunks": len(chunks)},
         )
 
-        step2 = ExtractionStep(step_name="entity_extraction", started_at=datetime.utcnow())
+        step2 = ExtractionStep(step_name="entity_extraction", started_at=datetime.now(UTC))
 
         all_entities = {
             "capabilities": [],
@@ -735,11 +758,11 @@ async def run_extraction(
         }
         all_relationships = []
 
-        confidence_threshold = config.get("confidence_threshold", 0.75)
+        confidence_threshold = config.get("confidence_threshold", DEFAULT_CONFIDENCE_THRESHOLD)
 
         for i, chunk in enumerate(chunks):
-            # Broadcast progress every chunk
-            if i % max(1, len(chunks) // 10) == 0 or i == len(chunks) - 1:
+            # Broadcast progress at intervals
+            if i % max(1, len(chunks) // PROGRESS_REPORT_INTERVAL) == 0 or i == len(chunks) - 1:
                 await _ws_manager.broadcast_stage_progress(
                     job_id=job_id,
                     stage=PipelineStage.ENTITY_EXTRACTION,
@@ -768,12 +791,11 @@ async def run_extraction(
                 entities=entities,
                 source_url=source_url,
                 extraction_job_id=job_id,
-                confidence_threshold=confidence_threshold
-                - 0.05,  # Slightly lower for relationships
+                confidence_threshold=confidence_threshold - RELATIONSHIP_CONFIDENCE_OFFSET,
             )
             all_relationships.extend(relationships)
 
-        step2.completed_at = datetime.utcnow()
+        step2.completed_at = datetime.now(UTC)
         total_entities = sum(len(v) for v in all_entities.values())
         step2.entities_extracted = total_entities
         activity.add_step(step2)
@@ -799,9 +821,9 @@ async def run_extraction(
             total_stages=6,
             metadata={"entity_types": list(all_entities.keys())},
         )
-        step_align = ExtractionStep(step_name="semantic_alignment", started_at=datetime.utcnow())
+        step_align = ExtractionStep(step_name="semantic_alignment", started_at=datetime.now(UTC))
 
-        aligner = SemanticAligner(similarity_threshold=0.85, api_key=os.getenv("OPENAI_API_KEY"))
+        aligner = SemanticAligner(similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD, api_key=os.getenv("OPENAI_API_KEY"))
 
         # Align each entity type
         aligned_entities = {}
@@ -814,7 +836,7 @@ async def run_extraction(
 
         all_entities = aligned_entities
 
-        step_align.completed_at = datetime.utcnow()
+        step_align.completed_at = datetime.now(UTC)
         activity.add_step(step_align)
 
         # Broadcast alignment complete
@@ -830,17 +852,17 @@ async def run_extraction(
             total_stages=6,
             metadata={"entities_before": total_entities},
         )
-        step3 = ExtractionStep(step_name="deduplication", started_at=datetime.utcnow())
+        step3 = ExtractionStep(step_name="deduplication", started_at=datetime.now(UTC))
 
         deduplicated = await deduplicate_entities(
             all_entities,
             api_key=os.getenv("OPENAI_API_KEY"),
-            similarity_threshold=0.85,
+            similarity_threshold=DEFAULT_SIMILARITY_THRESHOLD,
             relationships=all_relationships,
             enable_coreference=True,
         )
 
-        step3.completed_at = datetime.utcnow()
+        step3.completed_at = datetime.now(UTC)
         activity.add_step(step3)
 
         entities_after = sum(len(v) for v in deduplicated.values())
@@ -862,7 +884,7 @@ async def run_extraction(
         await _ws_manager.broadcast_stage_start(
             job_id=job_id, stage=PipelineStage.VALIDATION, stage_number=5, total_stages=6
         )
-        step4 = ExtractionStep(step_name="validation", started_at=datetime.utcnow())
+        step4 = ExtractionStep(step_name="validation", started_at=datetime.now(UTC))
 
         # Create extraction result
         result = ExtractionResult(
@@ -897,7 +919,7 @@ async def run_extraction(
             # Log warnings but continue
             result.errors.extend([f"[WARNING] {w.rule_id}: {w.message}" for w in warnings])
 
-        step4.completed_at = datetime.utcnow()
+        step4.completed_at = datetime.now(UTC)
         step4.entities_extracted = len(validation_results)  # Track validation results count
         activity.add_step(step4)
 
@@ -919,7 +941,7 @@ async def run_extraction(
         await _ws_manager.broadcast_stage_start(
             job_id=job_id, stage=PipelineStage.RDF_GENERATION, stage_number=6, total_stages=6
         )
-        step5 = ExtractionStep(step_name="rdf_generation", started_at=datetime.utcnow())
+        step5 = ExtractionStep(step_name="rdf_generation", started_at=datetime.now(UTC))
 
         rdf_content = generate_rdf(result, all_relationships)
 
@@ -937,14 +959,14 @@ async def run_extraction(
         )
 
         # Save RDF to file (in production, this would go to S3/MinIO)
-        output_dir = os.getenv("RDF_OUTPUT_DIR", "/tmp/rdf")
+        output_dir = os.getenv("RDF_OUTPUT_DIR", DEFAULT_RDF_OUTPUT_DIR)
         os.makedirs(output_dir, exist_ok=True)
         rdf_path = f"{output_dir}/{job_id}.ttl"
 
         with open(rdf_path, "w") as f:
             f.write(rdf_content)
 
-        step5.completed_at = datetime.utcnow()
+        step5.completed_at = datetime.now(UTC)
         activity.add_step(step5)
 
         # Complete activity
@@ -952,12 +974,12 @@ async def run_extraction(
         activity.output_relationships = [r.id for r in all_relationships]
         activity.complete(rdf_path=rdf_path)
 
-        _set_pipeline_job(
+        await _set_pipeline_job(
             job_id,
             extraction_status="completed",
             entities_extracted=len(activity.output_entities),
             relationships_extracted=len(activity.output_relationships),
-            completed_at=datetime.utcnow() if mark_pipeline_complete else None,
+            completed_at=datetime.now(UTC) if mark_pipeline_complete else None,
         )
 
         # Broadcast extraction-only completion (if not going to ingestion)
@@ -975,11 +997,11 @@ async def run_extraction(
     except Exception as e:
         error_msg = str(e)
         activity.fail(error_msg)
-        _set_pipeline_job(
+        await _set_pipeline_job(
             job_id,
             extraction_status="failed",
             last_error=error_msg,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(UTC),
         )
 
         # Broadcast extraction failure
@@ -1142,7 +1164,7 @@ async def health_check():
         "status": overall_status,
         "service": "layer2-extraction",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "uptime_seconds": uptime,
         "response_time_ms": total_response_ms,
         "dependencies": dependencies,
@@ -1181,7 +1203,7 @@ async def extract(request: ExtractRequest, background_tasks: BackgroundTasks):
             job_id=job_id,
             extraction_status="pending",
             ingestion_status="skipped",
-            created_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             entities_extracted=0,
             relationships_extracted=0,
             retry_count=0,
@@ -1217,7 +1239,7 @@ async def extract_and_ingest(
             job_id=job_id,
             extraction_status="pending",
             ingestion_status="pending",
-            created_at=datetime.utcnow().isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             entities_extracted=0,
             relationships_extracted=0,
             retry_count=0,

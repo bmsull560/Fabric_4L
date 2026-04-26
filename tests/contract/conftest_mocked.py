@@ -17,7 +17,6 @@ Requires:
 """
 
 import os
-from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient, Response
@@ -25,7 +24,6 @@ from httpx import AsyncClient, Response
 # Try to import respx, skip if not available
 try:
     import respx
-    from respx import mock
     RESPX_AVAILABLE = True
 except ImportError:
     RESPX_AVAILABLE = False
