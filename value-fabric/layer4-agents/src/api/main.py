@@ -61,6 +61,7 @@ from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
 from .routes import accounts, agent_stream, analysis, signals, tools, workflows
 from .routes.enrichment import router as enrichment_router
+from .routes.value_hypotheses import router as value_hypotheses_router
 from .routes.billing import router as billing_router
 from .routes.c1 import router as c1_router
 from .routes.checkpoints import checkpoint_router
@@ -368,6 +369,7 @@ app.include_router(feature_flags_router, prefix="/v1")
 
 # Data Intelligence Layer: Enrichment routes
 app.include_router(enrichment_router, prefix="/v1")
+app.include_router(value_hypotheses_router, prefix="/v1")  # DIL Phase 2 — Value Hypotheses
 
 # Billing routes (conditional on feature flag)
 if settings.is_billing_configured:
