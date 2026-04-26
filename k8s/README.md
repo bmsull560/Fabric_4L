@@ -78,7 +78,7 @@ Phase 1 supported targets:
 | `dev-nginx` | dev | NGINX Ingress + cert-manager | Supported |
 | `staging-nginx` | staging | NGINX Ingress + cert-manager | Supported (pre-production validation) |
 | `prod-nginx` | prod | NGINX Ingress + cert-manager | Supported (default production path) |
-| `prod-gateway-api` | prod | Gateway API + cert-manager | EXPERIMENTAL (CI-render only) |
+| `prod-gateway-api` | prod | Gateway API + cert-manager | Supported (requires Gateway API CRDs + controller) |
 | `prod-istio` | prod | Istio Gateway / VirtualService | EXPERIMENTAL (CI-render only) |
 
 ```bash
@@ -87,6 +87,7 @@ Phase 1 supported targets:
 kustomize build k8s/deployments/dev-nginx --load-restrictor=LoadRestrictionsNone
 kustomize build k8s/deployments/staging-nginx --load-restrictor=LoadRestrictionsNone
 kustomize build k8s/deployments/prod-nginx --load-restrictor=LoadRestrictionsNone
+kustomize build k8s/deployments/prod-gateway-api --load-restrictor=LoadRestrictionsNone
 
 # Validate against API server (recommended in staging/prod clusters)
 kustomize build k8s/deployments/dev-nginx  --load-restrictor=LoadRestrictionsNone | kubectl apply --dry-run=server -f -
@@ -99,6 +100,8 @@ kubectl apply -k k8s/deployments/dev-nginx
 kubectl apply -k k8s/deployments/staging-nginx
 # or
 kubectl apply -k k8s/deployments/prod-nginx
+# or (requires Gateway API CRDs + controller pre-installed)
+kustomize build k8s/deployments/prod-gateway-api --load-restrictor=LoadRestrictionsNone | kubectl apply -f -
 ```
 
 Hostnames per deployment are sourced from a single `routing-host` ConfigMap

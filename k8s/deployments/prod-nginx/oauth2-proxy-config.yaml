@@ -1,0 +1,14 @@
+# Production oauth2-proxy OIDC configuration
+# Secrets are referenced, not hardcoded
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oauth2-proxy-oidc
+  namespace: value-fabric
+data:
+  # These values are replaced by the ExternalSecret in production
+  # placeholder values must be replaced before deployment
+  issuer-url: "__OIDC_ISSUER_URL__"
+  redirect-url: "https://app.value-fabric.example.com/oauth2/callback"
+  allowed-domains: "value-fabric.example.com"
+  oidc-provider: "oidc"

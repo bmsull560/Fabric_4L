@@ -58,7 +58,7 @@ jobs:
       - name: Render deployments
         run: |
           mkdir -p /tmp/k8s-renders
-          for d in dev-nginx prod-nginx prod-gateway-api prod-istio; do
+          for d in dev-nginx staging-nginx prod-nginx prod-gateway-api prod-istio; do
             kustomize build "k8s/deployments/$d" \
               --load-restrictor=LoadRestrictionsNone \
               > "/tmp/k8s-renders/$d.yaml"
@@ -78,6 +78,9 @@ jobs:
           # Gateway API and Istio CRDs are not part of the default schema set.
           # Use the upstream CRDs-catalog so Gateway/HTTPRoute/VirtualService
           # are recognized; missing schemas are tolerated for vendor CRDs.
+          # Note: prod-gateway-api is Conditionally Supported (not experimental).
+          # It requires Gateway API CRDs and a GatewayClass controller to be
+          # installed by the cluster operator before deployment.
           SCHEMAS='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
           kubeconform -summary -ignore-missing-schemas \
             -schema-location default -schema-location "$SCHEMAS" \

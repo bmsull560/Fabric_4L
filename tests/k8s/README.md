@@ -6,7 +6,7 @@ Comprehensive test coverage for the Value Fabric Kubernetes infrastructure, incl
 
 | File | Coverage | Codemap References |
 |------|----------|-------------------|
-| `test_kustomize_overlays.py` | Base layer resources, dev/prod overlays, image pinning, replica patches | [2a], [2b], [2c], [2d], [2e], [2f] |
+| `test_kustomize_overlays.py` | Base layer resources, dev/prod/staging overlays, Gateway API deployment, image pinning, replica patches | [2a], [2b], [2c], [2d], [2e], [2f] |
 | `test_ci_validation.py` | kubeconform schema validation, conftest policies, kubectl dry-run | [1b], [1c], [1e] |
 | `test_prometheus_monitoring.py` | Prometheus scrape configs, Alertmanager integration, alerting rules | [3a], [3b], [3c], [3d], [3e], [3f], [4a], [4b], [4c], [4d], [4e], [4f] |
 | `test_security_policies.py` | OPA/Rego policies, Pod Security Standards, Kyverno policies, NetworkPolicies |

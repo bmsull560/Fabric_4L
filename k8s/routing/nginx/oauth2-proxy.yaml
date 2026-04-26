@@ -1,0 +1,169 @@
+# oauth2-proxy deployment for edge authentication
+# Uses encrypted cookie sessions only (no Redis)
+# Secrets referenced from ExternalSecrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: value-fabric
+  labels:
+    app: oauth2-proxy
+spec:
+  selector:
+    app: oauth2-proxy
+  ports:
+    - name: http
+      port: 4180
+      targetPort: 4180
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: value-fabric
+  labels:
+    app: oauth2-proxy
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 4180
+              name: http
+              protocol: TCP
+          env:
+            - name: OAUTH2_PROXY_HTTP_ADDRESS
+              value: "0.0.0.0:4180"
+            - name: OAUTH2_PROXY_COOKIE_SECURE
+              value: "true"
+            - name: OAUTH2_PROXY_COOKIE_HTTPONLY
+              value: "true"
+            - name: OAUTH2_PROXY_COOKIE_SAMESITE
+              value: "lax"
+            - name: OAUTH2_PROXY_COOKIE_REFRESH
+              value: "1h"
+            - name: OAUTH2_PROXY_COOKIE_EXPIRE
+              value: "24h"
+            - name: OAUTH2_PROXY_SESSION_STORE_TYPE
+              value: "cookie"  # Encrypted cookies only, no Redis
+            - name: OAUTH2_PROXY_EMAIL_DOMAINS
+              value: "__ALLOWED_DOMAINS__"  # Replaced per environment
+            - name: OAUTH2_PROXY_UPSTREAMS
+              value: "static://202"
+            - name: OAUTH2_PROXY_PROVIDER
+              value: "__OIDC_PROVIDER__"  # Replaced per environment
+            - name: OAUTH2_PROXY_OIDC_ISSUER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-oidc
+                  key: issuer-url
+                  optional: true
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-oidc
+                  key: client-id
+                  optional: true
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-oidc
+                  key: client-secret
+                  optional: true
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-oidc
+                  key: cookie-secret
+                  optional: true
+            - name: OAUTH2_PROXY_REDIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-oidc
+                  key: redirect-url
+                  optional: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 4180
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 4180
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+# Health check endpoint bypass - allows /ping for liveness/readiness
+# No other paths bypass authentication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oauth2-proxy
+  namespace: value-fabric
+spec:
+  podSelector:
+    matchLabels:
+      app: oauth2-proxy
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: __INGRESS_NAMESPACE__
+      ports:
+        - protocol: TCP
+          port: 4180
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 443  # OIDC issuer HTTPS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53

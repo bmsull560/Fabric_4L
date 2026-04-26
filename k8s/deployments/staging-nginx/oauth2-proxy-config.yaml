@@ -1,0 +1,13 @@
+# Staging oauth2-proxy OIDC configuration
+# Staging uses same auth pattern as production with staging-specific IdP
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oauth2-proxy-oidc
+  namespace: value-fabric
+data:
+  # Staging OIDC configuration
+  issuer-url: "__OIDC_ISSUER_URL__"
+  redirect-url: "https://staging.value-fabric.example.com/oauth2/callback"
+  allowed-domains: "value-fabric.example.com"
+  oidc-provider: "oidc"

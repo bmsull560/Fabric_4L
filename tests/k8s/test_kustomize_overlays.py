@@ -558,3 +558,107 @@ class TestKustomizeBuild:
         assert layer1_deployment is not None
         assert layer1_deployment.get("spec", {}).get("replicas") >= 2, \
             "Layer1 must have at least 2 replicas in prod"
+
+
+class TestKustomizeGatewayAPIDeployment:
+    """Test the Gateway API deployment (prod-gateway-api) structure."""
+
+    def test_prod_gateway_api_kustomization_exists(self, k8s_deployments_dir: Path) -> None:
+        """Verify prod-gateway-api kustomization.yaml exists."""
+        kustomization = k8s_deployments_dir / "prod-gateway-api" / "kustomization.yaml"
+        assert kustomization.exists(), "prod-gateway-api kustomization.yaml must exist"
+
+    def test_prod_gateway_api_imports_prod_env(self, k8s_deployments_dir: Path) -> None:
+        """Verify prod-gateway-api imports the prod environment overlay."""
+        kustomization = k8s_deployments_dir / "prod-gateway-api" / "kustomization.yaml"
+
+        with open(kustomization) as f:
+            content = yaml.safe_load(f)
+
+        resources = content.get("resources", [])
+        assert "../../envs/prod" in resources, "Must import prod environment"
+        assert "../../routing/gateway-api" in resources, "Must import gateway-api routing"
+
+    def test_prod_gateway_api_has_hostname_config(self, k8s_deployments_dir: Path) -> None:
+        """Verify prod-gateway-api includes hostname configuration."""
+        kustomization = k8s_deployments_dir / "prod-gateway-api" / "kustomization.yaml"
+
+        with open(kustomization) as f:
+            content = yaml.safe_load(f)
+
+        resources = content.get("resources", [])
+        assert "hostname-config.yaml" in resources, "Must include hostname config"
+
+    def test_prod_gateway_api_has_replacements(self, k8s_deployments_dir: Path) -> None:
+        """Verify prod-gateway-api has replacements for hostname substitution."""
+        kustomization = k8s_deployments_dir / "prod-gateway-api" / "kustomization.yaml"
+
+        with open(kustomization) as f:
+            content = yaml.safe_load(f)
+
+        replacements = content.get("replacements", [])
+        assert len(replacements) >= 2, "Must have replacements for frontend and API hosts"
+
+    def test_prod_gateway_api_builds(self, repo_root: Path, skip_without_kustomize) -> None:
+        """Verify prod-gateway-api renders without errors."""
+        result = subprocess.run(
+            [
+                "kustomize",
+                "build",
+                "k8s/deployments/prod-gateway-api",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+        )
+
+        assert result.returncode == 0, f"prod-gateway-api build failed: {result.stderr}"
+        assert result.stdout, "prod-gateway-api build produced empty output"
+
+    def test_prod_gateway_api_includes_gateway_resources(self, repo_root: Path, skip_without_kustomize) -> None:
+        """Verify prod-gateway-api includes Gateway and HTTPRoute resources."""
+        result = subprocess.run(
+            [
+                "kustomize",
+                "build",
+                "k8s/deployments/prod-gateway-api",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+        )
+
+        docs = list(yaml.safe_load_all(result.stdout))
+        kinds = [d.get("kind") for d in docs if d]
+
+        assert "Gateway" in kinds, "Must include Gateway resource"
+        assert "HTTPRoute" in kinds, "Must include HTTPRoute resources"
+        assert "Certificate" in kinds, "Must include Certificate resources"
+
+    def test_prod_gateway_api_gateway_has_valid_class(self, repo_root: Path, skip_without_kustomize) -> None:
+        """Verify Gateway has a valid gatewayClassName set."""
+        result = subprocess.run(
+            [
+                "kustomize",
+                "build",
+                "k8s/deployments/prod-gateway-api",
+                "--load-restrictor=LoadRestrictionsNone",
+            ],
+            capture_output=True,
+            text=True,
+            cwd=str(repo_root),
+        )
+
+        docs = list(yaml.safe_load_all(result.stdout))
+        gateway = next(
+            (d for d in docs if d.get("kind") == "Gateway"),
+            None
+        )
+
+        assert gateway is not None, "Gateway must exist"
+        gateway_class = gateway.get("spec", {}).get("gatewayClassName", "")
+        assert gateway_class and gateway_class != "", "gatewayClassName must be set"
+        # Should be one of the known classes or a custom one
+        assert gateway_class != "__GATEWAY_CLASS__", "gatewayClassName must be configured"

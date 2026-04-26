@@ -2,7 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # prod-gateway-api: prod environment + Gateway API routing.
-# EXPERIMENTAL: render-only in CI; not the supported production path.
+# Conditionally Supported: requires Gateway API CRDs and GatewayClass controller.
+# See README.md for prerequisites and troubleshooting.
 
 namespace: value-fabric
 

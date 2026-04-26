@@ -1,0 +1,12 @@
+# Base routing configuration for Kustomize replacements
+# These values are replaced per environment overlay
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: routing-config
+  namespace: value-fabric
+data:
+  # Namespace where ingress controller runs
+  ingressNamespace: "__INGRESS_NAMESPACE__"
+  # Email for cert-manager ClusterIssuer
+  issuerEmail: "__ISSUER_EMAIL__"
