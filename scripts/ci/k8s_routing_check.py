@@ -93,84 +93,118 @@ def _walk_strings(node: object) -> Iterable[str]:
             yield from _walk_strings(v)
 
 
-def _collect_host_fields(doc: dict) -> tuple[list[str], list[str]]:
-    """Return (frontend_hosts, api_hosts) extracted from a routing doc.
+FRONTEND_BUCKET = "frontend"
+API_BUCKET = "api"
+EITHER_BUCKET = "either"  # listener legitimately carries both hosts (e.g. HTTP->HTTPS redirect)
 
-    Distinguishes by resource name: resources named `frontend` map to the
-    frontend host; resources named `layer-apis` map to the API host. Other
-    resources are skipped (they are not host-bearing routing resources we
-    govern here).
+# Map resource-name suffix -> expected bucket. Used to derive which
+# host bucket a host-bearing resource belongs to.
+NAME_TO_BUCKET: dict[str, str] = {
+    "frontend": FRONTEND_BUCKET,
+    "frontend-tls": FRONTEND_BUCKET,
+    "layer-apis": API_BUCKET,
+    "layer-apis-tls": API_BUCKET,
+}
+
+
+def _classify_listener(listener_name: str) -> str | None:
+    """Map a Gateway API listener name or Istio server port name to a bucket.
+
+    Returns:
+        FRONTEND_BUCKET / API_BUCKET / EITHER_BUCKET, or None if not classifiable.
+
+    Listener names follow the convention:
+      - `*-frontend` (e.g. `http-frontend`, `https-frontend`) -> frontend.
+      - `*-api` (e.g. `http-api`, `https-api`) -> api.
+      - bare `http` (Istio's combined HTTP->HTTPS redirect server) carries
+        both hosts and is treated as EITHER_BUCKET.
+    """
+    if not listener_name:
+        return None
+    n = listener_name.lower()
+    if n == "http":
+        return EITHER_BUCKET
+    if n.endswith("-frontend"):
+        return FRONTEND_BUCKET
+    if n.endswith("-api"):
+        return API_BUCKET
+    return None
+
+
+def _collect_host_fields(doc: dict) -> list[tuple[str, str]]:
+    """Return [(bucket, host), ...] tuples extracted from a host-bearing routing doc.
+
+    Each entry binds a host string to the bucket it is *expected* to belong to:
+      - `frontend` (must equal the frontend host from routing-host ConfigMap)
+      - `api` (must equal the API host)
+      - `either` (must equal one of the two; used for HTTP redirect listeners)
+
+    For Gateway API `Gateway` and Istio `Gateway` resources, classification is
+    derived per-listener / per-server from the listener/port name. This means a
+    swap bug (e.g. an `https-api` listener carrying the frontend host) is
+    caught, not silently accepted.
+
+    Non-host-bearing routing resources return `[]`.
     """
     name = doc.get("metadata", {}).get("name", "")
     spec = doc.get("spec", {}) or {}
     kind = doc.get("kind", "")
     group = _api_group(doc.get("apiVersion", ""))
+    bucket_for_name = NAME_TO_BUCKET.get(name)
 
-    frontend_hosts: list[str] = []
-    api_hosts: list[str] = []
+    out: list[tuple[str, str]] = []
 
-    def _hosts_for(name_: str) -> list[str]:
-        return frontend_hosts if name_ == "frontend" else api_hosts if name_ == "layer-apis" else []
-
-    target = _hosts_for(name)
-
-    # Ingress (networking.k8s.io)
     if group == "networking.k8s.io" and kind == "Ingress":
+        if bucket_for_name is None:
+            return out
         for rule in spec.get("rules", []) or []:
             if rule.get("host"):
-                target.append(rule["host"])
+                out.append((bucket_for_name, rule["host"]))
         for tls in spec.get("tls", []) or []:
             for h in tls.get("hosts", []) or []:
-                target.append(h)
+                out.append((bucket_for_name, h))
 
-    # cert-manager Certificate
     elif group == "cert-manager.io" and kind == "Certificate":
-        # Distinguish by Certificate name: frontend-tls vs layer-apis-tls
-        if name == "frontend-tls":
-            t = frontend_hosts
-        elif name == "layer-apis-tls":
-            t = api_hosts
-        else:
-            t = []
+        if bucket_for_name is None:
+            return out
         for h in spec.get("dnsNames", []) or []:
-            t.append(h)
+            out.append((bucket_for_name, h))
 
-    # Gateway API Gateway
     elif group == "gateway.networking.k8s.io" and kind == "Gateway":
-        # Listener.hostname tells us which host bucket. We just classify each
-        # listener by checking against both buckets later via the canonical
-        # ConfigMap; here we collect under a synthetic merge by listener name.
-        # Simpler: stuff every listener.hostname into both lists and let the
-        # caller verify by membership rather than identity.
         for listener in spec.get("listeners", []) or []:
             host = listener.get("hostname")
             if not host:
                 continue
-            # Put into both; the validator below tolerates this by treating
-            # "hosts must be a subset of {frontend, api}".
-            frontend_hosts.append(host)
-            api_hosts.append(host)
+            bucket = _classify_listener(listener.get("name", ""))
+            if bucket is None:
+                # Unclassifiable listener name -> accept either bucket but
+                # surface as a soft observation through EITHER_BUCKET so a
+                # rogue host still fails the {host, apiHost} check.
+                bucket = EITHER_BUCKET
+            out.append((bucket, host))
 
-    # Gateway API HTTPRoute
     elif group == "gateway.networking.k8s.io" and kind == "HTTPRoute":
+        if bucket_for_name is None:
+            return out
         for h in spec.get("hostnames", []) or []:
-            target.append(h)
+            out.append((bucket_for_name, h))
 
-    # Istio Gateway
     elif group == "networking.istio.io" and kind == "Gateway":
         for server in spec.get("servers", []) or []:
+            port_name = (server.get("port") or {}).get("name", "")
+            bucket = _classify_listener(port_name)
+            if bucket is None:
+                bucket = EITHER_BUCKET
             for h in server.get("hosts", []) or []:
-                # Same merge behavior as Gateway API: each server may carry
-                # both frontend and api hosts.
-                frontend_hosts.append(h)
-                api_hosts.append(h)
+                out.append((bucket, h))
 
-    # Istio VirtualService
     elif group == "networking.istio.io" and kind == "VirtualService":
+        if bucket_for_name is None:
+            return out
         for h in spec.get("hosts", []) or []:
-            target.append(h)
+            out.append((bucket_for_name, h))
 
-    return frontend_hosts, api_hosts
+    return out
 
 
 def _collect_backends(doc: dict) -> list[str]:
@@ -249,23 +283,24 @@ def _check_deployment(name: str, axis: str, rendered: Path) -> list[str]:
         if not host or not api_host:
             errors.append(f"{name}: routing-host ConfigMap must define 'host' and 'apiHost'")
         else:
-            valid_hosts = {host, api_host}
+            bucket_to_expected = {
+                FRONTEND_BUCKET: {host},
+                API_BUCKET: {api_host},
+                EITHER_BUCKET: {host, api_host},
+            }
             for d in docs:
                 gk = (_api_group(d.get("apiVersion", "")), d.get("kind", ""))
                 if gk not in ALL_ROUTING_KINDS:
                     continue
-                fronts, apis = _collect_host_fields(d)
-                # Every collected host must belong to the valid set. The
-                # collection logic for Gateway/IstioGateway intentionally
-                # over-reports (puts each listener host into both lists) but
-                # all listed hosts must be one of {host, apiHost}.
-                for h in set(fronts) | set(apis):
-                    if h not in valid_hosts:
+                md_name = d.get("metadata", {}).get("name", "?")
+                for bucket, observed in _collect_host_fields(d):
+                    expected = bucket_to_expected[bucket]
+                    if observed not in expected:
                         errors.append(
-                            f"{name}: host '{h}' on {gk[1]}/"
-                            f"{d.get('metadata', {}).get('name', '?')} "
-                            f"does not match routing-host ConfigMap "
-                            f"(host={host}, apiHost={api_host})"
+                            f"{name}: host '{observed}' on {gk[1]}/{md_name} "
+                            f"(bucket={bucket}) does not match routing-host "
+                            f"ConfigMap (expected one of {sorted(expected)}; "
+                            f"host={host}, apiHost={api_host})"
                         )
 
     # 5. Service-existence.
