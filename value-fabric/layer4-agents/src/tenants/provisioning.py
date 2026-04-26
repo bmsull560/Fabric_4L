@@ -15,7 +15,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from shared.audit import emit_audit_event
+from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.secrets.infisical_client import TenantSecretManager
 
 from .service import (
@@ -170,7 +170,7 @@ class TenantProvisioningService:
             state.current_step = None
 
             await emit_audit_event(
-                action="tenant_provisioned",
+                action=AuditAction.TENANT_PROVISIONED,
                 tenant_id=tenant_id,
                 details={
                     "steps_completed": [s.name for s in state.completed_steps],
@@ -187,7 +187,7 @@ class TenantProvisioningService:
             state.retryable = self._is_retryable_error(e)
 
             await emit_audit_event(
-                action="tenant_provisioning_failed",
+                action=AuditAction.TENANT_PROVISIONING_FAILED,
                 tenant_id=tenant_id,
                 details={
                     "error": str(e),
@@ -234,7 +234,7 @@ class TenantProvisioningService:
         state.completed_steps.append(ProvisioningStep.CREATE_INFISICAL_PATH)
 
         await emit_audit_event(
-            action="tenant_provisioning_step_complete",
+            action=AuditAction.TENANT_PROVISIONING_STEP_COMPLETE,
             tenant_id=tenant_model.id,
             details={"step": "CREATE_INFISICAL_PATH", "environments": list(result.keys())},
         )
@@ -267,7 +267,7 @@ class TenantProvisioningService:
         state.completed_steps.append(ProvisioningStep.SEED_DEFAULT_SECRETS)
 
         await emit_audit_event(
-            action="tenant_provisioning_step_complete",
+            action=AuditAction.TENANT_PROVISIONING_STEP_COMPLETE,
             tenant_id=tenant_model.id,
             details={"step": "SEED_DEFAULT_SECRETS", "environment": "dev"},
         )
@@ -299,7 +299,7 @@ class TenantProvisioningService:
         state.completed_steps.append(ProvisioningStep.UPDATE_TENANT_STATUS)
 
         await emit_audit_event(
-            action="tenant_status_changed",
+            action=AuditAction.TENANT_STATUS_CHANGED,
             tenant_id=tenant_model.id,
             details={
                 "old_status": tenant_model.status,
@@ -355,7 +355,7 @@ class TenantProvisioningService:
             state.error = f"Rollback partially failed: {'; '.join(rollback_errors)}"
 
         await emit_audit_event(
-            action="tenant_provisioning_rollback",
+            action=AuditAction.TENANT_PROVISIONING_ROLLBACK,
             tenant_id=tenant_model.id,
             details={
                 "completed_steps": [s.name for s in state.completed_steps],

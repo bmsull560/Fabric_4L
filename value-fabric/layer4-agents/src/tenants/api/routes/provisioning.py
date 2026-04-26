@@ -1,14 +1,23 @@
-"""Tenant provisioning status and webhook endpoints."""
+"""Tenant provisioning status and webhook endpoints.
+
+Webhook security uses HMAC-SHA256 signature verification with idempotency
+tracking to prevent duplicate processing.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
+import os
+import time
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated, require_super_admin
 
@@ -23,6 +32,12 @@ from ...service import get_tenant
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tenants/{tenant_id}/provisioning", tags=["Provisioning"])
+
+# In-memory idempotency cache (production: use Redis or DB table)
+# Maps webhook_id -> {"status": str, "tenant_id": str, "processed_at": float}
+_processed_webhooks: dict[str, dict] = {}
+_WEBHOOK_CACHE_TTL_SECONDS = 86400  # 24 hours
+_WEBHOOK_SIGNATURE_TOLERANCE_SECONDS = 300  # 5 minutes
 
 
 class ProvisioningStatusResponse(BaseModel):
@@ -49,10 +64,21 @@ class RetryProvisioningResponse(BaseModel):
 
 
 class WebhookProvisioningRequest(BaseModel):
-    """Request to trigger provisioning via webhook."""
+    """Request to trigger provisioning via webhook.
+
+    The request body is signed with HMAC-SHA256 using a shared secret.
+    The signature is passed in the X-Webhook-Signature header.
+    """
 
     tenant_id: UUID
-    webhook_token: str
+    timestamp: int = Field(
+        ...,
+        description="Unix timestamp of the request (for replay protection)",
+    )
+    metadata: dict | None = Field(
+        default=None,
+        description="Optional metadata from the external system",
+    )
 
 
 class WebhookProvisioningResponse(BaseModel):
@@ -61,6 +87,42 @@ class WebhookProvisioningResponse(BaseModel):
     message: str
     tenant_id: str
     status: str
+    webhook_id: str | None = None
+
+
+def _verify_hmac_signature(
+    payload: bytes,
+    signature: str,
+    secret: str,
+) -> bool:
+    """Verify HMAC-SHA256 signature using constant-time comparison.
+
+    Args:
+        payload: Raw request body bytes
+        signature: Hex-encoded HMAC-SHA256 signature from header
+        secret: Shared webhook secret
+
+    Returns:
+        True if signature is valid
+    """
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        payload,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(signature, expected)
+
+
+def _cleanup_expired_webhooks() -> None:
+    """Remove expired entries from the idempotency cache."""
+    now = time.time()
+    expired = [
+        wid
+        for wid, data in _processed_webhooks.items()
+        if now - data.get("processed_at", 0) > _WEBHOOK_CACHE_TTL_SECONDS
+    ]
+    for wid in expired:
+        del _processed_webhooks[wid]
 
 
 @router.get("/status", response_model=ProvisioningStatusResponse)
@@ -166,55 +228,138 @@ async def retry_provisioning(
     status_code=status.HTTP_202_ACCEPTED,
 )
 async def webhook_provisioning(
-    request: WebhookProvisioningRequest,
+    tenant_id: UUID,
+    http_request: Request,
+    x_webhook_signature: str = Header(
+        ...,
+        alias="X-Webhook-Signature",
+        description="HMAC-SHA256 hex digest of the request body",
+    ),
+    x_webhook_id: str = Header(
+        ...,
+        alias="X-Webhook-ID",
+        description="Unique webhook delivery ID for idempotency",
+    ),
     # SECURITY: Webhook uses get_db intentionally — external systems
-    # authenticate via webhook token, not JWT.
+    # authenticate via HMAC signature, not JWT.
     db: AsyncSession = Depends(get_db),
 ) -> WebhookProvisioningResponse:
     """Trigger provisioning via webhook (external systems).
 
-    This endpoint allows external systems to trigger tenant provisioning
-    via a webhook call. Requires a valid webhook token for authentication.
+    Security:
+    - HMAC-SHA256 signature verification using shared secret
+    - Timestamp validation to prevent replay attacks (5 min tolerance)
+    - Idempotency via X-Webhook-ID header (24h dedup window)
 
-    The webhook token should be configured in environment variables:
-    PROVISIONING_WEBHOOK_TOKEN
+    The webhook secret should be configured in environment variables:
+    PROVISIONING_WEBHOOK_SECRET
     """
-    import os
-
-    # Verify webhook token
-    expected_token = os.getenv("PROVISIONING_WEBHOOK_TOKEN", "")
-    if not expected_token:
-        logger.error("PROVISIONING_WEBHOOK_TOKEN not configured")
+    # --- Step 1: Verify HMAC signature ---
+    webhook_secret = os.getenv("PROVISIONING_WEBHOOK_SECRET", "")
+    if not webhook_secret:
+        logger.error("PROVISIONING_WEBHOOK_SECRET not configured")
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
             detail="Webhook provisioning not configured",
         )
 
-    if request.webhook_token != expected_token:
-        logger.warning("Invalid webhook token received")
+    body = await http_request.body()
+    if not _verify_hmac_signature(body, x_webhook_signature, webhook_secret):
+        logger.warning(
+            "Invalid webhook signature for webhook_id=%s tenant_id=%s",
+            x_webhook_id,
+            tenant_id,
+        )
+        await emit_audit_event(
+            action=AuditAction.TENANT_PROVISIONED_WEBHOOK,
+            outcome=AuditOutcome.DENIED,
+            tenant_id=tenant_id,
+            details={
+                "webhook_id": x_webhook_id,
+                "reason": "invalid_signature",
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid webhook token",
+            detail="Invalid webhook signature",
         )
 
-    # Verify tenant exists
-    tenant = await get_tenant(db, request.tenant_id)
+    # --- Step 2: Parse and validate payload ---
+    import json
+
+    try:
+        payload = WebhookProvisioningRequest(**json.loads(body))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid webhook payload: {e}",
+        )
+
+    # Validate timestamp (replay protection)
+    now = int(time.time())
+    if abs(now - payload.timestamp) > _WEBHOOK_SIGNATURE_TOLERANCE_SECONDS:
+        logger.warning(
+            "Webhook timestamp out of tolerance: webhook_id=%s delta=%ds",
+            x_webhook_id,
+            abs(now - payload.timestamp),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Webhook timestamp expired or too far in the future",
+        )
+
+    # --- Step 3: Idempotency check ---
+    _cleanup_expired_webhooks()
+    if x_webhook_id in _processed_webhooks:
+        cached = _processed_webhooks[x_webhook_id]
+        logger.info("Duplicate webhook_id=%s, returning cached result", x_webhook_id)
+        return WebhookProvisioningResponse(
+            message="Already processed (idempotent)",
+            tenant_id=cached["tenant_id"],
+            status=cached["status"],
+            webhook_id=x_webhook_id,
+        )
+
+    # --- Step 4: Verify tenant exists ---
+    tenant = await get_tenant(db, payload.tenant_id)
     if not tenant:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tenant not found",
         )
 
-    # Trigger provisioning asynchronously
-    # In production, this should be queued to a background task (Celery)
-    # For now, we return immediately and provisioning happens in background
-    state = await provision_tenant(db, request.tenant_id)
+    # --- Step 5: Execute provisioning ---
+    state = await provision_tenant(db, payload.tenant_id)
+
+    # Cache result for idempotency
+    _processed_webhooks[x_webhook_id] = {
+        "status": state.status.value,
+        "tenant_id": str(payload.tenant_id),
+        "processed_at": time.time(),
+    }
+
+    # Emit audit event
+    await emit_audit_event(
+        action=AuditAction.TENANT_PROVISIONED_WEBHOOK,
+        outcome=(
+            AuditOutcome.SUCCESS
+            if state.status == ProvisioningStatus.COMPLETED
+            else AuditOutcome.FAILURE
+        ),
+        tenant_id=payload.tenant_id,
+        details={
+            "webhook_id": x_webhook_id,
+            "provisioning_status": state.status.value,
+            "metadata": payload.metadata,
+        },
+    )
 
     if state.status == ProvisioningStatus.COMPLETED:
         return WebhookProvisioningResponse(
             message="Provisioning completed",
-            tenant_id=str(request.tenant_id),
+            tenant_id=str(payload.tenant_id),
             status=state.status.value,
+            webhook_id=x_webhook_id,
         )
     elif state.status == ProvisioningStatus.FAILED:
         raise HTTPException(
@@ -223,11 +368,13 @@ async def webhook_provisioning(
                 "message": "Provisioning failed",
                 "error": state.error,
                 "retryable": state.retryable,
+                "webhook_id": x_webhook_id,
             },
         )
     else:
         return WebhookProvisioningResponse(
             message="Provisioning initiated",
-            tenant_id=str(request.tenant_id),
+            tenant_id=str(payload.tenant_id),
             status=state.status.value,
+            webhook_id=x_webhook_id,
         )

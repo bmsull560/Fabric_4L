@@ -41,6 +41,15 @@ class AuditAction(str, Enum):
     AGENT_EXECUTION = "agent_execution"
     # Task 2: Multi-Tenancy Hardening - Super-admin bypass audit
     CROSS_TENANT_ACCESS = "cross_tenant_access"
+    # Phase 2: Provisioning pipeline audit actions
+    TENANT_PROVISIONED = "tenant_provisioned"
+    TENANT_PROVISIONING_FAILED = "tenant_provisioning_failed"
+    TENANT_PROVISIONING_STEP_COMPLETE = "tenant_provisioning_step_complete"
+    TENANT_PROVISIONING_ROLLBACK = "tenant_provisioning_rollback"
+    TENANT_PROVISIONED_WEBHOOK = "tenant_provisioned_webhook"
+    TENANT_STATUS_CHANGED = "tenant_status_changed"
+    INFISICAL_PATH_CREATED = "infisical_path_created"
+    INFISICAL_SECRET_SEEDED = "infisical_secret_seeded"
 
 
 class AuditOutcome(str, Enum):
