@@ -10,6 +10,7 @@ resources:
   - ../../envs/staging
   - ../../routing/nginx
   - hostname-config.yaml
+  - oauth2-proxy-config.yaml
 
 replacements:
   - source:
@@ -34,3 +35,46 @@ replacements:
         fieldPaths:
           - spec.rules.0.host
           - spec.tls.0.hosts.0
+  # Replace ingress namespace in NetworkPolicy
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.ingressNamespace
+    targets:
+      - select:
+          kind: NetworkPolicy
+          name: frontend-policy
+        fieldPaths:
+          - spec.ingress.0.from.0.namespaceSelector.matchLabels.kubernetes\.io/metadata\.name
+      - select:
+          kind: NetworkPolicy
+          name: oauth2-proxy
+        fieldPaths:
+          - spec.ingress.0.from.0.namespaceSelector.matchLabels.kubernetes\.io/metadata\.name
+  # Replace issuer email in ClusterIssuers
+  - source:
+      kind: ConfigMap
+      name: routing-host
+      fieldPath: data.issuerEmail
+    targets:
+      - select:
+          kind: ClusterIssuer
+          name: letsencrypt-prod
+        fieldPaths:
+          - spec.acme.email
+      - select:
+          kind: ClusterIssuer
+          name: letsencrypt-staging
+        fieldPaths:
+          - spec.acme.email
+  # Replace oauth2-proxy allowed domains
+  - source:
+      kind: ConfigMap
+      name: oauth2-proxy-oidc
+      fieldPath: data.allowed-domains
+    targets:
+      - select:
+          kind: Deployment
+          name: oauth2-proxy
+        fieldPaths:
+          - spec.template.spec.containers.0.env.5.value

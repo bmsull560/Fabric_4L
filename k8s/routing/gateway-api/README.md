@@ -1,12 +1,9 @@
-# Routing Stack: Gateway API (Conditionally Supported)
+# Routing Stack: Gateway API (EXPERIMENTAL)
 
-> **Status: Conditionally Supported.** This routing variant is ready for
-> production use when the required cluster prerequisites are met. It is **not**
-> the default production deployment path (use `prod-nginx` for that).
+> **Status: EXPERIMENTAL.** This routing variant is **NOT** production-ready.
+> It is missing critical security controls and remains render-only in CI.
 >
-> **Prerequisites Required:** Gateway API CRDs v1.0+, a GatewayClass controller,
-> and cert-manager with Gateway API support must be installed by the cluster
-> operator before deployment.
+> **Use `prod-nginx` for production deployments.**
 
 ## What this stack defines
 
@@ -15,6 +12,63 @@
 - `gateway.networking.k8s.io/v1` `HTTPRoute` resources binding listeners to
   Services rendered by the env overlay.
 - cert-manager `Certificate` resources providing `frontend-tls` and `layer-apis-tls`.
+
+## Security Gaps (NOT IMPLEMENTED)
+
+The following security controls are **NOT** implemented in this stack:
+
+### Edge Authentication: NOT IMPLEMENTED
+
+Gateway API does not have a standardized external auth mechanism. Options:
+- **Envoy Gateway**: Use `SecurityPolicy` with `extAuth` (requires Envoy Gateway v1.0+)
+- **Istio Gateway API**: Use `AuthorizationPolicy` with JWT validation
+- **Cilium**: Use Cilium Network Policy with L7 rules
+
+**Status**: Documented pattern only. Production requires implementation.
+
+### Rate Limiting: NOT IMPLEMENTED
+
+Options:
+- **Envoy Gateway**: Use `RateLimitFilter` with Redis backend
+- **Cilium**: Use bandwidth rate limiting at CNI level
+- **Controller-specific**: Each GatewayClass controller has different rate limiting
+
+**Status**: Documented pattern only. Production requires implementation.
+
+### Security Headers: NOT IMPLEMENTED
+
+Gateway API does not have standardized header manipulation. Options:
+- **Envoy Gateway**: Use `ResponseHeaderModifier` filter
+- **Istio Gateway API**: Use EnvoyFilter or VirtualService overlay
+
+### NetworkPolicy: NOT IMPLEMENTED
+
+No hardened NetworkPolicy included. Must add:
+- Allow from gateway controller namespace only
+- Explicit ingress namespace selector
+
+### CORS Enforcement: NOT IMPLEMENTED
+
+CORS must be enforced at application layer or via controller-specific policy.
+
+### WAF / Input Validation: NOT IMPLEMENTED
+
+No WAF rules at Gateway API layer. Requires:
+- External WAF (Cloudflare, AWS WAF)
+- OR Envoy Gateway WASM filters (experimental)
+
+## Production Readiness Checklist
+
+Before promoting from EXPERIMENTAL:
+- [ ] Implement edge authentication (external auth or JWT validation)
+- [ ] Implement rate limiting (per-client, per-path)
+- [ ] Add security headers (HSTS, X-Frame-Options, etc.)
+- [ ] Harden NetworkPolicy (remove blanket namespace allowances)
+- [ ] Configure WAF or document external WAF prerequisite
+- [ ] Validate TLS 1.0/1.1 rejection
+- [ ] Add CI gates for all security controls
+
+## Required Cluster Prerequisites
 
 This stack does **not** import `../../base`. It is composed under
 `k8s/deployments/prod-gateway-api/`.

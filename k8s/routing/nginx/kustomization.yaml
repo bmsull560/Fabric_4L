@@ -13,3 +13,5 @@ kind: Kustomization
 resources:
   - clusterissuer.yaml
   - ingress.yaml
+  - oauth2-proxy.yaml
+  - routing-config.yaml

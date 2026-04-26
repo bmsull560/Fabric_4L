@@ -11,15 +11,12 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Allow from ingress controllers (adjust namespace/labels as needed)
+    # Allow from ingress controller namespace only
+    # Configurable via Kustomize replacement for __INGRESS_NAMESPACE__
     - from:
         - namespaceSelector:
             matchLabels:
-              app.kubernetes.io/name: ingress-nginx
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: ingress-nginx
-        - namespaceSelector: {}  # Fallback: allow from any namespace (common ingress controllers)
+              kubernetes.io/metadata.name: __INGRESS_NAMESPACE__
       ports:
         - protocol: TCP
           port: 3000

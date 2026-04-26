@@ -120,6 +120,60 @@ jobs:
             --deployment prod-gateway-api:gateway-api \
             --deployment prod-istio:istio
 
+      - name: Security checks - placeholder emails
+        run: |
+          echo "Checking for placeholder emails in production/staging manifests..."
+          if grep -r "platform@example.com" /tmp/k8s-renders/prod*.yaml /tmp/k8s-renders/staging*.yaml 2>/dev/null; then
+            echo "FAIL: Placeholder email 'platform@example.com' found in rendered manifests"
+            exit 1
+          fi
+          echo "OK: No placeholder emails found"
+
+      - name: Security checks - oauth2-proxy placeholders
+        run: |
+          echo "Checking for placeholder auth values..."
+          for pattern in "__OIDC_" "CHANGE_ME" "YOUR_CLIENT_ID" "replace-me"; do
+            if grep -ri "$pattern" /tmp/k8s-renders/prod*.yaml /tmp/k8s-renders/staging*.yaml 2>/dev/null; then
+              echo "FAIL: Placeholder auth value '$pattern' found in rendered manifests"
+              exit 1
+            fi
+          done
+          echo "OK: No placeholder auth values found"
+
+      - name: Security checks - rate limiting and HSTS
+        run: |
+          echo "Checking for rate limiting and HSTS in prod/staging nginx..."
+          for manifest in /tmp/k8s-renders/prod-nginx.yaml /tmp/k8s-renders/staging-nginx.yaml; do
+            if [ ! -f "$manifest" ]; then
+              echo "SKIP: $manifest not found"
+              continue
+            fi
+            if ! grep -q "limit-rps" "$manifest"; then
+              echo "FAIL: Rate limiting (limit-rps) not found in $manifest"
+              exit 1
+            fi
+            if ! grep -q "Strict-Transport-Security" "$manifest"; then
+              echo "FAIL: HSTS header not found in $manifest"
+              exit 1
+            fi
+            echo "OK: $manifest has rate limiting and HSTS"
+          done
+
+      - name: Security checks - NetworkPolicy blanket ingress
+        run: |
+          echo "Checking for blanket namespace ingress in NetworkPolicies..."
+          for manifest in /tmp/k8s-renders/prod*.yaml /tmp/k8s-renders/staging*.yaml; do
+            if [ ! -f "$manifest" ]; then
+              continue
+            fi
+            # Check for namespaceSelector: {} which allows all namespaces
+            if grep -A1 'namespaceSelector:' "$manifest" | grep -q '{}'; then
+              echo "FAIL: Blanket namespace ingress (namespaceSelector: {}) found in $manifest"
+              exit 1
+            fi
+          done
+          echo "OK: No blanket namespace ingress found"
+
       - name: Client dry-run precheck (supported deployments)
         run: |
           kubectl apply --dry-run=client -f /tmp/k8s-renders/dev-nginx.yaml > /dev/null
