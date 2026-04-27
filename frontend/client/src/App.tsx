@@ -69,6 +69,10 @@ const InteractiveBusinessCase = lazy(
   () => import("./pages/InteractiveBusinessCase")
 );
 const DecisionTrace = lazy(() => import("./pages/DecisionTrace"));
+const GovernanceEvidence = lazy(() => import("./pages/GovernanceEvidence"));
+const GovernanceCompliance = lazy(() => import("./pages/GovernanceCompliance"));
+const GovernanceAuditLog = lazy(() => import("./pages/GovernanceAuditLog"));
+const GovernanceChangeHistory = lazy(() => import("./pages/GovernanceChangeHistory"));
 const ValuePacks = lazy(() => import("./pages/ValuePacks"));
 const Accounts = lazy(() => import("./pages/Accounts"));
 const Integrations = lazy(() => import("./pages/Integrations"));
@@ -703,7 +707,7 @@ function Router() {
       </Route>
       <Route path="/governance/evidence">
         <AuthenticatedRoute {...tierProps}>
-          <DecisionTrace />
+          <GovernanceEvidence />
         </AuthenticatedRoute>
       </Route>
       <Route path="/governance/provenance">
@@ -718,7 +722,7 @@ function Router() {
       </Route>
       <Route path="/governance/compliance">
         <AuthenticatedRoute {...tierProps} requiredTier="advanced">
-          <DecisionTrace />
+          <GovernanceCompliance />
         </AuthenticatedRoute>
       </Route>
       <Route path="/governance/benchmarks">
@@ -731,12 +735,12 @@ function Router() {
       </Route>
       <Route path="/governance/audit/log">
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
-          <DecisionTrace />
+          <GovernanceAuditLog />
         </AuthenticatedRoute>
       </Route>
       <Route path="/governance/audit/changes">
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
-          <DecisionTrace />
+          <GovernanceChangeHistory />
         </AuthenticatedRoute>
       </Route>
       <Route path="/governance/health">
