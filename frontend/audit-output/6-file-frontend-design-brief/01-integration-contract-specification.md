@@ -262,7 +262,15 @@ Each hook in the mapping registry declares its error boundary level. Data-fetchi
 
 Retry behavior varies by endpoint category to prevent unnecessary backend load and respect idempotency guarantees.
 
-Idempotent read endpoints (GET, HEAD, OPTIONS on all paths except streams) receive 3 retry attempts with exponential backoff: 1s, 2s, 4s delay. This category encompasses approximately 140 of 244 endpoints, including all list, detail, and search endpoints. Graph query endpoints (`POST /v1/query/graph`, `POST /v1/query`) also fall into this category because they do not modify server state.
+Idempotent read endpoints (GET, HEAD, OPTIONS on all paths except streams) receive 3 retry attempts with exponential backoff: 1s, 2s, 4s delay.
+
+**Endpoint count scope (source-backed):**
+- **Layer 4 only (`value-fabric/layer4-agents/src/api/`)**: **114 endpoints**.
+- **Cross-layer platform total (Layers 1-6 API packages)**: **335 endpoints**.
+
+**Counting method:** parsed Python route decorators and counted FastAPI-style HTTP method decorators (`@<router_name>.get/post/put/patch/delete/options/head`) in API modules. For Layer 4, the scan scope was exactly `value-fabric/layer4-agents/src/api/`; for the cross-layer total, the scan covered each layer's primary API package (`layer1-ingestion/src/api`, `layer2-extraction/src/layer2_extraction/api`, `layer3-knowledge/src/api`, `layer4-agents/src/api`, `layer5-ground-truth/src/layer5_ground_truth/api`, `layer6-benchmarks/src/api`).
+
+This category covers read/list/detail/search routes, and graph query endpoints (`POST /v1/query/graph`, `POST /v1/query`) remain classified as idempotent reads because they do not modify server state.
 
 Mutation endpoints (POST, PUT, PATCH, DELETE) receive 1 retry attempt after 2 seconds. This conservative policy prevents duplicate resource creation when a POST times out after the server has already processed it. Approximately 80 endpoints fall into this category. Mutations failing with 409 CONFLICT do not retry; the frontend fetches current state and offers merge resolution.
 
