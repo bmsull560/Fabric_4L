@@ -52,7 +52,7 @@ function ProspectSetupWithNav() {
 
 // ── Route-level code splitting ────────────────────────────────────────────────
 // Existing pages (preserved)
-const LandingPage = lazy(() => import("./pages/LandingPage"));
+// const LandingPage = lazy(() => import("./pages/LandingPage"));
 const CommandCenter = lazy(() => import("./pages/CommandCenter"));
 const ValueNarrativeHome = lazy(() => import("./pages/ValueNarrativeHome"));
 const ExtractionEngine = lazy(() => import("./pages/ExtractionEngine"));
@@ -325,7 +325,7 @@ function Router() {
           PUBLIC ROUTES — No AppShell
           ═══════════════════════════════════════════════════════════════ */}
       <Route path="/">
-        {isAuthenticated ? <Navigate to="/home" /> : <LandingPage />}
+        {isAuthenticated ? <Navigate to="/home" /> : <Navigate to="/login" />}
       </Route>
       <Route path="/login">
         <Login />
