@@ -134,7 +134,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from .canonical import canonical_hash
+from shared.crypto.canonical import canonical_hash
 from .models import AuditEvent
 
 
@@ -202,6 +202,40 @@ class LedgerCommitHandler:
 - If enabled, instantiate `LedgerCommitHandler` and add it to the global emitter during startup.
 - Ensure `validate_audit_config()` verifies Redis connectivity when `AUDIT_LEDGER_MODE=enabled`.
 
+### 1.3a Emitter API Extension
+
+**Gap:** `shared/audit/emitter.py` `emit_audit_event()` does not accept a `chain_id` parameter, which is required for ledger tracking.
+
+**Action:**
+Extend the `emit_audit_event()` signature to accept `chain_id` and pass it to the `AuditEvent` model.
+
+```python
+# shared/audit/emitter.py (signature update)
+async def emit_audit_event(
+    action: AuditAction,
+    outcome: AuditOutcome,
+    resource_type: str,
+    resource_id: str,
+    tenant_id: UUID | None = None,
+    actor_id: UUID | None = None,
+    request_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    chain_id: str | None = None,  # New parameter
+) -> None:
+    event = AuditEvent(
+        action=action,
+        outcome=outcome,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        request_id=request_id,
+        details=details or {},
+        chain_id=chain_id,
+    )
+    # ... existing dispatch logic ...
+```
+
 ### 1.4 Tool Invocation Records in ToolRegistry
 
 **Gap:** `value-fabric/layer4-agents/src/tools/registry.py` `ToolRegistry.execute()` logs tenant context but emits no structured audit event.
@@ -220,7 +254,7 @@ async def execute(self, tool_name: str, input_dict: dict[str, Any]) -> dict[str,
     # Hash the request before execution
     request_hash = canonical_hash({"tool_name": tool_name, "input": input_dict})
 
-    start_time = asyncio.get_event_loop().time()
+    start_time = asyncio.get_running_loop().time()
     outcome = "success"
     response_hash: str | None = None
     error_detail: str | None = None
@@ -234,7 +268,7 @@ async def execute(self, tool_name: str, input_dict: dict[str, Any]) -> dict[str,
         error_detail = str(exc)
         raise
     finally:
-        elapsed_ms = int((asyncio.get_event_loop().time() - start_time) * 1000)
+        elapsed_ms = int((asyncio.get_running_loop().time() - start_time) * 1000)
 
         # Emit only if ledger mode enabled (non-blocking)
         if os.getenv("AUDIT_LEDGER_MODE") == "enabled":
@@ -328,7 +362,7 @@ Define a machine-readable ABOM JSON Schema and create manifests for each existin
   "required": ["abom_version", "agent_id", "agent_type", "allowed_tools", "identity", "controls"],
   "properties": {
     "abom_version": { "type": "string", "const": "1.0.0" },
-    "agent_id": { "type": "string", "format": "uuid" },
+    "agent_id": { "type": "string", "description": "Format: <agent_type>-<8-char-prefix>" },
     "agent_type": { "type": "string" },
     "description": { "type": "string" },
     "allowed_tools": {
@@ -494,7 +528,14 @@ class PolicyEngineClient:
         tenant_id = input_data.get("tenant_id")
         if not tenant_id:
             return PolicyDecision(allowed=False, reason="No tenant context in policy input")
-        return PolicyDecision(allowed=True, reason="Local fallback: tenant present")
+            
+        # Deny-all for high-privilege agents during OPA unavailability
+        abom = input_data.get("abom", {})
+        controls = abom.get("controls", {})
+        if controls.get("autonomy_tier") == "high_privilege":
+            return PolicyDecision(allowed=False, reason="OPA unavailable: high_privilege tier requires explicit OPA allow")
+            
+        return PolicyDecision(allowed=True, reason="Local fallback: tenant present and tier is not high_privilege")
 ```
 
 **New Rego bundle:** `k8s/policy/agent-runtime-policies.rego`
@@ -539,9 +580,11 @@ Implement an `InvariantEvaluator` that checks non-overridable limits *after* pol
 # value-fabric/layer4-agents/src/governance/invariant_bundle.py
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from shared.crypto.canonical import canonical_hash
+from ..governance.abom import AgentBillOfMaterials
 
 
 class InvariantViolation(Exception):
@@ -840,6 +883,9 @@ class MemoryGateway:
             relationship_count=len(result.relationships),
             trace_id=trace_id,
         )
+        # Note: Using create_task for fire-and-forget emission.
+        # In a production shutdown scenario, ensure the event loop waits for pending tasks
+        # or use a dedicated background worker to prevent silent loss.
         asyncio.create_task(
             emit_audit_event(
                 action=AuditAction.MEMORY_ACCESS,
@@ -932,7 +978,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from shared.audit.emitter import emit_audit_event
@@ -971,7 +1017,7 @@ class AgentSnapshot:
 class ReplayTrace:
     trace_id: str
     tenant_id: str | None = None
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     agent: AgentSnapshot | None = None
     tools: list[ToolSnapshot] = field(default_factory=list)
     memories: list[MemorySnapshot] = field(default_factory=list)
@@ -1021,17 +1067,16 @@ class ReplayRecorder:
             agent_type=self.trace.agent.agent_type if self.trace.agent else None,
             abom_hash=self.trace.agent.abom_hash if self.trace.agent else None,
         )
-        asyncio.create_task(
-            emit_audit_event(
-                action=AuditAction.REPLAY_SNAPSHOT,
-                outcome=AuditOutcome.SUCCESS,
-                resource_type="replay_trace",
-                resource_id=self.trace.trace_id,
-                tenant_id=self.trace.tenant_id,
-                request_id=self.trace.trace_id,
-                details=record.model_dump(),
-                chain_id=f"{self.trace.tenant_id or 'global'}:replay" if self.trace.tenant_id else None,
-            )
+        # Await emission to prevent silent loss on shutdown
+        await emit_audit_event(
+            action=AuditAction.REPLAY_SNAPSHOT,
+            outcome=AuditOutcome.SUCCESS,
+            resource_type="replay_trace",
+            resource_id=self.trace.trace_id,
+            tenant_id=self.trace.tenant_id,
+            request_id=self.trace.trace_id,
+            details=record.model_dump(),
+            chain_id=f"{self.trace.tenant_id or 'global'}:replay" if self.trace.tenant_id else None,
         )
         return snapshot_hash
 ```
@@ -1055,8 +1100,12 @@ async def run(self, task: dict[str, Any], context: dict[str, Any] | None = None)
         ))
 
     # ... existing run logic ...
-    # After tool execution inside execute(), record tool snapshots via hook
-    # After memory retrieval, record memory snapshots via hook
+    # Store recorder in context so gateways can access it
+    ctx["replay_recorder"] = recorder
+    
+    # Gateways (ToolGateway, MemoryGateway) will append snapshots to the recorder
+    # found in the context, avoiding the need for hooks in all 8 agent implementations.
+    
     # At completion:
     await recorder.commit()
     return result
@@ -1151,9 +1200,9 @@ contracts/jsonschema/abom.json
 contracts/jsonschema/memory-access-record.json
 contracts/jsonschema/replay-snapshot-record.json
 contracts/jsonschema/policy-decision-record.json
-layer4-agents/aboms/signal_detection.json
-layer4-agents/aboms/taxonomy.json
-layer4-agents/aboms/orchestration_controller.json
+value-fabric/layer4-agents/aboms/signal_detection.json
+value-fabric/layer4-agents/aboms/taxonomy.json
+value-fabric/layer4-agents/aboms/orchestration_controller.json
 k8s/policy/agent-runtime-policies.rego
 tests/shared/crypto/test_canonical.py
 tests/shared/audit/test_ledger_chain.py
@@ -1175,7 +1224,6 @@ value-fabric/layer4-agents/src/agents/base.py
 value-fabric/layer3-knowledge/src/retrieval/graph_rag.py
 value-fabric/layer4-agents/src/services/export_provenance.py
 packages/platform-contract/CONTRACT.md
-packages/platform-contract/DEPRECATION_MAP.md
 docs/platform-contract/DEPRECATION_MAP.md
 ```
 
