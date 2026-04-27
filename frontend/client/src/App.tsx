@@ -1178,4 +1178,5 @@ function App() {
   );
 }
 
+export { Router as AppRouter };
 export default App;

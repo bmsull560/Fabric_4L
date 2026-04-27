@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { Download, Loader2 } from "lucide-react";
 import {
@@ -6,18 +6,14 @@ import {
   Btn,
   Toolbar,
   SectionCard,
-  StatusBadge,
   DataTable,
 } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  useProvenanceTrail,
-  useAuditLogs,
-  useExportProvenance,
-  type AuditLogEntry,
-  type AuditLogFilter,
-} from "@/hooks/useProvenance";
-import { useBusinessCase } from "@/hooks/useDocuments";
+  useL5MaturityLadder,
+  useL5TruthAudit,
+  useL5Truths,
+} from "@/hooks/useL5Governance";
 
 interface GovernanceTraceViewProps {
   breadcrumbSection: string;
@@ -26,7 +22,8 @@ interface GovernanceTraceViewProps {
   emptyStateSubtitle: string;
 }
 
-function formatTimestamp(timestamp: string): string {
+function formatTimestamp(timestamp?: string): string {
+  if (!timestamp) return "—";
   const date = new Date(timestamp);
   return date.toLocaleTimeString([], {
     hour: "2-digit",
@@ -42,132 +39,102 @@ export default function GovernanceTraceView({
   emptyStateSubtitle,
 }: GovernanceTraceViewProps) {
   const [searchParams] = useSearchParams();
-  const entityIdFromUrl = searchParams.get("entityId") || searchParams.get("caseId");
-  const caseIdFromUrl = searchParams.get("caseId");
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
-    entityIdFromUrl
-  );
-  const [sourceFilter, setSourceFilter] = useState<AuditLogFilter["source"]>("all");
+  const truthIdFromUrl = searchParams.get("truthId") || searchParams.get("caseId");
+  const statusFromUrl = searchParams.get("status") || undefined;
+  const [selectedTruthId, setSelectedTruthId] = useState<string | null>(truthIdFromUrl);
+  const [isStaleOnly, setIsStaleOnly] = useState<boolean>(false);
 
-  const { data: auditLogs, isLoading: isLoadingAudit } = useAuditLogs({
-    source: sourceFilter,
+  const { data: truths, isLoading: isLoadingTruths, error: truthsError } = useL5Truths({
+    status: statusFromUrl,
+    is_stale: isStaleOnly ? true : undefined,
   });
-  const { data: provenanceTrail, isLoading: isLoadingProvenance } =
-    useProvenanceTrail(selectedEntityId);
-  const exportMutation = useExportProvenance();
-  const { data: governanceCase } = useBusinessCase(caseIdFromUrl);
+  const { data: maturityLadder } = useL5MaturityLadder();
+  const { data: auditEntries, isLoading: isLoadingAudit, error: auditError } = useL5TruthAudit(selectedTruthId);
 
-  const isLoading = isLoadingAudit || (selectedEntityId && isLoadingProvenance);
+  const selectedTruth = useMemo(
+    () => truths?.items.find(item => item.truth_id === selectedTruthId),
+    [truths?.items, selectedTruthId]
+  );
 
-  const handleExportProvO = async () => {
-    if (!selectedEntityId) return;
-    try {
-      await exportMutation.mutateAsync({ entityId: selectedEntityId, format: "prov-o" });
-    } catch (error) {
-      console.error("Export failed:", error);
-    }
-  };
+  const maturityByLevel = useMemo(() => {
+    return new Map((maturityLadder || []).map(level => [level.level, level.name]));
+  }, [maturityLadder]);
 
-  const handleViewEntity = (entityId: string) => {
-    setSelectedEntityId(entityId);
-  };
-
-  const auditEntries: AuditLogEntry[] = auditLogs?.entries || [];
-
-  const auditRows = auditEntries.map(entry => [
+  const truthRows = (truths?.items || []).map(item => [
     <button
-      key="id"
-      onClick={() => entry.entity_id && handleViewEntity(entry.entity_id)}
+      key="truth-id"
+      onClick={() => setSelectedTruthId(item.truth_id)}
       className={`font-mono text-[11px] ${
-        selectedEntityId === entry.entity_id
+        selectedTruthId === item.truth_id
           ? "text-blue-700 font-bold"
           : "text-neutral-600 hover:text-blue-600"
       }`}
     >
-      {entry.id.slice(0, 12)}
+      {item.truth_id.slice(0, 12)}
     </button>,
-    <span key="entity" className="font-semibold text-neutral-800">
-      {entry.entity_type || "System"}
+    <span key="claim" className="text-neutral-700">
+      {item.claim_type || "unknown"}
     </span>,
-    <span key="action" className="text-neutral-600">
-      {entry.action}
+    <span key="status" className="text-neutral-700">
+      {item.status}
     </span>,
-    <span key="agent" className="text-neutral-500 text-[11px] font-mono">
-      {entry.agent}
+    <span key="maturity" className="text-neutral-700">
+      {typeof item.maturity_level === "number"
+        ? `${item.maturity_level} · ${maturityByLevel.get(item.maturity_level) || "Level"}`
+        : "—"}
     </span>,
-    <span key="ts" className="text-neutral-400 text-[11px] font-mono">
-      {formatTimestamp(entry.timestamp)}
+    <span key="freshness" className="text-neutral-700">
+      {item.freshness || (item.is_stale ? "stale" : "fresh")}
     </span>,
-    <StatusBadge
-      key="status"
-      status={entry.event_type === "error" ? "failed" : "completed"}
-    />,
+    <span key="updated" className="text-neutral-500 text-[11px] font-mono">
+      {formatTimestamp(item.updated_at)}
+    </span>,
     <div key="actions" className="flex gap-2">
-      {entry.entity_id && (
-        <button
-          onClick={() => handleViewEntity(entry.entity_id!)}
-          className="text-blue-600 text-[11px] hover:underline"
-        >
-          View
-        </button>
-      )}
+      <button
+        onClick={() => setSelectedTruthId(item.truth_id)}
+        className="text-blue-600 text-[11px] hover:underline"
+      >
+        View
+      </button>
     </div>,
   ]);
 
-  const provenanceSteps = provenanceTrail?.steps || [];
+  const auditRows = (auditEntries || []).map(entry => [
+    <span key="audit-id" className="font-mono text-[11px] text-neutral-600">
+      {entry.id.slice(0, 12)}
+    </span>,
+    <span key="action" className="text-neutral-700">{entry.action}</span>,
+    <span key="actor" className="text-neutral-500">{entry.actor || "system"}</span>,
+    <span key="timestamp" className="text-neutral-500 text-[11px] font-mono">
+      {formatTimestamp(entry.timestamp)}
+    </span>,
+  ]);
+
+  const isLoading = isLoadingTruths || (selectedTruthId && isLoadingAudit);
 
   if (isLoading) {
     return (
       <div className="p-6 max-w-5xl">
         <div className="mb-5">
           <Skeleton className="h-4 w-48 mb-2" />
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <Skeleton className="h-8 w-48 mb-1" />
-              <Skeleton className="h-4 w-64" />
-            </div>
-            <Skeleton className="h-8 w-32" />
-          </div>
+          <Skeleton className="h-8 w-48 mb-1" />
+          <Skeleton className="h-4 w-64" />
         </div>
-
         <Toolbar>
           <Skeleton className="h-8 w-24" />
           <Skeleton className="h-8 w-28" />
-          <Skeleton className="h-8 w-24" />
         </Toolbar>
-
         <div className="flex gap-5">
           <div className="flex-1">
-            <SectionCard title="Audit Log" noPad>
-              <div className="flex bg-neutral-50 border-b border-neutral-200 px-4 py-2.5">
-                {["Trace ID", "Entity", "Action", "Agent", "Timestamp", "Status", "Actions"].map(
-                  (_, i) => (
-                    <Skeleton key={i} className="h-3 w-16 mr-4" />
-                  )
-                )}
-              </div>
-              <div className="divide-y divide-neutral-100">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <div key={i} className="flex items-center px-4 py-3">
-                    <Skeleton className="h-3 w-20 mr-4" />
-                    <Skeleton className="h-3 w-16 mr-4" />
-                    <Skeleton className="h-3 w-20 mr-4" />
-                    <Skeleton className="h-3 w-24 mr-4" />
-                    <Skeleton className="h-3 w-16 mr-4" />
-                    <Skeleton className="h-5 w-16 mr-4 rounded-full" />
-                    <Skeleton className="h-3 w-8" />
-                  </div>
-                ))}
+            <SectionCard title="Truth Objects" noPad>
+              <div className="p-4">
+                <Skeleton className="h-3 w-full" />
               </div>
             </SectionCard>
           </div>
-
           <div className="w-[260px] shrink-0">
-            <SectionCard title="Select an Entity">
-              <div className="text-center py-8">
-                <Skeleton className="h-4 w-40 mx-auto mb-2" />
-                <Skeleton className="h-3 w-32 mx-auto" />
-              </div>
+            <SectionCard title="Truth Audit">
+              <Skeleton className="h-3 w-32" />
             </SectionCard>
           </div>
         </div>
@@ -180,155 +147,59 @@ export default function GovernanceTraceView({
       <PageHeader
         breadcrumbs={[{ label: breadcrumbSection }, { label: breadcrumbPage }]}
         title={title}
-        subtitle={
-          selectedEntityId && provenanceTrail
-            ? `Provenance for: ${provenanceTrail.entity_name} (${provenanceTrail.entity_type})`
-            : emptyStateSubtitle
-        }
+        subtitle={selectedTruth ? `Truth: ${selectedTruth.truth_id}` : emptyStateSubtitle}
         actions={
-          <Btn
-            variant="ghost"
-            onClick={handleExportProvO}
-            disabled={!selectedEntityId || exportMutation.isPending}
-          >
-            {exportMutation.isPending ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <Download size={12} />
-            )}
+          <Btn variant="ghost" disabled>
+            <Download size={12} />
             Export PROV-O
           </Btn>
         }
       />
 
       <Toolbar>
-        <Btn
-          variant="ghost"
-          onClick={() =>
-            setSourceFilter(sourceFilter === "all" ? "provenance" : "all")
-          }
-        >
-          Source: {sourceFilter === "all" ? "All ▾" : "Provenance ▾"}
+        <Btn variant="ghost" onClick={() => setIsStaleOnly(current => !current)}>
+          {isStaleOnly ? "Filter: Stale Only" : "Filter: All Truths"}
         </Btn>
-        <Btn variant="ghost">Date Range ▾</Btn>
-        <Btn variant="ghost">Status: All ▾</Btn>
-        {selectedEntityId && (
-          <Btn variant="outline" onClick={() => setSelectedEntityId(null)}>
+        <Btn variant="ghost" disabled>
+          {selectedTruthId ? <Loader2 size={12} className="opacity-0" /> : null}
+          Status: {statusFromUrl || "all"}
+        </Btn>
+        {selectedTruthId && (
+          <Btn variant="outline" onClick={() => setSelectedTruthId(null)}>
             Clear Selection
           </Btn>
         )}
       </Toolbar>
 
-      {governanceCase?.truth_references && governanceCase.truth_references.length > 0 && (
-        <SectionCard title="Truth References" className="mb-5">
-          <div className="space-y-2">
-            {governanceCase.truth_references.map((truthRef, idx) => {
-              const ref = truthRef as Record<string, unknown>;
-              return (
-                <div
-                  key={`${String(ref.truth_object_id || idx)}`}
-                  className="rounded-md border border-neutral-200 p-3 text-[12px]"
-                >
-                  <div className="font-semibold text-neutral-800">
-                    Requirement: {String(ref.requirement || ref.claim || "Truth reference")}
-                  </div>
-                  <div className="text-neutral-600 mt-1">
-                    ID: <span className="font-mono text-[11px]">{String(ref.truth_object_id || "n/a")}</span>
-                  </div>
-                  <div className="text-neutral-600">
-                    Status: {String(ref.status || "unknown")} · Maturity: {String(ref.maturity_level || "n/a")}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {governanceCase.remediation_items &&
-            governanceCase.remediation_items.length > 0 && (
-              <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">
-                <div className="font-semibold mb-1">Remediation Required</div>
-                <ul className="list-disc pl-5 space-y-1">
-                  {governanceCase.remediation_items.map((item, idx) => {
-                    const rem = item as Record<string, unknown>;
-                    return (
-                      <li key={`${idx}-${String(rem.type || "rem")}`}>
-                        {String(rem.message || rem.requirement || "Action required")}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-        </SectionCard>
-      )}
-
       <div className="flex gap-5">
         <div className="flex-1">
-          <SectionCard title={`Audit Log (${auditLogs?.total || 0} entries)`} noPad>
-            <DataTable
-              columns={[
-                "Trace ID",
-                "Entity",
-                "Action",
-                "Agent",
-                "Timestamp",
-                "Status",
-                "Actions",
-              ]}
-              rows={auditRows}
-              emptyMessage="No audit entries found"
-            />
+          <SectionCard title={`Truth Objects (${truths?.total || 0})`} noPad>
+            {truthsError ? (
+              <div className="p-4 text-sm text-red-600">Failed to load truth objects.</div>
+            ) : (
+              <DataTable
+                columns={["Truth ID", "Claim Type", "Status", "Maturity", "Freshness", "Updated", "Actions"]}
+                rows={truthRows}
+                emptyMessage="No truth objects found"
+              />
+            )}
           </SectionCard>
         </div>
 
         <div className="w-[260px] shrink-0">
-          <SectionCard title={selectedEntityId ? "Provenance Timeline" : "Select an Entity"}>
-            {selectedEntityId ? (
-              <>
-                {provenanceTrail && (
-                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                    <div className="text-[12px] font-semibold text-blue-900">
-                      {provenanceTrail.entity_name}
-                    </div>
-                    <div className="text-[11px] text-blue-700">
-                      Type: {provenanceTrail.entity_type}
-                    </div>
-                    <div className="text-[11px] text-blue-700">
-                      Source: {provenanceTrail.source}
-                    </div>
-                    {provenanceTrail.confidence_score && (
-                      <div className="text-[11px] text-blue-700">
-                        Confidence: {(provenanceTrail.confidence_score * 100).toFixed(1)}%
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="space-y-3">
-                  {provenanceSteps.length > 0 ? (
-                    provenanceSteps.map((step, idx) => (
-                      <div key={idx} className="flex gap-3">
-                        <div className="mt-1 w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[12px] font-semibold text-neutral-900">
-                            {step.step}
-                          </div>
-                          <div className="text-[11px] text-neutral-600 mt-0.5 leading-relaxed">
-                            {step.detail}
-                          </div>
-                          <div className="text-[10px] text-neutral-400 mt-1 font-mono">
-                            {new Date(step.timestamp).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-[12px] text-neutral-500">No provenance steps available</div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-8 text-[12px] text-neutral-500">
-                Select an entity from the audit log to view provenance timeline
+          <SectionCard title="Truth Audit" noPad>
+            {!selectedTruthId ? (
+              <div className="text-center py-8 px-4 text-[12px] text-neutral-500">
+                Select a truth object to view audit events
               </div>
+            ) : auditError ? (
+              <div className="p-4 text-sm text-red-600">Failed to load truth audit.</div>
+            ) : (
+              <DataTable
+                columns={["Event ID", "Action", "Actor", "Timestamp"]}
+                rows={auditRows}
+                emptyMessage="No audit entries found"
+              />
             )}
           </SectionCard>
         </div>
