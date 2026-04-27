@@ -2,7 +2,7 @@
  * Screen 10 — Audit & Provenance: Decision Trace Viewer
  * Design: Refined Enterprise SaaS
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useSearchParams } from "wouter";
 import { Shield, Download, CheckCircle2, Loader2 } from "lucide-react";
 import { PageHeader, Btn, Toolbar, SectionCard, StatusBadge, DataTable } from "@/components/WfPrimitives";
@@ -14,6 +14,7 @@ import {
   useGroundTruthStaleTruths,
   useGroundTruthMaturityLadder,
 } from "@/hooks/useGroundTruthGovernance";
+import { useBusinessCase } from "@/hooks/useDocuments";
 
 function formatTimestamp(timestamp: string): string {
   const date = new Date(timestamp);
@@ -21,9 +22,11 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export default function DecisionTrace() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [searchParams] = useSearchParams();
   const entityIdFromUrl = searchParams.get("entityId") || searchParams.get("caseId");
+  const caseIdFromUrl = searchParams.get("caseId");
+  const truthIdFromUrl = searchParams.get("truthId");
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(entityIdFromUrl);
   const [selectedTruthId, setSelectedTruthId] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<AuditLogFilter['source']>("all");
@@ -43,6 +46,7 @@ export default function DecisionTrace() {
   const { data: auditLogs, isLoading: isLoadingAudit } = useAuditLogs({ source: sourceFilter }, isProvenancePage);
   const { data: provenanceTrail, isLoading: isLoadingProvenance } = useProvenanceTrail(selectedEntityId, isProvenancePage);
   const exportMutation = useExportProvenance();
+  const { data: governanceCase } = useBusinessCase(caseIdFromUrl);
 
   const { data: truths } = useGroundTruths(
     truthFilters,
@@ -53,16 +57,30 @@ export default function DecisionTrace() {
   const { data: staleTruths } = useGroundTruthStaleTruths(25, 0, isCompliancePage);
   const { data: maturityLadder, isLoading: isLoadingMaturity } = useGroundTruthMaturityLadder(isCompliancePage);
 
+  useEffect(() => {
+    setSelectedEntityId(entityIdFromUrl);
+  }, [entityIdFromUrl]);
+
+  useEffect(() => {
+    if (isAuditPage) {
+      setSelectedTruthId(truthIdFromUrl);
+    }
+  }, [truthIdFromUrl, isAuditPage]);
+
   const handleExportProvO = async () => {
     if (!selectedEntityId) return;
-    await exportMutation.mutateAsync({ entityId: selectedEntityId, format: 'prov-o' });
+    try {
+      await exportMutation.mutateAsync({ entityId: selectedEntityId, format: 'prov-o' });
+    } catch (error) {
+      console.error("Export failed:", error);
+    }
   };
 
   if (isEvidencePage) {
     const truthRows = (truths?.items || []).map((truth) => [
       <button
         key="id"
-        onClick={() => setSelectedTruthId(truth.id)}
+        onClick={() => setLocation(`/governance/audit/changes?truthId=${encodeURIComponent(truth.id)}`)}
         className="font-mono text-[11px] text-blue-700 hover:underline"
       >
         {truth.id.slice(0, 12)}
@@ -155,7 +173,7 @@ export default function DecisionTrace() {
       <span key="id" className="font-mono text-[11px]">{truth.id.slice(0, 12)}</span>,
       <span key="claim" className="text-neutral-700">{truth.claim}</span>,
       <span key="status" className="text-neutral-600">{truth.status}</span>,
-      <span key="freshness" className="text-neutral-600">{formatTimestamp(truth.freshness)}</span>,
+      <span key="freshness" className="text-neutral-600">{truth.freshness ? String(truth.freshness) : '—'}</span>,
     ]);
 
     return (
@@ -206,7 +224,7 @@ export default function DecisionTrace() {
     );
   }
 
-  const isLoading = isLoadingAudit || (selectedEntityId && isLoadingProvenance);
+  const isLoading = isLoadingAudit || Boolean(selectedEntityId && isLoadingProvenance);
   const auditEntries: AuditLogEntry[] = auditLogs?.entries || [];
   const auditRows = auditEntries.map((entry) => [
     <button
@@ -221,6 +239,16 @@ export default function DecisionTrace() {
     <span key="agent" className="text-neutral-500 text-[11px] font-mono">{entry.agent}</span>,
     <span key="ts" className="text-neutral-400 text-[11px] font-mono">{formatTimestamp(entry.timestamp)}</span>,
     <StatusBadge key="status" status={entry.event_type === 'error' ? 'failed' : 'completed'} />,
+    <div key="actions" className="flex gap-2">
+      {entry.entity_id && (
+        <button
+          onClick={() => setSelectedEntityId(entry.entity_id)}
+          className="text-blue-600 text-[11px] hover:underline"
+        >
+          View
+        </button>
+      )}
+    </div>,
   ]);
 
   return (
@@ -248,11 +276,47 @@ export default function DecisionTrace() {
         {selectedEntityId && <Btn variant="outline" onClick={() => setSelectedEntityId(null)}>Clear Selection</Btn>}
       </Toolbar>
 
+      {isLoading && (
+        <div className="mb-3 text-xs text-neutral-500">Loading audit/provenance data…</div>
+      )}
+
+      {governanceCase?.truth_references && governanceCase.truth_references.length > 0 && (
+        <SectionCard title="Truth References" className="mb-5">
+          <div className="space-y-2">
+            {governanceCase.truth_references.map((truthRef, idx) => {
+              const ref = truthRef as Record<string, unknown>;
+              return (
+                <div key={`${String(ref.truth_object_id || idx)}`} className="rounded-md border border-neutral-200 p-3 text-[12px]">
+                  <div className="font-semibold text-neutral-800">Requirement: {String(ref.requirement || ref.claim || "Truth reference")}</div>
+                  <div className="text-neutral-600 mt-1">
+                    ID: <span className="font-mono text-[11px]">{String(ref.truth_object_id || "n/a")}</span>
+                  </div>
+                  <div className="text-neutral-600">
+                    Status: {String(ref.status || "unknown")} · Maturity: {String(ref.maturity_level || "n/a")}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {governanceCase.remediation_items && governanceCase.remediation_items.length > 0 && (
+            <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-800">
+              <div className="font-semibold mb-1">Remediation Required</div>
+              <ul className="list-disc pl-5 space-y-1">
+                {governanceCase.remediation_items.map((item, idx) => {
+                  const rem = item as Record<string, unknown>;
+                  return <li key={`${idx}-${String(rem.type || "rem")}`}>{String(rem.message || rem.requirement || "Action required")}</li>;
+                })}
+              </ul>
+            </div>
+          )}
+        </SectionCard>
+      )}
+
       <div className="flex gap-5">
         <div className="flex-1">
-          <SectionCard title={`Audit Log (${auditLogs?.total || 0} entries)`} noPad>
+          <SectionCard title="Audit Log" noPad>
             <DataTable
-              columns={["Trace ID", "Entity", "Action", "Agent", "Timestamp", "Status"]}
+              columns={["Trace ID", "Entity", "Action", "Agent", "Timestamp", "Status", "Actions"]}
               rows={auditRows}
               emptyMessage="No audit entries found"
             />
