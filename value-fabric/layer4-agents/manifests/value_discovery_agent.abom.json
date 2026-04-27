@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "agent_type": "ValueDiscoveryAgent",
+  "agent_id": "ValueDiscoveryAgent-00000000",
+  "privilege_tier": "standard",
+  "allowed_tools": [
+    "query_graph",
+    "semantic_search",
+    "entity_lookup",
+    "calculate_value_metrics"
+  ],
+  "denied_tools": [],
+  "invariants": {
+    "max_tool_calls_per_run": 25,
+    "budget_limit_usd": null,
+    "require_human_approval": [],
+    "custom": {}
+  },
+  "metadata": {
+    "description": "Discovers value drivers and pain points from knowledge graph",
+    "owner": "platform-team",
+    "last_reviewed": "2026-04-27"
+  }
+}

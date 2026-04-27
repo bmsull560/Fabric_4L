@@ -5,9 +5,11 @@ Provides centralized tool registration, discovery, and execution.
 
 import asyncio
 import logging
+import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 from shared.identity.context import RequestContext
 from ..models.tool_schemas import ToolCategory, ToolSchema
@@ -289,6 +291,9 @@ class ToolRegistry:
         It does NOT execute SQL. The tool_name is validated against registered tools,
         and input_dict is validated via Pydantic schemas before reaching tool logic.
 
+        When ``AUDIT_LEDGER_MODE=enabled``, emits a ``TOOL_INVOCATION`` audit event
+        with request/response hashing for the GATE audit ledger.
+
         Args:
             tool_name: Tool identifier (validated against registry)
             input_dict: Raw input parameters (validated via Pydantic schemas)
@@ -302,16 +307,92 @@ class ToolRegistry:
             ToolError: If execution fails
         """
         tool = self.get(tool_name)
+        tenant_id = tool.get_tenant_id() or input_dict.get("tenant_id")
+        trace_id = input_dict.get("trace_id")
 
         # Task 2.3: Log tenant context for tools that require it
         if tool.requires_tenant:
-            tenant_id = tool.get_tenant_id() or input_dict.get("tenant_id")
             if tenant_id:
                 logger.debug(f"Executing tenant-aware tool '{tool_name}' for tenant {tenant_id}")
             else:
                 logger.warning(f"Executing tenant-aware tool '{tool_name}' without tenant context")
 
-        return await tool.run(input_dict)
+        # GATE Phase 1: Instrument with TOOL_INVOCATION audit events
+        ledger_enabled = os.getenv("AUDIT_LEDGER_MODE") == "enabled"
+        request_hash: str | None = None
+        start_time: float = 0.0
+
+        if ledger_enabled:
+            from shared.crypto.canonical import canonical_hash
+            request_hash = canonical_hash({"tool_name": tool_name, "input": input_dict})
+            start_time = asyncio.get_running_loop().time()
+
+        outcome = "success"
+        response_hash: str | None = None
+
+        try:
+            result = await tool.run(input_dict)
+            if ledger_enabled:
+                from shared.crypto.canonical import canonical_hash as _ch
+                response_hash = _ch(result)
+            return result
+        except Exception:
+            outcome = "failure"
+            raise
+        finally:
+            if ledger_enabled:
+                elapsed_ms = int((asyncio.get_running_loop().time() - start_time) * 1000)
+                self._emit_tool_invocation_audit(
+                    tool_name=tool_name,
+                    tool=tool,
+                    request_hash=request_hash,
+                    response_hash=response_hash,
+                    elapsed_ms=elapsed_ms,
+                    outcome=outcome,
+                    tenant_id=tenant_id,
+                    trace_id=trace_id,
+                )
+
+    @staticmethod
+    def _emit_tool_invocation_audit(
+        tool_name: str,
+        tool: "BaseTool",
+        request_hash: str | None,
+        response_hash: str | None,
+        elapsed_ms: int,
+        outcome: str,
+        tenant_id: str | None,
+        trace_id: str | None,
+    ) -> None:
+        """Fire-and-forget TOOL_INVOCATION audit event."""
+        from shared.audit.emitter import emit_audit_event
+        from shared.audit.models import (
+            AuditAction,
+            AuditOutcome,
+            ToolInvocationRecord,
+        )
+
+        record = ToolInvocationRecord(
+            tool_name=tool_name,
+            tool_manifest_hash=getattr(tool, "manifest_hash", None),
+            request_hash=request_hash or "",
+            response_hash=response_hash,
+            execution_time_ms=elapsed_ms,
+            tenant_id=tenant_id,
+            trace_id=trace_id,
+        )
+        asyncio.create_task(
+            emit_audit_event(
+                action=AuditAction.TOOL_INVOCATION,
+                outcome=AuditOutcome.SUCCESS if outcome == "success" else AuditOutcome.FAILURE,
+                resource_type="tool",
+                resource_id=tool_name,
+                tenant_id=UUID(tenant_id) if tenant_id else None,
+                request_id=trace_id,
+                details=record.model_dump(),
+                chain_id=f"{tenant_id or 'global'}:{tool_name}",
+            )
+        )
 
     def list_tools(
         self, category: ToolCategory | None = None, search: str | None = None

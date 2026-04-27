@@ -69,6 +69,7 @@ def _create_audit_event(
     tenant_id: UUID | None = None,
     request_id: str | None = None,
     details: dict[str, Any] | None = None,
+    chain_id: str | None = None,
 ) -> AuditEvent:
     """Create an AuditEvent instance with standard fields populated."""
     return AuditEvent(
@@ -82,6 +83,7 @@ def _create_audit_event(
         tenant_id=tenant_id,
         request_id=request_id,
         details=details,
+        chain_id=chain_id,
     )
 
 
@@ -94,6 +96,7 @@ async def emit_audit_event(
     tenant_id: UUID | None = None,
     request_id: str | None = None,
     details: dict[str, Any] | None = None,
+    chain_id: str | None = None,
 ) -> None:
     """Emit an audit event (async version).
 
@@ -109,6 +112,7 @@ async def emit_audit_event(
         tenant_id: Tenant ID (optional)
         request_id: Request correlation ID (optional)
         details: Additional details (optional)
+        chain_id: Logical chain identifier for ledger tracking (optional)
 
     Example:
         # In async endpoint:
@@ -119,7 +123,7 @@ async def emit_audit_event(
     """
     event = _create_audit_event(
         action, outcome, resource_type, resource_id,
-        actor_id, tenant_id, request_id, details
+        actor_id, tenant_id, request_id, details, chain_id
     )
     await _global_emitter.emit(event)
 
@@ -213,3 +217,12 @@ async def validate_audit_config() -> None:
             "Audit events will be logged locally only. "
             "This is not compliant for production."
         )
+
+    # GATE Phase 1: Register ledger handler if enabled
+    ledger_mode = os.getenv("AUDIT_LEDGER_MODE", "disabled")
+    if ledger_mode == "enabled":
+        from .ledger import LedgerCommitHandler
+
+        handler = LedgerCommitHandler()
+        _global_emitter.add_handler(handler)
+        logger.info("GATE ledger handler registered (AUDIT_LEDGER_MODE=enabled)")

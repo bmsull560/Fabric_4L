@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabric4l.dev/schemas/gate/abom.schema.json",
+  "title": "Agent Bill of Materials (ABOM)",
+  "description": "Declares an agent's identity, privilege tier, allowed tools, and invariant constraints (GATE Phase 2)",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "agent_type",
+    "agent_id",
+    "privilege_tier",
+    "allowed_tools",
+    "invariants"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "ABOM schema version"
+    },
+    "agent_type": {
+      "type": "string",
+      "description": "Agent class name (e.g., ValueDiscoveryAgent)"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Runtime agent identifier. Format: <agent_type>-<8-char-prefix>",
+      "pattern": "^[A-Za-z]+-[a-f0-9]{8}$"
+    },
+    "privilege_tier": {
+      "type": "string",
+      "enum": ["standard", "elevated", "high_privilege"],
+      "description": "Determines OPA policy evaluation strictness"
+    },
+    "allowed_tools": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "description": "Exhaustive list of tool names this agent may invoke"
+    },
+    "denied_tools": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Explicit deny-list (overrides allowed_tools)"
+    },
+    "invariants": {
+      "type": "object",
+      "properties": {
+        "max_tool_calls_per_run": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum tool invocations per agent run"
+        },
+        "budget_limit_usd": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Per-run budget cap in USD"
+        },
+        "require_human_approval": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Tools requiring human-in-the-loop approval"
+        },
+        "custom": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Agent-specific invariant constraints"
+        }
+      },
+      "required": ["max_tool_calls_per_run"],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": ["object", "null"],
+      "properties": {
+        "description": { "type": "string" },
+        "owner": { "type": "string" },
+        "last_reviewed": { "type": "string", "format": "date" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

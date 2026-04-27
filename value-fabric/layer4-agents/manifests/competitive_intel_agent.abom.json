@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "agent_type": "CompetitiveIntelAgent",
+  "agent_id": "CompetitiveIntelAgent-00000000",
+  "privilege_tier": "elevated",
+  "allowed_tools": [
+    "query_graph",
+    "semantic_search",
+    "entity_lookup",
+    "web_search",
+    "competitive_analysis",
+    "calculate_value_metrics"
+  ],
+  "denied_tools": [
+    "crm_write",
+    "send_email"
+  ],
+  "invariants": {
+    "max_tool_calls_per_run": 40,
+    "budget_limit_usd": 5.00,
+    "require_human_approval": [
+      "web_search"
+    ],
+    "custom": {
+      "max_external_api_calls": 10
+    }
+  },
+  "metadata": {
+    "description": "Analyzes competitive landscape and market positioning",
+    "owner": "platform-team",
+    "last_reviewed": "2026-04-27"
+  }
+}

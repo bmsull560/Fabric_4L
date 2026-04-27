@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabric4l.dev/schemas/gate/replay-snapshot.schema.json",
+  "title": "GATE Replay Snapshot",
+  "description": "JSON Schema contract for REPLAY_SNAPSHOT audit event details (GATE Phase 3)",
+  "type": "object",
+  "required": [
+    "agent_id",
+    "snapshot_hash"
+  ],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "description": "Agent instance identifier"
+    },
+    "agent_type": {
+      "type": ["string", "null"],
+      "description": "Agent class name"
+    },
+    "manifest_hash": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 hash of the agent's ABOM manifest"
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 canonical hash of the complete run snapshot"
+    },
+    "tool_invocation_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "memory_access_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tenant_id": {
+      "type": ["string", "null"]
+    },
+    "trace_id": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false
+}

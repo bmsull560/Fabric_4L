@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabric4l.dev/schemas/gate/tool-invocation-record.schema.json",
+  "title": "GATE Tool Invocation Record",
+  "description": "JSON Schema contract for TOOL_INVOCATION audit event details (GATE Phase 1)",
+  "type": "object",
+  "required": [
+    "tool_name",
+    "request_hash"
+  ],
+  "properties": {
+    "tool_name": {
+      "type": "string",
+      "description": "Registered tool identifier"
+    },
+    "tool_version": {
+      "type": ["string", "null"]
+    },
+    "tool_manifest_hash": {
+      "type": ["string", "null"],
+      "description": "SHA-256 hash of tool's ABOM manifest entry"
+    },
+    "request_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 canonical hash of request payload"
+    },
+    "response_hash": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 canonical hash of response payload"
+    },
+    "policy_decision": {
+      "type": ["string", "null"],
+      "enum": ["allowed", "denied", "invariant_blocked", null]
+    },
+    "invariant_checks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    },
+    "execution_time_ms": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "tenant_id": {
+      "type": ["string", "null"]
+    },
+    "actor_id": {
+      "type": ["string", "null"]
+    },
+    "trace_id": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabric4l.dev/schemas/gate/audit-event.schema.json",
+  "title": "GATE Audit Event",
+  "description": "JSON Schema contract for hash-chained audit events (GATE Phase 1)",
+  "type": "object",
+  "required": [
+    "id",
+    "timestamp",
+    "action",
+    "outcome",
+    "resource_type"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique event identifier"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "create", "read", "update", "delete", "login", "logout",
+        "api_key_created", "api_key_revoked", "permission_changed",
+        "export", "import", "system_config_changed",
+        "privileged_access", "tenant_resolved", "tenant_created",
+        "tenant_provisioning_started", "tenant_provisioning_step_completed",
+        "tenant_provisioning_completed", "tenant_provisioning_failed",
+        "tenant_provisioning_rollback", "tenant_provisioned_webhook",
+        "tenant_status_changed", "infisical_path_created",
+        "infisical_secret_seeded",
+        "tool_invocation", "policy_decision", "ledger_commit",
+        "memory_access", "replay_snapshot"
+      ]
+    },
+    "outcome": {
+      "type": "string",
+      "enum": ["success", "failure", "denied", "error"]
+    },
+    "actor_id": {
+      "type": ["string", "null"],
+      "description": "User or API key ID"
+    },
+    "actor_type": {
+      "type": "string",
+      "default": "user"
+    },
+    "tenant_id": {
+      "type": ["string", "null"]
+    },
+    "resource_type": {
+      "type": "string"
+    },
+    "resource_id": {
+      "type": ["string", "null"]
+    },
+    "request_id": {
+      "type": ["string", "null"]
+    },
+    "ip_address": {
+      "type": ["string", "null"]
+    },
+    "user_agent": {
+      "type": ["string", "null"]
+    },
+    "details": {
+      "type": ["object", "null"]
+    },
+    "previous_hash": {
+      "type": ["string", "null"],
+      "description": "SHA-256 hash of previous event in chain"
+    },
+    "event_hash": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 hash of this event's canonical payload"
+    },
+    "canonical_payload": {
+      "type": ["object", "null"],
+      "description": "Canonical JSON payload used for hashing"
+    },
+    "chain_id": {
+      "type": ["string", "null"],
+      "description": "Logical chain identifier (e.g., tenant_id:tool_name)"
+    },
+    "sequence_number": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Monotonic sequence within chain_id"
+    }
+  },
+  "additionalProperties": false
+}

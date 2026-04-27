@@ -13,6 +13,10 @@
 | get_db_with_optional_tenant() | get_db_from_context() + require_super_admin() | 2026-06-15 | Admin routes only |
 | Layer 3 AuthenticationMiddleware | shared.identity.GovernanceMiddleware | 2026-05-15 | Remove duplicate middleware |
 | Raw dict agent returns | AgentResultEnvelope | 2026-06-30 | Gradual migration |
+| ToolRegistry.execute() direct call | ToolGateway.execute() | 2026-07-15 | Agents must use ctx['tool_gateway'] |
+| GraphRAGEngine.query() direct call | MemoryGateway.query() | 2026-07-15 | Agents must use ctx['memory_gateway'] |
+| datetime.utcnow() | datetime.now(timezone.utc) | 2026-06-01 | Deprecated in Python 3.12 |
+| asyncio.get_event_loop().time() | asyncio.get_running_loop().time() | 2026-06-01 | Deprecated in Python 3.10 |
 | useWorkflowStore + usePilotStore | useValuePilotStore (merged) | 2026-05-30 | Consolidate to one 7-step store |
 | window.location.href | useLocation from wouter | 2026-05-15 | Immediate |
 | React Context for server state | TanStack Query hooks | 2026-06-15 | Billing/Auth contexts excepted |
@@ -59,3 +63,25 @@ Replace background tasks to use `db_session_for_context()`.
 
 Merge functionality into a single store in `client/src/stores/valuePilotStore.ts`.
 Deprecate the old stores.
+
+### 4. ToolRegistry.execute() -> ToolGateway.execute() (GATE Phase 2)
+
+Find all instances:
+
+```bash
+grep -rn "registry.execute\|tool_registry.execute" value-fabric/layer4-agents/
+```
+
+Replace with `ctx['tool_gateway'].execute(tool_name, input_data)` inside agent `execute()` methods.
+The `ToolGateway` is automatically injected by `BaseAgent.run()` when `tool_registry` and `abom` are present in context.
+
+### 5. GraphRAGEngine.query() -> MemoryGateway.query() (GATE Phase 3)
+
+Find all instances:
+
+```bash
+grep -rn "graph_rag.*query\|retrieval_engine.*query" value-fabric/layer4-agents/
+```
+
+Replace with `ctx['memory_gateway'].query(query_text)` inside agent `execute()` methods.
+The `MemoryGateway` must be created and injected into context by the orchestration layer.

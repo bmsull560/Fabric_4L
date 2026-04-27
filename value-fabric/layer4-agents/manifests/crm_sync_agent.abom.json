@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "agent_type": "CRMSyncAgent",
+  "agent_id": "CRMSyncAgent-00000000",
+  "privilege_tier": "high_privilege",
+  "allowed_tools": [
+    "crm_read",
+    "crm_write",
+    "crm_sync",
+    "query_graph",
+    "send_email"
+  ],
+  "denied_tools": [],
+  "invariants": {
+    "max_tool_calls_per_run": 50,
+    "budget_limit_usd": 10.00,
+    "require_human_approval": [
+      "crm_write",
+      "send_email"
+    ],
+    "custom": {
+      "require_audit_trail": true
+    }
+  },
+  "metadata": {
+    "description": "Synchronizes CRM data and sends customer communications",
+    "owner": "platform-team",
+    "last_reviewed": "2026-04-27"
+  }
+}

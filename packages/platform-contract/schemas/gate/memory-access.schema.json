@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fabric4l.dev/schemas/gate/memory-access.schema.json",
+  "title": "GATE Memory Access Record",
+  "description": "JSON Schema contract for MEMORY_ACCESS audit event details (GATE Phase 3)",
+  "type": "object",
+  "required": [
+    "query",
+    "tenant_id",
+    "content_hash"
+  ],
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Retrieval query text"
+    },
+    "tenant_id": {
+      "type": "string"
+    },
+    "agent_id": {
+      "type": ["string", "null"]
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 canonical hash of retrieval result"
+    },
+    "source_lineage": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "Provenance lineage of retrieved content"
+    },
+    "entity_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "relationship_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "trace_id": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": false
+}

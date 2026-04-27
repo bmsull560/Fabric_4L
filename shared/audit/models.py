@@ -50,6 +50,12 @@ class AuditAction(str, Enum):
     TENANT_STATUS_CHANGED = "tenant_status_changed"
     INFISICAL_PATH_CREATED = "infisical_path_created"
     INFISICAL_SECRET_SEEDED = "infisical_secret_seeded"
+    # GATE Framework actions
+    TOOL_INVOCATION = "tool_invocation"
+    POLICY_DECISION = "policy_decision"
+    LEDGER_COMMIT = "ledger_commit"
+    MEMORY_ACCESS = "memory_access"
+    REPLAY_SNAPSHOT = "replay_snapshot"
 
 
 class AuditOutcome(str, Enum):
@@ -77,6 +83,12 @@ class AuditEvent(BaseModel):
     ip_address: str | None = Field(None, description="Client IP")
     user_agent: str | None = Field(None, description="User agent")
     details: dict[str, Any] | None = Field(None, description="Additional details")
+    # GATE Phase 1 — hash-chain ledger fields (all optional for backward compat)
+    previous_hash: str | None = Field(None, description="Hash of previous event in chain")
+    event_hash: str | None = Field(None, description="Hash of this event's canonical payload")
+    canonical_payload: dict[str, Any] | None = Field(None, description="Canonical JSON payload used for hashing")
+    chain_id: str | None = Field(None, description="Logical chain identifier (e.g., tenant_id:tool_name)")
+    sequence_number: int | None = Field(None, description="Monotonic sequence within chain_id")
 
     class Config:
         from_attributes = True
@@ -196,6 +208,70 @@ class TenantContextSetDetails(BaseModel):
         default="request_context",
         description="Source of tenant context: request_context | explicit_param | job_queue"
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GATE Framework — Structured Detail Records
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class ToolInvocationRecord(BaseModel):
+    """Structured details for TOOL_INVOCATION audit events (GATE Phase 1)."""
+
+    tool_name: str
+    tool_version: str | None = None
+    tool_manifest_hash: str | None = None
+    request_hash: str
+    response_hash: str | None = None
+    policy_decision: str | None = None  # "allowed" | "denied" | "invariant_blocked"
+    invariant_checks: list[str] = Field(default_factory=list)
+    execution_time_ms: int | None = None
+    tenant_id: str | None = None
+    actor_id: str | None = None
+    trace_id: str | None = None
+
+
+class LedgerCommitDetails(BaseModel):
+    """Details for ledger commit events linking to previous state (GATE Phase 1)."""
+
+    chain_head_hash: str | None = None
+    commit_type: str  # "tool_invocation" | "policy_decision" | "agent_execution"
+    bundle_hash: str | None = None  # Hash of policy/invariant bundle evaluated
+
+
+class PolicyDecisionRecord(BaseModel):
+    """Structured details for POLICY_DECISION audit events (GATE Phase 2)."""
+
+    decision: bool
+    reason: str | None = None
+    obligations: list[str] = Field(default_factory=list)
+    policy_bundle_hash: str | None = None
+
+
+class MemoryAccessRecord(BaseModel):
+    """Structured details for MEMORY_ACCESS audit events (GATE Phase 3)."""
+
+    query: str
+    tenant_id: str
+    agent_id: str | None = None
+    content_hash: str
+    source_lineage: list[dict[str, Any]] = Field(default_factory=list)
+    entity_count: int = 0
+    relationship_count: int = 0
+    trace_id: str | None = None
+
+
+class ReplaySnapshotRecord(BaseModel):
+    """Structured details for REPLAY_SNAPSHOT audit events (GATE Phase 3)."""
+
+    agent_id: str
+    agent_type: str | None = None
+    manifest_hash: str | None = None
+    snapshot_hash: str
+    tool_invocation_count: int = 0
+    memory_access_count: int = 0
+    tenant_id: str | None = None
+    trace_id: str | None = None
 
 
 class PrivilegedAccessDetails(BaseModel):

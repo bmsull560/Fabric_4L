@@ -200,6 +200,12 @@ class BaseAgent(ABC):
     ) -> dict[str, Any]:
         """Run the agent with a task (handles lifecycle).
 
+        GATE integration: If a ``tool_registry`` and ``abom`` are present in
+        context, a ``ToolGateway`` is created and injected into ``ctx`` so that
+        ``execute()`` implementations can call ``ctx['tool_gateway'].execute()``
+        instead of using the registry directly.  A ``ReplayRecorder`` is also
+        attached when available.
+
         Args:
             task: Task to execute
             context: Execution context
@@ -214,6 +220,39 @@ class BaseAgent(ABC):
         self.state.started_at = self._clock.now()
         self.state.status = AgentStatus.RUNNING
         self.state.current_task = task.get("capability", "unknown")
+
+        # ── GATE Phase 2: ToolGateway injection ──
+        tool_gateway = None
+        if "tool_registry" in ctx and "abom" in ctx:
+            try:
+                from shared.governance.tool_gateway import ToolGateway
+
+                tool_gateway = ToolGateway(
+                    registry=ctx["tool_registry"],
+                    abom=ctx["abom"],
+                    tenant_id=ctx.get("tenant_id"),
+                    trace_id=ctx.get("trace_id"),
+                )
+                ctx["tool_gateway"] = tool_gateway
+            except ImportError:
+                pass  # GATE not installed — graceful degradation
+
+        # ── GATE Phase 3: ReplayRecorder injection ──
+        replay_recorder = None
+        if tool_gateway is not None:
+            try:
+                from shared.governance.replay import ReplayRecorder
+
+                replay_recorder = ReplayRecorder(
+                    agent_id=self.agent_id,
+                    agent_type=self.agent_type,
+                    abom=ctx.get("abom"),
+                    tenant_id=ctx.get("tenant_id"),
+                    trace_id=ctx.get("trace_id"),
+                )
+                ctx["replay_recorder"] = replay_recorder
+            except ImportError:
+                pass  # Replay not installed — graceful degradation
 
         try:
             # Send status update via message bus if available
@@ -231,6 +270,11 @@ class BaseAgent(ABC):
             # Mark completion
             self.state.status = AgentStatus.COMPLETED
             self.state.completed_at = self._clock.now()
+
+            # ── GATE Phase 3: Commit replay snapshot ──
+            if replay_recorder is not None and tool_gateway is not None:
+                replay_recorder.record_tool_invocations(tool_gateway.invocation_log)
+                await replay_recorder.commit()
 
             # Send completion event
             if self.message_bus:
