@@ -4,26 +4,36 @@
   "agent_id": "CRMSyncAgent-00000000",
   "privilege_tier": "high_privilege",
   "allowed_tools": [
-    "crm_read",
-    "crm_write",
-    "crm_sync",
-    "query_graph",
-    "send_email"
+    "get_prospect_data",
+    "update_opportunity",
+    "fetch_interaction_history",
+    "score_lead",
+    "export_to_crm",
+    "send_notification",
+    "create_task",
+    "schedule_meeting",
+    "validate_input",
+    "format_currency"
   ],
-  "denied_tools": [],
+  "denied_tools": [
+    "generate_section",
+    "assemble_document",
+    "sensitivity_analysis"
+  ],
   "invariants": {
-    "max_tool_calls_per_run": 50,
-    "budget_limit_usd": 10.00,
+    "max_tool_calls_per_run": 25,
+    "budget_limit_usd": 1.00,
     "require_human_approval": [
-      "crm_write",
-      "send_email"
+      "update_opportunity",
+      "export_to_crm"
     ],
     "custom": {
-      "require_audit_trail": true
+      "max_crm_writes_per_run": 10,
+      "require_tenant_scope": true
     }
   },
   "metadata": {
-    "description": "Synchronizes CRM data and sends customer communications",
+    "description": "Bidirectional CRM synchronization — reads/writes to Salesforce and HubSpot. High-privilege tier requires OPA policy approval for all write operations.",
     "owner": "platform-team",
     "last_reviewed": "2026-04-27"
   }

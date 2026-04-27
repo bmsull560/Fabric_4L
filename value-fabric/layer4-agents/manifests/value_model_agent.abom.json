@@ -1,16 +1,19 @@
 {
   "schema_version": "1.0",
-  "agent_type": "CompetitiveIntelAgent",
-  "agent_id": "CompetitiveIntelAgent-00000000",
-  "privilege_tier": "elevated",
+  "agent_type": "ValueModelAgent",
+  "agent_id": "ValueModelAgent-00000000",
+  "privilege_tier": "standard",
   "allowed_tools": [
     "query_graph",
     "semantic_search",
     "get_entity",
     "get_relationships",
+    "traverse_tree",
     "find_paths",
-    "analyze_competition",
+    "evaluate_formula",
+    "calculate_roi",
     "compare_benchmarks",
+    "sensitivity_analysis",
     "validate_input",
     "format_currency"
   ],
@@ -18,19 +21,19 @@
     "update_opportunity",
     "export_to_crm",
     "send_notification",
-    "score_lead"
+    "export_document"
   ],
   "invariants": {
-    "max_tool_calls_per_run": 40,
+    "max_tool_calls_per_run": 80,
     "budget_limit_usd": 5.00,
     "require_human_approval": [],
     "custom": {
-      "max_competitors_per_analysis": 6,
-      "max_external_api_calls": 10
+      "max_formula_evaluations_per_run": 50,
+      "max_sensitivity_iterations": 1000
     }
   },
   "metadata": {
-    "description": "Analyzes competitive landscape, economic differentiators, and market positioning. Produces CompetitiveIntelArtifact.",
+    "description": "Builds value chains, generates hypotheses, executes formulas, performs ROI calculations and whitespace analysis. Produces ValueModelArtifact.",
     "owner": "platform-team",
     "last_reviewed": "2026-04-27"
   }
