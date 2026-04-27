@@ -283,11 +283,15 @@ class SignalDetectionAgent(BaseAgent):
 
             # Emit stream complete if streaming
             if self.stream_callback:
+                stream_duration_ms = int(
+                    (datetime.now(UTC) - start_time).total_seconds() * 1000
+                )
                 event = SignalStreamCompleteEvent(
                     prospect_id=prospect_data.get("account_id", ""),
                     total_signals=len(signals),
                     completed_signals=persisted_count,
                     failed_signals=len(signals) - persisted_count,
+                    stream_duration_ms=stream_duration_ms,
                 )
                 await self._emit_event(event)
 

@@ -218,6 +218,10 @@ class UsageService:
                 existing._stripe_response = {"skipped": True, "reason": "duplicate"}
                 return existing
             raise
+        except Exception:
+            # Rollback any other database errors to prevent partial writes
+            await self.db.rollback()
+            raise
 
     async def ingest_batch(
         self,
@@ -413,26 +417,31 @@ class UsageService:
         if not self.tenant_id:
             raise UsageValidationError("tenant_id is required", field="tenant_id")
 
-        query = select(BillingUsageEvent).where(
-            BillingUsageEvent.tenant_id == self.tenant_id,
-            BillingUsageEvent.id.in_(event_ids),
-            BillingUsageEvent.status == UsageEventStatus.PENDING,
-        )
+        try:
+            query = select(BillingUsageEvent).where(
+                BillingUsageEvent.tenant_id == self.tenant_id,
+                BillingUsageEvent.id.in_(event_ids),
+                BillingUsageEvent.status == UsageEventStatus.PENDING,
+            )
 
-        result = await self.db.execute(query)
-        events = result.scalars().all()
+            result = await self.db.execute(query)
+            events = result.scalars().all()
 
-        now = datetime.now(UTC)
-        updated = 0
-        for event in events:
-            event.status = UsageEventStatus.PROCESSED
-            event.processed_at = now
-            updated += 1
+            now = datetime.now(UTC)
+            updated = 0
+            for event in events:
+                event.status = UsageEventStatus.PROCESSED
+                event.processed_at = now
+                updated += 1
 
-        if updated > 0:
-            await self.db.flush()
+            if updated > 0:
+                await self.db.flush()
 
-        return updated
+            return updated
+        except Exception:
+            # Rollback on any database error to prevent partial state
+            await self.db.rollback()
+            raise
 
     async def _get_event_by_idempotency(
         self,

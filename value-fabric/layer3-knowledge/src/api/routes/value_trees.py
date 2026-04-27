@@ -6,10 +6,10 @@ Provides endpoints for traversing and retrieving the 4-layer value tree:
 
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from ..dependencies import AppState, get_app_state
+from ..dependencies import AppState, get_app_state, _extract_tenant_id
 
 router = APIRouter()
 
@@ -110,6 +110,7 @@ async def get_value_tree(
     direction: Literal["upward", "downward"] = "upward",
     max_depth: int = 4,
     app_state: AppState = Depends(get_app_state),
+    request: Request = None,
 ) -> ValueTreeResponse:
     """Get the value tree starting from a specific entity.
 
@@ -122,15 +123,20 @@ async def get_value_tree(
         if not neo4j:
             raise HTTPException(status_code=503, detail="Neo4j not available")
 
+        # Extract tenant_id for multi-tenant security
+        tenant_id = _extract_tenant_id(request)
+        if not tenant_id:
+            raise HTTPException(status_code=400, detail="tenant_id is required for value tree access")
+
         # Clamp depth
         max_depth = max(1, min(max_depth, 4))
 
-        # Verify entity exists
+        # Verify entity exists with mandatory tenant filtering
         root_query = """
-        MATCH (n {id: $entity_id})
+        MATCH (n {id: $entity_id, tenant_id: $tenant_id})
         RETURN n.id as id, n.name as label, n.type as type, n.confidence as confidence
         """
-        root_result = await neo4j.execute_query(root_query, {"entity_id": entity_id})
+        root_result = await neo4j.execute_query(root_query, {"entity_id": entity_id, "tenant_id": tenant_id})
         if not root_result:
             raise HTTPException(status_code=404, detail=f"Entity {entity_id} not found")
 
@@ -141,11 +147,11 @@ async def get_value_tree(
         layer_map = {"Capability": 1, "UseCase": 2, "Persona": 3, "ValueDriver": 4}
         root_layer = layer_map.get(root_type, 1)
 
-        # Build traversal query based on direction
+        # Build traversal query based on direction with mandatory tenant filtering
         if direction == "upward":
             # Traverse: Capability -(ENABLES)-> UseCase -(BENEFITS)-> Persona -(DRIVES)-> ValueDriver
             path_query = """
-            MATCH path = (start {id: $entity_id})-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]->(target)
+            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]->(target {tenant_id: $tenant_id})
             WHERE target.id IS NOT NULL
             RETURN start, target, relationships(path) as rels, nodes(path) as path_nodes,
                    length(path) as path_length
@@ -153,14 +159,14 @@ async def get_value_tree(
         else:
             # Downward: ValueDriver <-(DRIVES)- Persona <-(BENEFITS)- UseCase <-(ENABLES)- Capability
             path_query = """
-            MATCH path = (start {id: $entity_id})<-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]-(target)
+            MATCH path = (start {id: $entity_id, tenant_id: $tenant_id})<-[:ENABLES|BENEFITS|DRIVES*1..$max_depth]-(target {tenant_id: $tenant_id})
             WHERE target.id IS NOT NULL
             RETURN start, target, relationships(path) as rels, nodes(path) as path_nodes,
                    length(path) as path_length
             """
 
         path_result = await neo4j.execute_query(
-            path_query, {"entity_id": entity_id, "max_depth": max_depth}
+            path_query, {"entity_id": entity_id, "max_depth": max_depth, "tenant_id": tenant_id}
         )
 
         # Collect nodes and edges

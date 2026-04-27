@@ -282,7 +282,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Process request with auth, context, and optional rate limiting (Task 84)."""
         # Skip auth for public paths (metrics, health, docs)
-        if request.url.path in self.skip_paths:
+        if any(request.url.path == p or request.url.path.startswith(p + "/") for p in self.skip_paths):
             return await call_next(request)
 
         context = await self._authenticate(request)

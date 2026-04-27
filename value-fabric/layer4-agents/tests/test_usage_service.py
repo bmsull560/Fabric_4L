@@ -8,7 +8,7 @@ Covers:
 """
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -17,9 +17,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.billing import BillingUsageEvent, UsageEventStatus
 
-# Mock before importing
-with pytest.MonkeyPatch.context() as mp:
-    mp.setattr("stripe", MagicMock())
+# Mock stripe before importing
+mock_stripe_module = MagicMock()
+
+with patch.dict('sys.modules', {'stripe': mock_stripe_module}):
     from src.services.usage_service import UsageService, UsageValidationError
 
 
