@@ -10,7 +10,7 @@ import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/
 import { PageShell } from "@/components/layout/PageShell";
 import { GraphVisualization } from "@/components/graph/GraphVisualization";
 import { GraphInspectorPanel } from "@/components/graph/GraphInspectorPanel";
-import { useSubgraph, useEntityContext, useGraphQuery, type GraphNode, type GraphRelationship } from "@/hooks/useGraphQuery";
+import { useSubgraph, useEntityContext, useEntityTraversal, useGraphQuery, type GraphNode, type GraphRelationship } from "@/hooks/useGraphQuery";
 import { useGraphCanvas } from "@/hooks/useGraphCanvas";
 import { useGraphData } from "@/hooks/useGraphData";
 import { getEntityBadgeClasses } from "@/lib/graph-utils";
@@ -36,6 +36,7 @@ export default function GraphExplorer() {
   });
 
   const { data: entityContext, isLoading: contextLoading } = useEntityContext(selected, 2);
+  const entityTraversal = useEntityTraversal();
   const graphQuery = useGraphQuery();
   const canvas = useGraphCanvas();
 

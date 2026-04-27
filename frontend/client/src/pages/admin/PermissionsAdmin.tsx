@@ -27,6 +27,7 @@ import {
   useUsers,
   useApiKeys,
   useRevokeApiKey,
+  useInviteUser,
   type User,
   type ApiKey,
 } from "@/hooks/useGovernance";
@@ -128,6 +129,20 @@ function PermissionsContent() {
   } = useApiKeys();
 
   const revokeMutation = useRevokeApiKey();
+  const inviteMutation = useInviteUser();
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("member");
+  const handleInvite = async () => {
+    if (!inviteEmail) return;
+    try {
+      await inviteMutation.mutateAsync({ email: inviteEmail, role: inviteRole });
+      setShowInvite(false);
+      setInviteEmail("");
+      setInviteRole("member");
+      refetchUsers();
+    } catch (e) { /* error shown via mutation state */ }
+  };
 
   const isLoading = usersLoading || keysLoading;
   const error = usersError || keysError;
@@ -183,7 +198,7 @@ function PermissionsContent() {
           title="Permissions & Access"
           subtitle="Manage users, roles, and API keys for your tenant."
         />
-        <Btn variant="primary">
+        <Btn variant="primary" onClick={() => activeTab === "users" ? setShowInvite(true) : null}>
           {activeTab === "users"
             ? <><UserPlus size={13} className="mr-1" /> Invite User</>
             : <><Plus size={13} className="mr-1" /> New API Key</>
@@ -191,6 +206,39 @@ function PermissionsContent() {
         </Btn>
       </div>
 
+      {/* Invite User Dialog */}
+      {showInvite && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-[400px]">
+            <h3 className="text-[15px] font-bold text-neutral-800 mb-4">Invite User</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-500 block mb-1">Email</label>
+                <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="user@company.com" className="w-full text-[12px] border border-neutral-200 rounded-lg px-3 py-2 outline-none focus:border-blue-400" />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-500 block mb-1">Role</label>
+                <select value={inviteRole} onChange={e => setInviteRole(e.target.value)}
+                  className="w-full text-[12px] border border-neutral-200 rounded-lg px-3 py-2 outline-none">
+                  <option value="member">Member</option>
+                  <option value="tenant_admin">Tenant Admin</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+              {inviteMutation.error && (
+                <p className="text-[11px] text-red-600">{inviteMutation.error instanceof Error ? inviteMutation.error.message : "Invite failed"}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <Btn variant="ghost" onClick={() => setShowInvite(false)}>Cancel</Btn>
+              <Btn variant="primary" onClick={handleInvite} disabled={!inviteEmail || inviteMutation.isPending}>
+                {inviteMutation.isPending ? "Sending…" : "Send Invite"}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-neutral-200 mb-4">
         {[

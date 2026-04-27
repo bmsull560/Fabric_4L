@@ -65,6 +65,10 @@ const FormulaList = lazy(() => import("./pages/FormulaList"));
 const GraphExplorer = lazy(() => import("./pages/GraphExplorer"));
 const AgentWorkflows = lazy(() => import("./pages/AgentWorkflows"));
 const BusinessCase = lazy(() => import("./pages/BusinessCase"));
+const CFOView = lazy(() => import("./pages/deliverables/CFOView"));
+const ExecutiveView = lazy(() => import("./pages/deliverables/ExecutiveView"));
+const TechnicalView = lazy(() => import("./pages/deliverables/TechnicalView"));
+const IntegrationDashboard = lazy(() => import("./pages/dev/IntegrationDashboard"));
 const InteractiveBusinessCase = lazy(
   () => import("./pages/InteractiveBusinessCase")
 );
@@ -675,17 +679,17 @@ function Router() {
       </Route>
       <Route path="/deliverables/views/cfo">
         <AuthenticatedRoute {...tierProps}>
-          <BusinessCase />
+          <CFOView />
         </AuthenticatedRoute>
       </Route>
       <Route path="/deliverables/views/executive">
         <AuthenticatedRoute {...tierProps}>
-          <BusinessCase />
+          <ExecutiveView />
         </AuthenticatedRoute>
       </Route>
       <Route path="/deliverables/views/technical">
         <AuthenticatedRoute {...tierProps}>
-          <BusinessCase />
+          <TechnicalView />
         </AuthenticatedRoute>
       </Route>
       <Route path="/deliverables/api">
@@ -843,6 +847,16 @@ function Router() {
         </AuthenticatedRoute>
       </Route>
 
+      {/* ═══════════════════════════════════════════════════════════════
+          DEVELOPER TOOLS
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/dev/integration">
+        <AuthenticatedRoute {...tierProps} requiredTier="admin">
+          <Suspense fallback={<PageLoader />}>
+            <IntegrationDashboard />
+          </Suspense>
+        </AuthenticatedRoute>
+      </Route>
       {/* ═══════════════════════════════════════════════════════════════
           WORKFLOWS
           ═══════════════════════════════════════════════════════════════ */}

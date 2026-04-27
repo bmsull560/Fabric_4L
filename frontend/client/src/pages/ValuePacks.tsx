@@ -19,12 +19,17 @@ import {
   useValuePacks,
   useValuePack,
   useApplyValuePack,
+  useValuePackFrameworkList,
+  useValuePackOntologyMap,
+  useValuePackTemplates,
+  useValuePackComparison,
+  useSuggestValuePacks,
   type ValuePack,
   type PackStatus,
 } from "@/hooks";
 import {
   Package, Search, Filter, AlertCircle, RefreshCw, Loader2,
-  Upload, Eye,
+  Upload, Eye, GitCompare, Map, BookOpen, Lightbulb, Layers,
 } from "lucide-react";
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -338,6 +343,192 @@ function MyPacksSkeleton() {
   );
 }
 
+
+// ── Framework Browser Panel ──────────────────────────────────────────────────
+function FrameworkBrowserPanel() {
+  const [search, setSearch] = useState("");
+  const { data: frameworks, isLoading } = useValuePackFrameworkList(undefined, search || undefined);
+  return (
+    <div className="border border-border rounded-lg bg-card p-4">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
+        <Layers size={12} /> Framework Library
+      </h4>
+      <input
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search frameworks…"
+        className="w-full text-[11px] bg-muted/20 border border-border rounded-md px-2.5 py-1.5 mb-3 outline-none"
+      />
+      {isLoading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
+      ) : frameworks && frameworks.length > 0 ? (
+        <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+          {frameworks.map((fw: any) => (
+            <div key={fw.industry_id} className="flex items-center justify-between p-2 bg-muted/10 rounded-md hover:bg-muted/20 cursor-pointer">
+              <div>
+                <div className="text-[11px] font-semibold text-foreground">{fw.display_name}</div>
+                <div className="text-[10px] text-muted-foreground">Tier {fw.tier} · {fw.primary_value_drivers?.length ?? 0} drivers</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground/60 text-center py-3">No frameworks found.</p>
+      )}
+    </div>
+  );
+}
+
+// ── Ontology Map Panel ───────────────────────────────────────────────────────
+function OntologyMapPanel() {
+  const { data: ontologyMap, isLoading, refetch } = useValuePackOntologyMap();
+  return (
+    <div className="border border-border rounded-lg bg-card p-4">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
+        <Map size={12} /> Ontology Map
+      </h4>
+      {isLoading ? (
+        <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-6 w-full" />)}</div>
+      ) : ontologyMap ? (
+        <div className="space-y-2 text-[11px]">
+          {ontologyMap.shared_drivers?.map((m: any, i: number) => (
+            <div key={i} className="flex items-center justify-between p-1.5 bg-muted/10 rounded">
+              <span className="text-muted-foreground">{m.name || m.id}</span>
+              <span className="text-[10px] text-muted-foreground/60">→</span>
+              <span className="font-medium text-foreground">{m.industries?.join(", ") || ""}</span>
+              <span className="text-[10px] text-emerald-600">{m.count} industries</span>
+            </div>
+          )) ?? <p className="text-muted-foreground/60 text-center py-2">No mappings available.</p>}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground/60 text-center py-3">Load ontology map to view mappings.</p>
+      )}
+    </div>
+  );
+}
+
+// ── Template Library Panel ───────────────────────────────────────────────────
+function TemplateLibraryPanel() {
+  const { data: templates, isLoading } = useValuePackTemplates();
+  return (
+    <div className="border border-border rounded-lg bg-card p-4">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
+        <BookOpen size={12} /> Template Library
+      </h4>
+      {isLoading ? (
+        <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
+      ) : templates && templates.templates?.length > 0 ? (
+        <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+          {templates.templates.map((t: any) => (
+            <div key={t.template_id} className="p-2 bg-muted/10 rounded-md hover:bg-muted/20 cursor-pointer">
+              <div className="text-[11px] font-semibold text-foreground">{t.template_name}</div>
+              {t.description && <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{t.formula_pattern}</div>}
+              {t.category && <div className="text-[9px] text-muted-foreground/60 mt-0.5">{t.applicable_industries?.[0] || "General"}</div>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground/60 text-center py-3">No templates available.</p>
+      )}
+    </div>
+  );
+}
+
+// ── Comparison Tool ──────────────────────────────────────────────────────────
+function ComparisonPanel({ packs }: { packs: ValuePack[] }) {
+  const [packA, setPackA] = useState<string>("");
+  const [packB, setPackB] = useState<string>("");
+  const comparison = useValuePackComparison();
+  const handleCompare = () => {
+    if (packA && packB) {
+      comparison.mutate({ industry_ids: [packA, packB] });
+    }
+  };
+  return (
+    <div className="border border-border rounded-lg bg-card p-4">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
+        <GitCompare size={12} /> Compare Packs
+      </h4>
+      <div className="space-y-2 mb-3">
+        <select value={packA} onChange={e => setPackA(e.target.value)}
+          className="w-full text-[11px] bg-muted/20 border border-border rounded-md px-2 py-1.5 outline-none">
+          <option value="">Select Pack A</option>
+          {packs.map(p => <option key={p.pack_id} value={p.pack_id}>{p.name}</option>)}
+        </select>
+        <select value={packB} onChange={e => setPackB(e.target.value)}
+          className="w-full text-[11px] bg-muted/20 border border-border rounded-md px-2 py-1.5 outline-none">
+          <option value="">Select Pack B</option>
+          {packs.map(p => <option key={p.pack_id} value={p.pack_id}>{p.name}</option>)}
+        </select>
+      </div>
+      <Btn variant="outline" className="w-full" disabled={!packA || !packB || comparison.isPending}
+        onClick={handleCompare}>
+        {comparison.isPending ? <Loader2 size={12} className="animate-spin" /> : <GitCompare size={12} />}
+        Compare
+      </Btn>
+      {comparison.data && (
+        <div className="mt-3 space-y-1.5 text-[11px]">
+          {Object.entries(comparison.data.differentiation_analysis || {}).map(([key, val]: [string, string], i: number) => (
+            <div key={i} className="flex items-center justify-between p-1.5 bg-muted/10 rounded text-[10px]">
+              <span className="font-medium text-muted-foreground">{key}</span>
+              <span className="text-foreground">{val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Suggestion Engine ────────────────────────────────────────────────────────
+function SuggestionPanel() {
+  const [industry, setIndustry] = useState("");
+  const [dealSize, setDealSize] = useState("");
+  const suggestions = useSuggestValuePacks();
+  const [suggestionResults, setSuggestionResults] = useState<any[]>([]);
+  const handleSuggest = () => {
+    if (industry) {
+      setSuggestionResults(suggestions.suggest({
+        industry,
+        annual_revenue: dealSize || undefined,
+      }) );
+    }
+  };
+  return (
+    <div className="border border-border rounded-lg bg-card p-4">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-3 flex items-center gap-1.5">
+        <Lightbulb size={12} /> Pack Suggestions
+      </h4>
+      <div className="space-y-2 mb-3">
+        <input value={industry} onChange={e => setIndustry(e.target.value)}
+          placeholder="Industry (e.g., SaaS)"
+          className="w-full text-[11px] bg-muted/20 border border-border rounded-md px-2.5 py-1.5 outline-none" />
+        <input value={dealSize} onChange={e => setDealSize(e.target.value)}
+          placeholder="Deal size (optional)"
+          className="w-full text-[11px] bg-muted/20 border border-border rounded-md px-2.5 py-1.5 outline-none" />
+      </div>
+      <Btn variant="outline" className="w-full" disabled={!industry || false}
+        onClick={handleSuggest}>
+        {false ? <Loader2 size={12} className="animate-spin" /> : <Lightbulb size={12} />}
+        Get Suggestions
+      </Btn>
+      {suggestionResults && suggestionResults.length > 0 && (
+        <div className="mt-3 space-y-1.5">
+          {suggestionResults.map((s: any) => (
+            <div key={s.industry_id} className="p-2 bg-emerald-50/50 border border-emerald-100 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] font-semibold text-foreground">{s.display_name}</span>
+                <span className="text-[10px] font-bold text-emerald-600">{Math.round(s.match_score * 100)}%</span>
+              </div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">{s.recommended_drivers?.[0]?.relevance || "Matched"}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Content ─────────────────────────────────────────────────────────────
 
 function ValuePacksContent() {
@@ -534,6 +725,11 @@ function ValuePacksContent() {
             error={deployError}
             onClearError={() => setDeployError(null)}
           />
+          <ComparisonPanel packs={packs} />
+          <FrameworkBrowserPanel />
+          <TemplateLibraryPanel />
+          <OntologyMapPanel />
+          <SuggestionPanel />
         </div>
       </div>
     </div>

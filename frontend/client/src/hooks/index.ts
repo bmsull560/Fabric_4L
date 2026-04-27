@@ -41,6 +41,11 @@ export {
   useValuePacks,
   useValuePack,
   useApplyValuePack,
+  useValuePackFrameworkList,
+  useValuePackOntologyMap,
+  useValuePackTemplates,
+  useValuePackComparison,
+  useSuggestValuePacks,
   type ValuePack,
   type PackStatus,
 } from "./useValuePacks";

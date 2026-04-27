@@ -46,7 +46,7 @@ async function fetchValuePacks(filters: ValuePackFilters): Promise<ValuePack[]> 
   const response = await apiClient.get('l3', `/packs?${params.toString()}`);
 
   // Runtime validation with Zod
-  const parsed = ValuePackListSchema.safeParse(response.data);
+  const parsed = ValuePackListSchema.safeParse((response as any).data);
   if (!parsed.success) {
     console.error('Value pack list validation failed:', parsed.error);
     throw new ValuePackApiError(formatZodError(parsed.error, 'value pack list response'));
@@ -84,7 +84,7 @@ async function fetchValuePack(packId: string): Promise<ValuePack> {
   const response = await apiClient.get('l3', `/packs/${packId}`);
 
   // Runtime validation with Zod
-  const parsed = ValuePackSchema.safeParse(response.data);
+  const parsed = ValuePackSchema.safeParse((response as any).data);
   if (!parsed.success) {
     console.error('Value pack detail validation failed:', parsed.error);
     throw new ValuePackApiError(formatZodError(parsed.error, 'value pack response'));
@@ -132,7 +132,7 @@ export function useApplyValuePack() {
     mutationFn: async ({ packId }) => {
       if (!packId) throw new ValuePackApiError('Pack ID is required');
       const response = await apiClient.post('l3', `/packs/${packId}/apply`, {});
-      return response.data as ApplyValuePackResponse;
+      return (response as { data: unknown }).data as ApplyValuePackResponse;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QK.valuePacks.all });
