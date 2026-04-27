@@ -286,6 +286,137 @@ function reducer(state: State, action: Action): State { ... }
 
 ---
 
+### 3.7 GATE Audit Ledger Commit
+
+**Canonical:** shared.audit.ledger.LedgerCommitHandler + shared.crypto.canonical.canonical_hash()
+
+Every auditable action produces a hash-chained audit event. Events are partitioned by `chain_id` (typically `agent_type:tenant_id`). Each event's `prev_hash` references the preceding event in the same chain, forming a tamper-evident ledger.
+
+```python
+from shared.audit.emitter import emit_audit_event
+
+# Emit an audit event with chain linkage
+await emit_audit_event(
+    event_type="TOOL_INVOCATION",
+    agent_id="context-extraction-abc12345",
+    details={"tool_name": "query_graph", "input_hash": "sha256:...", "output_hash": "sha256:..."},
+    chain_id="context_extraction:tenant-1",
+)
+```
+
+**Rules:**
+- All audit events MUST include `chain_id`. Events without `chain_id` are rejected by the ledger handler.
+- `canonical_hash()` from `shared.crypto.canonical` is the ONLY approved hashing function for audit payloads. No inline `hashlib.sha256(json.dumps(...))` patterns.
+- The ledger handler is append-only. There is no API to modify or delete committed events.
+- Chain integrity is verified by CI via `tests/contracts/gate/test_phase1_contracts.py`.
+
+---
+
+### 3.8 GATE Tool Gateway
+
+**Canonical:** shared.governance.tool_gateway.ToolGateway
+
+All tool invocations from agents MUST route through the ToolGateway. The gateway enforces a 6-step pipeline: ABOM allowlist check, OPA policy evaluation, invariant evaluation (call limits, budget caps), pre-invocation audit, tool execution, and post-invocation audit.
+
+```python
+# Inside any agent execute() method
+async def execute(self, task, context):
+    gateway = context.get("tool_gateway")
+    if gateway:
+        result = await gateway.execute("query_graph", {"query": "..."})
+    else:
+        # Fallback for testing — direct registry call
+        result = await self.registry.execute("query_graph", {"query": "..."})
+```
+
+**Rules:**
+- Direct `ToolRegistry.execute()` calls from agent code are FORBIDDEN in production. All calls route through `ctx['tool_gateway']`.
+- API routes that invoke tools (`POST /tools/invoke`, `POST /tools/export-document`) MUST also route through ToolGateway when a GATE context is available.
+- The gateway logs both pre-invocation and post-invocation audit events with input/output hashes.
+- If OPA is unreachable, `high_privilege` tier agents are denied by default. Standard and elevated agents fall back to ABOM-only enforcement.
+
+---
+
+### 3.9 Agent Bill of Materials (ABOM)
+
+**Canonical:** shared.governance.abom.AgentBillOfMaterials + JSON manifests in `value-fabric/layer4-agents/manifests/`
+
+**Every deployed agent MUST have a matching ABOM manifest.** The manifest declares the agent's identity, privilege tier, allowed tools, invariant constraints (call limits, budget caps), and data scope.
+
+```json
+{
+  "schema_version": "1.0.0",
+  "agent_id": "context_extraction-abc12345",
+  "agent_type": "context_extraction",
+  "display_name": "ContextExtractionAgent",
+  "privilege_tier": "standard",
+  "allowed_tools": ["query_graph", "semantic_search", "get_entity", "..." ],
+  "invariants": {
+    "max_calls_per_run": 50,
+    "budget_limit_usd": 3.00,
+    "requires_human_approval": []
+  }
+}
+```
+
+**Rules:**
+- Manifests are validated against `packages/platform-contract/schemas/gate/abom.schema.json` in CI.
+- `agent_id` format is `<agent_type>-<8-char-prefix>`. No UUIDs.
+- `privilege_tier` is one of: `standard`, `elevated`, `high_privilege`.
+- Adding a tool to an agent requires updating the manifest AND the Rego policy bundle.
+- The canonical 9-agent roster is: ContextExtractionAgent, ValueModelAgent, IntegrityAgent, NarrativeAgent, CompetitiveIntelAgent, SignalDetectionAgent, CRMSyncAgent, ConversationAgent, OrchestrationController.
+
+---
+
+### 3.10 GATE Memory Gateway
+
+**Canonical:** shared.governance.memory_gateway.MemoryGateway
+
+All knowledge retrieval operations from agents MUST route through the MemoryGateway. The gateway wraps graph and vector retrieval with provenance tracking: every retrieved chunk is hashed, its source lineage is recorded, and a `MEMORY_ACCESS` audit event is emitted.
+
+```python
+# Inside an agent that needs knowledge retrieval
+async def execute(self, task, context):
+    memory_gw = context.get("memory_gateway")
+    if memory_gw:
+        results = await memory_gw.retrieve(
+            query="customer pain points",
+            retrieval_type="semantic",
+            scope={"account_id": "acct-123"},
+        )
+        # results include provenance metadata: content_hash, source_id, retrieval_timestamp
+```
+
+**Rules:**
+- Direct calls to `GraphRAGRetriever` or vector search from agent code are FORBIDDEN in production. Route through MemoryGateway.
+- Every retrieval result includes `content_hash` (SHA-256 of canonical content) and `source_id` for lineage tracking.
+- Retrieval audit events are emitted with `chain_id="memory:{tenant_id}"` for ledger partitioning.
+
+---
+
+### 3.11 GATE Replay Recorder
+
+**Canonical:** shared.governance.replay.ReplayRecorder
+
+Every agent run produces a deterministic replay snapshot. The snapshot captures the sequence of tool calls, memory accesses, and decision points, enabling post-hoc audit and debugging.
+
+```python
+# BaseAgent.run() automatically injects the recorder
+async def run(self, task, context):
+    recorder = context.get("replay_recorder")
+    # ... agent execution ...
+    if recorder:
+        await recorder.commit()  # Emits REPLAY_SNAPSHOT audit event
+```
+
+**Rules:**
+- `ReplayRecorder.commit()` MUST be `await`-ed, not fire-and-forget via `asyncio.create_task()`. Silent loss on shutdown is unacceptable for audit trails.
+- Replay snapshots are hashed with `canonical_hash()` for integrity verification.
+- The snapshot includes: `agent_id`, `run_id`, `started_at`, `completed_at`, `steps` (ordered list of tool/memory operations), and `snapshot_hash`.
+- Snapshots are emitted as `REPLAY_SNAPSHOT` audit events with `chain_id="replay:{agent_id}"`.
+
+---
+
 ## 4. Reference Implementation
 
 The canonical implementations live in packages/platform-contract/src/:

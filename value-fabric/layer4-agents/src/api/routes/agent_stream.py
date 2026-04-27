@@ -1,7 +1,20 @@
-"""Agent Stream route for RightRail conversational assistant."""
+"""Agent Stream route for RightRail conversational assistant (ValuePilot).
+
+Wires the frontend RightRail chat to the ConversationService, which
+orchestrates:
+  1. Intent classification via ConversationAgent (GATE-governed)
+  2. Context gathering via ConversationAgent (GATE-governed)
+  3. Workflow delegation via OrchestrationController (when applicable)
+  4. Response generation via C1 proxy (LLM) or heuristic fallback
+
+The response contract is unchanged from the original stub:
+  { content: str, metadata: AgentGovernanceMetadata }
+"""
 
 from __future__ import annotations
 
+import logging
+import os
 import uuid
 from datetime import UTC, datetime
 
@@ -12,7 +25,14 @@ from shared.error_handling.middleware import get_request_id
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Request / Response models (unchanged from original contract)
+# ---------------------------------------------------------------------------
 
 
 class AgentStreamMessage(BaseModel):
@@ -57,6 +77,10 @@ class AgentGovernanceMetadata(BaseModel):
     tool_name: str
     audit_event_id: str
     emitted_at: str
+    # New fields surfaced from ConversationService
+    intent: str | None = None
+    confidence: float | None = None
+    workflow_triggered: bool | None = None
 
 
 class AgentStreamResponse(BaseModel):
@@ -66,25 +90,69 @@ class AgentStreamResponse(BaseModel):
     metadata: AgentGovernanceMetadata
 
 
-def _build_response_content(active_tab: str, account_name: str, user_prompt: str) -> str:
-    """Generate concise tab-aware response until full orchestration wiring is enabled."""
-    lower_prompt = user_prompt.lower()
-    if "summary" in lower_prompt or "summarize" in lower_prompt:
-        return (
-            f"Quick summary for {account_name} in {active_tab}: focus the top two signals by confidence, "
-            "tie each to measurable impact, and capture one validation question for the next customer touchpoint."
-        )
+# ---------------------------------------------------------------------------
+# Singleton ConversationService (lazy-initialized)
+# ---------------------------------------------------------------------------
 
-    if "next" in lower_prompt or "recommend" in lower_prompt or "suggest" in lower_prompt:
-        return (
-            f"For {account_name} in {active_tab}, recommended next steps are to validate the leading hypothesis, "
-            "map it to one value driver, and add the evidence gap to your action plan."
-        )
+_conversation_service = None
 
-    return (
-        f"Got it — for {account_name} in {active_tab}, I can help analyze findings, prioritize actions, "
-        "or draft stakeholder-ready messaging. Tell me which direction you want."
+
+def _get_conversation_service():
+    """Lazy-initialize the ConversationService singleton.
+
+    The service is created once and reused across requests. Agent
+    instances are optional — the service degrades gracefully when
+    they are not available (e.g., during early startup or testing).
+    """
+    global _conversation_service
+    if _conversation_service is not None:
+        return _conversation_service
+
+    from ..services.conversation import ConversationService
+
+    # Attempt to instantiate agents — fail gracefully
+    conversation_agent = None
+    orchestration_controller = None
+
+    try:
+        from ..agents.taxonomy import ConversationAgent
+
+        conversation_agent = ConversationAgent(
+            config={"manifest_path": "value-fabric/layer4-agents/manifests/conversation_agent.abom.json"},
+        )
+    except Exception:
+        logger.info("ConversationAgent not available — using heuristic mode")
+
+    try:
+        from ..agents.taxonomy import OrchestrationController
+
+        orchestration_controller = OrchestrationController(
+            config={"manifest_path": "value-fabric/layer4-agents/manifests/orchestration_controller.abom.json"},
+        )
+    except Exception:
+        logger.info("OrchestrationController not available — no workflow delegation")
+
+    c1_enabled = bool(os.getenv("THESYS_API_KEY"))
+
+    _conversation_service = ConversationService(
+        conversation_agent=conversation_agent,
+        orchestration_controller=orchestration_controller,
+        c1_enabled=c1_enabled,
     )
+
+    logger.info(
+        "ConversationService initialized: agent=%s, orchestrator=%s, c1=%s",
+        conversation_agent is not None,
+        orchestration_controller is not None,
+        c1_enabled,
+    )
+
+    return _conversation_service
+
+
+# ---------------------------------------------------------------------------
+# Route
+# ---------------------------------------------------------------------------
 
 
 @router.post("/agent-stream/chat", response_model=AgentStreamResponse)
@@ -93,39 +161,78 @@ async def agent_stream_chat(
     request: Request,
     ctx: RequestContext = Depends(require_authenticated),
 ) -> AgentStreamResponse:
-    """Handle RightRail chat payload and emit governance metadata per interaction."""
+    """Handle RightRail chat payload through the ConversationService pipeline.
+
+    The pipeline:
+    1. Extract user message and account context from payload
+    2. Resolve trace ID from request correlation or OpenTelemetry
+    3. Delegate to ConversationService.handle_message()
+    4. Return response with governance metadata
+    """
+    # Extract the last user message
     last_user_message = next(
         (msg.content for msg in reversed(payload.messages) if msg.role.lower() == "user"),
         payload.messages[-1].content,
     )
 
+    # Extract account context
     account_name = (
         payload.account.account_name
         if payload.account and payload.account.account_name
         else "this account"
     )
+    account_id = (
+        payload.account.account_id
+        if payload.account and payload.account.account_id
+        else None
+    )
+    account_tier = (
+        payload.account.account_tier
+        if payload.account and payload.account.account_tier
+        else None
+    )
 
-    # Use request correlation ID for traceability; fall back to OpenTelemetry span trace id.
+    # Resolve trace ID
     request_trace_id = get_request_id(request)
     span = trace.get_current_span()
     span_context = span.get_span_context()
-    otel_trace_id = (
+    trace_id = (
         f"{span_context.trace_id:032x}"
         if span_context is not None and span_context.trace_id != 0
         else request_trace_id
     )
 
-    workflow_id = str(uuid.uuid4())
-    audit_event_id = f"audit_{uuid.uuid4().hex[:12]}"
+    tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
 
+    # Build message list for context
+    messages = [{"role": m.role, "content": m.content} for m in payload.messages]
+
+    # Delegate to ConversationService
+    service = _get_conversation_service()
+    result = await service.handle_message(
+        user_message=last_user_message,
+        messages=messages,
+        active_tab=payload.active_tab,
+        account_id=account_id,
+        account_name=account_name,
+        account_tier=account_tier,
+        tenant_id=tenant_id,
+        trace_id=trace_id,
+    )
+
+    # Map result to response contract
+    metadata = result.get("metadata", {})
     return AgentStreamResponse(
-        content=_build_response_content(payload.active_tab, account_name, last_user_message),
+        content=result["content"],
         metadata=AgentGovernanceMetadata(
-            trace_id=otel_trace_id,
-            workflow_id=workflow_id,
-            tenant_id=str(ctx.tenant_id) if ctx.tenant_id else "unknown",
-            tool_name="right_rail_agent_stream",
-            audit_event_id=audit_event_id,
-            emitted_at=datetime.now(UTC).isoformat(),
+            trace_id=metadata.get("trace_id", trace_id),
+            workflow_id=metadata.get("workflow_id", str(uuid.uuid4())),
+            tenant_id=metadata.get("tenant_id", tenant_id),
+            tool_name=metadata.get("tool_name", "valuepilot_conversation"),
+            audit_event_id=metadata.get("audit_event_id", f"audit_{uuid.uuid4().hex[:12]}"),
+            emitted_at=metadata.get("emitted_at", datetime.now(UTC).isoformat()),
+            intent=metadata.get("intent"),
+            confidence=metadata.get("confidence"),
+            workflow_triggered=metadata.get("workflow_triggered"),
         ),
     )
