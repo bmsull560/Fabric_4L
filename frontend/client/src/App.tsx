@@ -9,7 +9,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuthContext } from "./contexts/AuthContext";
 import { BillingProvider } from "./context/BillingContext";
 import { useUserTierStore, useCreateAccount, type UserTier } from "@/hooks";
-import { Route, useLocation, useParams } from "wouter";
+import { Route, Switch, useLocation, useParams } from "wouter";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 
 // ── Navigate Component for wouter ───────────────────────────────────────────
@@ -320,6 +320,7 @@ function Router() {
 
   return (
     <Suspense fallback={<PageLoader />}>
+     <Switch>
       {/* ═══════════════════════════════════════════════════════════════
           PUBLIC ROUTES — No AppShell
           ═══════════════════════════════════════════════════════════════ */}
@@ -1159,6 +1160,7 @@ function Router() {
           </ErrorBoundary>
         </AppShell>
       </Route>
+     </Switch>
     </Suspense>
   );
 }

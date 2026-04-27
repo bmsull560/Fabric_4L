@@ -115,7 +115,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="fixed inset-0 z-50 flex flex-col lg:flex-row overflow-auto">
       {/* LEFT PANEL — Marketing & CTAs */}
       <div className="flex-1 flex flex-col bg-background px-6 py-8 lg:px-12 lg:py-10">
         {/* Header */}
