@@ -609,6 +609,12 @@ jobs:
         run: |
           python scripts/ci/check_tool_contracts.py value-fabric/layer4-agents/src/tools/
 
+      - name: Run endpoint-hook coverage validation
+        run: |
+          python scripts/ci/check_endpoint_coverage.py \
+            --registry frontend/contracts/endpoint-hook-registry.json \
+            --openapi-dir contracts/openapi
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
