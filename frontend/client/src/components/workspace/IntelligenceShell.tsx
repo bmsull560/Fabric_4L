@@ -32,10 +32,15 @@ interface IntelligenceShellProps {
 // ── Tab Definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: "signals",      label: "Signals" },
-  { key: "drivers",      label: "Drivers" },
-  { key: "evidence",     label: "Evidence" },
-  { key: "stakeholders", label: "Stakeholders" },
+  { key: "signals",        label: "Signals" },
+  { key: "drivers",        label: "Drivers" },
+  { key: "evidence",       label: "Evidence" },
+  { key: "stakeholders",   label: "Stakeholders" },
+  { key: "enrichment",     label: "Enrichment" },
+  { key: "hypotheses",     label: "Hypotheses" },
+  { key: "competitive",    label: "Competitive" },
+  { key: "roi",            label: "ROI" },
+  { key: "evidence-library", label: "Evidence Library" },
 ] as const;
 
 // ── Account Context Header ────────────────────────────────────────────────────
