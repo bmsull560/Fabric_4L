@@ -310,39 +310,15 @@ class OntologySchemaRepository:
             # Check if any row was updated
             return "UPDATE 1" in result
 
-        constraints_json = None
-        if property.constraints:
-            constraints_json = property.constraints.model_dump(exclude_none=True)
+    # ==========================================================================
+    # Property Operations
+    # ==========================================================================
 
-        await conn.execute(
-            """
-            UPDATE ontology_properties
-            SET name = $1, property_type = $2, description = $3,
-                required = $4, default_value = $5, constraints = $6
-            WHERE id = $7 AND type_id = $8
-            """,
-            property.name,
-            property.type.value if hasattr(property.type, 'value') else str(property.type),
-            property.description,
-            property.required,
-            property.default_value,
-            constraints_json,
-            property_id,
-            type_id,
-        )
-
-        # Update type timestamp
-        await conn.execute(
-            "UPDATE ontology_types SET updated_at = NOW(), version = version + 1 WHERE id = $1",
-            type_id,
-        )
-
-        Returns:
-            The updated OntologyType with the new property
-
-        Raises:
-            ValueError: If the type doesn't exist or doesn't belong to the tenant
-        """
+    async def add_property(
+        self, type_id: str, property: OntologyProperty
+    ) -> OntologyType:
+        """Add a property to a type."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             # Verify type exists and belongs to tenant
             type_row = await conn.fetchrow(
@@ -396,13 +372,14 @@ class OntologySchemaRepository:
                 type_id,
             )
 
-        return await self.get_type_by_id(tenant_id, type_id)
+        return await self.get_type_by_id(type_id)
 
     async def update_property(
-        self, tenant_id: str, type_id: str, property_id: str,
+        self, type_id: str, property_id: str,
         property: OntologyProperty
     ) -> OntologyType:
         """Update a property."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             # Verify type ownership
             type_row = await conn.fetchrow(
@@ -500,9 +477,10 @@ class OntologySchemaRepository:
             ]
 
     async def add_relationship(
-        self, tenant_id: str, relationship: TypeRelationship
+        self, relationship: TypeRelationship
     ) -> TypeRelationship:
         """Add a relationship between types."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             await conn.execute(
                 """
@@ -544,11 +522,12 @@ class OntologySchemaRepository:
     # ==========================================================================
 
     async def publish_schema(
-        self, tenant_id: str, version: str, user_id: str, comment: Optional[str] = None
+        self, version: str, user_id: str, comment: Optional[str] = None
     ) -> SchemaVersion:
         """Publish the current schema as a new version."""
+        tenant_id = str(require_context().tenant_id)
         # Get current schema
-        schema = await self.get_schema(tenant_id)
+        schema = await self.get_schema()
 
         # Create version record
         version_id = str(uuid4())
@@ -583,9 +562,10 @@ class OntologySchemaRepository:
         )
 
     async def get_schema_version(
-        self, tenant_id: str, version: str
+        self, version: str
     ) -> Optional[OntologySchema]:
         """Get a specific published schema version."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             row = await conn.fetchrow(
                 """
@@ -621,7 +601,7 @@ class OntologySchemaRepository:
     # ==========================================================================
 
     async def import_schema(
-        self, tenant_id: str, schema: OntologySchema, user_id: str
+        self, schema: OntologySchema, user_id: str
     ) -> OntologySchema:
         """Import a complete schema, replacing the current one.
 
@@ -629,7 +609,6 @@ class OntologySchemaRepository:
         Type IDs are remapped to new UUIDs to avoid collisions.
 
         Args:
-            tenant_id: The tenant to import the schema for
             schema: The complete ontology schema to import
             user_id: The user performing the import (for audit purposes)
 
@@ -640,6 +619,7 @@ class OntologySchemaRepository:
             This deletes all existing types, properties, and relationships
             for the tenant before importing the new schema.
         """
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             async with conn.transaction():
                 # Delete existing schema

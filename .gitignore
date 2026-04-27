@@ -18,6 +18,7 @@ ehthumbs.db
 # Committed files: .env.example, .env.test, .env.staging, .env.production,
 #                  .env.development, .env.production.example
 .env
+.env.dev
 .env.local
 .env.*.local
 
@@ -96,3 +97,4 @@ eggs/
 artifacts/zero-trust/
 artifacts/backup-drill/
 artifacts/performance/
+.env.dev

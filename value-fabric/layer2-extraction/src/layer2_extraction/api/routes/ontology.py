@@ -174,11 +174,9 @@ async def publish_ontology_schema(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Publish the current schema as a new version."""
-    tenant_id = get_tenant_id(request)
     user_id = get_user_id(request)
 
     version = await repo.publish_schema(
-        tenant_id=tenant_id,
         version=body.version,
         user_id=user_id,
         comment=body.comment,
@@ -200,7 +198,6 @@ async def import_ontology_schema(
     """Import an ontology schema from JSON."""
     import json
 
-    tenant_id = get_tenant_id(request)
     user_id = get_user_id(request)
 
     try:
@@ -217,7 +214,7 @@ async def import_ontology_schema(
         error_messages = ", ".join([e.message for e in errors if e.severity == "error"])
         raise HTTPException(status_code=400, detail=f"Schema validation failed: {error_messages}")
 
-    imported = await repo.import_schema(tenant_id, schema, user_id)
+    imported = await repo.import_schema(schema, user_id)
     return imported
 
 
@@ -262,9 +259,7 @@ async def create_ontology_type(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Create a new ontology type."""
-    tenant_id = get_tenant_id(request)
     return await repo.create_type(
-        tenant_id=tenant_id,
         name=body.name,
         description=body.description,
         parent_type_id=body.parent_type_id,
@@ -279,9 +274,7 @@ async def update_ontology_type(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Update an existing ontology type."""
-    tenant_id = get_tenant_id(request)
     updated = await repo.update_type(
-        tenant_id=tenant_id,
         type_id=type_id,
         name=body.name,
         description=body.description,
@@ -314,9 +307,8 @@ async def add_type_property(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Add a property to an ontology type."""
-    tenant_id = get_tenant_id(request)
     try:
-        return await repo.add_property(tenant_id, type_id, property)
+        return await repo.add_property(type_id, property)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -330,9 +322,8 @@ async def update_type_property(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Update a property of an ontology type."""
-    tenant_id = get_tenant_id(request)
     try:
-        return await repo.update_property(tenant_id, type_id, property_id, property)
+        return await repo.update_property(type_id, property_id, property)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -372,8 +363,6 @@ async def create_type_relationship(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Create a new relationship between types."""
-    tenant_id = get_tenant_id(request)
-
     relationship = TypeRelationship(
         source_type_id=body.source_type_id,
         target_type_id=body.target_type_id,
@@ -382,7 +371,7 @@ async def create_type_relationship(
         cardinality=body.cardinality,
     )
 
-    return await repo.add_relationship(tenant_id, relationship)
+    return await repo.add_relationship(relationship)
 
 
 @router.delete("/schema/relationships/{relationship_id}")
@@ -426,8 +415,7 @@ async def get_schema_version(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Get a specific published schema version."""
-    tenant_id = get_tenant_id(request)
-    schema = await repo.get_schema_version(tenant_id, version)
+    schema = await repo.get_schema_version(version)
     if not schema:
         raise HTTPException(status_code=404, detail=f"Version {version} not found")
     return schema

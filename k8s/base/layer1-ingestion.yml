@@ -123,9 +123,15 @@ spec:
                 name: value-fabric-config
           env:
             - name: DATABASE_URL
-              value: "postgresql://postgres:postgres@postgres:5432/ingestion"
+              valueFrom:
+                secretKeyRef:
+                  name: layer1-db-credentials
+                  key: DATABASE_URL
             - name: REDIS_URL
-              value: "redis://redis:6379/0"
+              valueFrom:
+                secretKeyRef:
+                  name: layer1-db-credentials
+                  key: REDIS_URL
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:

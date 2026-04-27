@@ -324,12 +324,19 @@ app.add_middleware(
 
 # CORS middleware — restrict origins in production via the CORS_ORIGINS env var
 # Note: allow_origins=["*"] cannot be used with allow_credentials=True per browser security spec
+# F-9 FIX: Fail-closed in production — require explicit CORS_ORIGINS
 
 _cors_raw = os.getenv("CORS_ORIGINS", "")
 _cors_origins = [o.strip() for o in _cors_raw.split(",") if o.strip()] if _cors_raw else ["*"]
 _cors_credentials = "*" not in _cors_origins  # Must be False when using wildcard origins
 
 if "*" in _cors_origins:
+    env = os.getenv("ENVIRONMENT", "development")
+    if env == "production":
+        raise RuntimeError(
+            "CORS_ORIGINS must be set to specific origins in production. "
+            "Wildcard origins are not permitted."
+        )
     logging.getLogger(__name__).warning(
         "CORS_ORIGINS not set — using wildcard origins. "
         "Set CORS_ORIGINS to specific origins in production."

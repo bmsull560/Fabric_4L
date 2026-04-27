@@ -34,7 +34,7 @@ banner() {
 # Handle 'down' command
 if [[ "${1:-}" == "down" ]]; then
     echo -e "${YELLOW}Tearing down dev environment...${NC}"
-    docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" down -v
+    $COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" down -v
     echo -e "${GREEN}Done.${NC}"
     exit 0
 fi
@@ -49,9 +49,14 @@ if ! command -v docker &>/dev/null; then
     exit 1
 fi
 
-if ! docker compose version &>/dev/null; then
-    echo -e "${RED}Error: docker compose plugin is not installed.${NC}"
-    echo "Install with: sudo apt install docker-compose-plugin"
+# Detect docker compose variant
+if docker compose version &>/dev/null 2>&1; then
+    COMPOSE="docker compose"
+elif docker-compose version &>/dev/null 2>&1; then
+    COMPOSE="docker-compose"
+else
+    echo -e "${RED}Error: Docker Compose is not installed.${NC}"
+    echo "Install Docker Desktop or Docker Compose."
     exit 1
 fi
 
@@ -81,7 +86,7 @@ if [[ "${1:-}" == "--build" ]]; then
     BUILD_FLAG="--build"
 fi
 
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d $BUILD_FLAG
+$COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d $BUILD_FLAG
 
 # Wait for health
 echo ""
@@ -90,7 +95,7 @@ echo -e "${YELLOW}Waiting for services to be healthy...${NC}"
 MAX_WAIT=120
 ELAPSED=0
 while [[ $ELAPSED -lt $MAX_WAIT ]]; do
-    HEALTHY=$(docker compose -f "$COMPOSE_FILE" ps --format json 2>/dev/null | python3 -c "
+    HEALTHY=$($COMPOSE -f "$COMPOSE_FILE" ps --format json 2>/dev/null | python3 -c "
 import sys, json
 lines = sys.stdin.read().strip().split('\n')
 total = 0

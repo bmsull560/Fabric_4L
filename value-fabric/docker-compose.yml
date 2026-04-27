@@ -378,6 +378,8 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ingestion
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - FLOWER_USER=${FLOWER_USER:-admin}
+      - FLOWER_PASSWORD=${FLOWER_PASSWORD:?FLOWER_PASSWORD is required}
       - PYTHONPATH=/app
     ports:
       - "5555:5555"
@@ -481,9 +483,12 @@ services:
       retries: 3
 
   # Vault (dev mode) — optional local secrets backend
+  # F-6 FIX: Dev mode only enabled via 'dev' profile. Production must use proper Vault.
   vault:
     image: hashicorp/vault:latest
     container_name: value-fabric-vault
+    profiles:
+      - dev  # Only start with --profile dev, never in production
     cap_add:
       - IPC_LOCK
     environment:
