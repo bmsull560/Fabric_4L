@@ -566,7 +566,7 @@ export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
           <button
             key={tab}
             onClick={() => {
-              if (tab === "Tree Explorer") navigate("/model/value-studio/explorer");
+              if (tab === "Tree Explorer") navigate("/context/value-trees/explorer");
               if (tab === "Normalization") navigate("/model/value-studio/normalization");
             }}
             className={`pb-3 text-sm font-medium transition-colors relative ${

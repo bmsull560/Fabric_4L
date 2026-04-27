@@ -203,6 +203,7 @@ const ROUTE_TIER_MAP: Record<string, UserTier> = {
   // Knowledge & Logic
   '/context/packs': 'standard',
   '/context/models': 'standard',
+  '/context/value-trees/explorer': 'advanced',
   '/context/formulas': 'advanced',
   '/context/agents': 'advanced',
 
