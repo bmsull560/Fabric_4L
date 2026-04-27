@@ -23,11 +23,11 @@ import {
   Search,
   TreeDeciduous
 } from "lucide-react";
-import { PageHeader, Btn, Toolbar, Tabs, SectionCard } from "@/components/WfPrimitives";
+import { PageHeader, Btn, Tabs, SectionCard } from "@/components/WfPrimitives";
 import { EntityBadge } from "@/components/WfPrimitives";
 import type { EntityType } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useValueTree } from "@/hooks/useValueTrees";
+import { useValueTree, useValueTreeCache, useValueTreePaths } from "@/hooks/useValueTrees";
 import { useEntities, type Entity } from "@/hooks/useEntities";
 import type { ValueTreeNode, ValueTreeEdge } from "@/api/valueTrees";
 
@@ -55,6 +55,8 @@ function mapEntityType(type: BackendEntityType): EntityType {
 // Constants for UI truncation
 const ENTITY_ID_SHORT_LENGTH = 12;
 const ENTITY_ID_LIST_LENGTH = 16;
+const DEPTH_OPTIONS = [1, 2, 3, 4] as const;
+const DIRECTION_OPTIONS = ["upward", "downward"] as const;
 
 // Build hierarchical tree from flat nodes/edges
 function buildTree(nodes: ValueTreeNode[], edges: ValueTreeEdge[], rootId: string): TreeNode | null {
@@ -201,11 +203,42 @@ function ValueTreeSkeleton({ view }: { view: "visual" | "outline" }) {
 export default function ValueTreeExplorer() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("Tree Explorer");
-  const [view, setView] = useState<"visual"|"outline">("visual");
+  const [view, setView] = useState<"visual"|"outline"|"paths">("visual");
   const [showEntitySelector, setShowEntitySelector] = useState(false);
-  
-  // Get entity_id from URL or null
+  const { invalidateTree } = useValueTreeCache();
+
+  // URL-driven query controls for shareable links
   const entityId = searchParams.get("entityId");
+  const rawDirection = searchParams.get("direction");
+  const direction = DIRECTION_OPTIONS.includes(rawDirection as "upward" | "downward")
+    ? (rawDirection as "upward" | "downward")
+    : "upward";
+
+  const rawDepth = Number(searchParams.get("depth"));
+  const depth = Number.isFinite(rawDepth)
+    ? Math.max(1, Math.min(4, rawDepth))
+    : 4;
+
+  const updateQueryParams = (next: {
+    entityId?: string | null;
+    direction?: "upward" | "downward";
+    depth?: number;
+  }) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    const resolvedEntityId = next.entityId !== undefined ? next.entityId : entityId;
+    const resolvedDirection = next.direction ?? direction;
+    const resolvedDepth = next.depth ?? depth;
+
+    if (resolvedEntityId) {
+      params.set("entityId", resolvedEntityId);
+    } else {
+      params.delete("entityId");
+    }
+    params.set("direction", resolvedDirection);
+    params.set("depth", String(Math.max(1, Math.min(4, resolvedDepth))));
+    setSearchParams(params.toString());
+  };
   
   // Fetch value tree data
   const { 
@@ -214,8 +247,18 @@ export default function ValueTreeExplorer() {
     error: treeError,
     refetch: refetchTree 
   } = useValueTree(entityId, { 
-    direction: 'upward', 
-    maxDepth: 4 
+    direction, 
+    maxDepth: depth
+  });
+  const {
+    data: pathData,
+    isLoading: pathsLoading,
+    error: pathsError,
+    refetch: refetchPaths,
+  } = useValueTreePaths(entityId, {
+    direction,
+    maxDepth: depth,
+    enabled: view === "paths",
   });
 
   // Fetch available entities for selection - returns EntityListResponse with results array
@@ -241,7 +284,7 @@ export default function ValueTreeExplorer() {
 
   // Handle entity selection
   const handleSelectEntity = (id: string) => {
-    setSearchParams({ entityId: id });
+    updateQueryParams({ entityId: id });
     setShowEntitySelector(false);
   };
 
@@ -317,8 +360,28 @@ export default function ValueTreeExplorer() {
                 </div>
               )}
             </div>
-            <Btn variant="primary" disabled><Plus size={12}/> New Tree</Btn>
-            <Btn variant="ghost" disabled><Upload size={12}/> Import</Btn>
+            <Btn
+              variant="primary"
+              disabled
+              onClick={() => {
+                // Placeholder for future New Tree flow
+                // Keep tree + path caches coherent after edits/imports.
+                invalidateTree(entityId ?? undefined);
+              }}
+            >
+              <Plus size={12}/> New Tree
+            </Btn>
+            <Btn
+              variant="ghost"
+              disabled
+              onClick={() => {
+                // Placeholder for future Import flow
+                // Keep tree + path caches coherent after edits/imports.
+                invalidateTree(entityId ?? undefined);
+              }}
+            >
+              <Upload size={12}/> Import
+            </Btn>
             <Btn 
               variant="ghost" 
               onClick={() => {
@@ -382,15 +445,48 @@ export default function ValueTreeExplorer() {
       <div className="flex gap-2 mb-4">
         <Btn variant={view === "visual" ? "primary" : "ghost"} onClick={() => setView("visual")}>Visual</Btn>
         <Btn variant={view === "outline" ? "primary" : "ghost"} onClick={() => setView("outline")}>Outline</Btn>
+        <Btn variant={view === "paths" ? "primary" : "ghost"} onClick={() => setView("paths")}>Paths</Btn>
+        <div className="ml-2 flex items-center gap-1">
+          {DIRECTION_OPTIONS.map((option) => (
+            <Btn
+              key={option}
+              variant={direction === option ? "outline" : "ghost"}
+              onClick={() => updateQueryParams({ direction: option })}
+              className="capitalize"
+            >
+              {option}
+            </Btn>
+          ))}
+        </div>
+        <div className="flex items-center gap-1">
+          {DEPTH_OPTIONS.map((option) => (
+            <Btn
+              key={option}
+              variant={depth === option ? "outline" : "ghost"}
+              onClick={() => updateQueryParams({ depth: option })}
+            >
+              D{option}
+            </Btn>
+          ))}
+        </div>
         {tree && (
-          <Btn variant="ghost" className="ml-auto text-[11px]" onClick={() => refetchTree()}>
+          <Btn
+            variant="ghost"
+            className="ml-auto text-[11px]"
+            onClick={() => {
+              void refetchTree();
+              if (view === "paths") {
+                void refetchPaths();
+              }
+            }}
+          >
             <RefreshCw size={12} className="mr-1" /> Refresh
           </Btn>
         )}
       </div>
 
       {/* Loading State */}
-      {treeLoading && <ValueTreeSkeleton view={view} />}
+      {treeLoading && <ValueTreeSkeleton view={view === "paths" ? "outline" : view} />}
 
       {/* Error State */}
       {!treeLoading && treeError && (
@@ -436,7 +532,7 @@ export default function ValueTreeExplorer() {
         </div>
       )}
 
-      {/* Success State - Tree Display */}
+      {/* Success State - Tree/Path Display */}
       {!treeLoading && !treeError && tree && (
         view === "visual" ? (
           <div className="bg-card border border-border rounded-lg p-8 overflow-x-auto shadow-sm">
@@ -444,9 +540,53 @@ export default function ValueTreeExplorer() {
               <TreeNodeView node={tree}/>
             </div>
           </div>
-        ) : (
+        ) : view === "outline" ? (
           <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
             <OutlineNode node={tree}/>
+          </div>
+        ) : (
+          <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
+            {pathsLoading && (
+              <div className="text-[12px] text-muted-foreground p-2">
+                <Loader2 size={14} className="animate-spin inline mr-2" />
+                Loading paths...
+              </div>
+            )}
+            {!pathsLoading && pathsError && (
+              <div className="text-[12px] text-red-600 p-2">
+                Failed to load path exploration data: {pathsError.message}
+              </div>
+            )}
+            {!pathsLoading && !pathsError && (pathData?.length ?? 0) === 0 && (
+              <div className="text-[12px] text-muted-foreground p-2">
+                No paths found for this entity and direction.
+              </div>
+            )}
+            {!pathsLoading && !pathsError && (pathData?.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                {(pathData ?? []).map((path, pathIndex) => (
+                  <div
+                    key={`${pathIndex}-${path.length}`}
+                    className="border border-border/60 rounded-md p-2 text-[12px]"
+                  >
+                    <div className="text-[10px] text-muted-foreground mb-1">
+                      Path {pathIndex + 1} · length {path.length}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {path.nodes.map((node, nodeIndex) => (
+                        <div key={`${node.id}-${nodeIndex}`} className="inline-flex items-center gap-1.5">
+                          <EntityBadge type={mapEntityType(node.type)} />
+                          <span className="text-foreground/90">{node.name}</span>
+                          {nodeIndex < path.nodes.length - 1 && (
+                            <ChevronRight size={11} className="text-muted-foreground/70" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )
       )}
