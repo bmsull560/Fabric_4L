@@ -13,6 +13,11 @@ from typing import Any
 
 from neo4j import AsyncDriver
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = logging.getLogger(__name__)
 
 

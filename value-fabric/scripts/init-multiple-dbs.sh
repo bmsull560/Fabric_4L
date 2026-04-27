@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # init-multiple-dbs.sh
 #
 # Creates additional PostgreSQL databases on first container boot.

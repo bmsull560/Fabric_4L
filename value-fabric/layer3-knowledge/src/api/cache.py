@@ -14,6 +14,12 @@ from uuid import UUID
 
 import redis.asyncio as redis
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    # Fallback for when shared package not available
+    require_context = None
+
 logger = logging.getLogger(__name__)
 
 # Redis client singleton
@@ -49,17 +55,23 @@ def _sanitize_key_component(component: str) -> str:
     return component
 
 
-def _build_cache_key(tenant_id: UUID, resource_type: str, resource_id: str) -> str:
+def _build_cache_key(resource_type: str, resource_id: str, tenant_id: UUID | None = None) -> str:
     """Build tenant-scoped cache key.
     
     Args:
-        tenant_id: Tenant UUID
         resource_type: Type of resource (e.g., 'entity', 'query')
         resource_id: Resource identifier
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         Tenant-scoped cache key
     """
+    # Get tenant_id from context if not provided
+    if tenant_id is None:
+        if require_context is None:
+            raise RuntimeError("require_context not available and tenant_id not provided")
+        tenant_id = require_context().tenant_id
+    
     # Sanitize all components
     safe_resource_type = _sanitize_key_component(resource_type)
     safe_resource_id = _sanitize_key_component(resource_id)
@@ -72,19 +84,19 @@ def _build_cache_key(tenant_id: UUID, resource_type: str, resource_id: str) -> s
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-async def get_cached_entity(tenant_id: UUID, entity_id: str) -> dict[str, Any] | None:
+async def get_cached_entity(entity_id: str, tenant_id: UUID | None = None) -> dict[str, Any] | None:
     """Get cached entity data.
     
     Args:
-        tenant_id: Tenant UUID
         entity_id: Entity identifier
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         Cached entity data or None if not found
     """
     try:
         client = await get_redis_client()
-        key = _build_cache_key(tenant_id, "entity", entity_id)
+        key = _build_cache_key("entity", entity_id, tenant_id)
         
         data = await client.get(key)
         if data:
@@ -96,25 +108,25 @@ async def get_cached_entity(tenant_id: UUID, entity_id: str) -> dict[str, Any] |
 
 
 async def set_cached_entity(
-    tenant_id: UUID,
     entity_id: str,
     entity_data: dict[str, Any],
-    ttl_seconds: int = 3600
+    ttl_seconds: int = 3600,
+    tenant_id: UUID | None = None,
 ) -> bool:
     """Cache entity data with tenant scoping.
     
     Args:
-        tenant_id: Tenant UUID
         entity_id: Entity identifier
         entity_data: Entity data to cache
         ttl_seconds: Cache TTL in seconds (default 1 hour)
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         True if cached successfully
     """
     try:
         client = await get_redis_client()
-        key = _build_cache_key(tenant_id, "entity", entity_id)
+        key = _build_cache_key("entity", entity_id, tenant_id)
         
         await client.set(key, json.dumps(entity_data), ex=ttl_seconds)
         return True
@@ -128,12 +140,12 @@ async def set_cached_entity(
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-async def get_cached_query(tenant_id: UUID, query: str) -> list[dict[str, Any]] | None:
+async def get_cached_query(query: str, tenant_id: UUID | None = None) -> list[dict[str, Any]] | None:
     """Get cached query results.
     
     Args:
-        tenant_id: Tenant UUID
         query: Search query string
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         Cached query results or None if not found
@@ -142,7 +154,7 @@ async def get_cached_query(tenant_id: UUID, query: str) -> list[dict[str, Any]] 
         client = await get_redis_client()
         # Hash query to create stable key
         query_hash = str(hash(query))
-        key = _build_cache_key(tenant_id, "query", query_hash)
+        key = _build_cache_key("query", query_hash, tenant_id)
         
         data = await client.get(key)
         if data:
@@ -154,18 +166,18 @@ async def get_cached_query(tenant_id: UUID, query: str) -> list[dict[str, Any]] 
 
 
 async def set_cached_query(
-    tenant_id: UUID,
     query: str,
     results: list[dict[str, Any]],
-    ttl_seconds: int = 300
+    ttl_seconds: int = 300,
+    tenant_id: UUID | None = None,
 ) -> bool:
     """Cache query results with tenant scoping.
     
     Args:
-        tenant_id: Tenant UUID
         query: Search query string
         results: Query results to cache
         ttl_seconds: Cache TTL in seconds (default 5 minutes)
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         True if cached successfully
@@ -173,7 +185,7 @@ async def set_cached_query(
     try:
         client = await get_redis_client()
         query_hash = str(hash(query))
-        key = _build_cache_key(tenant_id, "query", query_hash)
+        key = _build_cache_key("query", query_hash, tenant_id)
         
         await client.set(key, json.dumps(results), ex=ttl_seconds)
         return True
@@ -187,15 +199,20 @@ async def set_cached_query(
 # ═══════════════════════════════════════════════════════════════════════════
 
 
-async def invalidate_tenant_cache(tenant_id: UUID) -> int:
+async def invalidate_tenant_cache(tenant_id: UUID | None = None) -> int:
     """Invalidate all cache entries for a tenant.
     
     Args:
-        tenant_id: Tenant UUID
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         Number of keys deleted
     """
+    if tenant_id is None:
+        if require_context is None:
+            raise RuntimeError("require_context not available and tenant_id not provided")
+        tenant_id = require_context().tenant_id
+    
     try:
         client = await get_redis_client()
         # Pattern must include tenant_id to prevent cross-tenant invalidation
@@ -210,16 +227,21 @@ async def invalidate_tenant_cache(tenant_id: UUID) -> int:
         return 0
 
 
-async def invalidate_cache_pattern(tenant_id: UUID, pattern: str) -> int:
+async def invalidate_cache_pattern(pattern: str, tenant_id: UUID | None = None) -> int:
     """Invalidate cache entries matching pattern for a tenant.
     
     Args:
-        tenant_id: Tenant UUID
         pattern: Pattern to match (e.g., 'entity:*')
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         Number of keys deleted
     """
+    if tenant_id is None:
+        if require_context is None:
+            raise RuntimeError("require_context not available and tenant_id not provided")
+        tenant_id = require_context().tenant_id
+    
     try:
         client = await get_redis_client()
         # Sanitize pattern and enforce tenant scoping
@@ -236,19 +258,19 @@ async def invalidate_cache_pattern(tenant_id: UUID, pattern: str) -> int:
         return 0
 
 
-async def invalidate_entity_cache(tenant_id: UUID, entity_id: str) -> bool:
+async def invalidate_entity_cache(entity_id: str, tenant_id: UUID | None = None) -> bool:
     """Invalidate cache for a specific entity.
     
     Args:
-        tenant_id: Tenant UUID
         entity_id: Entity identifier
+        tenant_id: Optional tenant UUID (uses context if not provided)
     
     Returns:
         True if invalidated successfully
     """
     try:
         client = await get_redis_client()
-        key = _build_cache_key(tenant_id, "entity", entity_id)
+        key = _build_cache_key("entity", entity_id, tenant_id)
         
         await client.delete(key)
         return True

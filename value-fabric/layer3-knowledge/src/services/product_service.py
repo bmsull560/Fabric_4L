@@ -19,6 +19,11 @@ from typing import Any
 import structlog
 from neo4j import AsyncDriver
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = structlog.get_logger()
 
 
@@ -79,9 +84,10 @@ class ProductService:
     # ------------------------------------------------------------------
 
     async def create_product(
-        self, tenant_id: str, product: ProductCreate
+        self, product: ProductCreate
     ) -> dict[str, Any]:
         """Create a Product node in the knowledge graph."""
+        tenant_id = str(require_context().tenant_id) if require_context else "default"
         product_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -130,9 +136,10 @@ class ProductService:
             return {"id": product_id, **(record["product"] if record else {})}
 
     async def get_product(
-        self, tenant_id: str, product_id: str
+        self, product_id: str
     ) -> dict[str, Any] | None:
         """Get a single product by ID, scoped to tenant."""
+        tenant_id = str(require_context().tenant_id) if require_context else "default"
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -217,9 +224,10 @@ class ProductService:
             return {"products": products, "total": total, "skip": skip, "limit": limit}
 
     async def update_product(
-        self, tenant_id: str, product_id: str, updates: dict[str, Any]
+        self, product_id: str, updates: dict[str, Any]
     ) -> dict[str, Any] | None:
         """Update a product's properties."""
+        tenant_id = str(require_context().tenant_id) if require_context else "default"
         # Only allow safe property updates
         allowed_fields = {
             "name", "description", "category", "sku",
@@ -227,7 +235,7 @@ class ProductService:
         }
         safe_updates = {k: v for k, v in updates.items() if k in allowed_fields}
         if not safe_updates:
-            return await self.get_product(tenant_id, product_id)
+            return await self.get_product(product_id)
 
         set_clauses = ", ".join(f"p.{k} = ${k}" for k in safe_updates)
         query = f"""
@@ -250,8 +258,9 @@ class ProductService:
             logger.info("product_updated", product_id=product_id, fields=list(safe_updates))
             return record["product"]
 
-    async def delete_product(self, tenant_id: str, product_id: str) -> bool:
+    async def delete_product(self, product_id: str) -> bool:
         """Delete a product and its orphaned features."""
+        tenant_id = str(require_context().tenant_id) if require_context else "default"
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -472,8 +481,9 @@ class ProductService:
     # Portfolio Analytics
     # ------------------------------------------------------------------
 
-    async def get_portfolio_summary(self, tenant_id: str) -> dict[str, Any]:
+    async def get_portfolio_summary(self) -> dict[str, Any]:
         """Get a summary of the product portfolio for a tenant."""
+        tenant_id = str(require_context().tenant_id) if require_context else "default"
         query = """
         MATCH (p:Product {tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -505,8 +515,9 @@ class ProductService:
                 "avg_capabilities_per_product": round(record["avg_capabilities_per_product"] or 0, 1),
             }
 
-    async def get_capability_coverage(self, tenant_id: str) -> list[dict[str, Any]]:
+    async def get_capability_coverage(self) -> list[dict[str, Any]]:
         """Show which capabilities are covered by products and which are gaps."""
+        tenant_id = str(require_context().tenant_id) if require_context else "default"
         query = """
         MATCH (c:Capability)
         WHERE c.tenant_id = $tenant_id OR c.tenant_id IS NULL
