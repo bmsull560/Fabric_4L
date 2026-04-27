@@ -62,8 +62,11 @@ The OpenAPI specifications in `contracts/openapi/` are the source of truth for a
 The pipeline uses `openapi-typescript` to generate TypeScript types from OpenAPI 3.x specifications:
 
 ```bash
-# Generate all layer types
+# Generate all layer types (canonical command)
 pnpm run generate:types
+
+# Backward-compatible alias (deprecated)
+pnpm run generate:api-types
 
 # Generate a single layer
 npx openapi-typescript contracts/openapi/layer3-knowledge.json \
@@ -125,10 +128,10 @@ Major changes require a **Contract Amendment RFC** reviewed by both a frontend a
 
 The `type_sync_check` CI gate runs on every PR:
 
-1. Regenerate all types from the committed OpenAPI specs
-2. Diff the output against the committed generated files
-3. **Fail the build** if any mismatch is detected
-4. Run `tsc --noEmit` to verify type compatibility
+1. Regenerate all types from the committed OpenAPI specs (`pnpm run generate:types`)
+2. Diff the output against committed generated files (`git diff --exit-code frontend/client/src/api/generated/`)
+3. **Fail the build** if any mismatch is detected, with per-file drift details mapping changed OpenAPI spec paths to generated outputs
+4. Run `pnpm tsc --noEmit` to verify type compatibility
 
 ---
 

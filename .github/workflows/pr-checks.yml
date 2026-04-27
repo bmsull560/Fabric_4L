@@ -480,6 +480,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate frontend API types
+        run: pnpm run generate:types
+
+      - name: Check generated API type drift
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet frontend/client/src/api/generated/; then
+            echo "❌ Generated API type drift detected."
+            node frontend/scripts/report-generated-type-drift.mjs
+          fi
+          git diff --exit-code frontend/client/src/api/generated/
+
       - name: Type check
         run: pnpm tsc --noEmit
 
