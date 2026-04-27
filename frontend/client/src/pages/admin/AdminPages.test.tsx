@@ -13,7 +13,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { createWrapper } from '../../test-utils';
+import { createWrapper, renderWithRouter } from '../../test-utils';
 
 // Mock the hooks to avoid backend dependencies
 vi.mock('@/hooks/useFormulas', () => ({
@@ -47,6 +47,46 @@ vi.mock('@/hooks/useValuePacks', () => ({
     data: [],
     isLoading: false,
     error: null,
+  }),
+}));
+
+vi.mock('@/hooks/useGovernance', () => ({
+  useUsers: () => ({
+    data: [
+      {
+        id: 'u-1',
+        email: 'admin@example.com',
+        display_name: 'Admin User',
+        role: 'tenant_admin',
+        status: 'active',
+        tenant_id: 't-1',
+        created_at: '2026-01-01T00:00:00Z',
+        last_login_at: '2026-01-02T00:00:00Z',
+      },
+    ],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useApiKeys: () => ({
+    data: [
+      {
+        id: 'k-1',
+        name: 'Primary Key',
+        prefix: 'pk_live_',
+        tenant_id: 't-1',
+        is_enabled: true,
+        created_at: '2026-01-01T00:00:00Z',
+        last_used_at: '2026-01-03T00:00:00Z',
+      },
+    ],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useRevokeApiKey: () => ({
+    mutate: vi.fn(),
+    isPending: false,
   }),
 }));
 
@@ -110,7 +150,31 @@ describe('PermissionsAdmin', () => {
     render(<PermissionsAdmin />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText('Permissions')).toBeInTheDocument();
+      expect(screen.getByText('Permissions & Access')).toBeInTheDocument();
+    });
+  });
+
+  it('sets API Keys as the active tab for /settings/access/keys', async () => {
+    const PermissionsAdmin = (await import('./PermissionsAdmin')).default;
+    renderWithRouter(<PermissionsAdmin />, { path: '/settings/access/keys' });
+
+    await waitFor(() => {
+      const apiKeysTab = screen.getByRole('button', { name: /api keys/i });
+      const usersTab = screen.getByRole('button', { name: /users/i });
+      expect(apiKeysTab).toHaveClass('text-blue-700');
+      expect(usersTab).not.toHaveClass('text-blue-700');
+    });
+  });
+
+  it('keeps Users as the active tab for /settings/access/roles', async () => {
+    const PermissionsAdmin = (await import('./PermissionsAdmin')).default;
+    renderWithRouter(<PermissionsAdmin />, { path: '/settings/access/roles' });
+
+    await waitFor(() => {
+      const usersTab = screen.getByRole('button', { name: /users/i });
+      const apiKeysTab = screen.getByRole('button', { name: /api keys/i });
+      expect(usersTab).toHaveClass('text-blue-700');
+      expect(apiKeysTab).not.toHaveClass('text-blue-700');
     });
   });
 });

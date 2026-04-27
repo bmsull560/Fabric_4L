@@ -11,7 +11,7 @@
  * - Connected to L4 governance endpoints
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Users, Key, Plus, Search, Shield, UserPlus,
@@ -92,11 +92,26 @@ function PermissionsSkeleton() {
 
 type TabType = "users" | "api-keys";
 
+function getTabFromPath(path: string): TabType {
+  if (path.startsWith("/settings/access/keys")) {
+    return "api-keys";
+  }
+
+  if (path.startsWith("/settings/access/roles") || path.startsWith("/settings/access/teams")) {
+    return "users";
+  }
+
+  return "users";
+}
+
 function PermissionsContent() {
   const [location] = useLocation();
-  const initialTab: TabType = location.includes("/api-keys") ? "api-keys" : "users";
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabType>(() => getTabFromPath(location));
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setActiveTab(getTabFromPath(location));
+  }, [location]);
 
   const {
     data: users = [],
