@@ -54,12 +54,12 @@ export interface HealthAlert {
 // ── Fetch Functions ─────────────────────────────────────────────────────────
 
 async function fetchSystemHealth(): Promise<SystemHealth> {
-  const response = await apiClient.get('l4', '/health');
+  const response = await apiClient.get('l4', '/health') as { data: unknown };
   return response.data as SystemHealth;
 }
 
 async function fetchHealthAlerts(): Promise<HealthAlert[]> {
-  const response = await apiClient.get('l4', '/health/alerts');
+  const response = await apiClient.get('l4', '/health/alerts') as { data: unknown };
   return response.data as HealthAlert[];
 }
 

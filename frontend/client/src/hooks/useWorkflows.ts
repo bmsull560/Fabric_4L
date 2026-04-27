@@ -164,7 +164,7 @@ export function useActiveWorkflows(options: { limit?: number; offset?: number; s
       params.set('offset', String(offset));
       if (status) params.set('status', status);
       
-      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`);
+      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`) as { data: unknown };
       const items = normalizeWorkflowList(response.data);
       return parsePaginatedResponse(response.data, items);
     },
@@ -186,7 +186,7 @@ export function useWorkflowHistory(options: { limit?: number; offset?: number } 
       params.set('limit', String(limit));
       params.set('offset', String(offset));
       
-      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`);
+      const response = await apiClient.get('l4', `/workflows/active?${params.toString()}`) as { data: unknown };
       const items = normalizeWorkflowList(response.data);
       return parsePaginatedResponse(response.data, items);
     },
@@ -203,7 +203,7 @@ export function useCreateWorkflow() {
         name: params.name,
         workflow_type: params.type,
         config: params.config || {},
-      });
+      }) as { data: Record<string, unknown> };
       const workflowId = response.data?.workflow_instance_id || response.data?.workflow_id;
       if (!workflowId) {
         throw new Error('Workflow creation response missing workflow id');
@@ -320,4 +320,70 @@ export function useWorkflowSSE(workflowId: string | null) {
   }, [workflowId]);
 
   return { workflow, error, isConnected };
+}
+
+/**
+ * Pause a running workflow.
+ * POST /workflows/{id}/pause
+ */
+export function usePauseWorkflow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.post('l4', `/workflows/${id}/pause`, {});
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
+    },
+  });
+}
+
+/**
+ * Resume a paused workflow.
+ * POST /workflows/{id}/resume
+ */
+export function useResumeWorkflow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.post('l4', `/workflows/${id}/resume`, {});
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QK.workflows.active() });
+    },
+  });
+}
+
+/**
+ * Get detailed workflow state including performance metrics.
+ * GET /workflows/{id}
+ */
+export function useWorkflowDetail(workflowId: string | null) {
+  return useQuery({
+    queryKey: QK.workflows.detail(workflowId ?? ''),
+    queryFn: async () => {
+      const response = await apiClient.get('l4', `/workflows/${workflowId}`) as { data: unknown };
+      return response.data as Workflow & {
+        result?: unknown;
+        checkpoints?: { id: string; created_at: string }[];
+      };
+    },
+    enabled: !!workflowId,
+    staleTime: 5_000,
+  });
+}
+
+/**
+ * Get available workflow types.
+ * GET /workflows/types
+ */
+export function useWorkflowTypes() {
+  return useQuery({
+    queryKey: [...QK.workflows.all, 'types'],
+    queryFn: async () => {
+      const response = await apiClient.get('l4', '/workflows/types') as { data: unknown };
+      return response.data as { types: { id: string; name: string; description: string }[] };
+    },
+    staleTime: 60_000,
+  });
 }

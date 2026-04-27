@@ -2,134 +2,39 @@
  * SourceConfiguration — Data Source Management
  *
  * Features:
- * - Configure and manage data source connections
- * - Connection health monitoring
- * - Field mapping configuration
- * - Sync schedule management
- * - Test connection functionality
+ * - Configure and manage data source connections (L1 Ingestion API)
+ * - Connection health monitoring via useSourceStats
+ * - CRUD operations via useCreateSource, useUpdateSource, useDeleteSource
+ * - Test connection via useTestConnection
+ * - Trigger ingestion via useExecuteSource
  *
- * Route: /discover/sources
- * Integrates with: Layer 1 (Ingestion) APIs
+ * Route: /context/sources
+ * Integrates with: Layer 1 (Ingestion) /targets API via useSources hooks
  */
-
 import { useState, useMemo } from "react";
 import {
   Plus, Search, Settings, CheckCircle2, XCircle, AlertTriangle,
   Clock, RefreshCw, Database, Globe, FileText, Cloud, Server,
-  ChevronRight, Loader2, Save, TestTube, Trash2, Edit3, Plug,
-  AlertCircle
+  Loader2, TestTube, Trash2, Edit3, Plug, AlertCircle, Play
 } from "lucide-react";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
+import {
+  useSources,
+  useSourceStats,
+  useDeleteSource,
+  useTestConnection,
+  useExecuteSource,
+  type DataSource,
+  type SourceType,
+  type ConnectionStatus,
+  type SyncFrequency,
+  type SourceFilters,
+} from "@/hooks/useSources";
 
-// ── Types ───────────────────────────────────────────────────────────────────
-
-type SourceType = 'crm' | 'database' | 'file' | 'api' | 'cloud_storage';
-type ConnectionStatus = 'connected' | 'disconnected' | 'error' | 'testing';
-type SyncFrequency = 'realtime' | 'hourly' | 'daily' | 'weekly' | 'manual';
-
-interface DataSource {
-  id: string;
-  name: string;
-  type: SourceType;
-  status: ConnectionStatus;
-  endpoint?: string;
-  lastSyncAt?: string;
-  nextSyncAt?: string;
-  syncFrequency: SyncFrequency;
-  recordCount?: number;
-  healthScore: number;
-  errorMessage?: string;
-  fieldMappings: FieldMapping[];
-}
-
-interface FieldMapping {
-  sourceField: string;
-  targetField: string;
-  transformation?: string;
-  isRequired: boolean;
-}
-
-// ── Mock Data ─────────────────────────────────────────────────────────────────
-
-const MOCK_SOURCES: DataSource[] = [
-  {
-    id: 'src-1',
-    name: 'Salesforce CRM',
-    type: 'crm',
-    status: 'connected',
-    endpoint: 'https://acme.my.salesforce.com',
-    lastSyncAt: '2024-01-15T09:30:00Z',
-    nextSyncAt: '2024-01-15T10:30:00Z',
-    syncFrequency: 'hourly',
-    recordCount: 15420,
-    healthScore: 98,
-    fieldMappings: [
-      { sourceField: 'Account.Name', targetField: 'account_name', isRequired: true },
-      { sourceField: 'Account.ARR__c', targetField: 'annual_recurring_revenue', isRequired: true },
-      { sourceField: 'Contact.Email', targetField: 'contact_email', isRequired: false },
-    ],
-  },
-  {
-    id: 'src-2',
-    name: 'PostgreSQL Billing DB',
-    type: 'database',
-    status: 'connected',
-    endpoint: 'postgres://billing-db.internal:5432',
-    lastSyncAt: '2024-01-15T08:00:00Z',
-    nextSyncAt: '2024-01-16T08:00:00Z',
-    syncFrequency: 'daily',
-    recordCount: 89234,
-    healthScore: 95,
-    fieldMappings: [
-      { sourceField: 'invoices.total', targetField: 'invoice_amount', isRequired: true },
-      { sourceField: 'invoices.status', targetField: 'payment_status', isRequired: true },
-    ],
-  },
-  {
-    id: 'src-3',
-    name: 'HubSpot Marketing',
-    type: 'crm',
-    status: 'error',
-    endpoint: 'https://api.hubapi.com',
-    syncFrequency: 'hourly',
-    healthScore: 0,
-    errorMessage: 'API token expired. Please re-authenticate.',
-    fieldMappings: [
-      { sourceField: 'contacts.email', targetField: 'contact_email', isRequired: true },
-    ],
-  },
-  {
-    id: 'src-4',
-    name: 'AWS S3 Data Lake',
-    type: 'cloud_storage',
-    status: 'connected',
-    endpoint: 's3://acme-data-lake/raw/',
-    lastSyncAt: '2024-01-14T23:00:00Z',
-    nextSyncAt: '2024-01-15T23:00:00Z',
-    syncFrequency: 'daily',
-    recordCount: 456000,
-    healthScore: 92,
-    fieldMappings: [],
-  },
-  {
-    id: 'src-5',
-    name: 'REST API - Product Usage',
-    type: 'api',
-    status: 'disconnected',
-    endpoint: 'https://api.acme.com/v1/usage',
-    syncFrequency: 'realtime',
-    healthScore: 0,
-    fieldMappings: [
-      { sourceField: 'event_type', targetField: 'activity_type', isRequired: true },
-      { sourceField: 'timestamp', targetField: 'event_timestamp', isRequired: true },
-    ],
-  },
-];
-
-// ── Styling Constants ─────────────────────────────────────────────────────────
+// ── Config ──────────────────────────────────────────────────────────────────
 
 const TYPE_CONFIG: Record<SourceType, {
   icon: React.ReactNode;
@@ -183,7 +88,7 @@ const FREQUENCY_LABELS: Record<SyncFrequency, string> = {
   manual: 'Manual',
 };
 
-// ── Sub-components ─────────────────────────────────────────────────────────
+// ── SourceCard Component ────────────────────────────────────────────────────
 
 function SourceCard({
   source,
@@ -191,100 +96,105 @@ function SourceCard({
   onToggle,
   onTest,
   onDelete,
+  onExecute,
   isTesting,
+  isExecuting,
 }: {
   source: DataSource;
   isExpanded: boolean;
   onToggle: () => void;
   onTest: () => void;
   onDelete: () => void;
+  onExecute: () => void;
   isTesting: boolean;
+  isExecuting: boolean;
 }) {
   const type = TYPE_CONFIG[source.type];
   const status = STATUS_CONFIG[isTesting ? 'testing' : source.status];
 
   return (
     <div className={cn(
-      "bg-card border rounded-xl transition-all",
-      isExpanded ? "border-neutral-300 shadow-sm" : "border-border hover:border-neutral-300"
+      "bg-card border border-border rounded-xl overflow-hidden transition-all",
+      isExpanded && "ring-1 ring-primary/20"
     )}>
-      <div className="p-4" onClick={onToggle}>
-        <div className="flex items-center gap-4">
-          {/* Type Icon */}
-          <div className={cn(
-            "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-            type.bgColor
-          )}>
-            {type.icon}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="text-[14px] font-semibold text-foreground">{source.name}</h3>
-              <span className={cn(
-                "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full",
-                status.bgColor, status.color
-              )}>
-                {status.icon} {status.label}
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground/60 truncate">{source.endpoint || 'No endpoint configured'}</p>
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-center gap-6 text-right shrink-0">
-            {source.recordCount !== undefined && (
-              <div>
-                <p className="text-[14px] font-bold text-foreground">{source.recordCount.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground/60">records</p>
-              </div>
-            )}
-            <div>
-              <p className={cn(
-                "text-[14px] font-bold",
-                source.healthScore >= 90 ? "text-emerald-600" :
-                source.healthScore >= 70 ? "text-amber-600" : "text-red-600"
-              )}>
-                {source.healthScore}%
-              </p>
-              <p className="text-[10px] text-muted-foreground/60">health</p>
-            </div>
-            <div>
-              <p className="text-[12px] font-medium text-muted-foreground">{FREQUENCY_LABELS[source.syncFrequency]}</p>
-              <p className="text-[10px] text-muted-foreground/60">sync</p>
+      <div
+        className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-muted/20 group"
+        onClick={onToggle}
+      >
+        {/* Type Icon */}
+        <div className={cn("p-2 rounded-lg", type.bgColor)}>
+          {type.icon}
+        </div>
+        {/* Name + Endpoint */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-[13px] font-semibold text-foreground truncate">{source.name}</h3>
+            <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", status.bgColor, status.color)}>
+              {status.icon}
+              {status.label}
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={(e) => { e.stopPropagation(); onTest(); }}
-              disabled={isTesting}
-              className="p-2 rounded hover:bg-muted/30 text-muted-foreground/60 hover:text-muted-foreground disabled:opacity-50"
-              title="Test connection"
-            >
-              <TestTube size={14} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="p-2 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-500"
-              title="Delete source"
-            >
-              <Trash2 size={14} />
-            </button>
+          <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
+            {source.endpoint || 'No endpoint configured'}
+          </p>
+        </div>
+        {/* Metrics */}
+        <div className="flex items-center gap-4 text-right">
+          <div>
+            <p className="text-[12px] font-medium text-muted-foreground">
+              {source.recordCount ? source.recordCount.toLocaleString() : '—'}
+            </p>
+            <p className="text-[10px] text-muted-foreground/60">records</p>
+          </div>
+          <div>
+            <p className={cn(
+              "text-[14px] font-bold",
+              source.healthScore >= 90 ? "text-emerald-600" :
+              source.healthScore >= 70 ? "text-amber-600" : "text-red-600"
+            )}>
+              {source.healthScore}%
+            </p>
+            <p className="text-[10px] text-muted-foreground/60">health</p>
+          </div>
+          <div>
+            <p className="text-[12px] font-medium text-muted-foreground">{FREQUENCY_LABELS[source.syncFrequency]}</p>
+            <p className="text-[10px] text-muted-foreground/60">sync</p>
           </div>
         </div>
-
-        {/* Error Message */}
-        {source.status === 'error' && source.errorMessage && (
-          <div className="mt-3 p-2 bg-red-50 border border-red-100 rounded-lg text-[11px] text-red-600 flex items-start gap-2">
-            <AlertTriangle size={12} className="shrink-0 mt-0.5" />
-            {source.errorMessage}
-          </div>
-        )}
+        {/* Actions */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => { e.stopPropagation(); onExecute(); }}
+            disabled={isExecuting}
+            className="p-2 rounded hover:bg-emerald-50 text-muted-foreground/60 hover:text-emerald-600 disabled:opacity-50"
+            title="Run ingestion"
+          >
+            {isExecuting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onTest(); }}
+            disabled={isTesting}
+            className="p-2 rounded hover:bg-muted/30 text-muted-foreground/60 hover:text-muted-foreground disabled:opacity-50"
+            title="Test connection"
+          >
+            <TestTube size={14} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            className="p-2 rounded hover:bg-red-50 text-muted-foreground/60 hover:text-red-500"
+            title="Delete source"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
-
+      {/* Error Message */}
+      {source.status === 'error' && source.errorMessage && (
+        <div className="mx-4 mb-3 p-2 bg-red-50 border border-red-100 rounded-lg text-[11px] text-red-600 flex items-start gap-2">
+          <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+          {source.errorMessage}
+        </div>
+      )}
       {/* Expanded Details */}
       {isExpanded && (
         <div className="px-4 pb-4 border-t border-border/50 pt-3">
@@ -302,8 +212,27 @@ function SourceCard({
                 Next sync: {new Date(source.nextSyncAt).toLocaleString()}
               </span>
             )}
+            {source.tags.length > 0 && (
+              <span className="flex items-center gap-1">
+                Tags: {source.tags.join(', ')}
+              </span>
+            )}
           </div>
-
+          {/* Performance Stats */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-muted/20 rounded-lg px-3 py-2">
+              <p className="text-[10px] text-muted-foreground/60 uppercase">Success Runs</p>
+              <p className="text-[14px] font-bold text-emerald-600">{source.successCount}</p>
+            </div>
+            <div className="bg-muted/20 rounded-lg px-3 py-2">
+              <p className="text-[10px] text-muted-foreground/60 uppercase">Error Runs</p>
+              <p className="text-[14px] font-bold text-red-600">{source.errorCount}</p>
+            </div>
+            <div className="bg-muted/20 rounded-lg px-3 py-2">
+              <p className="text-[10px] text-muted-foreground/60 uppercase">Avg Exec Time</p>
+              <p className="text-[14px] font-bold text-foreground">{(source.averageExecutionTimeMs / 1000).toFixed(1)}s</p>
+            </div>
+          </div>
           {/* Field Mappings */}
           {source.fieldMappings.length > 0 && (
             <div>
@@ -340,44 +269,35 @@ function SourceCard({
               </div>
             </div>
           )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-2 mt-4">
-            <Btn variant="ghost" className="text-[11px]">
-              <Edit3 size={12} className="mr-1" />
-              Edit Configuration
-            </Btn>
-            <Btn variant="outline" className="text-[11px]">
-              <Settings size={12} className="mr-1" />
-              Advanced Settings
-            </Btn>
-          </div>
         </div>
       )}
     </div>
   );
 }
 
+// ── Skeleton ────────────────────────────────────────────────────────────────
+
 function SourceSkeleton() {
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
-      <div className="flex items-center gap-4">
-        <Skeleton className="w-10 h-10 rounded-lg" />
-        <div className="flex-1">
-          <Skeleton className="h-5 w-48 mb-1" />
-          <Skeleton className="h-3 w-64" />
+    <div className="space-y-3">
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className="bg-card border border-border rounded-xl px-4 py-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-10 rounded-lg" />
+            <div className="flex-1">
+              <Skeleton className="h-4 w-48 mb-2" />
+              <Skeleton className="h-3 w-64" />
+            </div>
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-6 w-16" />
+          </div>
         </div>
-        <div className="flex items-center gap-6">
-          <Skeleton className="h-10 w-20" />
-          <Skeleton className="h-10 w-16" />
-          <Skeleton className="h-10 w-20" />
-        </div>
-      </div>
+      ))}
     </div>
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────
+// ── Main Content ────────────────────────────────────────────────────────────
 
 function SourceConfigurationContent() {
   const [search, setSearch] = useState("");
@@ -385,87 +305,72 @@ function SourceConfigurationContent() {
   const [statusFilter, setStatusFilter] = useState<ConnectionStatus | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [executingId, setExecutingId] = useState<string | null>(null);
 
-  const filteredSources = useMemo(() => {
-    let filtered = [...MOCK_SOURCES];
+  // Build filters for the API call
+  const apiFilters: SourceFilters = useMemo(() => ({
+    search: search || undefined,
+    type: typeFilter !== 'all' ? typeFilter : undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+  }), [search, typeFilter, statusFilter]);
 
-    if (search) {
-      const term = search.toLowerCase();
-      filtered = filtered.filter(s =>
-        s.name.toLowerCase().includes(term) ||
-        s.endpoint?.toLowerCase().includes(term)
-      );
-    }
+  // Server state via React Query hooks (real L1 API)
+  const { data: sourceData, isLoading, error, refetch } = useSources(apiFilters);
+  const { data: stats } = useSourceStats();
+  const deleteSource = useDeleteSource();
+  const testConnection = useTestConnection();
+  const executeSource = useExecuteSource();
 
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(s => s.type === typeFilter);
-    }
-
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(s => s.status === statusFilter);
-    }
-
-    return filtered;
-  }, [search, typeFilter, statusFilter]);
-
-  const stats = useMemo(() => {
-    const total = filteredSources.length;
-    const connected = filteredSources.filter(s => s.status === 'connected').length;
-    const error = filteredSources.filter(s => s.status === 'error').length;
-    const totalRecords = filteredSources.reduce((sum, s) => sum + (s.recordCount || 0), 0);
-    return { total, connected, error, totalRecords };
-  }, [filteredSources]);
+  const sources = sourceData?.sources ?? [];
 
   const handleTest = (sourceId: string) => {
     setTestingId(sourceId);
-    // Simulate test
-    setTimeout(() => setTestingId(null), 2000);
+    testConnection.mutate(
+      { id: sourceId },
+      { onSettled: () => setTestingId(null) }
+    );
   };
 
   const handleDelete = (sourceId: string) => {
-    if (confirm('Are you sure you want to delete this data source?')) {
-      alert('Delete functionality coming soon');
+    if (window.confirm('Are you sure you want to delete this source? This action cannot be undone.')) {
+      deleteSource.mutate(sourceId);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="p-6 max-w-6xl">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => <SourceSkeleton key={i} />)}
-        </div>
-      </div>
+  const handleExecute = (sourceId: string) => {
+    setExecutingId(sourceId);
+    executeSource.mutate(
+      { id: sourceId },
+      { onSettled: () => setExecutingId(null) }
     );
-  }
+  };
 
+  // Error state
   if (error) {
     return (
-      <div className="p-6 max-w-6xl">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-8 h-8 text-red-500 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="text-[14px] font-semibold text-red-800 mb-1">Failed to load sources</h3>
-              <p className="text-[12px] text-red-600">{error.message}</p>
-            </div>
-          </div>
+      <div className="p-6 max-w-5xl">
+        <PageHeader title="Source Configuration" subtitle="Manage data source connections" />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+          <AlertCircle size={32} className="mx-auto mb-3 text-red-500" />
+          <p className="text-[14px] font-medium text-red-700">Failed to load sources</p>
+          <p className="text-[12px] text-red-600 mt-1">{error.message}</p>
+          <Btn variant="outline" className="mt-4" onClick={() => refetch()}>
+            <RefreshCw size={14} className="mr-1" />
+            Retry
+          </Btn>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-6xl">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+    <div className="p-6 max-w-5xl">
+      <div className="flex items-center justify-between mb-6">
         <PageHeader
           title="Source Configuration"
-          subtitle={`${stats.total} sources · ${stats.connected} connected · ${stats.error} errors`}
+          subtitle={stats ? `${stats.total} sources · ${stats.connected} connected · ${stats.error} errors` : 'Loading...'}
         />
-        <Btn variant="primary" onClick={() => alert('Add source functionality coming soon')}>
+        <Btn variant="primary" onClick={() => { /* TODO: open create source modal */ }}>
           <Plus size={14} className="mr-1" />
           Add Source
         </Btn>
@@ -478,28 +383,30 @@ function SourceConfigurationContent() {
             <Database size={14} className="text-blue-500" />
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Sources</span>
           </div>
-          <p className="text-[22px] font-extrabold text-foreground">{stats.total}</p>
+          <p className="text-[22px] font-extrabold text-foreground">{stats?.total ?? '—'}</p>
         </div>
         <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Plug size={14} className="text-emerald-500" />
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Connected</span>
           </div>
-          <p className="text-[22px] font-extrabold text-emerald-600">{stats.connected}</p>
+          <p className="text-[22px] font-extrabold text-emerald-600">{stats?.connected ?? '—'}</p>
         </div>
         <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <AlertTriangle size={14} className="text-red-500" />
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Errors</span>
           </div>
-          <p className="text-[22px] font-extrabold text-red-600">{stats.error}</p>
+          <p className="text-[22px] font-extrabold text-red-600">{stats?.error ?? '—'}</p>
         </div>
         <div className="bg-card border border-border rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <FileText size={14} className="text-violet-500" />
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-semibold">Total Records</span>
           </div>
-          <p className="text-[22px] font-extrabold text-violet-600">{(stats.totalRecords / 1000000).toFixed(1)}M</p>
+          <p className="text-[22px] font-extrabold text-violet-600">
+            {stats?.totalRecords ? `${(stats.totalRecords / 1000).toFixed(0)}K` : '—'}
+          </p>
         </div>
       </div>
 
@@ -515,7 +422,6 @@ function SourceConfigurationContent() {
             className="flex-1 text-[13px] bg-transparent outline-none text-muted-foreground"
           />
         </div>
-
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as SourceType | 'all')}
@@ -528,7 +434,6 @@ function SourceConfigurationContent() {
           <option value="cloud_storage">Cloud Storage</option>
           <option value="file">File</option>
         </select>
-
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as ConnectionStatus | 'all')}
@@ -539,32 +444,58 @@ function SourceConfigurationContent() {
           <option value="disconnected">Disconnected</option>
           <option value="error">Error</option>
         </select>
+        <Btn variant="ghost" onClick={() => refetch()} className="text-[12px]">
+          <RefreshCw size={14} className="mr-1" />
+          Refresh
+        </Btn>
       </div>
+
+      {/* Loading State */}
+      {isLoading && <SourceSkeleton />}
 
       {/* Source List */}
-      <div className="space-y-3">
-        {filteredSources.map(source => (
-          <SourceCard
-            key={source.id}
-            source={source}
-            isExpanded={expandedId === source.id}
-            onToggle={() => setExpandedId(expandedId === source.id ? null : source.id)}
-            onTest={() => handleTest(source.id)}
-            onDelete={() => handleDelete(source.id)}
-            isTesting={testingId === source.id}
-          />
-        ))}
-      </div>
+      {!isLoading && (
+        <div className="space-y-3">
+          {sources.map(source => (
+            <SourceCard
+              key={source.id}
+              source={source}
+              isExpanded={expandedId === source.id}
+              onToggle={() => setExpandedId(expandedId === source.id ? null : source.id)}
+              onTest={() => handleTest(source.id)}
+              onDelete={() => handleDelete(source.id)}
+              onExecute={() => handleExecute(source.id)}
+              isTesting={testingId === source.id}
+              isExecuting={executingId === source.id}
+            />
+          ))}
+        </div>
+      )}
 
-      {filteredSources.length === 0 && (
+      {/* Empty State */}
+      {!isLoading && sources.length === 0 && (
         <div className="text-center py-12 text-muted-foreground/60">
           <Database size={48} className="mx-auto mb-4 text-neutral-300" />
           <p className="text-[14px] font-medium">No sources found</p>
-          <p className="text-[12px] mt-1">Add a data source to start ingesting data</p>
-          <Btn variant="primary" className="mt-4" onClick={() => alert('Add source functionality coming soon')}>
+          <p className="text-[12px] mt-1">
+            {search || typeFilter !== 'all' || statusFilter !== 'all'
+              ? 'Try adjusting your filters'
+              : 'Add a data source to start ingesting data'}
+          </p>
+          <Btn variant="primary" className="mt-4" onClick={() => { /* TODO: open create source modal */ }}>
             <Plus size={14} className="mr-1" />
             Add First Source
           </Btn>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {sourceData && sourceData.pagination.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6 text-[12px] text-muted-foreground">
+          <span>
+            Page {sourceData.pagination.page} of {sourceData.pagination.totalPages}
+            {' '}({sourceData.pagination.total} total)
+          </span>
         </div>
       )}
     </div>

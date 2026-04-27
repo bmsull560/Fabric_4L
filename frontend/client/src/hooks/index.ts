@@ -56,9 +56,13 @@ export {
   useAccount,
   useCreateAccount,
   useAccountFilterOptions,
+  useAccountSyncStatus,
+  useSyncAccounts,
+  useRefreshAccount,
   type Account,
   type CRMProvider,
   type SyncStatus,
+  type AccountSyncStatusInfo,
 } from "./useAccounts";
 
 // ── Utility Hooks ─────────────────────────────────────────────────────────────

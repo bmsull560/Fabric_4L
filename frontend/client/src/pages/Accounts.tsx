@@ -25,9 +25,13 @@ import {
   useAccounts,
   useAccount,
   useAccountFilterOptions,
+  useAccountSyncStatus,
+  useSyncAccounts,
+  useRefreshAccount,
   type Account,
   type CRMProvider,
   type SyncStatus,
+  type AccountSyncStatusInfo,
 } from "@/hooks";
 import {
   Building2,
@@ -45,6 +49,9 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
+  RefreshCw,
+  Loader2,
+  CloudDownload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate, formatCurrency } from "@/lib/formatters";
@@ -212,6 +219,7 @@ interface AccountDetailPanelProps {
 
 function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: AccountDetailPanelProps) {
   const { data: account, isLoading } = useAccount(accountId);
+  const refreshAccount = useRefreshAccount();
 
   if (!accountId) {
     return (
@@ -403,12 +411,21 @@ function AccountDetailPanel({ accountId, onClose, onLaunchIntelligence }: Accoun
             <FileText size={14} className="mr-1" />
             Launch Intelligence
           </Btn>
-          <Btn variant="ghost">
-            <Activity size={14} className="mr-1" />
-            View Traces
+          <Btn
+            variant="outline"
+            onClick={() => accountId && refreshAccount.mutate(accountId)}
+            disabled={refreshAccount.isPending}
+          >
+            {refreshAccount.isPending ? (
+              <Loader2 size={14} className="mr-1 animate-spin" />
+            ) : (
+              <RefreshCw size={14} className="mr-1" />
+            )}
+            Refresh
           </Btn>
           <Btn variant="ghost">
-            <Download size={14} />
+            <Activity size={14} className="mr-1" />
+            Traces
           </Btn>
         </div>
       </div>
@@ -443,6 +460,8 @@ function Accounts() {
 
   const { data, isLoading, error } = useAccounts(filters);
   const { data: filterOptions } = useAccountFilterOptions();
+  const { data: syncStatusList } = useAccountSyncStatus();
+  const syncAccounts = useSyncAccounts();
 
   const accounts = data?.accounts || [];
   const total = data?.total || 0;
@@ -497,6 +516,18 @@ function Accounts() {
               <Btn variant="ghost" onClick={handleExport}>
                 <Download size={14} className="mr-1.5" />
                 Export
+              </Btn>
+              <Btn
+                variant="outline"
+                onClick={() => syncAccounts.mutate({})}
+                disabled={syncAccounts.isPending}
+              >
+                {syncAccounts.isPending ? (
+                  <Loader2 size={14} className="mr-1.5 animate-spin" />
+                ) : (
+                  <CloudDownload size={14} className="mr-1.5" />
+                )}
+                Sync CRM
               </Btn>
               <Btn variant="primary" onClick={handleAddAccount}>
                 <Plus size={14} className="mr-1.5" />

@@ -6,12 +6,16 @@
 import { useState } from "react";
 import { 
   Bot, Clock, AlertTriangle, ChevronLeft, ChevronRight, RefreshCw,
-  Eye, Pause, MoreHorizontal 
+  Eye, Pause, Play, Plus, MoreHorizontal, Loader2
 } from "lucide-react";
 import { 
   useActiveWorkflows, 
   useWorkflowHistory, 
   useCancelWorkflow,
+  usePauseWorkflow,
+  useResumeWorkflow,
+  useCreateWorkflow,
+  useWorkflowTypes,
   type Workflow 
 } from "@/hooks/useWorkflows";
 import { PageHeader, MetricCard, DataTable, StatusBadge as StatusBadgePrimitive, Btn, SectionCard, Tabs } from "@/components/WfPrimitives";
@@ -104,8 +108,12 @@ export default function AgentWorkflows() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   
-  // Cancel mutation
+  // Mutations
   const cancelWorkflow = useCancelWorkflow();
+  const pauseWorkflow = usePauseWorkflow();
+  const resumeWorkflow = useResumeWorkflow();
+  const createWorkflow = useCreateWorkflow();
+  const { data: workflowTypesData } = useWorkflowTypes();
 
   // Server state: React Query handles fetching, caching, loading, error
   const {
@@ -145,6 +153,24 @@ export default function AgentWorkflows() {
         breadcrumbs={[{ label: "Agent Workflows" }, { label: "Dashboard" }]}
         title="Workflow Dashboard"
         subtitle="Monitor and manage AI agent workflows across all active analyses."
+        actions={
+          <Btn
+            variant="primary"
+            onClick={() => {
+              const types = workflowTypesData?.types;
+              const defaultType = types?.[0]?.id || 'analysis';
+              createWorkflow.mutate({ name: `New ${defaultType} workflow`, type: defaultType });
+            }}
+            disabled={createWorkflow.isPending}
+          >
+            {createWorkflow.isPending ? (
+              <Loader2 size={14} className="mr-1.5 animate-spin" />
+            ) : (
+              <Plus size={14} className="mr-1.5" />
+            )}
+            New Workflow
+          </Btn>
+        }
       />
 
       <Tabs
@@ -223,6 +249,28 @@ export default function AgentWorkflows() {
                     <Clock size={10}/>
                     {workflow.status}
                   </div>
+                  {workflow.status === 'running' && (
+                    <Btn 
+                      variant="ghost" 
+                      className="text-[11px] text-amber-600 hover:text-amber-700"
+                      onClick={() => pauseWorkflow.mutate(workflow.id)}
+                      disabled={pauseWorkflow.isPending}
+                    >
+                      <Pause size={12} className="mr-1" />
+                      {pauseWorkflow.isPending ? '...' : 'Pause'}
+                    </Btn>
+                  )}
+                  {workflow.status === 'pending' && (
+                    <Btn 
+                      variant="ghost" 
+                      className="text-[11px] text-green-600 hover:text-green-700"
+                      onClick={() => resumeWorkflow.mutate(workflow.id)}
+                      disabled={resumeWorkflow.isPending}
+                    >
+                      <Play size={12} className="mr-1" />
+                      {resumeWorkflow.isPending ? '...' : 'Resume'}
+                    </Btn>
+                  )}
                   {(workflow.status === 'running' || workflow.status === 'pending') && (
                     <Btn 
                       variant="ghost" 
@@ -230,7 +278,6 @@ export default function AgentWorkflows() {
                       onClick={() => cancelWorkflow.mutate(workflow.id)}
                       disabled={cancelWorkflow.isPending}
                     >
-                      <Pause size={12} className="mr-1" />
                       {cancelWorkflow.isPending ? 'Cancelling...' : 'Cancel'}
                     </Btn>
                   )}
