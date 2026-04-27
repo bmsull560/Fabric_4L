@@ -32,9 +32,13 @@ interface ValueStudioShellProps {
 // ── Tab Definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: "action-plan",  label: "Action Plan" },
-  { key: "value-model",  label: "Value Model" },
-  { key: "narrative",    label: "Narrative" },
+  { key: "action-plan",    label: "Action Plan" },
+  { key: "value-model",    label: "Value Model" },
+  { key: "narrative",      label: "Narrative" },
+  { key: "enrichment",     label: "Enrichment" },
+  { key: "competitive",    label: "Competitive" },
+  { key: "roi",            label: "ROI" },
+  { key: "evidence",       label: "Evidence" },
 ] as const;
 
 // ── Account Context Header ────────────────────────────────────────────────────
