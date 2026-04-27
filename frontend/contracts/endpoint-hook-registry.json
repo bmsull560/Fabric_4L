@@ -1,0 +1,3183 @@
+{
+  "version": 1,
+  "lastGenerated": "2026-04-27",
+  "policy": {
+    "minimumCoverage": 0.0,
+    "staleOwnedDays": 60,
+    "orphanGraceDays": 14
+  },
+  "mappings": [
+    {
+      "source": "layer1-ingestion",
+      "method": "POST",
+      "path": "/api/v1/ingestion/admin/cleanup",
+      "operationId": "trigger_cleanup_api_v1_ingestion_admin_cleanup_post",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/compliance/logs",
+      "operationId": "list_compliance_logs_api_v1_ingestion_compliance_logs_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/compliance/summary",
+      "operationId": "get_compliance_summary_api_v1_ingestion_compliance_summary_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/content",
+      "operationId": "list_content_api_v1_ingestion_content_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/content/extracted/{extracted_data_id}",
+      "operationId": "get_extracted_data_api_v1_ingestion_content_extracted__extracted_data_id__get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/content/raw/{content_id}",
+      "operationId": "get_raw_content_api_v1_ingestion_content_raw__content_id__get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/domains/{domain}/fallback-stats",
+      "operationId": "get_domain_fallback_stats_api_v1_ingestion_domains__domain__fallback_stats_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/health",
+      "operationId": "health_check_api_v1_ingestion_health_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/jobs",
+      "operationId": "list_jobs_api_v1_ingestion_jobs_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "DELETE",
+      "path": "/api/v1/ingestion/jobs/{job_id}",
+      "operationId": "cancel_job_api_v1_ingestion_jobs__job_id__delete",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/jobs/{job_id}",
+      "operationId": "get_job_api_v1_ingestion_jobs__job_id__get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/jobs/{job_id}/progress",
+      "operationId": "get_job_progress_api_v1_ingestion_jobs__job_id__progress_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/jobs/{job_id}/results",
+      "operationId": "get_job_results_api_v1_ingestion_jobs__job_id__results_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "POST",
+      "path": "/api/v1/ingestion/jobs/{job_id}/retry",
+      "operationId": "retry_job_api_v1_ingestion_jobs__job_id__retry_post",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/jobs/{job_id}/router-report",
+      "operationId": "get_job_router_report_api_v1_ingestion_jobs__job_id__router_report_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/metrics",
+      "operationId": "metrics_endpoint_api_v1_ingestion_metrics_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "POST",
+      "path": "/api/v1/ingestion/proxy-pools",
+      "operationId": "create_proxy_pool_endpoint_api_v1_ingestion_proxy_pools_post",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/targets",
+      "operationId": "list_targets_api_v1_ingestion_targets_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "POST",
+      "path": "/api/v1/ingestion/targets",
+      "operationId": "create_target_api_v1_ingestion_targets_post",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "DELETE",
+      "path": "/api/v1/ingestion/targets/{target_id}",
+      "operationId": "delete_target_api_v1_ingestion_targets__target_id__delete",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/targets/{target_id}",
+      "operationId": "get_target_api_v1_ingestion_targets__target_id__get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "PUT",
+      "path": "/api/v1/ingestion/targets/{target_id}",
+      "operationId": "update_target_api_v1_ingestion_targets__target_id__put",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/api/v1/ingestion/targets/{target_id}/decisions",
+      "operationId": "get_target_decisions_api_v1_ingestion_targets__target_id__decisions_get",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "POST",
+      "path": "/api/v1/ingestion/targets/{target_id}/execute",
+      "operationId": "execute_target_api_v1_ingestion_targets__target_id__execute_post",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "POST",
+      "path": "/api/v1/ingestion/targets/{target_id}/validate",
+      "operationId": "validate_target_api_v1_ingestion_targets__target_id__validate_post",
+      "hook": "useIngestion",
+      "hookFile": "frontend/client/src/hooks/useIngestion.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer1-ingestion",
+      "method": "GET",
+      "path": "/health",
+      "operationId": "legacy_health_check_health_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/health",
+      "operationId": "health_check_health_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/metrics",
+      "operationId": "metrics_endpoint_metrics_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/audit/entity/{entity_id}",
+      "operationId": "get_entity_provenance_v1_audit_entity__entity_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/audit/trace/{job_id}",
+      "operationId": "get_provenance_v1_audit_trace__job_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/extract",
+      "operationId": "extract_v1_extract_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/extract-and-ingest",
+      "operationId": "extract_and_ingest_v1_extract_and_ingest_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/extract/batch",
+      "operationId": "extract_batch_v1_extract_batch_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/extract/jobs/{job_id}/events",
+      "operationId": "stream_job_events_v1_extract_jobs__job_id__events_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/extract/status/{job_id}",
+      "operationId": "get_extraction_status_v1_extract_status__job_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/entities",
+      "operationId": "list_entities_v1_ontology_entities_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/relationships/{entity_id}",
+      "operationId": "get_relationships_v1_ontology_relationships__entity_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/schema",
+      "operationId": "get_ontology_schema_v1_ontology_schema_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/schema/export",
+      "operationId": "export_ontology_schema_v1_ontology_schema_export_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/ontology/schema/import",
+      "operationId": "import_ontology_schema_v1_ontology_schema_import_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/ontology/schema/publish",
+      "operationId": "publish_ontology_schema_v1_ontology_schema_publish_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/schema/relationships",
+      "operationId": "list_type_relationships_v1_ontology_schema_relationships_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/ontology/schema/relationships",
+      "operationId": "create_type_relationship_v1_ontology_schema_relationships_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "DELETE",
+      "path": "/v1/ontology/schema/relationships/{relationship_id}",
+      "operationId": "delete_type_relationship_v1_ontology_schema_relationships__relationship_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/schema/types",
+      "operationId": "list_ontology_types_v1_ontology_schema_types_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/ontology/schema/types",
+      "operationId": "create_ontology_type_v1_ontology_schema_types_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "DELETE",
+      "path": "/v1/ontology/schema/types/{type_id}",
+      "operationId": "delete_ontology_type_v1_ontology_schema_types__type_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/schema/types/{type_id}",
+      "operationId": "get_ontology_type_v1_ontology_schema_types__type_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "PUT",
+      "path": "/v1/ontology/schema/types/{type_id}",
+      "operationId": "update_ontology_type_v1_ontology_schema_types__type_id__put",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/ontology/schema/types/{type_id}/properties",
+      "operationId": "add_type_property_v1_ontology_schema_types__type_id__properties_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "DELETE",
+      "path": "/v1/ontology/schema/types/{type_id}/properties/{property_id}",
+      "operationId": "remove_type_property_v1_ontology_schema_types__type_id__properties__property_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "PUT",
+      "path": "/v1/ontology/schema/types/{type_id}/properties/{property_id}",
+      "operationId": "update_type_property_v1_ontology_schema_types__type_id__properties__property_id__put",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "POST",
+      "path": "/v1/ontology/schema/validate",
+      "operationId": "validate_ontology_schema_v1_ontology_schema_validate_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/schema/versions",
+      "operationId": "list_schema_versions_v1_ontology_schema_versions_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer2-extraction",
+      "method": "GET",
+      "path": "/v1/ontology/schema/versions/{version}",
+      "operationId": "get_schema_version_v1_ontology_schema_versions__version__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/entities/{entity_id}/subgraph",
+      "operationId": "get_entity_subgraph_entities__entity_id__subgraph_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/graph",
+      "operationId": "get_full_graph_graph_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/health",
+      "operationId": "health_check_health_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/health/detailed",
+      "operationId": "detailed_health_check_health_detailed_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/metrics",
+      "operationId": "get_metrics_metrics_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/agents/narrative-synthesis",
+      "operationId": "narrative_synthesis_v1_agents_narrative_synthesis_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/agents/provenance-tracking",
+      "operationId": "provenance_tracking_v1_agents_provenance_tracking_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/agents/roi-calculation",
+      "operationId": "roi_calculation_v1_agents_roi_calculation_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/agents/value-tree-projection",
+      "operationId": "value_tree_projection_v1_agents_value_tree_projection_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/agents/whitespace-analysis",
+      "operationId": "whitespace_analysis_v1_agents_whitespace_analysis_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/agents/workflow",
+      "operationId": "agent_workflow_v1_agents_workflow_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/analytics/centrality",
+      "operationId": "calculate_centrality_v1_analytics_centrality_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/analytics/communities",
+      "operationId": "detect_communities_v1_analytics_communities_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/analytics/compare",
+      "operationId": "compare_entities_v1_analytics_compare_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/analytics/similar",
+      "operationId": "find_similar_entities_v1_analytics_similar_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/audit/logs",
+      "operationId": "list_audit_logs_v1_audit_logs_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/batch/analytics",
+      "operationId": "batch_analytics_v1_batch_analytics_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/batch/entities",
+      "operationId": "batch_entity_operations_v1_batch_entities_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/benchmarks",
+      "operationId": "list_benchmarks_v1_benchmarks_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/benchmarks/policies",
+      "operationId": "list_benchmark_policies_v1_benchmarks_policies_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "PUT",
+      "path": "/v1/benchmarks/policies/{policy_id}",
+      "operationId": "update_benchmark_policy_v1_benchmarks_policies__policy_id__put",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/benchmarks/{benchmark_id}",
+      "operationId": "get_benchmark_v1_benchmarks__benchmark_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/documents/export",
+      "operationId": "export_document_v1_documents_export_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/entities",
+      "operationId": "list_entities_v1_entities_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/entities/query",
+      "operationId": "query_entities_v1_entities_query_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/entities/{{entity_id}}",
+      "operationId": "get_entity_detail_v1_entities___entity_id___get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/entity/traverse",
+      "operationId": "traverse_value_tree_v1_entity_traverse_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/entity/{entity_id}/context",
+      "operationId": "get_entity_context_v1_entity__entity_id__context_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/formulas",
+      "operationId": "list_formulas_v1_formulas_get",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/formulas/approvals/pending",
+      "operationId": "list_pending_approvals_v1_formulas_approvals_pending_get",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/evaluate",
+      "operationId": "evaluate_formula_v1_formulas_evaluate_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/scenario",
+      "operationId": "calculate_scenario_v1_formulas_scenario_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/formulas/variables",
+      "operationId": "get_variables_registry_v1_formulas_variables_get",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/formulas/{formula_id}",
+      "operationId": "get_formula_v1_formulas__formula_id__get",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/{formula_id}/activate",
+      "operationId": "activate_formula_v1_formulas__formula_id__activate_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/{formula_id}/approve",
+      "operationId": "approve_formula_v1_formulas__formula_id__approve_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/formulas/{formula_id}/dependencies",
+      "operationId": "get_formula_dependencies_v1_formulas__formula_id__dependencies_get",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/{formula_id}/deprecate",
+      "operationId": "deprecate_formula_v1_formulas__formula_id__deprecate_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/formulas/{formula_id}/governance",
+      "operationId": "get_formula_governance_v1_formulas__formula_id__governance_get",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/{formula_id}/submit",
+      "operationId": "submit_for_review_v1_formulas__formula_id__submit_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/{formula_id}/validate",
+      "operationId": "validate_activation_v1_formulas__formula_id__validate_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/formulas/{formula_id}/versions",
+      "operationId": "list_formula_versions_v1_formulas__formula_id__versions_get",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/formulas/{formula_id}/versions",
+      "operationId": "create_formula_version_v1_formulas__formula_id__versions_post",
+      "hook": "useFormulas",
+      "hookFile": "frontend/client/src/hooks/useFormulas.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/graph/subgraph",
+      "operationId": "get_query_subgraph_v1_graph_subgraph_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/graphrag",
+      "operationId": "graph_rag_legacy_alias_v1_graphrag_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/ingest",
+      "operationId": "ingest_rdf_v1_ingest_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/ingest/status/{source_id}",
+      "operationId": "get_sync_status_v1_ingest_status__source_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "DELETE",
+      "path": "/v1/ingest/{source_id}",
+      "operationId": "delete_source_v1_ingest__source_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/ingest/{source_id}/status",
+      "operationId": "get_sync_status_alias_v1_ingest__source_id__status_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/models",
+      "operationId": "list_models_v1_models_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/models",
+      "operationId": "create_model_v1_models_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/models/folders",
+      "operationId": "get_model_folders_v1_models_folders_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "DELETE",
+      "path": "/v1/models/{model_id}",
+      "operationId": "delete_model_v1_models__model_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/models/{model_id}",
+      "operationId": "get_model_detail_v1_models__model_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/packs",
+      "operationId": "list_packs_v1_packs_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/packs",
+      "operationId": "create_pack_v1_packs_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/packs/{pack_id}",
+      "operationId": "get_pack_v1_packs__pack_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "PUT",
+      "path": "/v1/packs/{pack_id}",
+      "operationId": "update_pack_v1_packs__pack_id__put",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/packs/{pack_id}/apply",
+      "operationId": "apply_pack_v1_packs__pack_id__apply_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/packs/{pack_id}/execute",
+      "operationId": "execute_pack_v1_packs__pack_id__execute_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/packs/{pack_id}/fork",
+      "operationId": "fork_pack_v1_packs__pack_id__fork_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/provenance/{entity_id}",
+      "operationId": "get_provenance_v1_provenance__entity_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/query",
+      "operationId": "graph_rag_query_v1_query_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/query/graph",
+      "operationId": "graph_rag_query_v1_query_graph_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/query/graph/stream",
+      "operationId": "graph_rag_query_stream_v1_query_graph_stream_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/schema/init",
+      "operationId": "init_schema_v1_schema_init_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/schema/statistics",
+      "operationId": "get_schema_statistics_v1_schema_statistics_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/schema/status",
+      "operationId": "get_schema_status_v1_schema_status_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/search",
+      "operationId": "hybrid_search_v1_search_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/search/hybrid",
+      "operationId": "hybrid_search_v1_search_hybrid_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/value-trees/{entity_id}",
+      "operationId": "get_value_tree_v1_value_trees__entity_id__get",
+      "hook": "useValueTrees",
+      "hookFile": "frontend/client/src/hooks/useValueTrees.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/value-trees/{entity_id}/paths",
+      "operationId": "get_value_tree_paths_v1_value_trees__entity_id__paths_get",
+      "hook": "useValueTrees",
+      "hookFile": "frontend/client/src/hooks/useValueTrees.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/valuepacks",
+      "operationId": "list_valuepacks",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/valuepacks",
+      "operationId": "create_valuepack",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/valuepacks/compare",
+      "operationId": "compare_valuepacks",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/valuepacks/composable-templates",
+      "operationId": "get_composable_templates",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/valuepacks/ontology-map",
+      "operationId": "get_ontology_map",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "DELETE",
+      "path": "/v1/valuepacks/{industry_id}",
+      "operationId": "delete_valuepack",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/valuepacks/{industry_id}",
+      "operationId": "get_valuepack",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "PUT",
+      "path": "/v1/valuepacks/{industry_id}",
+      "operationId": "update_valuepack",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/valuepacks/{industry_id}/seed",
+      "operationId": "seed_valuepack_data",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/variables",
+      "operationId": "search_variables_v1_variables_get",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/variables",
+      "operationId": "create_variable_v1_variables_post",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/variables/bindings",
+      "operationId": "list_source_bindings_v1_variables_bindings_get",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/variables/stats",
+      "operationId": "get_variable_stats_v1_variables_stats_get",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "GET",
+      "path": "/v1/variables/{variable_id}",
+      "operationId": "get_variable_v1_variables__variable_id__get",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "PUT",
+      "path": "/v1/variables/{variable_id}",
+      "operationId": "update_variable_v1_variables__variable_id__put",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/variables/{variable_id}/resolve",
+      "operationId": "resolve_variable_v1_variables__variable_id__resolve_post",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer3-knowledge",
+      "method": "POST",
+      "path": "/v1/variables/{variable_id}/validate",
+      "operationId": "validate_value_v1_variables__variable_id__validate_post",
+      "hook": "useVariables",
+      "hookFile": "frontend/client/src/hooks/useVariables.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/",
+      "operationId": "root__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/auth/oidc/callback",
+      "operationId": "oidc_callback_auth_oidc_callback_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/auth/oidc/{tenant_slug}/login",
+      "operationId": "oidc_login_auth_oidc__tenant_slug__login_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/auth/oidc/{tenant_slug}/metadata",
+      "operationId": "oidc_metadata_auth_oidc__tenant_slug__metadata_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/health",
+      "operationId": "health_check_health_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/metrics",
+      "operationId": "metrics_endpoint_metrics_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/accounts",
+      "operationId": "list_accounts_v1_accounts_get",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/accounts/filters",
+      "operationId": "get_filter_options_v1_accounts_filters_get",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/accounts/search",
+      "operationId": "search_accounts_v1_accounts_search_post",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/accounts/sync",
+      "operationId": "sync_accounts_v1_accounts_sync_post",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/accounts/sync-status",
+      "operationId": "get_sync_status_all_v1_accounts_sync_status_get",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/accounts/{account_id}",
+      "operationId": "get_account_v1_accounts__account_id__get",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/accounts/{account_id}/activity",
+      "operationId": "get_account_activity_v1_accounts__account_id__activity_get",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/accounts/{account_id}/refresh",
+      "operationId": "refresh_account_v1_accounts__account_id__refresh_post",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/analysis/roi",
+      "operationId": "quick_roi_analysis_v1_analysis_roi_post",
+      "hook": "useROICalculator",
+      "hookFile": "frontend/client/src/hooks/useROICalculator.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/analysis/whitespace",
+      "operationId": "quick_whitespace_analysis_v1_analysis_whitespace_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/api-keys",
+      "operationId": "api_list_keys_v1_api_keys_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/api-keys",
+      "operationId": "api_create_key_v1_api_keys_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "DELETE",
+      "path": "/v1/api-keys/{key_id}",
+      "operationId": "api_revoke_key_v1_api_keys__key_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/c1/stream",
+      "operationId": "stream_c1_v1_c1_stream_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/cases",
+      "operationId": "generate_business_case_v1_cases_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/cases/{case_id}",
+      "operationId": "get_business_case_v1_cases__case_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/cases/{case_id}/export",
+      "operationId": "export_business_case_v1_cases__case_id__export_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/feature-flags",
+      "operationId": "list_feature_flags_v1_feature_flags_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "DELETE",
+      "path": "/v1/feature-flags/{flag_key}",
+      "operationId": "delete_feature_flag_v1_feature_flags__flag_key__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/feature-flags/{flag_key}",
+      "operationId": "get_feature_flag_v1_feature_flags__flag_key__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "PUT",
+      "path": "/v1/feature-flags/{flag_key}",
+      "operationId": "upsert_feature_flag_v1_feature_flags__flag_key__put",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/feature-flags/{flag_key}/evaluate",
+      "operationId": "evaluate_feature_flag_v1_feature_flags__flag_key__evaluate_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/health/badges",
+      "operationId": "get_active_badges_v1_health_badges_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/health/badges/dismiss",
+      "operationId": "dismiss_badge_v1_health_badges_dismiss_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/health/components/{component_name}",
+      "operationId": "get_component_health_v1_health_components__component_name__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/health/detailed",
+      "operationId": "get_detailed_health_v1_health_detailed_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/health/report-connection-quality",
+      "operationId": "report_connection_quality_v1_health_report_connection_quality_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/health/websocket",
+      "operationId": "get_websocket_status_v1_health_websocket_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/integrations",
+      "operationId": "list_integrations_v1_integrations_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "DELETE",
+      "path": "/v1/integrations/{provider}",
+      "operationId": "delete_integration_v1_integrations__provider__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/integrations/{provider}",
+      "operationId": "get_integration_v1_integrations__provider__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/integrations/{provider}",
+      "operationId": "create_or_update_integration_v1_integrations__provider__post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/integrations/{provider}/sync",
+      "operationId": "trigger_sync_v1_integrations__provider__sync_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/integrations/{provider}/test",
+      "operationId": "test_integration_connection_v1_integrations__provider__test_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/models",
+      "operationId": "api_list_models_v1_models_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/models",
+      "operationId": "api_register_model_v1_models_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/models/active",
+      "operationId": "api_get_active_model_v1_models_active_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/models/eval-run",
+      "operationId": "api_record_eval_run_v1_models_eval_run_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/models/{model_id}",
+      "operationId": "api_get_model_v1_models__model_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/models/{model_id}/history",
+      "operationId": "api_get_promotion_history_v1_models__model_id__history_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/models/{model_id}/promote",
+      "operationId": "api_promote_model_v1_models__model_id__promote_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/tenants",
+      "operationId": "api_list_tenants_v1_tenants_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/tenants",
+      "operationId": "api_create_tenant_v1_tenants_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "DELETE",
+      "path": "/v1/tenants/{tenant_id}",
+      "operationId": "api_delete_tenant_v1_tenants__tenant_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/tenants/{tenant_id}",
+      "operationId": "api_get_tenant_v1_tenants__tenant_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "PATCH",
+      "path": "/v1/tenants/{tenant_id}",
+      "operationId": "api_update_tenant_v1_tenants__tenant_id__patch",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/tools",
+      "operationId": "list_tools_v1_tools_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/tools/categories",
+      "operationId": "list_tool_categories_v1_tools_categories_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/tools/export-document",
+      "operationId": "export_document_tool_v1_tools_export_document_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/tools/invoke",
+      "operationId": "invoke_tool_v1_tools_invoke_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/tools/{tool_name}",
+      "operationId": "get_tool_schema_v1_tools__tool_name__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/users",
+      "operationId": "api_list_users_v1_users_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/users/invite",
+      "operationId": "api_invite_user_v1_users_invite_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "DELETE",
+      "path": "/v1/users/{user_id}",
+      "operationId": "api_deactivate_user_v1_users__user_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/users/{user_id}",
+      "operationId": "api_get_user_v1_users__user_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "PATCH",
+      "path": "/v1/users/{user_id}",
+      "operationId": "api_update_user_v1_users__user_id__patch",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/webhooks/crm/health",
+      "operationId": "webhook_health_v1_webhooks_crm_health_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/webhooks/crm/hubspot",
+      "operationId": "hubspot_webhook_v1_webhooks_crm_hubspot_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/webhooks/crm/salesforce",
+      "operationId": "salesforce_webhook_v1_webhooks_crm_salesforce_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/workflows",
+      "operationId": "create_workflow_v1_workflows_post",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/active",
+      "operationId": "list_active_workflows_v1_workflows_active_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/types",
+      "operationId": "list_available_workflows_v1_workflows_types_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "DELETE",
+      "path": "/v1/workflows/{workflow_id}",
+      "operationId": "cancel_workflow_v1_workflows__workflow_id__delete",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}",
+      "operationId": "get_workflow_status_v1_workflows__workflow_id__get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/checkpoints",
+      "operationId": "list_checkpoints_v1_workflows__workflow_id__checkpoints_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/workflows/{workflow_id}/checkpoints/diff",
+      "operationId": "compare_checkpoints_v1_workflows__workflow_id__checkpoints_diff_post",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/checkpoints/{checkpoint_id}/state",
+      "operationId": "get_checkpoint_state_v1_workflows__workflow_id__checkpoints__checkpoint_id__state_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/events",
+      "operationId": "get_workflow_events_v1_workflows__workflow_id__events_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/workflows/{workflow_id}/pause",
+      "operationId": "pause_workflow_v1_workflows__workflow_id__pause_post",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/result",
+      "operationId": "get_workflow_result_v1_workflows__workflow_id__result_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/workflows/{workflow_id}/resume",
+      "operationId": "resume_workflow_v1_workflows__workflow_id__resume_post",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "POST",
+      "path": "/v1/workflows/{workflow_id}/resume-from-checkpoint",
+      "operationId": "resume_from_checkpoint_v1_workflows__workflow_id__resume_from_checkpoint_post",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/state/errors",
+      "operationId": "analyze_errors_v1_workflows__workflow_id__state_errors_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/state/history",
+      "operationId": "get_state_history_v1_workflows__workflow_id__state_history_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/state/outputs",
+      "operationId": "inspect_output_data_v1_workflows__workflow_id__state_outputs_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/state/performance",
+      "operationId": "get_performance_metrics_v1_workflows__workflow_id__state_performance_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/state/schema",
+      "operationId": "get_state_schema_v1_workflows__workflow_id__state_schema_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer4-agents",
+      "method": "GET",
+      "path": "/v1/workflows/{workflow_id}/state/values",
+      "operationId": "get_state_values_v1_workflows__workflow_id__state_values_get",
+      "hook": "useWorkflows",
+      "hookFile": "frontend/client/src/hooks/useWorkflows.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "GET",
+      "path": "/api/v1/health",
+      "operationId": "health_check_api_v1_health_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "GET",
+      "path": "/api/v1/maturity-ladder",
+      "operationId": "get_maturity_ladder_api_v1_maturity_ladder_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "GET",
+      "path": "/api/v1/truths",
+      "operationId": "list_truths_api_v1_truths_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "POST",
+      "path": "/api/v1/truths",
+      "operationId": "create_truth_api_v1_truths_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "POST",
+      "path": "/api/v1/truths/check-stale",
+      "operationId": "check_stale_api_v1_truths_check_stale_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "GET",
+      "path": "/api/v1/truths/freshness-summary",
+      "operationId": "freshness_summary_api_v1_truths_freshness_summary_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "GET",
+      "path": "/api/v1/truths/stale",
+      "operationId": "list_stale_api_v1_truths_stale_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "POST",
+      "path": "/api/v1/truths/sync-kg",
+      "operationId": "sync_to_kg_api_v1_truths_sync_kg_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "DELETE",
+      "path": "/api/v1/truths/{truth_id}",
+      "operationId": "delete_truth_api_v1_truths__truth_id__delete",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "GET",
+      "path": "/api/v1/truths/{truth_id}",
+      "operationId": "get_truth_api_v1_truths__truth_id__get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "GET",
+      "path": "/api/v1/truths/{truth_id}/audit",
+      "operationId": "get_audit_trail_api_v1_truths__truth_id__audit_get",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "POST",
+      "path": "/api/v1/truths/{truth_id}/sources",
+      "operationId": "add_truth_source_api_v1_truths__truth_id__sources_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "layer5-ground-truth",
+      "method": "POST",
+      "path": "/api/v1/truths/{truth_id}/validate",
+      "operationId": "validate_truth_api_v1_truths__truth_id__validate_post",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "signals",
+      "method": "GET",
+      "path": "/v1/accounts/{account_id}/signals",
+      "operationId": "get_account_signals",
+      "hook": "useAccounts",
+      "hookFile": "frontend/client/src/hooks/useAccounts.ts",
+      "status": "owned",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "signals",
+      "method": "POST",
+      "path": "/v1/prospects/setup",
+      "operationId": "create_prospect_setup",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    },
+    {
+      "source": "signals",
+      "method": "GET",
+      "path": "/v1/signals/stream/{prospect_id}",
+      "operationId": "signal_stream_websocket",
+      "hook": "UNMAPPED",
+      "hookFile": null,
+      "status": "unmapped",
+      "lastReviewed": "2026-04-27",
+      "metadata": {
+        "notes": "Seeded from OpenAPI snapshot; assign owning hook before enabling strict coverage."
+      }
+    }
+  ]
+}
