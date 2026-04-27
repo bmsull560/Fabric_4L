@@ -144,6 +144,11 @@ groups:
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/agent-workflow-stall.md"
 
       # Memory usage alert
+      # NOTE: layer5/layer6 do not export *_memory_usage_bytes Prometheus
+      # metrics today (only psutil values returned via /health). They are
+      # intentionally omitted from this rule until those gauges are wired up
+      # — otherwise the alert disjunct evaluates against a missing series and
+      # never fires, while creating false confidence that monitoring exists.
       - alert: HighMemoryUsage
         expr: |
           (
@@ -154,10 +159,6 @@ groups:
             value_fabric_memory_usage_bytes / (1024 * 1024 * 1024) > 4
             or
             layer4_memory_usage_bytes / (1024 * 1024 * 1024) > 4
-            or
-            layer5_memory_usage_bytes / (1024 * 1024 * 1024) > 4
-            or
-            layer6_memory_usage_bytes / (1024 * 1024 * 1024) > 4
           )
         for: 5m
         labels:
@@ -168,6 +169,8 @@ groups:
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/high-memory-usage.md"
 
       # CPU usage alert
+      # NOTE: layer5/layer6 do not export *_cpu_usage_percent today — omitted
+      # until those gauges are wired up. See HighMemoryUsage rationale above.
       - alert: HighCPUUsage
         expr: |
           (
@@ -178,10 +181,6 @@ groups:
             value_fabric_cpu_usage_percent > 80
             or
             layer4_cpu_usage_percent > 80
-            or
-            layer5_cpu_usage_percent > 80
-            or
-            layer6_cpu_usage_percent > 80
           )
         for: 10m
         labels:
@@ -291,6 +290,9 @@ groups:
           runbook_url: "https://github.com/bmsull560/Fabric_4L/blob/main/docs/runbooks/token-spike.md"
 
       # Ground truth staleness (L5)
+      # `layer5_stale_objects_detected` is a Gauge reflecting the *current*
+      # count of stale objects, so this alert auto-clears once staleness is
+      # remediated. (Previously a Counter, which made the alert latching.)
       - alert: StaleGroundTruthObjects
         expr: layer5_stale_objects_detected > 10
         for: 5m

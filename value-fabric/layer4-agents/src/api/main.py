@@ -7,8 +7,12 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from ..services.oidc_cleanup import OIDCCleanupTask
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

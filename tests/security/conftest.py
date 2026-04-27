@@ -5,9 +5,28 @@ from typing import Callable, Generator
 
 import pytest
 import jwt
-import psycopg2
-import redis
-from fastapi.testclient import TestClient
+
+# Lazy imports for optional dependencies
+def _get_psycopg2():
+    try:
+        import psycopg2
+        return psycopg2
+    except ImportError:
+        return None
+
+def _get_redis():
+    try:
+        import redis
+        return redis
+    except ImportError:
+        return None
+
+def _get_testclient():
+    try:
+        from fastapi.testclient import TestClient
+        return TestClient
+    except ImportError:
+        return None
 
 # Test configuration constants
 # JWT_SECRET is the canonical env var name used across CI and all layers
@@ -68,6 +87,9 @@ def tenant_b_token(jwt_encoder) -> str:
 
 def check_db() -> bool:
     """Check if database is available."""
+    psycopg2 = _get_psycopg2()
+    if psycopg2 is None:
+        return False
     db_url = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/test_value_fabric")
     try:
         conn = psycopg2.connect(db_url)
@@ -79,6 +101,9 @@ def check_db() -> bool:
 
 def check_redis() -> bool:
     """Check if Redis is available."""
+    redis = _get_redis()
+    if redis is None:
+        return False
     redis_host = os.getenv("REDIS_HOST", "localhost")
     redis_port = int(os.getenv("REDIS_PORT", 6379))
     try:
@@ -103,6 +128,10 @@ def require_security_deps():
 @pytest.fixture
 def db_connection() -> Generator:
     """Database connection for RLS policy testing."""
+    psycopg2 = _get_psycopg2()
+    if psycopg2 is None:
+        pytest.skip("psycopg2 not installed")
+    
     db_url = os.getenv("TEST_DATABASE_URL", "postgresql://localhost:5432/test_value_fabric")
 
     if os.getenv("CI") == "true":
@@ -126,6 +155,10 @@ def db_connection() -> Generator:
 @pytest.fixture
 def redis_client() -> Generator:
     """Redis client for cache isolation testing."""
+    redis = _get_redis()
+    if redis is None:
+        pytest.skip("redis not installed")
+    
     redis_host = os.getenv("REDIS_HOST", "localhost")
     redis_port = int(os.getenv("REDIS_PORT", DEFAULT_REDIS_PORT))
     redis_db = int(os.getenv("REDIS_DB", DEFAULT_REDIS_DB))
@@ -153,8 +186,12 @@ def redis_client() -> Generator:
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client():
     """TestClient fixture - L1 ingestion API client for security tests."""
+    TestClient = _get_testclient()
+    if TestClient is None:
+        pytest.skip("fastapi not installed")
+    
     import sys
     from pathlib import Path
 

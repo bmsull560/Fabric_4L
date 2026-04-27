@@ -12,7 +12,6 @@ Or via Docker:
 import logging
 import os
 import re
-import secrets
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -37,6 +36,11 @@ try:
     from shared.identity.vault_check import is_vault_healthy
 except ImportError:
     is_vault_healthy = None
+
+try:
+    from shared.observability import verify_metrics_access
+except ImportError:  # pragma: no cover
+    verify_metrics_access = None  # type: ignore[assignment]
 
 from ..config import get_settings
 from ..database import close_db, init_db
@@ -113,11 +117,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 raise RuntimeError("Vault unreachable — cannot start in production without secrets backend")
             logger.info("L5: Vault connectivity verified")
 
-    # Initialize Prometheus metrics
+    # Initialize Prometheus metrics and install the metrics middleware here —
+    # NOT in create_app() — because app.state is only writable after the
+    # lifespan begins. Installing the middleware in create_app() previously
+    # raised AttributeError on `app.state.metrics`.
     metrics = initialize_metrics()
     if metrics:
         logger.info("L5: Prometheus metrics initialized")
-    app.state.metrics = metrics
+        app.state.metrics = metrics
+        metrics_middleware = MetricsMiddleware(metrics)
+        app.middleware("http")(metrics_middleware)
+        logger.info("L5: Metrics middleware installed")
+    else:
+        app.state.metrics = None
 
     # Initialize Redis client for rate limiting (async context)
     app.state.redis_rate_limiter = None
@@ -271,11 +283,8 @@ def create_app() -> FastAPI:
     # Mount the API routers
     app.include_router(router)
 
-    # Add metrics middleware if available
-    if app.state.metrics:
-        metrics_middleware = MetricsMiddleware(app.state.metrics)
-        app.middleware("http")(metrics_middleware)
-        logger.info("L5: Metrics middleware installed")
+    # Note: metrics middleware is installed inside `lifespan()` because
+    # `app.state.metrics` is only initialized there.
 
     # Instrument FastAPI with OpenTelemetry after all other middleware
     if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
@@ -293,8 +302,9 @@ def create_app() -> FastAPI:
     @app.get("/metrics", tags=["Monitoring"], include_in_schema=False)
     async def metrics_endpoint(request: Request):
         """Prometheus metrics endpoint — requires internal access token."""
-        # Verify internal access for metrics (blocks public ingress access)
-        if not _verify_metrics_access(request):
+        # Verify internal access for metrics (blocks public ingress access).
+        # Delegated to shared.observability so all layers stay aligned.
+        if verify_metrics_access is None or not verify_metrics_access(request):
             raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
         
         metrics = get_metrics()
@@ -385,85 +395,6 @@ def _validate_jwt_secret(secret: str) -> None:
             f"JWT_SECRET '{secret}' matches a weak secret pattern. "
             f"Generate a secure secret: openssl rand -base64 32"
         )
-
-
-def _verify_metrics_access(request: Request) -> bool:
-    """
-    Verify request has internal access for metrics endpoint.
-    
-    Checks (in order of priority):
-    1. Internal scrape token header (for Prometheus scraping)
-    2. Request comes from internal network (10.x, 172.16-31.x, 192.168.x)
-    3. Dev bypass flag is set
-    
-    Production: requires valid internal token or private network origin.
-    Development: can use ALLOW_INSECURE_DEV_AUTH_BYPASS=true.
-    """
-    # Check for internal scrape token first (primary production method)
-    expected_token = os.getenv("METRICS_INTERNAL_SCRAPE_TOKEN", "")
-    auth_header = request.headers.get("Authorization", "")
-    
-    if expected_token and auth_header.startswith("Bearer "):
-        provided_token = auth_header[7:]  # Strip "Bearer "
-        # Use secrets.compare_digest for timing attack resistance
-        return secrets.compare_digest(provided_token, expected_token)
-    
-    # Check for X-Prometheus-Scrape header with token
-    scrape_header = request.headers.get("X-Prometheus-Scrape-Token", "")
-    if expected_token and scrape_header:
-        return secrets.compare_digest(scrape_header, expected_token)
-    
-    # Check if request originates from internal/private network
-    client_host = request.client.host if request.client else None
-    if client_host and _is_internal_ip(client_host):
-        # Internal network access is allowed for Prometheus in-cluster scraping
-        return True
-    
-    # Development bypass (explicit opt-in only)
-    env = os.getenv("ENVIRONMENT", "development")
-    allow_bypass = os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() == "true"
-    
-    if env == "development" and allow_bypass:
-        logger.debug("Metrics access granted via ALLOW_INSECURE_DEV_AUTH_BYPASS")
-        return True
-    
-    # Deny access - will log the failure details
-    logger.warning(
-        f"Metrics access denied: client={client_host}, "
-        f"has_auth_header={bool(auth_header)}, "
-        f"env={env}, bypass_allowed={allow_bypass}"
-    )
-    return False
-
-
-def _is_internal_ip(ip: str) -> bool:
-    """Check if IP address is in RFC1918 private address space."""
-    # Handle IPv4-mapped IPv6 addresses (::ffff:10.0.0.1)
-    if ip.startswith("::ffff:"):
-        ip = ip[7:]
-    
-    # 10.0.0.0/8
-    if ip.startswith("10."):
-        return True
-    
-    # 172.16.0.0/12
-    if ip.startswith("172."):
-        try:
-            second_octet = int(ip.split(".")[1])
-            if 16 <= second_octet <= 31:
-                return True
-        except (ValueError, IndexError):
-            pass
-    
-    # 192.168.0.0/16
-    if ip.startswith("192.168."):
-        return True
-    
-    # localhost/loopback
-    if ip in ("127.0.0.1", "localhost", "::1"):
-        return True
-    
-    return False
 
 
 app = create_app()

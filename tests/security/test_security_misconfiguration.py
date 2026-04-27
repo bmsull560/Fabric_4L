@@ -7,7 +7,11 @@ debug endpoints, security headers, and verbose error messages.
 
 import os
 
-from fastapi.testclient import TestClient
+# Lazy import for optional dependency
+try:
+    from fastapi.testclient import TestClient
+except ImportError:
+    TestClient = None
 
 
 class TestDefaultCredentials:

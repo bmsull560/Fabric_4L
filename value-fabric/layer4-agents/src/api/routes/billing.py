@@ -94,6 +94,25 @@ class SubscriptionResponse(BaseModel):
     cancel_at_period_end: bool
 
 
+class UsageEventRequest(BaseModel):
+    """Request body for ingesting a single usage event."""
+
+    event_id: str = Field(..., min_length=1, max_length=128, description="Idempotency key")
+    customer_id: str = Field(..., min_length=1, max_length=64, description="Customer identifier")
+    event_name: str = Field(..., min_length=1, max_length=128, description="Logical event name")
+    metric_name: str = Field(..., min_length=1, max_length=64, description="Metered metric name")
+    quantity: float = Field(..., ge=0, description="Quantity to record")
+    unit: str | None = Field(default=None, max_length=32, description="Unit of measure")
+    timestamp: datetime = Field(..., description="Event timestamp (UTC)")
+    metadata: dict[str, Any] | None = Field(default=None, description="Optional metadata")
+
+
+class UsageBatchRequest(BaseModel):
+    """Request body for batch ingestion of usage events."""
+
+    events: list[UsageEventRequest] = Field(..., min_length=1, max_length=1000, description="Events to ingest")
+
+
 # ============================================================================
 # Subscription Endpoints
 # ============================================================================

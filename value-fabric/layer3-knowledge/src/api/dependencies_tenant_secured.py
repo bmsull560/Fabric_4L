@@ -9,7 +9,7 @@ Provides secure Neo4j session injection with:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, HTTPException, Request, status
 

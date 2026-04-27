@@ -4,12 +4,15 @@ Provides centralized tool registration, discovery, and execution.
 """
 
 import asyncio
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import Any
 
 from shared.identity.context import RequestContext
 from ..models.tool_schemas import ToolCategory, ToolSchema
+
+logger = logging.getLogger(__name__)
 
 
 class ToolError(Exception):

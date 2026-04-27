@@ -122,7 +122,9 @@ def get_executor() -> WorkflowExecutor:
 
 @router.post("/analysis/roi", response_model=ROIAnalysisResponse)
 async def quick_roi_analysis(
-    request: ROIAnalysisRequest, executor: WorkflowExecutor = Depends(get_executor)
+    request: ROIAnalysisRequest,
+    executor: WorkflowExecutor = Depends(get_executor),
+    context: RequestContext = Depends(require_authenticated),
 ) -> ROIAnalysisResponse:
     """Quick ROI analysis for a prospect.
 

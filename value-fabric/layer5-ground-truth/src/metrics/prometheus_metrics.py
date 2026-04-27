@@ -1,7 +1,6 @@
 """Prometheus metrics collection for Layer 5 Ground Truth."""
 
 import logging
-import re
 import time
 from typing import Any
 
@@ -13,6 +12,11 @@ from prometheus_client import (
     Info,
     generate_latest,
 )
+
+try:
+    from shared.observability import PathNormalizer
+except ImportError:  # pragma: no cover - shared package not on path in some test envs
+    PathNormalizer = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -114,9 +118,13 @@ class PrometheusMetrics:
             registry=self.config.registry,
         )
 
-        self._metrics["stale_objects_detected"] = Counter(
+        # Gauge (not Counter): reflects the *current* number of stale objects so
+        # alert rules using `> threshold` correctly clear when staleness is
+        # remediated. A Counter only increases and would keep alerts firing
+        # forever once any staleness is observed.
+        self._metrics["stale_objects_detected"] = Gauge(
             f"{prefix}stale_objects_detected",
-            "Total stale objects detected",
+            "Number of stale ground-truth objects currently detected",
             registry=self.config.registry,
         )
 
@@ -204,7 +212,16 @@ class PrometheusMetrics:
         if self.config.enabled:
             self._metrics["freshness_checks_total"].inc()
 
+    def set_stale_objects_detected(self, count: int) -> None:
+        """Set the current number of detected stale objects (Gauge)."""
+        if self.config.enabled:
+            self._metrics["stale_objects_detected"].set(count)
+
     def increment_stale_objects_detected(self) -> None:
+        """Backward-compatible: bump the gauge by 1.
+
+        Prefer :meth:`set_stale_objects_detected` for accurate alerting.
+        """
         if self.config.enabled:
             self._metrics["stale_objects_detected"].inc()
 
@@ -227,92 +244,43 @@ class PrometheusMetrics:
         return generate_latest(self.config.registry).decode("utf-8")
 
 
+# Known route templates for L5 Ground Truth API.
+# Used to keep `endpoint` label cardinality bounded — anything outside this set
+# is normalized via :class:`PathNormalizer` heuristics.
+_L5_KNOWN_ROUTES: dict[str, str] = {
+    "/api/v1/truths": "/api/v1/truths",
+    "/api/v1/truths/{truth_id}": "/api/v1/truths/{id}",
+    "/api/v1/truths/{truth_id}/validate": "/api/v1/truths/{id}/validate",
+    "/api/v1/truths/{truth_id}/sources": "/api/v1/truths/{id}/sources",
+    "/api/v1/truths/{truth_id}/audit": "/api/v1/truths/{id}/audit",
+    "/api/v1/maturity-ladder": "/api/v1/maturity-ladder",
+    "/api/v1/health": "/api/v1/health",
+    "/api/v1/truths/sync-kg": "/api/v1/truths/sync-kg",
+    "/api/v1/truths/check-stale": "/api/v1/truths/check-stale",
+    "/api/v1/truths/stale": "/api/v1/truths/stale",
+    "/api/v1/truths/freshness-summary": "/api/v1/truths/freshness-summary",
+    "/metrics": "/metrics",
+    "/docs": "/docs",
+    "/redoc": "/redoc",
+    "/openapi.json": "/openapi.json",
+    "/": "/",
+}
+
+
 class MetricsMiddleware:
     """ASGI middleware to collect HTTP request metrics with path normalization."""
 
-    # High-entropy patterns to collapse (UUIDs, numeric IDs, hashes)
-    UUID_PATTERN = re.compile(
-        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-        re.IGNORECASE
-    )
-    HASH_PATTERN = re.compile(r'^[0-9a-f]{32,}$', re.IGNORECASE)
-    NUMERIC_PATTERN = re.compile(r'^\d+$')
-    
-    # Known route templates for L5 Ground Truth API
-    KNOWN_ROUTES = {
-        "/api/v1/truths": "/api/v1/truths",
-        "/api/v1/truths/{truth_id}": "/api/v1/truths/{id}",
-        "/api/v1/truths/{truth_id}/validate": "/api/v1/truths/{id}/validate",
-        "/api/v1/truths/{truth_id}/sources": "/api/v1/truths/{id}/sources",
-        "/api/v1/truths/{truth_id}/audit": "/api/v1/truths/{id}/audit",
-        "/api/v1/maturity-ladder": "/api/v1/maturity-ladder",
-        "/api/v1/health": "/api/v1/health",
-        "/api/v1/truths/sync-kg": "/api/v1/truths/sync-kg",
-        "/api/v1/truths/check-stale": "/api/v1/truths/check-stale",
-        "/api/v1/truths/stale": "/api/v1/truths/stale",
-        "/api/v1/truths/freshness-summary": "/api/v1/truths/freshness-summary",
-        "/metrics": "/metrics",
-        "/docs": "/docs",
-        "/redoc": "/redoc",
-        "/openapi.json": "/openapi.json",
-        "/": "/",
-    }
-
     def __init__(self, metrics: PrometheusMetrics):
         self.metrics = metrics
+        if PathNormalizer is not None:
+            self._normalizer = PathNormalizer(known_routes=_L5_KNOWN_ROUTES)
+        else:
+            self._normalizer = None
 
     def _normalize_path(self, path: str) -> str:
-        """
-        Normalize URL path to low-cardinality route template.
-        
-        Strategy:
-        1. Match against known route templates
-        2. Collapse UUIDs, numeric IDs, and hashes to placeholders
-        3. Limit total path segments
-        """
-        if not path or path == "/":
-            return "/"
-        
-        # Remove trailing slash
-        path = path.rstrip("/")
-        
-        # Check for exact match in known routes
-        if path in self.KNOWN_ROUTES:
-            return self.KNOWN_ROUTES[path]
-        
-        # Split and normalize path segments
-        segments = path.split("/")
-        normalized = []
-        
-        for segment in segments:
-            if not segment:
-                continue
-            
-            # Collapse UUIDs
-            if self.UUID_PATTERN.match(segment):
-                normalized.append("{id}")
-            # Collapse long hex hashes
-            elif self.HASH_PATTERN.match(segment):
-                normalized.append("{hash}")
-            # Collapse numeric IDs (but preserve common API segments)
-            elif self.NUMERIC_PATTERN.match(segment):
-                # Don't collapse 'v1' in '/api/v1/'
-                if segment == "1" and normalized and normalized[-1] == "v":
-                    normalized.append(segment)
-                else:
-                    normalized.append("{id}")
-            else:
-                normalized.append(segment)
-        
-        # Rebuild path
-        result = "/" + "/".join(normalized)
-        
-        # Limit cardinality by capping path depth for unknown paths
-        max_segments = 6
-        if len(normalized) > max_segments:
-            result = "/" + "/".join(normalized[:max_segments]) + "/{...}"
-        
-        return result
+        if self._normalizer is None:
+            return path or "/"
+        return self._normalizer.normalize(path)
 
     async def __call__(self, request, call_next):
         start_time = time.time()

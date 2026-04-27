@@ -10,6 +10,9 @@ from contextlib import asynccontextmanager
 from decimal import Decimal
 from typing import Dict, Optional
 
+# Logger defined early so lifespan() and module-level instrumentation can use it.
+logger = logging.getLogger(__name__)
+
 try:
     from shared.secrets import load_infisical_secrets
     load_infisical_secrets()
@@ -33,6 +36,11 @@ try:
 except ImportError:
     add_security_middleware = None
     SecurityConfig = None
+
+try:
+    from shared.observability import verify_metrics_access
+except ImportError:  # pragma: no cover
+    verify_metrics_access = None  # type: ignore[assignment]
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..models.benchmark_dataset import (
@@ -198,7 +206,14 @@ app.add_middleware(
 # Custom metrics endpoint using our PrometheusMetrics class
 @app.get("/metrics", include_in_schema=False)
 async def metrics_endpoint(request: Request):
-    """Prometheus-compatible metrics endpoint."""
+    """Prometheus-compatible metrics endpoint.
+
+    Internal-only — access is gated by ``shared.observability.verify_metrics_access``
+    so that scrape-token auth and private-network rules stay aligned across layers.
+    """
+    if verify_metrics_access is None or not verify_metrics_access(request):
+        raise HTTPException(status_code=403, detail="Metrics endpoint requires internal access")
+
     metrics = get_metrics()
 
     if not metrics:
@@ -238,8 +253,6 @@ from .schemas import (
 
 import time
 from datetime import datetime
-
-logger = logging.getLogger(__name__)
 
 
 async def health_check(request: Request = None):

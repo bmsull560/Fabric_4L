@@ -1,11 +1,15 @@
 """Extraction job routes for Layer 2 API."""
 
+import logging
+import time
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Header, Request
 from pydantic import BaseModel, Field
 
 from .. import main as handlers
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1", tags=["extraction"])
 

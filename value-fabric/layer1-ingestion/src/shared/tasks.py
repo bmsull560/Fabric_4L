@@ -7,6 +7,7 @@ Manages ScrapingJob lifecycle through 11 PipelineStages.
 import asyncio
 import hashlib
 from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import structlog
@@ -17,6 +18,9 @@ from ..compliance.robots_checker import RobotsChecker
 from ..crawler.playwright_crawler import PlaywrightCrawler
 from ..crawler.smart_router import RouteType, SmartRouter
 from ..crawler.httpx_crawler import HttpxCrawler
+
+if TYPE_CHECKING:
+    from ..crawler.httpx_crawler import FastPathResult
 from ..crawler.quality_gate import QualityGate
 from ..crawler.decision_store import CrawlDecisionRecord, CrawlDecisionRepository
 from ..shared.config import settings

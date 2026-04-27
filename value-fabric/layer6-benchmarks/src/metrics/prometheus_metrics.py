@@ -5,7 +5,27 @@ from typing import Any, Dict, List, Optional
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, Info, generate_latest
 
+try:
+    from shared.observability import PathNormalizer
+except ImportError:  # pragma: no cover
+    PathNormalizer = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
+
+# Known route templates for L6 Benchmarks API. Anything outside this set
+# is normalized via PathNormalizer heuristics (UUID/hash/numeric collapse).
+_L6_KNOWN_ROUTES: Dict[str, str] = {
+    "/health": "/health",
+    "/metrics": "/metrics",
+    "/datasets": "/datasets",
+    "/datasets/{dataset_id}": "/datasets/{id}",
+    "/datasets/{dataset_id}/compare": "/datasets/{id}/compare",
+    "/datasets/{dataset_id}/validate": "/datasets/{id}/validate",
+    "/docs": "/docs",
+    "/redoc": "/redoc",
+    "/openapi.json": "/openapi.json",
+    "/": "/",
+}
 
 
 class MetricsConfig:
@@ -174,10 +194,29 @@ def initialize_metrics(config: Optional[MetricsConfig] = None) -> Optional[Prome
 
 
 class MetricsMiddleware:
-    """FastAPI middleware for collecting Prometheus HTTP metrics."""
+    """FastAPI middleware for collecting Prometheus HTTP metrics.
+
+    Uses :class:`shared.observability.PathNormalizer` to collapse
+    high-entropy path segments (UUIDs, numeric IDs, hex hashes) into
+    placeholders before recording labels. Without this, every distinct
+    dataset UUID would create a new Prometheus time series, leading to
+    unbounded cardinality.
+    """
 
     def __init__(self, metrics: PrometheusMetrics):
         self.metrics = metrics
+        if PathNormalizer is not None:
+            self._normalizer = PathNormalizer(known_routes=_L6_KNOWN_ROUTES)
+        else:
+            self._normalizer = None
+
+    def _normalize_path(self, path: str) -> str:
+        if self._normalizer is None:
+            # Fallback: at least strip trailing slash to keep label set bounded
+            # for the common case.
+            path = path.rstrip("/") if path else ""
+            return path or "/"
+        return self._normalizer.normalize(path)
 
     async def __call__(self, request, call_next):
         """Process request and collect metrics."""
@@ -193,12 +232,8 @@ class MetricsMiddleware:
         finally:
             duration = time.time() - start_time
 
-            # Normalize endpoint path
-            endpoint = request.url.path
-            if endpoint.endswith("/"):
-                endpoint = endpoint[:-1]
-            if not endpoint:
-                endpoint = "/"
+            # Normalize endpoint path via shared helper to bound cardinality.
+            endpoint = self._normalize_path(request.url.path)
 
             # Record metrics
             self.metrics.increment_requests_total(

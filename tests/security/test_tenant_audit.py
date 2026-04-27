@@ -10,7 +10,12 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import Request
+
+# Lazy import for optional dependency
+try:
+    from fastapi import Request
+except ImportError:
+    Request = None
 
 from shared.audit import (
     AuditAction,

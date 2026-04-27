@@ -40,7 +40,7 @@ except ImportError as e:
         "shared.identity package is required for tenant management. "
         "Install the shared package or set PYTHONPATH to include value-fabric/shared"
     ) from e
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models.api_key import APIKey

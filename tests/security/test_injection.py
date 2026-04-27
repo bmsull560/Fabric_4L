@@ -8,7 +8,11 @@ Validates that:
 4. NoSQL injection is detected
 """
 
-from fastapi.testclient import TestClient
+# Lazy import for optional dependency
+try:
+    from fastapi.testclient import TestClient
+except ImportError:
+    TestClient = None
 
 
 class TestSQLInjectionPrevention:

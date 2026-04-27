@@ -12,7 +12,12 @@ from typing import Callable
 
 import jwt as jwt_lib
 import pytest
-from fastapi.testclient import TestClient
+
+# Lazy import for optional dependency
+try:
+    from fastapi.testclient import TestClient
+except ImportError:
+    TestClient = None
 
 
 class TestRBACEnforcement:
