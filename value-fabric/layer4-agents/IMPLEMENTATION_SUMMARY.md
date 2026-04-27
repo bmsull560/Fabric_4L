@@ -184,11 +184,31 @@ src/models/agent_state.py - Added spec workflow states
 pyproject.toml - New dependencies
 ```
 
+## Agent Taxonomy
+
+- **Taxonomy-only count: 8 agents** in `src/agents/taxonomy.py`:
+  1. `DocumentIngestionAgent`
+  2. `FinancialExtractionAgent`
+  3. `ValueTreeProjectionAgent`
+  4. `WhitespaceAnalysisAgent`
+  5. `ROICalculationAgent`
+  6. `NarrativeSynthesisAgent`
+  7. `ProvenanceTrackingAgent`
+  8. `OrchestrationController`
+- **Runtime-exposed agents: 9 agents total** when including `src/agents/signal_detection.py`:
+  - `SignalDetectionAgent` (in addition to the 8 taxonomy agents above).
+
+## Summary Statistics
+
+- **Taxonomy-only agents:** 8 (`taxonomy.py`, includes `OrchestrationController`).
+- **Runtime-exposed agents:** 9 (`taxonomy.py` + `signal_detection.py`).
+- **Delta:** +1 runtime agent beyond the core taxonomy (`SignalDetectionAgent`).
+
 ## Alignment Verification
 
 | Gap | Status | Implementation |
 |-----|--------|----------------|
-| Agent Taxonomy | ✅ Complete | 8 agent types in taxonomy.py |
+| Agent Taxonomy | ✅ Complete | 8 taxonomy-only agents in taxonomy.py; 9 runtime-exposed agents including SignalDetectionAgent |
 | Document Ingestion Agent | ✅ Complete | Hybrid with L1 client |
 | Financial Extraction Agent | ✅ Complete | Hybrid with L2 client |
 | Value Tree Projection Agent | ✅ Complete | Graph traversal capabilities |
