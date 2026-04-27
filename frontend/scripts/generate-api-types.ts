@@ -134,7 +134,6 @@ async function main(): Promise<void> {
           '// @generated — This file is auto-generated from the OpenAPI spec.',
           '// Do not edit manually. Run `pnpm run generate:types` to regenerate.',
           `// Source: contracts/openapi/${layer.specFile}`,
-          `// Generated: ${new Date().toISOString()}`,
           '',
         ].join('\n');
 
@@ -153,7 +152,6 @@ async function main(): Promise<void> {
   const indexLines = [
     '// @generated — Barrel export for all generated API types.',
     '// Do not edit manually. Run `pnpm run generate:types` to regenerate.',
-    `// Generated: ${new Date().toISOString()}`,
     '',
   ];
 
