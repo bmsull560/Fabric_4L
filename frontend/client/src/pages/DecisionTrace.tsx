@@ -23,6 +23,24 @@ function formatTimestamp(timestamp: string): string {
 
 export default function DecisionTrace() {
   const [location, setLocation] = useLocation();
+  const activeSection = useMemo(() => {
+    if (location.includes("/audit/changes")) return "changes";
+    if (location.includes("/audit/log")) return "audit";
+    if (location.includes("/compliance")) return "compliance";
+    if (location.includes("/integrity")) return "integrity";
+    if (location.includes("/provenance")) return "provenance";
+    if (location.includes("/evidence")) return "evidence";
+    return "traces";
+  }, [location]);
+  const sectionTitles: Record<string, string> = {
+    traces: "Decision Traces",
+    evidence: "Evidence Chain",
+    provenance: "Provenance Trail",
+    integrity: "Data Integrity",
+    compliance: "Compliance Checks",
+    audit: "Audit Log",
+    changes: "Change History",
+  };
   const [searchParams] = useSearchParams();
   const entityIdFromUrl = searchParams.get("entityId") || searchParams.get("caseId");
   const caseIdFromUrl = searchParams.get("caseId");
@@ -255,8 +273,8 @@ export default function DecisionTrace() {
   return (
     <div className="p-6 max-w-5xl">
       <PageHeader
-        breadcrumbs={[{ label: "Audit & Provenance" }, { label: "Decision Traces" }]}
-        title="Decision Trace Viewer"
+        breadcrumbs={[{ label: "Audit & Provenance" }, { label: sectionTitles[activeSection] ?? "Decision Traces" }]}
+        title={activeSection === "traces" ? "Decision Trace Viewer" : (sectionTitles[activeSection] ?? "Decision Trace Viewer")}
         subtitle={
           selectedEntityId && provenanceTrail
             ? `Provenance for: ${provenanceTrail.entity_name} (${provenanceTrail.entity_type})`
