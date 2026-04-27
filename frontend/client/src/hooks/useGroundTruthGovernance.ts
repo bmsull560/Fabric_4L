@@ -64,23 +64,23 @@ function buildTruthListQuery(filters: TruthListFilters = {}): string {
 }
 
 async function fetchTruths(filters: TruthListFilters = {}): Promise<TruthListResponse> {
-  const response = await apiClient.get('l5', `/truths${buildTruthListQuery(filters)}`);
+  const response = await apiClient.get('l5', `/${buildTruthListQuery(filters)}`);
   return response.data as TruthListResponse;
 }
 
 async function fetchTruthAuditTrail(truthId: string): Promise<ValidationEventResponse[]> {
-  const response = await apiClient.get('l5', `/truths/${encodeURIComponent(truthId)}/audit`);
+  const response = await apiClient.get('l5', `/${encodeURIComponent(truthId)}/audit`);
   return response.data as ValidationEventResponse[];
 }
 
 async function fetchFreshnessSummary(): Promise<FreshnessSummaryResponse> {
-  const response = await apiClient.get('l5', '/truths/freshness-summary');
+  const response = await apiClient.get('l5', '/freshness-summary');
   return response.data as FreshnessSummaryResponse;
 }
 
 async function fetchStaleTruths(limit = 50, offset = 0): Promise<StaleTruthsResponse> {
   const query = new URLSearchParams({ limit: String(limit), offset: String(offset) }).toString();
-  const response = await apiClient.get('l5', `/truths/stale?${query}`);
+  const response = await apiClient.get('l5', `/stale?${query}`);
   return response.data as StaleTruthsResponse;
 }
 

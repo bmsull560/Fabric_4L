@@ -72,7 +72,8 @@ export default function DecisionTrace() {
     try {
       await exportMutation.mutateAsync({ entityId: selectedEntityId, format: 'prov-o' });
     } catch (error) {
-      console.error("Export failed:", error);
+      console.error("Failed to export provenance in PROV-O format", error);
+      window.alert("Failed to export provenance. Please try again.");
     }
   };
 
