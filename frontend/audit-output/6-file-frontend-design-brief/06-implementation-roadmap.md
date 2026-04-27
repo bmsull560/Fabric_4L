@@ -81,7 +81,7 @@ Phase 2 scales the patterns established in Phase 1 across the remaining high-val
 
 ### 6.3.2 Build Integration Dashboard
 
-Parallel to the endpoint onboarding, Sprints 4-6 build the **Integration Dashboard**: a developer-only page at `/dev/integration` that visualizes the integration health of the entire application. The dashboard displays four panels: (1) an **Endpoint Coverage** panel showing the percentage of the 244 backend endpoints that have at least one consuming frontend hook, with drill-down by layer and domain; (2) a **Hook Health** panel showing the 44 hooks color-coded by their data source classification (green, yellow, red) with click-through to hook source; (3) a **Mock Detection** panel listing all components containing hardcoded data, with file paths and line numbers extracted by the `detect_mock_data` script; and (4) a **Route Integrity Matrix** panel reproducing the Track A color classification with live updates as routes are converted.
+Parallel to the endpoint onboarding, Sprints 4-6 build the **Integration Dashboard**: a developer-only page at `/context/integrations` that visualizes the integration health of the entire application. The dashboard displays four panels: (1) an **Endpoint Coverage** panel showing the percentage of the 244 backend endpoints that have at least one consuming frontend hook, with drill-down by layer and domain; (2) a **Hook Health** panel showing the 44 hooks color-coded by their data source classification (green, yellow, red) with click-through to hook source; (3) a **Mock Detection** panel listing all components containing hardcoded data, with file paths and line numbers extracted by the `detect_mock_data` script; and (4) a **Route Integrity Matrix** panel reproducing the Track A color classification with live updates as routes are converted.
 
 The Integration Dashboard is built using the same hook architecture it monitors — it consumes a `useIntegrationMetrics` hook that aggregates data from the route registry, hook analysis, and endpoint coverage APIs. It ships as a dev-only route gated by environment variable, visible in development and staging but not in production. The dashboard serves two purposes: it makes the integration problem visible to the entire engineering organization, and it provides the data feed for the weekly FRP tracking described in Section 6.6.
 
@@ -155,7 +155,7 @@ Phase 4 stabilizes FRP at 95% or above, with the remaining 5% consisting of deli
 
 ### 6.6.1 Weekly Dashboard
 
-The Integration Dashboard at `/dev/integration` is the single source of truth for all integration metrics. It updates daily via a CI cron job and displays four primary metrics:
+The Integration Dashboard at `/context/integrations` is the single source of truth for all integration metrics. It updates daily via a CI cron job and displays four primary metrics:
 
 | Metric | Current | Sprint 3 | Sprint 8 | Sprint 12 | Ongoing Target |
 |--------|---------|----------|----------|-----------|----------------|
