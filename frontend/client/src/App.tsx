@@ -121,6 +121,10 @@ const EvidenceLibraryTab = lazy(() => import("./pages/intelligence/EvidenceLibra
 const ActionPlanTab = lazy(() => import("./pages/studio/ActionPlanTab"));
 const ValueModelTab = lazy(() => import("./pages/studio/ValueModelTab"));
 const NarrativeTab = lazy(() => import("./pages/studio/NarrativeTab"));
+const StudioEnrichmentTab = lazy(() => import("./pages/studio/StudioEnrichmentTab"));
+const StudioCompetitiveTab = lazy(() => import("./pages/studio/StudioCompetitiveTab"));
+const StudioROITab = lazy(() => import("./pages/studio/StudioROITab"));
+const StudioEvidenceTab = lazy(() => import("./pages/studio/StudioEvidenceTab"));
 
 // ── Minimal inline fallback ──────────────────────────────────────────────────
 function PageLoader() {
@@ -189,7 +193,7 @@ function WorkspaceContextRedirect({
     "roi",
     "evidence-library",
   ]);
-  const studioTabs = new Set(["action-plan", "value-model", "narrative"]);
+  const studioTabs = new Set(["action-plan", "value-model", "narrative", "enrichment", "competitive", "roi", "evidence"]);
 
   if (workspace === "intelligence") {
     const resolvedTabCandidate = explicitTab ?? params.tab;
@@ -492,6 +496,26 @@ function Router() {
           <WorkspaceContextRedirect workspace="studio" tab="narrative" />
         </AuthenticatedRoute>
       </Route>
+      <Route path="/studio/enrichment">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="studio" tab="enrichment" />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/competitive">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="studio" tab="competitive" />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/roi">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="studio" tab="roi" />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/evidence">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="studio" tab="evidence" />
+        </AuthenticatedRoute>
+      </Route>
       <Route path="/studio/:accountId">
         <AuthenticatedRoute {...tierProps}>
           <AccountContextSync />
@@ -514,6 +538,30 @@ function Router() {
         <AuthenticatedRoute {...tierProps}>
           <AccountContextSync />
           <NarrativeTab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/:accountId/enrichment">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <StudioEnrichmentTab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/:accountId/competitive">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <StudioCompetitiveTab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/:accountId/roi">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <StudioROITab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/studio/:accountId/evidence">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <StudioEvidenceTab />
         </AuthenticatedRoute>
       </Route>
 
