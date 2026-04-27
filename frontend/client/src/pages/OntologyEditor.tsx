@@ -20,7 +20,19 @@ import { Check, X, AlertCircle, Undo2, Redo2, Download, Upload, Plus, GitBranch,
 import { cn } from '@/lib/utils';
 import { PageHeader, Btn, SectionCard } from '@/components/WfPrimitives';
 import { TypeTree, PropertyEditor, RelationshipMap } from '@/components/ontology';
-import { useOntologySchema, useValidateOntology, usePublishOntology, useImportOntology } from '@/hooks/useOntology';
+import {
+  useOntologySchema,
+  useValidateOntology,
+  usePublishOntology,
+  useImportOntology,
+  useCreateOntologyType,
+  useUpdateOntologyType,
+  useDeleteOntologyType,
+  useAddOntologyProperty,
+  useRemoveOntologyProperty,
+  useAddTypeRelationship,
+  useRemoveTypeRelationship,
+} from '@/hooks/useOntology';
 import useOntologyStore from '@/stores/ontologyStore';
 import { toast } from 'sonner';
 
@@ -32,6 +44,21 @@ export default function OntologyEditor() {
   const validateMutation = useValidateOntology();
   const publishMutation = usePublishOntology();
   const importMutation = useImportOntology();
+
+  // Individual CRUD mutations for granular persistence
+  const createTypeMutation = useCreateOntologyType();
+  const updateTypeMutation = useUpdateOntologyType();
+  const deleteTypeMutation = useDeleteOntologyType();
+  const addPropertyMutation = useAddOntologyProperty();
+  const removePropertyMutation = useRemoveOntologyProperty();
+  const addRelationshipMutation = useAddTypeRelationship();
+  const removeRelationshipMutation = useRemoveTypeRelationship();
+
+  // State for add-relationship dialog
+  const [showAddRelDialog, setShowAddRelDialog] = useState(false);
+  const [newRelSource, setNewRelSource] = useState('');
+  const [newRelTarget, setNewRelTarget] = useState('');
+  const [newRelType, setNewRelType] = useState('RELATES_TO');
 
   // Local state
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -273,7 +300,7 @@ export default function OntologyEditor() {
 
       {/* Toolbar */}
       <div className="flex items-center gap-2 mb-4 py-2 border-b border-border">
-        <Btn variant="ghost" onClick={() => setShowImportDialog(true)}>
+        <Btn variant="ghost" onClick={() => setShowAddRelDialog(true)}>
           <Plus size={12} className="mr-1" />
           Add Relation
         </Btn>
@@ -349,6 +376,86 @@ export default function OntologyEditor() {
         </div>
       )}
 
+      {/* Add Relationship Dialog */}
+      {showAddRelDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-lg shadow-lg w-[400px] max-w-[90vw]">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-sm font-semibold">Add Relationship</h3>
+              <p className="text-[12px] text-muted-foreground mt-1">
+                Define a relationship between two ontology types
+              </p>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Source Type</label>
+                <select
+                  value={newRelSource}
+                  onChange={(e) => setNewRelSource(e.target.value)}
+                  className="w-full px-3 py-2 text-[12px] bg-muted/50 border border-border rounded-md"
+                >
+                  <option value="">Select source type...</option>
+                  {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Relationship Type</label>
+                <select
+                  value={newRelType}
+                  onChange={(e) => setNewRelType(e.target.value)}
+                  className="w-full px-3 py-2 text-[12px] bg-muted/50 border border-border rounded-md"
+                >
+                  {['RELATES_TO', 'DEPENDS_ON', 'ENABLES', 'EXTENDS', 'CONTAINS', 'PART_OF'].map(rt => (
+                    <option key={rt} value={rt}>{rt}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground block mb-1">Target Type</label>
+                <select
+                  value={newRelTarget}
+                  onChange={(e) => setNewRelTarget(e.target.value)}
+                  className="w-full px-3 py-2 text-[12px] bg-muted/50 border border-border rounded-md"
+                >
+                  <option value="">Select target type...</option>
+                  {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="p-4 border-t border-border flex justify-end gap-2">
+              <Btn variant="ghost" onClick={() => setShowAddRelDialog(false)}>
+                Cancel
+              </Btn>
+              <Btn
+                variant="primary"
+                onClick={async () => {
+                  if (!newRelSource || !newRelTarget) {
+                    toast.error('Please select both source and target types');
+                    return;
+                  }
+                  try {
+                    await addRelationshipMutation.mutateAsync({
+                      sourceTypeId: newRelSource,
+                      targetTypeId: newRelTarget,
+                      relationshipType: newRelType as "depends_on" | "extends" | "relates_to" | "contains",
+                      cardinality: "one_to_many" as const,
+                    });
+                    toast.success('Relationship added');
+                    setShowAddRelDialog(false);
+                    setNewRelSource('');
+                    setNewRelTarget('');
+                  } catch (err) {
+                    toast.error('Failed to add relationship');
+                  }
+                }}
+                disabled={addRelationshipMutation.isPending}
+              >
+                {addRelationshipMutation.isPending ? 'Adding...' : 'Add Relationship'}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Import Dialog */}
       {showImportDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
