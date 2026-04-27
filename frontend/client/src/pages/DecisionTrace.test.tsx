@@ -113,7 +113,7 @@ describe('DecisionTrace', () => {
     });
   });
 
-  it('renders audit log table', async () => {
+  it('renders decision-trace specific header and audit log table', async () => {
     server.use(
       http.get('/api/v1/graph/audit/logs', () => {
         return HttpResponse.json({
@@ -141,7 +141,8 @@ describe('DecisionTrace', () => {
     render(<DecisionTrace />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText('Audit Log')).toBeInTheDocument();
+      expect(screen.getByText('Decision Trace Viewer')).toBeInTheDocument();
+      expect(screen.getByText(/Audit Log/)).toBeInTheDocument();
     });
   });
 
