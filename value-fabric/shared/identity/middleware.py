@@ -24,6 +24,8 @@ authentication where required (some endpoints, e.g. ``/health``, are public).
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 import os
 from typing import Any, Callable, Optional
@@ -39,6 +41,11 @@ from .rate_limiter import RedisRateLimiter, RateLimitResult
 from .rate_limiting import RateLimitConfig, RateLimitScope, ROLE_DEFAULT_RATE_LIMITS
 
 logger = logging.getLogger(__name__)
+
+# Header names for service-to-service authentication (F-1 P0 fix)
+TENANT_ID_HEADER = "X-Tenant-ID"
+SERVICE_AUTH_HEADER = "X-Service-Auth"
+MIN_SERVICE_SECRET_LENGTH = 32  # Minimum entropy for shared secrets
 
 # Paths that bypass all authentication checks
 _PUBLIC_PATHS: frozenset[str] = frozenset(
@@ -251,8 +258,27 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 )
 
         # 3. X-Tenant-ID (service-to-service)
-        x_tenant = request.headers.get("X-Tenant-ID")
+        # P0 FIX: Require X-Service-Auth shared secret to prevent header spoofing
+        x_tenant = request.headers.get(TENANT_ID_HEADER)
         if x_tenant:
+            expected_secret = os.getenv("SERVICE_AUTH_SECRET")
+            if not expected_secret:
+                logger.warning(
+                    "X-Tenant-ID rejected: SERVICE_AUTH_SECRET not configured"
+                )
+                return None
+            # Validate secret meets minimum length requirement
+            if len(expected_secret) < MIN_SERVICE_SECRET_LENGTH:
+                logger.error(
+                    "SERVICE_AUTH_SECRET too short (%d chars, min %d)",
+                    len(expected_secret),
+                    MIN_SERVICE_SECRET_LENGTH,
+                )
+                return None
+            provided_secret = request.headers.get(SERVICE_AUTH_HEADER, "")
+            if not hmac.compare_digest(provided_secret, expected_secret):
+                logger.warning("X-Tenant-ID rejected: invalid X-Service-Auth")
+                return None
             try:
                 tenant_id = UUID(x_tenant)
             except ValueError:

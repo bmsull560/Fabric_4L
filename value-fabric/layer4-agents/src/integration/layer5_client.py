@@ -25,6 +25,9 @@ from tenacity import (
 
 logger = logging.getLogger(__name__)
 
+TENANT_ID_HEADER = "X-Tenant-ID"
+SERVICE_AUTH_HEADER = "X-Service-Auth"
+
 _DEFAULT_BASE_URL = os.getenv("LAYER5_GROUND_TRUTH_URL", "http://layer5-ground-truth:8005")
 _DEFAULT_TIMEOUT = 30.0
 
@@ -75,7 +78,11 @@ class Layer5GroundTruthClient:
         if service_token:
             headers["Authorization"] = f"Bearer {service_token}"
         elif tenant_id:
-            headers["X-Tenant-ID"] = tenant_id
+            headers[TENANT_ID_HEADER] = tenant_id
+            # F-1 P0 fix: Include service auth secret for mutual authentication
+            service_auth = os.getenv("SERVICE_AUTH_SECRET")
+            if service_auth:
+                headers[SERVICE_AUTH_HEADER] = service_auth
 
         # Connection pooling with explicit limits for boundary resilience
         limits = httpx.Limits(max_connections=20, max_keepalive_connections=10)

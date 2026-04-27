@@ -151,8 +151,7 @@ async def get_ontology_schema(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Get the complete ontology schema for the current tenant."""
-    tenant_id = get_tenant_id(request)
-    return await repo.get_schema(tenant_id)
+    return await repo.get_schema()
 
 
 @router.post("/schema/validate", response_model=ValidateSchemaResponse)
@@ -228,8 +227,7 @@ async def export_ontology_schema(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Export the current ontology schema as JSON."""
-    tenant_id = get_tenant_id(request)
-    schema = await repo.get_schema(tenant_id)
+    schema = await repo.get_schema()
     return schema
 
 
@@ -241,8 +239,7 @@ async def list_ontology_types(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """List all ontology types for the current tenant."""
-    tenant_id = get_tenant_id(request)
-    return await repo.get_all_types(tenant_id)
+    return await repo.get_all_types()
 
 
 @router.get("/schema/types/{type_id}", response_model=OntologyType)
@@ -252,8 +249,7 @@ async def get_ontology_type(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Get a specific ontology type by ID."""
-    tenant_id = get_tenant_id(request)
-    type_def = await repo.get_type_by_id(tenant_id, type_id)
+    type_def = await repo.get_type_by_id(type_id)
     if not type_def:
         raise HTTPException(status_code=404, detail=f"Type {type_id} not found")
     return type_def
@@ -302,8 +298,7 @@ async def delete_ontology_type(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Delete (soft-delete) an ontology type."""
-    tenant_id = get_tenant_id(request)
-    deleted = await repo.delete_type(tenant_id, type_id)
+    deleted = await repo.delete_type(type_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Type {type_id} not found")
     return {"deleted": True}
@@ -350,9 +345,8 @@ async def remove_type_property(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Remove a property from an ontology type."""
-    tenant_id = get_tenant_id(request)
     try:
-        removed = await repo.remove_property(tenant_id, type_id, property_id)
+        removed = await repo.remove_property(type_id, property_id)
         if not removed:
             raise HTTPException(status_code=404, detail=f"Property {property_id} not found")
         return {"removed": True}
@@ -368,8 +362,7 @@ async def list_type_relationships(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """List all type relationships for the current tenant."""
-    tenant_id = get_tenant_id(request)
-    return await repo.get_all_relationships(tenant_id)
+    return await repo.get_all_relationships()
 
 
 @router.post("/schema/relationships", response_model=TypeRelationship)
@@ -399,8 +392,7 @@ async def delete_type_relationship(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """Delete a type relationship."""
-    tenant_id = get_tenant_id(request)
-    deleted = await repo.remove_relationship(tenant_id, relationship_id)
+    deleted = await repo.remove_relationship(relationship_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Relationship {relationship_id} not found")
     return {"deleted": True}
@@ -414,8 +406,7 @@ async def list_schema_versions(
     repo: OntologySchemaRepository = Depends(get_repository),
 ):
     """List all published schema versions."""
-    tenant_id = get_tenant_id(request)
-    versions = await repo.list_schema_versions(tenant_id)
+    versions = await repo.list_schema_versions()
     return [
         {
             "id": v.id,

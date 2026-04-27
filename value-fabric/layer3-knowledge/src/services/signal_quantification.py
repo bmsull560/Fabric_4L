@@ -496,8 +496,6 @@ class SignalQuantificationService:
             if not isinstance(node.value, (int, float)):
                 raise ValueError(f"Only numeric constants allowed, got {type(node.value).__name__}")
             return node.value
-        elif isinstance(node, ast.Num):  # Python 3.7 compat
-            return node.n
         elif isinstance(node, ast.Name):
             if node.id in context:
                 return context[node.id]

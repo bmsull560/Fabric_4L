@@ -11,6 +11,7 @@ DEFAULT_SCHEMA_VERSION = "1.0.0"
 DEFAULT_TENANT_ID = "default"
 SYSTEM_USER_ID = "system"
 
+from shared.identity.context import require_context
 from layer2_extraction.db import get_connection
 from layer2_extraction.models.ontology import (
     OntologyProperty,
@@ -33,20 +34,18 @@ class OntologySchemaRepository:
     # Schema Operations
     # ==========================================================================
 
-    async def get_schema(self, tenant_id: str) -> OntologySchema:
+    async def get_schema(self) -> OntologySchema:
         """Get the complete ontology schema for a tenant.
-
-        Args:
-            tenant_id: The tenant ID to filter by
 
         Returns:
             OntologySchema containing all types and relationships
         """
-        types = await self.get_all_types(tenant_id)
-        relationships = await self.get_all_relationships(tenant_id)
+        tenant_id = str(require_context().tenant_id)
+        types = await self.get_all_types()
+        relationships = await self.get_all_relationships()
 
         # Get latest published version info
-        version = await self._get_latest_version(tenant_id)
+        version = await self._get_latest_version()
 
         return OntologySchema(
             types=types,
@@ -56,8 +55,9 @@ class OntologySchemaRepository:
             published_by=version.published_by if version else None,
         )
 
-    async def _get_latest_version(self, tenant_id: str) -> Optional[SchemaVersion]:
+    async def _get_latest_version(self) -> Optional[SchemaVersion]:
         """Get the latest published schema version for a tenant."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             row = await conn.fetchrow(
                 """
@@ -77,11 +77,12 @@ class OntologySchemaRepository:
     # Type Operations
     # ==========================================================================
 
-    async def get_all_types(self, tenant_id: str) -> list[OntologyType]:
+    async def get_all_types(self) -> list[OntologyType]:
         """Get all ontology types for a tenant.
 
         Uses a single JOIN query to avoid N+1 query pattern when fetching properties.
         """
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             # Fetch all types
             type_rows = await conn.fetch(
@@ -180,8 +181,9 @@ class OntologySchemaRepository:
             ))
         return properties
 
-    async def get_type_by_id(self, tenant_id: str, type_id: str) -> Optional[OntologyType]:
+    async def get_type_by_id(self, type_id: str) -> Optional[OntologyType]:
         """Get a specific type by ID."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             row = await conn.fetchrow(
                 """
@@ -210,10 +212,11 @@ class OntologySchemaRepository:
             )
 
     async def create_type(
-        self, tenant_id: str, name: str, description: str,
+        self, name: str, description: str,
         parent_type_id: Optional[str] = None
     ) -> OntologyType:
         """Create a new ontology type."""
+        tenant_id = str(require_context().tenant_id)
         type_id = str(uuid4())
         now = datetime.now(UTC)
 
@@ -240,10 +243,11 @@ class OntologySchemaRepository:
         )
 
     async def update_type(
-        self, tenant_id: str, type_id: str,
+        self, type_id: str,
         name: Optional[str] = None, description: Optional[str] = None
     ) -> Optional[OntologyType]:
         """Update an ontology type."""
+        tenant_id = str(require_context().tenant_id)
         now = datetime.now(UTC)
 
         async with get_connection() as conn:
@@ -290,8 +294,9 @@ class OntologySchemaRepository:
                 updated_at=row["updated_at"],
             )
 
-    async def delete_type(self, tenant_id: str, type_id: str) -> bool:
+    async def delete_type(self, type_id: str) -> bool:
         """Soft delete an ontology type."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             result = await conn.execute(
                 """
@@ -305,19 +310,32 @@ class OntologySchemaRepository:
             # Check if any row was updated
             return "UPDATE 1" in result
 
-    # ==========================================================================
-    # Property Operations
-    # ==========================================================================
+        constraints_json = None
+        if property.constraints:
+            constraints_json = property.constraints.model_dump(exclude_none=True)
 
-    async def add_property(
-        self, tenant_id: str, type_id: str, property: OntologyProperty
-    ) -> OntologyType:
-        """Add a property to a type.
+        await conn.execute(
+            """
+            UPDATE ontology_properties
+            SET name = $1, property_type = $2, description = $3,
+                required = $4, default_value = $5, constraints = $6
+            WHERE id = $7 AND type_id = $8
+            """,
+            property.name,
+            property.type.value if hasattr(property.type, 'value') else str(property.type),
+            property.description,
+            property.required,
+            property.default_value,
+            constraints_json,
+            property_id,
+            type_id,
+        )
 
-        Args:
-            tenant_id: The tenant ID for ownership verification
-            type_id: The type to add the property to
-            property: The property definition to add
+        # Update type timestamp
+        await conn.execute(
+            "UPDATE ontology_types SET updated_at = NOW(), version = version + 1 WHERE id = $1",
+            type_id,
+        )
 
         Returns:
             The updated OntologyType with the new property
@@ -421,10 +439,11 @@ class OntologySchemaRepository:
                 type_id,
             )
 
-        return await self.get_type_by_id(tenant_id, type_id)
+        return await self.get_type_by_id(type_id)
 
-    async def remove_property(self, tenant_id: str, type_id: str, property_id: str) -> bool:
+    async def remove_property(self, type_id: str, property_id: str) -> bool:
         """Remove a property from a type."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             # Verify type ownership
             type_row = await conn.fetchrow(
@@ -452,8 +471,9 @@ class OntologySchemaRepository:
     # Relationship Operations
     # ==========================================================================
 
-    async def get_all_relationships(self, tenant_id: str) -> list[TypeRelationship]:
+    async def get_all_relationships(self) -> list[TypeRelationship]:
         """Get all type relationships for a tenant."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             rows = await conn.fetch(
                 """
@@ -505,8 +525,9 @@ class OntologySchemaRepository:
 
         return relationship
 
-    async def remove_relationship(self, tenant_id: str, relationship_id: str) -> bool:
+    async def remove_relationship(self, relationship_id: str) -> bool:
         """Remove a relationship."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             result = await conn.execute(
                 """
@@ -579,8 +600,9 @@ class OntologySchemaRepository:
                 return OntologySchema(**row["schema_json"])
             return None
 
-    async def list_schema_versions(self, tenant_id: str) -> list[SchemaVersion]:
+    async def list_schema_versions(self) -> list[SchemaVersion]:
         """List all published schema versions."""
+        tenant_id = str(require_context().tenant_id)
         async with get_connection() as conn:
             rows = await conn.fetch(
                 """

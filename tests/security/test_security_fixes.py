@@ -5,8 +5,11 @@ are patched and cannot be exploited.
 """
 
 import inspect
+import os
 import pytest
+from pathlib import Path
 from unittest.mock import Mock, patch
+import yaml
 import ast
 import re
 import xml.etree.ElementTree as ET
@@ -55,7 +58,7 @@ def test_tools_invoke_requires_auth():
 
 def test_get_current_tenant_id_requires_auth():
     """P0-3: Missing authentication should raise 401, not return dev tenant UUID."""
-    from fastapi import Request
+    from fastapi import Request, HTTPException
     from value_fabric.layer1_ingestion.src.api.main import get_current_tenant_id
 
     # Mock request without governance context
@@ -65,7 +68,7 @@ def test_get_current_tenant_id_requires_auth():
     request.headers = {}
 
     # Should raise HTTPException 401, not return hardcoded UUID
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(HTTPException) as exc_info:
         get_current_tenant_id(request)
     
     # Verify it's an HTTP 401 error
@@ -166,7 +169,7 @@ def test_safe_eval_blocks_unsafe_expressions():
         "open('/etc/passwd')",
         "eval('1+1')",
         "exec('print(1)')",
-    }
+    ]
 
     for expr in unsafe_expressions:
         with pytest.raises((ValueError, NameError, TypeError)):
@@ -232,7 +235,6 @@ def test_websocket_requires_token():
     # This would require a WebSocket client test
     # For now, verify the code checks for token
     from value_fabric.layer4_agents.src.api.routes.signals import signal_stream_websocket
-    import inspect
 
     source = inspect.getsource(signal_stream_websocket)
     assert "token" in source
@@ -335,29 +337,17 @@ def test_defusedxml_blocks_xxe():
 def test_l6_fails_closed_without_middleware():
     """P1-15: L6 should fail to start in production/staging if middleware missing."""
     import os
-    import sys
-    from io import StringIO
 
     # Save original
     original_env = os.environ.get("ENVIRONMENT")
 
     # Test production
     os.environ["ENVIRONMENT"] = "production"
-    
-    # Mock import failure
-    code = """
-try:
-    from shared.identity.middleware import GovernanceMiddleware
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
-except ImportError:
-    if os.getenv("ENVIRONMENT") in ("production", "staging"):
-        raise RuntimeError("GovernanceMiddleware is required")
-"""
 
     # Verify the logic exists in main.py
     from value_fabric.layer6_benchmarks.src.api import main as l6_main
     source = inspect.getsource(l6_main)
-    
+
     assert "GovernanceMiddleware is required" in source or "RuntimeError" in source
 
     # Restore
@@ -373,9 +363,9 @@ except ImportError:
 
 def test_c_force_root_disabled_in_k8s():
     """P1-16: K8s manifests should have C_FORCE_ROOT=false."""
-    import yaml
-
-    with open("k8s/base/layer1-celery.yaml") as f:
+    # Resolve path from test file location
+    manifest_path = Path(__file__).parent.parent.parent / "k8s" / "base" / "layer1-celery.yaml"
+    with open(manifest_path) as f:
         manifest = yaml.safe_load(f)
 
     # Check all deployments

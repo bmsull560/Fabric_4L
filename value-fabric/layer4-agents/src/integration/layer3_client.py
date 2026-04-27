@@ -7,6 +7,7 @@ tenant context injection for all queries.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 import httpx
@@ -14,6 +15,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 TENANT_ID_HEADER = "X-Tenant-ID"
+SERVICE_AUTH_HEADER = "X-Service-Auth"
 
 
 class Layer3ClientError(Exception):
@@ -82,6 +84,10 @@ class Layer3Client:
         effective_tenant = tenant_id or self._default_tenant_id
         if effective_tenant:
             headers[TENANT_ID_HEADER] = effective_tenant
+            # F-1 P0 fix: Include service auth secret for mutual authentication
+            service_auth = os.getenv("SERVICE_AUTH_SECRET")
+            if service_auth:
+                headers[SERVICE_AUTH_HEADER] = service_auth
 
         return headers
 
