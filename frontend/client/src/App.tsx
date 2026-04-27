@@ -92,6 +92,7 @@ const PaymentHistory = lazy(() =>
   import("./pages/PaymentHistory").then(module => ({ default: module.PaymentHistory }))
 );
 const MyModels = lazy(() => import("./pages/MyModels"));
+const ValueTreeExplorer = lazy(() => import("./pages/ValueTreeExplorer"));
 const BusinessCaseList = lazy(() => import("./pages/BusinessCaseList"));
 const OpportunityFinder = lazy(() => import("./pages/OpportunityFinder"));
 const WhitespaceAnalysis = lazy(() => import("./pages/WhitespaceAnalysis"));
@@ -596,6 +597,11 @@ function Router() {
           <FormulaBuilder />
         </AuthenticatedRoute>
       </Route>
+      <Route path="/context/value-trees/explorer">
+        <AuthenticatedRoute {...tierProps} requiredTier="advanced">
+          <ValueTreeExplorer />
+        </AuthenticatedRoute>
+      </Route>
       <Route path="/context/agents">
         <AuthenticatedRoute {...tierProps} requiredTier="advanced">
           <AgentWorkflows />
@@ -946,9 +952,7 @@ function Router() {
         </AuthenticatedRoute>
       </Route>
       <Route path="/model/value-studio/explorer">
-        <AuthenticatedRoute {...tierProps}>
-          <WorkspaceContextRedirect workspace="studio" tab="value-model" />
-        </AuthenticatedRoute>
+        <Navigate to="/context/value-trees/explorer" />
       </Route>
       <Route path="/model/value-studio/formulas">
         <Navigate to="/context/formulas" />

@@ -181,6 +181,12 @@ const NAV_SPINE: NavItem[] = [
         tier: "standard",
       },
       {
+        id: "value-tree-explorer",
+        label: "Tree Explorer",
+        path: "/context/value-trees/explorer",
+        tier: "advanced",
+      },
+      {
         id: "formulas",
         label: "Formulas",
         path: "/context/formulas",
