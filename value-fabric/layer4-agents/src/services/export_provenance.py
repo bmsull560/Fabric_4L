@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-import hashlib
 import json
 from typing import Any
+
+from shared.crypto.canonical import canonical_hash
 
 from shared.identity.context import RequestContext
 
@@ -106,8 +107,8 @@ def _extract_case_version(workflow_result: dict[str, Any], metadata: dict[str, A
 
 
 def _hash_canonical(payload: Any) -> str:
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    """Deprecated: delegates to shared.crypto.canonical.canonical_hash()."""
+    return canonical_hash(payload)
 
 
 def _validate_claim_and_metric_provenance(

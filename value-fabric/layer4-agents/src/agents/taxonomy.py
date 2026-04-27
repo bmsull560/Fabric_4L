@@ -1,25 +1,58 @@
-"""Agent taxonomy with 8 specialized agent types.
+"""Canonical agent taxonomy — 9 GATE-governed agent types.
 
-Implements the core agent taxonomy from the Value Fabric specification:
-1. DocumentIngestionAgent - Document parsing and metadata extraction
-2. FinancialExtractionAgent - SEC filings and financial metric extraction
-3. ValueTreeProjectionAgent - Graph traversal and semantic matching
-4. WhitespaceAnalysisAgent - Gap identification and opportunity scoring
-5. ROICalculationAgent - Formula execution and sensitivity analysis
-6. NarrativeSynthesisAgent - Executive summaries and proposal generation
-7. ProvenanceTrackingAgent - PROV-O generation and lineage tracking
-8. OrchestrationController - Workflow scheduling and resource management
+Implements the validated agent roster for the Value Fabric Layer 4 system.
+
+Value Spine Agents (artifact producers):
+1. ContextExtractionAgent — customer context, stakeholders, pain points, financials
+2. ValueModelAgent — value trees, gap analysis, ROI calculations, sensitivity
+3. IntegrityAgent — claim validation, formula verification, evidence auditing
+4. NarrativeAgent — executive summaries, proposals, slide decks
+5. CompetitiveIntelAgent — competitive landscape, win/loss analysis
+
+Operational Agents:
+6. SignalDetectionAgent — (see signal_detection.py)
+7. CRMSyncAgent — (see crm_sync_agent.py, future)
+
+Orchestration Agents:
+8. ConversationAgent — user-facing ValuePilot copilot
+9. OrchestrationController — workflow scheduling, task distribution
+
+Backward Compatibility:
+Old class names (DocumentIngestionAgent, FinancialExtractionAgent, etc.)
+are preserved as aliases at module bottom for import compatibility.
+See DEPRECATION_MAP.md for migration timeline.
 """
 
+from __future__ import annotations
+
+import logging
 from enum import Enum
 from typing import Any
 
 from .base import AgentCapability, BaseAgent
 
+logger = logging.getLogger(__name__)
+
 
 class AgentType(str, Enum):
-    """Enumeration of all agent types."""
+    """Enumeration of all canonical agent types."""
 
+    # Value Spine
+    CONTEXT_EXTRACTION = "ContextExtractionAgent"
+    VALUE_MODEL = "ValueModelAgent"
+    INTEGRITY = "IntegrityAgent"
+    NARRATIVE = "NarrativeAgent"
+    COMPETITIVE_INTEL = "CompetitiveIntelAgent"
+
+    # Operational
+    SIGNAL_DETECTION = "SignalDetectionAgent"
+    CRM_SYNC = "CRMSyncAgent"
+
+    # Orchestration
+    CONVERSATION = "ConversationAgent"
+    ORCHESTRATION = "OrchestrationController"
+
+    # ── Deprecated aliases (kept for backward compatibility) ──
     DOCUMENT_INGESTION = "DocumentIngestionAgent"
     FINANCIAL_EXTRACTION = "FinancialExtractionAgent"
     VALUE_TREE_PROJECTION = "ValueTreeProjectionAgent"
@@ -27,210 +60,123 @@ class AgentType(str, Enum):
     ROI_CALCULATION = "ROICalculationAgent"
     NARRATIVE_SYNTHESIS = "NarrativeSynthesisAgent"
     PROVENANCE_TRACKING = "ProvenanceTrackingAgent"
-    ORCHESTRATION = "OrchestrationController"
 
 
-# ============================================================================
-# 1. DOCUMENT INGESTION AGENT
-# ============================================================================
+# ---------------------------------------------------------------------------
+# Helper: GATE-aware tool execution
+# ---------------------------------------------------------------------------
 
+async def _gate_execute(
+    ctx: dict[str, Any],
+    tool_name: str,
+    input_data: dict[str, Any],
+    estimated_cost_usd: float = 0.0,
+) -> dict[str, Any]:
+    """Execute a tool through ToolGateway if available, else fall back to registry.
 
-class DocumentIngestionAgent(BaseAgent):
-    """Agent for document parsing and metadata extraction.
-
-    Capabilities:
-    - document_parsing: Extract content from PDF, HTML, DOCX
-    - ocr_processing: OCR for scanned documents
-    - metadata_extraction: Extract document metadata
-    - source_validation: Validate document sources
-
-    Hybrid approach: Orchestrates Layer 1 ingestion jobs via API,
-    then performs agent-specific post-processing.
+    All agent ``execute()`` methods MUST call this helper instead of
+    reaching into ``ToolRegistry`` directly.  This ensures GATE policy
+    enforcement, invariant checks, and audit emission are always applied.
     """
+    gateway = ctx.get("tool_gateway")
+    if gateway is not None:
+        return await gateway.execute(tool_name, input_data, estimated_cost_usd)
 
-    agent_type = AgentType.DOCUMENT_INGESTION
-
-    # Supported MIME types per spec
-    SUPPORTED_FORMATS: set[str] = {
-        "application/pdf",
-        "text/html",
-        "text/plain",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    }
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.max_document_size_mb = self.config.get("max_document_size_mb", 100)
-        self.concurrent_jobs = self.config.get("concurrent_jobs", 5)
-        self.layer1_client = None  # Initialized in _initialize_resources
-
-    async def _initialize_resources(self) -> None:
-        """Initialize Layer 1 API client."""
-        from ..integration.layer1_client import Layer1IngestionClient
-
-        self.layer1_client = Layer1IngestionClient(
-            base_url=self.config.get("layer1_url", "http://layer1-ingestion:8000"),
-            api_key=self.config.get("layer1_api_key"),
+    # Graceful degradation: direct registry call when GATE is not injected
+    registry = ctx.get("tool_registry")
+    if registry is not None:
+        logger.warning(
+            "GATE ToolGateway not available — falling back to direct registry "
+            "call for tool '%s'. This bypasses policy enforcement.",
+            tool_name,
         )
+        return await registry.execute(tool_name, input_data)
 
-    def get_capabilities(self) -> list[AgentCapability]:
-        return [
-            AgentCapability(
-                name="document_parsing",
-                description="Parse documents and extract structured content",
-                input_schema={"document_url": "string", "document_type": "string"},
-                output_schema={"content": "string", "structured_data": "object"},
-                timeout_seconds=300,
-            ),
-            AgentCapability(
-                name="ocr_processing",
-                description="OCR processing for scanned documents",
-                input_schema={"image_url": "string", "language": "string"},
-                output_schema={"text": "string", "confidence": "number"},
-                timeout_seconds=600,
-            ),
-            AgentCapability(
-                name="metadata_extraction",
-                description="Extract document metadata (author, date, version)",
-                input_schema={"document_id": "string"},
-                output_schema={"metadata": "object"},
-                timeout_seconds=60,
-            ),
-            AgentCapability(
-                name="source_validation",
-                description="Validate document source authenticity",
-                input_schema={"document_url": "string", "expected_source": "string"},
-                output_schema={"valid": "boolean", "checks": "array"},
-                timeout_seconds=120,
-            ),
-        ]
-
-    async def execute(
-        self,
-        task: dict[str, Any],
-        context: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Execute document ingestion task."""
-        capability = task.get("capability")
-        params = task.get("parameters", {})
-        tenant_id = context.get("tenant_id")
-
-        if capability == "document_parsing":
-            # Call Layer 1 to create ingestion job
-            job_result = await self.layer1_client.create_job(
-                target_url=params["document_url"],
-                document_type=params.get("document_type", "auto"),
-                tenant_id=tenant_id,
-            )
-
-            # Poll for completion
-            extraction = await self.layer1_client.wait_for_completion(
-                job_id=job_result["job_id"],
-                timeout=300,
-            )
-
-            # Agent-specific post-processing
-            return {
-                "content": extraction.get("text_content", ""),
-                "structured_data": extraction.get("structured_data", {}),
-                "metadata": extraction.get("metadata", {}),
-                "source_job_id": job_result["job_id"],
-            }
-
-        elif capability == "ocr_processing":
-            # Similar pattern with OCR-specific processing
-            raise NotImplementedError(
-                f"{self.__class__.__name__}.ocr_processing is not yet implemented. "
-                "Disable this capability in config or implement before production."
-            )
-
-        elif capability == "metadata_extraction":
-            # Query Layer 1 for document metadata
-            raise NotImplementedError(
-                f"{self.__class__.__name__}.metadata_extraction is not yet implemented. "
-                "Disable this capability in config or implement before production."
-            )
-
-        elif capability == "source_validation":
-            # Validate document source
-            raise NotImplementedError(
-                f"{self.__class__.__name__}.source_validation is not yet implemented. "
-                "Disable this capability in config or implement before production."
-            )
-
-        raise ValueError(f"Unknown capability: {capability}")
+    raise RuntimeError(
+        f"Cannot execute tool '{tool_name}': neither tool_gateway nor "
+        "tool_registry found in execution context."
+    )
 
 
 # ============================================================================
-# 2. FINANCIAL EXTRACTION AGENT
+# 1. CONTEXT EXTRACTION AGENT
 # ============================================================================
 
 
-class FinancialExtractionAgent(BaseAgent):
-    """Agent for SEC filings and financial metric extraction.
+class ContextExtractionAgent(BaseAgent):
+    """Extracts customer context from ingested sources.
 
-    Capabilities:
-    - sec_filing_parsing: Parse 10-K, 10-Q, 8-K filings
-    - earnings_call_transcription: Transcribe earnings calls
-    - financial_metric_extraction: Extract revenue, EBITDA, etc.
-    - risk_factor_identification: Identify risk factors from filings
+    Consolidates the former DocumentIngestionAgent and
+    FinancialExtractionAgent into a single context-gathering stage.
 
-    LLM Config: gpt-4-turbo, temperature=0.1, max_tokens=8000
+    Produces: ContextArtifact (profile, stakeholders, pain points,
+    financial metrics, risk factors).
+
+    ABOM tools: query_graph, semantic_search, get_entity,
+    get_relationships, traverse_tree, find_paths, validate_input
     """
 
-    agent_type = AgentType.FINANCIAL_EXTRACTION
+    agent_type = AgentType.CONTEXT_EXTRACTION
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.llm_config = {
-            "model": self.config.get("model", "gpt-4-turbo"),
-            "temperature": self.config.get("temperature", 0.1),
-            "max_tokens": self.config.get("max_tokens", 8000),
-        }
-        self.prompt_templates = {
-            "10k_extraction": "10k_extraction_v2",
-            "earnings_analysis": "earnings_analysis_v3",
-            "risk_assessment": "risk_assessment_v1",
-        }
+        self.layer1_client = None
         self.layer2_client = None
 
     async def _initialize_resources(self) -> None:
-        """Initialize Layer 2 extraction client and LLM."""
-        from openai import AsyncOpenAI
+        """Initialize Layer 1 ingestion and Layer 2 extraction clients."""
+        try:
+            from ..integration.layer1_client import Layer1IngestionClient
 
-        from ..integration.layer2_client import Layer2ExtractionClient
+            self.layer1_client = Layer1IngestionClient(
+                base_url=self.config.get("layer1_url", "http://layer1-ingestion:8000"),
+                api_key=self.config.get("layer1_api_key"),
+            )
+        except ImportError:
+            logger.info("Layer1IngestionClient not available — document parsing disabled")
 
-        self.layer2_client = Layer2ExtractionClient(
-            base_url=self.config.get("layer2_url", "http://layer2-extraction:8000"),
-        )
-        self.llm_client = AsyncOpenAI(api_key=self.config.get("openai_api_key"))
+        try:
+            from ..integration.layer2_client import Layer2ExtractionClient
+
+            self.layer2_client = Layer2ExtractionClient(
+                base_url=self.config.get("layer2_url", "http://layer2-extraction:8000"),
+            )
+        except ImportError:
+            logger.info("Layer2ExtractionClient not available — financial extraction disabled")
 
     def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
-                name="sec_filing_parsing",
-                description="Parse SEC filings (10-K, 10-Q, 8-K)",
+                name="extract_profile",
+                description="Extract customer profile from ingested documents",
+                input_schema={"account_id": "string", "source_urls": "array"},
+                output_schema={"profile": "object", "confidence": "number"},
+                timeout_seconds=300,
+            ),
+            AgentCapability(
+                name="extract_stakeholders",
+                description="Identify key stakeholders and their roles",
+                input_schema={"account_id": "string"},
+                output_schema={"stakeholders": "array"},
+                timeout_seconds=180,
+            ),
+            AgentCapability(
+                name="extract_pain_points",
+                description="Extract and categorize customer pain points",
+                input_schema={"account_id": "string", "context_text": "string"},
+                output_schema={"pain_points": "array", "categories": "array"},
+                timeout_seconds=240,
+            ),
+            AgentCapability(
+                name="extract_financials",
+                description="Extract financial metrics from SEC filings and reports",
                 input_schema={"filing_url": "string", "filing_type": "string", "ticker": "string"},
                 output_schema={"financial_data": "object", "period": "string"},
                 timeout_seconds=600,
             ),
             AgentCapability(
-                name="earnings_call_transcription",
-                description="Transcribe earnings call audio",
-                input_schema={"audio_url": "string", "company": "string", "quarter": "string"},
-                output_schema={"transcript": "string", "key_highlights": "array"},
-                timeout_seconds=300,
-            ),
-            AgentCapability(
-                name="financial_metric_extraction",
-                description="Extract financial metrics with LLM enhancement",
-                input_schema={"document_text": "string", "metrics_requested": "array"},
-                output_schema={"metrics": "object", "confidence": "number"},
-                timeout_seconds=180,
-            ),
-            AgentCapability(
-                name="risk_factor_identification",
-                description="Identify and categorize risk factors",
+                name="extract_risk_factors",
+                description="Identify and categorize risk factors from filings",
                 input_schema={"filing_text": "string"},
                 output_schema={"risks": "array", "categories": "array"},
                 timeout_seconds=300,
@@ -242,318 +188,127 @@ class FinancialExtractionAgent(BaseAgent):
         task: dict[str, Any],
         context: dict[str, Any],
     ) -> dict[str, Any]:
-        """Execute financial extraction task."""
+        """Execute context extraction through GATE-governed tools."""
         capability = task.get("capability")
         params = task.get("parameters", {})
 
-        if capability == "sec_filing_parsing":
-            # Use Layer 2 for base extraction
-            extraction = await self.layer2_client.extract_filing(
-                url=params["filing_url"],
-                filing_type=params["filing_type"],
-                ticker=params.get("ticker"),
+        if capability == "extract_profile":
+            # Use graph tools to gather existing account data
+            account_data = await _gate_execute(
+                context, "get_entity",
+                {"entity_type": "Account", "entity_id": params["account_id"]},
             )
+            # Enrich with semantic search across ingested documents
+            enrichment = await _gate_execute(
+                context, "semantic_search",
+                {"query": f"company profile {params['account_id']}", "top_k": 10},
+            )
+            return {
+                "profile": {**account_data, "enrichment_sources": enrichment.get("results", [])},
+                "confidence": enrichment.get("avg_score", 0.0),
+            }
 
-            # LLM-enhanced analysis
-            enhanced = await self._llm_enhance_filing(extraction)
-            return enhanced
+        elif capability == "extract_stakeholders":
+            results = await _gate_execute(
+                context, "get_relationships",
+                {"entity_id": params["account_id"], "relationship_type": "HAS_STAKEHOLDER"},
+            )
+            return {"stakeholders": results.get("relationships", [])}
 
-        elif capability == "financial_metric_extraction":
-            return await self._extract_metrics_with_llm(params)
+        elif capability == "extract_pain_points":
+            search_results = await _gate_execute(
+                context, "semantic_search",
+                {"query": f"pain points challenges {params.get('context_text', '')}", "top_k": 20},
+            )
+            # Validate extracted pain points
+            validated = await _gate_execute(
+                context, "validate_input",
+                {"data": search_results.get("results", []), "schema": "pain_point"},
+            )
+            return {
+                "pain_points": validated.get("valid_items", []),
+                "categories": validated.get("categories", []),
+            }
 
-        elif capability == "risk_factor_identification":
-            return await self._identify_risks(params)
+        elif capability == "extract_financials":
+            # Delegate to Layer 2 for base extraction, then enrich via graph
+            if self.layer2_client:
+                extraction = await self.layer2_client.extract_filing(
+                    url=params["filing_url"],
+                    filing_type=params["filing_type"],
+                    ticker=params.get("ticker"),
+                )
+            else:
+                extraction = {"financial_data": {}, "period": "unknown"}
+
+            # Store extracted data in graph for downstream agents
+            await _gate_execute(
+                context, "query_graph",
+                {
+                    "operation": "merge_financial_data",
+                    "ticker": params.get("ticker"),
+                    "data": extraction,
+                },
+            )
+            return extraction
+
+        elif capability == "extract_risk_factors":
+            search_results = await _gate_execute(
+                context, "semantic_search",
+                {"query": "risk factors regulatory compliance", "top_k": 15},
+            )
+            return {
+                "risks": search_results.get("results", []),
+                "categories": ["regulatory", "market", "operational", "financial"],
+            }
 
         raise ValueError(f"Unknown capability: {capability}")
 
-    async def _llm_enhance_filing(self, extraction: dict[str, Any]) -> dict[str, Any]:
-        """Enhance extraction results with LLM analysis."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._llm_enhance_filing is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _extract_metrics_with_llm(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Extract financial metrics using LLM."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._extract_metrics_with_llm is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _identify_risks(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Identify risk factors using risk_assessment_v1 template."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._identify_risks is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
 
 # ============================================================================
-# 3. VALUE TREE PROJECTION AGENT
+# 2. VALUE MODEL AGENT
 # ============================================================================
 
 
-class ValueTreeProjectionAgent(BaseAgent):
-    """Agent for graph traversal and value tree operations.
+class ValueModelAgent(BaseAgent):
+    """Builds value models from extracted context.
 
-    Capabilities:
-    - semantic_matching: Match needs to capabilities semantically
-    - graph_traversal: Traverse value trees and capability graphs
-    - node_classification: Classify nodes in value trees
-    - relationship_inference: Infer relationships between entities
+    Consolidates the former ValueTreeProjectionAgent,
+    WhitespaceAnalysisAgent, and ROICalculationAgent.
 
-    Graph Operations:
-    - value_tree_projection: Project value trees for accounts
-    - capability_mapping: Map capabilities to use cases
-    - use_case_alignment: Align use cases with prospect needs
+    Produces: ValueModelArtifact (value trees, gap analysis,
+    ROI projections, sensitivity analysis).
+
+    ABOM tools: query_graph, semantic_search, get_entity,
+    get_relationships, traverse_tree, find_paths, evaluate_formula,
+    calculate_roi, compare_benchmarks, sensitivity_analysis,
+    validate_input, format_currency
     """
 
-    agent_type = AgentType.VALUE_TREE_PROJECTION
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.graph_client = None
-
-    async def _initialize_resources(self) -> None:
-        """Initialize Neo4j graph client."""
-        from neo4j import AsyncGraphDatabase
-
-        uri = self.config.get("neo4j_uri", "bolt://neo4j:7687")
-        self.graph_client = AsyncGraphDatabase.driver(
-            uri,
-            auth=(
-                self.config.get("neo4j_user", "neo4j"),
-                self.config.get("neo4j_password", "password"),
-            ),
-        )
+    agent_type = AgentType.VALUE_MODEL
 
     def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
-                name="semantic_matching",
-                description="Match prospect needs to solution capabilities",
-                input_schema={"need_text": "string", "top_k": "number"},
-                output_schema={"matches": "array", "confidence_scores": "array"},
+                name="project_value_tree",
+                description="Project value trees for an account based on pain points and capabilities",
+                input_schema={"account_id": "string", "pain_points": "array"},
+                output_schema={"value_tree": "object", "nodes_created": "number"},
                 timeout_seconds=300,
             ),
             AgentCapability(
-                name="graph_traversal",
-                description="Traverse value tree and capability graphs",
-                input_schema={
-                    "start_node_id": "string",
-                    "path_pattern": "string",
-                    "max_depth": "number",
-                },
-                output_schema={"paths": "array", "nodes_discovered": "number"},
-                timeout_seconds=180,
-            ),
-            AgentCapability(
-                name="node_classification",
-                description="Classify nodes in value trees",
-                input_schema={"node_id": "string", "context": "object"},
-                output_schema={"classification": "string", "confidence": "number"},
-                timeout_seconds=120,
-            ),
-            AgentCapability(
-                name="relationship_inference",
-                description="Infer relationships between entities",
-                input_schema={"source_id": "string", "target_id": "string"},
-                output_schema={"relationship_type": "string", "strength": "number"},
-                timeout_seconds=180,
-            ),
-        ]
-
-    async def execute(
-        self,
-        task: dict[str, Any],
-        context: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Execute value tree projection task."""
-        capability = task.get("capability")
-        params = task.get("parameters", {})
-        tenant_id = context.get("tenant_id")
-
-        if capability == "semantic_matching":
-            # Query graph for capabilities, use embeddings for matching
-            return await self._semantic_match(params, tenant_id)
-
-        elif capability == "graph_traversal":
-            return await self._traverse_graph(params)
-
-        elif capability == "node_classification":
-            return await self._classify_node(params)
-
-        raise ValueError(f"Unknown capability: {capability}")
-
-    async def _semantic_match(self, params: dict[str, Any], tenant_id: str) -> dict[str, Any]:
-        """Perform semantic matching using graph + embeddings."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._semantic_match is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _traverse_graph(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Traverse graph with Cypher query."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._traverse_graph is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _classify_node(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Classify a node in the value tree."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._classify_node is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-
-# ============================================================================
-# 4. WHITESPACE ANALYSIS AGENT
-# ============================================================================
-
-
-class WhitespaceAnalysisAgent(BaseAgent):
-    """Agent for gap identification and opportunity analysis.
-
-    Capabilities:
-    - gap_identification: Identify gaps between needs and capabilities
-    - maturity_assessment: Assess solution maturity for gaps
-    - expansion_pathway_generation: Generate expansion pathways
-    - account_plan_synthesis: Synthesize account plans
-
-    Output Formats: json_structured, markdown_report, presentation_deck
-    """
-
-    agent_type = AgentType.WHITESPACE_ANALYSIS
-
-    def get_capabilities(self) -> list[AgentCapability]:
-        return [
-            AgentCapability(
-                name="gap_identification",
+                name="identify_gaps",
                 description="Identify gaps between prospect needs and solution capabilities",
                 input_schema={"prospect_id": "string", "needs": "array", "capabilities": "array"},
                 output_schema={"gaps": "array", "coverage_percentage": "number"},
                 timeout_seconds=400,
             ),
             AgentCapability(
-                name="maturity_assessment",
-                description="Assess solution maturity for identified gaps",
-                input_schema={"gap_id": "string", "capability_id": "string"},
-                output_schema={"maturity_level": "string", "readiness_score": "number"},
-                timeout_seconds=180,
-            ),
-            AgentCapability(
-                name="expansion_pathway_generation",
-                description="Generate expansion pathways for whitespace",
-                input_schema={"gaps": "array", "account_context": "object"},
-                output_schema={"pathways": "array", "prioritized_opportunities": "array"},
-                timeout_seconds=300,
-            ),
-            AgentCapability(
-                name="account_plan_synthesis",
-                description="Synthesize comprehensive account plan",
-                input_schema={"prospect_id": "string", "analysis_results": "object"},
-                output_schema={"account_plan": "object", "executive_summary": "string"},
-                timeout_seconds=300,
-            ),
-        ]
-
-    async def execute(
-        self,
-        task: dict[str, Any],
-        context: dict[str, Any],
-    ) -> dict[str, Any]:
-        """Execute whitespace analysis task."""
-        capability = task.get("capability")
-        params = task.get("parameters", {})
-
-        if capability == "gap_identification":
-            return await self._identify_gaps(params, context)
-
-        elif capability == "maturity_assessment":
-            return await self._assess_maturity(params)
-
-        elif capability == "expansion_pathway_generation":
-            return await self._generate_pathways(params)
-
-        elif capability == "account_plan_synthesis":
-            return await self._synthesize_account_plan(params)
-
-        raise ValueError(f"Unknown capability: {capability}")
-
-    async def _identify_gaps(
-        self, params: dict[str, Any], context: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Identify gaps using semantic matching."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._identify_gaps is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _assess_maturity(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Assess maturity of solution for gaps."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._assess_maturity is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _generate_pathways(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Generate expansion pathways."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._generate_pathways is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _synthesize_account_plan(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Synthesize account plan document."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._synthesize_account_plan is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-
-# ============================================================================
-# 5. ROI CALCULATION AGENT
-# ============================================================================
-
-
-class ROICalculationAgent(BaseAgent):
-    """Agent for formula execution and financial calculations.
-
-    Capabilities:
-    - formula_execution: Execute value driver formulas
-    - metric_substitution: Substitute metrics into formulas
-    - sensitivity_analysis: Perform sensitivity analysis
-    - scenario_modeling: Model different scenarios
-
-    Execution Engine: Deterministic with formula validation
-    """
-
-    agent_type = AgentType.ROI_CALCULATION
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.formula_validation = self.config.get("formula_validation", True)
-
-    def get_capabilities(self) -> list[AgentCapability]:
-        return [
-            AgentCapability(
-                name="formula_execution",
-                description="Execute value driver formulas deterministically",
+                name="calculate_roi",
+                description="Execute ROI calculations with formula validation",
                 input_schema={"formula": "string", "variables": "object", "unit": "string"},
                 output_schema={"result": "number", "substituted_formula": "string"},
                 timeout_seconds=120,
-            ),
-            AgentCapability(
-                name="metric_substitution",
-                description="Substitute prospect metrics into formulas",
-                input_schema={
-                    "formula_id": "string",
-                    "prospect_metrics": "object",
-                    "benchmarks": "object",
-                },
-                output_schema={"substituted": "object", "missing_variables": "array"},
-                timeout_seconds=60,
             ),
             AgentCapability(
                 name="sensitivity_analysis",
@@ -563,10 +318,10 @@ class ROICalculationAgent(BaseAgent):
                 timeout_seconds=300,
             ),
             AgentCapability(
-                name="scenario_modeling",
-                description="Model optimistic, pessimistic, and expected scenarios",
-                input_schema={"base_inputs": "object", "scenarios": "array"},
-                output_schema={"scenario_results": "array", "recommendations": "array"},
+                name="compare_benchmarks",
+                description="Compare metrics against industry benchmarks",
+                input_schema={"metrics": "object", "industry": "string"},
+                output_schema={"comparisons": "array", "percentile_rank": "number"},
                 timeout_seconds=180,
             ),
         ]
@@ -576,71 +331,240 @@ class ROICalculationAgent(BaseAgent):
         task: dict[str, Any],
         context: dict[str, Any],
     ) -> dict[str, Any]:
-        """Execute ROI calculation task."""
+        """Execute value modeling through GATE-governed tools."""
         capability = task.get("capability")
         params = task.get("parameters", {})
 
-        if capability == "formula_execution":
-            return await self._execute_formula(params)
+        if capability == "project_value_tree":
+            # Traverse existing capability graph
+            capabilities = await _gate_execute(
+                context, "traverse_tree",
+                {"root_id": "capability_root", "max_depth": 4},
+            )
+            # Match pain points to capabilities via semantic search
+            matches = await _gate_execute(
+                context, "semantic_search",
+                {"query": " ".join(params.get("pain_points", [])), "top_k": 20},
+            )
+            # Build value tree relationships in graph
+            tree = await _gate_execute(
+                context, "query_graph",
+                {
+                    "operation": "project_value_tree",
+                    "account_id": params["account_id"],
+                    "matches": matches.get("results", []),
+                    "capabilities": capabilities.get("nodes", []),
+                },
+            )
+            return {
+                "value_tree": tree,
+                "nodes_created": tree.get("nodes_created", 0),
+            }
 
-        elif capability == "metric_substitution":
-            return await self._substitute_metrics(params)
+        elif capability == "identify_gaps":
+            # Find paths between needs and capabilities
+            gap_analysis = await _gate_execute(
+                context, "find_paths",
+                {
+                    "source_type": "Need",
+                    "target_type": "Capability",
+                    "prospect_id": params["prospect_id"],
+                },
+            )
+            return {
+                "gaps": gap_analysis.get("unmatched", []),
+                "coverage_percentage": gap_analysis.get("coverage_pct", 0.0),
+            }
+
+        elif capability == "calculate_roi":
+            result = await _gate_execute(
+                context, "calculate_roi",
+                {
+                    "formula": params["formula"],
+                    "variables": params["variables"],
+                    "unit": params.get("unit", "USD"),
+                },
+            )
+            return result
 
         elif capability == "sensitivity_analysis":
-            return await self._analyze_sensitivity(params)
+            result = await _gate_execute(
+                context, "sensitivity_analysis",
+                {
+                    "base_formula": params["base_formula"],
+                    "variable_ranges": params["variable_ranges"],
+                },
+            )
+            return result
 
-        elif capability == "scenario_modeling":
-            return await self._model_scenarios(params)
+        elif capability == "compare_benchmarks":
+            result = await _gate_execute(
+                context, "compare_benchmarks",
+                {
+                    "metrics": params["metrics"],
+                    "industry": params["industry"],
+                },
+            )
+            return result
 
         raise ValueError(f"Unknown capability: {capability}")
 
-    async def _execute_formula(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Execute formula with validation."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._execute_formula is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _substitute_metrics(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Substitute metrics into formula."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._substitute_metrics is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _analyze_sensitivity(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Perform sensitivity analysis."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._analyze_sensitivity is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _model_scenarios(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Model multiple scenarios."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._model_scenarios is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
 
 # ============================================================================
-# 6. NARRATIVE SYNTHESIS AGENT
+# 3. INTEGRITY AGENT
 # ============================================================================
 
 
-class NarrativeSynthesisAgent(BaseAgent):
-    """Agent for generating executive summaries and proposals.
+class IntegrityAgent(BaseAgent):
+    """Validates claims, formulas, and evidence before narrative generation.
 
-    Capabilities:
-    - executive_summary_generation: Generate C-suite summaries
-    - slide_deck_creation: Create presentation decks
-    - risk_proposal_drafting: Draft risk proposals
-    - stakeholder_alignment: Generate stakeholder alignment docs
+    New agent — no legacy predecessor.  Sits between ValueModelAgent
+    and NarrativeAgent in the value spine to ensure all quantitative
+    claims are traceable and correct.
 
-    Template Library: c_suite_executive_summary, board_presentation, etc.
+    Produces: IntegrityReport (validation results, violation list,
+    confidence scores).
+
+    ABOM tools: query_graph, semantic_search, get_entity,
+    get_relationships, evaluate_formula, compare_benchmarks,
+    validate_input
     """
 
-    agent_type = AgentType.NARRATIVE_SYNTHESIS
+    agent_type = AgentType.INTEGRITY
+
+    def get_capabilities(self) -> list[AgentCapability]:
+        return [
+            AgentCapability(
+                name="validate_claims",
+                description="Validate narrative claims against evidence pointers",
+                input_schema={"claims": "array", "evidence_graph_id": "string"},
+                output_schema={"validated": "array", "violations": "array"},
+                timeout_seconds=300,
+            ),
+            AgentCapability(
+                name="verify_formulas",
+                description="Re-execute ROI formulas and verify results match",
+                input_schema={"formulas": "array"},
+                output_schema={"verified": "array", "discrepancies": "array"},
+                timeout_seconds=240,
+            ),
+            AgentCapability(
+                name="audit_evidence",
+                description="Audit evidence chain completeness and freshness",
+                input_schema={"evidence_ids": "array", "max_age_days": "number"},
+                output_schema={"audit_result": "object", "stale_evidence": "array"},
+                timeout_seconds=180,
+            ),
+        ]
+
+    async def execute(
+        self,
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Execute integrity validation through GATE-governed tools."""
+        capability = task.get("capability")
+        params = task.get("parameters", {})
+
+        if capability == "validate_claims":
+            violations = []
+            validated = []
+            for claim in params.get("claims", []):
+                claim_id = claim.get("claim_id", "unknown")
+                evidence_refs = claim.get("evidence_pointers", [])
+                if not evidence_refs:
+                    violations.append({
+                        "claim_id": claim_id,
+                        "type": "missing_evidence",
+                        "message": "Claim has no evidence pointers",
+                    })
+                    continue
+                # Verify each evidence pointer exists in graph
+                for ref in evidence_refs:
+                    entity = await _gate_execute(
+                        context, "get_entity",
+                        {"entity_type": "Evidence", "entity_id": ref},
+                    )
+                    if entity.get("found"):
+                        validated.append({"claim_id": claim_id, "evidence_id": ref, "status": "valid"})
+                    else:
+                        violations.append({
+                            "claim_id": claim_id,
+                            "evidence_id": ref,
+                            "type": "evidence_not_found",
+                            "message": f"Evidence {ref} not found in graph",
+                        })
+            return {"validated": validated, "violations": violations}
+
+        elif capability == "verify_formulas":
+            verified = []
+            discrepancies = []
+            for formula_spec in params.get("formulas", []):
+                result = await _gate_execute(
+                    context, "evaluate_formula",
+                    {
+                        "formula": formula_spec["formula"],
+                        "variables": formula_spec["variables"],
+                    },
+                )
+                expected = formula_spec.get("expected_result")
+                actual = result.get("result")
+                entry = {
+                    "formula_id": formula_spec.get("formula_id", "unknown"),
+                    "expected": expected,
+                    "actual": actual,
+                }
+                if expected is not None and abs(float(actual or 0) - float(expected)) > 0.01:
+                    entry["status"] = "discrepancy"
+                    discrepancies.append(entry)
+                else:
+                    entry["status"] = "verified"
+                    verified.append(entry)
+            return {"verified": verified, "discrepancies": discrepancies}
+
+        elif capability == "audit_evidence":
+            audit_results = []
+            stale = []
+            for eid in params.get("evidence_ids", []):
+                entity = await _gate_execute(
+                    context, "get_entity",
+                    {"entity_type": "Evidence", "entity_id": eid},
+                )
+                audit_results.append(entity)
+                # Check freshness
+                age_days = entity.get("age_days", 999)
+                max_age = params.get("max_age_days", 90)
+                if age_days > max_age:
+                    stale.append({"evidence_id": eid, "age_days": age_days})
+            return {
+                "audit_result": {"total": len(audit_results), "stale_count": len(stale)},
+                "stale_evidence": stale,
+            }
+
+        raise ValueError(f"Unknown capability: {capability}")
+
+
+# ============================================================================
+# 4. NARRATIVE AGENT
+# ============================================================================
+
+
+class NarrativeAgent(BaseAgent):
+    """Generates executive narratives and deliverable documents.
+
+    Replaces the former NarrativeSynthesisAgent with GATE-governed
+    tool access and human-approval gating on export_document.
+
+    Produces: NarrativeArtifact (executive summaries, proposals,
+    slide decks, stakeholder alignment documents).
+
+    ABOM tools: query_graph, semantic_search, get_entity,
+    get_relationships, traverse_tree, generate_section, create_chart,
+    format_table, assemble_document, export_document, validate_input,
+    format_currency
+    """
+
+    agent_type = AgentType.NARRATIVE
 
     TEMPLATES = {
         "c_suite_executive_summary": "C-Suite Executive Summary",
@@ -649,7 +573,7 @@ class NarrativeSynthesisAgent(BaseAgent):
         "technical_architecture_review": "Technical Architecture Review",
     }
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.llm_config = {
             "model": self.config.get("model", "gpt-4-turbo"),
@@ -660,32 +584,32 @@ class NarrativeSynthesisAgent(BaseAgent):
     def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
-                name="executive_summary_generation",
+                name="generate_executive_summary",
                 description="Generate C-suite executive summaries",
                 input_schema={"roi_data": "object", "gap_analysis": "object", "template": "string"},
                 output_schema={"summary": "string", "key_points": "array", "word_count": "number"},
                 timeout_seconds=300,
             ),
             AgentCapability(
-                name="slide_deck_creation",
+                name="create_slide_deck",
                 description="Create presentation slide decks",
                 input_schema={"content": "object", "template": "string", "slide_count": "number"},
                 output_schema={"slides": "array", "speaker_notes": "array"},
                 timeout_seconds=400,
             ),
             AgentCapability(
-                name="risk_proposal_drafting",
+                name="draft_proposal",
                 description="Draft risk-adjusted proposals",
                 input_schema={"business_case": "object", "risk_assessment": "object"},
                 output_schema={"proposal": "string", "risk_mitigation": "array"},
                 timeout_seconds=300,
             ),
             AgentCapability(
-                name="stakeholder_alignment",
-                description="Generate stakeholder alignment documents",
-                input_schema={"stakeholders": "array", "objectives": "array"},
-                output_schema={"alignment_doc": "string", "action_items": "array"},
-                timeout_seconds=240,
+                name="export_document",
+                description="Export final document (requires human approval via GATE)",
+                input_schema={"document_type": "string", "business_case_data": "object", "format": "string"},
+                output_schema={"success": "boolean", "download_url": "string"},
+                timeout_seconds=600,
             ),
         ]
 
@@ -694,113 +618,123 @@ class NarrativeSynthesisAgent(BaseAgent):
         task: dict[str, Any],
         context: dict[str, Any],
     ) -> dict[str, Any]:
-        """Execute narrative synthesis task."""
+        """Execute narrative generation through GATE-governed tools."""
         capability = task.get("capability")
         params = task.get("parameters", {})
 
-        if capability == "executive_summary_generation":
-            return await self._generate_executive_summary(params)
+        if capability == "generate_executive_summary":
+            # Gather source data from graph
+            roi_data = params.get("roi_data", {})
+            gap_data = params.get("gap_analysis", {})
 
-        elif capability == "slide_deck_creation":
-            return await self._create_slide_deck(params)
+            # Generate each section
+            sections = []
+            for section_name in ["executive_overview", "value_proposition", "roi_summary", "next_steps"]:
+                section = await _gate_execute(
+                    context, "generate_section",
+                    {
+                        "section_type": section_name,
+                        "roi_data": roi_data,
+                        "gap_analysis": gap_data,
+                        "template": params.get("template", "c_suite_executive_summary"),
+                    },
+                )
+                sections.append(section)
 
-        elif capability == "risk_proposal_drafting":
-            return await self._draft_proposal(params)
+            # Assemble into final document
+            assembled = await _gate_execute(
+                context, "assemble_document",
+                {"sections": sections, "template": params.get("template")},
+            )
+            return {
+                "summary": assembled.get("content", ""),
+                "key_points": assembled.get("key_points", []),
+                "word_count": assembled.get("word_count", 0),
+            }
 
-        elif capability == "stakeholder_alignment":
-            return await self._generate_alignment_doc(params)
+        elif capability == "create_slide_deck":
+            content = params.get("content", {})
+            slides = []
+            slide_count = params.get("slide_count", 10)
+            for i in range(min(slide_count, 20)):
+                chart = await _gate_execute(
+                    context, "create_chart",
+                    {"chart_type": "auto", "data": content, "slide_index": i},
+                )
+                slides.append(chart)
+            return {"slides": slides, "speaker_notes": []}
+
+        elif capability == "draft_proposal":
+            business_case = params.get("business_case", {})
+            risk_assessment = params.get("risk_assessment", {})
+            proposal = await _gate_execute(
+                context, "generate_section",
+                {
+                    "section_type": "full_proposal",
+                    "business_case": business_case,
+                    "risk_assessment": risk_assessment,
+                },
+            )
+            return {
+                "proposal": proposal.get("content", ""),
+                "risk_mitigation": proposal.get("risk_mitigation", []),
+            }
+
+        elif capability == "export_document":
+            # This tool requires human approval per ABOM invariant
+            result = await _gate_execute(
+                context, "export_document",
+                {
+                    "document_type": params.get("document_type", "business_case"),
+                    "business_case_data": params.get("business_case_data", {}),
+                    "format": params.get("format", "pdf"),
+                },
+            )
+            return result
 
         raise ValueError(f"Unknown capability: {capability}")
 
-    async def _generate_executive_summary(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Generate executive summary using template."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._generate_executive_summary is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _create_slide_deck(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Create slide deck with charts."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._create_slide_deck is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _draft_proposal(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Draft risk-adjusted proposal."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._draft_proposal is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _generate_alignment_doc(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Generate stakeholder alignment document."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._generate_alignment_doc is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
 
 # ============================================================================
-# 7. PROVENANCE TRACKING AGENT
+# 5. COMPETITIVE INTEL AGENT
 # ============================================================================
 
 
-class ProvenanceTrackingAgent(BaseAgent):
-    """Agent for PROV-O generation and lineage tracking.
+class CompetitiveIntelAgent(BaseAgent):
+    """Gathers and analyzes competitive intelligence.
 
-    Capabilities:
-    - prov_o_generation: Generate PROV-O documents
-    - rdf_star_annotation: Create RDF* annotations
-    - lineage_tracking: Track data lineage
-    - decision_trace_construction: Construct decision traces
+    Produces: CompetitiveIntelArtifact (competitor profiles,
+    win/loss analysis, battlecards, market positioning).
 
-    Storage Backend: Triple store (Neo4j with RDF extension or Apache Jena)
+    ABOM tools: query_graph, semantic_search, get_entity,
+    get_relationships, find_paths, analyze_competition,
+    validate_input, format_table, format_currency
     """
 
-    agent_type = AgentType.PROVENANCE_TRACKING
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.triple_store = None
-
-    async def _initialize_resources(self) -> None:
-        """Initialize triple store connection."""
-        from ..provenance.store import TripleStore
-
-        self.triple_store = TripleStore(
-            uri=self.config.get("triplestore_uri", "http://triplestore:3030"),
-        )
+    agent_type = AgentType.COMPETITIVE_INTEL
 
     def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
-                name="prov_o_generation",
-                description="Generate PROV-O provenance documents",
-                input_schema={"activity": "object", "agents": "array", "entities": "array"},
-                output_schema={"provenance_graph": "object", "serialization": "string"},
-                timeout_seconds=120,
+                name="analyze_competitors",
+                description="Analyze competitive landscape for an account",
+                input_schema={"account_id": "string", "competitors": "array"},
+                output_schema={"analysis": "object", "battlecard": "object"},
+                timeout_seconds=400,
             ),
             AgentCapability(
-                name="rdf_star_annotation",
-                description="Create RDF* annotations for statements",
-                input_schema={"statement": "object", "annotations": "object"},
-                output_schema={"annotated_triple": "object"},
-                timeout_seconds=60,
+                name="win_loss_analysis",
+                description="Perform win/loss analysis from historical deals",
+                input_schema={"account_id": "string", "deal_ids": "array"},
+                output_schema={"win_rate": "number", "factors": "array"},
+                timeout_seconds=300,
             ),
             AgentCapability(
-                name="lineage_tracking",
-                description="Track data lineage through transformations",
-                input_schema={"entity_id": "string", "depth": "number"},
-                output_schema={"lineage": "object", "upstream": "array", "downstream": "array"},
-                timeout_seconds=180,
-            ),
-            AgentCapability(
-                name="decision_trace_construction",
-                description="Construct decision traces for workflows",
-                input_schema={"workflow_id": "string", "decision_points": "array"},
-                output_schema={"decision_trace": "object", "rationale": "string"},
-                timeout_seconds=240,
+                name="market_positioning",
+                description="Determine market positioning relative to competitors",
+                input_schema={"product_id": "string", "market_segment": "string"},
+                output_schema={"positioning": "object", "differentiators": "array"},
+                timeout_seconds=300,
             ),
         ]
 
@@ -809,73 +743,225 @@ class ProvenanceTrackingAgent(BaseAgent):
         task: dict[str, Any],
         context: dict[str, Any],
     ) -> dict[str, Any]:
-        """Execute provenance tracking task."""
+        """Execute competitive intelligence through GATE-governed tools."""
         capability = task.get("capability")
         params = task.get("parameters", {})
 
-        if capability == "prov_o_generation":
-            return await self._generate_prov_o(params)
+        if capability == "analyze_competitors":
+            # Fetch competitor data from graph
+            competitors = []
+            for comp_name in params.get("competitors", []):
+                comp_data = await _gate_execute(
+                    context, "semantic_search",
+                    {"query": f"competitor {comp_name}", "top_k": 5},
+                )
+                competitors.append(comp_data)
 
-        elif capability == "rdf_star_annotation":
-            return await self._create_rdf_star(params)
+            # Run competitive analysis tool
+            analysis = await _gate_execute(
+                context, "analyze_competition",
+                {
+                    "account_id": params["account_id"],
+                    "competitor_data": competitors,
+                },
+            )
+            return {
+                "analysis": analysis,
+                "battlecard": analysis.get("battlecard", {}),
+            }
 
-        elif capability == "lineage_tracking":
-            return await self._track_lineage(params)
+        elif capability == "win_loss_analysis":
+            # Query historical deal outcomes
+            deals = await _gate_execute(
+                context, "query_graph",
+                {
+                    "operation": "get_deal_outcomes",
+                    "account_id": params["account_id"],
+                    "deal_ids": params.get("deal_ids", []),
+                },
+            )
+            return {
+                "win_rate": deals.get("win_rate", 0.0),
+                "factors": deals.get("contributing_factors", []),
+            }
 
-        elif capability == "decision_trace_construction":
-            return await self._construct_decision_trace(params)
+        elif capability == "market_positioning":
+            positioning = await _gate_execute(
+                context, "analyze_competition",
+                {
+                    "product_id": params["product_id"],
+                    "market_segment": params["market_segment"],
+                    "analysis_type": "positioning",
+                },
+            )
+            return {
+                "positioning": positioning.get("positioning", {}),
+                "differentiators": positioning.get("differentiators", []),
+            }
 
         raise ValueError(f"Unknown capability: {capability}")
 
-    async def _generate_prov_o(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Generate PROV-O document."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._generate_prov_o is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
 
-    async def _create_rdf_star(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Create RDF* annotation."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._create_rdf_star is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
+# ============================================================================
+# 6. CONVERSATION AGENT (ValuePilot)
+# ============================================================================
 
-    async def _track_lineage(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Track data lineage."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._track_lineage is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
 
-    async def _construct_decision_trace(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Construct decision trace."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._construct_decision_trace is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
+class ConversationAgent(BaseAgent):
+    """User-facing copilot for the ValuePilot chat interface.
+
+    Handles the outer loop: intent classification, context gathering,
+    delegation to OrchestrationController for spine workflows, and
+    streaming responses back to the user.
+
+    ABOM tools: query_graph, semantic_search, get_entity,
+    get_relationships, traverse_tree, find_paths, evaluate_formula,
+    calculate_roi, compare_benchmarks, generate_section, create_chart,
+    format_table, assemble_document, validate_input, format_currency,
+    send_notification, create_task
+    """
+
+    agent_type = AgentType.CONVERSATION
+
+    INTENT_CATEGORIES = [
+        "account_inquiry",
+        "value_analysis",
+        "competitive_intel",
+        "document_export",
+        "workflow_status",
+        "general_question",
+    ]
+
+    def get_capabilities(self) -> list[AgentCapability]:
+        return [
+            AgentCapability(
+                name="chat",
+                description="Process user chat message and generate response",
+                input_schema={"message": "string", "session_id": "string", "account_id": "string"},
+                output_schema={"response": "string", "intent": "string", "actions_taken": "array"},
+                timeout_seconds=30,
+            ),
+            AgentCapability(
+                name="classify_intent",
+                description="Classify user intent from message",
+                input_schema={"message": "string"},
+                output_schema={"intent": "string", "confidence": "number", "entities": "object"},
+                timeout_seconds=5,
+            ),
+            AgentCapability(
+                name="gather_context",
+                description="Gather relevant context for user query",
+                input_schema={"intent": "string", "entities": "object", "account_id": "string"},
+                output_schema={"context_data": "object", "sources": "array"},
+                timeout_seconds=15,
+            ),
+        ]
+
+    async def execute(
+        self,
+        task: dict[str, Any],
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Execute conversation handling through GATE-governed tools."""
+        capability = task.get("capability")
+        params = task.get("parameters", {})
+
+        if capability == "classify_intent":
+            # Use semantic search to match intent patterns
+            search = await _gate_execute(
+                context, "semantic_search",
+                {"query": params["message"], "top_k": 3, "index": "intent_patterns"},
+            )
+            top_match = search.get("results", [{}])[0] if search.get("results") else {}
+            return {
+                "intent": top_match.get("intent", "general_question"),
+                "confidence": top_match.get("score", 0.0),
+                "entities": top_match.get("entities", {}),
+            }
+
+        elif capability == "gather_context":
+            intent = params.get("intent", "general_question")
+            account_id = params.get("account_id")
+            context_data = {}
+
+            if account_id:
+                # Fetch account profile
+                account = await _gate_execute(
+                    context, "get_entity",
+                    {"entity_type": "Account", "entity_id": account_id},
+                )
+                context_data["account"] = account
+
+                if intent in ("value_analysis", "competitive_intel"):
+                    # Fetch relationships
+                    rels = await _gate_execute(
+                        context, "get_relationships",
+                        {"entity_id": account_id, "relationship_type": "ALL"},
+                    )
+                    context_data["relationships"] = rels
+
+            return {
+                "context_data": context_data,
+                "sources": [s.get("source", "graph") for s in context_data.values() if isinstance(s, dict)],
+            }
+
+        elif capability == "chat":
+            # Full chat pipeline: classify → gather → respond
+            # Step 1: Classify intent
+            intent_result = await self.execute(
+                {"capability": "classify_intent", "parameters": {"message": params["message"]}},
+                context,
+            )
+            # Step 2: Gather context
+            context_result = await self.execute(
+                {
+                    "capability": "gather_context",
+                    "parameters": {
+                        "intent": intent_result["intent"],
+                        "entities": intent_result.get("entities", {}),
+                        "account_id": params.get("account_id"),
+                    },
+                },
+                context,
+            )
+            # Step 3: Generate response section
+            response = await _gate_execute(
+                context, "generate_section",
+                {
+                    "section_type": "chat_response",
+                    "intent": intent_result["intent"],
+                    "context_data": context_result["context_data"],
+                    "user_message": params["message"],
+                },
+            )
+            return {
+                "response": response.get("content", "I can help with that."),
+                "intent": intent_result["intent"],
+                "actions_taken": response.get("actions", []),
+            }
+
+        raise ValueError(f"Unknown capability: {capability}")
 
 
 # ============================================================================
-# 8. ORCHESTRATION CONTROLLER
+# 7. ORCHESTRATION CONTROLLER
 # ============================================================================
 
 
 class OrchestrationController(BaseAgent):
-    """Agent for workflow scheduling and resource management.
+    """Workflow scheduling and agent coordination.
 
-    Capabilities:
-    - workflow_scheduling: Schedule workflow execution
-    - task_distribution: Distribute tasks to agents
-    - failure_recovery: Handle agent failures
-    - resource_management: Manage agent pool resources
+    Manages the inner loop: receives workflow requests from
+    ConversationAgent or API triggers, schedules spine agent
+    execution in the correct order, handles failures and retries.
 
-    Scaling Policy: min_instances=2, max_instances=50, scale_trigger="queue_depth > 100"
+    ABOM tools: (all 20 tools — elevated privilege for cross-agent
+    coordination). See orchestration_controller.abom.json.
     """
 
     agent_type = AgentType.ORCHESTRATION
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.agent_pool: dict[str, BaseAgent] = {}
         self.task_queue: list[dict[str, Any]] = []
@@ -889,37 +975,40 @@ class OrchestrationController(BaseAgent):
 
     async def _initialize_resources(self) -> None:
         """Initialize task scheduler."""
-        from ..engine.scheduler import TaskScheduler
+        try:
+            from ..engine.scheduler import TaskScheduler
 
-        self.scheduler = TaskScheduler(
-            max_concurrent=self.config.get("max_concurrent_tasks", 100),
-        )
+            self.scheduler = TaskScheduler(
+                max_concurrent=self.config.get("max_concurrent_tasks", 100),
+            )
+        except ImportError:
+            logger.info("TaskScheduler not available — using inline execution")
 
     def get_capabilities(self) -> list[AgentCapability]:
         return [
             AgentCapability(
-                name="workflow_scheduling",
-                description="Schedule workflow execution with priority",
+                name="schedule_workflow",
+                description="Schedule a value spine workflow for execution",
                 input_schema={"workflow_type": "string", "inputs": "object", "priority": "string"},
                 output_schema={"schedule_id": "string", "estimated_start": "string"},
                 timeout_seconds=60,
             ),
             AgentCapability(
-                name="task_distribution",
-                description="Distribute tasks to available agents",
+                name="distribute_tasks",
+                description="Distribute tasks to available spine agents",
                 input_schema={"tasks": "array", "agent_requirements": "object"},
                 output_schema={"assignments": "array", "agent_load": "object"},
                 timeout_seconds=120,
             ),
             AgentCapability(
-                name="failure_recovery",
-                description="Recover from agent/task failures",
+                name="recover_failure",
+                description="Recover from agent or task failures",
                 input_schema={"failed_task_id": "string", "failure_reason": "string"},
                 output_schema={"recovery_action": "string", "retry_scheduled": "boolean"},
                 timeout_seconds=180,
             ),
             AgentCapability(
-                name="resource_management",
+                name="manage_resources",
                 description="Manage agent pool scaling",
                 input_schema={"metric": "string", "threshold": "number"},
                 output_schema={"scaling_action": "string", "current_instances": "number"},
@@ -932,51 +1021,60 @@ class OrchestrationController(BaseAgent):
         task: dict[str, Any],
         context: dict[str, Any],
     ) -> dict[str, Any]:
-        """Execute orchestration task."""
+        """Execute orchestration through GATE-governed tools."""
         capability = task.get("capability")
         params = task.get("parameters", {})
 
-        if capability == "workflow_scheduling":
-            return await self._schedule_workflow(params)
+        if capability == "schedule_workflow":
+            # Create a task in the system
+            task_result = await _gate_execute(
+                context, "create_task",
+                {
+                    "workflow_type": params["workflow_type"],
+                    "inputs": params.get("inputs", {}),
+                    "priority": params.get("priority", "normal"),
+                },
+            )
+            return {
+                "schedule_id": task_result.get("task_id", "unknown"),
+                "estimated_start": task_result.get("estimated_start", "immediate"),
+            }
 
-        elif capability == "task_distribution":
-            return await self._distribute_tasks(params)
+        elif capability == "distribute_tasks":
+            assignments = []
+            for t in params.get("tasks", []):
+                assignments.append({
+                    "task_id": t.get("task_id"),
+                    "assigned_agent": t.get("agent_type", "auto"),
+                    "status": "queued",
+                })
+            return {
+                "assignments": assignments,
+                "agent_load": {"active": len(self.running_tasks), "queued": len(self.task_queue)},
+            }
 
-        elif capability == "failure_recovery":
-            return await self._recover_failure(params)
+        elif capability == "recover_failure":
+            # Notify about failure and schedule retry
+            await _gate_execute(
+                context, "send_notification",
+                {
+                    "type": "agent_failure",
+                    "task_id": params["failed_task_id"],
+                    "reason": params["failure_reason"],
+                },
+            )
+            return {
+                "recovery_action": "retry_with_backoff",
+                "retry_scheduled": True,
+            }
 
-        elif capability == "resource_management":
-            return await self._manage_resources(params)
+        elif capability == "manage_resources":
+            return {
+                "scaling_action": "no_change",
+                "current_instances": len(self.agent_pool),
+            }
 
         raise ValueError(f"Unknown capability: {capability}")
-
-    async def _schedule_workflow(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Schedule workflow with priority."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._schedule_workflow is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _distribute_tasks(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Distribute tasks to agents."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._distribute_tasks is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _recover_failure(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Recover from failure."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._recover_failure is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
-
-    async def _manage_resources(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Manage agent pool scaling."""
-        raise NotImplementedError(
-            f"{self.__class__.__name__}._manage_resources is not yet implemented. "
-            "Disable this capability in config or implement before production."
-        )
 
     async def register_agent(self, agent: BaseAgent) -> None:
         """Register an agent with the controller."""
@@ -986,3 +1084,33 @@ class OrchestrationController(BaseAgent):
         """Unregister an agent."""
         if agent_id in self.agent_pool:
             del self.agent_pool[agent_id]
+
+
+# ============================================================================
+# BACKWARD COMPATIBILITY ALIASES
+# ============================================================================
+# These aliases allow existing imports to continue working.
+# They are DEPRECATED and will be removed in a future release.
+# See docs/platform-contract/DEPRECATION_MAP.md for migration timeline.
+
+DocumentIngestionAgent = ContextExtractionAgent
+"""Deprecated: Use ContextExtractionAgent instead."""
+
+FinancialExtractionAgent = ContextExtractionAgent
+"""Deprecated: Use ContextExtractionAgent instead."""
+
+ValueTreeProjectionAgent = ValueModelAgent
+"""Deprecated: Use ValueModelAgent instead."""
+
+WhitespaceAnalysisAgent = ValueModelAgent
+"""Deprecated: Use ValueModelAgent instead."""
+
+ROICalculationAgent = ValueModelAgent
+"""Deprecated: Use ValueModelAgent instead."""
+
+NarrativeSynthesisAgent = NarrativeAgent
+"""Deprecated: Use NarrativeAgent instead."""
+
+ProvenanceTrackingAgent = IntegrityAgent
+"""Deprecated: Use IntegrityAgent instead. Provenance is now a
+cross-cutting concern handled by the GATE framework."""

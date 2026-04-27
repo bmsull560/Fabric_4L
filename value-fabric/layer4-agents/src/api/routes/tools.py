@@ -21,6 +21,14 @@ from ...services.export_storage import generate_download_url, upload_bytes
 from ...tools import create_default_registry
 from ...tools.registry import ToolCategory, ToolRegistry
 
+try:
+    from shared.governance.abom import AgentBillOfMaterials
+    from shared.governance.tool_gateway import ToolGateway, ToolGatewayDenied, InvariantViolation
+
+    _GATE_AVAILABLE = True
+except ImportError:
+    _GATE_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -148,12 +156,38 @@ async def invoke_tool(
         raise HTTPException(status_code=404, detail=f"Tool '{request.tool_name}' not found")
 
     try:
-        # SECURITY: registry.execute() is an orchestration method, not SQL execution.
-        # Tool name is validated above; input_data is validated via Pydantic schemas.
-        result = await registry.execute(request.tool_name, request.input_data)
+        # ── GATE enforcement: route through ToolGateway when available ──
+        if _GATE_AVAILABLE:
+            abom = AgentBillOfMaterials.from_manifest_dir(
+                manifest_dir="value-fabric/layer4-agents/manifests",
+                agent_type="ConversationAgent",  # API routes act on behalf of ValuePilot
+            )
+            gateway = ToolGateway(
+                registry=registry,
+                abom=abom,
+                tenant_id=None,  # Populated from auth context when available
+            )
+            result = await gateway.execute(request.tool_name, request.input_data)
+        else:
+            # Fallback: direct registry call when GATE is not installed
+            logger.warning(
+                "GATE not available — tool '%s' invoked without policy enforcement",
+                request.tool_name,
+            )
+            result = await registry.execute(request.tool_name, request.input_data)
 
         return ToolInvokeResponse(
             tool_name=request.tool_name, success=True, result=result, error=None
+        )
+
+    except (ToolGatewayDenied, InvariantViolation) as e:
+        logger.warning(
+            "GATE denied tool invocation: %s — %s",
+            request.tool_name, str(e),
+        )
+        return ToolInvokeResponse(
+            tool_name=request.tool_name, success=False, result=None,
+            error=f"Policy denied: {e}",
         )
 
     except Exception:
@@ -269,10 +303,23 @@ async def export_document_tool(
             "include_provenance": request.include_provenance,
         }
 
-        # Execute DocumentExportTool
-        # SECURITY: registry.execute() is an orchestration method, not SQL execution.
-        # Tool name is hardcoded; tool_input is constructed from validated request data.
-        tool_result = await registry.execute("export_document", tool_input)
+        # Execute DocumentExportTool via GATE when available
+        if _GATE_AVAILABLE:
+            abom = AgentBillOfMaterials.from_manifest_dir(
+                manifest_dir="value-fabric/layer4-agents/manifests",
+                agent_type="NarrativeAgent",  # Export is owned by NarrativeAgent
+            )
+            gateway = ToolGateway(
+                registry=registry,
+                abom=abom,
+                tenant_id=str(context.tenant_id) if context else None,
+            )
+            tool_result = await gateway.execute("export_document", tool_input)
+        else:
+            logger.warning(
+                "GATE not available — export_document invoked without policy enforcement"
+            )
+            tool_result = await registry.execute("export_document", tool_input)
         export_id = str(uuid4())
         workflow_id = (
             result.get("workflow_id")

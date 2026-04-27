@@ -126,7 +126,7 @@ class TaskScheduler:
             task_id="task-1",
             workflow_instance_id="wf-1",
             capability="document_parsing",
-            agent_type="DocumentIngestionAgent",
+            agent_type="ContextExtractionAgent",
             context={"tenant_id": "tenant-1"},
         )
 

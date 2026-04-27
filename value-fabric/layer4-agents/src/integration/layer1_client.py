@@ -1,6 +1,6 @@
 """Layer 1 Ingestion API Client.
 
-Provides hybrid integration where L4 DocumentIngestionAgent
+Provides hybrid integration where L4 ContextExtractionAgent
 calls L1 APIs for document processing.
 """
 
@@ -20,7 +20,7 @@ TERMINAL_STATES: Final[frozenset[str]] = frozenset({"completed", "failed", "canc
 class Layer1IngestionClient:
     """Client for Layer 1 Ingestion API.
 
-    Used by DocumentIngestionAgent to:
+    Used by ContextExtractionAgent to:
     - Create ingestion jobs
     - Poll for completion
     - Retrieve extraction results

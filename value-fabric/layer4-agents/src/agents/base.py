@@ -1,6 +1,7 @@
 """Base agent class and state definitions.
 
-Provides the foundation for all 8 agent types in the Value Fabric Layer 4 system.
+Provides the foundation for all 9 canonical agent types in the Value Fabric
+Layer 4 system.  See taxonomy.py for the full roster.
 """
 
 import asyncio

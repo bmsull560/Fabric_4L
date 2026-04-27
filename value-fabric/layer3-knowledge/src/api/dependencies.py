@@ -37,7 +37,15 @@ class AppState:
         self.community_detector: CommunityDetector = None
         self.centrality_analyzer: CentralityAnalyzer = None
         self.similarity_analyzer: SimilarityAnalyzer = None
-        # Backend Agents (from value_fabric_backend_logic_specifications.md)
+        # Backend Agents (Layer 3 service implementations)
+        # NOTE: These Layer 3 agents are the service-layer implementations.
+        # The canonical Layer 4 agent names are:
+        #   ValueTreeProjectionAgent  → ValueModelAgent
+        #   WhitespaceAnalysisAgent   → ValueModelAgent
+        #   ROICalculationAgent       → ValueModelAgent
+        #   NarrativeSynthesisAgent   → NarrativeAgent
+        #   ProvenanceTrackingAgent   → IntegrityAgent (provenance is now GATE cross-cutting)
+        # See docs/platform-contract/DEPRECATION_MAP.md for migration timeline.
         self.value_tree_projection_agent: ValueTreeProjectionAgent = None
         self.whitespace_analysis_agent: WhitespaceAnalysisAgent = None
         self.roi_calculation_agent: ROICalculationAgent = None

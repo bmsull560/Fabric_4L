@@ -1,6 +1,6 @@
 """Layer 2 Extraction API Client.
 
-Provides hybrid integration where L4 FinancialExtractionAgent
+Provides hybrid integration where L4 ContextExtractionAgent
 calls L2 APIs for financial document processing.
 """
 
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class Layer2ExtractionClient:
     """Client for Layer 2 Extraction Pipeline API.
 
-    Used by FinancialExtractionAgent to:
+    Used by ContextExtractionAgent to:
     - Extract from SEC filings
     - Transcribe earnings calls
     - Extract financial metrics
