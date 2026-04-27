@@ -17,6 +17,17 @@
 | window.location.href | useLocation from wouter | 2026-05-15 | Immediate |
 | React Context for server state | TanStack Query hooks | 2026-06-15 | Billing/Auth contexts excepted |
 
+## Recommendation Guardrail: Layer 3 + Layer 4 Agent Consolidation
+
+Use this wording by default in architecture recommendations:
+
+- **"Evaluate consolidation feasibility"**
+
+Do **not** recommend direct consolidation of Layer 3 and Layer 4 agent implementations unless analysis confirms both are true:
+
+1. **Platform contract compliance:** tenant context propagation, DB/session boundaries, and output envelope/tool boundary rules remain compliant after the change.
+2. **Low-risk dependency impact:** Layer 3 agent responsibilities (graph traversal/projection, ROI calculation, whitespace analysis, provenance, narrative synthesis, and scenario modeling) can be consolidated without introducing breaking API/runtime coupling risk.
+
 ## Migration Guide
 
 ### 1. TENANT_CONTEXT -> governance_context
