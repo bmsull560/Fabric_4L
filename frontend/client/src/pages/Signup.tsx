@@ -78,7 +78,7 @@ export default function Signup() {
   // Show loading state while checking auth
   if (isLoading) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-muted p-6 md:p-10">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
           <p className="text-muted-foreground" role="status">Loading...</p>
@@ -88,8 +88,8 @@ export default function Signup() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
-      <div className="w-full max-w-sm md:max-w-4xl">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-muted p-6 md:p-10">
+      <div className="w-full max-w-sm">
         <SignupForm
           onSignup={handleSignup}
           onSSOProvider={handleSSOProvider}

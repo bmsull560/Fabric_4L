@@ -14,14 +14,16 @@
  * derived from the user's email domain.
  */
 export const SSO_PROVIDER_TENANT: Record<string, string> = {
+  apple: import.meta.env.VITE_OIDC_TENANT_APPLE || 'apple',
   google: import.meta.env.VITE_OIDC_TENANT_GOOGLE || 'google',
+  // Legacy: Microsoft kept for backward compatibility with existing tenants
   microsoft: import.meta.env.VITE_OIDC_TENANT_MICROSOFT || 'microsoft',
 };
 
 /**
  * Supported SSO provider keys
  */
-export type SSOProvider = 'google' | 'microsoft';
+export type SSOProvider = 'apple' | 'google' | 'microsoft';
 
 /**
  * Validate if a provider key is supported

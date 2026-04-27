@@ -1,7 +1,7 @@
 /**
  * Login Page — OIDC Authentication Entry Point
  *
- * Uses shadcn login-04 block layout (card with form + image panel).
+ * Centered single-column card design with Apple/Google SSO.
  *
  * Codemap coverage:
  *  Trace 1 — Frontend Login Initiation: SSO buttons → AuthContext.initiateLogin()
@@ -119,7 +119,7 @@ export default function Login() {
 
   /**
    * Trace 1: SSO button → OIDC redirect.
-   * Maps provider key ("google" | "microsoft") to a tenant slug, then calls
+   * Maps provider key ("apple" | "google") to a tenant slug, then calls
    * AuthContext.initiateLogin(tenantSlug) which:
    *   1c. Calls AuthClient.initiateLogin() → fetch /auth/oidc/{tenant}/login
    *   1e. Stores CSRF state in sessionStorage
@@ -157,7 +157,7 @@ export default function Login() {
   // Show loading state while checking auth or handling callback
   if (isLoading || isLoggingIn) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
           <p className="text-muted-foreground" role="status">
@@ -169,8 +169,8 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-muted p-6 md:p-10">
-      <div className="w-full max-w-sm md:max-w-4xl">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-muted p-6 md:p-10">
+      <div className="w-full max-w-sm">
         <LoginForm
           onLogin={handleLogin}
           onSSOProvider={handleSSOProvider}

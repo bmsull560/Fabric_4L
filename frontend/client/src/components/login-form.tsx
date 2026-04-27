@@ -6,87 +6,55 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
-  Loader2, AlertCircle, Shield, Database, FileText, BarChart3,
+  Loader2, AlertCircle,
   Eye, EyeOff, CheckCircle,
 } from "lucide-react"
 
-// ── Value Visualization (right panel) ────────────────────────────────────────
-function ValueVisualization() {
+// ── SVG Icons ────────────────────────────────────────────────────────────────
+
+function AppleIcon() {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-8 p-8">
-      <div className="text-center">
-        <h2 className="text-xl font-semibold text-white leading-tight mb-2">
-          Build a defensible business case — automatically.
-        </h2>
-        <p className="text-sm text-white/60 leading-relaxed">
-          From discovery to boardroom approval, Value Fabric transforms inputs
-          into quantified, evidence-backed value.
-        </p>
-      </div>
-      <div className="flex justify-center gap-6">
-        {[
-          { Icon: Database, label: "CRM" },
-          { Icon: FileText, label: "Transcripts" },
-          { Icon: BarChart3, label: "Benchmarks" },
-        ].map(({ Icon, label }) => (
-          <div key={label} className="flex flex-col items-center gap-2">
-            <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-              <Icon className="w-5 h-5 text-white/70" aria-hidden="true" />
-            </div>
-            <span className="text-[10px] text-white/50 uppercase tracking-wider">{label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="relative flex items-center justify-center">
-        <div className="absolute w-48 h-48 rounded-full border border-white/10" />
-        <div className="relative z-10 text-center">
-          <p className="text-[10px] text-white/50 uppercase tracking-widest mb-2">Annual Value</p>
-          <p className="text-3xl font-bold text-white tracking-tight">$2.4M</p>
-          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-[10px] font-medium text-emerald-400">Confidence: 82%</span>
-          </div>
-        </div>
-      </div>
-      <div className="flex justify-center gap-6">
-        {[
-          { color: "bg-violet-400", label: "Revenue Uplift" },
-          { color: "bg-white/60", label: "Cost Savings" },
-          { color: "bg-amber-400", label: "Risk Reduction" },
-        ].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-2">
-            <span className={cn("w-2 h-2 rounded-full", color)} />
-            <span className="text-[10px] text-white/60 uppercase tracking-wider">{label}</span>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-white/5 border border-white/10 max-w-xs">
-        <Shield className="w-4 h-4 text-white/50 flex-shrink-0 mt-0.5" aria-hidden="true" />
-        <p className="text-[10px] text-white/50 leading-relaxed">
-          Every projection is linked to source data and validated assumptions for total auditability.
-        </p>
-      </div>
-    </div>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+    </svg>
   )
 }
 
-// ── SVG Icons ────────────────────────────────────────────────────────────────
 function GoogleIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
       <path
-        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-        fill="currentColor"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+        fill="#34A853"
+      />
+      <path
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+        fill="#EA4335"
       />
     </svg>
   )
 }
 
-function MicrosoftIcon() {
+// ── Platform Logo ────────────────────────────────────────────────────────────
+
+function PlatformLogo() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M0 0h11.5v11.5H0V0zm12.5 0H24v11.5H12.5V0zM0 12.5h11.5V24H0V12.5zm12.5 0H24V24H12.5V12.5z" fill="currentColor" />
-    </svg>
+    <div className="flex items-center justify-center gap-2">
+      <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
+        <svg viewBox="0 0 24 24" className="w-5 h-5 text-background" fill="currentColor">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <span className="font-semibold text-lg tracking-tight">Value Fabric</span>
+    </div>
   )
 }
 
@@ -137,14 +105,14 @@ function PasswordStrength({ password }: { password: string }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// LoginForm — shadcn login-04 layout + OIDC SSO + a11y
+// LoginForm — Centered single-column card with Apple/Google SSO
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Props for LoginForm. SSO buttons trigger `onSSOProvider` with a provider key. */
 interface LoginFormProps extends React.ComponentProps<"div"> {
   /** Email + password submit handler */
   onLogin?: (email: string, password: string) => Promise<void>
-  /** SSO provider button handler — receives "google" | "microsoft" */
+  /** SSO provider button handler — receives "apple" | "google" */
   onSSOProvider?: (provider: string) => void
   /** Dev-only bypass button */
   onDevBypass?: () => void
@@ -187,24 +155,29 @@ export function LoginForm({
     try {
       await onLogin?.(email.trim(), password)
     } catch (err) {
-      // Don't clear email on error (UX best practice)
       setLocalError(err instanceof Error ? err.message : "Incorrect password. Please try again or reset it below.")
     }
   }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden">
-        <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit} noValidate>
+      {/* Platform Logo */}
+      <PlatformLogo />
+
+      {/* Login Card */}
+      <Card className="overflow-hidden border border-border/50">
+        <CardContent className="p-6 md:p-8">
+          <form onSubmit={handleSubmit} noValidate>
             <div className="flex flex-col gap-6">
+              {/* Header */}
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold" data-testid="login-heading">Welcome back</h1>
-                <p className="text-balance text-muted-foreground">
-                  Login to your Value Fabric account
+                <p className="text-muted-foreground">
+                  Login with your Apple or Google account
                 </p>
               </div>
 
+              {/* Success message */}
               {successMessage && (
                 <Alert variant="default" className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20" role="status">
                   <CheckCircle className="h-4 w-4 text-emerald-500" aria-hidden="true" />
@@ -212,6 +185,7 @@ export function LoginForm({
                 </Alert>
               )}
 
+              {/* Error message */}
               {error && (
                 <Alert variant="destructive" role="alert" id={errorId}>
                   <AlertCircle className="h-4 w-4" aria-hidden="true" />
@@ -219,13 +193,47 @@ export function LoginForm({
                 </Alert>
               )}
 
+              {/* SSO Buttons — Full width, stacked */}
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="outline"
+                  data-testid="sso-apple"
+                  className="w-full h-11 justify-center gap-2 font-medium"
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => onSSOProvider?.("apple")}
+                >
+                  <AppleIcon />
+                  Login with Apple
+                </Button>
+                <Button
+                  variant="outline"
+                  data-testid="sso-google"
+                  className="w-full h-11 justify-center gap-2 font-medium"
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => onSSOProvider?.("google")}
+                >
+                  <GoogleIcon />
+                  Login with Google
+                </Button>
+              </div>
+
+              {/* Divider */}
+              <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+                <span className="relative z-10 bg-card px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+
+              {/* Email field */}
               <div className="grid gap-2">
-                <Label htmlFor="login-email">Email</Label>
+                <Label htmlFor="login-email" className="font-semibold">Email</Label>
                 <Input
                   id="login-email"
                   data-testid="login-email"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="m@example.com"
                   autoComplete="username"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -236,12 +244,13 @@ export function LoginForm({
                 />
               </div>
 
+              {/* Password field */}
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="login-password">Password</Label>
+                  <Label htmlFor="login-password" className="font-semibold">Password</Label>
                   <a
                     href="#"
-                    className="ml-auto text-sm underline-offset-2 hover:underline"
+                    className="ml-auto text-sm underline-offset-2 hover:underline text-muted-foreground"
                   >
                     Forgot your password?
                   </a>
@@ -272,7 +281,13 @@ export function LoginForm({
                 </div>
               </div>
 
-              <Button type="submit" data-testid="login-submit" className="w-full" disabled={isLoading}>
+              {/* Login button */}
+              <Button
+                type="submit"
+                data-testid="login-submit"
+                className="w-full h-11 bg-foreground text-background hover:bg-foreground/90 font-semibold"
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -283,36 +298,7 @@ export function LoginForm({
                 )}
               </Button>
 
-              <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-                <span className="relative z-10 bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  data-testid="sso-google"
-                  className="w-full"
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => onSSOProvider?.("google")}
-                >
-                  <GoogleIcon />
-                  <span className="ml-2">Google</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  data-testid="sso-microsoft"
-                  className="w-full"
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => onSSOProvider?.("microsoft")}
-                >
-                  <MicrosoftIcon />
-                  <span className="ml-2">Microsoft</span>
-                </Button>
-              </div>
-
+              {/* Dev bypass */}
               {import.meta.env.DEV && onDevBypass && (
                 <Button
                   variant="ghost"
@@ -325,6 +311,7 @@ export function LoginForm({
                 </Button>
               )}
 
+              {/* Sign up link */}
               <div className="text-center text-sm">
                 Don&apos;t have an account?{" "}
                 <a href="/signup" data-testid="link-to-signup" className="underline underline-offset-4">
@@ -333,14 +320,10 @@ export function LoginForm({
               </div>
             </div>
           </form>
-          <div className="relative hidden bg-slate-900 md:block">
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 via-slate-900 to-slate-950" />
-            <div className="relative z-10 h-full">
-              <ValueVisualization />
-            </div>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Footer */}
       <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary">
         By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
         and <a href="#">Privacy Policy</a>.
@@ -350,7 +333,7 @@ export function LoginForm({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// SignupForm — shadcn login-04 layout + password strength + a11y
+// SignupForm — Centered single-column card with Apple/Google SSO
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Props for SignupForm. SSO buttons trigger `onSSOProvider`. */
@@ -409,17 +392,23 @@ export function SignupForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden">
-        <CardContent className="grid p-0 md:grid-cols-2">
-          <form className="p-6 md:p-8" onSubmit={handleSubmit} noValidate>
+      {/* Platform Logo */}
+      <PlatformLogo />
+
+      {/* Signup Card */}
+      <Card className="overflow-hidden border border-border/50">
+        <CardContent className="p-6 md:p-8">
+          <form onSubmit={handleSubmit} noValidate>
             <div className="flex flex-col gap-6">
+              {/* Header */}
               <div className="flex flex-col items-center text-center">
                 <h1 className="text-2xl font-bold" data-testid="signup-heading">Create your account</h1>
-                <p className="text-balance text-muted-foreground">
+                <p className="text-muted-foreground">
                   Get started with Value Fabric — it&apos;s free
                 </p>
               </div>
 
+              {/* Error message */}
               {error && (
                 <Alert variant="destructive" role="alert" id={errorId}>
                   <AlertCircle className="h-4 w-4" aria-hidden="true" />
@@ -427,13 +416,45 @@ export function SignupForm({
                 </Alert>
               )}
 
+              {/* SSO Buttons */}
+              <div className="flex flex-col gap-3">
+                <Button
+                  variant="outline"
+                  className="w-full h-11 justify-center gap-2 font-medium"
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => onSSOProvider?.("apple")}
+                >
+                  <AppleIcon />
+                  Sign up with Apple
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-11 justify-center gap-2 font-medium"
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => onSSOProvider?.("google")}
+                >
+                  <GoogleIcon />
+                  Sign up with Google
+                </Button>
+              </div>
+
+              {/* Divider */}
+              <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+                <span className="relative z-10 bg-card px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+
+              {/* Email */}
               <div className="grid gap-2">
-                <Label htmlFor="signup-email">Email</Label>
+                <Label htmlFor="signup-email" className="font-semibold">Email</Label>
                 <Input
                   id="signup-email"
                   data-testid="signup-email"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="m@example.com"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -444,8 +465,9 @@ export function SignupForm({
                 />
               </div>
 
+              {/* Password */}
               <div className="grid gap-2">
-                <Label htmlFor="signup-password">Password</Label>
+                <Label htmlFor="signup-password" className="font-semibold">Password</Label>
                 <div className="relative">
                   <Input
                     id="signup-password"
@@ -478,7 +500,13 @@ export function SignupForm({
                 </div>
               </div>
 
-              <Button type="submit" data-testid="signup-submit" className="w-full" disabled={isLoading}>
+              {/* Create Account button */}
+              <Button
+                type="submit"
+                data-testid="signup-submit"
+                className="w-full h-11 bg-foreground text-background hover:bg-foreground/90 font-semibold"
+                disabled={isLoading}
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -489,34 +517,7 @@ export function SignupForm({
                 )}
               </Button>
 
-              <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-                <span className="relative z-10 bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => onSSOProvider?.("google")}
-                >
-                  <GoogleIcon />
-                  <span className="ml-2">Google</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => onSSOProvider?.("microsoft")}
-                >
-                  <MicrosoftIcon />
-                  <span className="ml-2">Microsoft</span>
-                </Button>
-              </div>
-
+              {/* Sign in link */}
               <div className="text-center text-sm">
                 Already have an account?{" "}
                 <a href="/login" className="underline underline-offset-4">
@@ -525,14 +526,10 @@ export function SignupForm({
               </div>
             </div>
           </form>
-          <div className="relative hidden bg-slate-900 md:block">
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-800/50 via-slate-900 to-slate-950" />
-            <div className="relative z-10 h-full">
-              <ValueVisualization />
-            </div>
-          </div>
         </CardContent>
       </Card>
+
+      {/* Footer */}
       <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary">
         By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
         and <a href="#">Privacy Policy</a>.
