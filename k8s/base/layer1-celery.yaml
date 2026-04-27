@@ -21,8 +21,20 @@ spec:
         component: worker
     spec:
       serviceAccountName: layer1-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: celery-worker
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         image: ghcr.io/bmsull560/fabric_4l/layer1-ingestion:latest
         command: ["celery"]
         args:
@@ -109,8 +121,20 @@ spec:
         component: scheduler
     spec:
       serviceAccountName: layer1-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: celery-beat
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         image: ghcr.io/bmsull560/fabric_4l/layer1-ingestion:latest
         command: ["celery"]
         args:
@@ -187,8 +211,20 @@ spec:
         component: monitoring
     spec:
       serviceAccountName: layer1-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: flower
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
         image: ghcr.io/bmsull560/fabric_4l/layer1-ingestion:latest
         command: ["celery"]
         args:

@@ -5,6 +5,7 @@ reporting to the SEC. This module parses XBRL instance documents and extracts
 key financial metrics.
 """
 
+from defusedxml.ElementTree import fromstring, parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -135,7 +136,8 @@ class XBRLParser:
             ParsedXBRL with structured financial data
         """
         try:
-            root = ET.fromstring(xbrl_xml)
+            # P1-20 FIX: Use defusedxml.fromstring to prevent XXE attacks
+            root = fromstring(xbrl_xml)
 
             # Extract contexts (define periods and dimensions)
             contexts = self._extract_contexts(root)
