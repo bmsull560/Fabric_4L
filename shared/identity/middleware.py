@@ -286,7 +286,21 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         context = await self._authenticate(request)
-        request.state.context = context
+        request.state.governance_context = context
+
+        # Security hardening: Reject unauthenticated requests (no tenant resolved)
+        if not context.tenant_id:
+            logger.warning(
+                "Unauthenticated request rejected: path=%s method=%s",
+                request.url.path,
+                request.method,
+            )
+            return Response(
+                content='{"error":"authentication_required","detail":"A valid Bearer JWT or API key is required."}',
+                status_code=401,
+                media_type="application/json",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         # Task 1.5: Enforce tenant lifecycle status (suspended/pending/deleted)
         if context.tenant_id:
@@ -294,14 +308,14 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             if tenant_status == "suspended":
                 logger.warning("Access denied for suspended tenant %s", context.tenant_id)
                 return Response(
-                    content='{"error":"tenant_suspended","detail":"Tenant is suspended. Please contact support.","tenant_id":"' + str(context.tenant_id) + '"}',
+                    content='{"error":"tenant_suspended","detail":"Tenant is suspended. Please contact support."}',
                     status_code=403,
                     media_type="application/json",
                 )
             if tenant_status == "pending":
                 logger.warning("Access denied for pending tenant %s", context.tenant_id)
                 return Response(
-                    content='{"error":"tenant_pending","detail":"Tenant is pending activation. Please complete onboarding.","tenant_id":"' + str(context.tenant_id) + '"}',
+                    content='{"error":"tenant_pending","detail":"Tenant is pending activation. Please complete onboarding."}',
                     status_code=403,
                     media_type="application/json",
                 )

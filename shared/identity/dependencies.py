@@ -22,9 +22,9 @@ async def get_request_context(request: Request) -> RequestContext:
     """Extract request context from request state.
 
     This dependency should be used by GovernanceMiddleware
-    which sets the context in request.state.context
+    which sets the context in request.state.governance_context
     """
-    context = getattr(request.state, "context", None)
+    context = getattr(request.state, "governance_context", None)
     if context is None:
         return RequestContext()
     return context
