@@ -8,6 +8,8 @@ P0-08: Supports PostgreSQL Row-Level Security via SET LOCAL app.tenant_id
 SECURITY: Fail-safe tenant isolation - tenant context is mandatory
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import warnings

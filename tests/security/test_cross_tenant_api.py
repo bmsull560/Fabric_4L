@@ -64,7 +64,7 @@ def _make_token(tenant_id: UUID, user_id: str, roles: list[str] | None = None) -
 
 def _route_uses_require_authenticated(filepath: Path, func_name: str) -> bool:
     """Check if a route handler uses ``require_authenticated`` in its signature."""
-    source = filepath.read_text()
+    source = filepath.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
     for node in ast.walk(tree):
@@ -85,7 +85,7 @@ def _route_uses_require_authenticated(filepath: Path, func_name: str) -> bool:
 
 def _route_uses_get_db_from_context(filepath: Path, func_name: str) -> bool:
     """Check if a route handler uses ``get_db_from_context`` in its signature."""
-    source = filepath.read_text()
+    source = filepath.read_text(encoding="utf-8")
     tree = ast.parse(source)
 
     for node in ast.walk(tree):
@@ -299,7 +299,7 @@ class TestTenantAdminRouteTenantEnforcement:
 
     def _count_get_db_usages(self, filepath: Path) -> int:
         """Count Depends(get_db) usages in a file."""
-        source = filepath.read_text()
+        source = filepath.read_text(encoding="utf-8")
         tree = ast.parse(source)
         count = 0
         for node in ast.walk(tree):
@@ -394,7 +394,7 @@ class TestAggregateDepAudit:
                     continue
                 if filepath.name in self.ALLOWED_GET_DB_FILES:
                     continue
-                source = filepath.read_text()
+                source = filepath.read_text(encoding="utf-8")
                 tree = ast.parse(source)
                 count = 0
                 for node in ast.walk(tree):

@@ -10,8 +10,15 @@ import sys
 from pathlib import Path
 
 import pytest
-from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
+
+# Lazy imports for optional dependencies
+try:
+    from fastapi import FastAPI, Request
+    from fastapi.testclient import TestClient
+except ImportError:
+    FastAPI = None
+    Request = None
+    TestClient = None
 
 # P0 Fix: Properly handle shared module import with cleanup
 # Add value-fabric to path for shared imports, then remove after import to maintain isolation

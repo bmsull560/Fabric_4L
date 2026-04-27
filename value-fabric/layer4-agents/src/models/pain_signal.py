@@ -34,6 +34,15 @@ class TrendDirection(str, PyEnum):
     NEW = "new"
 
 
+class ErrorCategory(str, PyEnum):
+    """Categories of errors for pain signal processing."""
+
+    VALIDATION = "validation"
+    EXTRACTION = "extraction"
+    ENRICHMENT = "enrichment"
+    SYSTEM = "system"
+
+
 class EvidenceType(str, PyEnum):
     """Types of evidence that can support a signal."""
 

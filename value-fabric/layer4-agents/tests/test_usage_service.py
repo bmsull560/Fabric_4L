@@ -54,7 +54,7 @@ def sample_usage_event():
         unit="request",
         timestamp=datetime.now(UTC),
         status=UsageEventStatus.PENDING,
-        metadata={"endpoint": "/v1/data"},
+        event_metadata={"endpoint": "/v1/data"},
         created_at=datetime.now(UTC),
     )
 

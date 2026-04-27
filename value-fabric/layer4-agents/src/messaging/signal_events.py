@@ -125,7 +125,7 @@ class SignalFailedEvent(BaseSignalEvent):
     )
 
 
-class StreamCompleteEvent(BaseSignalEvent):
+class SignalStreamCompleteEvent(BaseSignalEvent):
     """Event emitted when the entire signal stream completes.
 
     Sent after all signals for a prospect have been processed.
@@ -134,6 +134,7 @@ class StreamCompleteEvent(BaseSignalEvent):
     event_type: Literal[SignalEventType.STREAM_COMPLETE] = Field(
         default=SignalEventType.STREAM_COMPLETE
     )
+    prospect_id: str = Field(..., description="Associated prospect ID")
     total_signals: int = Field(..., ge=0, description="Total signals discovered")
     completed_signals: int = Field(..., ge=0, description="Successfully processed")
     failed_signals: int = Field(..., ge=0, description="Failed to process")
@@ -147,7 +148,7 @@ SignalEvent = (
     SignalDiscoveredEvent |
     SignalCompletedEvent |
     SignalFailedEvent |
-    StreamCompleteEvent
+    SignalStreamCompleteEvent
 )
 
 
@@ -239,7 +240,7 @@ def create_stream_complete_event(
     completed_signals: int,
     failed_signals: int,
     duration_ms: int,
-) -> StreamCompleteEvent:
+) -> SignalStreamCompleteEvent:
     """Factory function for stream complete events.
 
     Args:
@@ -250,9 +251,9 @@ def create_stream_complete_event(
         duration_ms: Total stream duration
 
     Returns:
-        StreamCompleteEvent instance
+        SignalStreamCompleteEvent instance
     """
-    return StreamCompleteEvent(
+    return SignalStreamCompleteEvent(
         prospect_id=prospect_id,
         total_signals=total_signals,
         completed_signals=completed_signals,

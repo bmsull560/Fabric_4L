@@ -260,6 +260,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         tenant_status_lookup: Callable[[UUID], Awaitable[str | None]] | None = None,
         enable_per_tenant_rate_limiting: bool = True,  # Task 84: Enable by default
         redis_client: redis.Redis | None = None,
+        skip_paths: frozenset[str] | None = None,
     ):
         super().__init__(app)
         self.api_key_lookup = api_key_resolver  # Alias for compatibility
@@ -268,6 +269,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         self.tenant_settings_lookup = tenant_settings_lookup
         self.tenant_status_lookup = tenant_status_lookup  # Task 1.4: For suspended tenant checks
         self.enable_per_tenant_rate_limiting = enable_per_tenant_rate_limiting
+        self.skip_paths = skip_paths or frozenset()
 
         # Multi-worker safety check (Task 84 Hardening)
         self._redis_client = redis_client or _get_redis_client()
@@ -279,6 +281,10 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         """Process request with auth, context, and optional rate limiting (Task 84)."""
+        # Skip auth for public paths (metrics, health, docs)
+        if request.url.path in self.skip_paths:
+            return await call_next(request)
+
         context = await self._authenticate(request)
         request.state.context = context
 

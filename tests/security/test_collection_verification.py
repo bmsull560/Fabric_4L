@@ -74,7 +74,7 @@ class TestCollectionVerification:
         # This is a heuristic check - look for skip calls without linked tickets
         skip_issues = []
         for test_file in test_files:
-            content = test_file.read_text()
+            content = test_file.read_text(encoding="utf-8")
             if "pytest.skip" in content:
                 # Check if there's a linked issue or expiration
                 lines = content.split("\n")
@@ -101,7 +101,7 @@ class TestCollectionVerification:
             pytest.skip("No conftest.py in security directory")
 
         # Parse fixtures from conftest
-        conftest_content = conftest.read_text()
+        conftest_content = conftest.read_text(encoding="utf-8")
 
         # Get all fixtures defined in conftest
         import re
@@ -144,7 +144,7 @@ class TestProductionAssuranceMetrics:
             if test_file.name == "test_collection_verification.py":
                 continue
 
-            content = test_file.read_text()
+            content = test_file.read_text(encoding="utf-8")
             test_count = len([l for l in content.split("\n") if l.strip().startswith("def test_")])
             total_tests += test_count
 

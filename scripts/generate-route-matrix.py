@@ -4,13 +4,54 @@ Generate Route Integrity Matrix for Tri-Track Audit (Track A)
 Combines route extraction, hook analysis, and data source classification.
 """
 
+import csv
 import json
+import sys
 from pathlib import Path
-from dataclasses import dataclass
+from typing import Dict, List, Any
+
+# Constants for output formatting
+MAX_HOOK_LEN = 25
+MAX_HOOK_TRUNCATED = 22
+MAX_ENDPOINT_LEN = 35
+MAX_ENDPOINT_TRUNCATED = 32
+MAX_PATH_LEN = 40
+MAX_PATH_TRUNCATED = 37
+
+def load_json_file(path: Path) -> Dict[str, Any]:
+    """Load and validate JSON file."""
+    if not path.exists():
+        print(f"ERROR: Required file not found: {path}", file=sys.stderr)
+        print(f"Run the route extraction and hook analysis scripts first.", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        content = path.read_text(encoding='utf-8')
+        data = json.loads(content)
+        return data
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Invalid JSON in {path}: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"ERROR: Failed to read {path}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def truncate_string(value: str, max_len: int, truncated_len: int) -> str:
+    """Truncate string with ellipsis if too long."""
+    if not value:
+        return value
+    if len(value) <= max_len:
+        return value
+    return value[:truncated_len] + '...'
+
 
 # Load data
-routes_data = json.loads(Path("audit-output/track-a-route-extraction.json").read_text())
-hook_data = json.loads(Path("audit-output/track-a-hook-analysis.json").read_text())
+routes_path = Path("audit-output/track-a-route-extraction.json")
+hook_path = Path("audit-output/track-a-hook-analysis.json")
+
+routes_data = load_json_file(routes_path)
+hook_data = load_json_file(hook_path)
 
 # Build component -> hooks mapping (simplified based on naming conventions)
 component_hook_map = {
@@ -131,7 +172,6 @@ for r in classified_routes:
     color_counts[c] = color_counts.get(c, 0) + 1
 
 # Write CSV
-import csv
 csv_path = Path("audit-output/track-a-route-matrix.csv")
 with open(csv_path, 'w', newline='', encoding='utf-8') as f:
     writer = csv.DictWriter(f, fieldnames=[
@@ -218,11 +258,13 @@ for color in ['green', 'yellow', 'red', 'unknown']:
     ])
     
     for r in routes[:30]:  # Limit to first 30 for brevity
-        hook = r['hook_name'][:25] if len(r['hook_name']) <= 25 else r['hook_name'][:22] + '...'
-        endpoint = r['backend_endpoint'][:35] if r['backend_endpoint'] else 'N/A'
-        if len(endpoint) > 35:
-            endpoint = endpoint[:32] + '...'
-        md_lines.append(f"| `{r['path'][:40]}` | {r['component']} | {hook} | {endpoint} |")
+        hook = truncate_string(r['hook_name'], MAX_HOOK_LEN, MAX_HOOK_TRUNCATED)
+        endpoint = truncate_string(
+            r['backend_endpoint'] if r['backend_endpoint'] else 'N/A',
+            MAX_ENDPOINT_LEN, MAX_ENDPOINT_TRUNCATED
+        )
+        path_display = truncate_string(r['path'], MAX_PATH_LEN, MAX_PATH_TRUNCATED)
+        md_lines.append(f"| `{path_display}` | {r['component']} | {hook} | {endpoint} |")
     
     if len(routes) > 30:
         md_lines.append(f"| ... | *{len(routes) - 30} more routes* | | |")

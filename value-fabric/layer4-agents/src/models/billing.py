@@ -214,7 +214,7 @@ class BillingUsageEvent(Base):
     )
 
     # Metadata for debugging and enrichment
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    event_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
 
     # Audit timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
@@ -293,7 +293,7 @@ class BillingInvoice(Base):
     # Display
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     footer: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    invoice_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
 
     # Hosted resources
     hosted_invoice_url: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -382,7 +382,7 @@ class BillingInvoiceItem(Base):
     discount_amount: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
 
     # Metadata
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    item_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     # Relationships
@@ -465,7 +465,7 @@ class BillingCharge(Base):
 
     # Metadata
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    charge_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

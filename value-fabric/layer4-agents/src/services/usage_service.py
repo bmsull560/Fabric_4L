@@ -183,7 +183,7 @@ class UsageService:
             unit=unit,
             timestamp=event_timestamp,
             status=UsageEventStatus.PENDING,
-            metadata=metadata or {},
+            event_metadata=metadata or {},
             created_at=datetime.now(UTC),
         )
 

@@ -239,6 +239,10 @@ class BillingService:
 
     async def handle_webhook(self, payload: bytes, signature: str, webhook_secret: str) -> bool:
         """Handle Stripe webhook event with idempotency check."""
+        # Validate signature is present
+        if not signature:
+            raise ValueError("Invalid signature: missing signature header")
+
         try:
             stripe = _get_stripe()
             event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
@@ -252,36 +256,48 @@ class BillingService:
         event_id = event["id"]
         event_type = event["type"]
 
-        # Check idempotency
+        # Check idempotency (SELECT check is a cache optimization)
         result = await self.db.execute(
             select(BillingWebhookEvent).where(BillingWebhookEvent.id == event_id)
         )
         if result.scalar_one_or_none():
+            logger.info(f"Webhook {event_id} already processed (idempotent)")
             return True  # Already processed
 
-        # Process event
-        if event_type == "checkout.session.completed":
-            await self._handle_checkout_completed(event["data"]["object"])
-        elif event_type == "customer.subscription.updated":
-            await self._handle_subscription_updated(event["data"]["object"])
-        elif event_type == "customer.subscription.deleted":
-            await self._handle_subscription_deleted(event["data"]["object"])
-        elif event_type == "invoice.payment_succeeded":
-            await self._handle_payment_succeeded(event["data"]["object"])
-        elif event_type == "invoice.payment_failed":
-            await self._handle_payment_failed(event["data"]["object"])
+        # Process event with transaction safety
+        try:
+            if event_type == "checkout.session.completed":
+                await self._handle_checkout_completed(event["data"]["object"])
+            elif event_type == "customer.subscription.updated":
+                await self._handle_subscription_updated(event["data"]["object"])
+            elif event_type == "customer.subscription.deleted":
+                await self._handle_subscription_deleted(event["data"]["object"])
+            elif event_type == "invoice.payment_succeeded":
+                await self._handle_payment_succeeded(event["data"]["object"])
+            elif event_type == "invoice.payment_failed":
+                await self._handle_payment_failed(event["data"]["object"])
 
-        # Record event as processed
-        # Note: tenant_id is set from the subscription/customer record during processing
-        webhook_event = BillingWebhookEvent(
-            id=event_id,
-            type=event_type,
-            tenant_id=None,  # Set during event processing if available
-        )
-        self.db.add(webhook_event)
-        await self.db.flush()
+            # Record event as processed
+            webhook_event = BillingWebhookEvent(
+                id=event_id,
+                type=event_type,
+                tenant_id=None,  # Set during event processing if available
+            )
+            self.db.add(webhook_event)
+            await self.db.flush()
 
-        return True
+            return True
+
+        except IntegrityError:
+            # Race condition: another request processed this event concurrently
+            # The unique constraint on BillingWebhookEvent.id caught it
+            await self.db.rollback()
+            logger.info(f"Webhook {event_id} processed concurrently (idempotent)")
+            return True
+        except Exception:
+            # Any other error - rollback to maintain consistency
+            await self.db.rollback()
+            raise
 
     async def _handle_checkout_completed(self, session: dict[str, Any]) -> None:
         """Handle checkout.session.completed event."""

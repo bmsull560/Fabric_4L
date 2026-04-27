@@ -173,8 +173,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         _tracer_provider.shutdown()
         _tracer_provider = None
 
-    await close_db()
-
 
 # ---------------------------------------------------------------------------
 # Application factory
@@ -238,19 +236,30 @@ def create_app() -> FastAPI:
     # Production/staging: fail closed if auth middleware is missing
     allow_bypass = os.getenv("ALLOW_INSECURE_DEV_AUTH_BYPASS", "").lower() == "true"
     env = os.getenv("ENVIRONMENT", "development")
-    
+
     # Get Redis rate limiter from app state (initialized in lifespan)
     redis_rate_limiter = getattr(app.state, 'redis_rate_limiter', None)
-    
+
+    # Public paths that skip auth (metrics has its own token/IP-based access control)
+    public_paths = frozenset({
+        "/metrics",
+        "/api/v1/health",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/",
+    })
+
     try:
         from shared.identity.middleware import GovernanceMiddleware
 
         app.add_middleware(
-            GovernanceMiddleware, 
+            GovernanceMiddleware,
             api_key_resolver=None,
-            rate_limiter=redis_rate_limiter
+            rate_limiter=redis_rate_limiter,
+            skip_paths=public_paths,
         )
-        logger.info("L5: GovernanceMiddleware with rate limiting initialized")
+        logger.info("L5: GovernanceMiddleware with rate limiting initialized (public paths: %s)", public_paths)
     except ImportError:
         if env in ("production", "staging") and not allow_bypass:
             logger.error(

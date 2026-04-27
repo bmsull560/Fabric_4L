@@ -144,6 +144,7 @@ from .models import (
     EntityDetail,
     EntityFilterRequest,
     EntityListResponse,
+    EntityRelationships,
     EntitySummary,
     GraphEdge,
     GraphNode,
@@ -156,6 +157,7 @@ from .models import (
     IngestResponse,
     ProvenanceStep,
     ProvenanceTrailResponse,
+    RelationshipPreview,
     SchemaStatistics,
     SchemaStatus,
     SearchRequest,
@@ -3858,17 +3860,17 @@ async def get_query_subgraph(
                     stats=GraphStats(total_nodes=0, total_edges=0, density=0.0),
                 )
 
-            # Query for 1-hop expansion from all seeds
+            # Query for 1-hop expansion from all seeds with mandatory tenant filtering
             seed_query = """
             UNWIND $seed_ids as seed_id
-            MATCH (seed {id: seed_id})
-            OPTIONAL MATCH (seed)-[r]-(neighbor)
+            MATCH (seed {id: seed_id, tenant_id: $tenant_id})
+            OPTIONAL MATCH (seed)-[r]-(neighbor {tenant_id: $tenant_id})
             WHERE neighbor.id IS NOT NULL
             RETURN seed, collect(DISTINCT neighbor) as neighbors,
                    collect(DISTINCT r) as rels
             """
             result = await neo4j.execute_query(
-                seed_query, {"seed_ids": seed_ids[:20]}  # Limit seeds for performance
+                seed_query, {"seed_ids": seed_ids[:20], "tenant_id": tenant_id}  # Limit seeds for performance
             )
 
             node_ids = set()
