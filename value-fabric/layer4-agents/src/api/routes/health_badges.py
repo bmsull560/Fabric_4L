@@ -17,6 +17,16 @@ from pydantic import BaseModel, Field
 from ...api.websocket import get_ws_manager
 from ...services.health_tracker import HealthStatus, HealthTracker, get_health_tracker
 
+# Security imports
+try:
+    from shared.identity.context import RequestContext
+    from shared.identity.dependencies import require_authenticated
+    SECURITY_AVAILABLE = True
+except ImportError:
+    SECURITY_AVAILABLE = False
+    RequestContext = None  # type: ignore[misc,assignment]
+    require_authenticated = None  # type: ignore[misc,assignment]
+
 logger = logging.getLogger(__name__)
 health_badges_router = APIRouter()
 
@@ -105,6 +115,7 @@ class ConnectionQualityRequest(BaseModel):
 @health_badges_router.get("/health/detailed", response_model=HealthStatusResponse, tags=["health"])
 async def get_detailed_health(
     tracker: HealthTracker = Depends(get_health_tracker),
+    context: RequestContext = Depends(require_authenticated) if SECURITY_AVAILABLE else Depends(get_health_tracker),
 ) -> HealthStatusResponse:
     """Get detailed health status of all system components.
 
@@ -264,7 +275,9 @@ async def get_websocket_status() -> WebSocketStatusResponse:
     "/health/badges/dismiss", response_model=DismissBadgeResponse, tags=["health"]
 )
 async def dismiss_badge(
-    request: DismissBadgeRequest, tracker: HealthTracker = Depends(get_health_tracker)
+    request: DismissBadgeRequest,
+    tracker: HealthTracker = Depends(get_health_tracker),
+    context: RequestContext = Depends(require_authenticated) if SECURITY_AVAILABLE else Depends(get_health_tracker),
 ) -> DismissBadgeResponse:
     """Dismiss a health badge.
 

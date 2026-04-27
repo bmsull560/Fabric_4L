@@ -50,6 +50,14 @@ from ..feature_flags.api import feature_flags_router
 from ..feature_flags.service import FeatureFlagService
 from ..metrics import get_metrics, initialize_metrics
 from ..registry.api.routes import router as models_router
+
+# Import metrics access control
+try:
+    from shared.observability.metrics_access import verify_metrics_access
+    METRICS_ACCESS_AVAILABLE = True
+except ImportError:
+    METRICS_ACCESS_AVAILABLE = False
+    verify_metrics_access = None
 from ..services.crm_sync_scheduler import CRMSyncScheduler, get_crm_sync_scheduler
 from ..services.health_tracker import get_health_tracker
 from ..tenants import get_tenant_settings, lookup_api_key_by_hash
@@ -538,7 +546,21 @@ async def health_check():
 
 @app.get("/metrics")
 async def metrics_endpoint(request: Request):
-    """Prometheus metrics endpoint."""
+    """Prometheus metrics endpoint.
+
+    SECURITY: Requires valid Bearer token, scrape token header, or internal IP.
+    Dev bypass via ALLOW_INSECURE_DEV_AUTH_BYPASS env var (never enable in production).
+    """
+    # Verify access control
+    if METRICS_ACCESS_AVAILABLE and verify_metrics_access:
+        is_authorized, error_message = verify_metrics_access(request)
+        if not is_authorized:
+            return Response(
+                content=error_message or "Unauthorized",
+                status_code=401,
+                media_type="text/plain",
+            )
+
     metrics = getattr(request.app.state, "metrics", None)
 
     if not metrics:

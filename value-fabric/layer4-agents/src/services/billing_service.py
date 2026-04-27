@@ -300,13 +300,33 @@ class BillingService:
             raise
 
     async def _handle_checkout_completed(self, session: dict[str, Any]) -> None:
-        """Handle checkout.session.completed event."""
+        """Handle checkout.session.completed event.
+
+        SECURITY: Verifies customer exists in database before creating subscription
+        to prevent metadata spoofing attacks.
+        """
         customer_id = session.get("metadata", {}).get("customer_id")
         plan_id = session.get("metadata", {}).get("plan_id")
         subscription_id = session.get("subscription")
 
         if not customer_id or not plan_id:
+            logger.warning(f"Missing customer_id or plan_id in checkout session: {session.get('id')}")
             return
+
+        # SECURITY: Verify customer exists - prevents spoofed metadata
+        customer_result = await self.db.execute(
+            select(BillingCustomer).where(BillingCustomer.id == customer_id)
+        )
+        customer = customer_result.scalar_one_or_none()
+
+        if not customer:
+            logger.warning(
+                f"Customer {customer_id} not found for checkout session {session.get('id')}. "
+                f"Possible spoofed metadata."
+            )
+            return
+
+        tenant_id = customer.tenant_id
 
         # Update or create subscription
         result = await self.db.execute(
@@ -320,13 +340,6 @@ class BillingService:
             subscription.stripe_subscription_id = subscription_id
             subscription.status = SubscriptionStatus.ACTIVE
         else:
-            # Get tenant_id from customer record
-            customer_result = await self.db.execute(
-                select(BillingCustomer).where(BillingCustomer.id == customer_id)
-            )
-            customer = customer_result.scalar_one_or_none()
-            tenant_id = customer.tenant_id if customer else None
-
             subscription = BillingSubscription(
                 id=f"sub_{customer_id}_{plan_id}",
                 tenant_id=tenant_id,
@@ -336,6 +349,7 @@ class BillingService:
                 status=SubscriptionStatus.ACTIVE,
             )
             self.db.add(subscription)
+            logger.info(f"Created subscription for customer {customer_id}, plan {plan_id}")
 
         await self.db.flush()
 
