@@ -74,7 +74,7 @@ export function useBusinessCase(caseId: string | null) {
 
       // Query L4 for workflow result
       const response = await apiClient.get('l4', `/workflows/${caseId}/result`);
-      const result = parseWorkflowResult(response.data);
+      const result = parseWorkflowResult((response as { data: unknown }).data);
 
       // Parse workflow output into business case format
       const output = result.output || {};
@@ -150,7 +150,7 @@ export function useBusinessCases(filters: BusinessCaseFilters = {}) {
       const response = await apiClient.get('l4', `/workflows?type=business_case&${params.toString()}`);
       
       // Transform workflow data to BusinessCaseListItem format
-      const items = (response.data?.items || []).map((workflow: { 
+      interface WorkflowItem {
         workflow_id: string;
         name?: string;
         status?: string;
@@ -161,7 +161,9 @@ export function useBusinessCases(filters: BusinessCaseFilters = {}) {
         created_at?: string;
         updated_at?: string;
         owner?: string;
-      }) => ({
+      }
+      const rawData = (response as { data: { items?: WorkflowItem[] } }).data;
+      const items = (rawData?.items || []).map((workflow) => ({
         id: workflow.workflow_id,
         name: workflow.name || `Case ${workflow.workflow_id}`,
         company: workflow.company_name || 'Unknown Company',
@@ -202,7 +204,7 @@ export function useCreateBusinessCase() {
           description: payload.description,
         },
       });
-      return response.data as CreateBusinessCaseResponse;
+      return (response as { data: CreateBusinessCaseResponse }).data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-cases'] });
@@ -228,7 +230,7 @@ export function useArchiveBusinessCase() {
   return useMutation<unknown, BusinessCaseApiError, string>({
     mutationFn: async (caseId) => {
       const response = await apiClient.post('l4', `/workflows/${caseId}/archive`, {});
-      return response.data;
+      return (response as { data: unknown }).data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['business-cases'] });

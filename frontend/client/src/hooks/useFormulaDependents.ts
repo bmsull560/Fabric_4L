@@ -39,7 +39,7 @@ async function fetchFormulaDependencies(
     'l3',
     `/formulas/${encodeURIComponent(formulaId)}/dependencies?direction=${direction}`
   );
-  return response.data as FormulaDependency[];
+  return (response as { data: FormulaDependency[] }).data;
 }
 
 // ── Hooks ───────────────────────────────────────────────────────────────────

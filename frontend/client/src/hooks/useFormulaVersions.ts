@@ -46,7 +46,7 @@ async function fetchFormulaVersions(formulaId: string, includeRetired = false): 
     'l3',
     `/formulas/${encodeURIComponent(formulaId)}/versions?include_retired=${includeRetired}`
   );
-  return response.data as FormulaVersion[];
+  return (response as { data: FormulaVersion[] }).data;
 }
 
 async function fetchFormulaGovernance(formulaId: string): Promise<FormulaGovernance> {
@@ -54,7 +54,7 @@ async function fetchFormulaGovernance(formulaId: string): Promise<FormulaGoverna
     'l3',
     `/formulas/${encodeURIComponent(formulaId)}/governance`
   );
-  return response.data as FormulaGovernance;
+  return (response as { data: FormulaGovernance }).data;
 }
 
 // ── Hooks ───────────────────────────────────────────────────────────────────
