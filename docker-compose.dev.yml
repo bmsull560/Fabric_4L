@@ -1,0 +1,181 @@
+# =============================================================================
+# Value Fabric — Local Development Stack
+# =============================================================================
+# Spins up the full platform with auth bypass for local exploration.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up --build
+#
+# Services:
+#   - frontend:  Vite dev server (http://localhost:3001)
+#   - layer4:    FastAPI agents API (http://localhost:8004)
+#   - neo4j:     Knowledge graph (http://localhost:7474)
+#   - postgres:  Relational store (localhost:5432)
+#   - redis:     Cache + pub/sub (localhost:6379)
+#
+# Auth is bypassed via DEV_AUTH_BYPASS=true — every request gets a
+# pre-populated tenant/user context without needing a JWT.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: vf-dev-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: valuefabric
+      POSTGRES_MULTIPLE_DATABASES: ingestion,ground_truth,layer4_agents
+    volumes:
+      - dev-postgres-data:/var/lib/postgresql/data
+      - ./value-fabric/scripts/init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+    ports:
+      - "5432:5432"
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vf-dev-redis
+    command: redis-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev-redis-data:/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: vf-dev-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/devpassword
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - dev-neo4j-data:/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Backend — Layer 4 Agents API
+  # ---------------------------------------------------------------------------
+  layer4:
+    build:
+      context: ./value-fabric
+      dockerfile: ./layer4-agents/Dockerfile
+    container_name: vf-dev-layer4
+    ports:
+      - "8004:8000"
+    environment:
+      # Auth bypass for local dev — injects a dev tenant context on every request
+      - DEV_AUTH_BYPASS=true
+      # JWT secret (required by jwt.py at import time, but bypassed at runtime)
+      - JWT_SECRET=dev-local-secret-do-not-use-in-production-minimum-32-chars
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/layer4_agents
+      - CHECKPOINT_DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/ground_truth
+      - REDIS_URL=redis://redis:6379/0
+      # Neo4j
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=devpassword
+      # LLM — set your real key in .env.dev or leave blank for heuristic mode
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o}
+      - THESYS_API_KEY=${THESYS_API_KEY:-}
+      # Inter-layer URLs (point to self for now — stubs return 503)
+      - LAYER1_API_URL=http://layer4:8000
+      - LAYER2_API_URL=http://layer4:8000
+      - LAYER3_API_URL=http://layer4:8000
+      - LAYER5_GROUND_TRUTH_URL=http://layer4:8000
+      - LAYER6_BENCHMARKS_URL=http://layer4:8000
+      # Logging
+      - LOG_LEVEL=debug
+      - PYTHONPATH=/app
+      # Disable Infisical in local dev
+      - INFISICAL_CLIENT_ID=
+      - INFISICAL_CLIENT_SECRET=
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    networks:
+      - dev-network
+    volumes:
+      # Mount source for hot-reload (optional — remove for production-like testing)
+      - ./shared:/app/shared:ro
+      - ./value-fabric/layer4-agents/src:/app/src:ro
+    command: >
+      uvicorn src.api.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/src
+      --log-level debug
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Frontend — Vite Dev Server
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: vf-dev-frontend
+    ports:
+      - "3001:3001"
+    environment:
+      - VITE_API_BASE=/api/v1
+      - VITE_USE_MOCKS=false
+      - VITE_ENABLE_SSE=true
+      - VITE_ENABLE_MOCK_FALLBACK=true
+      - VITE_ENABLE_QUERY_DEVTOOLS=true
+      - VITE_API_LOG_LEVEL=debug
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - dev-network
+    depends_on:
+      layer4:
+        condition: service_healthy
+
+volumes:
+  dev-postgres-data:
+  dev-redis-data:
+  dev-neo4j-data:
+
+networks:
+  dev-network:
+    driver: bridge
