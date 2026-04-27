@@ -251,6 +251,17 @@ export const QK = {
     detail: (id: string) => ['narratives', 'detail', id] as const,
   },
 
+
+
+  // L5 — Ground Truth Governance
+  groundTruth: {
+    all:              ['ground-truth'] as const,
+    list:             (filters: unknown) => ['ground-truth', 'list', stableKey(filters)] as const,
+    audit:            (truthId: string) => ['ground-truth', 'audit', truthId] as const,
+    freshnessSummary: () => ['ground-truth', 'freshness-summary'] as const,
+    stale:            (limit: number, offset: number) => ['ground-truth', 'stale', limit, offset] as const,
+    maturityLadder:   () => ['ground-truth', 'maturity-ladder'] as const,
+  },
   // L4 — Intelligence Orchestration
   intelligence: {
     all:           ['intelligence'] as const,

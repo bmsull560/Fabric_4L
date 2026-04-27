@@ -52,7 +52,7 @@ export interface AuditLogResponse {
 }
 
 
-export function useProvenanceTrail(entityId: string | null) {
+export function useProvenanceTrail(entityId: string | null, enabled = true) {
   return useQuery({
     queryKey: QK.provenance.trail(entityId || ''),
     queryFn: async () => {
@@ -60,12 +60,12 @@ export function useProvenanceTrail(entityId: string | null) {
       const response = await apiClient.get('l3', `/provenance/${encodeURIComponent(entityId)}`);
       return response.data as ProvenanceTrail;
     },
-    enabled: !!entityId,
+    enabled: enabled && !!entityId,
     staleTime: STALE_TIME.activity,
   });
 }
 
-export function useAuditLogs(filters: AuditLogFilter = {}) {
+export function useAuditLogs(filters: AuditLogFilter = {}, enabled = true) {
   return useQuery({
     queryKey: QK.provenance.audit(filters),
     queryFn: async () => {
@@ -80,6 +80,7 @@ export function useAuditLogs(filters: AuditLogFilter = {}) {
       const response = await apiClient.get('l3', `/audit/logs?${params.toString()}`);
       return response.data as AuditLogResponse;
     },
+    enabled,
     staleTime: STALE_TIME.poll,
   });
 }
