@@ -1,8 +1,8 @@
 /**
  * Global Hooks Library
- * 
+ *
  * Centralized exports for all custom React hooks.
- * 
+ *
  * @example
  * ```tsx
  * import { useAuthContext, useGraphQuery, useFormulas } from "@/hooks";
@@ -86,3 +86,15 @@ export {
 
 export { useUserTierStore } from "../stores/userTierStore";
 export type { UserTier } from "../stores/userTierStore";
+
+export {
+  useTruths,
+  useTruthAuditTrail,
+  useTruthFreshnessSummary,
+  useStaleTruths,
+  useMaturityLadder,
+  type TruthStatus,
+  type TruthObjectSummary,
+  type ValidationEventResponse,
+  type MaturityLadderResponse,
+} from "./useGroundTruthGovernance";
