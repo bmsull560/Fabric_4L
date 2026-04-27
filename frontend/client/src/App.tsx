@@ -110,6 +110,12 @@ const EvidenceTab = lazy(() => import("./pages/intelligence/EvidenceTab"));
 const StakeholdersTab = lazy(
   () => import("./pages/intelligence/StakeholdersTab")
 );
+// ── DIL Intelligence Tabs ────────────────────────────────────────────────────
+const EnrichmentTab = lazy(() => import("./pages/intelligence/EnrichmentTab"));
+const HypothesesTab = lazy(() => import("./pages/intelligence/HypothesesTab"));
+const CompetitiveTab = lazy(() => import("./pages/intelligence/CompetitiveTab"));
+const ROITab = lazy(() => import("./pages/intelligence/ROITab"));
+const EvidenceLibraryTab = lazy(() => import("./pages/intelligence/EvidenceLibraryTab"));
 
 // ── Value Studio Workspace Tabs ──────────────────────────────────────────────
 const ActionPlanTab = lazy(() => import("./pages/studio/ActionPlanTab"));
@@ -177,6 +183,11 @@ function WorkspaceContextRedirect({
     "drivers",
     "evidence",
     "stakeholders",
+    "enrichment",
+    "hypotheses",
+    "competitive",
+    "roi",
+    "evidence-library",
   ]);
   const studioTabs = new Set(["action-plan", "value-model", "narrative"]);
 
@@ -371,6 +382,31 @@ function Router() {
           />
         </AuthenticatedRoute>
       </Route>
+      <Route path="/intelligence/enrichment">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="intelligence" tab="enrichment" />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/hypotheses">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="intelligence" tab="hypotheses" />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/competitive">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="intelligence" tab="competitive" />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/roi">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="intelligence" tab="roi" />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/evidence-library">
+        <AuthenticatedRoute {...tierProps}>
+          <WorkspaceContextRedirect workspace="intelligence" tab="evidence-library" />
+        </AuthenticatedRoute>
+      </Route>
       <Route path="/intelligence/:accountId">
         <AuthenticatedRoute {...tierProps}>
           <AccountContextSync />
@@ -399,6 +435,37 @@ function Router() {
         <AuthenticatedRoute {...tierProps}>
           <AccountContextSync />
           <StakeholdersTab />
+        </AuthenticatedRoute>
+      </Route>
+      {/* ── DIL Intelligence Tabs ──────────────────────────────────────── */}
+      <Route path="/intelligence/:accountId/enrichment">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <EnrichmentTab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/hypotheses">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <HypothesesTab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/competitive">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <CompetitiveTab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/roi">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <ROITab />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/intelligence/:accountId/evidence-library">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <EvidenceLibraryTab />
         </AuthenticatedRoute>
       </Route>
 
