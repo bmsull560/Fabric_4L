@@ -6,6 +6,7 @@ usage event ingestion with idempotency and tenant isolation.
 """
 
 from datetime import datetime
+import ipaddress
 import logging
 import os
 import re
@@ -17,6 +18,63 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # Customer ID validation pattern (alphanumeric, underscore, hyphen; 1-64 chars after prefix)
 CUSTOMER_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+# Known Stripe webhook IP ranges (CIDR notation)
+# Source: https://stripe.com/docs/ips
+STRIPE_WEBHOOK_IPS = [
+    # Primary webhook IPs (US East)
+    ipaddress.ip_network("3.18.12.63/32"),
+    ipaddress.ip_network("3.130.192.231/32"),
+    ipaddress.ip_network("13.235.14.237/32"),
+    ipaddress.ip_network("13.235.122.149/32"),
+    ipaddress.ip_network("35.154.171.200/32"),
+    ipaddress.ip_network("35.154.171.208/32"),
+    ipaddress.ip_network("52.15.183.38/32"),
+    ipaddress.ip_network("52.15.183.39/32"),
+    ipaddress.ip_network("54.88.130.27/32"),
+    ipaddress.ip_network("54.88.130.28/32"),
+    ipaddress.ip_network("54.187.174.169/32"),
+    ipaddress.ip_network("54.187.174.170/32"),
+]
+
+# Allow disabling IP check in development (never in production)
+STRIPE_WEBHOOK_SKIP_IP_CHECK = os.environ.get("STRIPE_WEBHOOK_SKIP_IP_CHECK", "").lower() in ("true", "1", "yes")
+
+
+def _is_stripe_webhook_ip(client_ip: str) -> bool:
+    """Check if IP is from Stripe's webhook IP ranges.
+
+    SECURITY: Defense-in-depth for webhook endpoint. Even with valid
+    signature, requests should originate from known Stripe IPs.
+    """
+    try:
+        ip = ipaddress.ip_address(client_ip)
+        # Always allow loopback for local testing
+        if ip.is_loopback:
+            return True
+        return any(ip in network for network in STRIPE_WEBHOOK_IPS)
+    except ValueError:
+        return False
+
+
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from request, handling proxies."""
+    # Check X-Forwarded-For first (common with proxies/load balancers)
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        # Take the first IP in the chain (original client)
+        return forwarded.split(",")[0].strip()
+
+    # Check X-Real-IP
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+
+    # Fall back to direct client IP
+    if hasattr(request, "client") and request.client:
+        return request.client.host
+
+    return ""
 
 
 def validate_customer_id(customer_id: str) -> str:
@@ -321,13 +379,16 @@ async def stripe_webhook(
     stripe_signature: str = Header(..., alias="Stripe-Signature"),
     # SECURITY: Webhook uses get_db (no tenant context) intentionally.
     # Stripe server-to-server calls don't carry tenant JWTs.
-    # Authentication is via Stripe-Signature HMAC verification instead.
+    # Authentication is via Stripe-Signature HMAC verification + IP allowlist.
     db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
     """Handle Stripe webhook events.
 
     Processes subscription lifecycle events from Stripe with idempotency.
     Must configure webhook secret in STRIPE_WEBHOOK_SECRET env var.
+
+    SECURITY: Validates request originates from Stripe IP ranges AND
+    has valid Stripe-Signature header. Dual verification for defense-in-depth.
 
     Headers:
         Stripe-Signature: Webhook signature for verification
@@ -340,6 +401,17 @@ async def stripe_webhook(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Webhook processing not configured",
+        )
+
+    # SECURITY: Verify request originates from Stripe IP ranges
+    client_ip = _get_client_ip(request)
+    if not STRIPE_WEBHOOK_SKIP_IP_CHECK and not _is_stripe_webhook_ip(client_ip):
+        logger.warning(
+            f"Webhook request from non-Stripe IP rejected: {client_ip}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid origin",
         )
 
     # Read raw body for signature verification

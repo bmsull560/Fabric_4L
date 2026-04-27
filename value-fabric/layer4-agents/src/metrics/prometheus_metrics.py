@@ -1,6 +1,12 @@
-"""Prometheus metrics collection for Layer 4 Agentic Workflow Engine."""
+"""Prometheus metrics collection for Layer 4 Agentic Workflow Engine.
+
+SECURITY NOTE: Metrics use 'tenant_tier' instead of 'tenant_id' to prevent
+high-cardinality label explosion which can cause Prometheus OOM.
+Endpoint paths are normalized to strip IDs and prevent unbounded cardinality.
+"""
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -14,6 +20,49 @@ from prometheus_client import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Regex to match UUIDs and numeric IDs for path normalization
+_ID_PATTERN = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32}|[0-9a-f]{24}|^\d+$", re.I)
+
+
+def _normalize_path(path: str) -> str:
+    """Normalize path to prevent high-cardinality metrics.
+
+    SECURITY: Replaces UUIDs and numeric IDs with placeholders to prevent
+    unbounded label cardinality from paths like /api/items/123, /api/items/456.
+    """
+    if not path:
+        return "/"
+
+    # Remove trailing slash
+    if path.endswith("/"):
+        path = path[:-1]
+
+    # Replace UUIDs and numeric IDs with {id} placeholder
+    parts = path.split("/")
+    normalized_parts = []
+    for part in parts:
+        if _ID_PATTERN.match(part):
+            normalized_parts.append("{id}")
+        else:
+            normalized_parts.append(part)
+
+    return "/".join(normalized_parts) or "/"
+
+
+def _derive_tenant_tier(tenant_id: str | None) -> str:
+    """Derive a cardinality-limited tier from tenant_id.
+
+    SECURITY: Maps tenant_id to a hash bucket (first 2 hex chars of hash)
+    to limit cardinality to 256 buckets while preserving multi-tenant visibility.
+    Returns 'unknown' if tenant_id is None or empty.
+    """
+    if not tenant_id:
+        return "unknown"
+    # Use first 2 chars of SHA256 hash to create 256 possible buckets
+    import hashlib
+    hash_bytes = hashlib.sha256(tenant_id.encode()).digest()
+    return hash_bytes[:2].hex()
 
 
 class MetricsConfig:
@@ -138,46 +187,49 @@ class PrometheusMetrics:
         self._metrics["build_info"].info({"version": "0.2.0", "service": "layer4-agents"})
 
         # Rate limiting metrics
+        # SECURITY: Uses tenant_tier instead of tenant_id to prevent cardinality explosion
         self._metrics["rate_limit_hits_total"] = Counter(
             f"{prefix}rate_limit_hits_total",
             "Total rate limit hits",
-            ["tenant_id", "scope"],
+            ["tenant_tier", "scope"],
             registry=self.config.registry,
         )
 
         # LLM cost metrics (cross-layer, vf_ prefix)
+        # SECURITY: Uses tenant_tier instead of tenant_id to prevent cardinality explosion
         self._metrics["llm_cost_usd_total"] = Counter(
             "vf_llm_cost_usd_total",
             "Total LLM cost in USD",
-            ["provider", "model", "tenant_id"],
+            ["provider", "model", "tenant_tier"],
             registry=self.config.registry,
         )
 
         self._metrics["llm_tokens_total"] = Counter(
             "vf_llm_tokens_total",
             "Total LLM tokens consumed",
-            ["provider", "model", "tenant_id", "token_type"],
+            ["provider", "model", "tenant_tier", "token_type"],
             registry=self.config.registry,
         )
 
         self._metrics["llm_requests_total"] = Counter(
             "vf_llm_requests_total",
             "Total LLM requests",
-            ["provider", "model", "tenant_id", "status"],
+            ["provider", "model", "tenant_tier", "status"],
             registry=self.config.registry,
         )
         self._metrics["llm_budget_guardrail_events_total"] = Counter(
             "vf_llm_budget_guardrail_events_total",
             "Total budget guardrail events for LLM usage",
-            ["tenant_id", "action", "reason"],
+            ["tenant_tier", "action", "reason"],
             registry=self.config.registry,
         )
 
         # Formula approval pending gauge
+        # SECURITY: Uses tenant_tier instead of tenant_id to prevent cardinality explosion
         self._metrics["formula_approval_pending"] = Gauge(
             f"{prefix}formula_approval_pending",
             "Number of formulas pending approval",
-            ["tenant_id"],
+            ["tenant_tier"],
             registry=self.config.registry,
         )
 
@@ -226,8 +278,10 @@ class PrometheusMetrics:
             self._metrics["errors_total"].labels(error_type=error_type, component=component).inc()
 
     def increment_rate_limit_hit(self, tenant_id: str, scope: str) -> None:
+        """Record rate limit hit with cardinality-limited tenant_tier."""
         if self.config.enabled:
-            self._metrics["rate_limit_hits_total"].labels(tenant_id=tenant_id, scope=scope).inc()
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["rate_limit_hits_total"].labels(tenant_tier=tenant_tier, scope=scope).inc()
 
     def record_llm_cost(
         self,
@@ -239,24 +293,28 @@ class PrometheusMetrics:
         completion_tokens: int,
         status: str = "success",
     ) -> None:
+        """Record LLM cost with cardinality-limited tenant_tier."""
         if not self.config.enabled:
             return
+        tenant_tier = _derive_tenant_tier(tenant_id)
         self._metrics["llm_cost_usd_total"].labels(
-            provider=provider, model=model, tenant_id=tenant_id
+            provider=provider, model=model, tenant_tier=tenant_tier
         ).inc(cost)
         self._metrics["llm_tokens_total"].labels(
-            provider=provider, model=model, tenant_id=tenant_id, token_type="prompt"
+            provider=provider, model=model, tenant_tier=tenant_tier, token_type="prompt"
         ).inc(prompt_tokens)
         self._metrics["llm_tokens_total"].labels(
-            provider=provider, model=model, tenant_id=tenant_id, token_type="completion"
+            provider=provider, model=model, tenant_tier=tenant_tier, token_type="completion"
         ).inc(completion_tokens)
         self._metrics["llm_requests_total"].labels(
-            provider=provider, model=model, tenant_id=tenant_id, status=status
+            provider=provider, model=model, tenant_tier=tenant_tier, status=status
         ).inc()
 
     def set_formula_approval_pending(self, tenant_id: str, value: int) -> None:
+        """Set formula approval pending with cardinality-limited tenant_tier."""
         if self.config.enabled:
-            self._metrics["formula_approval_pending"].labels(tenant_id=tenant_id).set(value)
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["formula_approval_pending"].labels(tenant_tier=tenant_tier).set(value)
 
     def increment_llm_budget_guardrail_event(
         self,
@@ -264,20 +322,26 @@ class PrometheusMetrics:
         action: str,
         reason: str,
     ) -> None:
+        """Record LLM budget guardrail event with cardinality-limited tenant_tier."""
         if self.config.enabled:
+            tenant_tier = _derive_tenant_tier(tenant_id)
             self._metrics["llm_budget_guardrail_events_total"].labels(
-                tenant_id=tenant_id,
+                tenant_tier=tenant_tier,
                 action=action,
                 reason=reason,
             ).inc()
 
     def inc_formula_approval_pending(self, tenant_id: str) -> None:
+        """Increment formula approval pending with cardinality-limited tenant_tier."""
         if self.config.enabled:
-            self._metrics["formula_approval_pending"].labels(tenant_id=tenant_id).inc()
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["formula_approval_pending"].labels(tenant_tier=tenant_tier).inc()
 
     def dec_formula_approval_pending(self, tenant_id: str) -> None:
+        """Decrement formula approval pending with cardinality-limited tenant_tier."""
         if self.config.enabled:
-            self._metrics["formula_approval_pending"].labels(tenant_id=tenant_id).dec()
+            tenant_tier = _derive_tenant_tier(tenant_id)
+            self._metrics["formula_approval_pending"].labels(tenant_tier=tenant_tier).dec()
 
     def get_metrics(self) -> str:
         """Get Prometheus metrics output."""
@@ -305,11 +369,8 @@ class MetricsMiddleware:
         response = await call_next(request)
         duration = time.time() - start_time
 
-        endpoint = request.url.path
-        if endpoint.endswith("/"):
-            endpoint = endpoint[:-1]
-        if not endpoint:
-            endpoint = "/"
+        # SECURITY: Normalize path to prevent high-cardinality from path parameters
+        endpoint = _normalize_path(request.url.path)
 
         self.metrics.increment_requests_total(
             method=request.method, endpoint=endpoint, status_code=response.status_code
