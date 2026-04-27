@@ -1,5 +1,5 @@
 ---
-name: production-gate-hardening
+name: gate-hardening
 description: Build a machine-verifiable production release gate system using TDD. Use when a codebase needs ship/no-ship test gates for tenant isolation, state consistency, degraded dependencies, workflow smoke tests, agent provenance, or observability. Also use when auditing or replacing an existing gate framework that may have false-confidence patterns.
 ---
 

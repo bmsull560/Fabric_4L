@@ -311,6 +311,24 @@ async def signal_stream_websocket(
         websocket: WebSocket connection
         prospect_id: Prospect/account ID to stream signals for
     """
+    # P0-9 FIX: Authenticate WebSocket before accepting
+    from shared.identity.jwt import decode_jwt
+    import os
+
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008, reason="Authentication required")
+        return
+    try:
+        jwt_secret = os.getenv("JWT_SECRET", "")
+        payload = decode_jwt(token, jwt_secret)
+        if not payload or not payload.get("tenant_id"):
+            await websocket.close(code=1008, reason="Invalid token")
+            return
+    except Exception:
+        await websocket.close(code=1008, reason="Authentication failed")
+        return
+
     await websocket.accept()
     active = True
 

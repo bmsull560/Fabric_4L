@@ -269,8 +269,9 @@ def get_tenant_id(request: Request) -> UUID:
         except ValueError:
             pass
 
-    # Default for local dev without auth
-    return UUID("00000000-0000-0000-0000-000000000001")
+    # P0-3 FIX: Never fall back to a hardcoded tenant — require authentication
+    from fastapi import HTTPException
+    raise HTTPException(status_code=401, detail="Authentication required")
 
 
 def get_current_user_id(request: Request) -> UUID:

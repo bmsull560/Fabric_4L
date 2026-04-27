@@ -52,7 +52,7 @@ spec:
         - name: PYTHONPATH
           value: "/app"
         - name: C_FORCE_ROOT
-          value: "true"  # Allow Celery to run as root in container
+          value: "false"
         resources:
           requests:
             memory: "256Mi"
@@ -139,7 +139,7 @@ spec:
         - name: PYTHONPATH
           value: "/app"
         - name: C_FORCE_ROOT
-          value: "true"
+          value: "false"
         resources:
           requests:
             memory: "128Mi"
@@ -212,7 +212,7 @@ spec:
         - name: PYTHONPATH
           value: "/app"
         - name: C_FORCE_ROOT
-          value: "true"
+          value: "false"
         resources:
           requests:
             memory: "128Mi"

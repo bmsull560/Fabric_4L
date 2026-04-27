@@ -72,6 +72,7 @@ async def list_tools(
     category: str | None = None,
     search: str | None = None,
     registry: ToolRegistry = Depends(get_tool_registry),
+    ctx: RequestContext = Depends(require_authenticated),
 ) -> list[ToolListResponse]:
     """List available tools with optional filtering.
 
@@ -102,7 +103,9 @@ async def list_tools(
 
 @router.get("/tools/{tool_name}")
 async def get_tool_schema(
-    tool_name: str, registry: ToolRegistry = Depends(get_tool_registry)
+    tool_name: str,
+    registry: ToolRegistry = Depends(get_tool_registry),
+    ctx: RequestContext = Depends(require_authenticated),
 ) -> dict[str, Any]:
     """Get detailed schema for a specific tool."""
     if not registry.has_tool(tool_name):
@@ -125,7 +128,9 @@ async def get_tool_schema(
 
 @router.post("/tools/invoke", response_model=ToolInvokeResponse)
 async def invoke_tool(
-    request: ToolInvokeRequest, registry: ToolRegistry = Depends(get_tool_registry)
+    request: ToolInvokeRequest,
+    registry: ToolRegistry = Depends(get_tool_registry),
+    ctx: RequestContext = Depends(require_authenticated),
 ) -> ToolInvokeResponse:
     """Invoke a tool directly.
 
@@ -453,7 +458,9 @@ async def list_export_audit_events(
 
 
 @router.get("/tools/categories")
-async def list_tool_categories() -> dict[str, Any]:
+async def list_tool_categories(
+    ctx: RequestContext = Depends(require_authenticated),
+) -> dict[str, Any]:
     """List available tool categories."""
     categories = [
         {"id": cat.value, "name": cat.value.replace("_", " ").title()} for cat in ToolCategory

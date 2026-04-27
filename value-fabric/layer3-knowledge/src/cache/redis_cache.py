@@ -148,9 +148,12 @@ class RedisCache:
 
         Returns:
             Serialized data
+
+        Raises:
+            ValueError: If pickle serializer is requested (disabled for security)
         """
         if self.config.serializer == "pickle":
-            return pickle.dumps(data)
+            raise ValueError("pickle serializer is disabled for security — use json or msgpack")
         else:
             return json.dumps(data, default=str)
 
@@ -163,16 +166,11 @@ class RedisCache:
         Returns:
             Deserialized data
 
-        Note:
-            Pickle deserialization is restricted to prevent arbitrary code execution.
-            Only use pickle for caches that are fully controlled internally and never
-            accept user-generated cache data.
+        Raises:
+            ValueError: If pickle serializer is requested (disabled for security)
         """
         if self.config.serializer == "pickle":
-            # Security warning: pickle.loads can execute arbitrary code.
-            # This should only be used for internally-controlled caches.
-            # Consider using a safer alternative like json or msgpack for user-facing data.
-            return pickle.loads(data)
+            raise ValueError("pickle serializer is disabled for security — use json or msgpack")
         else:
             return json.loads(data)
 

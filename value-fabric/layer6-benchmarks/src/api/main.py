@@ -175,8 +175,13 @@ try:
 
     app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
 except ImportError:
+    if os.getenv("ENVIRONMENT") in ("production", "staging"):
+        raise RuntimeError(
+            "GovernanceMiddleware is required in production/staging — "
+            "shared.identity must be importable"
+        )
     logging.getLogger(__name__).warning(
-        "shared.identity not importable — GovernanceMiddleware skipped in L6."
+        "shared.identity not importable — GovernanceMiddleware skipped in dev."
     )
 
 # CORS middleware with production validation (P0-20)

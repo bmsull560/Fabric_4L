@@ -1,9 +1,14 @@
 """CRM tools for Salesforce/HubSpot integration."""
 
 import logging
+import re
+import urllib.parse
 from typing import Any
 
 import httpx
+
+# P0-1 FIX: Salesforce ID format — 15 or 18 alphanumeric characters only
+_SFDC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9]{15,18}$")
 
 from ..models.tool_schemas import (
     FetchInteractionHistoryInput,
@@ -66,11 +71,32 @@ class GetProspectDataTool(BaseTool):
                 profile={}, interactions=[], opportunities=[], custom_fields={}
             )
 
+    @staticmethod
+    def _validate_sfdc_id(value: str, field_name: str = "prospect_id") -> str:
+        """Validate Salesforce ID format to prevent SOQL injection.
+
+        Args:
+            value: Value to validate
+            field_name: Name of field for error messages
+
+        Returns:
+            Validated ID string
+
+        Raises:
+            ValueError: If ID format is invalid
+        """
+        if not _SFDC_ID_PATTERN.match(value):
+            raise ValueError(
+                f"Invalid {field_name} format: must be 15 or 18 alphanumeric characters"
+            )
+        return value
+
     async def _get_salesforce_data(
         self, client: httpx.AsyncClient, input_data: GetProspectDataInput
     ) -> GetProspectDataOutput:
         """Fetch data from Salesforce API."""
-        prospect_id = input_data.prospect_id
+        # P0-1 FIX: Validate prospect_id is a valid Salesforce ID before any query
+        prospect_id = self._validate_sfdc_id(input_data.prospect_id)
 
         result = GetProspectDataOutput()
 
@@ -96,7 +122,7 @@ class GetProspectDataTool(BaseTool):
         # Fetch opportunities
         if "opportunities" in input_data.data_types:
             opp_query = f"SELECT Id, Name, StageName, Amount, Probability, CloseDate FROM Opportunity WHERE AccountId = '{prospect_id}'"
-            query_url = f"{self.instance_url}/services/data/v58.0/query?q={opp_query}"
+            query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(opp_query)}"
             response = await client.get(query_url)
             if response.status_code == 200:
                 data = response.json()
@@ -117,7 +143,7 @@ class GetProspectDataTool(BaseTool):
         # Fetch interactions (activities)
         if "interactions" in input_data.data_types:
             task_query = f"SELECT Id, Subject, ActivityDate, Status, Description FROM Task WHERE WhatId = '{prospect_id}' ORDER BY ActivityDate DESC"
-            query_url = f"{self.instance_url}/services/data/v58.0/query?q={task_query}"
+            query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(task_query)}"
             response = await client.get(query_url)
             if response.status_code == 200:
                 data = response.json()

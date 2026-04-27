@@ -6,6 +6,7 @@ with synchronous SQLAlchemy and WSGI-style request processing.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import threading
@@ -130,7 +131,9 @@ class GovernanceMiddlewareSync:
         self.app = app
         self._api_key_resolver = api_key_resolver
         self._jwt_secret = jwt_secret or os.getenv("JWT_SECRET", "")
-        self._allow_query_param = os.getenv("ALLOW_TENANT_QUERY_PARAM", "false").lower() == "true"
+        # P0-4 FIX: Query param auth removed — never trust client-supplied identity
+        # self._allow_query_param removed entirely
+        self._service_auth_secret = os.getenv("SERVICE_AUTH_SECRET", "")
 
     def __call__(self, environ: dict, start_response: Callable) -> Any:
         """WSGI entry point."""
@@ -147,18 +150,14 @@ class GovernanceMiddlewareSync:
         api_key_header = environ.get("HTTP_X_API_KEY")
         x_tenant_header = environ.get("HTTP_X_TENANT_ID")
 
-        # Parse query string for dev/test fallback
-        query_params = {}
-        if self._allow_query_param:
-            query_string = environ.get("QUERY_STRING", "")
-            if query_string:
-                query_params = {k: v[0] if v else "" for k, v in parse_qs(query_string).items()}
+        # F-1 FIX: Extract service auth header for X-Tenant-ID validation
+        x_service_auth = environ.get("HTTP_X_SERVICE_AUTH", "")
 
         ctx = self._resolve_identity_sync(
             auth_header=auth_header,
             api_key_header=api_key_header,
             x_tenant_header=x_tenant_header,
-            query_params=query_params,
+            x_service_auth=x_service_auth,
             request_path=request_path,
             request_method=environ.get("REQUEST_METHOD"),
         )
@@ -184,7 +183,7 @@ class GovernanceMiddlewareSync:
         auth_header: str | None = None,
         api_key_header: str | None = None,
         x_tenant_header: str | None = None,
-        query_params: dict[str, Any] | None = None,
+        x_service_auth: str = "",
         request_path: str | None = None,
         request_method: str | None = None,
     ) -> SyncRequestContext | None:
@@ -212,8 +211,14 @@ class GovernanceMiddlewareSync:
             except Exception as e:
                 logger.debug("API key resolution failed: %s", e)
 
-        # 3. X-Tenant-ID (service-to-service)
+        # 3. X-Tenant-ID (service-to-service) — F-1 FIX: require shared secret
         if x_tenant_header:
+            if not self._service_auth_secret:
+                logger.warning("X-Tenant-ID rejected: SERVICE_AUTH_SECRET not configured")
+                return None
+            if not hmac.compare_digest(x_service_auth, self._service_auth_secret):
+                logger.warning("X-Tenant-ID rejected: invalid X-Service-Auth")
+                return None
             try:
                 tenant_id = UUID(x_tenant_header)
                 return SyncRequestContext(
@@ -225,19 +230,7 @@ class GovernanceMiddlewareSync:
             except ValueError:
                 logger.debug("Invalid X-Tenant-ID: %s", x_tenant_header)
 
-        # 4. Query param fallback (dev/test only)
-        if self._allow_query_param and query_params:
-            qp_tenant = query_params.get("tenant_id")
-            if qp_tenant:
-                try:
-                    tenant_id = UUID(qp_tenant)
-                    return SyncRequestContext(
-                        tenant_id=tenant_id,
-                        roles=["read_only"],
-                        auth_source="query_param",
-                    )
-                except ValueError:
-                    logger.debug("Invalid tenant_id in query param: %s", qp_tenant)
+        # P0-4 FIX: Query param auth removed entirely — never trust client-supplied identity
 
         return None
 

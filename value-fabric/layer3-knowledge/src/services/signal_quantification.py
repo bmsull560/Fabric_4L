@@ -6,6 +6,7 @@ formulas and prospect data.
 
 from __future__ import annotations
 
+import ast
 import logging
 import operator
 from dataclasses import dataclass
@@ -55,6 +56,22 @@ class SignalQuantificationService:
         "-": operator.sub,
         "*": operator.mul,
         "/": operator.truediv,
+    }
+
+    # AST operator mapping for safe evaluation (P0-2 FIX)
+    SAFE_AST_OPERATORS = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.Mod: operator.mod,
+        ast.FloorDiv: operator.floordiv,
+    }
+
+    SAFE_UNARY_OPERATORS = {
+        ast.UAdd: operator.pos,
+        ast.USub: operator.neg,
     }
 
     # Safe functions for formula evaluation
@@ -422,7 +439,10 @@ class SignalQuantificationService:
             }
 
     def _safe_eval(self, expression: str, context: dict[str, Any]) -> float:
-        """Safely evaluate a formula expression.
+        """Safely evaluate a formula expression using AST parsing.
+
+        P0-2 FIX: Replaced eval() with AST-based evaluation to prevent
+        arbitrary code execution via object traversal bypasses.
 
         Args:
             expression: Formula expression string
@@ -430,27 +450,81 @@ class SignalQuantificationService:
 
         Returns:
             Calculated result
+
+        Raises:
+            ValueError: If expression contains unsafe constructs
+            NameError: If expression references undefined variables
         """
-        # For now, simple direct evaluation of single variables
-        # Full implementation would parse and evaluate complex expressions
+        # Direct variable lookup
         if expression in context:
             return float(context[expression])
 
-        # Try basic arithmetic
+        # AST-based safe evaluation (no eval())
+        allowed_names = {
+            **self.SAFE_FUNCTIONS,
+            **{k: v for k, v in context.items() if isinstance(v, (int, float))},
+        }
         try:
-            # Very limited eval for security
-            allowed_names = {
-                **self.SAFE_FUNCTIONS,
-                **{k: v for k, v in context.items() if isinstance(v, (int, float))},
-            }
-            return eval(expression, {"__builtins__": {}}, allowed_names)
-        except Exception as e:
+            tree = ast.parse(expression, mode="eval")
+            return float(self._eval_node(tree.body, allowed_names))
+        except (ValueError, NameError, TypeError) as e:
             logger.error(f"Expression evaluation failed: {e}")
-            # Return first available numeric context value as fallback
-            for key, value in context.items():
-                if isinstance(value, (int, float)) and not key.startswith("_"):
-                    return float(value)
-            return 0.0
+            raise
+        except Exception as e:
+            logger.error(f"Expression parse failed: {e}")
+            raise ValueError(f"Invalid formula expression: {e}") from e
+
+    def _eval_node(self, node: ast.AST, context: dict[str, Any]) -> Any:
+        """Recursively evaluate AST node safely.
+
+        Only allows: constants, variable names, binary ops, unary ops,
+        and safe function calls. Rejects attribute access, subscripts,
+        imports, lambdas, and all other constructs.
+
+        Args:
+            node: AST node to evaluate
+            context: Variable context
+
+        Returns:
+            Evaluated value
+
+        Raises:
+            ValueError: If node type is not allowed
+            NameError: If variable not found
+        """
+        if isinstance(node, ast.Constant):
+            if not isinstance(node.value, (int, float)):
+                raise ValueError(f"Only numeric constants allowed, got {type(node.value).__name__}")
+            return node.value
+        elif isinstance(node, ast.Num):  # Python 3.7 compat
+            return node.n
+        elif isinstance(node, ast.Name):
+            if node.id in context:
+                return context[node.id]
+            raise NameError(f"Variable '{node.id}' not defined")
+        elif isinstance(node, ast.BinOp):
+            op_type = type(node.op)
+            if op_type not in self.SAFE_AST_OPERATORS:
+                raise ValueError(f"Unsupported operator: {op_type.__name__}")
+            left = self._eval_node(node.left, context)
+            right = self._eval_node(node.right, context)
+            return self.SAFE_AST_OPERATORS[op_type](left, right)
+        elif isinstance(node, ast.UnaryOp):
+            op_type = type(node.op)
+            if op_type not in self.SAFE_UNARY_OPERATORS:
+                raise ValueError(f"Unsupported unary operator: {op_type.__name__}")
+            operand = self._eval_node(node.operand, context)
+            return self.SAFE_UNARY_OPERATORS[op_type](operand)
+        elif isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Name):
+                raise ValueError("Only direct function calls allowed")
+            func_name = node.func.id
+            if func_name not in self.SAFE_FUNCTIONS:
+                raise ValueError(f"Function '{func_name}' not allowed")
+            args = [self._eval_node(arg, context) for arg in node.args]
+            return self.SAFE_FUNCTIONS[func_name](*args)
+        else:
+            raise ValueError(f"Unsupported expression type: {type(node).__name__}")
 
     def get_supported_units(self) -> list[str]:
         """Get list of supported impact units.

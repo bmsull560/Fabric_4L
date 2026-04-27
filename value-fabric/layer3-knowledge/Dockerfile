@@ -12,6 +12,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     UVICORN_CMD="uvicorn src.api.main:app --host 0.0.0.0 --port 8001"
 COPY layer3-knowledge/src/ ./src/
 COPY shared/ ./shared/
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+USER appuser
 EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD curl -f http://localhost:8001/health || exit 1
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8001"]

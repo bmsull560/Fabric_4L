@@ -1,6 +1,7 @@
 """Knowledge tools for querying the graph database and semantic search."""
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -54,8 +55,30 @@ class QueryGraphTool(BaseTool):
             )
         return self._driver
 
+    # P1-11 FIX: Cypher keywords that indicate write/mutate operations
+    _CYPHER_WRITE_KEYWORDS = re.compile(
+        r"\b(CREATE|DELETE|DETACH|SET|MERGE|REMOVE|DROP|CALL)\b",
+        re.IGNORECASE,
+    )
+
+    @classmethod
+    def _validate_read_only(cls, query: str) -> None:
+        """Validate that a Cypher query is read-only.
+
+        Raises:
+            ValueError: If query contains write operations
+        """
+        if cls._CYPHER_WRITE_KEYWORDS.search(query):
+            raise ValueError(
+                "Write operations are not allowed via query_graph tool. "
+                "Only read-only Cypher queries (MATCH, RETURN, WITH, WHERE, ORDER BY, LIMIT) are permitted."
+            )
+
     async def execute(self, input_data: QueryGraphInput) -> QueryGraphOutput:
         """Execute Cypher query against Neo4j."""
+        # P1-11 FIX: Validate query is read-only before execution
+        self._validate_read_only(input_data.cypher_query)
+
         driver = self._get_driver()
 
         start_time = time.time()
