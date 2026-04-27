@@ -287,6 +287,16 @@ if settings.otel_exporter_endpoint:
     FastAPIInstrumentor.instrument_app(app)
 
 
+# Dev auth bypass — when DEV_AUTH_BYPASS=true, injects a synthetic tenant
+# context so the UI can be explored without a real JWT.
+# MUST be added before GovernanceMiddleware so the context is already set
+# when GovernanceMiddleware.dispatch() runs.
+try:
+    from shared.identity.dev_bypass import maybe_install_dev_bypass
+    maybe_install_dev_bypass(app)
+except Exception:
+    pass  # Module not available or DEV_AUTH_BYPASS not set — production path
+
 # GovernanceMiddleware — replaces TenantMiddleware; verifies JWTs, resolves
 # tenant/user/role context from Bearer JWT or X-API-Key.
 # api_key_resolver is wired to the DB-backed lookup so keys are verified

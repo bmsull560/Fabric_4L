@@ -285,6 +285,12 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
         if any(request.url.path == p or request.url.path.startswith(p + "/") for p in self.skip_paths):
             return await call_next(request)
 
+        # Dev bypass: if a prior middleware already populated governance_context
+        # with a valid tenant_id, skip authentication (used by DevAuthBypassMiddleware).
+        existing_ctx = getattr(getattr(request, "state", None), "governance_context", None)
+        if existing_ctx and getattr(existing_ctx, "tenant_id", None):
+            return await call_next(request)
+
         context = await self._authenticate(request)
         request.state.governance_context = context
 
