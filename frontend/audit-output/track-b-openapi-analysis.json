@@ -1,0 +1,3592 @@
+{
+  "summary": {
+    "total_endpoints": 244,
+    "connected": 8,
+    "orphan": 236,
+    "by_layer": {
+      "layer1-ingestion": {
+        "CONNECTED": 0,
+        "ORPHAN": 26,
+        "SURFACE_GAP": 0,
+        "TYPE_GAP": 0,
+        "total": 26
+      },
+      "layer2-extraction": {
+        "CONNECTED": 7,
+        "ORPHAN": 22,
+        "SURFACE_GAP": 0,
+        "TYPE_GAP": 0,
+        "total": 29
+      },
+      "layer3-knowledge": {
+        "CONNECTED": 1,
+        "ORPHAN": 88,
+        "SURFACE_GAP": 0,
+        "TYPE_GAP": 0,
+        "total": 89
+      },
+      "layer4-agents": {
+        "CONNECTED": 0,
+        "ORPHAN": 84,
+        "SURFACE_GAP": 0,
+        "TYPE_GAP": 0,
+        "total": 84
+      },
+      "layer5-ground-truth": {
+        "CONNECTED": 0,
+        "ORPHAN": 13,
+        "SURFACE_GAP": 0,
+        "TYPE_GAP": 0,
+        "total": 13
+      },
+      "signals": {
+        "CONNECTED": 0,
+        "ORPHAN": 3,
+        "SURFACE_GAP": 0,
+        "TYPE_GAP": 0,
+        "total": 3
+      }
+    }
+  },
+  "orphan_by_tag": {
+    "system": 3,
+    "extraction": 4,
+    "ontology": 14,
+    "audit": 2,
+    "Value Trees": 2,
+    "Formulas": 5,
+    "Models": 5,
+    "Monitoring": 1,
+    "Health": 2,
+    "Schema": 1,
+    "Provenance": 1,
+    "Audit": 1,
+    "Documents": 1,
+    "Graph": 3,
+    "ValuePacks": 9,
+    "workflows": 9,
+    "tools": 5,
+    "analysis": 5,
+    "Accounts": 16,
+    "CRM Webhooks": 3,
+    "checkpoints": 8,
+    "state-inspector": 12,
+    "health": 12,
+    "Integrations": 6,
+    "Tenants": 5,
+    "Users": 5,
+    "API Keys": 3,
+    "OIDC SSO": 3,
+    "Model Registry": 7,
+    "Feature Flags": 5,
+    "c1": 1,
+    "ground-truth": 13
+  },
+  "endpoints": [
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets",
+      "method": "GET",
+      "operation_id": "list_targets_api_v1_ingestion_targets_get",
+      "tags": [],
+      "summary": "List Targets",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets",
+      "method": "POST",
+      "operation_id": "create_target_api_v1_ingestion_targets_post",
+      "tags": [],
+      "summary": "Create Target",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets/{target_id}",
+      "method": "GET",
+      "operation_id": "get_target_api_v1_ingestion_targets__target_id__get",
+      "tags": [],
+      "summary": "Get Target",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets/{target_id}",
+      "method": "PUT",
+      "operation_id": "update_target_api_v1_ingestion_targets__target_id__put",
+      "tags": [],
+      "summary": "Update Target",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets/{target_id}",
+      "method": "DELETE",
+      "operation_id": "delete_target_api_v1_ingestion_targets__target_id__delete",
+      "tags": [],
+      "summary": "Delete Target",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets/{target_id}/validate",
+      "method": "POST",
+      "operation_id": "validate_target_api_v1_ingestion_targets__target_id__validate_post",
+      "tags": [],
+      "summary": "Validate Target",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets/{target_id}/execute",
+      "method": "POST",
+      "operation_id": "execute_target_api_v1_ingestion_targets__target_id__execute_post",
+      "tags": [],
+      "summary": "Execute Target",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/targets/{target_id}/decisions",
+      "method": "GET",
+      "operation_id": "get_target_decisions_api_v1_ingestion_targets__target_id__decisions_get",
+      "tags": [],
+      "summary": "Get Target Decisions",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/jobs/{job_id}/router-report",
+      "method": "GET",
+      "operation_id": "get_job_router_report_api_v1_ingestion_jobs__job_id__router_report_get",
+      "tags": [],
+      "summary": "Get Job Router Report",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/domains/{domain}/fallback-stats",
+      "method": "GET",
+      "operation_id": "get_domain_fallback_stats_api_v1_ingestion_domains__domain__fallback_stats_get",
+      "tags": [],
+      "summary": "Get Domain Fallback Stats",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/jobs",
+      "method": "GET",
+      "operation_id": "list_jobs_api_v1_ingestion_jobs_get",
+      "tags": [],
+      "summary": "List Jobs",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/jobs/{job_id}",
+      "method": "GET",
+      "operation_id": "get_job_api_v1_ingestion_jobs__job_id__get",
+      "tags": [],
+      "summary": "Get Job",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/jobs/{job_id}",
+      "method": "DELETE",
+      "operation_id": "cancel_job_api_v1_ingestion_jobs__job_id__delete",
+      "tags": [],
+      "summary": "Cancel Job",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/jobs/{job_id}/progress",
+      "method": "GET",
+      "operation_id": "get_job_progress_api_v1_ingestion_jobs__job_id__progress_get",
+      "tags": [],
+      "summary": "Get Job Progress",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/jobs/{job_id}/results",
+      "method": "GET",
+      "operation_id": "get_job_results_api_v1_ingestion_jobs__job_id__results_get",
+      "tags": [],
+      "summary": "Get Job Results",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/jobs/{job_id}/retry",
+      "method": "POST",
+      "operation_id": "retry_job_api_v1_ingestion_jobs__job_id__retry_post",
+      "tags": [],
+      "summary": "Retry Job",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/content/raw/{content_id}",
+      "method": "GET",
+      "operation_id": "get_raw_content_api_v1_ingestion_content_raw__content_id__get",
+      "tags": [],
+      "summary": "Get Raw Content",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/content/extracted/{extracted_data_id}",
+      "method": "GET",
+      "operation_id": "get_extracted_data_api_v1_ingestion_content_extracted__extracted_data_id__get",
+      "tags": [],
+      "summary": "Get Extracted Data",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/content",
+      "method": "GET",
+      "operation_id": "list_content_api_v1_ingestion_content_get",
+      "tags": [],
+      "summary": "List Content",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/compliance/logs",
+      "method": "GET",
+      "operation_id": "list_compliance_logs_api_v1_ingestion_compliance_logs_get",
+      "tags": [],
+      "summary": "List Compliance Logs",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/compliance/summary",
+      "method": "GET",
+      "operation_id": "get_compliance_summary_api_v1_ingestion_compliance_summary_get",
+      "tags": [],
+      "summary": "Get Compliance Summary",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/health",
+      "method": "GET",
+      "operation_id": "health_check_api_v1_ingestion_health_get",
+      "tags": [],
+      "summary": "Health Check",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/metrics",
+      "method": "GET",
+      "operation_id": "metrics_endpoint_api_v1_ingestion_metrics_get",
+      "tags": [],
+      "summary": "Metrics Endpoint",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/admin/cleanup",
+      "method": "POST",
+      "operation_id": "trigger_cleanup_api_v1_ingestion_admin_cleanup_post",
+      "tags": [],
+      "summary": "Trigger Cleanup",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/api/v1/ingestion/proxy-pools",
+      "method": "POST",
+      "operation_id": "create_proxy_pool_endpoint_api_v1_ingestion_proxy_pools_post",
+      "tags": [],
+      "summary": "Create Proxy Pool Endpoint",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer1-ingestion",
+      "path": "/health",
+      "method": "GET",
+      "operation_id": "legacy_health_check_health_get",
+      "tags": [],
+      "summary": "Legacy Health Check",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/health",
+      "method": "GET",
+      "operation_id": "health_check_health_get",
+      "tags": [
+        "system"
+      ],
+      "summary": "Health Check",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/metrics",
+      "method": "GET",
+      "operation_id": "metrics_endpoint_metrics_get",
+      "tags": [
+        "system"
+      ],
+      "summary": "Metrics Endpoint",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/extract",
+      "method": "POST",
+      "operation_id": "extract_v1_extract_post",
+      "tags": [
+        "extraction"
+      ],
+      "summary": "Extract",
+      "has_hook": true,
+      "hook_name": "useRunExtraction",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/extract-and-ingest",
+      "method": "POST",
+      "operation_id": "extract_and_ingest_v1_extract_and_ingest_post",
+      "tags": [
+        "extraction"
+      ],
+      "summary": "Extract And Ingest",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/extract/status/{job_id}",
+      "method": "GET",
+      "operation_id": "get_extraction_status_v1_extract_status__job_id__get",
+      "tags": [
+        "extraction"
+      ],
+      "summary": "Get Extraction Status",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/extract/batch",
+      "method": "POST",
+      "operation_id": "extract_batch_v1_extract_batch_post",
+      "tags": [
+        "extraction"
+      ],
+      "summary": "Extract Batch",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/extract/jobs/{job_id}/events",
+      "method": "GET",
+      "operation_id": "stream_job_events_v1_extract_jobs__job_id__events_get",
+      "tags": [
+        "extraction"
+      ],
+      "summary": "Stream Job Events",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/entities",
+      "method": "GET",
+      "operation_id": "list_entities_v1_ontology_entities_get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "List Entities",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/relationships/{entity_id}",
+      "method": "GET",
+      "operation_id": "get_relationships_v1_ontology_relationships__entity_id__get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Get Relationships",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema",
+      "method": "GET",
+      "operation_id": "get_ontology_schema_v1_ontology_schema_get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Get Ontology Schema",
+      "has_hook": true,
+      "hook_name": "useOntologySchema",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/validate",
+      "method": "POST",
+      "operation_id": "validate_ontology_schema_v1_ontology_schema_validate_post",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Validate Ontology Schema",
+      "has_hook": true,
+      "hook_name": "useOntologySchema",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/publish",
+      "method": "POST",
+      "operation_id": "publish_ontology_schema_v1_ontology_schema_publish_post",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Publish Ontology Schema",
+      "has_hook": true,
+      "hook_name": "useOntologySchema",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/import",
+      "method": "POST",
+      "operation_id": "import_ontology_schema_v1_ontology_schema_import_post",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Import Ontology Schema",
+      "has_hook": true,
+      "hook_name": "useOntologySchema",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/export",
+      "method": "GET",
+      "operation_id": "export_ontology_schema_v1_ontology_schema_export_get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Export Ontology Schema",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types",
+      "method": "GET",
+      "operation_id": "list_ontology_types_v1_ontology_schema_types_get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "List Ontology Types",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types",
+      "method": "POST",
+      "operation_id": "create_ontology_type_v1_ontology_schema_types_post",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Create Ontology Type",
+      "has_hook": true,
+      "hook_name": "useOntologySchema",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types/{type_id}",
+      "method": "GET",
+      "operation_id": "get_ontology_type_v1_ontology_schema_types__type_id__get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Get Ontology Type",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types/{type_id}",
+      "method": "PUT",
+      "operation_id": "update_ontology_type_v1_ontology_schema_types__type_id__put",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Update Ontology Type",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types/{type_id}",
+      "method": "DELETE",
+      "operation_id": "delete_ontology_type_v1_ontology_schema_types__type_id__delete",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Delete Ontology Type",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types/{type_id}/properties",
+      "method": "POST",
+      "operation_id": "add_type_property_v1_ontology_schema_types__type_id__properties_post",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Add Type Property",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types/{type_id}/properties/{property_id}",
+      "method": "PUT",
+      "operation_id": "update_type_property_v1_ontology_schema_types__type_id__properties__property_id__put",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Update Type Property",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/types/{type_id}/properties/{property_id}",
+      "method": "DELETE",
+      "operation_id": "remove_type_property_v1_ontology_schema_types__type_id__properties__property_id__delete",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Remove Type Property",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/relationships",
+      "method": "GET",
+      "operation_id": "list_type_relationships_v1_ontology_schema_relationships_get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "List Type Relationships",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/relationships",
+      "method": "POST",
+      "operation_id": "create_type_relationship_v1_ontology_schema_relationships_post",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Create Type Relationship",
+      "has_hook": true,
+      "hook_name": "useOntologySchema",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/relationships/{relationship_id}",
+      "method": "DELETE",
+      "operation_id": "delete_type_relationship_v1_ontology_schema_relationships__relationship_id__delete",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Delete Type Relationship",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/versions",
+      "method": "GET",
+      "operation_id": "list_schema_versions_v1_ontology_schema_versions_get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "List Schema Versions",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/ontology/schema/versions/{version}",
+      "method": "GET",
+      "operation_id": "get_schema_version_v1_ontology_schema_versions__version__get",
+      "tags": [
+        "ontology"
+      ],
+      "summary": "Get Schema Version",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/audit/trace/{job_id}",
+      "method": "GET",
+      "operation_id": "get_provenance_v1_audit_trace__job_id__get",
+      "tags": [
+        "audit"
+      ],
+      "summary": "Get Provenance",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer2-extraction",
+      "path": "/v1/audit/entity/{entity_id}",
+      "method": "GET",
+      "operation_id": "get_entity_provenance_v1_audit_entity__entity_id__get",
+      "tags": [
+        "audit"
+      ],
+      "summary": "Get Entity Provenance",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/value-trees/{entity_id}",
+      "method": "GET",
+      "operation_id": "get_value_tree_v1_value_trees__entity_id__get",
+      "tags": [
+        "Value Trees"
+      ],
+      "summary": "Get Value Tree",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/value-trees/{entity_id}/paths",
+      "method": "GET",
+      "operation_id": "get_value_tree_paths_v1_value_trees__entity_id__paths_get",
+      "tags": [
+        "Value Trees"
+      ],
+      "summary": "Get Value Tree Paths",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/evaluate",
+      "method": "POST",
+      "operation_id": "evaluate_formula_v1_formulas_evaluate_post",
+      "tags": [
+        "Formulas"
+      ],
+      "summary": "Evaluate Formula",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/variables",
+      "method": "GET",
+      "operation_id": "get_variables_registry_v1_formulas_variables_get",
+      "tags": [
+        "Formulas"
+      ],
+      "summary": "Get Variables Registry",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas",
+      "method": "GET",
+      "operation_id": "list_formulas_v1_formulas_get",
+      "tags": [
+        "Formulas"
+      ],
+      "summary": "List Registered Formulas",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}",
+      "method": "GET",
+      "operation_id": "get_formula_v1_formulas__formula_id__get",
+      "tags": [
+        "Formulas"
+      ],
+      "summary": "Get Formula Details",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/scenario",
+      "method": "POST",
+      "operation_id": "calculate_scenario_v1_formulas_scenario_post",
+      "tags": [
+        "Formulas"
+      ],
+      "summary": "Calculate What-If Scenario",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/packs",
+      "method": "GET",
+      "operation_id": "list_packs_v1_packs_get",
+      "tags": [],
+      "summary": "List Packs",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/packs",
+      "method": "POST",
+      "operation_id": "create_pack_v1_packs_post",
+      "tags": [],
+      "summary": "Create Pack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/packs/{pack_id}",
+      "method": "GET",
+      "operation_id": "get_pack_v1_packs__pack_id__get",
+      "tags": [],
+      "summary": "Get Pack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/packs/{pack_id}",
+      "method": "PUT",
+      "operation_id": "update_pack_v1_packs__pack_id__put",
+      "tags": [],
+      "summary": "Update Pack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/packs/{pack_id}/execute",
+      "method": "POST",
+      "operation_id": "execute_pack_v1_packs__pack_id__execute_post",
+      "tags": [],
+      "summary": "Execute Pack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/packs/{pack_id}/fork",
+      "method": "POST",
+      "operation_id": "fork_pack_v1_packs__pack_id__fork_post",
+      "tags": [],
+      "summary": "Fork Pack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/packs/{pack_id}/apply",
+      "method": "POST",
+      "operation_id": "apply_pack_v1_packs__pack_id__apply_post",
+      "tags": [],
+      "summary": "Apply Pack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/approvals/pending",
+      "method": "GET",
+      "operation_id": "list_pending_approvals_v1_formulas_approvals_pending_get",
+      "tags": [],
+      "summary": "List Pending Approvals",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/versions",
+      "method": "GET",
+      "operation_id": "list_formula_versions_v1_formulas__formula_id__versions_get",
+      "tags": [],
+      "summary": "List Formula Versions",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/versions",
+      "method": "POST",
+      "operation_id": "create_formula_version_v1_formulas__formula_id__versions_post",
+      "tags": [],
+      "summary": "Create Formula Version",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/governance",
+      "method": "GET",
+      "operation_id": "get_formula_governance_v1_formulas__formula_id__governance_get",
+      "tags": [],
+      "summary": "Get Formula Governance",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/submit",
+      "method": "POST",
+      "operation_id": "submit_for_review_v1_formulas__formula_id__submit_post",
+      "tags": [],
+      "summary": "Submit For Review",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/approve",
+      "method": "POST",
+      "operation_id": "approve_formula_v1_formulas__formula_id__approve_post",
+      "tags": [],
+      "summary": "Approve Formula",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/activate",
+      "method": "POST",
+      "operation_id": "activate_formula_v1_formulas__formula_id__activate_post",
+      "tags": [],
+      "summary": "Activate Formula",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/deprecate",
+      "method": "POST",
+      "operation_id": "deprecate_formula_v1_formulas__formula_id__deprecate_post",
+      "tags": [],
+      "summary": "Deprecate Formula",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/dependencies",
+      "method": "GET",
+      "operation_id": "get_formula_dependencies_v1_formulas__formula_id__dependencies_get",
+      "tags": [],
+      "summary": "Get Formula Dependencies",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/formulas/{formula_id}/validate",
+      "method": "POST",
+      "operation_id": "validate_activation_v1_formulas__formula_id__validate_post",
+      "tags": [],
+      "summary": "Validate Activation",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables",
+      "method": "GET",
+      "operation_id": "search_variables_v1_variables_get",
+      "tags": [],
+      "summary": "Search Variables",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables",
+      "method": "POST",
+      "operation_id": "create_variable_v1_variables_post",
+      "tags": [],
+      "summary": "Create Variable",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables/{variable_id}",
+      "method": "GET",
+      "operation_id": "get_variable_v1_variables__variable_id__get",
+      "tags": [],
+      "summary": "Get Variable",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables/{variable_id}",
+      "method": "PUT",
+      "operation_id": "update_variable_v1_variables__variable_id__put",
+      "tags": [],
+      "summary": "Update Variable",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables/{variable_id}/resolve",
+      "method": "POST",
+      "operation_id": "resolve_variable_v1_variables__variable_id__resolve_post",
+      "tags": [],
+      "summary": "Resolve Variable",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables/{variable_id}/validate",
+      "method": "POST",
+      "operation_id": "validate_value_v1_variables__variable_id__validate_post",
+      "tags": [],
+      "summary": "Validate Value",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables/stats",
+      "method": "GET",
+      "operation_id": "get_variable_stats_v1_variables_stats_get",
+      "tags": [],
+      "summary": "Get Variable Stats",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/variables/bindings",
+      "method": "GET",
+      "operation_id": "list_source_bindings_v1_variables_bindings_get",
+      "tags": [],
+      "summary": "List Source Bindings",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/benchmarks",
+      "method": "GET",
+      "operation_id": "list_benchmarks_v1_benchmarks_get",
+      "tags": [],
+      "summary": "List Benchmarks",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/benchmarks/policies",
+      "method": "GET",
+      "operation_id": "list_benchmark_policies_v1_benchmarks_policies_get",
+      "tags": [],
+      "summary": "List Benchmark Policies",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/benchmarks/{benchmark_id}",
+      "method": "GET",
+      "operation_id": "get_benchmark_v1_benchmarks__benchmark_id__get",
+      "tags": [],
+      "summary": "Get Benchmark",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/benchmarks/policies/{policy_id}",
+      "method": "PUT",
+      "operation_id": "update_benchmark_policy_v1_benchmarks_policies__policy_id__put",
+      "tags": [],
+      "summary": "Update Benchmark Policy",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/models",
+      "method": "GET",
+      "operation_id": "list_models_v1_models_get",
+      "tags": [
+        "Models"
+      ],
+      "summary": "List Value Models",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/models",
+      "method": "POST",
+      "operation_id": "create_model_v1_models_post",
+      "tags": [
+        "Models"
+      ],
+      "summary": "Create Value Model",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/models/folders",
+      "method": "GET",
+      "operation_id": "get_model_folders_v1_models_folders_get",
+      "tags": [
+        "Models"
+      ],
+      "summary": "Get Model Folder Counts",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/models/{model_id}",
+      "method": "GET",
+      "operation_id": "get_model_detail_v1_models__model_id__get",
+      "tags": [
+        "Models"
+      ],
+      "summary": "Get Model Detail",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/models/{model_id}",
+      "method": "DELETE",
+      "operation_id": "delete_model_v1_models__model_id__delete",
+      "tags": [
+        "Models"
+      ],
+      "summary": "Delete Value Model",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/metrics",
+      "method": "GET",
+      "operation_id": "get_metrics_metrics_get",
+      "tags": [
+        "Monitoring"
+      ],
+      "summary": "Prometheus Metrics",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/health",
+      "method": "GET",
+      "operation_id": "health_check_health_get",
+      "tags": [
+        "Health"
+      ],
+      "summary": "Basic Health Check",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/health/detailed",
+      "method": "GET",
+      "operation_id": "detailed_health_check_health_detailed_get",
+      "tags": [
+        "Health"
+      ],
+      "summary": "Detailed Health Check",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/schema/status",
+      "method": "GET",
+      "operation_id": "get_schema_status_v1_schema_status_get",
+      "tags": [
+        "Schema"
+      ],
+      "summary": "Get Schema Status",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/schema/init",
+      "method": "POST",
+      "operation_id": "init_schema_v1_schema_init_post",
+      "tags": [],
+      "summary": "Init Schema",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/schema/statistics",
+      "method": "GET",
+      "operation_id": "get_schema_statistics_v1_schema_statistics_get",
+      "tags": [],
+      "summary": "Get Schema Statistics",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/ingest",
+      "method": "POST",
+      "operation_id": "ingest_rdf_v1_ingest_post",
+      "tags": [],
+      "summary": "Ingest Rdf",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/ingest/status/{source_id}",
+      "method": "GET",
+      "operation_id": "get_sync_status_v1_ingest_status__source_id__get",
+      "tags": [],
+      "summary": "Get Sync Status",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/ingest/{source_id}/status",
+      "method": "GET",
+      "operation_id": "get_sync_status_alias_v1_ingest__source_id__status_get",
+      "tags": [],
+      "summary": "Get Sync Status Alias",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/ingest/{source_id}",
+      "method": "DELETE",
+      "operation_id": "delete_source_v1_ingest__source_id__delete",
+      "tags": [],
+      "summary": "Delete Source",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/graphrag",
+      "method": "POST",
+      "operation_id": "graph_rag_legacy_alias_v1_graphrag_post",
+      "tags": [],
+      "summary": "Graph Rag Legacy Alias",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/query",
+      "method": "POST",
+      "operation_id": "graph_rag_query_v1_query_post",
+      "tags": [],
+      "summary": "Graph Rag Query",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/query/graph",
+      "method": "POST",
+      "operation_id": "graph_rag_query_v1_query_graph_post",
+      "tags": [],
+      "summary": "Graph Rag Query",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/query/graph/stream",
+      "method": "POST",
+      "operation_id": "graph_rag_query_stream_v1_query_graph_stream_post",
+      "tags": [],
+      "summary": "Graph Rag Query Stream",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/search",
+      "method": "POST",
+      "operation_id": "hybrid_search_v1_search_post",
+      "tags": [],
+      "summary": "Hybrid Search",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/search/hybrid",
+      "method": "POST",
+      "operation_id": "hybrid_search_v1_search_hybrid_post",
+      "tags": [],
+      "summary": "Deprecated: Use GET /v1/entities for entity listing",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/entity/{entity_id}/context",
+      "method": "GET",
+      "operation_id": "get_entity_context_v1_entity__entity_id__context_get",
+      "tags": [],
+      "summary": "Get Entity Context",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/entity/traverse",
+      "method": "POST",
+      "operation_id": "traverse_value_tree_v1_entity_traverse_post",
+      "tags": [],
+      "summary": "Traverse Value Tree",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/entities",
+      "method": "GET",
+      "operation_id": "list_entities_v1_entities_get",
+      "tags": [],
+      "summary": "List Entities",
+      "has_hook": true,
+      "hook_name": "useEntities",
+      "has_component_surface": true,
+      "component": null,
+      "status": "CONNECTED"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/entities/{{entity_id}}",
+      "method": "GET",
+      "operation_id": "get_entity_detail_v1_entities___entity_id___get",
+      "tags": [],
+      "summary": "Get Entity Detail",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/entities/query",
+      "method": "POST",
+      "operation_id": "query_entities_v1_entities_query_post",
+      "tags": [],
+      "summary": "Query Entities",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/analytics/communities",
+      "method": "POST",
+      "operation_id": "detect_communities_v1_analytics_communities_post",
+      "tags": [],
+      "summary": "Detect Communities",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/analytics/centrality",
+      "method": "POST",
+      "operation_id": "calculate_centrality_v1_analytics_centrality_post",
+      "tags": [],
+      "summary": "Calculate Centrality",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/analytics/similar",
+      "method": "POST",
+      "operation_id": "find_similar_entities_v1_analytics_similar_post",
+      "tags": [],
+      "summary": "Find Similar Entities",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/analytics/compare",
+      "method": "POST",
+      "operation_id": "compare_entities_v1_analytics_compare_post",
+      "tags": [],
+      "summary": "Compare Entities",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/batch/entities",
+      "method": "POST",
+      "operation_id": "batch_entity_operations_v1_batch_entities_post",
+      "tags": [],
+      "summary": "Batch Entity Operations",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/batch/analytics",
+      "method": "POST",
+      "operation_id": "batch_analytics_v1_batch_analytics_post",
+      "tags": [],
+      "summary": "Batch Analytics",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/agents/value-tree-projection",
+      "method": "POST",
+      "operation_id": "value_tree_projection_v1_agents_value_tree_projection_post",
+      "tags": [],
+      "summary": "Value Tree Projection",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/agents/whitespace-analysis",
+      "method": "POST",
+      "operation_id": "whitespace_analysis_v1_agents_whitespace_analysis_post",
+      "tags": [],
+      "summary": "Whitespace Analysis",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/agents/roi-calculation",
+      "method": "POST",
+      "operation_id": "roi_calculation_v1_agents_roi_calculation_post",
+      "tags": [],
+      "summary": "Roi Calculation",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/agents/narrative-synthesis",
+      "method": "POST",
+      "operation_id": "narrative_synthesis_v1_agents_narrative_synthesis_post",
+      "tags": [],
+      "summary": "Narrative Synthesis",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/agents/provenance-tracking",
+      "method": "POST",
+      "operation_id": "provenance_tracking_v1_agents_provenance_tracking_post",
+      "tags": [],
+      "summary": "Provenance Tracking",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/agents/workflow",
+      "method": "POST",
+      "operation_id": "agent_workflow_v1_agents_workflow_post",
+      "tags": [],
+      "summary": "Agent Workflow",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/provenance/{entity_id}",
+      "method": "GET",
+      "operation_id": "get_provenance_v1_provenance__entity_id__get",
+      "tags": [
+        "Provenance"
+      ],
+      "summary": "Get Entity Provenance Trail",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/audit/logs",
+      "method": "GET",
+      "operation_id": "list_audit_logs_v1_audit_logs_get",
+      "tags": [
+        "Audit"
+      ],
+      "summary": "List Audit Logs",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/documents/export",
+      "method": "POST",
+      "operation_id": "export_document_v1_documents_export_post",
+      "tags": [
+        "Documents"
+      ],
+      "summary": "Export Document",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/graph",
+      "method": "GET",
+      "operation_id": "get_full_graph_graph_get",
+      "tags": [
+        "Graph"
+      ],
+      "summary": "Get Full Graph",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/entities/{entity_id}/subgraph",
+      "method": "GET",
+      "operation_id": "get_entity_subgraph_entities__entity_id__subgraph_get",
+      "tags": [
+        "Graph"
+      ],
+      "summary": "Get Entity Subgraph",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/graph/subgraph",
+      "method": "GET",
+      "operation_id": "get_query_subgraph_v1_graph_subgraph_get",
+      "tags": [
+        "Graph"
+      ],
+      "summary": "Get Query-Based Subgraph",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks",
+      "method": "GET",
+      "operation_id": "list_valuepacks",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "List ValuePacks",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks",
+      "method": "POST",
+      "operation_id": "create_valuepack",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Create ValuePack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks/{industry_id}",
+      "method": "GET",
+      "operation_id": "get_valuepack",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Get ValuePack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks/{industry_id}",
+      "method": "PUT",
+      "operation_id": "update_valuepack",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Update ValuePack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks/{industry_id}",
+      "method": "DELETE",
+      "operation_id": "delete_valuepack",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Delete ValuePack",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks/ontology-map",
+      "method": "GET",
+      "operation_id": "get_ontology_map",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Get Ontology Map",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks/composable-templates",
+      "method": "GET",
+      "operation_id": "get_composable_templates",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Get Composable Templates",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks/compare",
+      "method": "POST",
+      "operation_id": "compare_valuepacks",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Compare ValuePacks",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer3-knowledge",
+      "path": "/v1/valuepacks/{industry_id}/seed",
+      "method": "POST",
+      "operation_id": "seed_valuepack_data",
+      "tags": [
+        "ValuePacks"
+      ],
+      "summary": "Seed ValuePack Data",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows",
+      "method": "POST",
+      "operation_id": "create_workflow_v1_workflows_post",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "Create Workflow",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}",
+      "method": "GET",
+      "operation_id": "get_workflow_status_v1_workflows__workflow_id__get",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "Get Workflow Status",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}",
+      "method": "DELETE",
+      "operation_id": "cancel_workflow_v1_workflows__workflow_id__delete",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "Cancel Workflow",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/result",
+      "method": "GET",
+      "operation_id": "get_workflow_result_v1_workflows__workflow_id__result_get",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "Get Workflow Result",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/resume",
+      "method": "POST",
+      "operation_id": "resume_workflow_v1_workflows__workflow_id__resume_post",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "Resume Workflow",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/pause",
+      "method": "POST",
+      "operation_id": "pause_workflow_v1_workflows__workflow_id__pause_post",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "Pause Workflow",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/types",
+      "method": "GET",
+      "operation_id": "list_available_workflows_v1_workflows_types_get",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "List Available Workflows",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/active",
+      "method": "GET",
+      "operation_id": "list_active_workflows_v1_workflows_active_get",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "List Active Workflows",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/events",
+      "method": "GET",
+      "operation_id": "get_workflow_events_v1_workflows__workflow_id__events_get",
+      "tags": [
+        "workflows"
+      ],
+      "summary": "Get Workflow Events",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tools",
+      "method": "GET",
+      "operation_id": "list_tools_v1_tools_get",
+      "tags": [
+        "tools"
+      ],
+      "summary": "List Tools",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tools/{tool_name}",
+      "method": "GET",
+      "operation_id": "get_tool_schema_v1_tools__tool_name__get",
+      "tags": [
+        "tools"
+      ],
+      "summary": "Get Tool Schema",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tools/invoke",
+      "method": "POST",
+      "operation_id": "invoke_tool_v1_tools_invoke_post",
+      "tags": [
+        "tools"
+      ],
+      "summary": "Invoke Tool",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tools/export-document",
+      "method": "POST",
+      "operation_id": "export_document_tool_v1_tools_export_document_post",
+      "tags": [
+        "tools"
+      ],
+      "summary": "Export Document Tool",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tools/categories",
+      "method": "GET",
+      "operation_id": "list_tool_categories_v1_tools_categories_get",
+      "tags": [
+        "tools"
+      ],
+      "summary": "List Tool Categories",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/analysis/roi",
+      "method": "POST",
+      "operation_id": "quick_roi_analysis_v1_analysis_roi_post",
+      "tags": [
+        "analysis"
+      ],
+      "summary": "Quick Roi Analysis",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/analysis/whitespace",
+      "method": "POST",
+      "operation_id": "quick_whitespace_analysis_v1_analysis_whitespace_post",
+      "tags": [
+        "analysis"
+      ],
+      "summary": "Quick Whitespace Analysis",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/cases",
+      "method": "POST",
+      "operation_id": "generate_business_case_v1_cases_post",
+      "tags": [
+        "analysis"
+      ],
+      "summary": "Generate Business Case",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/cases/{case_id}",
+      "method": "GET",
+      "operation_id": "get_business_case_v1_cases__case_id__get",
+      "tags": [
+        "analysis"
+      ],
+      "summary": "Get Business Case",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/cases/{case_id}/export",
+      "method": "GET",
+      "operation_id": "export_business_case_v1_cases__case_id__export_get",
+      "tags": [
+        "analysis"
+      ],
+      "summary": "Export Business Case",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts",
+      "method": "GET",
+      "operation_id": "list_accounts_v1_accounts_get",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "List Accounts",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts/search",
+      "method": "POST",
+      "operation_id": "search_accounts_v1_accounts_search_post",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "Search Accounts",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts/filters",
+      "method": "GET",
+      "operation_id": "get_filter_options_v1_accounts_filters_get",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "Get Filter Options",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts/sync-status",
+      "method": "GET",
+      "operation_id": "get_sync_status_all_v1_accounts_sync_status_get",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "Get Sync Status All",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts/sync",
+      "method": "POST",
+      "operation_id": "sync_accounts_v1_accounts_sync_post",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "Sync Accounts",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts/{account_id}",
+      "method": "GET",
+      "operation_id": "get_account_v1_accounts__account_id__get",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "Get Account",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts/{account_id}/activity",
+      "method": "GET",
+      "operation_id": "get_account_activity_v1_accounts__account_id__activity_get",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "Get Account Activity",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/accounts/{account_id}/refresh",
+      "method": "POST",
+      "operation_id": "refresh_account_v1_accounts__account_id__refresh_post",
+      "tags": [
+        "Accounts",
+        "Accounts"
+      ],
+      "summary": "Refresh Account",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/webhooks/crm/salesforce",
+      "method": "POST",
+      "operation_id": "salesforce_webhook_v1_webhooks_crm_salesforce_post",
+      "tags": [
+        "CRM Webhooks"
+      ],
+      "summary": "Salesforce Webhook",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/webhooks/crm/hubspot",
+      "method": "POST",
+      "operation_id": "hubspot_webhook_v1_webhooks_crm_hubspot_post",
+      "tags": [
+        "CRM Webhooks"
+      ],
+      "summary": "Hubspot Webhook",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/webhooks/crm/health",
+      "method": "GET",
+      "operation_id": "webhook_health_v1_webhooks_crm_health_get",
+      "tags": [
+        "CRM Webhooks"
+      ],
+      "summary": "Webhook Health",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/checkpoints",
+      "method": "GET",
+      "operation_id": "list_checkpoints_v1_workflows__workflow_id__checkpoints_get",
+      "tags": [
+        "checkpoints",
+        "checkpoints"
+      ],
+      "summary": "List Checkpoints",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/checkpoints/{checkpoint_id}/state",
+      "method": "GET",
+      "operation_id": "get_checkpoint_state_v1_workflows__workflow_id__checkpoints__checkpoint_id__state_get",
+      "tags": [
+        "checkpoints",
+        "checkpoints"
+      ],
+      "summary": "Get Checkpoint State",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/checkpoints/diff",
+      "method": "POST",
+      "operation_id": "compare_checkpoints_v1_workflows__workflow_id__checkpoints_diff_post",
+      "tags": [
+        "checkpoints",
+        "checkpoints"
+      ],
+      "summary": "Compare Checkpoints",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/resume-from-checkpoint",
+      "method": "POST",
+      "operation_id": "resume_from_checkpoint_v1_workflows__workflow_id__resume_from_checkpoint_post",
+      "tags": [
+        "checkpoints",
+        "checkpoints"
+      ],
+      "summary": "Resume From Checkpoint",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/state/schema",
+      "method": "GET",
+      "operation_id": "get_state_schema_v1_workflows__workflow_id__state_schema_get",
+      "tags": [
+        "state-inspector",
+        "state-inspector"
+      ],
+      "summary": "Get State Schema",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/state/values",
+      "method": "GET",
+      "operation_id": "get_state_values_v1_workflows__workflow_id__state_values_get",
+      "tags": [
+        "state-inspector",
+        "state-inspector"
+      ],
+      "summary": "Get State Values",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/state/outputs",
+      "method": "GET",
+      "operation_id": "inspect_output_data_v1_workflows__workflow_id__state_outputs_get",
+      "tags": [
+        "state-inspector",
+        "state-inspector"
+      ],
+      "summary": "Inspect Output Data",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/state/errors",
+      "method": "GET",
+      "operation_id": "analyze_errors_v1_workflows__workflow_id__state_errors_get",
+      "tags": [
+        "state-inspector",
+        "state-inspector"
+      ],
+      "summary": "Analyze Errors",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/state/performance",
+      "method": "GET",
+      "operation_id": "get_performance_metrics_v1_workflows__workflow_id__state_performance_get",
+      "tags": [
+        "state-inspector",
+        "state-inspector"
+      ],
+      "summary": "Get Performance Metrics",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/workflows/{workflow_id}/state/history",
+      "method": "GET",
+      "operation_id": "get_state_history_v1_workflows__workflow_id__state_history_get",
+      "tags": [
+        "state-inspector",
+        "state-inspector"
+      ],
+      "summary": "Get State History",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/health/detailed",
+      "method": "GET",
+      "operation_id": "get_detailed_health_v1_health_detailed_get",
+      "tags": [
+        "health",
+        "health"
+      ],
+      "summary": "Get Detailed Health",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/health/badges",
+      "method": "GET",
+      "operation_id": "get_active_badges_v1_health_badges_get",
+      "tags": [
+        "health",
+        "health"
+      ],
+      "summary": "Get Active Badges",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/health/websocket",
+      "method": "GET",
+      "operation_id": "get_websocket_status_v1_health_websocket_get",
+      "tags": [
+        "health",
+        "health"
+      ],
+      "summary": "Get Websocket Status",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/health/badges/dismiss",
+      "method": "POST",
+      "operation_id": "dismiss_badge_v1_health_badges_dismiss_post",
+      "tags": [
+        "health",
+        "health"
+      ],
+      "summary": "Dismiss Badge",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/health/report-connection-quality",
+      "method": "POST",
+      "operation_id": "report_connection_quality_v1_health_report_connection_quality_post",
+      "tags": [
+        "health",
+        "health"
+      ],
+      "summary": "Report Connection Quality",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/health/components/{component_name}",
+      "method": "GET",
+      "operation_id": "get_component_health_v1_health_components__component_name__get",
+      "tags": [
+        "health",
+        "health"
+      ],
+      "summary": "Get Component Health",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/integrations",
+      "method": "GET",
+      "operation_id": "list_integrations_v1_integrations_get",
+      "tags": [
+        "Integrations"
+      ],
+      "summary": "List Integrations",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/integrations/{provider}",
+      "method": "GET",
+      "operation_id": "get_integration_v1_integrations__provider__get",
+      "tags": [
+        "Integrations"
+      ],
+      "summary": "Get Integration",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/integrations/{provider}",
+      "method": "POST",
+      "operation_id": "create_or_update_integration_v1_integrations__provider__post",
+      "tags": [
+        "Integrations"
+      ],
+      "summary": "Create Or Update Integration",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/integrations/{provider}",
+      "method": "DELETE",
+      "operation_id": "delete_integration_v1_integrations__provider__delete",
+      "tags": [
+        "Integrations"
+      ],
+      "summary": "Delete Integration",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/integrations/{provider}/test",
+      "method": "POST",
+      "operation_id": "test_integration_connection_v1_integrations__provider__test_post",
+      "tags": [
+        "Integrations"
+      ],
+      "summary": "Test Integration Connection",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/integrations/{provider}/sync",
+      "method": "POST",
+      "operation_id": "trigger_sync_v1_integrations__provider__sync_post",
+      "tags": [
+        "Integrations"
+      ],
+      "summary": "Trigger Sync",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tenants",
+      "method": "POST",
+      "operation_id": "api_create_tenant_v1_tenants_post",
+      "tags": [
+        "Tenants"
+      ],
+      "summary": "Api Create Tenant",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tenants",
+      "method": "GET",
+      "operation_id": "api_list_tenants_v1_tenants_get",
+      "tags": [
+        "Tenants"
+      ],
+      "summary": "Api List Tenants",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tenants/{tenant_id}",
+      "method": "GET",
+      "operation_id": "api_get_tenant_v1_tenants__tenant_id__get",
+      "tags": [
+        "Tenants"
+      ],
+      "summary": "Api Get Tenant",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tenants/{tenant_id}",
+      "method": "PATCH",
+      "operation_id": "api_update_tenant_v1_tenants__tenant_id__patch",
+      "tags": [
+        "Tenants"
+      ],
+      "summary": "Api Update Tenant",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/tenants/{tenant_id}",
+      "method": "DELETE",
+      "operation_id": "api_delete_tenant_v1_tenants__tenant_id__delete",
+      "tags": [
+        "Tenants"
+      ],
+      "summary": "Api Delete Tenant",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/users/invite",
+      "method": "POST",
+      "operation_id": "api_invite_user_v1_users_invite_post",
+      "tags": [
+        "Users"
+      ],
+      "summary": "Api Invite User",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/users",
+      "method": "GET",
+      "operation_id": "api_list_users_v1_users_get",
+      "tags": [
+        "Users"
+      ],
+      "summary": "Api List Users",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/users/{user_id}",
+      "method": "GET",
+      "operation_id": "api_get_user_v1_users__user_id__get",
+      "tags": [
+        "Users"
+      ],
+      "summary": "Api Get User",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/users/{user_id}",
+      "method": "PATCH",
+      "operation_id": "api_update_user_v1_users__user_id__patch",
+      "tags": [
+        "Users"
+      ],
+      "summary": "Api Update User",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/users/{user_id}",
+      "method": "DELETE",
+      "operation_id": "api_deactivate_user_v1_users__user_id__delete",
+      "tags": [
+        "Users"
+      ],
+      "summary": "Api Deactivate User",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/api-keys",
+      "method": "POST",
+      "operation_id": "api_create_key_v1_api_keys_post",
+      "tags": [
+        "API Keys"
+      ],
+      "summary": "Api Create Key",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/api-keys",
+      "method": "GET",
+      "operation_id": "api_list_keys_v1_api_keys_get",
+      "tags": [
+        "API Keys"
+      ],
+      "summary": "Api List Keys",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/api-keys/{key_id}",
+      "method": "DELETE",
+      "operation_id": "api_revoke_key_v1_api_keys__key_id__delete",
+      "tags": [
+        "API Keys"
+      ],
+      "summary": "Api Revoke Key",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/auth/oidc/{tenant_slug}/login",
+      "method": "GET",
+      "operation_id": "oidc_login_auth_oidc__tenant_slug__login_get",
+      "tags": [
+        "OIDC SSO"
+      ],
+      "summary": "Oidc Login",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/auth/oidc/callback",
+      "method": "GET",
+      "operation_id": "oidc_callback_auth_oidc_callback_get",
+      "tags": [
+        "OIDC SSO"
+      ],
+      "summary": "Oidc Callback",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/auth/oidc/{tenant_slug}/metadata",
+      "method": "GET",
+      "operation_id": "oidc_metadata_auth_oidc__tenant_slug__metadata_get",
+      "tags": [
+        "OIDC SSO"
+      ],
+      "summary": "Oidc Metadata",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/models",
+      "method": "POST",
+      "operation_id": "api_register_model_v1_models_post",
+      "tags": [
+        "Model Registry"
+      ],
+      "summary": "Api Register Model",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/models",
+      "method": "GET",
+      "operation_id": "api_list_models_v1_models_get",
+      "tags": [
+        "Model Registry"
+      ],
+      "summary": "Api List Models",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/models/{model_id}",
+      "method": "GET",
+      "operation_id": "api_get_model_v1_models__model_id__get",
+      "tags": [
+        "Model Registry"
+      ],
+      "summary": "Api Get Model",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/models/{model_id}/promote",
+      "method": "POST",
+      "operation_id": "api_promote_model_v1_models__model_id__promote_post",
+      "tags": [
+        "Model Registry"
+      ],
+      "summary": "Api Promote Model",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/models/{model_id}/history",
+      "method": "GET",
+      "operation_id": "api_get_promotion_history_v1_models__model_id__history_get",
+      "tags": [
+        "Model Registry"
+      ],
+      "summary": "Api Get Promotion History",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/models/active",
+      "method": "GET",
+      "operation_id": "api_get_active_model_v1_models_active_get",
+      "tags": [
+        "Model Registry"
+      ],
+      "summary": "Api Get Active Model",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/models/eval-run",
+      "method": "POST",
+      "operation_id": "api_record_eval_run_v1_models_eval_run_post",
+      "tags": [
+        "Model Registry"
+      ],
+      "summary": "Api Record Eval Run",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/feature-flags",
+      "method": "GET",
+      "operation_id": "list_feature_flags_v1_feature_flags_get",
+      "tags": [
+        "Feature Flags"
+      ],
+      "summary": "List Feature Flags",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/feature-flags/{flag_key}",
+      "method": "GET",
+      "operation_id": "get_feature_flag_v1_feature_flags__flag_key__get",
+      "tags": [
+        "Feature Flags"
+      ],
+      "summary": "Get Feature Flag",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/feature-flags/{flag_key}",
+      "method": "PUT",
+      "operation_id": "upsert_feature_flag_v1_feature_flags__flag_key__put",
+      "tags": [
+        "Feature Flags"
+      ],
+      "summary": "Upsert Feature Flag",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/feature-flags/{flag_key}",
+      "method": "DELETE",
+      "operation_id": "delete_feature_flag_v1_feature_flags__flag_key__delete",
+      "tags": [
+        "Feature Flags"
+      ],
+      "summary": "Delete Feature Flag",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/feature-flags/{flag_key}/evaluate",
+      "method": "GET",
+      "operation_id": "evaluate_feature_flag_v1_feature_flags__flag_key__evaluate_get",
+      "tags": [
+        "Feature Flags"
+      ],
+      "summary": "Evaluate Feature Flag",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/v1/c1/stream",
+      "method": "POST",
+      "operation_id": "stream_c1_v1_c1_stream_post",
+      "tags": [
+        "c1"
+      ],
+      "summary": "Stream C1",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/health",
+      "method": "GET",
+      "operation_id": "health_check_health_get",
+      "tags": [],
+      "summary": "Health Check",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/metrics",
+      "method": "GET",
+      "operation_id": "metrics_endpoint_metrics_get",
+      "tags": [],
+      "summary": "Metrics Endpoint",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer4-agents",
+      "path": "/",
+      "method": "GET",
+      "operation_id": "root__get",
+      "tags": [],
+      "summary": "Root",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths",
+      "method": "POST",
+      "operation_id": "create_truth_api_v1_truths_post",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Create a new TruthObject",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths",
+      "method": "GET",
+      "operation_id": "list_truths_api_v1_truths_get",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "List TruthObjects",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/{truth_id}",
+      "method": "GET",
+      "operation_id": "get_truth_api_v1_truths__truth_id__get",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Get a TruthObject",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/{truth_id}",
+      "method": "DELETE",
+      "operation_id": "delete_truth_api_v1_truths__truth_id__delete",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Soft-delete a TruthObject",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/{truth_id}/validate",
+      "method": "POST",
+      "operation_id": "validate_truth_api_v1_truths__truth_id__validate_post",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Apply a validation state transition",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/{truth_id}/sources",
+      "method": "POST",
+      "operation_id": "add_truth_source_api_v1_truths__truth_id__sources_post",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Add an evidence source",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/{truth_id}/audit",
+      "method": "GET",
+      "operation_id": "get_audit_trail_api_v1_truths__truth_id__audit_get",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Get validation audit trail",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/sync-kg",
+      "method": "POST",
+      "operation_id": "sync_to_kg_api_v1_truths_sync_kg_post",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Sync approved TruthObjects to Layer 3 Knowledge Graph",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/maturity-ladder",
+      "method": "GET",
+      "operation_id": "get_maturity_ladder_api_v1_maturity_ladder_get",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Get maturity ladder definition",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/check-stale",
+      "method": "POST",
+      "operation_id": "check_stale_api_v1_truths_check_stale_post",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Trigger freshness check for stale truths",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/stale",
+      "method": "GET",
+      "operation_id": "list_stale_api_v1_truths_stale_get",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "List stale TruthObjects",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/truths/freshness-summary",
+      "method": "GET",
+      "operation_id": "freshness_summary_api_v1_truths_freshness_summary_get",
+      "tags": [
+        "ground-truth"
+      ],
+      "summary": "Get freshness status summary",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "layer5-ground-truth",
+      "path": "/api/v1/health",
+      "method": "GET",
+      "operation_id": "health_check_api_v1_health_get",
+      "tags": [
+        "ground-truth",
+        "system"
+      ],
+      "summary": "Health check",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "signals",
+      "path": "/v1/prospects/setup",
+      "method": "POST",
+      "operation_id": "create_prospect_setup",
+      "tags": [],
+      "summary": "Submit prospect setup and trigger signal detection",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "signals",
+      "path": "/v1/accounts/{account_id}/signals",
+      "method": "GET",
+      "operation_id": "get_account_signals",
+      "tags": [],
+      "summary": "Get signals for an account",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    },
+    {
+      "layer": "signals",
+      "path": "/v1/signals/stream/{prospect_id}",
+      "method": "GET",
+      "operation_id": "signal_stream_websocket",
+      "tags": [],
+      "summary": "WebSocket endpoint for real-time signal streaming",
+      "has_hook": false,
+      "hook_name": null,
+      "has_component_surface": false,
+      "component": null,
+      "status": "ORPHAN"
+    }
+  ]
+}

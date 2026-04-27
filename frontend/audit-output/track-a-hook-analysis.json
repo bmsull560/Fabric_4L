@@ -1,0 +1,685 @@
+{
+  "summary": {
+    "total_hooks": 44,
+    "by_color": {
+      "unknown": 11,
+      "green": 26,
+      "yellow": 5,
+      "red": 2
+    },
+    "green_live": 26,
+    "yellow_generic": 5,
+    "red_mock": 2,
+    "unknown": 11
+  },
+  "hooks": [
+    {
+      "name": "usePrefersReducedMotion",
+      "file": "useAccessibility.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useAccounts",
+      "file": "useAccounts.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "POST l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "getDefaultSuggestedActions",
+      "file": "useAgentStream.ts",
+      "imports": [],
+      "api_endpoints": [
+        "POST l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "STALE_TIME",
+      "file": "useApiShared.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useAuth",
+      "file": "useAuth.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useBenchmarks",
+      "file": "useBenchmarks.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l6",
+        "PUT l3",
+        "GET l3"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "billingKeys",
+      "file": "useBilling.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "POST l4"
+      ],
+      "query_keys": [
+        "billingKeys.subscription(customerId)",
+        "billingKeys.entitlements(customerId)",
+        "billingKeys.feature(customerId"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useBusinessCase",
+      "file": "useBusinessCases.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "POST l4"
+      ],
+      "query_keys": [
+        "QK.businessCases.detail(caseId",
+        "QK.businessCases.list(filters)"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useC1Stream",
+      "file": "useC1Stream.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useComposition",
+      "file": "useComposition.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useDocumentExport",
+      "file": "useDocuments.ts",
+      "imports": [],
+      "api_endpoints": [
+        "POST l3",
+        "GET l4"
+      ],
+      "query_keys": [
+        "QK.documents.businessCase(businessCaseId"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useEntities",
+      "file": "useEntities.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET /v1/entities?search_text={query}\n */\nexport function useEntitySearch(query: string) {\n  return useQuery({\n    queryKey: QK.entities.search(query),\n    queryFn: async (): Promise<EntityListResponse> => {\n      const params = new URLSearchParams({\n        search_text: query.trim(),\n        limit: ",
+        "GET /v1/entities\n *\n * This uses the high-quality contract endpoint with explicit domain, status,\n * and confidence_label fields - no UI inference needed.\n */\nexport function useEntities(filters?: EntityFilters) {\n  return useQuery({\n    queryKey: QK.entities.list(),\n    queryFn: async (): Promise<EntityListResponse> => {\n      // Build query params from filters\n      const params = new URLSearchParams();\n      if (filters?.searchText) params.append(",
+        "GET /v1/entities/{entity_id}\n *\n * Returns the canonical EntityDetail shape with all fields from EntitySummary\n * plus extended data: relationships, provenance, validation state.\n *\n * @param id - Entity ID to fetch\n * @returns Query result with full entity details\n *\n * @example\n * const { data, isLoading } = useEntity(",
+        "GET l3"
+      ],
+      "query_keys": [
+        "QK.entities.list()",
+        "QK.entities.search(query)",
+        "['entityFilterOptions']"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useExtractionJob",
+      "file": "useExtraction.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l2"
+      ],
+      "query_keys": [
+        "QK.extraction.job(jobId"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useExtractionConfig",
+      "file": "useExtractionConfig.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useExtractionResults",
+      "file": "useExtractionResults.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l2",
+        "GET /v1/extract/status/${jobId}`);\n      return mapExtractionResult(response.data);\n    },\n    enabled: !!jobId,\n    staleTime: STALE_TIME.poll,\n    refetchInterval: (query) => {\n      const data = query.state.data;\n      // Stop polling if job is complete or failed\n      if (data?.status === ",
+        "GET /v1/extract/${jobId}/entities`)\n      const entityTypes = [",
+        "GET /v1/extract/{job_id}/entities endpoint\n      // When implemented, replace with: apiClient.get("
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useFormulaDependents",
+      "file": "useFormulaDependents.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "yellow"
+    },
+    {
+      "name": "useFormulas",
+      "file": "useFormulas.ts",
+      "imports": [],
+      "api_endpoints": [
+        "DELETE l3",
+        "POST l3",
+        "PATCH l3",
+        "GET l3"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useFormulaVersions",
+      "file": "useFormulaVersions.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "yellow"
+    },
+    {
+      "name": "useTenants",
+      "file": "useGovernance.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "POST l4",
+        "DELETE l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useGraphCanvas",
+      "file": "useGraphCanvas.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useGraphData",
+      "file": "useGraphData.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useGraphQuery",
+      "file": "useGraphQuery.ts",
+      "imports": [],
+      "api_endpoints": [
+        "POST l3",
+        "GET l3"
+      ],
+      "query_keys": [
+        "QK.graph.context(entityId",
+        "QK.graph.subgraph(query"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useSystemHealth",
+      "file": "useHealthMonitor.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useIngestionJobs",
+      "file": "useIngestion.ts",
+      "imports": [],
+      "api_endpoints": [
+        "DELETE l1",
+        "GET l1",
+        "POST l1"
+      ],
+      "query_keys": [
+        "QK.ingestion.jobs()",
+        "QK.ingestion.recent()",
+        "QK.ingestion.stats()"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useIntegrations",
+      "file": "useIntegrations.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "POST l4",
+        "DELETE l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "invoiceKeys",
+      "file": "useInvoices.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [
+        "invoiceKeys.list(customerId)",
+        "invoiceKeys.detail(customerId",
+        "invoiceKeys.charges(customerId)"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "yellow"
+    },
+    {
+      "name": "useJobStream",
+      "file": "useJobStream.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l2"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useModels",
+      "file": "useModels.ts",
+      "imports": [],
+      "api_endpoints": [
+        "DELETE l3",
+        "POST l3",
+        "GET l3"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useIndustries",
+      "file": "useNarrativeGeneration.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l6",
+        "POST l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useOntologySchema",
+      "file": "useOntology.ts",
+      "imports": [],
+      "api_endpoints": [
+        "DELETE /v1/ontology/schema/types/${validatedId}`);\n    },\n    onSuccess: () => {\n      queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });\n    },\n    onError: (error, typeId) => {\n      logError(",
+        "GET /v1/ontology/schema/types/${validatedTypeId}`);\n        \n        // MANDATE 2: Runtime validation instead of blind trust\n        const result = OntologyTypeSchema.safeParse(response.data);\n        if (!result.success) {\n          logError(",
+        "POST /v1/ontology/schema/relationships",
+        "POST /v1/ontology/schema/validate",
+        "DELETE /v1/ontology/schema/relationships/${result.data}`);\n    },\n    onSuccess: () => {\n      queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });\n    },\n    onError: (error, relationshipId) => {\n      logError(",
+        "GET /v1/ontology/schema",
+        "POST /v1/ontology/schema/types",
+        "POST /v1/ontology/schema/publish",
+        "PUT /v1/ontology/schema/types/${validatedTypeId}/properties/${validatedPropertyId}`, \n        property\n      );\n      \n      // MANDATE 2: Runtime validation of response\n      const result = OntologyPropertySchema.safeParse(response.data);\n      if (!result.success) {\n        // If server doesn",
+        "PUT /v1/ontology/schema/types/${validatedId}`, {\n        name: updatedType.name,\n        description: updatedType.description,\n      });\n      \n      // MANDATE 2: Runtime validation\n      const result = OntologyTypeSchema.safeParse(response.data);\n      if (!result.success) {\n        logError(",
+        "POST /v1/ontology/schema/types/${validatedTypeId}/properties`, property);\n      \n      // MANDATE 2: Runtime type validation instead of `as` assertion\n      const updatedTypeResult = OntologyTypeSchema.safeParse(response.data);\n      if (!updatedTypeResult.success) {\n        logError(",
+        "DELETE /v1/ontology/schema/types/${validatedTypeId}/properties/${validatedPropertyId}`\n      );\n    },\n    onSuccess: (_, variables) => {\n      queryClient.invalidateQueries({ queryKey: QK.ontology.type(variables.typeId) });\n      queryClient.invalidateQueries({ queryKey: QK.ontology.schema() });\n    },\n    onError: (error, variables) => {\n      logError(",
+        "POST /v1/ontology/schema/import"
+      ],
+      "query_keys": [
+        "QK.ontology.schema()"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useOpportunities",
+      "file": "useOpportunities.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": true,
+      "data_source_color": "red"
+    },
+    {
+      "name": "usePersistFn",
+      "file": "usePersistFn.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "usePlatformSettings",
+      "file": "usePlatformSettings.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "PATCH l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "POLL_INTERVALS",
+      "file": "usePolling.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "useProvenanceTrail",
+      "file": "useProvenance.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l3"
+      ],
+      "query_keys": [
+        "QK.provenance.trail(entityId",
+        "QK.provenance.audit(filters)"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useRunExtraction",
+      "file": "useRunExtraction.ts",
+      "imports": [],
+      "api_endpoints": [
+        "POST l2",
+        "POST /v1/extract"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useSources",
+      "file": "useSources.ts",
+      "imports": [],
+      "api_endpoints": [
+        "DELETE l1",
+        "GET l1",
+        "POST l1",
+        "PUT l1"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": true,
+      "data_source_color": "red"
+    },
+    {
+      "name": "SSEBuilders",
+      "file": "useSSEUtils.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "unknown"
+    },
+    {
+      "name": "usageKeys",
+      "file": "useUsage.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [
+        "usageKeys.summary(customerId)",
+        "usageKeys.limits(customerId)",
+        "usageKeys.events(customerId)"
+      ],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": false,
+      "is_mock": false,
+      "data_source_color": "yellow"
+    },
+    {
+      "name": "useValuePacks",
+      "file": "useValuePacks.ts",
+      "imports": [],
+      "api_endpoints": [
+        "POST l3",
+        "GET l3"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useValueTree",
+      "file": "useValueTrees.ts",
+      "imports": [],
+      "api_endpoints": [],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "yellow"
+    },
+    {
+      "name": "useVariables",
+      "file": "useVariables.ts",
+      "imports": [],
+      "api_endpoints": [
+        "POST l3",
+        "GET l3"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useActiveWorkflows",
+      "file": "useWorkflows.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "POST l4",
+        "DELETE l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    },
+    {
+      "name": "useCanonicalCaseId",
+      "file": "useWorkspaceCase.ts",
+      "imports": [],
+      "api_endpoints": [
+        "GET l4",
+        "POST l4",
+        "POST l5",
+        "PUT l4"
+      ],
+      "query_keys": [],
+      "mutation_keys": [],
+      "has_types": true,
+      "has_error_handling": true,
+      "is_mock": false,
+      "data_source_color": "green"
+    }
+  ]
+}
