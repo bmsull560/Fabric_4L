@@ -22,7 +22,8 @@
     "test:e2e:webkit": "playwright test --project=webkit",
     "test:e2e:report": "playwright show-report",
     "preinstall": "node ./scripts/enforce-package-manager.cjs",
-    "generate:types": "npx tsx scripts/generate-api-types.ts"
+    "generate:types": "npx tsx scripts/generate-api-types.ts",
+    "check:mock-data": "pnpm exec tsx scripts/detect-mock-data.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

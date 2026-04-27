@@ -486,6 +486,9 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Detect disallowed mock data in production UI code
+        run: pnpm run check:mock-data
+
       - name: Check for unguarded console statements
         run: |
           # Find console.log/console.warn without DEV guard (excluding tests)

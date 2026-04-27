@@ -48,3 +48,10 @@ Replace background tasks to use `db_session_for_context()`.
 
 Merge functionality into a single store in `client/src/stores/valuePilotStore.ts`.
 Deprecate the old stores.
+
+## Frontend production UI data-integrity gate
+
+- Policy and allowlist semantics: `docs/platform-contract/frontend-mock-data-scanner.md`
+- Enforcement script: `frontend/scripts/detect-mock-data.ts`
+- Exception manifest: `frontend/scripts/mock-data-allowlist.json`
+- CI step: `.github/workflows/pr-checks.yml` (`frontend-checks` job)
