@@ -21,6 +21,12 @@ import type { VariableFilters } from './useVariables';
 import type { GraphQueryRequest, EntityTraversalRequest } from './useGraphQuery';
 import type { AuditLogFilter } from './useProvenance';
 import type { SourceFilters } from './useSources';
+import type { ProductListFilters } from './useProducts';
+import type { CaseStudyListFilters } from './useEvidence';
+import type { CompetitorListFilters } from './useCompetitiveIntel';
+import type { ROICalculationListFilters } from './useROICalculator';
+import type { AccountHypothesesFilters } from './useHypotheses';
+import type { NarrativeListFilters } from './useNarratives';
 
 // ── Registry ─────────────────────────────────────────────────────────────────
 export const QK = {
@@ -180,6 +186,77 @@ export const QK = {
     all:    ['ontology'] as const,
     schema: () => ['ontology', 'schema'] as const,
     type:   (id: string) => ['ontology', 'type', id] as const,
+  },
+
+  // ── Data Intelligence Layer (DIL) ─────────────────────────────────────────
+
+  // L3 — Product Portfolio
+  products: {
+    all:             ['products'] as const,
+    list:            (filters: ProductListFilters) => ['products', 'list', stableKey(filters)] as const,
+    detail:          (id: string) => ['products', 'detail', id] as const,
+    signalMatching:  (accountId?: string) => ['products', 'signal-matching', accountId ?? ''] as const,
+    summary:         () => ['products', 'summary'] as const,
+    coverage:        () => ['products', 'coverage'] as const,
+  },
+
+  // L3 — Evidence Library
+  evidence: {
+    all:           ['evidence'] as const,
+    list:          (filters: CaseStudyListFilters) => ['evidence', 'list', stableKey(filters)] as const,
+    detail:        (id: string) => ['evidence', 'detail', id] as const,
+    industryStats: () => ['evidence', 'stats', 'industry'] as const,
+    productStats:  () => ['evidence', 'stats', 'product'] as const,
+  },
+
+  // L3 — Competitive Intelligence
+  competitive: {
+    all:          ['competitive'] as const,
+    list:         (filters: CompetitorListFilters) => ['competitive', 'list', stableKey(filters)] as const,
+    detail:       (id: string) => ['competitive', 'detail', id] as const,
+    battlecards:  (competitorId: string) => ['competitive', 'battlecards', competitorId] as const,
+    winLoss:      (competitorId?: string) => ['competitive', 'win-loss', competitorId ?? ''] as const,
+    landscape:    (productId?: string) => ['competitive', 'landscape', productId ?? ''] as const,
+  },
+
+  // L3 — ROI Calculator
+  roi: {
+    all:        ['roi'] as const,
+    list:       (filters: ROICalculationListFilters) => ['roi', 'list', stableKey(filters)] as const,
+    detail:     (id: string) => ['roi', 'detail', id] as const,
+    templates:  () => ['roi', 'templates'] as const,
+    benchmarks: (industry: string) => ['roi', 'benchmarks', industry] as const,
+  },
+
+  // L4 — Account Enrichment
+  enrichment: {
+    all:    ['enrichment'] as const,
+    status: () => ['enrichment', 'status'] as const,
+    detail: (accountId: string) => ['enrichment', 'detail', accountId] as const,
+  },
+
+  // L4 — Value Hypotheses
+  hypotheses: {
+    all:       ['hypotheses'] as const,
+    detail:    (id: string) => ['hypotheses', 'detail', id] as const,
+    byAccount: (accountId: string, filters?: AccountHypothesesFilters) =>
+                 ['hypotheses', 'account', accountId, stableKey(filters ?? {})] as const,
+    stats:     () => ['hypotheses', 'stats'] as const,
+  },
+
+  // L4 — Narratives
+  narratives: {
+    all:    ['narratives'] as const,
+    list:   (filters: NarrativeListFilters) => ['narratives', 'list', stableKey(filters)] as const,
+    detail: (id: string) => ['narratives', 'detail', id] as const,
+  },
+
+  // L4 — Intelligence Orchestration
+  intelligence: {
+    all:           ['intelligence'] as const,
+    briefing:      (accountId: string) => ['intelligence', 'briefing', accountId] as const,
+    dealReadiness: (accountId: string) => ['intelligence', 'deal-readiness', accountId] as const,
+    pipeline:      () => ['intelligence', 'pipeline'] as const,
   },
 } as const;
 
