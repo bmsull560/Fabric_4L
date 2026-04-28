@@ -478,6 +478,113 @@ curl -H "Authorization: Bearer $JWT" \
 
 ---
 
+## Threat Model
+
+This section describes security threats using STRIDE and LINDDUN methodologies.
+
+### STRIDE Analysis
+
+#### S - Spoofing (Identity)
+
+| Threat | Description | Mitigation | Status |
+|--------|-------------|------------|--------|
+| **T1.1** | Attacker spoofs OIDC identity | JWT validation with JWKS, short TTL (15 min) | ✅ Implemented |
+| **T1.2** | Attacker steals session token | HttpOnly cookies, CSRF protection, token rotation | ✅ Implemented |
+| **T1.3** | Attacker impersonates service | mTLS between services, service account tokens | ⚠️ Partial (K8s only) |
+| **T1.4** | Attacker forges webhook calls | HMAC-SHA256 signatures, timestamp validation | ✅ Implemented |
+
+#### T - Tampering
+
+| Threat | Description | Mitigation | Status |
+|--------|-------------|------------|--------|
+| **T2.1** | Request/response tampering in transit | TLS 1.3 everywhere, certificate pinning | ✅ Implemented |
+| **T2.2** | Data tampering at rest | AES-256 encryption, database-level encryption | ✅ Implemented |
+| **T2.3** | Audit log tampering | Append-only logs, DB trigger enforcement, WORM storage | ✅ Implemented |
+| **T2.4** | Build artifact tampering | Signed containers (Cosign), SBOM verification | 🔄 In Progress |
+| **T2.5** | Configuration tampering | GitOps, drift detection, signed configs | 🔄 In Progress |
+
+#### R - Repudiation
+
+| Threat | Description | Mitigation | Status |
+|--------|-------------|------------|--------|
+| **T3.1** | User denies action | Immutable audit logs with user ID, timestamp, IP | ✅ Implemented |
+| **T3.2** | Admin denies configuration change | Git commit history, signed commits, CODEOWNERS | ✅ Implemented |
+| **T3.3** | System denies processing | Structured logging with trace IDs, request correlation | ✅ Implemented |
+
+#### I - Information Disclosure
+
+| Threat | Description | Mitigation | Status |
+|--------|-------------|------------|--------|
+| **T4.1** | Sensitive data in logs | PII classification, redaction at source, log filtering | ✅ Implemented |
+| **T4.2** | Error messages leak internals | Generic error messages, detailed logs internal only | ✅ Implemented |
+| **T4.3** | Tenant data leakage | Row-level security, tenant ID validation on every query | ✅ Implemented |
+| **T4.4** | Secrets in repository | Gitleaks pre-commit, CI secrets scanning | ✅ Implemented |
+| **T4.5** | Cache side-channel | Cache isolation by tenant, constant-time comparisons | ⚠️ Partial |
+
+#### D - Denial of Service
+
+| Threat | Description | Mitigation | Status |
+|--------|-------------|------------|--------|
+| **T5.1** | API rate limit abuse | Tiered rate limits (auth: 5/min, API: 100/min) | ✅ Implemented |
+| **T5.2** | Resource exhaustion | Resource quotas, autoscaling, circuit breakers | ✅ Implemented |
+| **T5.3** | Graph query complexity | Query depth limits, timeout enforcement, cost analysis | ✅ Implemented |
+| **T5.4** | LLM token flooding | Token budget per request, concurrent request limits | ✅ Implemented |
+| **T5.5** | Large payload attacks | Request size limits (10MB), streaming for large data | ✅ Implemented |
+
+#### E - Elevation of Privilege
+
+| Threat | Description | Mitigation | Status |
+|--------|-------------|------------|--------|
+| **T6.1** | Horizontal privilege escalation | Tenant isolation middleware, row-level security | ✅ Implemented |
+| **T6.2** | Vertical privilege escalation | RBAC enforcement, role validation on every endpoint | ✅ Implemented |
+| **T6.3** | Service account abuse | Least-privilege IAM, workload identity, short-lived tokens | ⚠️ Partial |
+| **T6.4** | Container escape | Distroless images, non-root user, restricted capabilities | 🔄 In Progress |
+
+### Attack Scenarios
+
+#### Scenario 1: Cross-Tenant Data Access
+
+**Attacker**: Tenant A user tries to access Tenant B data  
+**Vector**: Modified request with spoofed tenant ID header  
+**Mitigation**:
+1. JWT contains tenant claim (immutable)
+2. Every query includes `WHERE tenant_id = :jwt_tenant_id`
+3. RLS policies enforced at database level  
+**Test**: `tests/security/test_tenant_isolation.py`
+
+#### Scenario 2: Privilege Escalation
+
+**Attacker**: Standard user tries admin operations  
+**Vector**: Modified JWT role claim, or direct API call to admin endpoints  
+**Mitigation**:
+1. RBAC middleware validates role on every request
+2. Admin endpoints require `role=admin` in JWT
+3. Role changes require re-authentication  
+**Test**: `tests/security/test_rbac.py`
+
+#### Scenario 3: Injection Attacks
+
+**Attacker**: SQL/NoSQL/XSS injection via input fields  
+**Vector**: Malicious input in graph queries or entity creation  
+**Mitigation**:
+1. SecurityMiddleware with pattern detection
+2. Parameterized queries only
+3. Input sanitization, HTML escaping  
+**Test**: `tests/security/test_injection.py`
+
+#### Scenario 4: Supply Chain Poisoning
+
+**Attacker**: Compromised dependency or build process  
+**Vector**: Malicious package version, tampered container  
+**Mitigation**:
+1. Pinned dependencies (lockfiles)
+2. Signed containers (Cosign)
+3. SBOM verification
+4. Admission controller blocks unsigned images  
+**Test**: `tests/security/test_supply_chain.py`
+
+---
+
 ## Next Steps
 
 - [Configure SSO](../how-to-guides/configure-sso.md) — OIDC/SAML setup
@@ -487,4 +594,4 @@ curl -H "Authorization: Bearer $JWT" \
 
 ---
 
-*Last updated: 2026-04-19 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/core-concepts/security-model.md)*
+*Last updated: 2026-04-27 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/core-concepts/security-model.md)*

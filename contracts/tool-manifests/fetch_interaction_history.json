@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/fetch_interaction_history.json",
+  "name": "fetch_interaction_history",
+  "version": "1.0.0",
+  "description": "Retrieves interaction history including emails, calls, meetings",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "prospect_id": {"type": "string", "description": "Prospect/company ID"},
+      "interaction_types": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Filter by types"},
+      "since_date": {"type": ["string", "null"], "description": "Start date filter ISO format"},
+      "limit": {"type": "integer", "minimum": 1, "maximum": 200, "default": 50, "description": "Maximum results"}
+    },
+    "required": ["prospect_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "interactions": {"type": "array", "items": {"type": "object"}, "description": "Interaction records"},
+      "total_count": {"type": "integer", "description": "Total interactions"},
+      "summary": {"type": "string", "description": "Activity summary"}
+    },
+    "required": ["interactions", "total_count", "summary"]
+  }
+}

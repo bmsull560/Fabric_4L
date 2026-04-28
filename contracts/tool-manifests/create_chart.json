@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/create_chart.json",
+  "name": "create_chart",
+  "version": "1.0.0",
+  "description": "Creates charts and visualizations for business cases",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "chart_type": {"type": "string", "enum": ["bar", "line", "pie", "table", "funnel"], "description": "Chart type"},
+      "data": {"type": "array", "items": {"type": "object"}, "description": "Chart data points"},
+      "title": {"type": "string", "description": "Chart title"},
+      "config": {"type": "object", "default": {}, "description": "Additional configuration"}
+    },
+    "required": ["chart_type", "data", "title"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "chart_data": {"type": "object", "description": "Structured chart data"},
+      "image_data": {"type": ["string", "null"], "description": "Rendered image bytes (base64)"},
+      "image_url": {"type": ["string", "null"], "description": "Hosted image URL"}
+    },
+    "required": ["chart_data"]
+  }
+}

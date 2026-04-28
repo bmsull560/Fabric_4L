@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/compare_benchmarks.json",
+  "name": "compare_benchmarks",
+  "version": "1.0.0",
+  "description": "Compares metrics against industry benchmarks",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "metric_name": {
+        "type": "string",
+        "description": "Metric to compare"
+      },
+      "value": {
+        "type": "number",
+        "description": "Your metric value"
+      },
+      "industry": {
+        "type": ["string", "null"],
+        "description": "Industry vertical"
+      },
+      "company_size": {
+        "type": ["string", "null"],
+        "description": "Company size category"
+      },
+      "region": {
+        "type": ["string", "null"],
+        "description": "Geographic region"
+      }
+    },
+    "required": ["metric_name", "value"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "percentile": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "description": "Percentile ranking 0-100"
+      },
+      "industry_average": {
+        "type": ["number", "null"],
+        "description": "Benchmark average value"
+      },
+      "comparison_text": {
+        "type": "string",
+        "description": "Human-readable comparison"
+      },
+      "confidence": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Confidence level 0.0-1.0"
+      }
+    },
+    "required": ["percentile", "comparison_text", "confidence"]
+  }
+}

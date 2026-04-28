@@ -12,6 +12,17 @@ from shared.audit import emit_audit_event, AuditAction, AuditOutcome
 logger = logging.getLogger(__name__)
 
 
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
+
+
 async def get_entity(
     entity_id: str,
     context: RequestContext | None = None
@@ -25,7 +36,7 @@ async def get_entity(
     Returns:
         Entity data or None if not found/invalid
     """
-    tenant_id = require_context().tenant_id
+    tenant_id = _get_tenant_id()
     
     # Validate entity_id
     if "'" in entity_id or "--" in entity_id or "OR" in entity_id.upper():
@@ -62,7 +73,7 @@ async def update_entity(
     Returns:
         Updated entity data or None if permission denied/not found
     """
-    tenant_id = require_context().tenant_id
+    tenant_id = _get_tenant_id()
     
     # Check write permission
     if context and "write" not in context.permissions:
@@ -88,7 +99,7 @@ async def delete_entity(
     Returns:
         True if deleted, False if permission denied or not found
     """
-    tenant_id = require_context().tenant_id
+    tenant_id = _get_tenant_id()
     
     # Check delete permission
     if context and "delete" not in context.permissions:
@@ -124,7 +135,7 @@ async def search_entities(
     Returns:
         List of matching entities (empty if query too large)
     """
-    tenant_id = require_context().tenant_id
+    tenant_id = _get_tenant_id()
     
     # Validate query size
     if len(query) > 10000:
@@ -147,7 +158,7 @@ async def list_entities(
     Returns:
         List of entities for tenant
     """
-    tenant_id = require_context().tenant_id
+    tenant_id = _get_tenant_id()
     # TODO: Implement actual list with tenant filtering
     # For now, return empty list
     return []

@@ -26,7 +26,25 @@ from typing import Any
 
 import structlog
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = structlog.get_logger()
+
+
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +102,6 @@ class IntelligenceOrchestrator:
 
     async def get_account_briefing(
         self,
-        tenant_id: str,
         account_id: str,
         *,
         include_narrative: bool = False,
@@ -105,15 +122,16 @@ class IntelligenceOrchestrator:
         now = datetime.now(UTC).isoformat()
 
         # Gather all intelligence components
-        signals = await self._get_account_signals(tenant_id, account_id)
-        hypotheses = await self._get_account_hypotheses(tenant_id, account_id, top_n_hypotheses)
-        competitive = await self._get_competitive_landscape(tenant_id)
-        roi = await self._get_roi_summary(tenant_id, account_id)
-        evidence = await self._get_matched_evidence(tenant_id, account_id)
+        tenant_id = _get_tenant_id()
+        signals = await self._get_account_signals(account_id)
+        hypotheses = await self._get_account_hypotheses(account_id, top_n_hypotheses)
+        competitive = await self._get_competitive_landscape()
+        roi = await self._get_roi_summary(account_id)
+        evidence = await self._get_matched_evidence(account_id)
         narrative_summary = None
 
         if include_narrative:
-            narrative_summary = await self._get_latest_narrative(tenant_id, account_id)
+            narrative_summary = await self._get_latest_narrative(account_id)
 
         # Compute deal readiness
         readiness = self._compute_deal_readiness(
@@ -127,7 +145,6 @@ class IntelligenceOrchestrator:
 
         briefing = {
             "briefing_id": str(uuid.uuid4()),
-            "tenant_id": tenant_id,
             "account_id": account_id,
             "generated_at": now,
             "deal_readiness": readiness,
@@ -166,15 +183,16 @@ class IntelligenceOrchestrator:
     # ------------------------------------------------------------------
 
     async def get_deal_readiness(
-        self, tenant_id: str, account_id: str
+        self, account_id: str
     ) -> dict[str, Any]:
         """Calculate deal readiness score for an account."""
-        signals = await self._get_account_signals(tenant_id, account_id)
-        hypotheses = await self._get_account_hypotheses(tenant_id, account_id, limit=20)
-        competitive = await self._get_competitive_landscape(tenant_id)
-        roi = await self._get_roi_summary(tenant_id, account_id)
-        evidence = await self._get_matched_evidence(tenant_id, account_id)
-        narrative = await self._get_latest_narrative(tenant_id, account_id)
+        tenant_id = _get_tenant_id()
+        signals = await self._get_account_signals(account_id)
+        hypotheses = await self._get_account_hypotheses(account_id, limit=20)
+        competitive = await self._get_competitive_landscape()
+        roi = await self._get_roi_summary(account_id)
+        evidence = await self._get_matched_evidence(account_id)
+        narrative = await self._get_latest_narrative(account_id)
 
         readiness = self._compute_deal_readiness(
             signals=signals,
@@ -272,9 +290,10 @@ class IntelligenceOrchestrator:
     # ------------------------------------------------------------------
 
     async def get_pipeline_summary(
-        self, tenant_id: str
+        self
     ) -> dict[str, Any]:
         """Get aggregated intelligence across all accounts."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (vh:ValueHypothesis {tenant_id: $tenant_id})
         WITH vh.account_id AS account_id,
@@ -333,9 +352,10 @@ class IntelligenceOrchestrator:
     # ------------------------------------------------------------------
 
     async def _get_account_signals(
-        self, tenant_id: str, account_id: str
+        self, account_id: str
     ) -> list[dict[str, Any]]:
         """Fetch signals associated with an account."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (s:Signal {tenant_id: $tenant_id})
         WHERE s.account_id = $account_id OR s.target_account_id = $account_id
@@ -352,9 +372,10 @@ class IntelligenceOrchestrator:
         return [r["signal"] for r in records]
 
     async def _get_account_hypotheses(
-        self, tenant_id: str, account_id: str, limit: int = 5
+        self, account_id: str, limit: int = 5
     ) -> list[dict[str, Any]]:
         """Fetch value hypotheses for an account."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (vh:ValueHypothesis {tenant_id: $tenant_id, account_id: $account_id})
         RETURN vh {.*} AS hypothesis
@@ -371,9 +392,10 @@ class IntelligenceOrchestrator:
         return [r["hypothesis"] for r in records]
 
     async def _get_competitive_landscape(
-        self, tenant_id: str
+        self
     ) -> dict[str, Any]:
         """Fetch competitive landscape summary."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (c:Competitor {tenant_id: $tenant_id})
         OPTIONAL MATCH (c)<-[won:WON_AGAINST]-(p1:Product)
@@ -401,9 +423,10 @@ class IntelligenceOrchestrator:
         }
 
     async def _get_roi_summary(
-        self, tenant_id: str, account_id: str
+        self, account_id: str
     ) -> dict[str, Any]:
         """Fetch most recent ROI calculation for an account."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (rc:ROICalculation {tenant_id: $tenant_id, account_id: $account_id})
         RETURN rc {.*} AS calculation
@@ -431,9 +454,10 @@ class IntelligenceOrchestrator:
         return calc
 
     async def _get_matched_evidence(
-        self, tenant_id: str, account_id: str
+        self, account_id: str
     ) -> list[dict[str, Any]]:
         """Fetch evidence/case studies relevant to an account's industry."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (e:Evidence {tenant_id: $tenant_id})
         RETURN e {.*} AS evidence
@@ -446,9 +470,10 @@ class IntelligenceOrchestrator:
         return [r["evidence"] for r in records]
 
     async def _get_latest_narrative(
-        self, tenant_id: str, account_id: str
+        self, account_id: str
     ) -> dict[str, Any] | None:
         """Fetch the most recent narrative for an account."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (n:Narrative {tenant_id: $tenant_id, account_id: $account_id})
         RETURN n {.id, .title, .status, .tone, .audience, .version, .created_at} AS narrative

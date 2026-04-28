@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/query_graph.json",
+  "name": "query_graph",
+  "version": "1.0.0",
+  "description": "Executes Cypher queries against the Neo4j knowledge graph",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "cypher_query": {
+        "type": "string",
+        "description": "Cypher query to execute"
+      },
+      "parameters": {
+        "type": "object",
+        "description": "Query parameters for safe variable substitution",
+        "default": {}
+      },
+      "read_only": {
+        "type": "boolean",
+        "description": "Whether query is read-only",
+        "default": true
+      }
+    },
+    "required": ["cypher_query"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "Query results as array of records"
+      },
+      "columns": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Column names from result"
+      },
+      "row_count": {
+        "type": "integer",
+        "description": "Number of rows returned"
+      },
+      "execution_time_ms": {
+        "type": "integer",
+        "description": "Query execution time in milliseconds"
+      }
+    },
+    "required": ["results", "columns", "row_count", "execution_time_ms"]
+  }
+}

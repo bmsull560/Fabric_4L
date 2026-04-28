@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/update_opportunity.json",
+  "name": "update_opportunity",
+  "version": "1.0.0",
+  "description": "Updates opportunity fields and optionally notifies owner",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "opportunity_id": {
+        "type": "string",
+        "description": "Opportunity ID to update"
+      },
+      "updates": {
+        "type": "object",
+        "description": "Field updates as key-value pairs"
+      },
+      "notify_owner": {
+        "type": "boolean",
+        "description": "Send notification to owner",
+        "default": true
+      }
+    },
+    "required": ["opportunity_id", "updates"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "success": {
+        "type": "boolean",
+        "description": "Update success status"
+      },
+      "opportunity_id": {
+        "type": "string",
+        "description": "ID of updated opportunity"
+      },
+      "updated_fields": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "List of changed fields"
+      },
+      "error": {
+        "type": ["string", "null"],
+        "description": "Error message if failed"
+      }
+    },
+    "required": ["success", "opportunity_id", "updated_fields"]
+  }
+}

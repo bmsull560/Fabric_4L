@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/validate_input.json",
+  "name": "validate_input",
+  "version": "1.0.0",
+  "description": "Validates input data against defined schemas",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "data": {"type": "object", "description": "Data to validate"},
+      "schema_name": {"type": "string", "description": "Schema to validate against"},
+      "strict": {"type": "boolean", "default": true, "description": "Strict mode"}
+    },
+    "required": ["data", "schema_name"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "valid": {"type": "boolean", "description": "Validation result"},
+      "errors": {"type": "array", "items": {"type": "string"}, "description": "Error messages"},
+      "normalized": {"type": "object", "description": "Normalized data"}
+    },
+    "required": ["valid", "errors", "normalized"]
+  }
+}

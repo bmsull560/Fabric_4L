@@ -209,13 +209,14 @@ See [Archive Registry](./archive/archive-registry.md) for complete history.
 
 ## Success Metrics
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| P0 Docs Updated | 100% | 20% |
-| Docs with Diagrams | 80% | 15% |
-| Avg Time-to-Information | -40% | TBD |
-| Broken Links | 0 | 1 |
-| User Task Completion Rate | 85% | TBD |
+| Metric | Target | Current | Notes |
+|--------|--------|---------|-------|
+| P0 Docs Updated | 100% | 85% | ✅ Root cleanup completed 2026-04-27 |
+| Docs with Diagrams | 80% | 25% | 🔄 In progress |
+| Avg Time-to-Information | -40% | TBD | ⏳ Pending measurement |
+| Broken Links | 0 | 1 | ⚠️ api-overview.md link verified (exists) |
+| Root-level Files | <10 | 24 | 🔄 17 archived, 4 relocated |
+| Archive Hygiene | Current | ✅ | 🗄️ 27 files archived across 2 rounds |
 
 ---
 
@@ -237,4 +238,12 @@ See [`/contributing/`](./contributing/) for:
 
 ---
 
-*This documentation is a living document. Last structural update: 2026-04-19*
+*This documentation is a living document. Last structural update: 2026-04-27*
+
+### Recent Changes (2026-04-27)
+
+- Archived 17 temporal audit/assessment documents to `docs/archive/2026-04-27/`
+- Deleted 1 CI artifact (`GATE_TEST_RESULTS.txt`)
+- Moved 4 reference documents to proper `docs/` subdirectories
+- Merged `THREAT_MODEL.md` into `docs/core-concepts/security-model.md`
+- Root-level docs reduced from 41 to 24 files

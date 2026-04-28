@@ -159,7 +159,6 @@ async def calculate_roi(
     # Optionally persist
     if body.save:
         saved = await svc.save_calculation(
-            tenant_id,
             account_id=body.account_id,
             template_id=body.template_id,
             inputs=body.model_dump(exclude={"save", "scenario", "time_horizon_months", "discount_rate"}),
@@ -229,7 +228,7 @@ async def list_templates(
     svc = ROICalculatorService(driver)
 
     return await svc.get_templates(
-        tenant_id, category=category, industry=industry, skip=skip, limit=limit
+        category=category, industry=industry, skip=skip, limit=limit
     )
 
 
@@ -254,7 +253,7 @@ async def create_template(
         applicable_industries=body.applicable_industries,
         applicable_products=body.applicable_products,
     )
-    return await svc.create_template(tenant_id, template)
+    return await svc.create_template(template)
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +276,7 @@ async def list_calculations(
     svc = ROICalculatorService(driver)
 
     return await svc.list_calculations(
-        tenant_id, account_id=account_id, skip=skip, limit=limit
+        account_id=account_id, skip=skip, limit=limit
     )
 
 
@@ -293,7 +292,7 @@ async def get_calculation(
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
-    result = await svc.get_calculation(tenant_id, calc_id)
+    result = await svc.get_calculation(calc_id)
     if not result:
         raise HTTPException(status_code=404, detail="Calculation not found")
     return result
@@ -316,4 +315,4 @@ async def get_industry_benchmarks(
     driver = _get_neo4j_driver(request)
     svc = ROICalculatorService(driver)
 
-    return await svc.get_industry_benchmarks(tenant_id, industry)
+    return await svc.get_industry_benchmarks(industry)

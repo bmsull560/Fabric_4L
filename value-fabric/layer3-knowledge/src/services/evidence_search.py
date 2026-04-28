@@ -11,7 +11,25 @@ from typing import Any
 
 from neo4j import AsyncDriver
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = logging.getLogger(__name__)
+
+
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
 
 
 class EvidenceSearchService:
@@ -35,7 +53,6 @@ class EvidenceSearchService:
     async def find_matching_evidence(
         self,
         signal_description: str,
-        tenant_id: str,
         industry: str | None = None,
         limit: int = 5,
         min_score: float = 0.7,
@@ -47,7 +64,6 @@ class EvidenceSearchService:
 
         Args:
             signal_description: Signal text to match against
-            tenant_id: Tenant identifier
             industry: Optional industry filter
             limit: Maximum results to return
             min_score: Minimum similarity score (0.0-1.0)
@@ -55,6 +71,7 @@ class EvidenceSearchService:
         Returns:
             List of evidence matches with scores and reasoning
         """
+        tenant_id = _get_tenant_id()
         # Generate embedding for the signal description
         # In production, this would call an embedding service
         signal_embedding = await self._generate_embedding(signal_description)
@@ -136,7 +153,6 @@ class EvidenceSearchService:
     async def search_by_keywords(
         self,
         keywords: list[str],
-        tenant_id: str,
         evidence_types: list[str] | None = None,
         limit: int = 5,
     ) -> list[dict[str, Any]]:
@@ -144,13 +160,13 @@ class EvidenceSearchService:
 
         Args:
             keywords: Search terms
-            tenant_id: Tenant identifier
             evidence_types: Optional filter by evidence type
             limit: Maximum results
 
         Returns:
             List of matching evidence
         """
+        tenant_id = _get_tenant_id()
         # Build full-text search query
         search_terms = " OR ".join(keywords)
 
@@ -214,17 +230,16 @@ class EvidenceSearchService:
     async def get_evidence_details(
         self,
         evidence_id: str,
-        tenant_id: str,
     ) -> dict[str, Any] | None:
         """Get detailed information about an evidence item.
 
         Args:
             evidence_id: Evidence identifier
-            tenant_id: Tenant identifier
 
         Returns:
             Evidence details or None if not found
         """
+        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             query = """
             MATCH (e:Evidence {id: $evidence_id, tenant_id: $tenant_id})
@@ -251,7 +266,6 @@ class EvidenceSearchService:
         self,
         evidence_data: dict[str, Any],
         content_embedding: list[float],
-        tenant_id: str,
     ) -> str:
         """Index new evidence for search.
 
@@ -260,11 +274,11 @@ class EvidenceSearchService:
         Args:
             evidence_data: Evidence metadata
             content_embedding: Pre-computed embedding vector
-            tenant_id: Tenant identifier
 
         Returns:
             Evidence ID
         """
+        tenant_id = _get_tenant_id()
         evidence_id = evidence_data.get("id")
 
         async with self._driver.session() as session:

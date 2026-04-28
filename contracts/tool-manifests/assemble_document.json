@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/assemble_document.json",
+  "name": "assemble_document",
+  "version": "1.0.0",
+  "description": "Assembles business case sections into PDF, DOCX, or HTML",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "sections": {"type": "array", "items": {"type": "object"}, "description": "Document sections"},
+      "template": {"type": "string", "default": "business_case", "description": "Template name"},
+      "output_format": {"type": "string", "enum": ["pdf", "docx", "html"], "default": "pdf", "description": "Output format"},
+      "branding": {"type": ["object", "null"], "description": "Branding config"}
+    },
+    "required": ["sections"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "document_bytes": {"type": ["string", "null"], "description": "Document as base64 bytes"},
+      "document_url": {"type": ["string", "null"], "description": "Hosted URL"},
+      "page_count": {"type": "integer", "description": "Estimated page count"},
+      "file_size_bytes": {"type": "integer", "description": "Document size"}
+    },
+    "required": ["page_count", "file_size_bytes"]
+  }
+}

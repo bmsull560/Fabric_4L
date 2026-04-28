@@ -15,7 +15,25 @@ from typing import Any
 
 from neo4j import AsyncDriver
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = logging.getLogger(__name__)
+
+
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
 
 
 @dataclass
@@ -112,9 +130,10 @@ class SignalQuantificationService:
         impact_indicators: list[str],
         industry: str | None,
         prospect_data: dict[str, Any],
-        tenant_id: str,
     ) -> QuantificationResult:
         """Quantify a pain signal's impact.
+
+        Retrieves tenant context automatically from request scope.
 
         Finds appropriate formula, extracts variables from prospect data,
         and calculates impact value.
@@ -125,18 +144,17 @@ class SignalQuantificationService:
             impact_indicators: Clues from extraction
             industry: Industry vertical
             prospect_data: Prospect-specific data
-            tenant_id: Tenant identifier
 
         Returns:
             Quantification result with impact value or errors
         """
+        tenant_id = _get_tenant_id()
         try:
             # Step 1: Find appropriate formula
             formula = await self._select_formula(
                 signal_name,
                 signal_description,
                 industry,
-                tenant_id,
             )
 
             if not formula:
@@ -167,7 +185,6 @@ class SignalQuantificationService:
             result = await self._execute_formula(
                 formula,
                 validated_inputs,
-                tenant_id,
             )
 
             if not result.get("success"):
@@ -202,7 +219,6 @@ class SignalQuantificationService:
         signal_name: str,
         signal_description: str,
         industry: str | None,
-        tenant_id: str,
     ) -> dict[str, Any] | None:
         """Select the most appropriate formula for a signal.
 
@@ -210,11 +226,11 @@ class SignalQuantificationService:
             signal_name: Signal name for matching
             signal_description: Signal description
             industry: Industry vertical
-            tenant_id: Tenant identifier
 
         Returns:
             Formula dictionary or None
         """
+        tenant_id = _get_tenant_id()
         # Normalize industry
         industry_key = (industry or "general").lower().strip()
 
@@ -406,14 +422,12 @@ class SignalQuantificationService:
         self,
         formula: dict[str, Any],
         inputs: dict[str, Any],
-        tenant_id: str,
     ) -> dict[str, Any]:
         """Execute a formula safely.
 
         Args:
             formula: Formula definition
             inputs: Input values
-            tenant_id: Tenant identifier
 
         Returns:
             Execution result

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/find_paths.json",
+  "name": "find_paths",
+  "version": "1.0.0",
+  "description": "Finds connection paths between two entities in the graph",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "source_id": {
+        "type": "string",
+        "description": "Starting entity ID"
+      },
+      "target_id": {
+        "type": "string",
+        "description": "Target entity ID"
+      },
+      "max_length": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "description": "Maximum path length",
+        "default": 6
+      },
+      "relationship_types": {
+        "type": ["array", "null"],
+        "items": {"type": "string"},
+        "description": "Allowed relationship types"
+      }
+    },
+    "required": ["source_id", "target_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "paths": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "Path objects with nodes and relationships"
+      },
+      "shortest_path_length": {
+        "type": ["integer", "null"],
+        "description": "Length of shortest path found"
+      }
+    },
+    "required": ["paths", "shortest_path_length"]
+  }
+}

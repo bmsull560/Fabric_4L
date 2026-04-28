@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/calculate_roi.json",
+  "name": "calculate_roi",
+  "version": "1.0.0",
+  "description": "Calculates ROI, NPV, IRR, and payback period",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "investment": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Initial investment amount"
+      },
+      "returns": {
+        "type": "array",
+        "items": {"type": "number"},
+        "description": "List of periodic returns",
+        "default": []
+      },
+      "time_periods": {
+        "type": "integer",
+        "minimum": 1,
+        "description": "Number of time periods",
+        "default": 3
+      },
+      "discount_rate": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Discount rate",
+        "default": 0.1
+      }
+    },
+    "required": ["investment"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "simple_roi_percent": {
+        "type": "number",
+        "description": "Simple ROI percentage"
+      },
+      "npv": {
+        "type": "number",
+        "description": "Net Present Value"
+      },
+      "irr": {
+        "type": ["number", "null"],
+        "description": "Internal Rate of Return"
+      },
+      "payback_period_months": {
+        "type": ["number", "null"],
+        "description": "Payback period in months"
+      },
+      "total_return": {
+        "type": "number",
+        "description": "Sum of all returns"
+      }
+    },
+    "required": ["simple_roi_percent", "npv", "total_return"]
+  }
+}

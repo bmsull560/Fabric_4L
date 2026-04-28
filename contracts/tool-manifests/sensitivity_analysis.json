@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/sensitivity_analysis.json",
+  "name": "sensitivity_analysis",
+  "version": "1.0.0",
+  "description": "Performs sensitivity analysis on formulas by varying inputs",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "base_formula": {
+        "type": "string",
+        "description": "Formula to analyze"
+      },
+      "base_variables": {
+        "type": "object",
+        "description": "Base variable values"
+      },
+      "variable_ranges": {
+        "type": "object",
+        "description": "Ranges for each variable {var: [min, max, steps]}"
+      }
+    },
+    "required": ["base_formula", "base_variables", "variable_ranges"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "scenarios": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "Array of scenario results"
+      },
+      "tornado_data": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "Impact ranking for tornado chart"
+      },
+      "optimal_variables": {
+        "type": ["object", "null"],
+        "description": "Best performing variable combination"
+      }
+    },
+    "required": ["scenarios", "tornado_data"]
+  }
+}

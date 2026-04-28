@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/document_export.json",
+  "name": "document_export",
+  "version": "1.0.0",
+  "description": "Exports documents to CRM and storage systems",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "document_type": {"type": "string", "enum": ["business_case", "audit_report", "roi_analysis"], "default": "business_case", "description": "Document type"},
+      "business_case_data": {"type": "object", "default": {}, "description": "Business case data"},
+      "template": {"type": ["string", "null"], "description": "Custom HTML template"},
+      "branding": {"type": ["object", "null"], "description": "Branding config"}
+    },
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "pdf_bytes": {"type": ["string", "null"], "description": "PDF as base64"},
+      "content_type": {"type": "string", "description": "MIME type"},
+      "filename": {"type": "string", "description": "Suggested filename"},
+      "success": {"type": "boolean", "description": "Status"},
+      "error": {"type": ["string", "null"], "description": "Error if failed"},
+      "file_size_bytes": {"type": "integer", "description": "File size"}
+    },
+    "required": ["content_type", "filename", "success", "file_size_bytes"]
+  }
+}

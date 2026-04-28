@@ -44,7 +44,25 @@ from typing import Any
 import structlog
 from neo4j import AsyncDriver
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = structlog.get_logger()
+
+
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
 
 
 # ---------------------------------------------------------------------------
@@ -365,9 +383,10 @@ class ROICalculatorService:
     # ------------------------------------------------------------------
 
     async def create_template(
-        self, tenant_id: str, template: ROITemplateCreate
+        self, template: ROITemplateCreate
     ) -> dict[str, Any]:
         """Create an ROI calculation template."""
+        tenant_id = _get_tenant_id()
         template_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -408,7 +427,6 @@ class ROICalculatorService:
 
     async def get_templates(
         self,
-        tenant_id: str,
         *,
         category: str | None = None,
         industry: str | None = None,
@@ -416,6 +434,7 @@ class ROICalculatorService:
         limit: int = 50,
     ) -> dict[str, Any]:
         """List ROI templates with optional filtering."""
+        tenant_id = _get_tenant_id()
         where_clauses = ["t.tenant_id = $tenant_id"]
         params: dict[str, Any] = {
             "tenant_id": tenant_id,
@@ -462,7 +481,6 @@ class ROICalculatorService:
 
     async def save_calculation(
         self,
-        tenant_id: str,
         *,
         account_id: str | None = None,
         template_id: str | None = None,
@@ -475,6 +493,7 @@ class ROICalculatorService:
         discount_rate: float = 0.10,
     ) -> dict[str, Any]:
         """Persist an ROI calculation to Neo4j."""
+        tenant_id = _get_tenant_id()
         calc_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -517,9 +536,10 @@ class ROICalculatorService:
         return {"id": calc_id, **(record["calculation"] if record else {})}
 
     async def get_calculation(
-        self, tenant_id: str, calc_id: str
+        self, calc_id: str
     ) -> dict[str, Any] | None:
         """Retrieve a saved ROI calculation."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (rc:ROICalculation {id: $calc_id, tenant_id: $tenant_id})
         RETURN rc {.*} AS calculation
@@ -547,13 +567,13 @@ class ROICalculatorService:
 
     async def list_calculations(
         self,
-        tenant_id: str,
         *,
         account_id: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> dict[str, Any]:
         """List saved ROI calculations."""
+        tenant_id = _get_tenant_id()
         where_clauses = ["rc.tenant_id = $tenant_id"]
         params: dict[str, Any] = {
             "tenant_id": tenant_id,
@@ -606,13 +626,14 @@ class ROICalculatorService:
     # ------------------------------------------------------------------
 
     async def get_industry_benchmarks(
-        self, tenant_id: str, industry: str
+        self, industry: str
     ) -> dict[str, Any]:
         """Get industry-specific benchmarks for ROI assumptions.
 
-        Benchmarks are derived from Evidence nodes (case studies) in the
+        Retrieves industry benchmarks from case study evidence in the
         knowledge graph for the specified industry.
         """
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (e:Evidence {tenant_id: $tenant_id, evidence_type: 'case_study'})
         WHERE e.industry = $industry

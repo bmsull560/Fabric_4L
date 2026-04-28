@@ -2,18 +2,47 @@
 
 Provides a provider-agnostic interface for LLM API calls with automatic
 cost tracking, retry logic, and token counting.
+
+SECURITY: Week 4 - Integrated with llm_safety module for prompt injection,
+PII redaction, token limits, output validation, and observability.
 """
 
 import asyncio
 import logging
 import os
 import random
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel
+
+# Import LLM safety module (Week 4 hardening)
+# Add shared/ to path if needed for imports
+_SHARED_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "shared")
+if _SHARED_PATH not in sys.path:
+    sys.path.insert(0, _SHARED_PATH)
+
+try:
+    from llm_safety import (
+        LLMSafetyError,
+        OutputValidationError,
+        PIIGuard,
+        PromptGuard,
+        TokenLimiter,
+    )
+    from llm_safety.observability import LLMCallContext, get_observability
+
+    LLM_SAFETY_AVAILABLE = True
+except ImportError:
+    LLM_SAFETY_AVAILABLE = False
+    PromptGuard = None  # type: ignore
+    PIIGuard = None  # type: ignore
+    TokenLimiter = None  # type: ignore
+    LLMCallContext = None  # type: ignore
+    get_observability = None  # type: ignore
 
 # Import Prometheus metrics for LLM cost tracking (Task 85)
 try:
@@ -152,6 +181,18 @@ class LLMClient:
         self._registry_tenant_id = registry_tenant_id
         self._registry_api_token = registry_api_token
 
+        # Week 4: Initialize safety guards
+        if LLM_SAFETY_AVAILABLE:
+            self._prompt_guard = PromptGuard()
+            self._pii_guard = PIIGuard()
+            self._token_limiter = TokenLimiter()
+            self._observability = get_observability()
+        else:
+            self._prompt_guard = None
+            self._pii_guard = None
+            self._token_limiter = None
+            self._observability = None
+
         # Set model with fallback to env vars
         if model:
             self.model = model
@@ -192,6 +233,9 @@ class LLMClient:
     ) -> tuple[ChatCompletion, CostRecord | None]:
         """Execute chat completion with cost tracking.
 
+        SECURITY: Runs pre-flight safety checks (prompt injection, PII redaction,
+        token limits) and post-response validation.
+
         Args:
             messages: Chat messages
             extraction_job_id: Job ID for cost attribution
@@ -205,9 +249,12 @@ class LLMClient:
         Returns:
             Tuple of (response, cost_record)
         """
+        # Week 4: Pre-flight safety checks
+        safe_messages = self._run_safety_checks(messages, extraction_job_id)
+
         if self.provider == LLMProvider.OPENAI:
             return await self._openai_completion(
-                messages,
+                safe_messages,
                 extraction_job_id,
                 endpoint,
                 temperature,
@@ -218,7 +265,7 @@ class LLMClient:
             )
         else:
             return await self._anthropic_completion(
-                messages, extraction_job_id, endpoint, temperature
+                safe_messages, extraction_job_id, endpoint, temperature
             )
 
     async def chat_completion_structured(
@@ -509,6 +556,55 @@ class LLMClient:
             output_tokens=output_tokens,
             cost_usd=total_cost,
         )
+
+    def _run_safety_checks(
+        self, messages: list[dict[str, str]], extraction_job_id: str
+    ) -> list[dict[str, str]]:
+        """Run pre-flight safety checks on messages.
+
+        SECURITY: Week 4 - Applies prompt injection detection, PII redaction,
+        and token limit enforcement before sending to LLM.
+
+        Args:
+            messages: Original chat messages
+            extraction_job_id: Job ID for context
+
+        Returns:
+            Sanitized messages safe for LLM processing
+
+        Raises:
+            PromptInjectionError: If prompt injection detected and fail-closed
+            TokenLimitError: If token limit exceeded and fail-closed
+        """
+        if not LLM_SAFETY_AVAILABLE:
+            return messages
+
+        context = {
+            "tenant_id": self._registry_tenant_id,
+            "extraction_job_id": extraction_job_id,
+        }
+
+        # Check token limits first (most efficient)
+        if self._token_limiter:
+            self._token_limiter.check_limit(messages, context=context)
+
+        # Scan each message for prompt injection and PII
+        safe_messages: list[dict[str, str]] = []
+        for msg in messages:
+            content = msg.get("content", "")
+
+            # F-13: Check for prompt injection
+            if self._prompt_guard:
+                self._prompt_guard.check(content, context=context)
+
+            # F-14: Redact PII
+            if self._pii_guard:
+                result = self._pii_guard.redact(content, context=context)
+                content = result.sanitized_text
+
+            safe_messages.append({**msg, "content": content})
+
+        return safe_messages
 
     def _calculate_retry_wait(self, attempt: int) -> float:
         """Calculate exponential backoff with jitter for retry delays.

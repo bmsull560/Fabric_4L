@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/format_currency.json",
+  "name": "format_currency",
+  "version": "1.0.0",
+  "description": "Formats numeric values as localized currency strings",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "amount": {"type": "number", "description": "Amount to format"},
+      "currency": {"type": "string", "default": "USD", "description": "Currency code"},
+      "locale": {"type": "string", "default": "en_US", "description": "Locale code"},
+      "decimals": {"type": "integer", "default": 0, "description": "Decimal places"}
+    },
+    "required": ["amount"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "formatted": {"type": "string", "description": "Formatted string"},
+      "numeric": {"type": "number", "description": "Original value"},
+      "currency": {"type": "string", "description": "Currency code"}
+    },
+    "required": ["formatted", "numeric", "currency"]
+  }
+}

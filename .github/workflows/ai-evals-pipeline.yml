@@ -415,7 +415,8 @@ jobs:
           pattern: eval-results-*
           merge-multiple: true
           path: ./eval-results
-        continue-on-error: true
+        # BLOCKING: Missing eval results indicate pipeline failure
+        # AI evals are contract-critical for agent output validation (CONTRACT.md §2.5)
 
       - name: Aggregate results
         id: aggregate

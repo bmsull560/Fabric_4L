@@ -62,7 +62,8 @@ jobs:
           grype sbom:${{ matrix.layer }}-sbom.cdx.json \
             -o sarif=${{ matrix.layer }}-vulns.sarif \
             --fail-on high
-        continue-on-error: true
+        # BLOCKING: Security vulnerabilities fail the build per CONTRACT_EXCEPTION_POLICY.md
+        # Never exemptible: Security scans must not soft-fail
 
       - name: Upload SBOM artifacts
         uses: actions/upload-artifact@v4

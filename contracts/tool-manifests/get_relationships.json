@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/get_relationships.json",
+  "name": "get_relationships",
+  "version": "1.0.0",
+  "description": "Retrieves relationships for an entity with optional filtering",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "entity_id": {
+        "type": "string",
+        "description": "Source entity ID"
+      },
+      "predicate": {
+        "type": ["string", "null"],
+        "description": "Relationship type filter"
+      },
+      "direction": {
+        "type": "string",
+        "enum": ["outgoing", "incoming", "both"],
+        "description": "Relationship direction",
+        "default": "both"
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 500,
+        "description": "Maximum results to return",
+        "default": 50
+      }
+    },
+    "required": ["entity_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "relationships": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "Relationship objects"
+      },
+      "total_count": {
+        "type": "integer",
+        "description": "Total number of relationships"
+      }
+    },
+    "required": ["relationships", "total_count"]
+  }
+}

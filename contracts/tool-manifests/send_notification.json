@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/send_notification.json",
+  "name": "send_notification",
+  "version": "1.0.0",
+  "description": "Sends notifications via email, Slack, or Microsoft Teams",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "channel": {"type": "string", "enum": ["email", "slack", "teams"], "description": "Notification channel"},
+      "recipients": {"type": "array", "items": {"type": "string"}, "description": "Recipients"},
+      "subject": {"type": "string", "description": "Message subject"},
+      "message": {"type": "string", "description": "Message body"},
+      "attachments": {"type": ["array", "null"], "items": {"type": "object"}, "description": "File attachments"}
+    },
+    "required": ["channel", "recipients", "subject", "message"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "success": {"type": "boolean", "description": "Delivery status"},
+      "message_id": {"type": ["string", "null"], "description": "Provider message ID"},
+      "error": {"type": ["string", "null"], "description": "Error if failed"}
+    },
+    "required": ["success"]
+  }
+}

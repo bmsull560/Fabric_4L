@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/format_table.json",
+  "name": "format_table",
+  "version": "1.0.0",
+  "description": "Formats data as HTML, Markdown, or CSV tables",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "headers": {"type": "array", "items": {"type": "string"}, "description": "Column headers"},
+      "rows": {"type": "array", "items": {"type": "array"}, "description": "Data rows"},
+      "format": {"type": "string", "enum": ["html", "markdown", "csv"], "default": "html", "description": "Output format"},
+      "sort_column": {"type": ["integer", "null"], "description": "Column index to sort by"}
+    },
+    "required": ["headers", "rows"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "formatted": {"type": "string", "description": "Formatted table string"},
+      "row_count": {"type": "integer", "description": "Number of rows"}
+    },
+    "required": ["formatted", "row_count"]
+  }
+}

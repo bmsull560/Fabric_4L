@@ -22,6 +22,19 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+
+def _get_tenant_id() -> str | None:
+    """Safely retrieve tenant ID from request context.
+
+    Returns None if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return None
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return None
+
 # Redis client singleton
 _redis_client: redis.Redis | None = None
 
@@ -68,10 +81,11 @@ def _build_cache_key(resource_type: str, resource_id: str, tenant_id: UUID | Non
     """
     # Get tenant_id from context if not provided
     if tenant_id is None:
-        if require_context is None:
+        ctx_tenant_id = _get_tenant_id()
+        if ctx_tenant_id is None:
             raise RuntimeError("require_context not available and tenant_id not provided")
-        tenant_id = require_context().tenant_id
-    
+        tenant_id = ctx_tenant_id
+
     # Sanitize all components
     safe_resource_type = _sanitize_key_component(resource_type)
     safe_resource_id = _sanitize_key_component(resource_id)
@@ -209,15 +223,16 @@ async def invalidate_tenant_cache(tenant_id: UUID | None = None) -> int:
         Number of keys deleted
     """
     if tenant_id is None:
-        if require_context is None:
+        ctx_tenant_id = _get_tenant_id()
+        if ctx_tenant_id is None:
             raise RuntimeError("require_context not available and tenant_id not provided")
-        tenant_id = require_context().tenant_id
-    
+        tenant_id = ctx_tenant_id
+
     try:
         client = await get_redis_client()
         # Pattern must include tenant_id to prevent cross-tenant invalidation
         pattern = f"cache:tenant:{tenant_id}:*"
-        
+
         keys = await client.keys(pattern)
         if keys:
             return await client.delete(*keys)
@@ -238,10 +253,11 @@ async def invalidate_cache_pattern(pattern: str, tenant_id: UUID | None = None) 
         Number of keys deleted
     """
     if tenant_id is None:
-        if require_context is None:
+        ctx_tenant_id = _get_tenant_id()
+        if ctx_tenant_id is None:
             raise RuntimeError("require_context not available and tenant_id not provided")
-        tenant_id = require_context().tenant_id
-    
+        tenant_id = ctx_tenant_id
+
     try:
         client = await get_redis_client()
         # Sanitize pattern and enforce tenant scoping

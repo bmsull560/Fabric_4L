@@ -1,0 +1,311 @@
+{
+  "version": "2026-04-28",
+  "lastUpdated": "2026-04-28T05:48:00Z",
+  "schema": "1.0",
+  "description": "Fabric 4L Contract Deprecation Register. Tracks anti-patterns and their migration to canonical contracts per CONTRACT.md.",
+  "items": [
+    {
+      "id": "DEP-TENANT-PARAM-001",
+      "pattern": "tenant-id-as-parameter",
+      "contract": "2.1-tenant-context",
+      "status": "active",
+      "severity": "critical",
+      "owner": "platform-engineering",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-06-23",
+      "instanceCount": 225,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/*/src/**/*.py"
+      ],
+      "allowedPaths": [
+        "value-fabric/*/migrations/**",
+        "value-fabric/*/tests/**"
+      ],
+      "replacement": "getTenantContext() from async scope",
+      "rationale": "Tenant context must flow through request-scoped AsyncLocalStorage, not explicit parameters. Prevents parameter pollution and cross-tenant spoofing.",
+      "enforcement": {
+        "eslintRule": "no-tenant-id-parameter",
+        "ciGate": "python-lint",
+        "runtimeGuard": "GovernanceMiddleware"
+      }
+    },
+    {
+      "id": "DEP-HEADER-ACCESS-002",
+      "pattern": "direct-header-tenant-access",
+      "contract": "2.1-tenant-context",
+      "status": "active",
+      "severity": "critical",
+      "owner": "platform-engineering",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-05-23",
+      "instanceCount": 23,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/*/src/**/*.py"
+      ],
+      "allowedPaths": [
+        "shared/identity/middleware.py"
+      ],
+      "replacement": "getTenantContext() - set by auth middleware",
+      "rationale": "Only auth middleware should read tenant headers. Downstream code must use validated context.",
+      "enforcement": {
+        "eslintRule": "no-req-tenant-access",
+        "ciGate": "python-lint",
+        "runtimeGuard": "RequestContext validation"
+      }
+    },
+    {
+      "id": "DEP-RAW-SQL-TENANT-003",
+      "pattern": "raw-sql-tenant-filtering",
+      "contract": "2.2-db-session",
+      "status": "active",
+      "severity": "high",
+      "owner": "data-engineering",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-06-23",
+      "instanceCount": 15,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/*/src/**/*.py"
+      ],
+      "allowedPaths": [
+        "value-fabric/*/migrations/**",
+        "scripts/analytics/**"
+      ],
+      "replacement": "ORM with automatic tenant scoping via db.getSession()",
+      "rationale": "Raw SQL bypasses RLS policies and ORM tenant scoping. All tenant-scoped queries must use SET LOCAL app.tenant_id.",
+      "enforcement": {
+        "eslintRule": "no-raw-tenant-query",
+        "ciGate": "python-lint",
+        "runtimeGuard": "RLS policy enforcement"
+      }
+    },
+    {
+      "id": "DEP-EXPLICIT-DB-004",
+      "pattern": "explicit-db-connect-with-tenant",
+      "contract": "2.2-db-session",
+      "status": "active",
+      "severity": "high",
+      "owner": "platform-engineering",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-05-23",
+      "instanceCount": 31,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/*/src/**/*.py"
+      ],
+      "allowedPaths": [],
+      "replacement": "db.getSession() which reads tenant from context",
+      "rationale": "DB connections must derive tenant from request context, not explicit parameters. Ensures RLS policy enforcement.",
+      "enforcement": {
+        "eslintRule": "no-explicit-db-connect",
+        "ciGate": "python-lint",
+        "runtimeGuard": "Session provider validation"
+      }
+    },
+    {
+      "id": "DEP-INLINE-MIDDLEWARE-005",
+      "pattern": "inline-middleware-definition",
+      "contract": "2.3-middleware-flow",
+      "status": "active",
+      "severity": "medium",
+      "owner": "api-team",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-06-23",
+      "instanceCount": 42,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/*/src/api/**/*.py",
+        "frontend/client/src/**/*.ts",
+        "frontend/client/src/**/*.tsx"
+      ],
+      "allowedPaths": [
+        "examples/canonical/middleware/**"
+      ],
+      "replacement": "Route manifest with declared 8-phase pipeline",
+      "rationale": "Middleware must be declared in route manifests with explicit phase ordering. Prevents ad-hoc middleware stacking.",
+      "enforcement": {
+        "eslintRule": "no-inline-middleware",
+        "ciGate": "lint-frontend",
+        "runtimeGuard": "Middleware manifest validator"
+      }
+    },
+    {
+      "id": "DEP-INLINE-TOOLS-006",
+      "pattern": "inline-tool-definition",
+      "contract": "2.4-tool-boundary",
+      "status": "active",
+      "severity": "high",
+      "owner": "agent-team",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-06-23",
+      "instanceCount": 19,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/layer4-agents/src/agents/**/*.py",
+        "value-fabric/layer4-agents/workflows/**/*.py"
+      ],
+      "allowedPaths": [
+        "value-fabric/layer4-agents/src/tools/**/*.py",
+        "examples/canonical/tools/**"
+      ],
+      "replacement": "Central ToolRegistry with schema-first definitions",
+      "rationale": "Tools must be defined once in registry with JSON Schema. Framework bindings are auto-generated wrappers.",
+      "enforcement": {
+        "eslintRule": "no-inline-tool-definition",
+        "ciGate": "lint-frontend",
+        "runtimeGuard": "ToolRegistry validation"
+      }
+    },
+    {
+      "id": "DEP-THROW-IN-TOOLS-007",
+      "pattern": "tools-throwing-exceptions",
+      "contract": "2.4-tool-boundary",
+      "status": "active",
+      "severity": "critical",
+      "owner": "agent-team",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-05-23",
+      "instanceCount": 27,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/layer4-agents/src/tools/**/*.py"
+      ],
+      "allowedPaths": [
+        "value-fabric/layer4-agents/tests/**"
+      ],
+      "replacement": "ToolResult with status: error and structured error payload",
+      "rationale": "Tools must return structured errors, not throw exceptions. Agents need recoverability info to reason about failures.",
+      "enforcement": {
+        "eslintRule": "no-throw-in-tool",
+        "ciGate": "python-lint",
+        "runtimeGuard": "ToolGateway error normalization"
+      }
+    },
+    {
+      "id": "DEP-JSON-PARSE-LLM-008",
+      "pattern": "json-parse-llm-output",
+      "contract": "2.5-agent-output",
+      "status": "active",
+      "severity": "high",
+      "owner": "agent-team",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-06-23",
+      "instanceCount": 13,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "value-fabric/layer4-agents/src/**/*.py",
+        "frontend/client/src/**/*.ts",
+        "frontend/client/src/**/*.tsx"
+      ],
+      "allowedPaths": [],
+      "replacement": "Structured generation with Pydantic/Zod schema validation",
+      "rationale": "Agent outputs must use function calling with schema enforcement. Raw text parsing is error-prone and bypasses validation.",
+      "enforcement": {
+        "eslintRule": "no-json-parse-agent-output",
+        "ciGate": "lint-frontend",
+        "runtimeGuard": "Output validation middleware"
+      }
+    },
+    {
+      "id": "DEP-IMPERATIVE-NAV-009",
+      "pattern": "imperative-navigation",
+      "contract": "2.6-ui-state",
+      "status": "active",
+      "severity": "medium",
+      "owner": "frontend-team",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-06-23",
+      "instanceCount": 56,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "frontend/client/src/**/*.tsx",
+        "frontend/client/src/**/*.ts"
+      ],
+      "allowedPaths": [],
+      "replacement": "navigate() from state-machine-driven navigation service",
+      "rationale": "Navigation must be state-machine mediated. router.push() bypasses workflow guards and state validation.",
+      "enforcement": {
+        "eslintRule": "no-imperative-navigation",
+        "ciGate": "lint-frontend",
+        "runtimeGuard": "State machine transition validator"
+      }
+    },
+    {
+      "id": "DEP-URL-CONCAT-010",
+      "pattern": "url-string-concatenation",
+      "contract": "2.6-ui-state",
+      "status": "active",
+      "severity": "medium",
+      "owner": "frontend-team",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-05-23",
+      "instanceCount": 34,
+      "source": "DEPRECATIONS.md",
+      "blockedPaths": [
+        "frontend/client/src/**/*.tsx",
+        "frontend/client/src/**/*.ts"
+      ],
+      "allowedPaths": [],
+      "replacement": "navigate() with state IDs and parameter objects",
+      "rationale": "URL construction must be centralized in navigation service. Prevents malformed URLs and encoding issues.",
+      "enforcement": {
+        "eslintRule": "no-url-concatenation",
+        "ciGate": "lint-frontend",
+        "runtimeGuard": "URL builder validation"
+      }
+    },
+    {
+      "id": "DEP-WOUTER-ROUTER-011",
+      "pattern": "direct-wouter-import",
+      "contract": "2.6-ui-state",
+      "status": "active",
+      "severity": "medium",
+      "owner": "architecture",
+      "introduced": "2026-04-28",
+      "targetRemoval": "2026-05-15",
+      "instanceCount": 80,
+      "source": "audit-output/CONTRACT_ENFORCEMENT_AUDIT_2026-04-28.md",
+      "blockedPaths": [
+        "frontend/client/src/**/*.tsx",
+        "frontend/client/src/**/*.ts"
+      ],
+      "allowedPaths": [
+        "frontend/client/src/navigation/**/*.ts"
+      ],
+      "replacement": "workflowNavigator or approved navigation abstraction",
+      "rationale": "Direct wouter usage bypasses state-machine validation. All navigation must go through approved abstraction layer.",
+      "enforcement": {
+        "eslintRule": "no-private-imports (wouter)",
+        "ciGate": "lint-frontend",
+        "runtimeGuard": "Import restriction"
+      }
+    }
+  ],
+  "exceptions": [],
+  "compliance": {
+    "lastAudit": "2026-04-28",
+    "overallScore": 58,
+    "targetScore": 85,
+    "targetDate": "2026-05-23",
+    "byContract": {
+      "2.1-tenant-context": { "score": 60, "violations": 248 },
+      "2.2-db-session": { "score": 40, "violations": 46 },
+      "2.3-middleware-flow": { "score": 50, "violations": 42 },
+      "2.4-tool-boundary": { "score": 55, "violations": 46 },
+      "2.5-agent-output": { "score": 50, "violations": 13 },
+      "2.6-ui-state": { "score": 65, "violations": 170 }
+    }
+  },
+  "metadata": {
+    "generatedBy": "contract-enforcement-auditor",
+    "ciValidation": true,
+    "autoUpdate": {
+      "enabled": true,
+      "schedule": "weekly",
+      "day": "monday",
+      "time": "00:00"
+    }
+  }
+}

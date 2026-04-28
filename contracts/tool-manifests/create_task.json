@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/create_task.json",
+  "name": "create_task",
+  "version": "1.0.0",
+  "description": "Creates tasks in project management systems",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "title": {"type": "string", "description": "Task title"},
+      "description": {"type": "string", "description": "Task description"},
+      "assignee": {"type": ["string", "null"], "description": "Assigned user ID"},
+      "due_date": {"type": ["string", "null"], "description": "Due date ISO format"},
+      "priority": {"type": "string", "enum": ["low", "medium", "high"], "default": "medium", "description": "Priority"},
+      "related_to": {"type": ["object", "null"], "description": "Related entity references"}
+    },
+    "required": ["title", "description"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "task_id": {"type": ["string", "null"], "description": "Created task ID"},
+      "success": {"type": "boolean", "description": "Status"},
+      "url": {"type": ["string", "null"], "description": "Task URL"},
+      "error": {"type": ["string", "null"], "description": "Error if failed"}
+    },
+    "required": ["success"]
+  }
+}

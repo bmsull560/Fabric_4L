@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/analyze_competition.json",
+  "name": "analyze_competition",
+  "version": "1.0.0",
+  "description": "Analyzes competitive alternatives and produces structured competitive intelligence",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "context_artifact_id": {"type": "string", "description": "ContextArtifact ID"},
+      "tenant_id": {"type": "string", "description": "Tenant ID"},
+      "workspace_id": {"type": "string", "description": "Workspace ID"},
+      "prospect_industry": {"type": "string", "default": "", "description": "Industry vertical"},
+      "known_competitors": {"type": "array", "items": {"type": "string"}, "default": [], "description": "Competitor names"},
+      "known_incumbent": {"type": ["string", "null"], "description": "Current vendor"},
+      "deal_context": {"type": "string", "default": "", "description": "Deal summary"},
+      "baselines_to_evaluate": {"type": "array", "items": {"type": "string"}, "description": "Baselines to analyze"}
+    },
+    "required": ["context_artifact_id", "tenant_id", "workspace_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "artifact": {"type": "object", "description": "CompetitiveIntelArtifact"},
+      "baselines_evaluated": {"type": "array", "items": {"type": "string"}, "description": "Analyzed baselines"},
+      "total_differences_found": {"type": "integer", "description": "Difference count"},
+      "unsupported_claim_count": {"type": "integer", "description": "Claims needing review"},
+      "defensibility_score": {"type": "number", "description": "Overall confidence"},
+      "agent_notes": {"type": "string", "description": "Analysis summary"}
+    },
+    "required": ["artifact", "baselines_evaluated", "total_differences_found", "defensibility_score"]
+  }
+}

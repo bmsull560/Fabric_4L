@@ -281,7 +281,6 @@ async def semantic_search(
     search_service = EvidenceSearchService(driver)
 
     results = await search_service.find_matching_evidence(
-        tenant_id=tenant_id,
         signal_description=request.query,
         evidence_types=request.evidence_types,
         limit=request.limit,

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/export_to_crm.json",
+  "name": "export_to_crm",
+  "version": "1.0.0",
+  "description": "Exports notes, documents, or activities to CRM systems",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "entity_type": {"type": "string", "enum": ["note", "document", "activity"], "description": "Entity type"},
+      "entity_data": {"type": "object", "description": "Entity content"},
+      "prospect_id": {"type": "string", "description": "Associated prospect ID"}
+    },
+    "required": ["entity_type", "entity_data", "prospect_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "crm_record_id": {"type": ["string", "null"], "description": "Record ID"},
+      "success": {"type": "boolean", "description": "Status"},
+      "url": {"type": ["string", "null"], "description": "CRM record URL"},
+      "error": {"type": ["string", "null"], "description": "Error if failed"}
+    },
+    "required": ["success"]
+  }
+}

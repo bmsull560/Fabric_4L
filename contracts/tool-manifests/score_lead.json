@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/score_lead.json",
+  "name": "score_lead",
+  "version": "1.0.0",
+  "description": "Calculates lead score based on profile fit and engagement",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "prospect_id": {"type": "string", "description": "Prospect ID to score"},
+      "scoring_model": {"type": "string", "default": "default", "description": "Model to use"},
+      "factors": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Specific factors to include"}
+    },
+    "required": ["prospect_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "score": {"type": "number", "minimum": 0, "maximum": 100, "description": "Total score"},
+      "grade": {"type": "string", "description": "Letter grade A-F"},
+      "factors": {"type": "object", "description": "Component scores"},
+      "recommendations": {"type": "array", "items": {"type": "string"}, "description": "Suggested actions"}
+    },
+    "required": ["score", "grade", "factors", "recommendations"]
+  }
+}

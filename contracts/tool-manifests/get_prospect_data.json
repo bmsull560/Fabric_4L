@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/get_prospect_data.json",
+  "name": "get_prospect_data",
+  "version": "1.0.0",
+  "description": "Retrieves prospect profile, interactions, and opportunities from CRM",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "prospect_id": {
+        "type": "string",
+        "description": "CRM prospect/company ID"
+      },
+      "data_types": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Data to fetch: profile, interactions, opportunities",
+        "default": ["profile", "interactions", "opportunities"]
+      }
+    },
+    "required": ["prospect_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "profile": {
+        "type": "object",
+        "description": "Company profile data"
+      },
+      "interactions": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "List of interactions/activities"
+      },
+      "opportunities": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "List of opportunities/deals"
+      },
+      "custom_fields": {
+        "type": "object",
+        "description": "Custom CRM fields"
+      }
+    },
+    "required": ["profile", "interactions", "opportunities", "custom_fields"]
+  }
+}

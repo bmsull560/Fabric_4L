@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/schedule_meeting.json",
+  "name": "schedule_meeting",
+  "version": "1.0.0",
+  "description": "Schedules meetings with attendees using calendar APIs",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "title": {"type": "string", "description": "Meeting title"},
+      "attendees": {"type": "array", "items": {"type": "string"}, "description": "Attendee emails"},
+      "duration_minutes": {"type": "integer", "minimum": 15, "maximum": 240, "default": 30, "description": "Duration"},
+      "preferred_times": {"type": ["array", "null"], "items": {"type": "string"}, "description": "Preferred slots"},
+      "description": {"type": ["string", "null"], "description": "Meeting description"}
+    },
+    "required": ["title", "attendees"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "meeting_id": {"type": ["string", "null"], "description": "Calendar event ID"},
+      "scheduled_time": {"type": ["string", "null"], "description": "Confirmed time ISO"},
+      "calendar_link": {"type": ["string", "null"], "description": "Calendar link"},
+      "success": {"type": "boolean", "description": "Status"},
+      "error": {"type": ["string", "null"], "description": "Error if failed"}
+    },
+    "required": ["success"]
+  }
+}

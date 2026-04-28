@@ -14,6 +14,10 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="$PROJECT_ROOT/docker-compose.dev.yml"
 ENV_FILE="$PROJECT_ROOT/.env.dev"
 
+# Health check configuration
+MAX_WAIT_SECONDS=120
+CHECK_INTERVAL=5
+
 cd "$PROJECT_ROOT"
 
 # Colors
@@ -30,6 +34,17 @@ banner() {
     echo "╚══════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 }
+
+# Detect docker compose variant early (needed for 'down' command)
+if docker compose version &>/dev/null 2>&1; then
+    COMPOSE="docker compose"
+elif docker-compose version &>/dev/null 2>&1; then
+    COMPOSE="docker-compose"
+else
+    echo -e "${RED}Error: Docker Compose is not installed.${NC}"
+    echo "Install Docker Desktop or Docker Compose."
+    exit 1
+fi
 
 # Handle 'down' command
 if [[ "${1:-}" == "down" ]]; then
@@ -49,18 +64,7 @@ if ! command -v docker &>/dev/null; then
     exit 1
 fi
 
-# Detect docker compose variant
-if docker compose version &>/dev/null 2>&1; then
-    COMPOSE="docker compose"
-elif docker-compose version &>/dev/null 2>&1; then
-    COMPOSE="docker-compose"
-else
-    echo -e "${RED}Error: Docker Compose is not installed.${NC}"
-    echo "Install Docker Desktop or Docker Compose."
-    exit 1
-fi
-
-echo -e "${GREEN}✓ Docker and Compose available${NC}"
+echo -e "${GREEN}✓ Docker and Compose available ($COMPOSE)${NC}"
 
 # Check for .env.dev
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -90,43 +94,50 @@ $COMPOSE -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d $BUILD_FLAG
 
 # Wait for health
 echo ""
-echo -e "${YELLOW}Waiting for services to be healthy...${NC}"
+echo -e "${YELLOW}Waiting for services to be healthy (max ${MAX_WAIT_SECONDS}s)...${NC}"
 
-MAX_WAIT=120
 ELAPSED=0
-while [[ $ELAPSED -lt $MAX_WAIT ]]; do
-    HEALTHY=$($COMPOSE -f "$COMPOSE_FILE" ps --format json 2>/dev/null | python3 -c "
-import sys, json
-lines = sys.stdin.read().strip().split('\n')
-total = 0
-healthy = 0
-for line in lines:
-    if not line: continue
-    try:
-        svc = json.loads(line)
-        total += 1
-        status = svc.get('Health', svc.get('State', ''))
-        if 'healthy' in status.lower() or 'running' in status.lower():
-            healthy += 1
-    except: pass
-print(f'{healthy}/{total}')
-" 2>/dev/null || echo "0/0")
+ALL_HEALTHY=false
 
-    echo -ne "\r  Services healthy: ${HEALTHY}  (${ELAPSED}s elapsed)"
+while [[ $ELAPSED -lt $MAX_WAIT_SECONDS ]]; do
+    # Count healthy services using docker inspect instead of parsing json
+    SERVICES=$($COMPOSE -f "$COMPOSE_FILE" ps -q 2>/dev/null || true)
+    TOTAL=0
+    HEALTHY=0
 
-    if [[ "$HEALTHY" == *"/"* ]]; then
-        CURRENT=$(echo "$HEALTHY" | cut -d/ -f1)
-        TOTAL=$(echo "$HEALTHY" | cut -d/ -f2)
-        if [[ "$CURRENT" -ge "$TOTAL" && "$TOTAL" -gt 0 ]]; then
-            echo ""
-            break
+    for container in $SERVICES; do
+        TOTAL=$((TOTAL + 1))
+        # Check if container is running and healthy (if healthcheck defined)
+        STATE=$(docker inspect --format='{{.State.Status}}' "$container" 2>/dev/null || echo "unknown")
+        HEALTH=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container" 2>/dev/null || echo "none")
+
+        if [[ "$STATE" == "running" ]]; then
+            if [[ "$HEALTH" == "none" || "$HEALTH" == "healthy" ]]; then
+                HEALTHY=$((HEALTHY + 1))
+            fi
         fi
+    done
+
+    echo -ne "\r  Services healthy: ${HEALTHY}/${TOTAL}  (${ELAPSED}s elapsed)"
+
+    if [[ $HEALTHY -gt 0 && $HEALTHY -eq $TOTAL && $TOTAL -gt 0 ]]; then
+        ALL_HEALTHY=true
+        echo ""
+        break
     fi
 
-    sleep 5
-    ELAPSED=$((ELAPSED + 5))
+    sleep $CHECK_INTERVAL
+    ELAPSED=$((ELAPSED + CHECK_INTERVAL))
 done
 
+if [[ "$ALL_HEALTHY" != "true" ]]; then
+    echo ""
+    echo -e "${RED}Error: Services failed to become healthy within ${MAX_WAIT_SECONDS}s${NC}"
+    echo -e "  Check logs: ${CYAN}$COMPOSE -f $COMPOSE_FILE logs${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}  All services healthy!${NC}"
 echo ""
 echo -e "${GREEN}══════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}  Dev environment is ready!${NC}"

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/get_entity.json",
+  "name": "get_entity",
+  "version": "1.0.0",
+  "description": "Retrieves a specific entity by ID with optional relationships",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "entity_id": {
+        "type": "string",
+        "description": "Unique identifier of the entity"
+      },
+      "include_relationships": {
+        "type": "boolean",
+        "description": "Include connected relationships",
+        "default": true
+      },
+      "depth": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 3,
+        "description": "Relationship depth to traverse",
+        "default": 1
+      }
+    },
+    "required": ["entity_id"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "entity": {
+        "type": ["object", "null"],
+        "description": "Entity properties, null if not found"
+      },
+      "relationships": {
+        "type": "array",
+        "items": {"type": "object"},
+        "description": "Connected relationships"
+      },
+      "found": {
+        "type": "boolean",
+        "description": "Whether entity was found"
+      }
+    },
+    "required": ["entity", "relationships", "found"]
+  }
+}

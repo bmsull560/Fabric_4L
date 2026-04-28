@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://valuefabric.ai/contracts/tool-manifests/generate_section.json",
+  "name": "generate_section",
+  "version": "1.0.0",
+  "description": "Generates narrative sections for business cases using LLM",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "section_type": {"type": "string", "description": "Type: executive_summary, current_state, proposed_solution, roi_analysis, implementation, next_steps"},
+      "context": {"type": "object", "default": {}, "description": "Key-value context data"},
+      "tone": {"type": "string", "default": "professional", "description": "Writing tone"},
+      "max_length": {"type": "integer", "minimum": 100, "maximum": 2000, "default": 500, "description": "Maximum word count"}
+    },
+    "required": ["section_type"],
+    "additionalProperties": false
+  },
+  "returns": {
+    "type": "object",
+    "properties": {
+      "content": {"type": "string", "description": "Generated text content"},
+      "word_count": {"type": "integer", "description": "Actual word count"},
+      "key_points": {"type": "array", "items": {"type": "string"}, "description": "Extracted key points"}
+    },
+    "required": ["content", "word_count", "key_points"]
+  }
+}
