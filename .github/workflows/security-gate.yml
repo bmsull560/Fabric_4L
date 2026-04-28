@@ -1,0 +1,54 @@
+# Security regression test gate for merge blocking.
+# Runs on every PR to verify security fixes are intact.
+name: Security Gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  security-tests:
+    name: Security Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pytest pytest-asyncio beautifulsoup4
+
+      - name: Run security regression tests
+        run: |
+          pytest tests/security/ -v --tb=short
+
+      - name: Check for secret fallbacks in workflows
+        run: |
+          # Fail if any workflow has secret fallbacks like || 'fallback'
+          if grep -r "|| '.*'" .github/workflows/*.yml 2>/dev/null | grep -q "secrets\."; then
+            echo "ERROR: Found secret fallback patterns in workflows"
+            grep -r "|| '.*'" .github/workflows/*.yml | grep "secrets\."
+            exit 1
+          fi
+          echo "No secret fallback patterns found"
+
+      - name: Verify SecurityMiddleware is configured
+        run: |
+          # Check that all main.py files have SecurityConfig
+          for f in value-fabric/*/src/api/main.py value-fabric/*/src/*/api/main.py; do
+            if [ -f "$f" ]; then
+              if ! grep -q "SecurityConfig" "$f"; then
+                echo "WARNING: $f may be missing SecurityConfig"
+              fi
+            fi
+          done

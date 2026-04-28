@@ -41,7 +41,8 @@ jobs:
         run: |
           # Export required environment variables
           export NEO4J_PASSWORD=valuefabric
-          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || 'sk-test-key' }}
+          # P1-22 FIX: Removed secret fallback - secrets must be configured
+          export OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
           
           # Start core services (L2, L3, L4 + dependencies)
           docker compose up -d neo4j redis postgres layer2-extraction layer3-knowledge layer4-agents

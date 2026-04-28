@@ -209,3 +209,60 @@ def client():
         # Cleanup: remove path modification to prevent isolation leakage
         if l1_src in sys.path:
             sys.path.remove(l1_src)
+
+
+@pytest.fixture
+def expired_token(jwt_encoder) -> str:
+    """Expired JWT token for negative testing."""
+    import time
+    return jwt_encoder({
+        "sub": "user-123",
+        "tenant_id": "tenant-a",
+        "role": "standard",
+        "exp": int(time.time()) - 3600,  # Expired 1 hour ago
+    })
+
+
+@pytest.fixture
+def invalid_signature_token() -> str:
+    """Token with invalid signature for negative testing."""
+    # Create a valid-looking token but sign with wrong secret
+    payload = {
+        "sub": "user-123",
+        "tenant_id": "tenant-a",
+        "role": "standard",
+    }
+    return jwt.encode(payload, "wrong-secret", algorithm="HS256")
+
+
+@pytest.fixture
+def malformed_token() -> str:
+    """Completely malformed token."""
+    return "not.a.valid.jwt.token"
+
+
+@pytest.fixture
+def websocket_client():
+    """TestClient fixture for L4 WebSocket testing."""
+    TestClient = _get_testclient()
+    if TestClient is None:
+        pytest.skip("fastapi not installed")
+    
+    import sys
+    from pathlib import Path
+
+    # Add L4 src to path for direct imports
+    l4_src = str(Path(__file__).resolve().parents[2] / "value-fabric" / "layer4-agents" / "src")
+    if l4_src not in sys.path:
+        sys.path.insert(0, l4_src)
+
+    try:
+        # Try to import L4 app - may not be available without dependencies
+        from api.main import app
+        return TestClient(app)
+    except ImportError:
+        pytest.skip("Layer 4 FastAPI app not available for WebSocket testing")
+    finally:
+        # Cleanup: remove path modification to prevent isolation leakage
+        if l4_src in sys.path:
+            sys.path.remove(l4_src)

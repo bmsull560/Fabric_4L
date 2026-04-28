@@ -121,6 +121,11 @@ async def workflow_websocket(
     # Task 2.2: Extract tenant context from JWT token (now from header)
     tenant_id, user_id = _extract_tenant_from_token(ws_token)
 
+    # P0 SECURITY FIX: Reject connection if authentication failed
+    if not tenant_id:
+        await websocket.close(code=1008, reason="Authentication required: valid JWT token required")
+        return
+
     try:
         # Accept connection and send replay if reconnecting (with tenant context)
         await ws_manager.connect(

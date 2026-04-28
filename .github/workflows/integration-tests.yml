@@ -33,7 +33,8 @@ jobs:
 
       - name: Start core services
         env:
-          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD || 'changeme' }}
+          # P1-22 FIX: Removed secret fallback - secrets must be configured
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           cd value-fabric
