@@ -22,8 +22,8 @@
  *   - UI Contracts: Data, Behavior, Rendering
  *   - CONTRACT.md §2.6 (UI State Machine)
  */
-import { test, expect } from '@playwright/test';
-import { setUserTier, clearUserTier } from '../fixtures';
+import { test, expect, type Page, type Route } from '@playwright/test';
+import { setUserTier, clearUserTier, seedAuthState, clearAuthState } from '../fixtures';
 import {
   mockAgentStreamChat,
   mockAgentStreamError,
@@ -36,19 +36,112 @@ import {
 } from '../fixtures/account-helpers';
 import { AgentStreamPage } from '../pages/AgentStreamPage';
 
+// ── Workspace API Mocking ──────────────────────────────────────────────────
+// The workspace pages require successful API responses to render the
+// IntelligenceShell/ValueStudioShell (which contains the Agent Stream panel).
+// Without mocking, pages show "Failed to load..." and never render the RightRail.
+
+const MOCK_CASE_ID = 'case-agent-test-001';
+const CASE_STORAGE_KEY = `vf.workspace.case.${TEST_ACCOUNTS.meridian.id}`;
+
+const MOCK_ACCOUNT = {
+  id: TEST_ACCOUNTS.meridian.id,
+  name: TEST_ACCOUNTS.meridian.name,
+  domain: 'meridianautomotive.com',
+  industry: 'Manufacturing',
+  stage: 'customer',
+  provider: 'manual',
+  provider_record_id: TEST_ACCOUNTS.meridian.id,
+  sync_status: 'synced',
+  employees: 5000,
+  annual_revenue: 250000000,
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-06-01T00:00:00Z',
+};
+
+/** Tab-specific mock workspace data with at least one item to prevent auto-generate */
+function getMockWorkspaceData(tabKey: string): unknown {
+  const mocks: Record<string, unknown> = {
+    signals: { signals: [{ id: 's1', name: 'Cost Reduction', category: 'Operational', confidence: 85, impact: 'high', trend: 'up' }] },
+    drivers: { drivers: [{ id: 'd1', name: 'Labor Efficiency', parentSignal: 'Cost Reduction', impact: 'high' }] },
+    evidence: { evidence: [{ id: 'e1', title: 'Q3 Report', excerpt: 'Cost savings identified', source: 'internal', match_score: 0.9 }] },
+    stakeholders: { stakeholders: [{ id: 'st1', name: 'Jane Doe', title: 'VP Operations', influence: 'high', priority: 'champion' }] },
+    'value-model': { valueLines: [{ id: 'v1', driver: 'Efficiency', category: 'hard', conservative: 500000, expected: 1000000, optimistic: 1500000 }] },
+    narrative: { narratives: [{ id: 'n1', title: 'Value Narrative v1', status: 'draft', sections: [], created_at: '2024-06-01T00:00:00Z' }] },
+    'action-plan': { action_plan: { phases: [{ id: 'p1', name: 'Phase 1', tasks: [] }], timeline: '6 months' } },
+  };
+  return mocks[tabKey] ?? {};
+}
+
+/**
+ * Mock all workspace APIs so the page renders fully (IntelligenceShell + RightRail).
+ * Uses /api/v1/ prefix to avoid intercepting Vite source file requests.
+ * Routes registered in priority order (catch-all first = lowest priority).
+ */
+async function mockWorkspaceApis(page: Page): Promise<void> {
+  // Catch-all for unhandled API v1 requests (lowest priority)
+  await page.route('**/api/v1/**', async (route: Route) => {
+    await route.fulfill({ json: {} });
+  });
+
+  // Workspace generate endpoint
+  await page.route('**/agents/analysis/cases/*/workspace/generate', async (route: Route) => {
+    await route.fulfill({ json: { status: 'complete' } });
+  });
+
+  // Workspace tab data
+  await page.route('**/agents/analysis/cases/*/workspace/*', async (route: Route) => {
+    const url = route.request().url();
+    const tabMatch = url.match(/\/workspace\/([^?/]+)/);
+    const tabKey = tabMatch?.[1] ?? 'signals';
+    await route.fulfill({ json: getMockWorkspaceData(tabKey) });
+  });
+
+  // Canonical case ID lookup
+  await page.route('**/agents/analysis/cases**', async (route: Route) => {
+    const url = route.request().url();
+    // Only intercept the lookup (GET with query params), not POST
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        json: { items: [{ case_id: MOCK_CASE_ID, id: MOCK_CASE_ID }] },
+      });
+    } else {
+      await route.fulfill({ json: { case_id: MOCK_CASE_ID, id: MOCK_CASE_ID } });
+    }
+  });
+
+  // Account detail endpoint (highest priority - registered last)
+  await page.route(`**/agents/accounts/${TEST_ACCOUNTS.meridian.id}`, async (route: Route) => {
+    await route.fulfill({ json: MOCK_ACCOUNT });
+  });
+}
+
+/**
+ * Pre-seed localStorage with the case ID to avoid the case lookup API call.
+ */
+async function seedCaseId(page: Page): Promise<void> {
+  await page.addInitScript(({ key, value }) => {
+    window.localStorage.setItem(key, value);
+  }, { key: CASE_STORAGE_KEY, value: MOCK_CASE_ID });
+}
+
 test.describe('Contract: Agent Workflow Lifecycle', () => {
   let agentPage: AgentStreamPage;
 
   test.beforeEach(async ({ page }) => {
-    // Set up: admin tier (full access), selected account, mock backend
+    // Set up: seed auth, admin tier (full access), selected account, mock backend
+    await seedAuthState(page);
     await setUserTier(page, 'admin');
     await setSelectedAccount(page, TEST_ACCOUNTS.meridian);
+    await seedCaseId(page);
+    await mockWorkspaceApis(page);
     agentPage = new AgentStreamPage(page);
   });
 
   test.afterEach(async ({ page }) => {
     await clearUserTier(page);
     await clearSelectedAccount(page);
+    await clearAuthState(page);
   });
 
   // ── 1. Run Lifecycle ──────────────────────────────────────────────────
@@ -56,6 +149,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
   test.describe('Run Lifecycle', () => {
     test('should start in idle state with welcome message', async ({ page }) => {
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       // Contract: welcome message is visible on initial load
@@ -70,6 +164,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
       // Mock a slow response to catch the running state
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals, { delay: 2000 });
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('What pain signals do you see?');
@@ -85,6 +180,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should transition to finished state after agent responds', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze the signals');
@@ -99,6 +195,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should transition to error state on backend failure', async ({ page }) => {
       await mockAgentStreamError(page, 500, 'Internal server error');
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze the signals');
@@ -116,6 +213,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should display 4 steps for the signals tab', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals, { delay: 1000 });
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze signals');
@@ -128,6 +226,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should show step labels matching the signals template', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals, { delay: 1000 });
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze signals');
@@ -143,6 +242,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should mark all steps as done when processing completes', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze signals');
@@ -155,6 +255,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should auto-collapse steps after completion', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze signals');
@@ -170,6 +271,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should show error state on step failure', async ({ page }) => {
       await mockAgentStreamError(page, 500);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze signals');
@@ -185,6 +287,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should maintain conversation history across multiple exchanges', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       // First exchange
@@ -206,21 +309,18 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
 
     test('should not send empty messages', async ({ page }) => {
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
-      // Contract: send button should not trigger on empty input
-      const initialCount = await agentPage.getMessageCount();
+      // Contract: send button is disabled when input is empty
       await agentPage.chatInput.fill('');
-      await agentPage.sendButton.click();
-
-      // Message count should not increase
-      const afterCount = await agentPage.getMessageCount();
-      expect(afterCount).toBe(initialCount);
+      await expect(agentPage.sendButton).toBeDisabled();
     });
 
     test('should send message on Enter key', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.chatInput.fill('Enter key test');
@@ -312,6 +412,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
           { delay: 1000 },
         );
         await page.goto(route);
+        await page.waitForLoadState('networkidle');
         await agentPage.switchToAgentStream();
 
         await agentPage.sendMessage(`Analyze ${tab}`);
@@ -331,6 +432,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should display trace ID after run completes', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze signals');
@@ -343,6 +445,7 @@ test.describe('Contract: Agent Workflow Lifecycle', () => {
     test('should display workflow ID after run completes', async ({ page }) => {
       await mockAgentStreamChat(page, CANNED_RESPONSES.signals);
       await page.goto('/intelligence/acct-meridian-001/signals');
+      await page.waitForLoadState('networkidle');
       await agentPage.switchToAgentStream();
 
       await agentPage.sendMessage('Analyze signals');

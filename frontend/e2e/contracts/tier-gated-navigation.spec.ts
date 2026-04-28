@@ -28,19 +28,28 @@
  *   - UI Contracts: Behavior Contract (what the nav guarantees to show/hide)
  */
 import { test, expect } from '@playwright/test';
-import { setUserTier, clearUserTier } from '../fixtures';
+import { setUserTier, clearUserTier, seedAuthState, clearAuthState } from '../fixtures';
 
 test.describe('Contract: Tier-Gated Navigation', () => {
   test.afterEach(async ({ page }) => {
     await clearUserTier(page);
+    await clearAuthState(page);
   });
 
   // ── Standard Tier (Tier 1) ────────────────────────────────────────────
 
   test.describe('Standard Tier', () => {
     test.beforeEach(async ({ page }) => {
+      await seedAuthState(page, {
+        id: 'test-user-e2e',
+        email: 'e2e@valuefabric.test',
+        role: 'standard',
+        tenantId: 'tenant-e2e-001',
+        tenantSlug: 'e2e-test',
+      });
       await setUserTier(page, 'standard');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
     });
 
     test('should show Accounts domain in sidebar', async ({ page }) => {
@@ -94,8 +103,16 @@ test.describe('Contract: Tier-Gated Navigation', () => {
 
   test.describe('Advanced Tier', () => {
     test.beforeEach(async ({ page }) => {
+      await seedAuthState(page, {
+        id: 'test-user-e2e',
+        email: 'e2e@valuefabric.test',
+        role: 'advanced',
+        tenantId: 'tenant-e2e-001',
+        tenantSlug: 'e2e-test',
+      });
       await setUserTier(page, 'advanced');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
     });
 
     test('should show all Standard tier domains', async ({ page }) => {
@@ -146,8 +163,10 @@ test.describe('Contract: Tier-Gated Navigation', () => {
 
   test.describe('Admin Tier', () => {
     test.beforeEach(async ({ page }) => {
+      await seedAuthState(page);
       await setUserTier(page, 'admin');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
     });
 
     test('should show all domains in sidebar', async ({ page }) => {
@@ -182,8 +201,10 @@ test.describe('Contract: Tier-Gated Navigation', () => {
 
   test.describe('Tier Switching', () => {
     test('should update navigation when tier changes from standard to advanced', async ({ page }) => {
+      await seedAuthState(page);
       await setUserTier(page, 'standard');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
 
       // Contract: Context Engine not visible at standard
       await expect(page.getByRole('link', { name: /context engine/i })).not.toBeVisible();
@@ -191,14 +212,17 @@ test.describe('Contract: Tier-Gated Navigation', () => {
       // Switch to advanced
       await setUserTier(page, 'advanced');
       await page.reload();
+      await page.waitForLoadState('networkidle');
 
       // Contract: Context Engine now visible at advanced
       await expect(page.getByRole('link', { name: /context engine/i })).toBeVisible();
     });
 
     test('should update navigation when tier changes from advanced to admin', async ({ page }) => {
+      await seedAuthState(page);
       await setUserTier(page, 'advanced');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
 
       // Contract: Governance not visible at advanced
       await expect(page.getByRole('link', { name: /governance/i })).not.toBeVisible();
@@ -206,14 +230,17 @@ test.describe('Contract: Tier-Gated Navigation', () => {
       // Switch to admin
       await setUserTier(page, 'admin');
       await page.reload();
+      await page.waitForLoadState('networkidle');
 
       // Contract: Governance now visible at admin
       await expect(page.getByRole('link', { name: /governance/i })).toBeVisible();
     });
 
     test('should hide domains when tier is downgraded', async ({ page }) => {
+      await seedAuthState(page);
       await setUserTier(page, 'admin');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
 
       // Contract: all domains visible at admin
       await expect(page.getByRole('link', { name: /governance/i })).toBeVisible();
@@ -221,6 +248,7 @@ test.describe('Contract: Tier-Gated Navigation', () => {
       // Downgrade to standard
       await setUserTier(page, 'standard');
       await page.reload();
+      await page.waitForLoadState('networkidle');
 
       // Contract: governance hidden after downgrade
       await expect(page.getByRole('link', { name: /governance/i })).not.toBeVisible();
@@ -231,16 +259,22 @@ test.describe('Contract: Tier-Gated Navigation', () => {
 
   test.describe('Sub-Item Tier Gating', () => {
     test('should hide advanced sub-items within visible domains at standard tier', async ({ page }) => {
+      await seedAuthState(page, {
+        id: 'test-user-e2e',
+        email: 'e2e@valuefabric.test',
+        role: 'standard',
+        tenantId: 'tenant-e2e-001',
+        tenantSlug: 'e2e-test',
+      });
       await setUserTier(page, 'standard');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
 
       // Click on Intelligence to expand it
       await page.getByRole('link', { name: /intelligence/i }).click();
 
       // Contract: basic sub-items visible (Signals, Stakeholders)
       // Contract: advanced sub-items hidden (Hypotheses, Enrichment)
-      // The exact items depend on NAV_SPINE configuration
-      // This test verifies the filtering mechanism works at sub-item level
       const navItems = await page.locator('aside a').allTextContents();
       const lowerItems = navItems.map((t) => t.toLowerCase().trim());
 
@@ -249,8 +283,16 @@ test.describe('Contract: Tier-Gated Navigation', () => {
     });
 
     test('should show advanced sub-items at advanced tier', async ({ page }) => {
+      await seedAuthState(page, {
+        id: 'test-user-e2e',
+        email: 'e2e@valuefabric.test',
+        role: 'advanced',
+        tenantId: 'tenant-e2e-001',
+        tenantSlug: 'e2e-test',
+      });
       await setUserTier(page, 'advanced');
       await page.goto('/home');
+      await page.waitForLoadState('networkidle');
 
       // Click on Intelligence to expand it
       await page.getByRole('link', { name: /intelligence/i }).click();

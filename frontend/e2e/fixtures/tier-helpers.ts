@@ -4,8 +4,9 @@
  * Provides utilities to set user tier and verify route access
  * in a way that respects the application's actual access control logic.
  *
- * Route taxonomy follows the canonical single-spine navigation:
- *   Home, Library, Discover, Model, Deliver, Evidence, Govern
+ * IMPORTANT: All localStorage operations require the page to be on a
+ * same-origin URL first. These helpers ensure that by navigating to
+ * the app if the page is still on about:blank.
  */
 
 import { Page } from '@playwright/test';
@@ -27,6 +28,16 @@ export type BackendRole =
   | 'standard';
 
 /**
+ * Ensure the page is on a same-origin URL so localStorage is accessible.
+ */
+async function ensureSameOrigin(page: Page): Promise<void> {
+  const url = page.url();
+  if (url === 'about:blank' || url === '' || url === 'chrome://newtab/') {
+    await page.goto('/login', { waitUntil: 'commit' });
+  }
+}
+
+/**
  * Set the user tier in localStorage (simulating login/role assignment)
  *
  * This works because the app uses Zustand with persist middleware
@@ -41,7 +52,10 @@ export async function setUserTier(
   tier: UserTier,
   backendRole?: BackendRole
 ): Promise<void> {
+  await ensureSameOrigin(page);
+
   await page.evaluate((params: { userTier: UserTier; role: string }) => {
+    // 1. Set the zustand tier store
     const storeKey = 'user-tier-storage';
     const storeState = {
       state: {
@@ -53,18 +67,32 @@ export async function setUserTier(
     };
     localStorage.setItem(storeKey, JSON.stringify(storeState));
 
+    // 2. Also sync the auth user's role in userInfo so that
+    //    AuthContext.initAuth() → setUserRole() doesn't overwrite the tier.
+    //    This is critical: the app reads userInfo.role on boot and calls
+    //    setUserRole(role) which normalizes to a tier and overwrites the store.
+    const userInfoRaw = localStorage.getItem('userInfo');
+    if (userInfoRaw) {
+      try {
+        const userInfo = JSON.parse(userInfoRaw);
+        userInfo.role = params.role;
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+      } catch {
+        // ignore parse errors
+      }
+    }
+
     // Also set a flag for tests to detect
     localStorage.setItem('test-user-tier', params.userTier);
   }, { userTier: tier, role: backendRole || tier });
-
-  // Reload to pick up the new tier state
-  await page.reload();
 }
 
 /**
  * Enable advanced mode for a standard user (progressive disclosure toggle)
  */
 export async function enableAdvancedMode(page: Page): Promise<void> {
+  await ensureSameOrigin(page);
+
   await page.evaluate(() => {
     const storeKey = 'user-tier-storage';
     const existing = localStorage.getItem(storeKey);
@@ -83,6 +111,8 @@ export async function enableAdvancedMode(page: Page): Promise<void> {
  * Disable advanced mode
  */
 export async function disableAdvancedMode(page: Page): Promise<void> {
+  await ensureSameOrigin(page);
+
   await page.evaluate(() => {
     const storeKey = 'user-tier-storage';
     const existing = localStorage.getItem(storeKey);
@@ -100,11 +130,14 @@ export async function disableAdvancedMode(page: Page): Promise<void> {
  * Clear user tier (logout/reset)
  */
 export async function clearUserTier(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    localStorage.removeItem('user-tier-storage');
-    localStorage.removeItem('test-user-tier');
-  });
-  await page.reload();
+  try {
+    await page.evaluate(() => {
+      localStorage.removeItem('user-tier-storage');
+      localStorage.removeItem('test-user-tier');
+    });
+  } catch {
+    // Page may already be closed — safe to ignore
+  }
 }
 
 /**

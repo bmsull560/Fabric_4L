@@ -8,6 +8,9 @@
  *
  * Contract: The accountContextStore is a zustand store persisted
  *           to localStorage under the key 'fabric-account-context'.
+ *
+ * IMPORTANT: All localStorage operations require the page to be on a
+ * same-origin URL first. These helpers ensure that.
  */
 import { Page } from '@playwright/test';
 
@@ -45,10 +48,22 @@ export const TEST_ACCOUNTS = {
 };
 
 /**
+ * Ensure the page is on a same-origin URL so localStorage is accessible.
+ */
+async function ensureSameOrigin(page: Page): Promise<void> {
+  const url = page.url();
+  if (url === 'about:blank' || url === '' || url === 'chrome://newtab/') {
+    await page.goto('/login', { waitUntil: 'commit' });
+  }
+}
+
+/**
  * Set the selected account in the zustand store via localStorage.
  * Must be called before navigating to account-scoped routes.
  */
 export async function setSelectedAccount(page: Page, account: TestAccount): Promise<void> {
+  await ensureSameOrigin(page);
+
   await page.evaluate((acct) => {
     // Must match zustand persist shape: only selectedAccountId is partialised
     const storeState = {
@@ -65,9 +80,13 @@ export async function setSelectedAccount(page: Page, account: TestAccount): Prom
  * Clear the selected account from the zustand store.
  */
 export async function clearSelectedAccount(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    localStorage.removeItem('fabric-account-context');
-  });
+  try {
+    await page.evaluate(() => {
+      localStorage.removeItem('fabric-account-context');
+    });
+  } catch {
+    // Page may already be closed — safe to ignore
+  }
 }
 
 /**

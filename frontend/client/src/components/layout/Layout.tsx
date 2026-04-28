@@ -488,13 +488,22 @@ const Layout = memo(function Layout({
   const { theme, toggleTheme, switchable } = useTheme();
   const { user, logout } = useAuthContext();
 
-  // Tier management
+  // Tier management — read primitive values directly from zustand store.
+  // We compute effectiveTier locally instead of using the store's getter because:
+  // 1. Zustand v5 persist hydrates async; the getter may not trigger re-renders
+  //    when the store transitions from default ("standard") to hydrated ("advanced")
+  // 2. External props from Router can also be stale during the hydration window
+  // By subscribing to primitive values (currentTier, isAdvancedModeEnabled),
+  // zustand's useSyncExternalStore guarantees re-renders on state changes.
   const rawCurrentTier = useUserTierStore(state => state.currentTier);
-  const rawEffectiveTier = useUserTierStore(state => state.effectiveTier);
+  const isAdvancedModeEnabled = useUserTierStore(state => state.isAdvancedModeEnabled);
   const setTier = useUserTierStore(state => state.setTier);
 
-  const currentTier: UserTier = externalCurrentTier || (rawCurrentTier === "unknown" ? "standard" : rawCurrentTier as UserTier);
-  const effectiveTier: UserTier = externalEffectiveTier || (rawEffectiveTier === "unknown" ? "standard" : rawEffectiveTier as UserTier);
+  const currentTier: UserTier = rawCurrentTier === "unknown" ? "standard" : rawCurrentTier as UserTier;
+  // Compute effectiveTier locally (mirrors store getter logic)
+  const effectiveTier: UserTier = (currentTier === "standard" && isAdvancedModeEnabled)
+    ? "advanced"
+    : currentTier;
 
   // Account context (lifted from NavSection for single subscription)
   const selectedAccountId = useAccountContextStore(state => state.selectedAccountId);
