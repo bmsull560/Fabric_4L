@@ -38,7 +38,11 @@ import {
   MinusCircle,
   ChevronDown,
 } from "lucide-react";
+
 import type { StepSnapshot, StepStatus } from "@/agui/events";
+
+/** Delay before auto-collapsing the step list after all steps complete (ms) */
+const AUTOCOLLAPSE_DELAY_MS = 1500;
 
 // ── Status Icon Map ─────────────────────────────────────────────────────────
 
@@ -115,7 +119,7 @@ export function ProcessSteps({ steps, className }: ProcessStepsProps) {
   useEffect(() => {
     if (allDone && !hasError) {
       // Auto-collapse after a short delay so the user sees the final state
-      const timer = setTimeout(() => setCollapsed(true), 1500);
+      const timer = setTimeout(() => setCollapsed(true), AUTOCOLLAPSE_DELAY_MS);
       return () => clearTimeout(timer);
     }
   }, [allDone, hasError]);

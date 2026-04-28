@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { GitBranch, ChevronRight } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
-import { useAgentStream } from "@/hooks/useAgentStream";
+import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery } from "@/hooks/useWorkspaceCase";
 import { SectionCard, MetricCard } from "@/components/WfPrimitives";
@@ -21,14 +21,14 @@ export default function DriversTab() {
   const [railMode, setRailMode] = useState<RightRailMode>("detail");
   useEffect(() => { if (caseId && data) persistTab.mutate({ caseId, payload: data }); }, [caseId, data]);
 
-  const { messages, sendMessage, suggestedActions } = useAgentStream({ activeTab: "drivers", accountName: account?.name ?? "Account" });
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({ activeTab: "drivers", accountName: account?.name ?? "Account" });
   const drivers = data?.drivers ?? [];
   const grouped = useMemo(() => drivers.reduce<Record<string, Driver[]>>((acc, d) => { (acc[d.parentSignal] ??= []).push(d); return acc; }, {}), [drivers]);
 
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading drivers…</div>;
   if (error || !account) return <div className="p-6 text-sm text-destructive">Failed to load drivers.</div>;
 
-  return <IntelligenceShell account={{ accountName: account.name, industry: account.industry ?? "Unknown", revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="drivers" detailContent={selectedDriver ? <div className="space-y-3"><h3 className="text-sm font-bold">{selectedDriver.name}</h3><p className="text-xs text-muted-foreground">{selectedDriver.parentSignal}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} />}>
+  return <IntelligenceShell account={{ accountName: account.name, industry: account.industry ?? "Unknown", revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="drivers" detailContent={selectedDriver ? <div className="space-y-3"><h3 className="text-sm font-bold">{selectedDriver.name}</h3><p className="text-xs text-muted-foreground">{selectedDriver.parentSignal}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}>
     {drivers.length === 0 ? <SectionCard title="Root Drivers"><div className="text-sm text-muted-foreground">No root-driver output available yet for this case.</div></SectionCard> : <>
       <div className="grid grid-cols-3 gap-4 mb-6">
         <MetricCard label="Root Drivers" value={String(drivers.length)} />

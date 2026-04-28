@@ -20,7 +20,7 @@ import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
-import { useAgentStream } from "@/hooks/useAgentStream";
+import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import {
   useEnrichAccount,
@@ -123,7 +123,7 @@ export default function StudioEnrichmentTab() {
   const enrichMutation = useEnrichAccount();
   const [railMode, setRailMode] = useState<RightRailMode>("agent");
 
-  const { messages, sendMessage, suggestedActions } = useAgentStream({
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "enrichment",
     accountName: account?.name ?? "Account",
   });
@@ -160,6 +160,9 @@ export default function StudioEnrichmentTab() {
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
+            steps={steps}
+            isStreaming={isStreaming}
+            runMetadata={metadata}
         />
       }
     >

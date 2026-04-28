@@ -7,7 +7,7 @@
  * the workspace tabs become accessible.
  *
  * Contract: The accountContextStore is a zustand store persisted
- *           to localStorage under the key 'account-context-store'.
+ *           to localStorage under the key 'fabric-account-context'.
  */
 import { Page } from '@playwright/test';
 
@@ -50,16 +50,14 @@ export const TEST_ACCOUNTS = {
  */
 export async function setSelectedAccount(page: Page, account: TestAccount): Promise<void> {
   await page.evaluate((acct) => {
+    // Must match zustand persist shape: only selectedAccountId is partialised
     const storeState = {
       state: {
         selectedAccountId: acct.id,
-        selectedAccountName: acct.name,
-        selectedAccountIndustry: acct.industry ?? null,
-        selectedAccountTier: acct.tier ?? null,
       },
       version: 0,
     };
-    localStorage.setItem('account-context-store', JSON.stringify(storeState));
+    localStorage.setItem('fabric-account-context', JSON.stringify(storeState));
   }, account);
 }
 
@@ -68,7 +66,7 @@ export async function setSelectedAccount(page: Page, account: TestAccount): Prom
  */
 export async function clearSelectedAccount(page: Page): Promise<void> {
   await page.evaluate(() => {
-    localStorage.removeItem('account-context-store');
+    localStorage.removeItem('fabric-account-context');
   });
 }
 
@@ -77,7 +75,7 @@ export async function clearSelectedAccount(page: Page): Promise<void> {
  */
 export async function getSelectedAccountId(page: Page): Promise<string | null> {
   return page.evaluate(() => {
-    const raw = localStorage.getItem('account-context-store');
+    const raw = localStorage.getItem('fabric-account-context');
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);

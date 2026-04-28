@@ -111,15 +111,15 @@ test.describe('Contract: Settings & Governance Admin Surface', () => {
 
     const settingsRoutes = [
       { path: '/settings/system/settings', heading: /platform settings|settings/i },
-      { path: '/settings/content/formulas', heading: /formula|content/i },
-      { path: '/settings/content/approvals', heading: /approval|workflow/i },
-      { path: '/settings/content/versions', heading: /version|content/i },
+      { path: '/settings/content/formulas', heading: /formula|governance/i },
+      { path: '/settings/content/approvals', heading: /formula|governance/i },
+      { path: '/settings/content/versions', heading: /formula|governance/i },
       { path: '/settings/data/variables', heading: /variable|registry/i },
-      { path: '/settings/data/bindings', heading: /binding|data/i },
-      { path: '/settings/data/quality', heading: /quality|data/i },
-      { path: '/settings/access/roles', heading: /role|access/i },
-      { path: '/settings/access/teams', heading: /team|access/i },
-      { path: '/settings/access/keys', heading: /key|api/i },
+      { path: '/settings/data/bindings', heading: /variable|registry/i },
+      { path: '/settings/data/quality', heading: /variable|registry/i },
+      { path: '/settings/access/roles', heading: /permission|access/i },
+      { path: '/settings/access/teams', heading: /permission|access/i },
+      { path: '/settings/access/keys', heading: /permission|access/i },
     ];
 
     for (const { path, heading } of settingsRoutes) {
@@ -161,15 +161,15 @@ test.describe('Contract: Settings & Governance Admin Surface', () => {
     });
 
     const governanceRoutes = [
-      { path: '/governance/audit/log', heading: /audit|log/i },
-      { path: '/governance/audit/changes', heading: /change|audit/i },
+      { path: '/governance/audit/log', heading: /audit log/i },
+      { path: '/governance/audit/changes', heading: /change history/i },
       { path: '/governance/compliance', heading: /compliance/i },
-      { path: '/governance/health', heading: /health|system/i },
-      { path: '/governance/integrity', heading: /integrity|data/i },
-      { path: '/governance/provenance', heading: /provenance|data/i },
-      { path: '/governance/benchmarks', heading: /benchmark|polic/i },
-      { path: '/governance/traces', heading: /trace|decision/i },
-      { path: '/governance/evidence', heading: /evidence|chain/i },
+      { path: '/governance/health', heading: /system health/i },
+      { path: '/governance/integrity', heading: /data integrity/i },
+      { path: '/governance/provenance', heading: /provenance trail/i },
+      { path: '/governance/benchmarks', heading: /benchmark polic/i },
+      { path: '/governance/traces', heading: /decision trace/i },
+      { path: '/governance/evidence', heading: /evidence/i },
     ];
 
     for (const { path, heading } of governanceRoutes) {

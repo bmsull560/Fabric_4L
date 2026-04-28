@@ -77,15 +77,15 @@ const NAV_DOMAINS: NavItem[] = [
     tier: "standard",
     description: "Discover and validate prospect pain signals",
     children: [
-      { id: "signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
-      { id: "drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
-      { id: "evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
-      { id: "stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
-      { id: "enrichment", label: "Enrichment", path: "/intelligence/enrichment", tier: "advanced" },
-      { id: "hypotheses", label: "Hypotheses", path: "/intelligence/hypotheses", tier: "advanced" },
-      { id: "competitive", label: "Competitive", path: "/intelligence/competitive", tier: "advanced" },
-      { id: "roi", label: "ROI", path: "/intelligence/roi", tier: "advanced" },
-      { id: "evidence-library", label: "Evidence Library", path: "/intelligence/evidence-library", tier: "advanced" },
+      { id: "intel-signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
+      { id: "intel-drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
+      { id: "intel-evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
+      { id: "intel-stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
+      { id: "intel-enrichment", label: "Enrichment", path: "/intelligence/enrichment", tier: "advanced" },
+      { id: "intel-hypotheses", label: "Hypotheses", path: "/intelligence/hypotheses", tier: "advanced" },
+      { id: "intel-competitive", label: "Competitive", path: "/intelligence/competitive", tier: "advanced" },
+      { id: "intel-roi", label: "ROI", path: "/intelligence/roi", tier: "advanced" },
+      { id: "intel-evidence-library", label: "Evidence Library", path: "/intelligence/evidence-library", tier: "advanced" },
     ],
   },
   {
@@ -93,16 +93,16 @@ const NAV_DOMAINS: NavItem[] = [
     label: "Value Studio",
     icon: GitBranch,
     path: "/studio",
-    tier: "standard",
+    tier: "advanced",
     description: "Build the product-anchored business case",
     children: [
-      { id: "action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
-      { id: "value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
-      { id: "narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
-      { id: "enrichment", label: "Enrichment", path: "/studio/enrichment", tier: "advanced" },
-      { id: "competitive", label: "Competitive", path: "/studio/competitive", tier: "advanced" },
-      { id: "roi", label: "ROI", path: "/studio/roi", tier: "advanced" },
-      { id: "evidence", label: "Evidence", path: "/studio/evidence", tier: "advanced" },
+      { id: "studio-action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
+      { id: "studio-value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
+      { id: "studio-narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
+      { id: "studio-enrichment", label: "Enrichment", path: "/studio/enrichment", tier: "advanced" },
+      { id: "studio-competitive", label: "Competitive", path: "/studio/competitive", tier: "advanced" },
+      { id: "studio-roi", label: "ROI", path: "/studio/roi", tier: "advanced" },
+      { id: "studio-evidence", label: "Evidence", path: "/studio/evidence", tier: "advanced" },
     ],
   },
   {
@@ -110,7 +110,7 @@ const NAV_DOMAINS: NavItem[] = [
     label: "Context Engine",
     icon: Package,
     path: "/context",
-    tier: "standard",
+    tier: "advanced",
     description: "Vendor knowledge: Value Packs, models, formulas",
     children: [
       { id: "packs", label: "Value Packs", path: "/context/packs", tier: "standard" },
@@ -145,7 +145,7 @@ const NAV_DOMAINS: NavItem[] = [
     label: "Governance",
     icon: Shield,
     path: "/governance",
-    tier: "standard",
+    tier: "admin",
     description: "Audit, provenance, and compliance",
     children: [
       { id: "traces", label: "Decision Traces", path: "/governance/traces", tier: "standard" },
@@ -179,8 +179,8 @@ const SUPPORT_ITEMS: NavItem[] = [
 ];
 
 const BOTTOM_ITEMS = [
-  { icon: LifeBuoy, label: "Support", path: "#" },
-  { icon: Send, label: "Feedback", path: "#" },
+  { icon: LifeBuoy, label: "Support" },
+  { icon: Send, label: "Feedback" },
 ];
 
 const TIER_LABELS: Record<UserTier, { label: string; icon: React.ElementType }> = {
@@ -266,12 +266,13 @@ interface NavButtonProps {
   onClick: () => void;
 }
 
-function NavButton({ icon: Icon, label, isActive, isCollapsed, badge, hasChildren, isOpen, onToggle, onClick }: NavButtonProps) {
+function NavButton({ icon: Icon, label, path, isActive, isCollapsed, badge, hasChildren, isOpen, onToggle, onClick }: NavButtonProps) {
   if (isCollapsed) {
     return (
       <SidebarTooltip text={label}>
-        <button
-          onClick={onClick}
+        <Link
+          href={path}
+          onClick={(e: React.MouseEvent) => { e.preventDefault(); onClick(); }}
           className={cn(
             "w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-colors",
             isActive
@@ -280,14 +281,41 @@ function NavButton({ icon: Icon, label, isActive, isCollapsed, badge, hasChildre
           )}
         >
           <Icon className="w-4 h-4" />
-        </button>
+        </Link>
       </SidebarTooltip>
     );
   }
 
+  if (hasChildren) {
+    // Parent with children: clicking toggles the section open/closed
+    // Use <a> for role="link" semantics but handle via onClick
+    return (
+      <Link
+        href={path}
+        onClick={(e: React.MouseEvent) => { e.preventDefault(); if (onToggle) onToggle(); }}
+        className={cn(
+          "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+          isActive
+            ? "bg-sidebar-primary/15 text-sidebar-primary font-semibold"
+            : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        )}
+      >
+        <Icon className="w-4 h-4 shrink-0" />
+        <span className="text-left flex-1">{label}</span>
+        {badge && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded border font-semibold bg-destructive/10 text-destructive border-destructive/20">
+            {badge}
+          </span>
+        )}
+        <ChevronDown className={cn("w-3 h-3 text-sidebar-foreground/40 transition-transform", isOpen && "rotate-180")} />
+      </Link>
+    );
+  }
+
   return (
-    <button
-      onClick={hasChildren ? onToggle : onClick}
+    <Link
+      href={path}
+      onClick={(e: React.MouseEvent) => { e.preventDefault(); onClick(); }}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
         isActive
@@ -302,12 +330,8 @@ function NavButton({ icon: Icon, label, isActive, isCollapsed, badge, hasChildre
           {badge}
         </span>
       )}
-      {hasChildren ? (
-        <ChevronDown className={cn("w-3 h-3 text-sidebar-foreground/40 transition-transform", isOpen && "rotate-180")} />
-      ) : isActive ? (
-        <div className="w-1.5 h-1.5 rounded-full bg-sidebar-primary shrink-0" />
-      ) : null}
-    </button>
+      {isActive && <div className="w-1.5 h-1.5 rounded-full bg-sidebar-primary shrink-0" />}
+    </Link>
   );
 }
 
@@ -317,11 +341,11 @@ interface NavSectionProps {
   isCollapsed: boolean;
   currentPath: string;
   effectiveTier: UserTier;
+  selectedAccountId: string | null;
   onNavigate: (path: string) => void;
 }
 
-function NavSection({ item, isCollapsed, currentPath, effectiveTier, onNavigate }: NavSectionProps) {
-  const selectedAccountId = useAccountContextStore(state => state.selectedAccountId);
+function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAccountId, onNavigate }: NavSectionProps) {
   const resolvedPath = resolveWorkspacePath(item.path, selectedAccountId);
   const isActive = currentPath === resolvedPath || currentPath.startsWith(resolvedPath + "/");
   const [isOpen, setIsOpen] = useState(isActive);
@@ -352,9 +376,11 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, onNavigate 
             const childResolved = resolveWorkspacePath(child.path, selectedAccountId);
             const childActive = currentPath === childResolved || currentPath.startsWith(childResolved + "/");
             return (
-              <button
+              <Link
                 key={child.id}
-                onClick={() => onNavigate(childResolved)}
+                href={childResolved}
+                onClick={(e: React.MouseEvent) => { e.preventDefault(); onNavigate(childResolved); }}
+                aria-label={`Navigate to ${child.label}`}
                 className={cn(
                   "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors",
                   childActive
@@ -369,7 +395,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, onNavigate 
                   </span>
                 )}
                 {childActive && <div className="w-1 h-1 rounded-full bg-sidebar-primary shrink-0" />}
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -470,6 +496,9 @@ const Layout = memo(function Layout({
   const currentTier: UserTier = externalCurrentTier || (rawCurrentTier === "unknown" ? "standard" : rawCurrentTier as UserTier);
   const effectiveTier: UserTier = externalEffectiveTier || (rawEffectiveTier === "unknown" ? "standard" : rawEffectiveTier as UserTier);
 
+  // Account context (lifted from NavSection for single subscription)
+  const selectedAccountId = useAccountContextStore(state => state.selectedAccountId);
+
   // Layout state
   const [collapsed, setCollapsed] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -504,9 +533,11 @@ const Layout = memo(function Layout({
   const breadcrumbs = useMemo(() => getBreadcrumbs(location), [location]);
 
   // User display
-  const userEmail = user?.email || "dev@valuefabric.local";
-  const userName = user?.email?.split("@")[0]?.split(".").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "Dev User";
-  const userInitials = userName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const userEmail = user?.email ?? "";
+  const userName = user?.email
+    ? user.email.split("@")[0].split(".").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+    : "User";
+  const userInitials = userName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   // Filter nav items by tier
   const visibleDomains = useMemo(
@@ -587,6 +618,7 @@ const Layout = memo(function Layout({
                   isCollapsed={collapsed}
                   currentPath={location}
                   effectiveTier={effectiveTier}
+                  selectedAccountId={selectedAccountId}
                   onNavigate={handleNavigate}
                 />
               ))}
@@ -623,6 +655,7 @@ const Layout = memo(function Layout({
                     isCollapsed={collapsed}
                     currentPath={location}
                     effectiveTier={effectiveTier}
+                    selectedAccountId={selectedAccountId}
                     onNavigate={handleNavigate}
                   />
                 ))}
@@ -689,7 +722,10 @@ const Layout = memo(function Layout({
               </button>
               {userOpen && (
                 <div className="mt-1 ml-2 space-y-0.5">
-                  <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent">
+                  <button
+                    aria-label="View profile"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent"
+                  >
                     Profile
                   </button>
                   <button
@@ -753,9 +789,12 @@ const Layout = memo(function Layout({
             >
               {isDark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
             </button>
-            <button className="p-2 rounded-lg hover:bg-muted transition-colors relative">
+            <button
+              className="p-2 rounded-lg hover:bg-muted transition-colors relative"
+              aria-label="Notifications"
+            >
               <Bell className="w-4 h-4 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" aria-hidden="true" />
             </button>
           </div>
         </header>
@@ -765,12 +804,6 @@ const Layout = memo(function Layout({
         </main>
       </div>
     </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom equality: ignore children (always new ref), only re-render on tier changes
-  return (
-    prevProps.currentTier === nextProps.currentTier &&
-    prevProps.effectiveTier === nextProps.effectiveTier
   );
 });
 
