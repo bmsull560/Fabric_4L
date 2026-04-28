@@ -197,10 +197,11 @@ app.add_middleware(
 
 # SecurityMiddleware — input validation and security headers (mandatory)
 _security_config_l1 = SecurityConfig(
+    # P1-14 FIX: Removed /v1/ingest paths from skip list
+    # All untrusted input must pass through SecurityMiddleware validation
     skip_validation_paths=frozenset({
-        "/v1/ingest",
-        "/v1/ingest/batch",
-        "/v1/batch/ingest",
+        "/health",
+        "/metrics",
     }),
     strict_mode=True,
 )
@@ -216,7 +217,9 @@ try:
 except Exception:
     pass
 
-app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=redis_rate_limiter)
+from shared.identity.api_key_stub import reject_api_key_unsupported
+
+app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=redis_rate_limiter)
 
 # Add metrics middleware if available — INNERMOST
 if metrics:

@@ -23,6 +23,11 @@ from ..models.tool_schemas import (
     TraverseTreeOutput,
 )
 from .registry import BaseTool
+from ..shared.domain.context import (
+    TenantContext,
+    TenantContextError,
+    get_current_tenant_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +66,58 @@ class QueryGraphTool(BaseTool):
         re.IGNORECASE,
     )
 
+    def _inject_tenant_filter(self, query: str, tenant_id) -> str:
+        """Inject tenant_id filter into Cypher query.
+        
+        This method ensures that all Cypher queries are scoped to the
+        authenticated tenant by adding a tenant_id filter.
+        
+        Strategy:
+        1. If query already has WHERE clause, append AND tenant_id condition
+        2. If query has no WHERE, add WHERE tenant_id condition after MATCH
+        3. Handle RETURN, WITH, ORDER BY, LIMIT clauses properly
+        """
+        tenant_id_str = str(tenant_id)
+        
+        # Pattern to find WHERE clause (case insensitive)
+        where_pattern = re.compile(r'\bWHERE\b', re.IGNORECASE)
+        
+        if where_pattern.search(query):
+            # Add AND condition to existing WHERE
+            # Find the position after WHERE and before any ORDER BY, RETURN, etc.
+            # This is a simplified approach - for production, consider using a Cypher parser
+            modified_query = re.sub(
+                r'(\bWHERE\b)',
+                r'\1 n.tenant_id = $tenant_id AND ',
+                query,
+                count=1,
+                flags=re.IGNORECASE
+            )
+        else:
+            # Add WHERE clause after first MATCH
+            # Find MATCH pattern and add WHERE after it
+            modified_query = re.sub(
+                r'(\bMATCH\s+[^\s]+)',
+                r'\1 WHERE n.tenant_id = $tenant_id',
+                query,
+                count=1,
+                flags=re.IGNORECASE
+            )
+        
+        logger.debug(f"Injected tenant filter: original={query[:50]}..., modified={modified_query[:50]}...")
+        return modified_query
+    
+    def _ensure_tenant_parameters(self, parameters: dict | None, tenant_id) -> dict:
+        """Ensure tenant_id is set in parameters, overriding any spoof attempts.
+        
+        This prevents attackers from passing a different tenant_id in the
+        query parameters to access cross-tenant data.
+        """
+        params = dict(parameters) if parameters else {}
+        # Override any tenant_id parameter with the authenticated context
+        params["tenant_id"] = str(tenant_id)
+        return params
+
     @classmethod
     def _validate_read_only(cls, query: str) -> str | None:
         """Validate that a Cypher query is read-only.
@@ -76,7 +133,29 @@ class QueryGraphTool(BaseTool):
         return None
 
     async def execute(self, input_data: QueryGraphInput) -> QueryGraphOutput:
-        """Execute Cypher query against Neo4j."""
+        """Execute Cypher query against Neo4j with mandatory tenant scoping.
+        
+        SECURITY: This tool enforces tenant isolation by:
+        1. Requiring valid TenantContext (fail-closed)
+        2. Validating query is read-only
+        3. Injecting tenant_id filter into Cypher query
+        """
+        start_time = time.time()
+        
+        # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
+        try:
+            tenant_ctx = get_current_tenant_context()
+            tenant_ctx.assert_valid()
+        except TenantContextError as e:
+            logger.warning(f"Tenant context error in query_graph: {e}")
+            return QueryGraphOutput(
+                results=[],
+                columns=[],
+                row_count=0,
+                execution_time_ms=0,
+                error=f"Tenant context required: {e}. Authentication required."
+            )
+        
         # P1-11 FIX: Validate query is read-only before execution
         validation_error = self._validate_read_only(input_data.cypher_query)
         if validation_error:
@@ -89,13 +168,32 @@ class QueryGraphTool(BaseTool):
                 error=validation_error
             )
 
+        # P0 FIX: Inject tenant filter into Cypher query
+        scoped_query = self._inject_tenant_filter(
+            input_data.cypher_query, 
+            tenant_ctx.tenant_id
+        )
+        
+        # Log with tenant context for audit trail
+        logger.info(
+            f"Executing Cypher query for tenant={tenant_ctx.tenant_id}, "
+            f"user={tenant_ctx.user_id}, "
+            f"source={tenant_ctx.source}"
+        )
+
         driver = self._get_driver()
 
         start_time = time.time()
 
+        # P0 FIX: Override any tenant_id in parameters with authenticated context
+        scoped_parameters = self._ensure_tenant_parameters(
+            input_data.parameters, 
+            tenant_ctx.tenant_id
+        )
+        
         try:
             async with driver.session(database=self.database) as session:
-                result = await session.run(input_data.cypher_query, input_data.parameters or {})
+                result = await session.run(scoped_query, scoped_parameters)
                 records = await result.data()
 
                 execution_time = int((time.time() - start_time) * 1000)
@@ -111,12 +209,13 @@ class QueryGraphTool(BaseTool):
                 )
 
         except Exception as e:
-            logger.error(f"Neo4j query failed: {e}")
+            logger.error(f"Neo4j query failed for tenant={tenant_ctx.tenant_id}: {e}")
             return QueryGraphOutput(
                 results=[],
                 columns=[],
                 row_count=0,
                 execution_time_ms=int((time.time() - start_time) * 1000),
+                error=f"Query execution failed: {str(e)}"
             )
 
 
@@ -172,8 +271,25 @@ class SemanticSearchTool(BaseTool):
         return response.data[0].embedding
 
     async def execute(self, input_data: SemanticSearchInput) -> SemanticSearchOutput:
-        """Execute semantic search against Pinecone vector store."""
+        """Execute semantic search against Pinecone vector store with tenant isolation.
+        
+        SECURITY: This tool enforces tenant isolation by requiring valid TenantContext
+        and injecting tenant_id filter into Pinecone metadata filter.
+        """
         start_time = time.time()
+        
+        # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
+        try:
+            tenant_ctx = get_current_tenant_context()
+            tenant_ctx.assert_valid()
+        except TenantContextError as e:
+            logger.warning(f"Tenant context error in semantic_search: {e}")
+            return SemanticSearchOutput(
+                results=[],
+                total_matches=0,
+                query_embedding_time_ms=int((time.time() - start_time) * 1000),
+                error=f"Tenant context required: {e}. Authentication required."
+            )
 
         try:
             # Get query embedding
@@ -190,15 +306,22 @@ class SemanticSearchTool(BaseTool):
                     error="Pinecone API key required for semantic search"
                 )
 
-            filter_dict = {}
+            # P0 FIX: Build filter with mandatory tenant isolation
+            filter_dict = {"tenant_id": str(tenant_ctx.tenant_id)}
             if input_data.entity_types:
                 filter_dict["entity_type"] = {"$in": input_data.entity_types}
+            
+            logger.info(
+                f"Executing semantic search for tenant={tenant_ctx.tenant_id}, "
+                f"user={tenant_ctx.user_id}, "
+                f"query_length={len(input_data.query)}"
+            )
 
             results = index.query(
                 vector=query_embedding,
                 top_k=input_data.top_k,
                 include_metadata=True,
-                filter=filter_dict if filter_dict else None,
+                filter=filter_dict,
             )
 
             # Format results

@@ -110,11 +110,15 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
             await asyncio.sleep(decision.throttle_seconds)
         client = AsyncOpenAI(api_key=api_key)
 
+        # P1-12 FIX: Wrap user content in delimiters to prevent prompt injection
         prompt = f"""Extract structured business needs from the following prospect description.
-        
+
 Prospect: {profile.get("name", "Unknown")}
 Industry: {profile.get("industry", "Unknown")}
-Description: {needs_text}
+Description:
+<<<USER_CONTENT>>>
+{needs_text}
+<<</USER_CONTENT>>>
 
 Extract needs as a JSON array of strings. Each need should be a clear, specific business requirement.
 Example output: ["Reduce invoice processing time", "Improve data visibility across departments"]

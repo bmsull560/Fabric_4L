@@ -182,7 +182,9 @@ class CrawlDecisionRepository:
             record: The decision record to persist
         """
         try:
-            with self._get_session() as session:
+            # CONTRACT §2.2: Use tenant-scoped session with RLS
+            tenant_id = UUID(record.tenant_id) if record.tenant_id else None
+            with get_db_session(tenant_id=tenant_id, require_tenant=False) as session:
                 db_record = CrawlDecisionModel(
                     decision_id=UUID(record.decision_id),
                     job_id=UUID(record.job_id) if record.job_id else None,

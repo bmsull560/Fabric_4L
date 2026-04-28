@@ -141,10 +141,17 @@ Maximum {max_length} words.""",
             input_data.section_type, self.SECTION_TEMPLATES["executive_summary"]
         )
 
-        context_str = "\n".join([f"{k}: {v}" for k, v in input_data.context.items()])
+        # P1-12 FIX: Wrap user context in delimiters to prevent prompt injection
+        context_items = [f"{k}: {v}" for k, v in input_data.context.items()]
+        context_str = "\n".join(context_items)
+        context_delimited = f"<<<USER_CONTEXT>>>{context_str}<<</USER_CONTEXT>>>"
+
+        # P1-12 FIX: Sanitize tone parameter
+        allowed_tones = {"professional", "casual", "technical", "executive"}
+        safe_tone = input_data.tone if input_data.tone in allowed_tones else "professional"
 
         prompt = template.format(
-            context=context_str, tone=input_data.tone, max_length=input_data.max_length
+            context=context_delimited, tone=safe_tone, max_length=input_data.max_length
         )
 
         try:

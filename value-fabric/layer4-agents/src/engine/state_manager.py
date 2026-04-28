@@ -1,10 +1,11 @@
 """State manager for workflow state persistence using Redis."""
 
-import json
 import logging
 from collections import OrderedDict
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional
+
+from pydantic import TypeAdapter, ValidationError
 
 from ..models.agent_state import AgentState, WorkflowStatus
 
@@ -147,10 +148,12 @@ class StateManager:
             data = await self.redis.get(key)
             if data:
                 try:
-                    state_dict = json.loads(data)
+                    # CONTRACT §2.5: Use Pydantic TypeAdapter for schema validation
+                    state_adapter = TypeAdapter(dict[str, Any])
+                    state_dict = state_adapter.validate_json(data)
                     return self._deserialize_state(state_dict)
-                except json.JSONDecodeError:
-                    logger.error(f"Failed to parse state JSON for workflow {workflow_id}")
+                except ValidationError as e:
+                    logger.error(f"Failed to validate state for workflow {workflow_id}: {e}")
                     return None
         else:
             stored = self._memory_store.get(key)
@@ -253,9 +256,11 @@ class StateManager:
             history = []
             for d in data:
                 try:
-                    history.append(json.loads(d))
-                except json.JSONDecodeError:
-                    logger.warning(f"Failed to parse history entry for workflow {workflow_id}")
+                    # CONTRACT §2.5: Use Pydantic validation for history entries
+                    history_adapter = TypeAdapter(dict[str, Any])
+                    history.append(history_adapter.validate_json(d))
+                except ValidationError as e:
+                    logger.warning(f"Failed to validate history entry for workflow {workflow_id}: {e}")
                     continue
             return history
         else:

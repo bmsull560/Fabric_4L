@@ -192,7 +192,8 @@ class RobotsChecker:
             Cached robots.txt data or None if expired/not found
         """
         try:
-            with get_db_session() as session:
+            # CONTRACT §2.2: System-level cache uses require_tenant=False (admin bypass)
+            with get_db_session(tenant_id=None, require_tenant=False) as session:
                 cache_entry = (
                     session.query(RobotsTxtCache)
                     .filter(
@@ -238,7 +239,8 @@ class RobotsChecker:
             error: Error message if parsing failed
         """
         try:
-            with get_db_session() as session:
+            # CONTRACT §2.2: System-level cache uses require_tenant=False (admin bypass)
+            with get_db_session(tenant_id=None, require_tenant=False) as session:
                 # Check if entry exists
                 existing = (
                     session.query(RobotsTxtCache).filter(RobotsTxtCache.domain == domain).first()

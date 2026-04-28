@@ -9,6 +9,15 @@ metadata:
 spec:
   mode: deployment
   replicas: 1
+  # P1-18 FIX: Add pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
   config: |
     receivers:
       otlp:

@@ -25,7 +25,15 @@ const ErrorResponseSchema = z.object({
 
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
-/** Safe localStorage accessor with null checks and try/catch */
+/**
+ * Safe localStorage accessor with null checks and try/catch.
+ *
+ * P1-21 SECURITY WARNING: Storing access tokens in localStorage makes them
+ * vulnerable to XSS extraction. This is a known risk that should be
+ * migrated to httpOnly cookies with CSRF protection in a future release.
+ *
+ * TODO(P1-21): Migrate to httpOnly cookie-based auth with SameSite=Strict
+ */
 const safeLocalStorage = {
   isAvailable(): boolean {
     try {
@@ -87,14 +95,14 @@ function getEnvVar(name: string, fallback: string): string {
 // Base API path - layer prefixes must include /v1 to match backend OpenAPI routes
 const API_BASE = getEnvVar('VITE_API_BASE', '/api');
 
-// Layer prefixes (without /v1 - it's included in VITE_API_BASE)
+// Layer prefixes (must include /v1 to match backend OpenAPI routes per .env.example)
 const LAYER_PREFIXES = {
-  l1: getEnvVar('VITE_L1_PREFIX', '/ingest'),
-  l2: getEnvVar('VITE_L2_PREFIX', '/extract'),
-  l3: getEnvVar('VITE_L3_PREFIX', '/graph'),
-  l4: getEnvVar('VITE_L4_PREFIX', '/agents'),
-  l5: getEnvVar('VITE_L5_PREFIX', '/truths'),
-  l6: getEnvVar('VITE_L6_PREFIX', '/benchmarks'),
+  l1: getEnvVar('VITE_L1_PREFIX', '/v1/ingest'),
+  l2: getEnvVar('VITE_L2_PREFIX', '/v1/extract'),
+  l3: getEnvVar('VITE_L3_PREFIX', '/v1/graph'),
+  l4: getEnvVar('VITE_L4_PREFIX', '/v1/agents'),
+  l5: getEnvVar('VITE_L5_PREFIX', '/v1/truths'),
+  l6: getEnvVar('VITE_L6_PREFIX', '/v1/benchmarks'),
 } as const;
 
 /**

@@ -173,7 +173,9 @@ if SecurityConfig and add_security_middleware:
 try:
     from shared.identity.middleware import GovernanceMiddleware
 
-    app.add_middleware(GovernanceMiddleware, api_key_resolver=None)
+    from shared.identity.api_key_stub import reject_api_key_unsupported
+
+    app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported)
 except ImportError:
     if os.getenv("ENVIRONMENT") in ("production", "staging"):
         raise RuntimeError(

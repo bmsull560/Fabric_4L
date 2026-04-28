@@ -45,7 +45,7 @@ jobs:
           pattern: test-results-*
           merge-multiple: true
           path: ./test-artifacts
-        continue-on-error: true
+        # CONTRACT ENFORCEMENT: Test artifacts required for reporting
 
       - name: Setup Python
         uses: actions/setup-python@v5

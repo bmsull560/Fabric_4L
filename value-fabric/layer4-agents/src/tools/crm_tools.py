@@ -73,9 +73,10 @@ class GetProspectDataTool(BaseTool):
                     error=f"Unsupported CRM type: {self.crm_type}"
                 )
         except Exception as e:
-            logger.error(f"CRM data fetch failed: {e}")
+            logger.error("CRM data fetch failed: %s", e)
             return GetProspectDataOutput(
-                profile={}, interactions=[], opportunities=[], custom_fields={}
+                profile={}, interactions=[], opportunities=[], custom_fields={},
+                error=f"CRM data fetch failed: {e}"
             )
 
     @staticmethod
@@ -356,12 +357,12 @@ class UpdateOpportunityTool(BaseTool):
             )
 
         except Exception as e:
-            logger.error(f"Opportunity update failed: {e}")
+            logger.error("CRM update failed: %s", e)
             return UpdateOpportunityOutput(
                 success=False,
                 opportunity_id=input_data.opportunity_id,
                 updated_fields=[],
-                error=str(e),
+                error=f"CRM update failed: {e}"
             )
 
 
@@ -412,9 +413,12 @@ class FetchInteractionHistoryTool(BaseTool):
                     error=f"Unsupported CRM type: {self.crm_type}"
                 )
         except Exception as e:
-            logger.error(f"Interaction history fetch failed: {e}")
+            logger.error("CRM fetch failed: %s", e)
             return FetchInteractionHistoryOutput(
-                interactions=[], total_count=0, summary="No interactions available"
+                interactions=[],
+                total_count=0,
+                summary="",
+                error=f"CRM fetch failed: {e}"
             )
 
     async def _get_salesforce_interactions(

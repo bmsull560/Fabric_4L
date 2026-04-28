@@ -152,11 +152,12 @@ app.add_middleware(
 )
 
 # SecurityMiddleware — input validation and security headers (mandatory)
+# P1-14 FIX: Removed /v1/extract paths from skip list
+# All untrusted input must pass through SecurityMiddleware validation
 _security_config_l2 = SecurityConfig(
     skip_validation_paths=frozenset({
-        "/v1/extract",
-        "/v1/extract/batch",
-        "/v1/nl-query",
+        "/health",
+        "/metrics",
     }),
     strict_mode=True,
 )
@@ -186,7 +187,9 @@ async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
 
 # GovernanceMiddleware — verifies JWTs and resolves tenant/user context (mandatory)
 # Note: redis_rate_limiter is set during startup
-app.add_middleware(GovernanceMiddleware, api_key_resolver=None, rate_limiter=None)
+from shared.identity.api_key_stub import reject_api_key_unsupported
+
+app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=None)
 
 # Add metrics middleware if available — INNERMOST
 if metrics:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import logging
 import operator
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -105,6 +106,11 @@ class SignalQuantificationService:
     DEFAULT_FORMULA_ID = "ai-f-001"
     DEFAULT_OUTPUT_UNIT = "USD/year"
     DEFAULT_FALLBACK_INDUSTRY = "manufacturing"
+
+    # Multiplier constants for indicator parsing
+    THOUSAND_MULTIPLIER = 1_000
+    MILLION_MULTIPLIER = 1_000_000
+    DEFAULT_FALLBACK_COST = 1_000_000
 
     # Industry to formula mappings for Operational signals
     OPERATIONAL_FORMULAS = {
@@ -284,11 +290,11 @@ class SignalQuantificationService:
             "id": "default-operational",
             "name": "Default Operational Impact",
             "expression": "estimated_annual_cost",
-            "output_unit": "USD/year",
+            "output_unit": self.DEFAULT_OUTPUT_UNIT,
             "variables": [
                 {
                     "name": "estimated_annual_cost",
-                    "default_value": 1000000,
+                    "default_value": self.DEFAULT_FALLBACK_COST,
                     "data_type": "currency",
                 }
             ],
@@ -363,8 +369,6 @@ class SignalQuantificationService:
             "capacity_percent": [r"(\d+)%.*capacity", r"capacity.*(\d+)%"],
         }
 
-        import re
-
         var_key = variable_name.lower().replace("_", "")
         regexes = patterns.get(var_key, [])
 
@@ -378,9 +382,9 @@ class SignalQuantificationService:
                         value = float(value_str)
                         # Handle K/M suffixes if present in original
                         if "K" in indicator.upper():
-                            value *= 1000
+                            value *= self.THOUSAND_MULTIPLIER
                         if "M" in indicator.upper():
-                            value *= 1000000
+                            value *= self.MILLION_MULTIPLIER
                         return value
                     except ValueError:
                         continue

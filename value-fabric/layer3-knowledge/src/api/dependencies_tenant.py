@@ -263,19 +263,22 @@ def require_tenant_header_for_internal():
             ...
     """
     async def _check_tenant_header(request: Request) -> str:
-        # First check if RequestContext already has tenant (preferred)
-        if SHARED_IDENTITY_AVAILABLE:
-            ctx = await get_request_context(request)
-            if ctx and ctx.tenant_id:
-                return str(ctx.tenant_id)
-
-        # Fallback to header for internal service calls
-        x_tenant = request.headers.get("X-Tenant-ID")
-        if not x_tenant:
+        # CONTRACT §2.1 §2.3: All tenant identification flows through GovernanceMiddleware
+        # Direct header access is prohibited. RequestContext is set by middleware.
+        if not SHARED_IDENTITY_AVAILABLE:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="X-Tenant-ID header required for internal endpoint",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Identity system unavailable. Ensure shared.identity is configured.",
             )
-        return x_tenant
+
+        ctx = await get_request_context(request)
+        if ctx and ctx.tenant_id:
+            return str(ctx.tenant_id)
+
+        # If no context, middleware hasn't run or auth failed
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tenant context required. Ensure request passed through GovernanceMiddleware.",
+        )
 
     return _check_tenant_header

@@ -660,14 +660,14 @@ jobs:
           st check contracts/openapi/layer1-ingestion.json \
             --max-examples 10 \
             --hypothesis-seed 42
-        continue-on-error: true  # L1 may not be fully implemented yet
+        # CONTRACT ENFORCEMENT: L1 now fully implemented - blocking enabled
 
       - name: Run Schemathesis on L2 OpenAPI (static validation)
         run: |
           st check contracts/openapi/layer2-extraction.json \
             --max-examples 10 \
             --hypothesis-seed 42
-        continue-on-error: true  # L2 may not be fully implemented yet
+        # CONTRACT ENFORCEMENT: L2 now fully implemented - blocking enabled
 
       - name: Run Schemathesis on L3 OpenAPI (strict validation)
         run: |
@@ -908,5 +908,5 @@ jobs:
             kubectl kustomize k8s/deployments/dev-nginx 2>&1 | grep -q "alertmanager" && echo "✓ Alertmanager manifests found in kustomize build"
           else
             echo "⚠️ kubectl not available, skipping kustomize validation"
+            exit 1  # CONTRACT ENFORCEMENT: kubectl required for CI validation
           fi
-        continue-on-error: true

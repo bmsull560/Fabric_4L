@@ -7,11 +7,11 @@ triggering immediate sync to keep Account records fresh.
 
 import hashlib
 import hmac
-import json
 import logging
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, status
+from pydantic import BaseModel, Field, TypeAdapter
 from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +33,60 @@ HUBSPOT_SIGNATURE_V3_HEADER = "X-HubSpot-Signature-v3"
 # App state attribute names for webhook secrets
 SALESFORCE_WEBHOOK_SECRET_ATTR = "salesforce_webhook_secret"
 HUBSPOT_WEBHOOK_SECRET_ATTR = "hubspot_webhook_secret"
+
+
+# CONTRACT §2.5: Pydantic schemas for webhook payload validation
+class SalesforceSObject(BaseModel):
+    """Salesforce sObject in outbound message."""
+    Id: str | None = None
+    Name: str | None = None
+
+
+class SalesforceNotification(BaseModel):
+    """Salesforce outbound message notification wrapper."""
+    sObject: SalesforceSObject = Field(default_factory=SalesforceSObject)
+
+
+class SalesforceChangeEventHeader(BaseModel):
+    """Salesforce ChangeEventHeader for platform events."""
+    recordIds: list[str] = Field(default_factory=list)
+    changeType: str = ""
+    entityName: str = ""
+
+
+class SalesforcePayloadData(BaseModel):
+    """Salesforce platform event data wrapper."""
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class SalesforceWebhookPayload(BaseModel):
+    """Unified schema for Salesforce webhook payloads.
+
+    Supports both:
+    - Platform events: {"data": {"payload": {"ChangeEventHeader": {...}}}}
+    - Outbound messages: {"Notification": {"sObject": {"Id": "..."}}}
+    """
+    Notification: SalesforceNotification | None = None
+    data: SalesforcePayloadData | None = None
+    # Allow extra fields for flexibility
+    model_config = {"extra": "allow"}
+
+
+class HubSpotWebhookEvent(BaseModel):
+    """Single HubSpot webhook subscription event.
+
+    HubSpot sends arrays of these events for object changes.
+    """
+    eventId: int | None = None
+    subscriptionId: int | None = None
+    portalId: int | None = None
+    occurredAt: int | None = None
+    subscriptionType: str = ""
+    objectId: int | None = None
+    propertyName: str | None = None
+    propertyValue: str | None = None
+    # Allow extra fields for future compatibility
+    model_config = {"extra": "allow"}
 
 
 # ============================================================================
@@ -73,12 +127,13 @@ async def salesforce_webhook(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
             )
 
-    # Parse JSON from cached body bytes (don't call request.json() - body already consumed)
+    # CONTRACT §2.5: Parse and validate webhook payload with Pydantic schema
     try:
-        data = json.loads(body.decode())
-    except json.JSONDecodeError:
-        logger.warning("Salesforce webhook received non-JSON payload", extra={"body_preview": body[:200].decode(errors='replace')})
-        data = {"raw_body": body.decode(errors='replace')}
+        payload_str = body.decode()
+        data = SalesforceWebhookPayload.model_validate_json(payload_str).model_dump()
+    except Exception as e:
+        logger.warning("Salesforce webhook received invalid payload", extra={"error": str(e), "body_preview": body[:200].decode(errors='replace')})
+        data = {"raw_body": body.decode(errors='replace'), "parse_error": str(e)}
 
     # Extract record info from Salesforce payload
     # Platform events: {"data": {"payload": {"RecordId": "...", "ChangeEventHeader": {...}}}}
@@ -268,16 +323,16 @@ async def hubspot_webhook(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid webhook signature"
             )
 
-    # Parse JSON from cached body bytes
+    # CONTRACT §2.5: Parse and validate HubSpot events with Pydantic schema
     try:
-        events = json.loads(body.decode())
-        if events is None:
-            events = []
-        elif not isinstance(events, list):
-            events = [events]
-    except json.JSONDecodeError as e:
+        payload_str = body.decode()
+        # HubSpot sends arrays of events
+        events_adapter = TypeAdapter(list[HubSpotWebhookEvent])
+        events_data = events_adapter.validate_json(payload_str)
+        events = [e.model_dump() for e in events_data]
+    except Exception as e:
         logger.warning(f"HubSpot webhook received invalid payload: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from e
 
     # Collect unique company IDs to sync
     company_ids = set()

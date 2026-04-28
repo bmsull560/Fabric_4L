@@ -193,6 +193,27 @@ jobs:
           echo "raw SQL tenant violations found: $VIOLATIONS"
           echo "sql_violations=$VIOLATIONS" >> $GITHUB_ENV
 
+      # ==========================================================================
+      # P0 FIX: Tenant Boundary Security Gate (BLOCKING)
+      # ==========================================================================
+      - name: Tenant Boundary Security Check
+        run: |
+          echo "🔒 Running tenant boundary security check..."
+          echo "Direct header access (headers['X-Tenant-ID']) is PROHIBITED."
+          echo "All code must use: from shared.boundaries import require_tenant_context"
+          echo ""
+          python scripts/ci/boundary_check.py
+        # NO continue-on-error: This is a BLOCKING security gate
+
+      - name: Run tenant boundary security tests
+        run: |
+          echo "🧪 Running tenant boundary fails-closed tests..."
+          pip install pytest pytest-asyncio
+          python -m pytest tests/security/test_tenant_boundary_fails_closed.py -v
+        env:
+          PYTHONPATH: "value-fabric/shared:shared"
+        # NO continue-on-error: Tests must pass
+
       - name: Upload contract scan results
         uses: actions/upload-artifact@v4
         if: always()
@@ -489,7 +510,7 @@ jobs:
           echo "### Contract Enforcement Status" >> $GITHUB_STEP_SUMMARY
           echo "| Contract | ESLint | CI Gate | Runtime | Score |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|--------|---------|---------|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| §2.1 Tenant Context | error | ✅ | 🟡 | 60% |" >> $GITHUB_STEP_SUMMARY
+          echo "| §2.1 Tenant Context | error | ✅ BLOCKING | ✅ Fails Closed | 90%+ |" >> $GITHUB_STEP_SUMMARY
           echo "| §2.2 DB Session | error | ✅ | 🟡 | 40% |" >> $GITHUB_STEP_SUMMARY
           echo "| §2.3 Middleware Flow | error | ✅ | 🟡 | 50% |" >> $GITHUB_STEP_SUMMARY
           echo "| §2.4 Tool Boundary | error | ✅ | 🟡 | 55% |" >> $GITHUB_STEP_SUMMARY

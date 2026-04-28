@@ -55,8 +55,9 @@ async def workflow_websocket(
     last_event_id: str | None = Query(
         None, description="Last seen event ID for replay on reconnect"
     ),
+    # P1-13 FIX: Reject token in query param (logged by proxies)
     token: str | None = Query(
-        None, description="JWT token for tenant context (Task 2.2)"
+        None, description="DEPRECATED: Use Sec-WebSocket-Protocol header instead"
     ),
 ):
     """WebSocket endpoint for real-time workflow streaming.
@@ -99,10 +100,26 @@ async def workflow_websocket(
         workflow_id: Workflow instance ID to subscribe to
         last_event_id: Optional last seen event for replay on reconnect
     """
+    # P1-13 FIX: Reject JWT in query parameter (prevents logging by proxies)
+    if token:
+        await websocket.close(code=1008, reason="JWT in query param is not allowed. Use Sec-WebSocket-Protocol header.")
+        return
+
+    # P1-13 FIX: Accept JWT from Sec-WebSocket-Protocol header instead
+    protocol_header = websocket.headers.get("sec-websocket-protocol", "")
+    ws_token = None
+    if protocol_header:
+        # Protocol header format: "token,<jwt>" or just "<jwt>"
+        parts = protocol_header.split(",")
+        if len(parts) >= 2 and parts[0].strip().lower() == "token":
+            ws_token = parts[1].strip()
+        elif len(parts) == 1:
+            ws_token = parts[0].strip()
+
     ws_manager = get_ws_manager()
 
-    # Task 2.2: Extract tenant context from JWT token
-    tenant_id, user_id = _extract_tenant_from_token(token)
+    # Task 2.2: Extract tenant context from JWT token (now from header)
+    tenant_id, user_id = _extract_tenant_from_token(ws_token)
 
     try:
         # Accept connection and send replay if reconnecting (with tenant context)

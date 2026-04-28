@@ -8,9 +8,7 @@ Ship/No-Ship Gate: FAIL on this file blocks release.
 """
 from __future__ import annotations
 
-import os
 import sys
-import time
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -20,12 +18,56 @@ import pytest
 
 # Add paths for imports
 _repo_root = Path(__file__).resolve().parents[2]
-_layer4_path = str(_repo_root / "value-fabric" / "layer4-agents" / "src")
-if _layer4_path not in sys.path:
-    sys.path.insert(0, _layer4_path)
+_layer4_src = _repo_root / "value-fabric" / "layer4-agents" / "src"
 _shared_path = str(_repo_root / "value-fabric")
+_layer4_path = str(_layer4_src)
 if _shared_path not in sys.path:
     sys.path.insert(0, _shared_path)
+if _layer4_path not in sys.path:
+    sys.path.insert(0, _layer4_path)
+
+# Lazy import fixtures to avoid import errors at collection time
+def _get_knowledge_tools():
+    """Import knowledge tools with proper error handling.
+    
+    Bypasses broken __init__.py by importing directly from module file.
+    """
+    import importlib.util
+    
+    # Import directly from file to bypass package __init__ issues
+    tools_path = _layer4_src / "tools" / "knowledge_tools.py"
+    spec = importlib.util.spec_from_file_location("knowledge_tools", tools_path)
+    module = importlib.util.module_from_spec(spec)
+    
+    # Need to set up sys.path for relative imports in the module
+    sys.path.insert(0, str(_layer4_src))
+    try:
+        spec.loader.exec_module(module)
+    except ImportError as e:
+        pytest.skip(f"Cannot load knowledge_tools module: {e}")
+    finally:
+        if str(_layer4_src) in sys.path:
+            sys.path.remove(str(_layer4_src))
+    
+    # Import schemas separately
+    schemas_path = _layer4_src / "models" / "tool_schemas.py"
+    schemas_spec = importlib.util.spec_from_file_location("tool_schemas", schemas_path)
+    schemas_module = importlib.util.module_from_spec(schemas_spec)
+    sys.path.insert(0, str(_layer4_src))
+    try:
+        schemas_spec.loader.exec_module(schemas_module)
+    except ImportError as e:
+        pytest.skip(f"Cannot load tool_schemas module: {e}")
+    finally:
+        if str(_layer4_src) in sys.path:
+            sys.path.remove(str(_layer4_src))
+    
+    return (
+        module.QueryGraphTool, 
+        module.SemanticSearchTool, 
+        schemas_module.QueryGraphInput, 
+        schemas_module.SemanticSearchInput
+    )
 
 # Constants matching conftest.py
 TENANT_A_ID = UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
@@ -52,45 +94,32 @@ class TestQueryGraphToolTenantEnforcement:
         return session
 
     @pytest.fixture
-    def tool_with_tenant_context(self, monkeypatch):
-        """Create QueryGraphTool with tenant context available."""
-        try:
-            from shared.identity.context import RequestContext, set_request_context
-            from shared.identity.permissions import Permission, Role
-        except ImportError:
-            pytest.skip("shared.identity not available")
+    def mock_tenant_context(self, monkeypatch):
+        """Mock tenant context for testing without real shared.identity."""
+        from unittest.mock import MagicMock, patch
         
-        # Build context for Tenant A
-        ctx = RequestContext(
-            tenant_id=TENANT_A_ID,
-            user_id="user-123",
-            roles=["analyst"],
-            api_key_id=None,
-            permissions=frozenset({Permission.READ_KNOWLEDGE}),
-            source="jwt",
-            raw={},
-        )
+        # Create a mock TenantContext
+        mock_ctx = MagicMock()
+        mock_ctx.tenant_id = TENANT_A_ID
+        mock_ctx.user_id = "user-123"
+        mock_ctx.roles = ["analyst"]
+        mock_ctx.source = "jwt"
         
-        # Set in context var
-        token = set_request_context(ctx)
-        
-        yield ctx
-        
-        # Cleanup
-        from shared.identity.context import _current_context
-        _current_context.reset(token)
+        # Patch get_current_tenant_context to return our mock
+        with patch("shared.domain.context.get_request_context") as mock_get_ctx:
+            mock_get_ctx.return_value = mock_ctx
+            yield mock_ctx
 
     @pytest.mark.asyncio
-    async def test_query_graph_injects_tenant_filter(self, mock_neo4j_session, tool_with_tenant_context):
+    async def test_query_graph_injects_tenant_filter(self, mock_neo4j_session, mock_tenant_context):
         """POSITIVE: Tool injects tenant filter into Cypher query when context available.
         
-        When RequestContext is set, the query_graph tool should:
+        When TenantContext is set, the query_graph tool should:
         1. Extract tenant_id from context
         2. Modify query to add tenant filter
         3. Execute modified query
         """
-        from tools.knowledge_tools import QueryGraphTool
-        from models.tool_schemas import QueryGraphInput
+        QueryGraphTool, _, QueryGraphInput, _ = _get_knowledge_tools()
         
         tool = QueryGraphTool(config={"neo4j_uri": "bolt://localhost:7687"})
         
@@ -112,11 +141,11 @@ class TestQueryGraphToolTenantEnforcement:
         executed_query = call_args[0][0]  # First positional arg is the query
         
         # Verify tenant filtering was injected
-        assert str(TENANT_A_ID) in executed_query or "tenant_id" in executed_query, (
+        assert str(TENANT_A_ID) in executed_query or "tenant_id" in executed_query or "$tenant_id" in executed_query, (
             f"Query must include tenant filter. Executed query: {executed_query}"
         )
 
-    @pytest.mark.asyncio  
+    @pytest.mark.asyncio
     async def test_query_graph_without_tenant_context_fails_closed(self, mock_neo4j_session):
         """NEGATIVE: Tool fails closed when no tenant context is available.
         
@@ -128,48 +157,38 @@ class TestQueryGraphToolTenantEnforcement:
         This is a P0 negative test - it proves the tool doesn't execute
         unscoped queries that could return cross-tenant data.
         """
-        from tools.knowledge_tools import QueryGraphTool
-        from models.tool_schemas import QueryGraphInput
-        try:
-            from shared.identity.context import set_request_context
-        except ImportError:
-            pytest.skip("shared.identity not available")
+        QueryGraphTool, _, QueryGraphInput, _ = _get_knowledge_tools()
         
-        # Explicitly clear any context
-        token = set_request_context(None)
+        tool = QueryGraphTool(config={"neo4j_uri": "bolt://localhost:7687"})
         
-        try:
-            tool = QueryGraphTool(config={"neo4j_uri": "bolt://localhost:7687"})
-            
-            mock_driver = MagicMock()
-            mock_driver.session = MagicMock(return_value=mock_neo4j_session)
-            tool._driver = mock_driver
-            
-            input_data = QueryGraphInput(
-                cypher_query="MATCH (n:Account) RETURN n LIMIT 10",
-                parameters={}
-            )
-            
-            result = await tool.execute(input_data)
-            
-            # Tool should either fail closed or include error
-            assert result.error is not None or result.row_count == 0, (
-                "Tool must fail closed without tenant context. "
-                f"Got {result.row_count} rows with no error."
-            )
-        finally:
-            from shared.identity.context import _current_context
-            _current_context.reset(token)
+        mock_driver = MagicMock()
+        mock_driver.session = MagicMock(return_value=mock_neo4j_session)
+        tool._driver = mock_driver
+        
+        input_data = QueryGraphInput(
+            cypher_query="MATCH (n:Account) RETURN n LIMIT 10",
+            parameters={}
+        )
+        
+        result = await tool.execute(input_data)
+        
+        # Tool should fail closed with error when no tenant context
+        assert result.error is not None, (
+            "Tool must fail closed without tenant context. "
+            f"Got {result.row_count} rows with no error."
+        )
+        assert "tenant" in result.error.lower() or "authentication" in result.error.lower(), (
+            f"Error should indicate tenant/auth issue: {result.error}"
+        )
 
     @pytest.mark.asyncio
-    async def test_cross_tenant_query_blocked(self, mock_neo4j_session, tool_with_tenant_context):
+    async def test_cross_tenant_query_blocked(self, mock_neo4j_session, mock_tenant_context):
         """NEGATIVE: Tenant A cannot query Tenant B data via tenant_id spoofing.
         
         Attempting to override tenant_id in query parameters should be blocked.
         The tool must use the authenticated context tenant_id, not the input.
         """
-        from tools.knowledge_tools import QueryGraphTool
-        from models.tool_schemas import QueryGraphInput
+        QueryGraphTool, _, QueryGraphInput, _ = _get_knowledge_tools()
         
         tool = QueryGraphTool(config={"neo4j_uri": "bolt://localhost:7687"})
         

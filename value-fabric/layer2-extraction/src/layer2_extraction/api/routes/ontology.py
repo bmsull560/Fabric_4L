@@ -109,36 +109,28 @@ DEFAULT_TENANT_ID = "default"
 DEFAULT_USER_ID = "system"
 
 
-# Helper to extract tenant_id from request (via middleware/context)
+# CONTRACT §2.1 §2.3: Tenant context from GovernanceMiddleware, never direct header access
 def get_tenant_id(request: Request) -> str:
-    """Extract tenant ID from request context.
+    """Extract tenant ID from request context (set by GovernanceMiddleware).
 
-    In production, this would come from JWT claims or API key resolution.
-    For now, uses a default tenant or header.
+    CONTRACT: All tenant identification flows through GovernanceMiddleware.
+    Direct header access is prohibited per §2.1.
     """
-    # Try to get from request state (set by middleware)
-    tenant_id = getattr(request.state, "tenant_id", None)
-    if tenant_id:
-        return tenant_id
+    # Get from request state (set by GovernanceMiddleware via shared.identity)
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx and ctx.tenant_id:
+        return str(ctx.tenant_id)
 
-    # Fallback to header for testing
-    header_tenant = request.headers.get("X-Tenant-ID")
-    if header_tenant:
-        return header_tenant
-
+    # Fail-safe: require explicit DEFAULT_TENANT_ID for dev/test only
     return DEFAULT_TENANT_ID
 
 
-# Helper to extract user_id from request
+# CONTRACT §2.1: User context from GovernanceMiddleware
 def get_user_id(request: Request) -> str:
     """Extract user ID from request context."""
-    user_id = getattr(request.state, "user_id", None)
-    if user_id:
-        return user_id
-
-    header_user = request.headers.get("X-User-ID")
-    if header_user:
-        return header_user
+    ctx = getattr(request.state, "governance_context", None)
+    if ctx and ctx.user_id:
+        return str(ctx.user_id)
 
     return DEFAULT_USER_ID
 

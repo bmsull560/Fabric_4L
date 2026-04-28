@@ -79,6 +79,7 @@ MAX_SIGNALS_FOR_READINESS = 5
 MAX_HYPOTHESES_FOR_READINESS = 5
 MAX_EVIDENCE_FOR_READINESS = 3
 MAX_COMPETITORS_FOR_READINESS = 3
+MAX_SIGNALS_QUERY_LIMIT = 20  # For internal data fetchers
 
 
 def _readiness_label(score: float) -> str:
@@ -120,19 +121,25 @@ class IntelligenceOrchestrator:
     ) -> dict[str, Any]:
         """Assemble a complete intelligence briefing for an account.
 
-        Gathers data from all DIL services in parallel-safe sequence:
-          1. Account enrichment status
-          2. Active signals for the account
-          3. Value hypotheses (ranked)
-          4. Competitive landscape
-          5. ROI projection
-          6. Matched evidence / case studies
-          7. Optionally: generated narrative
+        Args:
+            account_id: Account identifier (must be non-empty)
+            include_narrative: Whether to include narrative section
+            top_n_hypotheses: Number of top hypotheses to include
+            roi_scenario: ROI calculation scenario (conservative/moderate/aggressive)
+
+        Returns:
+            Intelligence briefing dictionary
+
+        Raises:
+            ValueError: If account_id is empty or invalid
         """
+        # Validate account_id
+        if not account_id or not isinstance(account_id, str):
+            raise ValueError("account_id must be a non-empty string")
+
         now = datetime.now(UTC).isoformat()
 
         # Gather all intelligence components in parallel with error isolation
-        tenant_id = _get_tenant_id()
 
         async def _safe_gather() -> tuple[
             list[dict[str, Any]],
@@ -233,16 +240,61 @@ class IntelligenceOrchestrator:
     async def get_deal_readiness(
         self, account_id: str
     ) -> dict[str, Any]:
-        """Calculate deal readiness score for an account."""
-        tenant_id = _get_tenant_id()
-        signals = await self._get_account_signals(account_id)
-        hypotheses = await self._get_account_hypotheses(
-            account_id, limit=DEFAULT_HYPOTHESES_LIMIT
+        """Calculate deal readiness score for an account.
+
+        Args:
+            account_id: Account identifier (must be non-empty)
+
+        Returns:
+            Deal readiness score dictionary
+
+        Raises:
+            ValueError: If account_id is empty or invalid
+        """
+        # Validate account_id
+        if not account_id or not isinstance(account_id, str):
+            raise ValueError("account_id must be a non-empty string")
+
+        async def _safe_gather() -> tuple[
+            list[dict[str, Any]],
+            list[dict[str, Any]],
+            dict[str, Any],
+            dict[str, Any],
+            list[dict[str, Any]],
+            dict[str, Any] | None,
+        ]:
+            """Gather all data with individual error handling."""
+            signals_task = self._get_account_signals(account_id)
+            hypotheses_task = self._get_account_hypotheses(
+                account_id, limit=DEFAULT_HYPOTHESES_LIMIT
+            )
+            competitive_task = self._get_competitive_landscape()
+            roi_task = self._get_roi_summary(account_id)
+            evidence_task = self._get_matched_evidence(account_id)
+            narrative_task = self._get_latest_narrative(account_id)
+
+            results = await asyncio.gather(
+                signals_task,
+                hypotheses_task,
+                competitive_task,
+                roi_task,
+                evidence_task,
+                narrative_task,
+                return_exceptions=True,
+            )
+
+            signals = results[0] if not isinstance(results[0], Exception) else []
+            hypotheses = results[1] if not isinstance(results[1], Exception) else []
+            competitive = results[2] if not isinstance(results[2], Exception) else {}
+            roi = results[3] if not isinstance(results[3], Exception) else {}
+            evidence = results[4] if not isinstance(results[4], Exception) else []
+            narrative = results[5] if not isinstance(results[5], Exception) else None
+
+            return signals, hypotheses, competitive, roi, evidence, narrative
+
+        signals, hypotheses, competitive, roi, evidence, narrative = (
+            await _safe_gather()
         )
-        competitive = await self._get_competitive_landscape()
-        roi = await self._get_roi_summary(account_id)
-        evidence = await self._get_matched_evidence(account_id)
-        narrative = await self._get_latest_narrative(account_id)
 
         readiness = self._compute_deal_readiness(
             signals=signals,
@@ -419,12 +471,13 @@ class IntelligenceOrchestrator:
         WHERE s.account_id = $account_id OR s.target_account_id = $account_id
         RETURN s {.*} AS signal
         ORDER BY s.confidence_score DESC
-        LIMIT 20
+        LIMIT $limit
         """
         async with self._driver.session() as session:
             result = await session.run(query, {
                 "tenant_id": tenant_id,
                 "account_id": account_id,
+                "limit": MAX_SIGNALS_QUERY_LIMIT,
             })
             records = [record async for record in result]
         return [r["signal"] for r in records]

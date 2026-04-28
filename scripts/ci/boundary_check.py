@@ -1,0 +1,133 @@
+"""CI gate: Detect tenant boundary violations before they reach production.
+
+This script fails the build if any direct header access patterns are detected.
+Run in CI with: python scripts/ci/boundary_check.py
+
+Exit codes:
+    0: No violations detected
+    1: Violations found (CI gate fails)
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+# Violation patterns - only detect READING headers (incoming requests)
+# NOT setting headers on outgoing requests (headers['X-Tenant-ID'] = value is OK)
+VIOLATION_PATTERNS = [
+    # headers['X-Tenant-ID'] used as value (not assignment)
+    r"headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
+    r"headers\s*\[\s*['\"]x-tenant-id['\"]\s*\](?!\s*=)",
+    # headers.get('X-Tenant-ID')
+    r"headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
+    r"headers\.get\s*\(\s*['\"]x-tenant-id['\"]",
+    # request.headers['X-Tenant-ID'] used as value
+    r"request\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
+    r"request\.headers\s*\[\s*['\"]x-tenant-id['\"]\s*\](?!\s*=)",
+    # request.headers.get('X-Tenant-ID')
+    r"request\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
+    r"request\.headers\.get\s*\(\s*['\"]x-tenant-id['\"]",
+    # req.headers patterns
+    r"req\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
+    r"req\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
+]
+
+# Allowed paths (internal boundary implementations and security validators)
+ALLOWED_PATHS = [
+    "shared/boundaries/tenant_boundary.py",
+    "shared/identity/middleware.py",
+    "shared/identity/context.py",
+    "shared/security/dil_auth.py",  # Security validator - compares header against context
+]
+
+
+def is_allowed_path(filepath: Path) -> bool:
+    """Check if file is in allowed list."""
+    path_str = str(filepath).replace("\\", "/")
+    return any(allowed in path_str for allowed in ALLOWED_PATHS)
+
+
+def find_violations_in_file(filepath: Path) -> list[dict]:
+    """Find all violations in a file."""
+    if is_allowed_path(filepath):
+        return []
+    
+    violations = []
+    try:
+        content = filepath.read_text(encoding='utf-8')
+        lines = content.split('\n')
+        
+        for line_num, line in enumerate(lines, 1):
+            for pattern in VIOLATION_PATTERNS:
+                if re.search(pattern, line, re.IGNORECASE):
+                    # Check if it's already using the boundary module
+                    if 'require_tenant_from_request' in line or 'shared.boundaries' in line:
+                        continue
+                    violations.append({
+                        'line': line_num,
+                        'content': line.strip(),
+                        'pattern': pattern,
+                    })
+                    break  # One violation per line is enough
+    except Exception as e:
+        print(f"Warning: Could not read {filepath}: {e}")
+    
+    return violations
+
+
+def main():
+    """Run boundary check and exit with appropriate code."""
+    root = Path("value-fabric")
+    if not root.exists():
+        print("Error: value-fabric directory not found")
+        sys.exit(1)
+    
+    print("=" * 60)
+    print("TENANT BOUNDARY SECURITY CHECK")
+    print("=" * 60)
+    print()
+    
+    all_violations: dict[Path, list[dict]] = {}
+    
+    for filepath in root.rglob("*.py"):
+        # Skip virtual environments and third-party packages
+        path_str = str(filepath).replace("\\", "/")
+        if "/.venv/" in path_str or "/site-packages/" in path_str:
+            continue
+        violations = find_violations_in_file(filepath)
+        if violations:
+            all_violations[filepath] = violations
+    
+    if not all_violations:
+        print("✓ No tenant boundary violations detected")
+        print()
+        print("All code properly uses shared.boundaries for tenant context")
+        sys.exit(0)
+    
+    # Print violations
+    total = 0
+    for filepath, violations in sorted(all_violations.items()):
+        print(f"\n{filepath}")
+        for v in violations:
+            print(f"  Line {v['line']}: {v['content'][:60]}")
+            total += 1
+    
+    print()
+    print("=" * 60)
+    print(f"FAIL: {len(all_violations)} files with {total} boundary violations")
+    print("=" * 60)
+    print()
+    print("Direct header access is prohibited. Use:")
+    print("  from shared.boundaries import require_tenant_from_request")
+    print()
+    print("To fix automatically:")
+    print("  python scripts/fix_tenant_boundary_violations.py --apply")
+    print()
+    
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

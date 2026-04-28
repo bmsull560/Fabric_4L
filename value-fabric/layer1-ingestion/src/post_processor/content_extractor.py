@@ -79,7 +79,8 @@ class ContentExtractor:
         Returns:
             ExtractedContent with cleaned data
         """
-        soup = BeautifulSoup(html, "lxml")
+        # P1-20 FIX: Use html.parser instead of lxml to prevent XXE
+        soup = BeautifulSoup(html, "html.parser")
 
         # Extract metadata
         metadata = self._extract_metadata(soup, url)
@@ -99,7 +100,8 @@ class ContentExtractor:
         if trafilatura_result:
             # Parse trafilatura XML output
             try:
-                traf_soup = BeautifulSoup(trafilatura_result, "lxml")
+                # P1-20 FIX: Use html.parser instead of lxml to prevent XXE
+                traf_soup = BeautifulSoup(trafilatura_result, "html.parser")
                 main_text = traf_soup.get_text(separator="\n", strip=True)
             except Exception:
                 main_text = None

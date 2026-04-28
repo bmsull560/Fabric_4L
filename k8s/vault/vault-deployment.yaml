@@ -23,9 +23,23 @@ spec:
       labels:
         app: vault
     spec:
+      # P1-18 FIX: Add pod-level security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: vault
         image: hashicorp/vault:1.15.0
+        # P1-18 FIX: Add container-level security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # Vault needs to write to /vault/file
+          capabilities:
+            drop: ["ALL"]
         ports:
         - containerPort: 8200
           name: http

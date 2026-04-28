@@ -1,7 +1,7 @@
 # Fabric 4L Deprecation Map
 
 **Status:** 🔄 IN PROGRESS  
-**Last Updated:** 2026-04-23  
+**Last Updated:** 2026-04-28  
 **Auto-Update Schedule:** Weekly (Mondays 00:00 UTC)
 
 This document tracks all non-canonical patterns in the codebase and their migration paths to the canonical patterns defined in [CONTRACT.md](./contract.md).
@@ -56,7 +56,7 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Migration Strategy** | Big-Bang |
 | **Target Removal** | Q2 2026 |
 | **Status** | 🔄 In Progress |
-| **Instance Count** | ~23 (as of 2026-04-23) |
+| **Instance Count** | ~18 (as of 2026-04-28) |
 | **Owning Team** | Platform Engineering |
 
 **Locations:**
@@ -105,7 +105,7 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Migration Strategy** | Adapter |
 | **Target Removal** | Q2 2026 |
 | **Status** | 🔄 In Progress |
-| **Instance Count** | ~31 (as of 2026-04-23) |
+| **Instance Count** | ~28 (as of 2026-04-28) - L1 ingestion fixed |
 | **Owning Team** | Platform Engineering |
 
 **Locations:**
@@ -202,8 +202,8 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Canonical Replacement** | Structured generation with Pydantic validation (CONTRACT.md §2.5) |
 | **Migration Strategy** | Strangler Fig |
 | **Target Removal** | Q3 2026 |
-| **Status** | ⏳ Not Started |
-| **Instance Count** | ~13 (as of 2026-04-23) |
+| **Status** | 🔄 In Progress |
+| **Instance Count** | ~8 (as of 2026-04-28) - CRM webhooks and state manager fixed |
 | **Owning Team** | Agent Team |
 
 **Locations:**
@@ -263,6 +263,32 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 3. Handle URL encoding automatically
 
 ---
+
+## Resolved 2026-04-28 (Contract Enforcement Remediation)
+
+**Phase 1: Critical Red Zones**
+
+| Pattern | Fix Description | Files Modified |
+|---------|-----------------|---------------|
+| Direct Header Access | Removed `request.headers.get('X-Tenant-ID')` fallbacks in `get_tenant_id()` helpers | `layer2-extraction/src/api/routes/ontology.py`, `layer3-knowledge/src/api/dependencies_tenant.py` |
+| DB Session Tenant Scoping | Added explicit `tenant_id` and `require_tenant` parameters to `get_db_session()` calls | `layer1-ingestion/src/crawler/decision_store.py`, `layer1-ingestion/src/compliance/robots_checker.py` |
+
+**Phase 3: Data Integrity & Parsing (§2.5)**
+
+| Pattern | Fix Description | Files Modified |
+|---------|-----------------|---------------|
+| json.loads on Webhooks | Replaced `json.loads()` with Pydantic `model_validate_json()` | `layer4-agents/src/api/routes/crm_webhooks.py` (Salesforce + HubSpot) |
+| json.loads on Agent State | Replaced `json.loads()` with `TypeAdapter.validate_json()` | `layer4-agents/src/engine/state_manager.py` (load_state + get_history) |
+
+**Phase 4: CI/CD Hardening**
+
+| CI Gate | Change |
+|---------|--------|
+| Schemathesis L1 OpenAPI | Removed `continue-on-error: true` - now blocking |
+| Schemathesis L2 OpenAPI | Removed `continue-on-error: true` - now blocking |
+| Kustomize Validation | Removed `continue-on-error: true` - kubectl now required |
+| Test Reporting Artifacts | Removed `continue-on-error: true` on artifact download |
+| Performance Gate Baseline | Removed `continue-on-error: true` on baseline download |
 
 ## Completed Migrations
 

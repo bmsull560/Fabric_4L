@@ -102,22 +102,29 @@ async def extract_signals(
         prompt_text = load_prompt("operational_signal_extraction.txt")
 
         # Prepare input for LLM
+        # P1-12 FIX: Wrap all user-controlled content in delimiters to prevent prompt injection
         prospect = request.prospect_data
         user_content = f"""
-Company: {prospect.company_name}
-Industry: {prospect.industry or "Unknown"}
+Company: <<<USER_INPUT>>>{prospect.company_name}<<</USER_INPUT>>>
+Industry: <<<USER_INPUT>>>{prospect.industry or "Unknown"}<<</USER_INPUT>>>
 
 Business Pains:
+<<<USER_INPUT>>>
 {chr(10).join(f"- {pain}" for pain in prospect.business_pains)}
+<<</USER_INPUT>>>
 
 Friction Points:
+<<<USER_INPUT>>>
 {chr(10).join(f"- {point}" for point in prospect.friction_points)}
+<<</USER_INPUT>>>
 
 Desired Outcomes:
+<<<USER_INPUT>>>
 {chr(10).join(f"- {outcome}" for outcome in prospect.desired_outcomes)}
+<<</USER_INPUT>>>
 
 Freeform Context:
-{prospect.prompt_text}
+<<<USER_INPUT>>>{prospect.prompt_text}<<</USER_INPUT>>>
 """
 
         # Call LLM for structured extraction using existing LLMClient

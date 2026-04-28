@@ -129,7 +129,7 @@ jobs:
         with:
           name: baseline-performance
           path: baseline-artifacts/
-        continue-on-error: true
+        # CONTRACT ENFORCEMENT: Baseline required for performance comparison
         
       - name: Download PR results
         uses: actions/download-artifact@v4
