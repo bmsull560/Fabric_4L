@@ -93,7 +93,7 @@ journeyTest.describe('Journey 1: Domain Ingestion → Value Tree Exploration', (
   });
 
   journeyTest('Step 1: User lands on Command Center and sees KPI dashboard', async ({ authedPage }) => {
-    await navigateAndWait(authedPage, '/home');
+    await navigateAndWait(authedPage, '/command-center');
     await expectNoErrors(authedPage);
 
     // The Command Center should display the main heading
@@ -106,7 +106,7 @@ journeyTest.describe('Journey 1: Domain Ingestion → Value Tree Exploration', (
   });
 
   journeyTest('Step 2: User submits a domain for ingestion', async ({ authedPage }) => {
-    await navigateAndWait(authedPage, '/home');
+    await navigateAndWait(authedPage, '/command-center');
 
     // Enter the test domain
     const domainInput = authedPage.getByPlaceholder(/enter company domain/i)
@@ -126,7 +126,7 @@ journeyTest.describe('Journey 1: Domain Ingestion → Value Tree Exploration', (
   });
 
   journeyTest('Step 3: Ingestion job appears in the jobs list', async ({ authedPage }) => {
-    await navigateAndWait(authedPage, '/home');
+    await navigateAndWait(authedPage, '/command-center');
 
     // The jobs table or list should be visible
     const jobsArea = authedPage.getByText(/jobs/i).first()

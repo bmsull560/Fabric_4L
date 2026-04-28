@@ -145,11 +145,9 @@ journeyTest.describe('Journey 4: Governance & Trust Validation', () => {
     await navigateAndWait(authedPage, '/governance/traces');
     await expectNoErrors(authedPage);
 
-    // The Governance section should render
+    // The Governance section should render with its page heading
     await expect(
-      authedPage.getByRole('heading', { name: /trace/i })
-        .or(authedPage.getByText(/decision trace/i).first())
-        .or(authedPage.getByText(/governance/i).first())
+      authedPage.locator('h1').filter({ hasText: /decision trace/i })
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -158,8 +156,7 @@ journeyTest.describe('Journey 4: Governance & Trust Validation', () => {
     await expectNoErrors(authedPage);
 
     await expect(
-      authedPage.getByRole('heading', { name: /audit/i })
-        .or(authedPage.getByText(/audit log/i).first())
+      authedPage.locator('h1').filter({ hasText: /audit/i })
     ).toBeVisible({ timeout: 10000 });
   });
 
