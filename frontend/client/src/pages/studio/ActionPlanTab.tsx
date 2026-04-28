@@ -9,7 +9,7 @@ import { useParams } from "wouter";
 import { ChevronDown, ChevronUp, Lightbulb, Package, Sparkles } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
-import { useAgentStream } from "@/hooks/useAgentStream";
+import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import {
   useCanonicalCaseId,
@@ -120,7 +120,7 @@ export default function ActionPlanTab() {
     [recommendations]
   );
 
-  const { messages, sendMessage, suggestedActions } = useAgentStream({
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "action-plan",
     accountName: account?.name ?? "Account",
   });
@@ -157,6 +157,9 @@ export default function ActionPlanTab() {
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
+            steps={steps}
+            isStreaming={isStreaming}
+            runMetadata={metadata}
         />
       }
     >

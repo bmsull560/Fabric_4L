@@ -19,7 +19,7 @@ import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { SectionCard, MetricCard, Btn } from "@/components/WfPrimitives";
 import { cn } from "@/lib/utils";
-import { useAgentStream } from "@/hooks/useAgentStream";
+import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import {
   useCanonicalCaseId,
@@ -156,7 +156,7 @@ export default function NarrativeTab() {
       setSelectedNarrative(narratives[0]);
   }, [narratives, selectedNarrative, selectedDIL]);
 
-  const { messages, sendMessage, suggestedActions } = useAgentStream({
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "narrative",
     accountName: account?.name ?? "Account",
   });
@@ -270,6 +270,9 @@ export default function NarrativeTab() {
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
+            steps={steps}
+            isStreaming={isStreaming}
+            runMetadata={metadata}
         />
       }
     >

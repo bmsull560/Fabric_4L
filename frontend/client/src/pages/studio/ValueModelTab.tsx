@@ -9,7 +9,7 @@ import { useParams } from "wouter";
 import { Settings2, Calculator, TrendingUp, BarChart3 } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
-import { useAgentStream } from "@/hooks/useAgentStream";
+import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import {
   useCanonicalCaseId,
@@ -147,7 +147,7 @@ export default function ValueModelTab() {
     if (caseId && data) persistTab.mutate({ caseId, payload: data });
   }, [caseId, data]);
 
-  const { messages, sendMessage, suggestedActions } = useAgentStream({
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "value-model",
     accountName: account?.name ?? "Account",
   });
@@ -225,6 +225,9 @@ export default function ValueModelTab() {
           messages={messages}
           onSendMessage={sendMessage}
           suggestedActions={suggestedActions}
+            steps={steps}
+            isStreaming={isStreaming}
+            runMetadata={metadata}
         />
       }
     >

@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { Filter } from "lucide-react";
 import IntelligenceShell from "@/components/workspace/IntelligenceShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
-import { useAgentStream } from "@/hooks/useAgentStream";
+import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
 import { useCanonicalCaseId, usePersistWorkspaceTab, useWorkspaceTabQuery, useGenerateWorkspaceIntelligence } from "@/hooks/useWorkspaceCase";
 import { SectionCard, Btn, MetricCard } from "@/components/WfPrimitives";
@@ -44,7 +44,7 @@ export default function SignalsTab() {
     persistTab.mutate({ caseId, payload: data });
   }, [caseId, data]);
 
-  const { messages, sendMessage, suggestedActions } = useAgentStream({
+  const { messages, sendMessage, suggestedActions, steps, isStreaming, metadata } = useAgentEvents({
     activeTab: "signals",
     accountName: account?.name ?? "Account",
   });
@@ -79,7 +79,7 @@ export default function SignalsTab() {
         industry: account.industry ?? "Unknown",
         revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
       }}
-      rightRail={<RightRail mode={railMode} onModeChange={setRailMode} detailContent={detailContent} activeTab="signals" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} />}
+      rightRail={<RightRail mode={railMode} onModeChange={setRailMode} detailContent={detailContent} activeTab="signals" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}
     >
       {signals.length === 0 ? (
         <SectionCard title="Pain Signal List"><div className="text-sm text-muted-foreground">No signals returned for this account case yet.</div></SectionCard>

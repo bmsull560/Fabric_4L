@@ -93,7 +93,7 @@ const NAV_DOMAINS: NavItem[] = [
     label: "Value Studio",
     icon: GitBranch,
     path: "/studio",
-    tier: "standard",
+    tier: "advanced",
     description: "Build the product-anchored business case",
     children: [
       { id: "studio-action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
@@ -110,7 +110,7 @@ const NAV_DOMAINS: NavItem[] = [
     label: "Context Engine",
     icon: Package,
     path: "/context",
-    tier: "standard",
+    tier: "advanced",
     description: "Vendor knowledge: Value Packs, models, formulas",
     children: [
       { id: "packs", label: "Value Packs", path: "/context/packs", tier: "standard" },
@@ -145,7 +145,7 @@ const NAV_DOMAINS: NavItem[] = [
     label: "Governance",
     icon: Shield,
     path: "/governance",
-    tier: "standard",
+    tier: "admin",
     description: "Audit, provenance, and compliance",
     children: [
       { id: "traces", label: "Decision Traces", path: "/governance/traces", tier: "standard" },
@@ -266,12 +266,13 @@ interface NavButtonProps {
   onClick: () => void;
 }
 
-function NavButton({ icon: Icon, label, isActive, isCollapsed, badge, hasChildren, isOpen, onToggle, onClick }: NavButtonProps) {
+function NavButton({ icon: Icon, label, path, isActive, isCollapsed, badge, hasChildren, isOpen, onToggle, onClick }: NavButtonProps) {
   if (isCollapsed) {
     return (
       <SidebarTooltip text={label}>
-        <button
-          onClick={onClick}
+        <Link
+          href={path}
+          onClick={(e: React.MouseEvent) => { e.preventDefault(); onClick(); }}
           className={cn(
             "w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-colors",
             isActive
@@ -280,14 +281,41 @@ function NavButton({ icon: Icon, label, isActive, isCollapsed, badge, hasChildre
           )}
         >
           <Icon className="w-4 h-4" />
-        </button>
+        </Link>
       </SidebarTooltip>
     );
   }
 
+  if (hasChildren) {
+    // Parent with children: clicking toggles the section open/closed
+    // Use <a> for role="link" semantics but handle via onClick
+    return (
+      <Link
+        href={path}
+        onClick={(e: React.MouseEvent) => { e.preventDefault(); if (onToggle) onToggle(); }}
+        className={cn(
+          "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+          isActive
+            ? "bg-sidebar-primary/15 text-sidebar-primary font-semibold"
+            : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+        )}
+      >
+        <Icon className="w-4 h-4 shrink-0" />
+        <span className="text-left flex-1">{label}</span>
+        {badge && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded border font-semibold bg-destructive/10 text-destructive border-destructive/20">
+            {badge}
+          </span>
+        )}
+        <ChevronDown className={cn("w-3 h-3 text-sidebar-foreground/40 transition-transform", isOpen && "rotate-180")} />
+      </Link>
+    );
+  }
+
   return (
-    <button
-      onClick={hasChildren ? onToggle : onClick}
+    <Link
+      href={path}
+      onClick={(e: React.MouseEvent) => { e.preventDefault(); onClick(); }}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
         isActive
@@ -302,12 +330,8 @@ function NavButton({ icon: Icon, label, isActive, isCollapsed, badge, hasChildre
           {badge}
         </span>
       )}
-      {hasChildren ? (
-        <ChevronDown className={cn("w-3 h-3 text-sidebar-foreground/40 transition-transform", isOpen && "rotate-180")} />
-      ) : isActive ? (
-        <div className="w-1.5 h-1.5 rounded-full bg-sidebar-primary shrink-0" />
-      ) : null}
-    </button>
+      {isActive && <div className="w-1.5 h-1.5 rounded-full bg-sidebar-primary shrink-0" />}
+    </Link>
   );
 }
 
@@ -352,9 +376,10 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
             const childResolved = resolveWorkspacePath(child.path, selectedAccountId);
             const childActive = currentPath === childResolved || currentPath.startsWith(childResolved + "/");
             return (
-              <button
+              <Link
                 key={child.id}
-                onClick={() => onNavigate(childResolved)}
+                href={childResolved}
+                onClick={(e: React.MouseEvent) => { e.preventDefault(); onNavigate(childResolved); }}
                 aria-label={`Navigate to ${child.label}`}
                 className={cn(
                   "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors",
@@ -370,7 +395,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
                   </span>
                 )}
                 {childActive && <div className="w-1 h-1 rounded-full bg-sidebar-primary shrink-0" />}
-              </button>
+              </Link>
             );
           })}
         </div>
