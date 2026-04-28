@@ -97,25 +97,28 @@ class TestIDGeneratorCompliance:
 class TestProtocolRuntimeCheckable:
     """Verify that protocols can be checked at runtime with isinstance()."""
 
-    def test_system_clock_satisfies_clock_protocol(self):
-        from shared.testability import Clock, SystemClock
+    @pytest.mark.parametrize(
+        ("impl_name", "protocol_name"),
+        [
+            ("SystemClock", "Clock"),
+            ("FixedClock", "Clock"),
+            ("UUIDGenerator", "IDGenerator"),
+            ("SequentialIDGenerator", "IDGenerator"),
+        ],
+    )
+    def test_implementations_satisfy_protocols(self, impl_name: str, protocol_name: str):
+        from shared.testability import Clock, FixedClock, IDGenerator, SequentialIDGenerator, SystemClock, UUIDGenerator
 
-        assert isinstance(SystemClock(), Clock)
-
-    def test_fixed_clock_satisfies_clock_protocol(self):
-        from shared.testability import Clock, FixedClock
-
-        assert isinstance(FixedClock(), Clock)
-
-    def test_uuid_generator_satisfies_protocol(self):
-        from shared.testability import IDGenerator, UUIDGenerator
-
-        assert isinstance(UUIDGenerator(), IDGenerator)
-
-    def test_sequential_generator_satisfies_protocol(self):
-        from shared.testability import IDGenerator, SequentialIDGenerator
-
-        assert isinstance(SequentialIDGenerator(), IDGenerator)
+        impl_map = {
+            "SystemClock": SystemClock,
+            "FixedClock": FixedClock,
+            "UUIDGenerator": UUIDGenerator,
+            "SequentialIDGenerator": SequentialIDGenerator,
+        }
+        protocol_map = {"Clock": Clock, "IDGenerator": IDGenerator}
+        impl_cls = impl_map[impl_name]
+        protocol_cls = protocol_map[protocol_name]
+        assert isinstance(impl_cls(), protocol_cls)
 
 
 class TestSharedTestabilityExports:
