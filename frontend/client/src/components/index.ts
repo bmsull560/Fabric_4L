@@ -82,6 +82,32 @@ export * from "./ui/toggle";
 export * from "./ui/toggle-group";
 export * from "./ui/tooltip";
 
+// ── Block Components (Design System) ──────────────────────────────────────────
+export {
+  StatCard,
+  StatusBadgeBlock,
+  ProgressBar,
+  TabNav,
+  TopTabNav,
+  ModelInputsTracker,
+  ModelReadinessMeter,
+} from "./blocks";
+export type {
+  StatCardProps,
+  Status as BlockStatus,
+  StatusBadgeBlockProps,
+  ProgressBarProps,
+  TabItem,
+  TabNavProps,
+  TopTabItem,
+  TopTabNavProps,
+  InputStatus,
+  ModelInput,
+  ModelInputsTrackerProps,
+  ReadinessOpportunity,
+  ModelReadinessMeterProps,
+} from "./blocks";
+
 // ── Domain Components (Fabric-specific) ───────────────────────────────────────
 
 export {
