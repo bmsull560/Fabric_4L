@@ -1,6 +1,16 @@
 /**
  * useAgentStream — Shared hook for the Agent Stream co-pilot
  *
+ * @deprecated Prefer `useAgentEvents` from `@/agui` for new code.
+ * This hook is retained for backward compatibility with existing
+ * workspace tabs that haven't migrated to AG-UI events yet.
+ * The `getDefaultSuggestedActions` export is still used by
+ * useAgentEvents and should remain here.
+ *
+ * Migration path:
+ *   Old: const { messages, sendMessage, isStreaming, suggestedActions } = useAgentStream({ ... });
+ *   New: const { messages, sendMessage, isStreaming, suggestedActions, steps, runState } = useAgentEvents({ ... });
+ *
  * Provides real natural-language interaction by calling the backend
  * agent endpoint (or falling back to the OpenAI-compatible API).
  *

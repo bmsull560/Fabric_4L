@@ -7,11 +7,27 @@
  *
  * The right rail is context-aware: it knows which workspace tab is active
  * and adjusts its suggestions accordingly.
+ *
+ * AG-UI Integration:
+ *   The Agent Stream mode now accepts an optional `steps` prop (StepSnapshot[])
+ *   from useAgentEvents. When steps are present, a ProcessSteps visualization
+ *   is rendered inline between the last user message and the agent response,
+ *   showing the user what the agent is doing in real time.
+ *
+ *   The `metadata` prop surfaces run trace/workflow IDs from the AG-UI
+ *   RunFinished event for observability.
+ *
+ * Backward Compatibility:
+ *   All new props are optional. Existing consumers that use the old
+ *   useAgentStream hook continue to work without changes.
  */
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { X, MessageSquare, Info, Send } from "lucide-react";
 import { Btn } from "@/components/WfPrimitives";
+import { ProcessSteps } from "./ProcessSteps";
+import type { StepSnapshot } from "@/agui/events";
+import type { RunMetadata } from "@/agui/events";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -59,6 +75,12 @@ interface RightRailProps {
   suggestedActions?: AgentAction[];
   /** Close handler */
   onClose?: () => void;
+  /** AG-UI: Current run step progression */
+  steps?: StepSnapshot[];
+  /** AG-UI: Whether the agent is actively processing */
+  isStreaming?: boolean;
+  /** AG-UI: Run metadata for observability */
+  runMetadata?: RunMetadata | null;
 }
 
 // ── Mode Toggle ───────────────────────────────────────────────────────────────
@@ -116,11 +138,17 @@ function AgentStream({
   onSendMessage,
   suggestedActions,
   activeTab,
+  steps,
+  isStreaming,
+  runMetadata,
 }: {
   messages: AgentMessage[];
   onSendMessage: (msg: string) => void;
   suggestedActions?: AgentAction[];
   activeTab: string;
+  steps?: StepSnapshot[];
+  isStreaming?: boolean;
+  runMetadata?: RunMetadata | null;
 }) {
   const [input, setInput] = useState("");
 
@@ -137,6 +165,12 @@ function AgentStream({
     }
   };
 
+  // Find the index of the last user message to insert steps after it
+  const lastUserMsgIndex = messages.reduce(
+    (acc, msg, i) => (msg.role === "user" ? i : acc),
+    -1,
+  );
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
@@ -149,51 +183,75 @@ function AgentStream({
             </p>
           </div>
         )}
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={cn(
-              "text-[12px] leading-relaxed",
-              msg.role === "agent" ? "text-foreground" : "text-foreground"
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-[11px]">
-                {msg.role === "agent" ? "ValuePilot" : "You"}
-              </span>
-              <span className="text-[10px] text-muted-foreground">{msg.timestamp}</span>
-            </div>
+        {messages.map((msg, i) => (
+          <div key={msg.id}>
             <div
               className={cn(
-                "rounded-lg px-3 py-2",
-                msg.role === "agent"
-                  ? "bg-muted/50"
-                  : "bg-primary/10 ml-4"
+                "text-[12px] leading-relaxed",
+                msg.role === "agent" ? "text-foreground" : "text-foreground"
               )}
             >
-              {msg.content}
-            </div>
-            {msg.role === "agent" && msg.metadata && (
-              <div className="mt-1 text-[10px] text-muted-foreground">
-                {msg.metadata.traceId && <span className="mr-2">Trace: {msg.metadata.traceId}</span>}
-                {msg.metadata.workflowId && <span className="mr-2">Workflow: {msg.metadata.workflowId}</span>}
-                {msg.metadata.tenantId && <span className="mr-2">Tenant: {msg.metadata.tenantId}</span>}
-                {msg.metadata.auditEventId && <span>Audit: {msg.metadata.auditEventId}</span>}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-semibold text-[11px]">
+                  {msg.role === "agent" ? "ValuePilot" : "You"}
+                </span>
+                <span className="text-[10px] text-muted-foreground">{msg.timestamp}</span>
               </div>
-            )}
-            {msg.actions && msg.actions.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {msg.actions.map((action, i) => (
-                  <Btn key={i} variant="outline" onClick={action.onClick} className="text-[11px]">
-                    {action.icon}
-                    {action.label}
-                  </Btn>
-                ))}
+              <div
+                className={cn(
+                  "rounded-lg px-3 py-2",
+                  msg.role === "agent"
+                    ? "bg-muted/50"
+                    : "bg-primary/10 ml-4"
+                )}
+              >
+                {msg.content}
+              </div>
+              {msg.role === "agent" && msg.metadata && (
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  {msg.metadata.traceId && <span className="mr-2">Trace: {msg.metadata.traceId}</span>}
+                  {msg.metadata.workflowId && <span className="mr-2">Workflow: {msg.metadata.workflowId}</span>}
+                  {msg.metadata.tenantId && <span className="mr-2">Tenant: {msg.metadata.tenantId}</span>}
+                  {msg.metadata.auditEventId && <span>Audit: {msg.metadata.auditEventId}</span>}
+                </div>
+              )}
+              {msg.actions && msg.actions.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {msg.actions.map((action, j) => (
+                    <Btn key={j} variant="outline" onClick={action.onClick} className="text-[11px]">
+                      {action.icon}
+                      {action.label}
+                    </Btn>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* AG-UI: Process Steps — rendered after the last user message */}
+            {i === lastUserMsgIndex && steps && steps.length > 0 && (
+              <div className="mt-3 ml-7">
+                <ProcessSteps steps={steps} />
               </div>
             )}
           </div>
         ))}
+
+        {/* Streaming indicator when no steps are available */}
+        {isStreaming && (!steps || steps.length === 0) && (
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span>ValuePilot is thinking…</span>
+          </div>
+        )}
       </div>
+
+      {/* AG-UI: Run metadata footer (when run is complete) */}
+      {runMetadata && (runMetadata.traceId || runMetadata.workflowId) && (
+        <div className="px-4 py-1.5 border-t border-border/50 flex items-center gap-3 text-[9px] text-muted-foreground/60">
+          {runMetadata.traceId && <span>Trace: {runMetadata.traceId}</span>}
+          {runMetadata.workflowId && <span>Workflow: {runMetadata.workflowId}</span>}
+        </div>
+      )}
 
       {/* Suggested actions */}
       {suggestedActions && suggestedActions.length > 0 && (
@@ -216,14 +274,18 @@ function AgentStream({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask a follow-up…"
-            className="flex-1 h-8 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            disabled={isStreaming}
+            className={cn(
+              "flex-1 h-8 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary",
+              isStreaming && "opacity-50 cursor-not-allowed",
+            )}
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isStreaming}
             className={cn(
               "w-8 h-8 rounded-md flex items-center justify-center transition-colors",
-              input.trim()
+              input.trim() && !isStreaming
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground"
             )}
@@ -231,6 +293,9 @@ function AgentStream({
             <Send size={14} />
           </button>
         </div>
+        <p className="text-[9px] text-muted-foreground mt-1 text-center">
+          AI can make mistakes. Verify critical data.
+        </p>
       </div>
     </div>
   );
@@ -247,6 +312,9 @@ export default function RightRail({
   onSendMessage,
   suggestedActions,
   onClose,
+  steps,
+  isStreaming,
+  runMetadata,
 }: RightRailProps) {
   return (
     <div className="flex flex-col h-full bg-background">
@@ -272,6 +340,9 @@ export default function RightRail({
           onSendMessage={onSendMessage}
           suggestedActions={suggestedActions}
           activeTab={activeTab}
+          steps={steps}
+          isStreaming={isStreaming}
+          runMetadata={runMetadata}
         />
       )}
     </div>
