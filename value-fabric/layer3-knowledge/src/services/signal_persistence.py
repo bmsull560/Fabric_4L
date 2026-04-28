@@ -21,6 +21,19 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
+
+
 class SignalPersistenceService:
     """Service for persisting and retrieving pain signals.
 
@@ -43,20 +56,18 @@ class SignalPersistenceService:
     async def persist_signal(
         self,
         signal_data: dict[str, Any],
-        tenant_id: str,
     ) -> str:
         """Persist a pain signal to the knowledge graph.
 
-        Creates or updates a PainSignal node with all properties
-        and establishes relationships to Account.
+        Creates or updates a PainSignal node linked to an Account.
 
         Args:
             signal_data: Signal data dictionary (matches PainSignal model)
-            tenant_id: Tenant identifier for scoping
 
         Returns:
             Signal ID of the persisted signal
         """
+        tenant_id = _get_tenant_id()
         signal_id = signal_data.get("id")
         account_id = signal_data.get("account_id")
 
@@ -114,21 +125,19 @@ class SignalPersistenceService:
         self,
         signal_id: str,
         evidence_matches: list[dict[str, Any]],
-        tenant_id: str,
     ) -> int:
         """Link evidence to a pain signal.
 
-        Creates SUPPORTED_BY relationships to Evidence nodes.
-        Creates Evidence nodes if they don't exist.
+        Creates Evidence nodes and links them to the signal.
 
         Args:
             signal_id: Target signal ID
             evidence_matches: List of evidence match data
-            tenant_id: Tenant identifier
 
         Returns:
             Number of evidence links created
         """
+        tenant_id = _get_tenant_id()
         links_created = 0
 
         async with self._driver.session() as session:
@@ -167,22 +176,21 @@ class SignalPersistenceService:
 
         return links_created
 
-    async def link_value_driver(
+    async def map_to_value_driver(
         self,
         signal_id: str,
         value_driver_id: str,
-        tenant_id: str,
     ) -> bool:
         """Map a signal to a value driver.
 
         Args:
             signal_id: Signal ID
             value_driver_id: Value driver ID
-            tenant_id: Tenant identifier
 
         Returns:
             True if relationship created
         """
+        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             query = """
             MATCH (s:PainSignal {id: $signal_id, tenant_id: $tenant_id})
@@ -206,21 +214,20 @@ class SignalPersistenceService:
     async def get_signals_for_account(
         self,
         account_id: str,
-        tenant_id: str,
         category: str | None = None,
         limit: int = 100,
     ) -> list[dict[str, Any]]:
-        """Retrieve signals for an account.
+        """Get signals for an account.
 
         Args:
             account_id: Account identifier
-            tenant_id: Tenant identifier
             category: Optional category filter
             limit: Maximum results
 
         Returns:
-            List of signal dictionaries with evidence
+            List of signal dictionaries
         """
+        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             if category:
                 query = """
@@ -265,17 +272,16 @@ class SignalPersistenceService:
     async def get_signal_by_id(
         self,
         signal_id: str,
-        tenant_id: str,
     ) -> dict[str, Any] | None:
         """Get a single signal by ID with full details.
 
         Args:
             signal_id: Signal identifier
-            tenant_id: Tenant identifier
 
         Returns:
             Signal dictionary or None if not found
         """
+        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             query = """
             MATCH (s:PainSignal {id: $signal_id, tenant_id: $tenant_id})
@@ -308,20 +314,19 @@ class SignalPersistenceService:
         impact_value: Decimal,
         impact_unit: str,
         formula_id: str,
-        tenant_id: str,
     ) -> bool:
         """Update signal with quantified impact.
 
         Args:
-            signal_id: Signal to update
+            signal_id: Signal identifier
             impact_value: Calculated impact value
             impact_unit: Unit of measurement
             formula_id: Applied formula reference
-            tenant_id: Tenant identifier
 
         Returns:
             True if updated successfully
         """
+        tenant_id = _get_tenant_id()
         async with self._driver.session() as session:
             query = """
             MATCH (s:PainSignal {id: $signal_id, tenant_id: $tenant_id})

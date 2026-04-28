@@ -37,7 +37,25 @@ from typing import Any
 import structlog
 from neo4j import AsyncDriver
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = structlog.get_logger()
+
+
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
 
 
 # ---------------------------------------------------------------------------
@@ -102,9 +120,10 @@ class CompetitiveIntelService:
     # ------------------------------------------------------------------
 
     async def add_competitor(
-        self, tenant_id: str, competitor: CompetitorCreate
+        self, competitor: CompetitorCreate
     ) -> dict[str, Any]:
         """Create a Competitor node in the knowledge graph."""
+        tenant_id = _get_tenant_id()
         competitor_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -152,9 +171,10 @@ class CompetitiveIntelService:
         return {"id": competitor_id, **(record["competitor"] if record else {})}
 
     async def get_competitor(
-        self, tenant_id: str, competitor_id: str
+        self, competitor_id: str
     ) -> dict[str, Any] | None:
         """Get a single competitor with related products and battlecards."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p:Product)-[cw:COMPETES_WITH]->(c)
@@ -181,13 +201,13 @@ class CompetitiveIntelService:
 
     async def list_competitors(
         self,
-        tenant_id: str,
         *,
         market_position: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> dict[str, Any]:
         """List competitors with optional filtering."""
+        tenant_id = _get_tenant_id()
         where_clauses = ["c.tenant_id = $tenant_id"]
         params: dict[str, Any] = {
             "tenant_id": tenant_id,
@@ -235,9 +255,10 @@ class CompetitiveIntelService:
         }
 
     async def update_competitor(
-        self, tenant_id: str, competitor_id: str, updates: dict[str, Any]
+        self, competitor_id: str, updates: dict[str, Any]
     ) -> dict[str, Any] | None:
         """Update a competitor's properties."""
+        tenant_id = _get_tenant_id()
         protected = {"id", "tenant_id", "entity_type", "created_at"}
         safe_updates = {k: v for k, v in updates.items() if k not in protected}
         safe_updates["updated_at"] = datetime.now(UTC).isoformat()
@@ -264,9 +285,10 @@ class CompetitiveIntelService:
         return record["competitor"]
 
     async def delete_competitor(
-        self, tenant_id: str, competitor_id: str
+        self, competitor_id: str
     ) -> bool:
         """Delete a competitor and all related battlecards."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (c:Competitor {id: $competitor_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (bc:Battlecard {competitor_id: $competitor_id, tenant_id: $tenant_id})
@@ -287,11 +309,11 @@ class CompetitiveIntelService:
 
     async def add_battlecard(
         self,
-        tenant_id: str,
         competitor_id: str,
         battlecard: BattlecardCreate,
     ) -> dict[str, Any]:
         """Create a battlecard for a competitor + product pair."""
+        tenant_id = _get_tenant_id()
         bc_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -349,9 +371,10 @@ class CompetitiveIntelService:
         return {"id": bc_id, **(record["battlecard"] if record else {})}
 
     async def get_battlecard(
-        self, tenant_id: str, competitor_id: str, product_id: str | None = None
+        self, competitor_id: str, product_id: str | None = None
     ) -> list[dict[str, Any]]:
         """Get battlecards for a competitor, optionally filtered by product."""
+        tenant_id = _get_tenant_id()
         where_clauses = [
             "bc.tenant_id = $tenant_id",
             "bc.competitor_id = $competitor_id",
@@ -383,9 +406,10 @@ class CompetitiveIntelService:
     # ------------------------------------------------------------------
 
     async def record_win_loss(
-        self, tenant_id: str, record_data: WinLossRecord
+        self, record_data: WinLossRecord
     ) -> dict[str, Any]:
         """Record a competitive win or loss."""
+        tenant_id = _get_tenant_id()
         wl_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -435,9 +459,10 @@ class CompetitiveIntelService:
     # ------------------------------------------------------------------
 
     async def analyze_competitive_landscape(
-        self, tenant_id: str, product_id: str | None = None
+        self, product_id: str | None = None
     ) -> dict[str, Any]:
         """Analyze the competitive landscape for a product or all products."""
+        tenant_id = _get_tenant_id()
         where_parts = ["c.tenant_id = $tenant_id"]
         params: dict[str, Any] = {"tenant_id": tenant_id}
 
@@ -502,9 +527,10 @@ class CompetitiveIntelService:
         }
 
     async def get_win_loss_summary(
-        self, tenant_id: str
+        self
     ) -> dict[str, Any]:
         """Get aggregated win/loss data across all competitors."""
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (c:Competitor {tenant_id: $tenant_id})
         OPTIONAL MATCH (p:Product)-[won:WON_AGAINST]->(c)

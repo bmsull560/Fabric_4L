@@ -16,18 +16,32 @@ from .models import AuditAction, AuditEvent, AuditOutcome
 logger = logging.getLogger(__name__)
 
 
+class AuditEmitterError(Exception):
+    """Raised when audit emission fails in fail-closed mode."""
+    pass
+
+
 class AuditEmitter:
-    """Emitter for audit events."""
+    """Emitter for audit events.
+
+    SECURITY: Fail-closed mode enabled via AUDIT_FAIL_CLOSED=true environment variable.
+    When enabled, audit handler failures block the operation (raise AuditEmitterError).
+    """
 
     def __init__(self) -> None:
         self._handlers: list[Any] = []
+        self._fail_closed = os.getenv("AUDIT_FAIL_CLOSED", "").lower() in ("true", "1", "yes")
 
     def add_handler(self, handler: Any) -> None:
         """Add an audit event handler."""
         self._handlers.append(handler)
 
     async def emit(self, event: AuditEvent) -> None:
-        """Emit an audit event to all handlers."""
+        """Emit an audit event to all handlers.
+
+        SECURITY: In fail-closed mode, any handler failure raises AuditEmitterError.
+        This ensures operations cannot proceed without audit logging.
+        """
         # Log to structured logging
         logger.info(
             "audit_event",
@@ -41,6 +55,7 @@ class AuditEmitter:
         )
 
         # Send to handlers
+        handler_errors: list[tuple[Any, Exception]] = []
         for handler in self._handlers:
             try:
                 if hasattr(handler, "handle"):
@@ -49,6 +64,16 @@ class AuditEmitter:
                     await handler(event)
             except Exception as e:
                 logger.error(f"Audit handler failed: {e}")
+                handler_errors.append((handler, e))
+                if self._fail_closed:
+                    # F-12 FIX: Fail-closed mode blocks operation
+                    raise AuditEmitterError(
+                        f"Audit logging failed in fail-closed mode: {e}"
+                    ) from e
+
+        # Log summary if any handlers failed (in warn mode)
+        if handler_errors and not self._fail_closed:
+            logger.warning(f"{len(handler_errors)} audit handler(s) failed but fail-closed is disabled")
 
 
 # Global emitter instance

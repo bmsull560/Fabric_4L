@@ -37,7 +37,25 @@ from uuid import uuid4
 
 import structlog
 
+try:
+    from shared.identity.context import require_context
+except ImportError:
+    require_context = None
+
 logger = structlog.get_logger()
+
+
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
 
 
 # ---------------------------------------------------------------------------
@@ -211,8 +229,9 @@ class CaseStudyService:
             "status": "created",
         }
 
-    async def get(self, tenant_id: str, case_study_id: str) -> dict[str, Any] | None:
+    async def get(self, case_study_id: str) -> dict[str, Any] | None:
         """Get a case study by ID."""
+        tenant_id = _get_tenant_id()
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -237,9 +256,10 @@ class CaseStudyService:
             return cs
 
     async def update(
-        self, tenant_id: str, case_study_id: str, updates: dict[str, Any]
+        self, case_study_id: str, updates: dict[str, Any]
     ) -> dict[str, Any] | None:
         """Update a case study's properties."""
+        tenant_id = _get_tenant_id()
         # Prevent overwriting system fields
         protected = {"id", "tenant_id", "evidence_type", "created_at"}
         safe_updates = {k: v for k, v in updates.items() if k not in protected}
@@ -263,8 +283,9 @@ class CaseStudyService:
 
             return {"id": record["id"], "title": record["title"], "status": "updated"}
 
-    async def delete(self, tenant_id: str, case_study_id: str) -> bool:
+    async def delete(self, case_study_id: str) -> bool:
         """Delete a case study and its relationships."""
+        tenant_id = _get_tenant_id()
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -293,7 +314,6 @@ class CaseStudyService:
 
     async def search(
         self,
-        tenant_id: str,
         industry: str | None = None,
         company_size: str | None = None,
         products: list[str] | None = None,
@@ -303,6 +323,7 @@ class CaseStudyService:
         offset: int = 0,
     ) -> dict[str, Any]:
         """Search case studies with filters."""
+        tenant_id = _get_tenant_id()
         where_clauses = ["e.tenant_id = $tenant_id", "e.evidence_type = 'case_study'"]
         params: dict[str, Any] = {"tenant_id": tenant_id, "limit": limit, "offset": offset}
 
@@ -368,8 +389,9 @@ class CaseStudyService:
                 "items": items,
             }
 
-    async def get_by_industry(self, tenant_id: str) -> dict[str, int]:
+    async def get_by_industry(self) -> dict[str, int]:
         """Get case study counts grouped by industry."""
+        tenant_id = _get_tenant_id()
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -382,8 +404,9 @@ class CaseStudyService:
             records = [record async for record in result]
             return {r["industry"]: r["count"] for r in records}
 
-    async def get_by_product(self, tenant_id: str) -> dict[str, int]:
+    async def get_by_product(self) -> dict[str, int]:
         """Get case study counts grouped by product."""
+        tenant_id = _get_tenant_id()
         async with self.driver.session() as session:
             result = await session.run(
                 """
@@ -401,13 +424,14 @@ class CaseStudyService:
     # -------------------------------------------------------------------
 
     async def bulk_import(
-        self, tenant_id: str, case_studies: list[dict[str, Any]]
+        self, case_studies: list[dict[str, Any]]
     ) -> dict[str, Any]:
         """Import multiple case studies in a single transaction.
 
         Expects a list of dicts matching the CaseStudy constructor kwargs.
         Returns import statistics.
         """
+        tenant_id = _get_tenant_id()
         created = 0
         errors = []
 

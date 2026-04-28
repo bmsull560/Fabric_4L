@@ -148,7 +148,6 @@ async def search_case_studies(
     tags = [tag] if tag else None
 
     return await service.search(
-        tenant_id=tenant_id,
         industry=industry,
         company_size=company_size,
         products=products,
@@ -167,7 +166,7 @@ async def get_case_study(
 ) -> dict[str, Any]:
     """Get a case study by ID with linked products and signals."""
     service = CaseStudyService(driver)
-    result = await service.get(tenant_id, case_study_id)
+    result = await service.get(case_study_id)
 
     if result is None:
         raise HTTPException(status_code=404, detail=f"Case study {case_study_id} not found")
@@ -189,7 +188,7 @@ async def update_case_study(
     if "outcomes" in updates:
         updates["outcomes"] = [o.model_dump() if hasattr(o, "model_dump") else o for o in updates["outcomes"]]
 
-    result = await service.update(tenant_id, case_study_id, updates)
+    result = await service.update(case_study_id, updates)
 
     if result is None:
         raise HTTPException(status_code=404, detail=f"Case study {case_study_id} not found")
@@ -205,7 +204,7 @@ async def delete_case_study(
 ) -> dict[str, str]:
     """Delete a case study and its relationships."""
     service = CaseStudyService(driver)
-    deleted = await service.delete(tenant_id, case_study_id)
+    deleted = await service.delete(case_study_id)
 
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Case study {case_study_id} not found")
@@ -237,7 +236,7 @@ async def bulk_import_case_studies(
         for cs in request.case_studies
     ]
 
-    return await service.bulk_import(tenant_id, case_studies_data)
+    return await service.bulk_import(case_studies_data)
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +250,7 @@ async def stats_by_industry(
 ) -> dict[str, int]:
     """Get case study counts grouped by industry."""
     service = CaseStudyService(driver)
-    return await service.get_by_industry(tenant_id)
+    return await service.get_by_industry()
 
 
 @router.get("/stats/by-product", summary="Case study counts by product")
@@ -261,7 +260,7 @@ async def stats_by_product(
 ) -> dict[str, int]:
     """Get case study counts grouped by product."""
     service = CaseStudyService(driver)
-    return await service.get_by_product(tenant_id)
+    return await service.get_by_product()
 
 
 # ---------------------------------------------------------------------------

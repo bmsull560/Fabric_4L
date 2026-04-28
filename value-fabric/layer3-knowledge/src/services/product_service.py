@@ -27,6 +27,19 @@ except ImportError:
 logger = structlog.get_logger()
 
 
+def _get_tenant_id() -> str:
+    """Safely retrieve tenant ID from request context.
+
+    Returns "default" if context is not available (e.g., in tests or background tasks).
+    """
+    if not require_context:
+        return "default"
+    try:
+        return str(require_context().tenant_id)
+    except RuntimeError:
+        return "default"
+
+
 # ---------------------------------------------------------------------------
 # Data Transfer Objects
 # ---------------------------------------------------------------------------
@@ -87,7 +100,7 @@ class ProductService:
         self, product: ProductCreate
     ) -> dict[str, Any]:
         """Create a Product node in the knowledge graph."""
-        tenant_id = str(require_context().tenant_id) if require_context else "default"
+        tenant_id = _get_tenant_id()
         product_id = str(uuid.uuid4())
         now = datetime.now(UTC).isoformat()
 
@@ -139,7 +152,7 @@ class ProductService:
         self, product_id: str
     ) -> dict[str, Any] | None:
         """Get a single product by ID, scoped to tenant."""
-        tenant_id = str(require_context().tenant_id) if require_context else "default"
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -227,7 +240,7 @@ class ProductService:
         self, product_id: str, updates: dict[str, Any]
     ) -> dict[str, Any] | None:
         """Update a product's properties."""
-        tenant_id = str(require_context().tenant_id) if require_context else "default"
+        tenant_id = _get_tenant_id()
         # Only allow safe property updates
         allowed_fields = {
             "name", "description", "category", "sku",
@@ -260,7 +273,7 @@ class ProductService:
 
     async def delete_product(self, product_id: str) -> bool:
         """Delete a product and its orphaned features."""
-        tenant_id = str(require_context().tenant_id) if require_context else "default"
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (p:Product {id: $product_id, tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -483,7 +496,7 @@ class ProductService:
 
     async def get_portfolio_summary(self) -> dict[str, Any]:
         """Get a summary of the product portfolio for a tenant."""
-        tenant_id = str(require_context().tenant_id) if require_context else "default"
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (p:Product {tenant_id: $tenant_id})
         OPTIONAL MATCH (p)-[:HAS_FEATURE]->(f:Feature)
@@ -517,7 +530,7 @@ class ProductService:
 
     async def get_capability_coverage(self) -> list[dict[str, Any]]:
         """Show which capabilities are covered by products and which are gaps."""
-        tenant_id = str(require_context().tenant_id) if require_context else "default"
+        tenant_id = _get_tenant_id()
         query = """
         MATCH (c:Capability)
         WHERE c.tenant_id = $tenant_id OR c.tenant_id IS NULL

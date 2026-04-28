@@ -31,8 +31,12 @@ import os
 from typing import Any, Callable, Optional
 from uuid import UUID
 
-from fastapi import Request, Response
+from fastapi import Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
+try:
+    import jwt
+except ImportError:
+    jwt = None  # type: ignore
 
 from .context import RequestContext, set_request_context, _current_context
 from .jwt import decode_jwt
@@ -201,10 +205,26 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
             token_str = auth_header[7:]
             try:
                 claims = decode_jwt(token_str)
-            except Exception:
-                # ExpiredSignatureError already raised as HTTPException;
-                # other errors fall through to next strategy.
-                return None
+            except HTTPException:
+                # ExpiredSignatureError → propagate 401 to client
+                raise
+            except Exception as exc:
+                # Handle JWT errors specifically if jwt module available
+                if jwt is not None and isinstance(exc, jwt.InvalidTokenError):
+                    # Malformed/invalid signature → reject, do NOT fall through
+                    logger.warning("JWT validation failed: invalid token")
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Invalid token.",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    ) from exc
+                # Unexpected error → fail secure, reject request
+                logger.error("JWT decode unexpected error", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication failed.",
+                    headers={"WWW-Authenticate": "Bearer"},
+                ) from exc
             if claims is not None:
                 return _build_context_from_role(
                     claims.tenant_id,
@@ -214,6 +234,13 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                     source="jwt",
                     raw=claims.raw,
                 )
+            # claims is None but no exception → token was invalid, reject
+            logger.warning("JWT decode returned None")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         # 2. X-API-Key header
         raw_api_key = request.headers.get("X-API-Key")
