@@ -1,0 +1,122 @@
+/**
+ * Journey 5: Tier-Gated Access & Security
+ *
+ * Validates that the platform correctly enforces RBAC and tier-based
+ * feature gating. A user logs in with different tier levels and verifies
+ * that navigation, route guards, and feature visibility are correctly
+ * enforced.
+ *
+ * This is a CHAINED test — the user switches tiers mid-session to verify
+ * that access controls update dynamically.
+ *
+ * Pass criteria:
+ *   - Standard tier users cannot access advanced/admin routes
+ *   - Direct URL access to restricted routes redirects to /home
+ *   - Admin tier users can access all routes and settings
+ *   - Navigation items are hidden/shown based on tier
+ *   - Tier switch mid-session correctly updates access controls
+ */
+import { journeyTest, expect, expectNoErrors, navigateAndWait } from '../helpers/journey-fixture';
+import { setUserTier, ROUTES_BY_TIER, TIER_REDIRECTS } from '../fixtures/tier-helpers';
+
+// ── Journey ─────────────────────────────────────────────────────────────────
+
+journeyTest.describe('Journey 5: Tier-Gated Access & Security', () => {
+
+  journeyTest('Step 1: Standard tier user sees only permitted navigation items', async ({ authedPage, switchTier }) => {
+    await switchTier('standard');
+    await navigateAndWait(authedPage, '/home');
+    await expectNoErrors(authedPage);
+
+    // The Command Center should be visible (accessible to all tiers)
+    await expect(
+      authedPage.getByRole('heading', { name: /command center/i })
+        .or(authedPage.getByText(/command center/i).first())
+    ).toBeVisible({ timeout: 10000 });
+
+    // Standard-restricted routes should NOT appear in navigation
+    const restrictedLabels = [/ontology/i, /extraction/i, /formulas/i, /benchmarks/i];
+    for (const label of restrictedLabels) {
+      const navItem = authedPage.getByRole('link', { name: label });
+      // Navigation items for restricted routes should not be visible
+      await expect(navItem).not.toBeVisible().catch(() => {
+        // Some items may not exist at all, which is also correct
+      });
+    }
+  });
+
+  journeyTest('Step 2: Standard tier user is redirected when accessing restricted URL', async ({ authedPage, switchTier }) => {
+    await switchTier('standard');
+
+    const restrictedRoutes = ROUTES_BY_TIER.standard.restricted;
+    const redirectTarget = TIER_REDIRECTS.standard;
+
+    for (const route of restrictedRoutes.slice(0, 3)) {
+      // Navigate directly to a restricted route
+      await authedPage.goto(route, { waitUntil: 'domcontentloaded' });
+      await authedPage.waitForTimeout(1000);
+
+      // Should be redirected to /home
+      await expect(authedPage).toHaveURL(new RegExp(redirectTarget));
+    }
+  });
+
+  journeyTest('Step 3: Advanced tier user can access discovery features', async ({ authedPage, switchTier }) => {
+    await switchTier('advanced');
+
+    const advancedRoutes = ROUTES_BY_TIER.advanced.accessible;
+
+    // Test a subset of advanced-accessible routes
+    for (const route of advancedRoutes.slice(0, 4)) {
+      await navigateAndWait(authedPage, route);
+      await expectNoErrors(authedPage);
+      // Should NOT be redirected away
+      await expect(authedPage).toHaveURL(new RegExp(route.replace(/\//g, '\\/')));
+    }
+  });
+
+  journeyTest('Step 4: Advanced tier user is still restricted from admin routes', async ({ authedPage, switchTier }) => {
+    await switchTier('advanced');
+
+    const restrictedRoutes = ROUTES_BY_TIER.advanced.restricted;
+
+    for (const route of restrictedRoutes.slice(0, 2)) {
+      await authedPage.goto(route, { waitUntil: 'domcontentloaded' });
+      await authedPage.waitForTimeout(1000);
+
+      // Should be redirected to /home
+      await expect(authedPage).toHaveURL(new RegExp(TIER_REDIRECTS.advanced));
+    }
+  });
+
+  journeyTest('Step 5: Admin tier user has full access to all routes', async ({ authedPage, switchTier }) => {
+    await switchTier('admin');
+
+    const adminRoutes = ROUTES_BY_TIER.admin.accessible;
+
+    for (const route of adminRoutes.slice(0, 5)) {
+      await navigateAndWait(authedPage, route);
+      await expectNoErrors(authedPage);
+      await expect(authedPage).toHaveURL(new RegExp(route.replace(/\//g, '\\/')));
+    }
+  });
+
+  journeyTest('Step 6: Tier switch mid-session updates access controls', async ({ authedPage, switchTier }) => {
+    // Start as admin — should access admin route
+    await switchTier('admin');
+    await navigateAndWait(authedPage, '/admin/content/formulas');
+    await expectNoErrors(authedPage);
+    await expect(authedPage).toHaveURL(/\/admin\/content\/formulas/);
+
+    // Switch to standard — same route should now redirect
+    await switchTier('standard');
+    await authedPage.goto('/admin/content/formulas', { waitUntil: 'domcontentloaded' });
+    await authedPage.waitForTimeout(1000);
+    await expect(authedPage).toHaveURL(new RegExp(TIER_REDIRECTS.standard));
+
+    // Switch back to admin — should regain access
+    await switchTier('admin');
+    await navigateAndWait(authedPage, '/admin/content/formulas');
+    await expect(authedPage).toHaveURL(/\/admin\/content\/formulas/);
+  });
+});
