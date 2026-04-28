@@ -115,22 +115,22 @@ CI will:
 The following are **never** eligible for exceptions:
 
 ### Security Critical
-- [ ] Cross-tenant data access risks
-- [ ] Raw secrets/credentials in code
-- [ ] Unvalidated user input reaching DB queries
-- [ ] Authentication bypass patterns
+- ✓ Cross-tenant data access risks
+- ✓ Raw secrets/credentials in code
+- ✓ Unvalidated user input reaching DB queries
+- ✓ Authentication bypass patterns
 
 ### Contract Critical
-- [ ] Tenant context propagation in request handlers
-- [ ] Tool boundary violations in agent execution
-- [ ] Agent output validation before UI/business logic
-- [ ] Inline DB sessions in request handlers
+- ✓ Tenant context propagation in request handlers
+- ✓ Tool boundary violations in agent execution
+- ✓ Agent output validation before UI/business logic
+- ✓ Inline DB sessions in request handlers
 
 ### Compliance Critical
-- [ ] Audit logging requirements
-- [ ] Data retention policy violations
-- [ ] GDPR/privacy data handling
-- [ ] Security scan soft-failing in CI
+- ✓ Audit logging requirements
+- ✓ Data retention policy violations
+- ✓ GDPR/privacy data handling
+- ✓ Security scan soft-failing in CI
 
 ---
 

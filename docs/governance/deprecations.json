@@ -25,7 +25,7 @@
       "replacement": "getTenantContext() from async scope",
       "rationale": "Tenant context must flow through request-scoped AsyncLocalStorage, not explicit parameters. Prevents parameter pollution and cross-tenant spoofing.",
       "enforcement": {
-        "eslintRule": "no-tenant-id-parameter",
+        "eslintRule": "no-tenant-id-as-parameter",
         "ciGate": "python-lint",
         "runtimeGuard": "GovernanceMiddleware"
       }
@@ -50,7 +50,7 @@
       "replacement": "getTenantContext() - set by auth middleware",
       "rationale": "Only auth middleware should read tenant headers. Downstream code must use validated context.",
       "enforcement": {
-        "eslintRule": "no-req-tenant-access",
+        "eslintRule": "no-direct-header-tenant-access",
         "ciGate": "python-lint",
         "runtimeGuard": "RequestContext validation"
       }

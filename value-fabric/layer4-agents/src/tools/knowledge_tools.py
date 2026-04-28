@@ -62,22 +62,32 @@ class QueryGraphTool(BaseTool):
     )
 
     @classmethod
-    def _validate_read_only(cls, query: str) -> None:
+    def _validate_read_only(cls, query: str) -> str | None:
         """Validate that a Cypher query is read-only.
 
-        Raises:
-            ValueError: If query contains write operations
+        Returns:
+            Error message if query contains write operations, None if valid
         """
         if cls._CYPHER_WRITE_KEYWORDS.search(query):
-            raise ValueError(
+            return (
                 "Write operations are not allowed via query_graph tool. "
                 "Only read-only Cypher queries (MATCH, RETURN, WITH, WHERE, ORDER BY, LIMIT) are permitted."
             )
+        return None
 
     async def execute(self, input_data: QueryGraphInput) -> QueryGraphOutput:
         """Execute Cypher query against Neo4j."""
         # P1-11 FIX: Validate query is read-only before execution
-        self._validate_read_only(input_data.cypher_query)
+        validation_error = self._validate_read_only(input_data.cypher_query)
+        if validation_error:
+            # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+            return QueryGraphOutput(
+                results=[],
+                columns=[],
+                row_count=0,
+                execution_time_ms=0,
+                error=validation_error
+            )
 
         driver = self._get_driver()
 
@@ -135,13 +145,18 @@ class SemanticSearchTool(BaseTool):
         self._pinecone_client = None
         self._index = None
 
-    def _get_pinecone_client(self):
-        """Lazy initialization of Pinecone client."""
+    def _get_pinecone_client(self) -> Any:
+        """Lazy initialization of Pinecone client.
+
+        Returns:
+            Pinecone index client, or None if API key missing
+        """
         if self._pinecone_client is None:
             from pinecone import Pinecone
 
             if not self.pinecone_api_key:
-                raise ValueError("Pinecone API key required for semantic search")
+                # CONTRACT_EXCEPTION AP-7: Return None to signal error, don't raise
+                return None
             self._pinecone_client = Pinecone(api_key=self.pinecone_api_key)
             self._index = self._pinecone_client.Index(self.pinecone_index)
         return self._index
@@ -166,6 +181,14 @@ class SemanticSearchTool(BaseTool):
 
             # Query Pinecone
             index = self._get_pinecone_client()
+            if index is None:
+                # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+                return SemanticSearchOutput(
+                    results=[],
+                    total_matches=0,
+                    query_embedding_time_ms=int((time.time() - start_time) * 1000),
+                    error="Pinecone API key required for semantic search"
+                )
 
             filter_dict = {}
             if input_data.entity_types:

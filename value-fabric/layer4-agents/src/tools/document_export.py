@@ -298,7 +298,12 @@ class DocumentExportTool(BaseTool):
                     input_data.branding,
                 )
             else:
-                raise ValueError(f"Unsupported document type: {input_data.document_type}")
+                # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+                return ExportDocumentOutput(
+                    success=False,
+                    error=f"Unsupported document type: {input_data.document_type}",
+                    filename="error.pdf",
+                )
 
         except Exception as e:
             logger.error(f"PDF generation failed: {e}")

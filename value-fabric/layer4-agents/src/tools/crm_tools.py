@@ -64,7 +64,14 @@ class GetProspectDataTool(BaseTool):
             elif self.crm_type == "hubspot":
                 return await self._get_hubspot_data(client, input_data)
             else:
-                raise ValueError(f"Unsupported CRM type: {self.crm_type}")
+                # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+                return GetProspectDataOutput(
+                    profile={},
+                    interactions=[],
+                    opportunities=[],
+                    custom_fields={},
+                    error=f"Unsupported CRM type: {self.crm_type}"
+                )
         except Exception as e:
             logger.error(f"CRM data fetch failed: {e}")
             return GetProspectDataOutput(
@@ -333,7 +340,13 @@ class UpdateOpportunityTool(BaseTool):
                 response = await client.patch(url, json={"properties": properties})
                 success = response.status_code == 200
             else:
-                raise ValueError(f"Unsupported CRM type: {self.crm_type}")
+                # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+                return UpdateOpportunityOutput(
+                    success=False,
+                    opportunity_id=input_data.opportunity_id,
+                    updated_fields=[],
+                    error=f"Unsupported CRM type: {self.crm_type}"
+                )
 
             return UpdateOpportunityOutput(
                 success=success,
@@ -391,7 +404,13 @@ class FetchInteractionHistoryTool(BaseTool):
             elif self.crm_type == "hubspot":
                 return await self._get_hubspot_interactions(client, input_data)
             else:
-                raise ValueError(f"Unsupported CRM type: {self.crm_type}")
+                # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+                return FetchInteractionHistoryOutput(
+                    interactions=[],
+                    total_count=0,
+                    summary=f"Unsupported CRM type: {self.crm_type}",
+                    error=f"Unsupported CRM type: {self.crm_type}"
+                )
         except Exception as e:
             logger.error(f"Interaction history fetch failed: {e}")
             return FetchInteractionHistoryOutput(

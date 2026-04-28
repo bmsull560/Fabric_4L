@@ -151,10 +151,22 @@ Maximum {max_length} words.""",
             content = await self._call_llm(prompt, max_tokens=input_data.max_length * 2)
         except LLMBudgetExceededError as e:
             logger.error("LLM budget cap exceeded during section generation: %s", e)
-            raise RuntimeError(f"Section generation blocked by tenant budget guardrail: {e}")
+            # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+            return GenerateSectionOutput(
+                content="",
+                word_count=0,
+                key_points=[],
+                error=f"Section generation blocked by tenant budget guardrail: {e}"
+            )
         except Exception as e:
             logger.error(f"LLM generation failed: {e}")
-            raise RuntimeError(f"Failed to generate section: {e}")
+            # CONTRACT_EXCEPTION AP-7: Return structured error, don't raise
+            return GenerateSectionOutput(
+                content="",
+                word_count=0,
+                key_points=[],
+                error=f"Failed to generate section: {e}"
+            )
 
         word_count = len(content.split())
 

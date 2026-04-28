@@ -414,6 +414,10 @@ jobs:
               // Check for expired exceptions
               if (item.targetRemoval) {
                 const removal = new Date(item.targetRemoval);
+                // Validate date format first
+                if (isNaN(removal.getTime())) {
+                  throw new Error(\`Item \${item.id} has invalid targetRemoval date format: \${item.targetRemoval}. Expected ISO 8601 format (YYYY-MM-DD).\`);
+                }
                 if (removal < new Date()) {
                   console.error(\`::error::Deprecation \${item.id} expired on \${item.targetRemoval}\`);
                   process.exitCode = 1;
