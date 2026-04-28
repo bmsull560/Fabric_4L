@@ -529,8 +529,8 @@ class ScoreLeadTool(BaseTool):
 
     async def execute(self, input_data: ScoreLeadInput) -> ScoreLeadOutput:
         """Calculate lead score."""
-        # Get prospect data
-        prospect_tool = GetProspectDataTool()
+        # Get prospect data with config
+        prospect_tool = GetProspectDataTool(self.config)
         prospect_data = await prospect_tool.execute(
             GetProspectDataInput(prospect_id=input_data.prospect_id)
         )

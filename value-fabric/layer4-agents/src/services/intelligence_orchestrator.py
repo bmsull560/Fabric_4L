@@ -20,6 +20,7 @@ Architecture:
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -69,6 +70,15 @@ READINESS_THRESHOLDS = {
     "prepared": 0.60,
     "deal_ready": 0.80,
 }
+
+# Limits and batch sizes
+DEFAULT_TOP_SIGNALS = 5
+DEFAULT_TOP_EVIDENCE = 5
+DEFAULT_HYPOTHESES_LIMIT = 20
+MAX_SIGNALS_FOR_READINESS = 5
+MAX_HYPOTHESES_FOR_READINESS = 5
+MAX_EVIDENCE_FOR_READINESS = 3
+MAX_COMPETITORS_FOR_READINESS = 3
 
 
 def _readiness_label(score: float) -> str:
@@ -121,17 +131,55 @@ class IntelligenceOrchestrator:
         """
         now = datetime.now(UTC).isoformat()
 
-        # Gather all intelligence components
+        # Gather all intelligence components in parallel with error isolation
         tenant_id = _get_tenant_id()
-        signals = await self._get_account_signals(account_id)
-        hypotheses = await self._get_account_hypotheses(account_id, top_n_hypotheses)
-        competitive = await self._get_competitive_landscape()
-        roi = await self._get_roi_summary(account_id)
-        evidence = await self._get_matched_evidence(account_id)
-        narrative_summary = None
 
-        if include_narrative:
-            narrative_summary = await self._get_latest_narrative(account_id)
+        async def _safe_gather() -> tuple[
+            list[dict[str, Any]],
+            list[dict[str, Any]],
+            dict[str, Any],
+            dict[str, Any],
+            list[dict[str, Any]],
+            dict[str, Any] | None,
+        ]:
+            """Gather all data with individual error handling."""
+            signals_task = self._get_account_signals(account_id)
+            hypotheses_task = self._get_account_hypotheses(account_id, top_n_hypotheses)
+            competitive_task = self._get_competitive_landscape()
+            roi_task = self._get_roi_summary(account_id)
+            evidence_task = self._get_matched_evidence(account_id)
+            narrative_task = (
+                self._get_latest_narrative(account_id)
+                if include_narrative
+                else asyncio.sleep(0)
+            )
+
+            results = await asyncio.gather(
+                signals_task,
+                hypotheses_task,
+                competitive_task,
+                roi_task,
+                evidence_task,
+                narrative_task,
+                return_exceptions=True,
+            )
+
+            signals = results[0] if not isinstance(results[0], Exception) else []
+            hypotheses = results[1] if not isinstance(results[1], Exception) else []
+            competitive = results[2] if not isinstance(results[2], Exception) else {}
+            roi = results[3] if not isinstance(results[3], Exception) else {}
+            evidence = results[4] if not isinstance(results[4], Exception) else []
+            narrative = (
+                results[5]
+                if include_narrative and not isinstance(results[5], Exception)
+                else None
+            )
+
+            return signals, hypotheses, competitive, roi, evidence, narrative
+
+        signals, hypotheses, competitive, roi, evidence, narrative_summary = (
+            await _safe_gather()
+        )
 
         # Compute deal readiness
         readiness = self._compute_deal_readiness(
@@ -151,7 +199,7 @@ class IntelligenceOrchestrator:
             "sections": {
                 "signals": {
                     "count": len(signals),
-                    "top_signals": signals[:5],
+                    "top_signals": signals[:DEFAULT_TOP_SIGNALS],
                 },
                 "value_hypotheses": {
                     "count": len(hypotheses),
@@ -161,7 +209,7 @@ class IntelligenceOrchestrator:
                 "roi_projection": roi,
                 "evidence": {
                     "count": len(evidence),
-                    "case_studies": evidence[:5],
+                    "case_studies": evidence[:DEFAULT_TOP_EVIDENCE],
                 },
             },
         }
@@ -188,7 +236,9 @@ class IntelligenceOrchestrator:
         """Calculate deal readiness score for an account."""
         tenant_id = _get_tenant_id()
         signals = await self._get_account_signals(account_id)
-        hypotheses = await self._get_account_hypotheses(account_id, limit=20)
+        hypotheses = await self._get_account_hypotheses(
+            account_id, limit=DEFAULT_HYPOTHESES_LIMIT
+        )
         competitive = await self._get_competitive_landscape()
         roi = await self._get_roi_summary(account_id)
         evidence = await self._get_matched_evidence(account_id)
@@ -222,11 +272,15 @@ class IntelligenceOrchestrator:
         """Compute a weighted deal readiness score."""
         components: dict[str, float] = {}
 
-        # Signals identified (0-1 based on count, cap at 5)
-        components["signals_identified"] = min(len(signals) / 5, 1.0)
+        # Signals identified (0-1 based on count, capped)
+        components["signals_identified"] = min(
+            len(signals) / MAX_SIGNALS_FOR_READINESS, 1.0
+        )
 
-        # Hypotheses generated (0-1 based on count, cap at 5)
-        components["hypotheses_generated"] = min(len(hypotheses) / 5, 1.0)
+        # Hypotheses generated (0-1 based on count, capped)
+        components["hypotheses_generated"] = min(
+            len(hypotheses) / MAX_HYPOTHESES_FOR_READINESS, 1.0
+        )
 
         # Hypotheses validated (ratio of validated to total)
         validated = sum(1 for h in hypotheses if h.get("status") == "validated")
@@ -236,14 +290,18 @@ class IntelligenceOrchestrator:
 
         # Competitive intel available
         comp_count = competitive.get("total_competitors", 0)
-        components["competitive_intel"] = min(comp_count / 3, 1.0)
+        components["competitive_intel"] = min(
+            comp_count / MAX_COMPETITORS_FOR_READINESS, 1.0
+        )
 
         # ROI calculated
         has_roi = bool(roi.get("calculations") or roi.get("results"))
         components["roi_calculated"] = 1.0 if has_roi else 0.0
 
         # Evidence matched
-        components["evidence_matched"] = min(len(evidence) / 3, 1.0)
+        components["evidence_matched"] = min(
+            len(evidence) / MAX_EVIDENCE_FOR_READINESS, 1.0
+        )
 
         # Narrative generated
         components["narrative_generated"] = 1.0 if narrative else 0.0

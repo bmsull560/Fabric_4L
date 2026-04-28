@@ -145,7 +145,7 @@ class SemanticSearchTool(BaseTool):
         self._pinecone_client = None
         self._index = None
 
-    def _get_pinecone_client(self) -> Any:
+    def _get_pinecone_client(self) -> Any | None:
         """Lazy initialization of Pinecone client.
 
         Returns:

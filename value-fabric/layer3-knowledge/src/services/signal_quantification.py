@@ -101,6 +101,11 @@ class SignalQuantificationService:
         "sum": sum,
     }
 
+    # Default values
+    DEFAULT_FORMULA_ID = "ai-f-001"
+    DEFAULT_OUTPUT_UNIT = "USD/year"
+    DEFAULT_FALLBACK_INDUSTRY = "manufacturing"
+
     # Industry to formula mappings for Operational signals
     OPERATIONAL_FORMULAS = {
         "manufacturing": [
@@ -197,7 +202,7 @@ class SignalQuantificationService:
             return QuantificationResult(
                 success=True,
                 impact_value=Decimal(str(result["value"])),
-                impact_unit=formula.get("output_unit", "USD/year"),
+                impact_unit=formula.get("output_unit", self.DEFAULT_OUTPUT_UNIT),
                 formula_id=formula.get("id"),
                 formula_name=formula.get("name"),
                 calculation_context={
@@ -237,7 +242,10 @@ class SignalQuantificationService:
         # Get candidate formulas for this industry
         candidate_ids = self.OPERATIONAL_FORMULAS.get(
             industry_key,
-            self.OPERATIONAL_FORMULAS.get("manufacturing", ["ai-f-001"]),
+            self.OPERATIONAL_FORMULAS.get(
+                self.DEFAULT_FALLBACK_INDUSTRY,
+                [self.DEFAULT_FORMULA_ID],
+            ),
         )
 
         # Query graph for formula details

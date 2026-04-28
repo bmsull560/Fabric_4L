@@ -1,6 +1,6 @@
 {
   "version": "2026-04-28",
-  "lastUpdated": "2026-04-28T05:48:00Z",
+  "lastUpdated": "2026-04-28T08:35:00Z",
   "schema": "1.0",
   "description": "Fabric 4L Contract Deprecation Register. Tracks anti-patterns and their migration to canonical contracts per CONTRACT.md.",
   "items": [
@@ -167,7 +167,9 @@
       "owner": "agent-team",
       "introduced": "2026-04-28",
       "targetRemoval": "2026-05-23",
-      "instanceCount": 27,
+      "instanceCount": 19,
+      "migratedCount": 8,
+      "lastMigration": "2026-04-28T08:35:00Z",
       "source": "DEPRECATIONS.md",
       "blockedPaths": [
         "value-fabric/layer4-agents/src/tools/**/*.py"
@@ -293,7 +295,7 @@
       "2.1-tenant-context": { "score": 60, "violations": 248 },
       "2.2-db-session": { "score": 40, "violations": 46 },
       "2.3-middleware-flow": { "score": 50, "violations": 42 },
-      "2.4-tool-boundary": { "score": 55, "violations": 46 },
+      "2.4-tool-boundary": { "score": 65, "violations": 38 },
       "2.5-agent-output": { "score": 50, "violations": 13 },
       "2.6-ui-state": { "score": 65, "violations": 170 }
     }

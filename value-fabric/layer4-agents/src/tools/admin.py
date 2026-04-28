@@ -4,6 +4,7 @@ Admin tools with strict permission enforcement.
 
 import logging
 from uuid import UUID
+from fastapi import HTTPException, status
 
 from shared.identity.context import RequestContext
 
@@ -20,16 +21,18 @@ async def suspend_tenant(
         tenant_id: Tenant UUID to suspend
         context: Request context (required for permission check)
 
+    Raises:
+        HTTPException: If no admin permission
+
     Returns:
-        Dict with success flag and optional error message.
+        Dict with success flag on success.
     """
     # Check admin permission
     if not context or "admin" not in context.permissions:
-        return {
-            "success": False,
-            "error": "Admin permission required",
-            "status_code": 403,
-        }
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permission required"
+        )
 
     # TODO: Implement actual tenant suspension
     admin_id = context.user_id if context else "unknown"

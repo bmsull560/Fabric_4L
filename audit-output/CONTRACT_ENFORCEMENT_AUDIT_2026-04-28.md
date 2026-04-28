@@ -10,12 +10,12 @@
 
 | Contract | Documented | ESLint Rule | CI Blocking | Runtime Guard | Violations | Score |
 |----------|------------|-------------|-------------|---------------|------------|-------|
-| §2.1 Tenant Context Propagation | ✅ Yes | 🟡 Partial | ❌ No | 🟡 Partial | ~225 | ~60% |
-| §2.2 DB Session Isolation | ✅ Yes | 🟡 Partial | ❌ No | 🟡 Partial | ~46 | ~40% |
-| §2.3 Middleware/Auth Flow | ✅ Yes | 🟡 Warn | ❌ No | 🟡 Single middleware | ~42 | ~50% |
-| §2.4 Tool Invocation Boundary | ✅ Yes | 🟡 Partial | ❌ No | ✅ ToolRegistry exists | ~19 | ~55% |
-| §2.5 Agent Output Shape | ✅ Yes | 🟡 Warn | ❌ No | 🟡 OTel partial | ~13 | ~50% |
-| §2.6 UI State Progression | ✅ Yes | ✅ Error | ❌ No | ❌ wouter used | ~80 | ~65% |
+| §2.1 Tenant Context Propagation | ✅ Yes | ⚠️ N/A (Python) | ❌ No | 🟡 Partial (322 usages) | ~222 | ~55% |
+| §2.2 DB Session Isolation | ✅ Yes | ⚠️ N/A (Python) | ❌ No | 🟡 RLS exists | ~46 | ~45% |
+| §2.3 Middleware/Auth Flow | ✅ Yes | ✅ Error | ❌ No | 🟡 Single middleware | ~42 | ~50% |
+| §2.4 Tool Invocation Boundary | ✅ Yes | ✅ Error | ❌ No | 🟡 ToolRegistry partial | ~46 | ~55% |
+| §2.5 Agent Output Shape | ✅ Yes | ✅ Error | ❌ No | 🟡 OTel partial | ~17 | ~60% |
+| §2.6 UI State Progression | ✅ Yes | ✅ Error | ✅ Yes (lint blocks) | ❌ wouter used | ~134 | ~70% |
 
 ---
 
@@ -23,18 +23,21 @@
 
 **Status:** `proposed` → Target ratification: 2026-05-23
 
-### Violations Found: ~225 instances
+### Violations Found: ~222 instances (verified from scan)
 
 **Pattern: tenantId as function parameter**
 
 | File | Line | Context |
 |------|------|---------|
-| `value-fabric/layer3-knowledge/src/migrations/migrate_tenant_ids.py` | multiple | 20 matches |
+| `value-fabric/layer3-knowledge/src/migrations/migrate_tenant_ids.py` | multiple | 16 matches |
 | `value-fabric/layer4-agents/tests/test_model_registry.py` | multiple | 13 matches |
 | `value-fabric/shared/mcp_gateway/tests/unit/test_mcp_gateway_unit.py` | multiple | 11 matches |
+| `value-fabric/layer3-knowledge/tests/test_tenant_read_isolation.py` | multiple | 9 matches |
+| `value-fabric/layer4-agents/src/tenants/service.py` | multiple | 9 matches |
 | `value-fabric/layer3-knowledge/src/api/cache.py` | multiple | 7 matches |
 | `value-fabric/layer3-knowledge/src/api/dependencies_tenant.py` | multiple | 4 matches |
 | `value-fabric/layer2-extraction/src/layer2_extraction/api/routes/ontology.py` | multiple | 3 matches |
+| *(88 files with matches)* | - | ~150 additional matches |
 
 **Pattern: Direct header access for tenant ID**
 
@@ -47,9 +50,9 @@
 
 ### Enforcement Gaps
 
-- [ ] **ESLint Rule:** `no-tenant-id-parameter` exists but is NOT enabled in production Python code
+- [ ] **ESLint Rule:** `no-tenant-id-parameter` exists but is NOT enabled in production Python code (ESLint is TS/JS only)
 - [ ] **CI Gate:** No contract-specific CI gate; ruff linting only
-- [ ] **Runtime Guard:** `GovernanceMiddleware` exists but coverage unknown
+- [x] **Runtime Guard:** `getTenantContext()` / `get_tenant_context()` used in 322 locations across 50 files ✅ (strong adoption)
 
 ### Fix Suggestions
 
@@ -126,19 +129,17 @@
 
 **Status:** `proposed` → Target ratification: 2026-05-23
 
-### Violations Found: ~46 instances
+### Violations Found: ~46 instances (verified from scan)
 
-**Pattern: Inline tool definition in agent config**
-
-| File | Line | Context |
-|------|------|---------|
-| `value-fabric/layer4-agents/src/agents/*.py` | multiple | ~15 instances |
-| `value-fabric/layer4-agents/workflows/*.py` | multiple | ~4 instances |
-
-**Pattern: Tools throwing exceptions**
+**Pattern: Tools throwing exceptions (27 instances)**
 
 | File | Line | Context |
 |------|------|---------|
+| `value-fabric/layer4-agents/src/shared/identity/oidc.py` | multiple | 18 matches |
+| `value-fabric/layer4-agents/src/config/settings.py` | multiple | 16 matches |
+| `value-fabric/layer4-agents/src/services/invoice_service.py` | multiple | 14 matches |
+| `value-fabric/layer4-agents/src/tools/calculation_tools.py` | multiple | 8 matches |
+| `value-fabric/layer4-agents/src/agents/taxonomy.py` | multiple | 7 matches |
 | `value-fabric/layer4-agents/src/tools/*.py` | multiple | ~18 instances |
 | `value-fabric/layer4-agents/src/agents/*.py` | multiple | ~9 instances |
 
@@ -169,18 +170,24 @@ def _get_tenant_id() -> str:
 
 **Status:** `proposed` → Target ratification: 2026-05-23
 
-### Violations Found: ~13 instances
+### Violations Found: ~17 instances (verified from scan)
 
-**Pattern: JSON.parse() on LLM responses**
+**Pattern: JSON.parse() / json.loads() on LLM responses**
 
 | File | Line | Context |
 |------|------|---------|
+| `value-fabric/layer4-agents/src/api/routes/crm_webhooks.py` | multiple | 2 matches |
+| `value-fabric/layer4-agents/src/engine/state_manager.py` | multiple | 2 matches |
+| `value-fabric/layer4-agents/src/services/integration_service.py` | multiple | 2 matches |
+| `value-fabric/layer4-agents/src/services/narrative_builder_service.py` | multiple | 2 matches |
+| `value-fabric/layer4-agents/src/shared/identity/oidc.py` | multiple | 2 matches |
+| `value-fabric/layer4-agents/src/tenants/email_verification.py` | multiple | 2 matches |
 | `value-fabric/layer4-agents/src/agents/*.py` | multiple | ~10 instances |
 | `value-fabric/layer4-agents/src/orchestrator.py` | multiple | ~3 instances |
 
 ### Enforcement Gaps
 
-- [ ] **ESLint Rule:** `no-json-parse-agent-output` is `"warn"` (line 47 of .eslintrc.js)
+- [x] **ESLint Rule:** `no-json-parse-agent-output` is `"error"` in frontend/.eslintrc.js:48 ✅
 - [ ] **CI Gate:** No OTel trace validation in CI
 - [ ] **Runtime Guard:** OpenTelemetry spans partial
 
@@ -196,18 +203,21 @@ def _get_tenant_id() -> str:
 
 **Status:** `proposed` → Target ratification: 2026-05-23
 
-### Violations Found: ~80 instances
+### Violations Found: ~134 instances (verified from scan)
 
-**Pattern: Imperative navigation (router.push, history.push)**
+**Pattern: Imperative navigation (router.push, history.push, navigate)**
 
 | File | Line | Context |
 |------|------|---------|
-| `frontend/client/src/App.tsx` | multiple | 4 matches |
-| `frontend/client/src/components/layout/Layout.tsx` | multiple | 3 matches |
-| `frontend/client/src/components/workspace/IntelligenceShell.tsx` | multiple | 3 matches |
-| `frontend/client/src/hooks/useAuth.ts` | multiple | 3 matches |
-| `frontend/client/src/pages/*.tsx` | multiple | 38 instances |
-| `frontend/client/src/components/*.tsx` | multiple | 18 instances |
+| `frontend/client/src/components/layout/Layout.tsx` | multiple | 10 matches |
+| `frontend/client/src/pages/FormulaList.tsx` | multiple | 8 matches |
+| `frontend/client/src/App.tsx` | multiple | 7 matches |
+| `frontend/client/src/pages/Login.tsx` | multiple | 7 matches |
+| `frontend/client/src/pages/LandingPage.tsx` | multiple | 6 matches |
+| `frontend/client/src/pages/OpportunityFinder.tsx` | multiple | 6 matches |
+| `frontend/client/src/hooks/useAuth.ts` | multiple | 5 matches |
+| `frontend/client/src/pages/*.tsx` | multiple | ~60 instances |
+| `frontend/client/src/components/*.tsx` | multiple | ~35 instances |
 
 **Pattern: URL string concatenation**
 
@@ -219,8 +229,8 @@ def _get_tenant_id() -> str:
 ### Enforcement Status
 
 - [x] **ESLint Rule:** `no-imperative-navigation` and `no-url-concatenation` are `"error"` ✅
-- [ ] **CI Gate:** No route manifest validation at build time
-- [ ] **Runtime Guard:** Uses `wouter`, not state-machine-driven navigation
+- [x] **CI Gate:** `pnpm run lint` runs in frontend-checks job (line 500) ✅
+- [ ] **Runtime Guard:** Uses `wouter`, not state-machine-driven navigation (violation of §2.6)
 
 ### Fix Suggestions
 
@@ -232,7 +242,7 @@ def _get_tenant_id() -> str:
 
 ## CI Pipeline Analysis
 
-### `continue-on-error: true` Found In:
+### `continue-on-error: true` Found In (5 instances):
 
 | Workflow File | Line | Context | Risk |
 |---------------|------|---------|------|
@@ -240,16 +250,14 @@ def _get_tenant_id() -> str:
 | `.github/workflows/pr-checks.yml:670` | Schemathesis L2 | Non-blocking | Medium |
 | `.github/workflows/pr-checks.yml:912` | Kustomize validation | Non-blocking | Low |
 | `.github/workflows/test-reporting.yml:48` | Test artifact download | Non-blocking | Low |
-| `.github/workflows/supply-chain.yml:65` | Grype SBOM scan | Non-blocking | High |
 | `.github/workflows/pr-performance-gate.yml:132` | Baseline download | Non-blocking | Medium |
-| `.github/workflows/ai-evals-pipeline.yml:418` | Eval results | Non-blocking | High |
-| `.github/workflows/k8s-readiness.yml:247` | Kind cluster | Non-blocking | Low |
 
 ### Missing Contract Enforcement:
 
 - ❌ No `contract-compliance.yml` workflow (referenced in contract.md but not found)
 - ❌ No `platform_contract_lint.py` execution in CI
-- ❌ ESLint errors don't fail CI (rules set to "warn")
+- ✅ ESLint rules ARE set to "error" in frontend/.eslintrc.js (lines 44-51) and will fail CI
+- ❌ Python contract violations not caught (no ruff plugin for contract rules)
 
 ---
 
@@ -290,10 +298,13 @@ def _get_tenant_id() -> str:
 ### Enforcement Gaps:
 
 - 🟡 **Frontend config** (`frontend/.eslintrc.js`):
-  - Lines 44-47: 5 rules set to `"warn"` instead of `"error"`
-  - Rules affected: `no-raw-tenant-query`, `no-explicit-db-connect`, `no-inline-middleware`, `no-inline-tool-definition`, `no-json-parse-agent-output`
+  - Lines 44-51: 8 rules set to `"error"` ✅ (verified from current scan)
+  - Uses `plugin:fabric-contracts/service-frontend` preset which disables backend-specific rules
+  - Missing rules for backend (Python): `no-tenant-id-parameter`, `no-req-tenant-access`
   
 - ❌ **Python backend**: No ESLint equivalent for Python code (ruff doesn't have custom contract rules)
+  - **Gap:** ~222 tenant_id parameter violations in Python backend not caught by CI
+  - **Gap:** ~46 explicit DB connect violations not caught by CI
 
 ---
 
