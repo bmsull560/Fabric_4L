@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from .schema_assertions import assert_matches_schema
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -47,16 +49,28 @@ def _extract_fastapi_paths(source_file: Path, app_names: set[str]) -> set[str]:
 
 
 class TestL2ToL3PayloadContract:
-    def test_l2_ingest_payload_shape_validates_against_l3_openapi_schema(self) -> None:
+    @pytest.mark.parametrize(
+        ("payload", "schema_name"),
+        [
+            (
+                {
+                    "rdf_data": "@prefix ex: <http://example.com/> . ex:cap1 a ex:Capability .",
+                    "format": "turtle",
+                    "source_id": "https://example.com/doc/123",
+                    "extraction_job_id": "job-123",
+                    "content_hash": "a" * 64,
+                },
+                "IngestRequest",
+            ),
+        ],
+    )
+    def test_l2_payload_shape_validates_against_l3_openapi_schema(
+        self,
+        payload: dict[str, Any],
+        schema_name: str,
+    ) -> None:
         l3_openapi = _load_json(OPENAPI_L3_PATH)
-        payload = {
-            "rdf_data": "@prefix ex: <http://example.com/> . ex:cap1 a ex:Capability .",
-            "format": "turtle",
-            "source_id": "https://example.com/doc/123",
-            "extraction_job_id": "job-123",
-            "content_hash": "a" * 64,
-        }
-        schema = _openapi_component_schema(l3_openapi, "IngestRequest")
+        schema = _openapi_component_schema(l3_openapi, schema_name)
         assert_matches_schema(payload, schema, root=l3_openapi)
 
     def test_l2_entity_sample_validates_against_entity_jsonschema(self) -> None:

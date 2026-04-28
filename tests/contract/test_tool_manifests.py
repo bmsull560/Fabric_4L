@@ -24,24 +24,27 @@ def load_manifest(name: str) -> dict:
 
 
 def manifest_names() -> list[str]:
-    return [p.stem for p in MANIFESTS_DIR.glob("*.json")]
+    return sorted(p.stem for p in MANIFESTS_DIR.glob("*.json"))
+
+
+@pytest.fixture(scope="module")
+def manifests_by_name() -> dict[str, dict]:
+    """Load all manifests once to reduce I/O and stabilize ordering."""
+    return {name: load_manifest(name) for name in manifest_names()}
 
 
 class TestToolManifestStructure:
     """Every tool manifest must conform to the expected schema shape."""
 
     @pytest.mark.parametrize("name", manifest_names())
-    def test_manifest_has_required_top_level_fields(self, name: str) -> None:
-        manifest = load_manifest(name)
-        assert "$schema" in manifest, f"{name}: missing $schema"
-        assert "name" in manifest, f"{name}: missing name"
-        assert "version" in manifest, f"{name}: missing version"
-        assert "description" in manifest, f"{name}: missing description"
-        assert "parameters" in manifest, f"{name}: missing parameters"
+    def test_manifest_has_required_top_level_fields(self, name: str, manifests_by_name: dict[str, dict]) -> None:
+        manifest = manifests_by_name[name]
+        for required_field in ("$schema", "name", "version", "description", "parameters"):
+            assert required_field in manifest, f"{name}: missing {required_field}"
 
     @pytest.mark.parametrize("name", manifest_names())
-    def test_parameters_is_object_type(self, name: str) -> None:
-        manifest = load_manifest(name)
+    def test_parameters_is_object_type(self, name: str, manifests_by_name: dict[str, dict]) -> None:
+        manifest = manifests_by_name[name]
         params = manifest["parameters"]
         assert params.get("type") == "object", (
             f"{name}: parameters must be type 'object'"
@@ -49,8 +52,8 @@ class TestToolManifestStructure:
         assert "properties" in params, f"{name}: parameters missing 'properties'"
 
     @pytest.mark.parametrize("name", manifest_names())
-    def test_required_fields_are_listed_in_properties(self, name: str) -> None:
-        manifest = load_manifest(name)
+    def test_required_fields_are_listed_in_properties(self, name: str, manifests_by_name: dict[str, dict]) -> None:
+        manifest = manifests_by_name[name]
         params = manifest["parameters"]
         required = params.get("required", [])
         properties = set(params.get("properties", {}).keys())
