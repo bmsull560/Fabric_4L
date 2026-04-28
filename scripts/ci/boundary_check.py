@@ -16,22 +16,22 @@ from pathlib import Path
 
 # Violation patterns - only detect READING headers (incoming requests)
 # NOT setting headers on outgoing requests (headers['X-Tenant-ID'] = value is OK)
+# Uses case-insensitive header name matching to catch all variants:
+#   X-Tenant-ID, x-tenant-id, X-Tenant-Id, X-TENANT-ID, HTTP_X_TENANT_ID
 VIOLATION_PATTERNS = [
-    # headers['X-Tenant-ID'] used as value (not assignment)
-    r"headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
-    r"headers\s*\[\s*['\"]x-tenant-id['\"]\s*\](?!\s*=)",
-    # headers.get('X-Tenant-ID')
-    r"headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
-    r"headers\.get\s*\(\s*['\"]x-tenant-id['\"]",
-    # request.headers['X-Tenant-ID'] used as value
-    r"request\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
-    r"request\.headers\s*\[\s*['\"]x-tenant-id['\"]\s*\](?!\s*=)",
-    # request.headers.get('X-Tenant-ID')
-    r"request\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
-    r"request\.headers\.get\s*\(\s*['\"]x-tenant-id['\"]",
-    # req.headers patterns
-    r"req\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
-    r"req\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
+    # headers['X-Tenant-ID'] used as value (not assignment) - case-insensitive header name
+    r"headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\](?!\s*=)",
+    # headers.get('X-Tenant-ID') - case-insensitive header name
+    r"headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]",
+    # request.headers['X-Tenant-ID'] used as value - case-insensitive header name
+    r"request\.headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\](?!\s*=)",
+    # request.headers.get('X-Tenant-ID') - case-insensitive header name
+    r"request\.headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]",
+    # req.headers patterns - case-insensitive header name
+    r"req\.headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\](?!\s*=)",
+    r"req\.headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]",
+    # WSGI convention: HTTP_X_TENANT_ID
+    r"environ\[[\'\"]HTTP_[Xx]_[Tt][Ee][Nn][Aa][Nn][Tt]_[Ii][Dd][\'\"]\]",
 ]
 
 # Allowed paths (internal boundary implementations and security validators)

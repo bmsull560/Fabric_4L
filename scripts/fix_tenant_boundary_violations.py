@@ -21,22 +21,21 @@ from typing import Iterator, Set
 
 # Patterns that indicate direct header access (case-insensitive header names)
 # Only detect READING headers (incoming requests), NOT setting them
+# Catches all variants: X-Tenant-ID, x-tenant-id, X-Tenant-Id, X-TENANT-ID, HTTP_X_TENANT_ID
 VIOLATION_PATTERNS = [
-    # headers['x-tenant-id'] used as value (not assignment)
-    r"headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
-    r"headers\s*\[\s*['\"]x-tenant-id['\"]\s*\](?!\s*=)",
-    # headers.get('x-tenant-id')
-    r"headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
-    r"headers\.get\s*\(\s*['\"]x-tenant-id['\"]",
-    # request.headers['x-tenant-id'] used as value
-    r"request\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
-    r"request\.headers\s*\[\s*['\"]x-tenant-id['\"]\s*\](?!\s*=)",
-    # request.headers.get('x-tenant-id')
-    r"request\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
-    r"request\.headers\.get\s*\(\s*['\"]x-tenant-id['\"]",
-    # req.headers patterns
-    r"req\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\](?!\s*=)",
-    r"req\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]",
+    # headers['x-tenant-id'] used as value (not assignment) - case-insensitive header name
+    r"headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\](?!\s*=)",
+    # headers.get('x-tenant-id') - case-insensitive header name
+    r"headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]",
+    # request.headers['x-tenant-id'] used as value - case-insensitive header name
+    r"request\.headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\](?!\s*=)",
+    # request.headers.get('x-tenant-id') - case-insensitive header name
+    r"request\.headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]",
+    # req.headers patterns - case-insensitive header name
+    r"req\.headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\](?!\s*=)",
+    r"req\.headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]",
+    # WSGI convention: HTTP_X_TENANT_ID
+    r"environ\[[\'\"]HTTP_[Xx]_[Tt][Ee][Nn][Aa][Nn][Tt]_[Ii][Dd][\'\"]\]",
 ]
 
 # Files to skip (middleware itself, allowed internal uses)
@@ -64,6 +63,26 @@ def should_skip_file(filepath: Path) -> bool:
     return False
 
 
+def has_boundary_import(content: str) -> bool:
+    """Check if file already has required boundary imports using AST parsing.
+    
+    Avoids false positives from comments or string literals.
+    """
+    try:
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                # Check for 'from shared.boundaries...' or 'from shared.boundaries.tenant_boundary...'
+                if node.module and ('shared.boundaries' in node.module or node.module == 'shared.boundaries'):
+                    for alias in node.names:
+                        if alias.name == 'require_tenant_from_request':
+                            return True
+    except SyntaxError:
+        # If parsing fails, fall back to safer behavior
+        pass
+    return False
+
+
 def find_violations(content: str) -> list[re.Match]:
     """Find all tenant header access violations in content."""
     violations = []
@@ -83,10 +102,8 @@ def transform_content(content: str, filepath: Path) -> tuple[str, int]:
     if not violations:
         return content, 0
     
-    # Track if we need to add import
-    needs_import = True
-    if "shared.boundaries" in content or "require_tenant_from_request" in content:
-        needs_import = False
+    # Track if we need to add import (use AST parsing to avoid false positives)
+    needs_import = not has_boundary_import(content)
     
     # Simple regex-based replacement (for common patterns)
     transformed = content
@@ -98,20 +115,18 @@ def transform_content(content: str, filepath: Path) -> tuple[str, int]:
     has_request_param = "request: Request" in content or "def " in content and "request" in content
     
     replacements = [
-        # headers['X-Tenant-ID'] variants
-        (r"headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\]", "require_tenant_from_request(request)"),
-        (r"headers\s*\[\s*['\"]x-tenant-id['\"]\s*\]", "require_tenant_from_request(request)"),
-        # headers.get() variants
-        (r"headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]\s*\)", "require_tenant_from_request(request)"),
-        (r"headers\.get\s*\(\s*['\"]x-tenant-id['\"]\s*\)", "require_tenant_from_request(request)"),
-        # request.headers variants
-        (r"request\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\]", "require_tenant_from_request(request)"),
-        (r"request\.headers\s*\[\s*['\"]x-tenant-id['\"]\s*\]", "require_tenant_from_request(request)"),
-        (r"request\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]\s*\)", "require_tenant_from_request(request)"),
-        (r"request\.headers\.get\s*\(\s*['\"]x-tenant-id['\"]\s*\)", "require_tenant_from_request(request)"),
-        # req.headers variants
-        (r"req\.headers\s*\[\s*['\"]X-Tenant-ID['\"]\s*\]", "require_tenant_from_request(req)"),
-        (r"req\.headers\.get\s*\(\s*['\"]X-Tenant-ID['\"]\s*\)", "require_tenant_from_request(req)"),
+        # headers['X-Tenant-ID'] variants - case-insensitive header name
+        (r"headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\]", "require_tenant_from_request(request)"),
+        # headers.get() variants - case-insensitive header name
+        (r"headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\)", "require_tenant_from_request(request)"),
+        # request.headers variants - case-insensitive header name
+        (r"request\.headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\]", "require_tenant_from_request(request)"),
+        (r"request\.headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\)", "require_tenant_from_request(request)"),
+        # req.headers variants - case-insensitive header name
+        (r"req\.headers\s*\[\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\]", "require_tenant_from_request(req)"),
+        (r"req\.headers\.get\s*\(\s*['\"][Xx]-[Tt][Ee][Nn][Aa][Nn][Tt]-[Ii][Dd]['\"]\s*\)", "require_tenant_from_request(req)"),
+        # WSGI convention: HTTP_X_TENANT_ID
+        (r"environ\[[\'\"]HTTP_[Xx]_[Tt][Ee][Nn][Aa][Nn][Tt]_[Ii][Dd][\'\"]\]", "require_tenant_from_request(request).tenant_id"),
     ]
     
     for pattern, replacement in replacements:
