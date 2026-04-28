@@ -3,8 +3,14 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Playwright configuration for Value Fabric frontend E2E tests
  *
+ * Test layers:
+ *   1. contracts/  — Isolated page-level contract tests (fast, mocked)
+ *   2. journeys/   — Chained user journey tests (live or contract mode)
+ *   3. accessibility/ — Accessibility audits
+ *
  * Standards:
- * - Tests run against actual app (no mocks unless environment requires)
+ * - Journey tests run against real backend when PLAYWRIGHT_BACKEND_URL is set
+ * - Contract tests always use mocks (no backend required)
  * - Parallel execution where safe
  * - Trace/screenshot on failure for debugging
  * - Accessibility-conscious selectors preferred
@@ -58,27 +64,42 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects for different test layers and browsers */
   projects: [
+    // ── Layer 1: Contract Tests (fast, mocked, chromium-only in dev) ──────
     {
-      name: 'chromium',
+      name: 'contracts',
+      testDir: './e2e/contracts',
       use: { ...devices['Desktop Chrome'] },
     },
+    // ── Layer 2: Journey Tests (chained workflows, chromium-only in dev) ──
     {
-      name: 'firefox',
+      name: 'journeys',
+      testDir: './e2e/journeys',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    // ── Cross-browser: Contracts on Firefox ──────────────────────────────
+    {
+      name: 'contracts-firefox',
+      testDir: './e2e/contracts',
       use: { ...devices['Desktop Firefox'] },
     },
+    // ── Cross-browser: Contracts on WebKit ───────────────────────────────
     {
-      name: 'webkit',
+      name: 'contracts-webkit',
+      testDir: './e2e/contracts',
       use: { ...devices['Desktop Safari'] },
     },
-    /* Test against mobile viewports */
+    // ── Mobile: Contracts on Mobile Chrome ───────────────────────────────
     {
-      name: 'Mobile Chrome',
+      name: 'contracts-mobile-chrome',
+      testDir: './e2e/contracts',
       use: { ...devices['Pixel 5'] },
     },
+    // ── Mobile: Contracts on Mobile Safari ───────────────────────────────
     {
-      name: 'Mobile Safari',
+      name: 'contracts-mobile-safari',
+      testDir: './e2e/contracts',
       use: { ...devices['iPhone 12'] },
     },
   ],

@@ -124,9 +124,18 @@ typecheck: ## Type-check all Python layers with mypy (fails fast on first error)
 	 $(MAKE) typecheck-layer6 && \
 	 echo "✅  Type-checking complete for all layers"
 
-# ─── Testing ──────────────────────────────────────────────────────────────────
+# ─── Testing (4-Layer Strategy) ───────────────────────────────────────────────
 
 test: test-layer1 test-layer2 test-layer3 test-layer4 test-layer5 test-layer6 ## Run all backend unit tests
+
+test-e2e-contracts: ## Layer 1: Run Playwright isolated page contract tests (mocked)
+	cd frontend && npx playwright test --project=contracts
+
+test-e2e-journeys: ## Layer 2: Run Playwright chained user journeys (live or mocked)
+	cd frontend && npx playwright test --project=journeys
+
+test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
+	$(PYTEST) tests/contract/test_journey_contracts.py -v
 
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
@@ -228,6 +237,9 @@ evals-full: ## Run full eval suite including slow/expensive traces
 
 perf-test: ## Run k6 L2/L3/L4 critical-path load suite
 	k6 run --summary-export artifacts/performance/k6-summary.json tests/performance/k6/l2_l3_l4_critical_paths.js
+
+perf-test-journeys: ## Layer 4: Run k6 journey-aligned load tests
+	k6 run tests/performance/k6/journey-load-test.js
 
 perf-eval: ## Evaluate k6 results against versioned SLO thresholds
 	$(PYTHON) scripts/perf/evaluate_slo.py \
@@ -345,6 +357,19 @@ gate-config: ## Gate: startup validation, security config hardening
 
 gate-all: gate-security gate-state gate-arch gate-config ## Run all production readiness gates
 	@echo "✅  All production gates passed — ship/no-ship: SHIP"
+
+release-gate: ## Run the full 4-layer quality gate sequence
+	@echo "🚀 Starting Release Gate Sequence..."
+	@echo "1. Core Quality Gate (Lint, Typecheck, Unit Tests)"
+	$(MAKE) lint typecheck test-unit
+	@echo "2. Agent Behavior Regression (Evals)"
+	$(MAKE) evals
+	@echo "3. User-Journey E2E (Playwright + Backend Contracts)"
+	$(MAKE) test-backend-contracts
+	$(MAKE) test-e2e-journeys
+	@echo "4. Performance & Reliability (k6 Load Tests)"
+	$(MAKE) perf-test-journeys
+	@echo "✅ Release Gate Passed!"
 
 contract-lint: ## Run ESLint contract rules across all packages
 	@echo "→ Running contract lint rules..."
