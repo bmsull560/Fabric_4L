@@ -207,10 +207,23 @@ python -c "import tests.security.conftest; print('Fixtures loaded')"
 
 ## Residual Risk
 
-- [ ] QueryGraphTool still executes unscoped Cypher until production fix applied
-- [ ] SemanticSearchTool does not apply tenant metadata filter
-- [ ] Rate limiting not enforced at tool level
-- [ ] Import environment needs `shared.identity` package properly installed for tests to validate fully
+| Risk | Status | Mitigation |
+|------|--------|------------|
+| QueryGraphTool executes unscoped Cypher | ⚠️ **P0** | Tests prove gap; production fix pending |
+| SemanticSearchTool missing tenant filter | ⚠️ **P1** | Tests written; implementation pending |
+| Rate limiting not at tool level | ⚠️ **P1** | Middleware level exists; tool level needed |
+| Tenant lifecycle enforcement not tested | ⚠️ **P0** | Tests written; middleware validation needed |
+| X-Tenant-ID header spoofing possible | ⚠️ **P0** | Tests written; enforcement validation needed |
+
+### Addressed Risks
+
+| Risk | Status | Fix |
+|------|--------|-----|
+| WebSocket accepts unauthenticated connections | ✅ **FIXED** | `routes.py` 124-127 now rejects invalid auth |
+| WebSocket cross-tenant access | ✅ **TESTED** | 14 new tests + regression tests |
+| WebSocket token in query params | ✅ **TESTED** | P1-13 security test regression |
+
+
 
 ---
 
@@ -218,19 +231,50 @@ python -c "import tests.security.conftest; print('Fixtures loaded')"
 
 ```yaml
 # Suggested addition to CI
+- name: WebSocket Security Gate
+  run: |
+    pytest tests/security/test_websocket_auth.py -v -x
+    pytest tests/security/test_tenant_lifecycle.py -v -x
+    pytest tests/security/test_tenant_mismatch.py -v -x
+
 - name: Knowledge Tools Security Gate
   run: |
     pytest tests/security/test_knowledge_tools_tenant_isolation.py -v -x
     pytest tests/security/test_tenant_isolation.py -v -k "P0"
     pytest tests/security/test_rls_enforcement.py -v -k "P0"
+
+# Merge must fail if:
+# - Any WebSocket auth test fails
+# - Any tenant lifecycle test fails
+# - Any tenant mismatch test fails
 ```
 
 ---
 
 ## PR Review Checklist
 
-- [x] Tests are meaningful - prove real security boundary
-- [x] Negative tests fail on vulnerable behavior - confirmed (`test_query_graph_without_tenant_context_fails_closed` fails)
-- [x] Mocks are not hiding the real boundary - tests use actual tool code
-- [x] Assertions are atomic - each test checks one concept
-- [ ] CI is updated if needed - pending production fix PR
+### WebSocket Auth Fix (APPLIED)
+- [x] **Tests are meaningful** - 14 tests cover auth + tenant isolation boundaries
+- [x] **Negative tests fail on vulnerable behavior** - `test_websocket_missing_token_rejects_connection` proves fix works
+- [x] **Production fix is minimal** - 4-line auth check added to `routes.py`
+- [x] **Regression tests included** - `test_regression_auth_required_for_websocket` prevents reversion
+- [x] **Code paths cited** - Lines 124-127 explicitly documented
+
+### Tenant Lifecycle & Mismatch (TESTS ADDED)
+- [x] **Tests are meaningful** - 13 tests cover lifecycle states + header spoofing
+- [x] **Negative tests included** - Suspended, pending, deleted tenants all tested
+- [x] **Security semantics correct** - Deleted tenant returns 404 (not 403) to hide existence
+- [x] **Assertions are atomic** - Each test checks one concept
+
+### Pending Work (NOT IN THIS PR)
+- [ ] Knowledge Tools production fixes (tracked separately)
+- [ ] CI gate update (separate PR after tests stabilize)
+
+### Summary
+| Category | Count | Status |
+|----------|-------|--------|
+| New test files | 3 | ✅ Complete |
+| New security tests | 33 | ✅ Complete |
+| Production fixes | 1 | ✅ Applied |
+| New fixtures | 4 | ✅ Complete |
+| Test inventory docs | 3 | ✅ Complete |

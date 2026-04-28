@@ -1,12 +1,17 @@
 """API key resolver stubs for layers without database access.
 
-P0-5 FIX: Provides explicit rejection of API key authentication in layers
+Provides explicit rejection of API key authentication in layers
 where API key resolution is not wired to a database.
 """
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Key preview lengths for logging (security: don't log full keys)
+_KEY_PREVIEW_LONG = 8
+_KEY_PREVIEW_SHORT = 4
+_KEY_PREVIEW_MINIMUM = 3  # Below this, show placeholder only
 
 
 def reject_api_key_unsupported(raw_key: str) -> None:
@@ -40,9 +45,18 @@ def reject_api_key_with_error(raw_key: str) -> None:
     Returns:
         None (always rejects)
     """
+    # Guard against non-string input
+    if not isinstance(raw_key, str):
+        key_preview = "***"
+    elif len(raw_key) >= _KEY_PREVIEW_LONG:
+        key_preview = raw_key[:_KEY_PREVIEW_LONG]
+    elif len(raw_key) >= _KEY_PREVIEW_SHORT:
+        key_preview = raw_key[:_KEY_PREVIEW_SHORT]
+    else:
+        key_preview = "***"
     logger.error(
         "API key '%s...' rejected: API key authentication is disabled in this layer. "
         "Use JWT Bearer tokens or configure API key support.",
-        raw_key[:8] if len(raw_key) > 8 else raw_key[:4]
+        key_preview
     )
     return None
