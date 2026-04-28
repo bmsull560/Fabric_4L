@@ -60,11 +60,11 @@ export class AgentStreamPage {
     this.messageList = page.locator('[class*="overflow-y-auto"]').last();
     this.userMessages = page.locator('text=You').locator('..');
     this.agentMessages = page.locator('text=ValuePilot').locator('..');
-    this.welcomeMessage = page.getByText(/ready to help/i);
+    this.welcomeMessage = page.getByText(/I'm ready to help you with/i);
 
     // Input
     this.chatInput = page.getByPlaceholder(/ask a follow-up/i);
-    this.sendButton = page.locator('button').filter({ has: page.locator('svg') }).last();
+    this.sendButton = this.chatInput.locator('..').locator('button');
 
     // Process Steps
     this.processStepsContainer = page.locator('[class*="bg-muted/60"][class*="rounded-lg"]');
