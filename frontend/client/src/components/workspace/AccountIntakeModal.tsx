@@ -29,6 +29,14 @@ interface AccountIntakeModalProps {
 
 type AnalysisDepth = "fast" | "balanced" | "deep";
 
+// ── Constants ────────────────────────────────────────────────────────────────────
+
+const INPUT_BASE_CLASSES =
+  "w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary";
+
+const TEXTAREA_CLASSES =
+  "w-full px-3 py-2 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none";
+
 const DEPTH_OPTIONS: { key: AnalysisDepth; label: string; description: string }[] = [
   { key: "fast",     label: "Fast",     description: "Quick scan — web enrichment only" },
   { key: "balanced", label: "Balanced", description: "Standard — web + document analysis" },
@@ -49,6 +57,7 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
   const [painPoints, setPainPoints] = useState("");
   const [depth, setDepth] = useState<AnalysisDepth>("balanced");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -57,6 +66,7 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setIsSubmitting(true);
+    setError(null);
 
     // Generate a temporary account ID (in production, this comes from the backend)
     const accountId = companyName
@@ -66,16 +76,21 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
       .replace(/(^-|-$)/g, "")
       || "new-account";
 
-    // TODO: POST to backend /api/accounts with the intake payload
-    // For now, simulate a short delay and navigate
-    await new Promise((r) => setTimeout(r, 400));
+    // FIXME: Replace with actual API call to POST /api/accounts
+    // When backend is ready, replace the setTimeout with actual fetch
+    try {
+      await new Promise((r) => setTimeout(r, 400));
 
-    setIsSubmitting(false);
-    onClose();
-    if (onSubmit) {
-      onSubmit(accountId);
-    } else {
-      navigate(`/intelligence/${accountId}/signals`);
+      setIsSubmitting(false);
+      onClose();
+      if (onSubmit) {
+        onSubmit(accountId);
+      } else {
+        navigate(`/intelligence/${accountId}/signals`);
+      }
+    } catch (err) {
+      setIsSubmitting(false);
+      setError(err instanceof Error ? err.message : "Failed to create account");
     }
   };
 
@@ -112,7 +127,7 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Search or enter company name…"
-                className="w-full h-9 pl-9 pr-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className={`${INPUT_BASE_CLASSES} pl-9`}
               />
             </div>
           </div>
@@ -126,7 +141,7 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
                 placeholder="e.g. Manufacturing"
-                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className={INPUT_BASE_CLASSES}
               />
             </div>
             <div>
@@ -136,7 +151,7 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
                 value={revenue}
                 onChange={(e) => setRevenue(e.target.value)}
                 placeholder="e.g. $4.2B"
-                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className={INPUT_BASE_CLASSES}
               />
             </div>
           </div>
@@ -153,14 +168,14 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="Contact name"
-                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className={INPUT_BASE_CLASSES}
               />
               <input
                 type="text"
                 value={contactRole}
                 onChange={(e) => setContactRole(e.target.value)}
                 placeholder="Role (e.g. VP Operations)"
-                className="w-full h-9 px-3 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                className={INPUT_BASE_CLASSES}
               />
             </div>
           </div>
@@ -177,7 +192,7 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
               onChange={(e) => setPainPoints(e.target.value)}
               placeholder="Describe any known challenges, priorities, or context…"
               rows={3}
-              className="w-full px-3 py-2 text-[12px] rounded-md border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              className={TEXTAREA_CLASSES}
             />
           </div>
 
@@ -206,6 +221,15 @@ export default function AccountIntakeModal({ open, onClose, onSubmit }: AccountI
             </div>
           </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="px-6 pb-4">
+            <div className="p-3 rounded-md bg-destructive/10 text-destructive text-[12px]">
+              {error}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border">
