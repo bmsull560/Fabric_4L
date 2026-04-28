@@ -77,15 +77,15 @@ const NAV_DOMAINS: NavItem[] = [
     tier: "standard",
     description: "Discover and validate prospect pain signals",
     children: [
-      { id: "signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
-      { id: "drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
-      { id: "evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
-      { id: "stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
-      { id: "enrichment", label: "Enrichment", path: "/intelligence/enrichment", tier: "advanced" },
-      { id: "hypotheses", label: "Hypotheses", path: "/intelligence/hypotheses", tier: "advanced" },
-      { id: "competitive", label: "Competitive", path: "/intelligence/competitive", tier: "advanced" },
-      { id: "roi", label: "ROI", path: "/intelligence/roi", tier: "advanced" },
-      { id: "evidence-library", label: "Evidence Library", path: "/intelligence/evidence-library", tier: "advanced" },
+      { id: "intel-signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
+      { id: "intel-drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
+      { id: "intel-evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
+      { id: "intel-stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
+      { id: "intel-enrichment", label: "Enrichment", path: "/intelligence/enrichment", tier: "advanced" },
+      { id: "intel-hypotheses", label: "Hypotheses", path: "/intelligence/hypotheses", tier: "advanced" },
+      { id: "intel-competitive", label: "Competitive", path: "/intelligence/competitive", tier: "advanced" },
+      { id: "intel-roi", label: "ROI", path: "/intelligence/roi", tier: "advanced" },
+      { id: "intel-evidence-library", label: "Evidence Library", path: "/intelligence/evidence-library", tier: "advanced" },
     ],
   },
   {
@@ -96,13 +96,13 @@ const NAV_DOMAINS: NavItem[] = [
     tier: "standard",
     description: "Build the product-anchored business case",
     children: [
-      { id: "action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
-      { id: "value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
-      { id: "narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
-      { id: "enrichment", label: "Enrichment", path: "/studio/enrichment", tier: "advanced" },
-      { id: "competitive", label: "Competitive", path: "/studio/competitive", tier: "advanced" },
-      { id: "roi", label: "ROI", path: "/studio/roi", tier: "advanced" },
-      { id: "evidence", label: "Evidence", path: "/studio/evidence", tier: "advanced" },
+      { id: "studio-action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
+      { id: "studio-value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
+      { id: "studio-narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
+      { id: "studio-enrichment", label: "Enrichment", path: "/studio/enrichment", tier: "advanced" },
+      { id: "studio-competitive", label: "Competitive", path: "/studio/competitive", tier: "advanced" },
+      { id: "studio-roi", label: "ROI", path: "/studio/roi", tier: "advanced" },
+      { id: "studio-evidence", label: "Evidence", path: "/studio/evidence", tier: "advanced" },
     ],
   },
   {
@@ -179,8 +179,8 @@ const SUPPORT_ITEMS: NavItem[] = [
 ];
 
 const BOTTOM_ITEMS = [
-  { icon: LifeBuoy, label: "Support", path: "#" },
-  { icon: Send, label: "Feedback", path: "#" },
+  { icon: LifeBuoy, label: "Support" },
+  { icon: Send, label: "Feedback" },
 ];
 
 const TIER_LABELS: Record<UserTier, { label: string; icon: React.ElementType }> = {
@@ -317,11 +317,11 @@ interface NavSectionProps {
   isCollapsed: boolean;
   currentPath: string;
   effectiveTier: UserTier;
+  selectedAccountId: string | null;
   onNavigate: (path: string) => void;
 }
 
-function NavSection({ item, isCollapsed, currentPath, effectiveTier, onNavigate }: NavSectionProps) {
-  const selectedAccountId = useAccountContextStore(state => state.selectedAccountId);
+function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAccountId, onNavigate }: NavSectionProps) {
   const resolvedPath = resolveWorkspacePath(item.path, selectedAccountId);
   const isActive = currentPath === resolvedPath || currentPath.startsWith(resolvedPath + "/");
   const [isOpen, setIsOpen] = useState(isActive);
@@ -355,6 +355,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, onNavigate 
               <button
                 key={child.id}
                 onClick={() => onNavigate(childResolved)}
+                aria-label={`Navigate to ${child.label}`}
                 className={cn(
                   "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors",
                   childActive
@@ -470,6 +471,9 @@ const Layout = memo(function Layout({
   const currentTier: UserTier = externalCurrentTier || (rawCurrentTier === "unknown" ? "standard" : rawCurrentTier as UserTier);
   const effectiveTier: UserTier = externalEffectiveTier || (rawEffectiveTier === "unknown" ? "standard" : rawEffectiveTier as UserTier);
 
+  // Account context (lifted from NavSection for single subscription)
+  const selectedAccountId = useAccountContextStore(state => state.selectedAccountId);
+
   // Layout state
   const [collapsed, setCollapsed] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -504,9 +508,11 @@ const Layout = memo(function Layout({
   const breadcrumbs = useMemo(() => getBreadcrumbs(location), [location]);
 
   // User display
-  const userEmail = user?.email || "dev@valuefabric.local";
-  const userName = user?.email?.split("@")[0]?.split(".").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "Dev User";
-  const userInitials = userName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const userEmail = user?.email ?? "";
+  const userName = user?.email
+    ? user.email.split("@")[0].split(".").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+    : "User";
+  const userInitials = userName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   // Filter nav items by tier
   const visibleDomains = useMemo(
@@ -587,6 +593,7 @@ const Layout = memo(function Layout({
                   isCollapsed={collapsed}
                   currentPath={location}
                   effectiveTier={effectiveTier}
+                  selectedAccountId={selectedAccountId}
                   onNavigate={handleNavigate}
                 />
               ))}
@@ -623,6 +630,7 @@ const Layout = memo(function Layout({
                     isCollapsed={collapsed}
                     currentPath={location}
                     effectiveTier={effectiveTier}
+                    selectedAccountId={selectedAccountId}
                     onNavigate={handleNavigate}
                   />
                 ))}
@@ -689,7 +697,10 @@ const Layout = memo(function Layout({
               </button>
               {userOpen && (
                 <div className="mt-1 ml-2 space-y-0.5">
-                  <button className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent">
+                  <button
+                    aria-label="View profile"
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent"
+                  >
                     Profile
                   </button>
                   <button
@@ -753,9 +764,12 @@ const Layout = memo(function Layout({
             >
               {isDark ? <Sun className="w-4 h-4 text-muted-foreground" /> : <Moon className="w-4 h-4 text-muted-foreground" />}
             </button>
-            <button className="p-2 rounded-lg hover:bg-muted transition-colors relative">
+            <button
+              className="p-2 rounded-lg hover:bg-muted transition-colors relative"
+              aria-label="Notifications"
+            >
               <Bell className="w-4 h-4 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" aria-hidden="true" />
             </button>
           </div>
         </header>
@@ -765,12 +779,6 @@ const Layout = memo(function Layout({
         </main>
       </div>
     </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom equality: ignore children (always new ref), only re-render on tier changes
-  return (
-    prevProps.currentTier === nextProps.currentTier &&
-    prevProps.effectiveTier === nextProps.effectiveTier
   );
 });
 
