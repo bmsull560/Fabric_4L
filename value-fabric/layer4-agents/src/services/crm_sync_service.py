@@ -21,8 +21,10 @@ from ..models.account import (
     CRMProvider,
     SyncStatus,
 )
+from ..models.integration import Integration
 from ..models.tool_schemas import GetProspectDataInput
 from ..tools.crm_tools import GetProspectDataTool
+from .integration_service import IntegrationService
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,7 @@ class CRMSyncService:
     async def sync_provider(
         self,
         provider: CRMProvider,
+        tenant_id: str = "default",
         incremental: bool = True,
         account_ids: list[str] | None = None,
     ) -> dict[str, Any]:
@@ -63,7 +66,7 @@ class CRMSyncService:
             Sync statistics: synced, updated, failed, errors
         """
         # Update sync status to running
-        await self._update_sync_status(provider, "running", None)
+        await self._update_sync_status(tenant_id, provider, "running", None)
 
         stats = {
             "provider": provider.value,
@@ -75,7 +78,7 @@ class CRMSyncService:
 
         try:
             # Get CRM config from environment
-            config = self._get_crm_config(provider)
+            config = await self._get_crm_config(provider, tenant_id)
             if not config or not config.get("api_key"):
                 raise ValueError(f"CRM configuration missing for {provider.value}")
 
@@ -89,12 +92,16 @@ class CRMSyncService:
             else:
                 # Fetch all accounts from CRM (would use CRM API query)
                 # For now, we rely on accounts already in our DB
-                prospect_ids = await self._get_accounts_to_sync(provider, incremental)
+                prospect_ids = await self._get_accounts_to_sync(
+                    tenant_id, provider, incremental
+                )
 
             # Sync each account
             for prospect_id in prospect_ids[: self.sync_batch_size]:
                 try:
-                    result = await self._sync_single_account(tool, provider, prospect_id)
+                    result = await self._sync_single_account(
+                        tool, tenant_id, provider, prospect_id
+                    )
                     if result:
                         stats["updated"] += 1
                     else:
@@ -106,6 +113,7 @@ class CRMSyncService:
 
             # Update sync status to success
             await self._update_sync_status(
+                tenant_id,
                 provider,
                 "idle",
                 None,
@@ -119,7 +127,7 @@ class CRMSyncService:
 
         except Exception as e:
             # Update sync status to failed
-            await self._update_sync_status(provider, "failed", str(e))
+            await self._update_sync_status(tenant_id, provider, "failed", str(e))
             logger.error(f"CRM sync failed for {provider.value}: {e}")
             stats["errors"].append(str(e))
             return stats
@@ -171,6 +179,7 @@ class CRMSyncService:
     async def _sync_single_account(
         self,
         tool: GetProspectDataTool,
+        tenant_id: str,
         provider: CRMProvider,
         prospect_id: str,
     ) -> bool:
@@ -194,6 +203,7 @@ class CRMSyncService:
         existing = await self.db.execute(
             select(Account).where(
                 and_(
+                    Account.tenant_id == tenant_id,
                     Account.provider == provider.value,
                     Account.provider_record_id == prospect_id,
                 )
@@ -206,6 +216,7 @@ class CRMSyncService:
         if not account:
             # Create new account
             account = Account(
+                tenant_id=tenant_id,
                 provider=provider.value,
                 provider_record_id=prospect_id,
             )
@@ -251,6 +262,7 @@ class CRMSyncService:
 
     async def _get_accounts_to_sync(
         self,
+        tenant_id: str,
         provider: CRMProvider,
         incremental: bool = True,
     ) -> list[str]:
@@ -265,6 +277,7 @@ class CRMSyncService:
                 select(Account.provider_record_id)
                 .where(
                     and_(
+                        Account.tenant_id == tenant_id,
                         Account.provider == provider.value,
                         Account.sync_status.in_(
                             [
@@ -285,6 +298,7 @@ class CRMSyncService:
                 select(Account.provider_record_id)
                 .where(
                     and_(
+                        Account.tenant_id == tenant_id,
                         Account.provider == provider.value,
                         Account.sync_status == SyncStatus.SYNCED.value,
                         Account.last_synced_at < day_ago,
@@ -299,13 +313,19 @@ class CRMSyncService:
             # Full sync - all accounts for provider
             result = await self.db.execute(
                 select(Account.provider_record_id)
-                .where(Account.provider == provider.value)
+                .where(
+                    and_(
+                        Account.tenant_id == tenant_id,
+                        Account.provider == provider.value,
+                    )
+                )
                 .limit(self.sync_batch_size)
             )
             return [row[0] for row in result.all() if row[0]]
 
     async def _update_sync_status(
         self,
+        tenant_id: str,
         provider: CRMProvider,
         status: str,
         error_message: str | None,
@@ -318,12 +338,18 @@ class CRMSyncService:
 
         # Get or create sync status record
         result = await self.db.execute(
-            select(AccountSyncStatus).where(AccountSyncStatus.provider == provider.value)
+            select(AccountSyncStatus).where(
+                and_(
+                    AccountSyncStatus.tenant_id == tenant_id,
+                    AccountSyncStatus.provider == provider.value,
+                )
+            )
         )
         sync_status = result.scalar_one_or_none()
 
         if not sync_status:
             sync_status = AccountSyncStatus(
+                tenant_id=tenant_id,
                 provider=provider.value,
                 status=status,
                 last_sync_at=now if status == "running" else None,
@@ -351,26 +377,52 @@ class CRMSyncService:
 
         await self.db.commit()
 
-    def _get_crm_config(self, provider: CRMProvider) -> dict[str, Any] | None:
-        """Get CRM configuration from environment variables."""
-        crm_type = os.getenv("CRM_TYPE", "").lower()
+    async def _get_crm_config(self, provider: CRMProvider, tenant_id: str) -> dict[str, Any] | None:
+        """Get CRM configuration from tenant integration table.
 
-        # Only return config if CRM type matches or is not set
-        if crm_type and crm_type != provider.value:
-            return None
+        Optional fallback to environment credentials can be enabled for local dev by
+        setting ALLOW_ENV_CRM_FALLBACK=true.
+        """
+        integration_service = IntegrationService(self.db)
+        integration: Integration | None = await integration_service.get_integration(
+            tenant_id, provider
+        )
 
-        return {
-            "crm_type": provider.value,
-            "api_key": os.getenv("CRM_API_KEY"),
-            "crm_api_key": os.getenv("CRM_API_KEY"),
-            "crm_api_secret": os.getenv("CRM_API_SECRET"),
-            "crm_instance_url": os.getenv("CRM_INSTANCE_URL"),
-        }
+        if integration and integration.enabled:
+            decrypted = await integration_service.decrypt_credentials(integration)
+            return {
+                "crm_type": provider.value,
+                "api_key": decrypted.get("api_key"),
+                "crm_api_key": decrypted.get("api_key"),
+                "crm_api_secret": decrypted.get("api_secret"),
+                "crm_instance_url": integration.instance_url or decrypted.get("instance_url"),
+            }
 
-    async def get_sync_status(self, provider: CRMProvider) -> AccountSyncStatus | None:
+        if os.getenv("ALLOW_ENV_CRM_FALLBACK", "").lower() == "true":
+            crm_type = os.getenv("CRM_TYPE", "").lower()
+            if crm_type and crm_type != provider.value:
+                return None
+            return {
+                "crm_type": provider.value,
+                "api_key": os.getenv("CRM_API_KEY"),
+                "crm_api_key": os.getenv("CRM_API_KEY"),
+                "crm_api_secret": os.getenv("CRM_API_SECRET"),
+                "crm_instance_url": os.getenv("CRM_INSTANCE_URL"),
+            }
+
+        return None
+
+    async def get_sync_status(
+        self, provider: CRMProvider, tenant_id: str = "default"
+    ) -> AccountSyncStatus | None:
         """Get current sync status for a provider."""
         result = await self.db.execute(
-            select(AccountSyncStatus).where(AccountSyncStatus.provider == provider.value)
+            select(AccountSyncStatus).where(
+                and_(
+                    AccountSyncStatus.tenant_id == tenant_id,
+                    AccountSyncStatus.provider == provider.value,
+                )
+            )
         )
         return result.scalar_one_or_none()
 
@@ -402,13 +454,14 @@ class CRMSyncService:
             ) from e
 
         # Get CRM config
-        config = self._get_crm_config(provider)
+        tenant_id = account.tenant_id or "default"
+        config = await self._get_crm_config(provider, tenant_id)
         if not config or not config.get("api_key"):
             raise ValueError(f"CRM not configured for provider {provider.value}")
 
         # Sync the account
         tool = GetProspectDataTool(config=config)
-        await self._sync_single_account(tool, provider, account.provider_record_id)
+        await self._sync_single_account(tool, tenant_id, provider, account.provider_record_id)
 
         # Refresh and return
         await self.db.refresh(account)

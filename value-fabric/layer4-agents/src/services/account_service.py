@@ -304,16 +304,23 @@ class AccountService:
     # Sync Operations
     # ========================================================================
 
-    async def get_sync_status(self, provider: CRMProvider) -> AccountSyncStatus | None:
+    async def get_sync_status(
+        self, provider: CRMProvider, tenant_id: str = "default"
+    ) -> AccountSyncStatus | None:
         """Get sync status for a provider."""
         result = await self.db.execute(
-            select(AccountSyncStatus).where(AccountSyncStatus.provider == provider.value)
+            select(AccountSyncStatus).where(
+                AccountSyncStatus.tenant_id == tenant_id,
+                AccountSyncStatus.provider == provider.value,
+            )
         )
         return result.scalar_one_or_none()
 
-    async def get_all_sync_status(self) -> list[AccountSyncStatus]:
+    async def get_all_sync_status(self, tenant_id: str = "default") -> list[AccountSyncStatus]:
         """Get sync status for all providers."""
-        result = await self.db.execute(select(AccountSyncStatus))
+        result = await self.db.execute(
+            select(AccountSyncStatus).where(AccountSyncStatus.tenant_id == tenant_id)
+        )
         return list(result.scalars().all())
 
     async def trigger_sync(
