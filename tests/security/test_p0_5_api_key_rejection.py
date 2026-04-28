@@ -5,7 +5,6 @@ authentication with clear logging.
 """
 
 import logging
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -49,6 +48,32 @@ class TestApiKeyRejection:
         with caplog.at_level(logging.ERROR):
             reject_api_key_with_error("super-secret-key-that-is-long")
 
-        # Should log truncated key
-        assert "super-sec" not in caplog.text
-        assert "super-se" in caplog.text or "'super" in caplog.text
+        # Should log truncated key (8 chars)
+        assert "super-se" in caplog.text
+        # Should NOT log beyond 8 chars
+        assert "super-secr" not in caplog.text
+
+    def test_reject_api_key_short_key_masked(self, caplog):
+        """Short keys below minimum should be masked with ***."""
+        with caplog.at_level(logging.ERROR):
+            reject_api_key_with_error("ab")  # 2 chars, below _KEY_PREVIEW_SHORT (4)
+
+        assert "'ab...'" not in caplog.text
+        assert "***" in caplog.text
+
+    def test_reject_api_key_non_string_input(self, caplog):
+        """Non-string input should be handled gracefully without raising."""
+        with caplog.at_level(logging.ERROR):
+            # Should not raise
+            result = reject_api_key_with_error(None)  # type: ignore
+            assert result is None
+
+        assert "***" in caplog.text  # Should show placeholder
+
+    def test_reject_api_key_unsupported_with_short_key(self, caplog):
+        """reject_api_key_unsupported should also mask short keys."""
+        with caplog.at_level(logging.WARNING):
+            reject_api_key_unsupported("xy")  # 2 chars
+
+        assert "'xy...'" not in caplog.text
+        assert "***" in caplog.text

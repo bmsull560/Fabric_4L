@@ -7,11 +7,14 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 ### STEP 2: PATCH — Security & Boundaries First
 
 #### P0-5: API Key Unverified in Layers 1, 2, 3, 6
-**Status:** ✅ COMPLETE
+**Status:** ✅ COMPLETE (REFINED)
 
 **Changes:**
 - Created `shared/identity/api_key_stub.py` with `reject_api_key_unsupported()` function
 - Wired `reject_api_key_unsupported` in L1, L2, L3, L6 `main.py` files
+- Added secure key preview constants (`_KEY_PREVIEW_LONG`, `_KEY_PREVIEW_SHORT`)
+- Implemented type validation guard against non-string inputs
+- Both functions consistently mask short keys (< 4 chars) with `***`
 - Layers without DB access now explicitly reject API key auth with clear logging
 
 **Files Modified:**
@@ -63,12 +66,14 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 ---
 
 #### P1-13: WebSocket JWT in Query Parameter
-**Status:** ✅ COMPLETE
+**Status:** ✅ COMPLETE (REFINED)
 
 **Changes:**
 - Reject JWT tokens passed in `?token=` query parameter with close code 1008
 - Accept JWT from `Sec-WebSocket-Protocol` header only
-- Updated documentation comments
+- Added `WebSocketAuthError` exception for structured error handling
+- Implemented fail-closed pattern: any auth error rejects connection
+- Strengthened JWT validation with type checking and detailed error messages
 
 **Files Modified:**
 - `value-fabric/layer4-agents/src/api/websocket/routes.py`

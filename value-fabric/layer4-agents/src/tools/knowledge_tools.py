@@ -66,46 +66,68 @@ class QueryGraphTool(BaseTool):
         re.IGNORECASE,
     )
 
-    def _inject_tenant_filter(self, query: str, tenant_id) -> str:
-        """Inject tenant_id filter into Cypher query.
+    def _inject_tenant_filter(self, query: str, tenant_id: UUID) -> tuple[str, str]:
+        """Inject tenant_id filter into Cypher query with proper alias detection.
         
         This method ensures that all Cypher queries are scoped to the
         authenticated tenant by adding a tenant_id filter.
         
         Strategy:
-        1. If query already has WHERE clause, append AND tenant_id condition
-        2. If query has no WHERE, add WHERE tenant_id condition after MATCH
-        3. Handle RETURN, WITH, ORDER BY, LIMIT clauses properly
+        1. Extract the actual node alias from the MATCH clause (not hardcoded 'n')
+        2. If query already has WHERE clause, append AND tenant_id condition
+        3. If query has no WHERE, add WHERE tenant_id condition after MATCH
+        
+        Args:
+            query: The Cypher query to modify
+            tenant_id: The tenant UUID to filter by
+            
+        Returns:
+            Tuple of (modified_query, node_alias) for parameter binding
+            
+        Raises:
+            ValueError: If node alias cannot be extracted from MATCH clause
         """
-        tenant_id_str = str(tenant_id)
+        # Extract node alias from MATCH clause - handles MATCH (alias:Label) or MATCH (alias)
+        # Pattern captures: MATCH (alias:... or MATCH (alias) or MATCH (alias {...
+        alias_match = re.search(
+            r'\bMATCH\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)',
+            query,
+            re.IGNORECASE
+        )
+        if not alias_match:
+            raise ValueError(
+                "Cannot inject tenant filter: unable to parse node alias from MATCH clause. "
+                "Query must follow pattern: MATCH (alias:Label) or MATCH (alias)"
+            )
+        
+        node_alias = alias_match.group(1)
+        tenant_filter = f"{node_alias}.tenant_id = $tenant_id"
         
         # Pattern to find WHERE clause (case insensitive)
-        where_pattern = re.compile(r'\bWHERE\b', re.IGNORECASE)
+        where_pattern = re.compile(r'\bWHERE\b(?!\s*\()', re.IGNORECASE)
         
         if where_pattern.search(query):
-            # Add AND condition to existing WHERE
-            # Find the position after WHERE and before any ORDER BY, RETURN, etc.
-            # This is a simplified approach - for production, consider using a Cypher parser
+            # Add AND condition to existing WHERE (but not inside subqueries)
             modified_query = re.sub(
-                r'(\bWHERE\b)',
-                r'\1 n.tenant_id = $tenant_id AND ',
+                r'(\bWHERE\b)(?!\s*\()',
+                rf'\1 {tenant_filter} AND ',
                 query,
                 count=1,
                 flags=re.IGNORECASE
             )
         else:
-            # Add WHERE clause after first MATCH
-            # Find MATCH pattern and add WHERE after it
+            # Add WHERE clause after first MATCH pattern
+            # Pattern handles nested parentheses in node properties: MATCH (n {prop: "(val)"})
             modified_query = re.sub(
-                r'(\bMATCH\s+[^\s]+)',
-                r'\1 WHERE n.tenant_id = $tenant_id',
+                rf'(\bMATCH\s*\(\s*{re.escape(node_alias)}(?:[^()]*|\([^()]*\))*\))',
+                rf'\1 WHERE {tenant_filter}',
                 query,
                 count=1,
                 flags=re.IGNORECASE
             )
         
-        logger.debug(f"Injected tenant filter: original={query[:50]}..., modified={modified_query[:50]}...")
-        return modified_query
+        logger.debug(f"Injected tenant filter: alias={node_alias}, original={query[:50]}..., modified={modified_query[:50]}...")
+        return modified_query, node_alias
     
     def _ensure_tenant_parameters(self, parameters: dict | None, tenant_id) -> dict:
         """Ensure tenant_id is set in parameters, overriding any spoof attempts.
@@ -168,11 +190,21 @@ class QueryGraphTool(BaseTool):
                 error=validation_error
             )
 
-        # P0 FIX: Inject tenant filter into Cypher query
-        scoped_query = self._inject_tenant_filter(
-            input_data.cypher_query, 
-            tenant_ctx.tenant_id
-        )
+        # P0 FIX: Inject tenant filter into Cypher query with proper alias detection
+        try:
+            scoped_query, node_alias = self._inject_tenant_filter(
+                input_data.cypher_query, 
+                tenant_ctx.tenant_id
+            )
+        except ValueError as e:
+            # Query parsing failed, return structured error
+            return QueryGraphOutput(
+                results=[],
+                columns=[],
+                row_count=0,
+                execution_time_ms=0,
+                error=f"Invalid query format: {e}"
+            )
         
         # Log with tenant context for audit trail
         logger.info(

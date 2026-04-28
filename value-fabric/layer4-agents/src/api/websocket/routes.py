@@ -22,30 +22,52 @@ logger = logging.getLogger(__name__)
 websocket_router = APIRouter()
 
 
-def _extract_tenant_from_token(token: str | None) -> tuple[str | None, str | None]:
+class WebSocketAuthError(Exception):
+    """Raised when WebSocket authentication fails."""
+    pass
+
+
+def _extract_tenant_from_token(token: str | None) -> tuple[str, str]:
     """Extract tenant_id and user_id from JWT token (Task 2.2).
 
     Args:
-        token: JWT bearer token
+        token: JWT bearer token from Sec-WebSocket-Protocol header
 
     Returns:
-        Tuple of (tenant_id, user_id) or (None, None) if invalid
+        Tuple of (tenant_id, user_id)
+
+    Raises:
+        WebSocketAuthError: If token is missing, invalid, or expired
     """
-    if not token or not JWT_AVAILABLE:
-        return None, None
+    if token is None or not token.strip():
+        raise WebSocketAuthError("Authentication required: token missing from Sec-WebSocket-Protocol header")
+    
+    if not JWT_AVAILABLE:
+        raise WebSocketAuthError("JWT validation unavailable")
 
     jwt_secret = os.environ.get("JWT_SECRET")
+    if not jwt_secret:
+        logger.error("JWT_SECRET environment variable not set")
+        raise WebSocketAuthError("Server configuration error: JWT validation unavailable")
 
     try:
         payload = decode_jwt(token, jwt_secret)
-        if payload:
-            tenant_id = payload.get("tenant_id")
-            user_id = payload.get("sub")
-            return tenant_id, user_id
+        if not payload:
+            raise WebSocketAuthError("Invalid token: empty payload")
+        
+        tenant_id = payload.get("tenant_id")
+        user_id = payload.get("sub")
+        
+        if not tenant_id or not isinstance(tenant_id, str):
+            raise WebSocketAuthError("Invalid token: missing or invalid tenant_id claim")
+        if not user_id or not isinstance(user_id, str):
+            raise WebSocketAuthError("Invalid token: missing or invalid sub claim")
+            
+        return tenant_id, user_id
+        
     except Exception as e:
-        logger.warning(f"Failed to decode JWT for WebSocket: {e}")
-
-    return None, None
+        logger.error(f"JWT decode failed for WebSocket: {e}")
+        raise WebSocketAuthError(f"Token validation failed: {type(e).__name__}")
 
 
 @websocket_router.websocket("/ws/workflows/{workflow_id}")
@@ -119,11 +141,12 @@ async def workflow_websocket(
     ws_manager = get_ws_manager()
 
     # Task 2.2: Extract tenant context from JWT token (now from header)
-    tenant_id, user_id = _extract_tenant_from_token(ws_token)
-
-    # P0 SECURITY FIX: Reject connection if authentication failed
-    if not tenant_id:
-        await websocket.close(code=1008, reason="Authentication required: valid JWT token required")
+    # P0 SECURITY FIX: Fail closed - any auth error rejects connection
+    try:
+        tenant_id, user_id = _extract_tenant_from_token(ws_token)
+    except WebSocketAuthError as e:
+        logger.warning(f"WebSocket authentication failed: {e}")
+        await websocket.close(code=1008, reason=f"Authentication failed: {e}")
         return
 
     try:

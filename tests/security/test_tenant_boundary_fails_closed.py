@@ -20,6 +20,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "value-fabric"))
 
 import pytest
 
+# ---------------------------------------------------------------------------
+# Test constants — extracted to avoid magic strings and aid maintainability
+# ---------------------------------------------------------------------------
+TENANT_A_UUID = "12345678-1234-1234-1234-123456789abc"
+TENANT_A_STR = f"aaaaaaaa-aaaa-aaaa-aaaa-{TENANT_A_UUID.split('-')[-1]}"
+TENANT_B_STR = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+USER_TEST = "test-user"
+
 # Import the boundary module directly
 from boundaries.tenant_boundary import (
     TenantBoundaryError,
@@ -181,7 +189,7 @@ class TestToolBoundaryIntegration:
         token = set_request_context(ctx)
         try:
             result = mock_query_graph_tool_execution()
-            assert result["tenant_id"] == "12345678-1234-1234-1234-123456789abc"
+            assert result["tenant_id"] == TENANT_A_UUID
         finally:
             from identity.context import _current_context
             _current_context.reset(token)

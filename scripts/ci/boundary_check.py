@@ -10,6 +10,7 @@ Exit codes:
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
 from pathlib import Path
@@ -49,6 +50,24 @@ def is_allowed_path(filepath: Path) -> bool:
     return any(allowed in path_str for allowed in ALLOWED_PATHS)
 
 
+def has_boundary_import(content: str) -> bool:
+    """Check if file uses boundary imports via AST parsing.
+    
+    Avoids false positives from comments or string literals.
+    """
+    try:
+        tree = ast.parse(content)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                if node.module and ('shared.boundaries' in node.module or node.module == 'shared.boundaries'):
+                    for alias in node.names:
+                        if alias.name in ('require_tenant_from_request', 'require_tenant_context'):
+                            return True
+    except SyntaxError:
+        pass
+    return False
+
+
 def find_violations_in_file(filepath: Path) -> list[dict]:
     """Find all violations in a file."""
     if is_allowed_path(filepath):
@@ -59,11 +78,14 @@ def find_violations_in_file(filepath: Path) -> list[dict]:
         content = filepath.read_text(encoding='utf-8')
         lines = content.split('\n')
         
+        # Pre-compute if file already uses boundary imports (AST-based, not substring)
+        file_has_boundary = has_boundary_import(content)
+        
         for line_num, line in enumerate(lines, 1):
             for pattern in VIOLATION_PATTERNS:
                 if re.search(pattern, line, re.IGNORECASE):
-                    # Check if it's already using the boundary module
-                    if 'require_tenant_from_request' in line or 'shared.boundaries' in line:
+                    # Skip if file already uses boundary imports properly
+                    if file_has_boundary:
                         continue
                     violations.append({
                         'line': line_num,
@@ -71,7 +93,7 @@ def find_violations_in_file(filepath: Path) -> list[dict]:
                         'pattern': pattern,
                     })
                     break  # One violation per line is enough
-    except Exception as e:
+    except (IOError, OSError, UnicodeDecodeError) as e:
         print(f"Warning: Could not read {filepath}: {e}")
     
     return violations

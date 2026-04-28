@@ -16,15 +16,29 @@ from uuid import UUID
 
 import pytest
 
-# Add paths for imports
+# Path setup - only executed at collection time, cleaned up after
 _repo_root = Path(__file__).resolve().parents[2]
 _layer4_src = _repo_root / "value-fabric" / "layer4-agents" / "src"
 _shared_path = str(_repo_root / "value-fabric")
 _layer4_path = str(_layer4_src)
-if _shared_path not in sys.path:
-    sys.path.insert(0, _shared_path)
-if _layer4_path not in sys.path:
-    sys.path.insert(0, _layer4_path)
+
+# Use pytest fixture for scoped path manipulation instead of module-level mutation
+@pytest.fixture(scope="module", autouse=True)
+def setup_import_paths():
+    """Add required paths for imports, cleanup after module tests complete."""
+    paths_added = []
+    for path in [_shared_path, _layer4_path]:
+        if path not in sys.path:
+            sys.path.insert(0, path)
+            paths_added.append(path)
+    yield
+    # Cleanup: remove only paths we added (use discard pattern for safety)
+    for path in paths_added:
+        try:
+            sys.path.remove(path)
+        except ValueError:
+            pass  # Path already removed by another test or cleanup
+
 
 # Lazy import fixtures to avoid import errors at collection time
 def _get_knowledge_tools():

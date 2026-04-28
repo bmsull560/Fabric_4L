@@ -17,7 +17,7 @@ import ast
 import re
 import sys
 from pathlib import Path
-from typing import Iterator, Set
+from typing import Iterator
 
 # Patterns that indicate direct header access (case-insensitive header names)
 # Only detect READING headers (incoming requests), NOT setting them
@@ -130,7 +130,7 @@ def transform_content(content: str, filepath: Path) -> tuple[str, int]:
     ]
     
     for pattern, replacement in replacements:
-        transformed = re.sub(pattern, replacement, transformed, flags=re.IGNORECASE)
+        transformed = re.sub(pattern, replacement, transformed)
     
     # Add import if needed
     if needs_import and find_violations(content):
@@ -209,7 +209,7 @@ def main():
                         filepath.write_text(transformed, encoding='utf-8')
                         print(f"  ✓ Fixed {count} violation(s) in {filepath}")
         
-        except Exception as e:
+        except (IOError, OSError, UnicodeDecodeError) as e:
             print(f"  ✗ Error processing {filepath}: {e}")
     
     print("-" * 60)
