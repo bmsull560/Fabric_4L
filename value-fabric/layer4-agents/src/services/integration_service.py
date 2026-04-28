@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import uuid
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
@@ -25,6 +26,7 @@ SALESFORCE_API_VERSION = "v58.0"
 HUBSPOT_API_VERSION = "v3"
 
 logger = logging.getLogger(__name__)
+_SYNC_JOBS: dict[str, asyncio.Task[None]] = {}
 
 # URL validation pattern for instance URLs
 _INSTANCE_URL_PATTERN = re.compile(
@@ -467,36 +469,77 @@ class IntegrationService:
         if not integration.enabled:
             raise IntegrationValidationError("Integration is disabled")
 
-        # Update status
-        integration.sync_status = IntegrationStatus.RUNNING
+        # Generate sync job ID and enqueue background task
+        sync_id = str(uuid.uuid4())
+        queued_at = datetime.now(UTC).isoformat()
+
+        # Mark as pending until the worker starts
+        integration.sync_status = IntegrationStatus.PENDING
         await self.db.commit()
 
-        # Generate sync job ID
-        sync_id = str(uuid.uuid4())
+        async def _run_sync_job() -> None:
+            from ..database import db_session
+            from .crm_sync_service import CRMSyncService
 
-        # NOTE: Background sync job queuing
-        # When Celery is configured in the project, replace the following
-        # block with actual task queuing:
-        #   from ..tasks.crm_sync import sync_crm_accounts
-        #   sync_crm_accounts.delay(tenant_id, provider.value, sync_id)
-        #
-        # For now, we return job metadata that can be used to track
-        # sync status via the integration status endpoint.
+            async with db_session() as bg_db:
+                bg_integration_service = IntegrationService(bg_db)
+                bg_integration = await bg_integration_service.get_integration(tenant_id, provider)
+                if not bg_integration:
+                    return
+
+                bg_integration.sync_status = IntegrationStatus.RUNNING
+                await bg_db.commit()
+
+                try:
+                    sync_service = CRMSyncService(bg_db)
+                    stats = await sync_service.sync_provider(provider, tenant_id=tenant_id)
+
+                    bg_integration.records_synced = stats["synced"] + stats["updated"]
+                    bg_integration.records_updated = stats["updated"]
+                    bg_integration.records_failed = stats["failed"]
+                    bg_integration.last_sync_at = datetime.now(UTC)
+
+                    if stats["failed"] > 0:
+                        bg_integration.sync_status = IntegrationStatus.FAILED
+                        bg_integration.last_error_message = "; ".join(stats["errors"][:3]) or "Sync failed"
+                    else:
+                        bg_integration.sync_status = IntegrationStatus.IDLE
+                        bg_integration.last_successful_sync_at = datetime.now(UTC)
+                        bg_integration.last_error_message = None
+                    await bg_db.commit()
+                except Exception as exc:
+                    logger.exception(
+                        "Background CRM sync job failed: tenant=%s provider=%s sync_id=%s",
+                        tenant_id,
+                        provider.value,
+                        sync_id,
+                    )
+                    bg_integration.sync_status = IntegrationStatus.FAILED
+                    bg_integration.last_sync_at = datetime.now(UTC)
+                    bg_integration.last_error_message = str(exc)[:1000]
+                    await bg_db.commit()
+
+        try:
+            _SYNC_JOBS[sync_id] = asyncio.create_task(_run_sync_job())
+        except Exception as exc:
+            integration.sync_status = IntegrationStatus.FAILED
+            integration.last_error_message = f"Failed to enqueue sync: {exc}"
+            await self.db.commit()
+            raise IntegrationValidationError(f"Unable to queue sync: {exc}") from exc
+
         logger.info(
-            "Sync triggered for tenant=%s provider=%s sync_id=%s by user=%s "
-            "(background job queuing pending Celery setup)",
+            "Sync queued for tenant=%s provider=%s sync_id=%s by user=%s",
             tenant_id,
-            provider,
+            provider.value,
             sync_id,
             user_id,
         )
 
         return {
             "sync_id": sync_id,
-            "status": "running",
+            "status": "queued",
             "provider": provider.value,
-            "queued_at": datetime.now(UTC).isoformat(),
-            "note": "Background job queuing pending Celery setup",
+            "queued_at": queued_at,
         }
 
     def _validate_config(

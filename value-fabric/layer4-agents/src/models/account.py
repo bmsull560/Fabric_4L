@@ -301,7 +301,7 @@ class Account(Base):
 
     __table_args__ = (
         # Unique constraint: one record per provider+record_id combination
-        UniqueConstraint("provider", "provider_record_id", name="uix_account_provider_record"),
+        UniqueConstraint("tenant_id", "provider", "provider_record_id", name="uix_account_tenant_provider_record"),
         # Indexes for common query patterns
         Index("ix_accounts_provider", "provider"),
         Index("ix_accounts_sync_status", "sync_status"),
@@ -337,8 +337,13 @@ class AccountSyncStatus(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
+    tenant_id: Mapped[str] = mapped_column(
+        String(100), nullable=False, default="default",
+        comment="Tenant identifier for sync status isolation",
+    )
+
     provider: Mapped[str] = mapped_column(
-        String(20), nullable=False, unique=True, comment="CRM provider: salesforce or hubspot"
+        String(20), nullable=False, comment="CRM provider: salesforce or hubspot"
     )
 
     last_sync_at: Mapped[datetime | None] = mapped_column(
@@ -380,7 +385,10 @@ class AccountSyncStatus(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
 
-    __table_args__ = (Index("ix_sync_status_provider", "provider", "status"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "provider", name="uix_sync_status_tenant_provider"),
+        Index("ix_sync_status_tenant_provider", "tenant_id", "provider", "status"),
+    )
 
     def __repr__(self) -> str:
         return f"<AccountSyncStatus(provider={self.provider}, status={self.status})>"
