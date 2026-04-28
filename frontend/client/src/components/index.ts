@@ -19,6 +19,7 @@
 // ── Layout / Shell Components ─────────────────────────────────────────────────
 
 export { default as AppShell } from "./AppShell";
+export { default as Layout } from "./layout/Layout";
 export { PageShell } from "./layout/PageShell";
 
 // ── Navigation ─────────────────────────────────────────────────────────────────
