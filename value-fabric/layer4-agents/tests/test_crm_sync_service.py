@@ -153,7 +153,7 @@ class TestCRMSyncService:
         mock_db.execute.return_value = mock_result
         
         # Mock the CRM config
-        with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
+        with patch.object(sync_service, '_get_crm_config', AsyncMock(return_value=mock_crm_config)):
             with patch(
                 'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
@@ -191,7 +191,7 @@ class TestCRMSyncService:
         mock_db.execute.return_value = mock_result
         
         # Mock the CRM config
-        with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
+        with patch.object(sync_service, '_get_crm_config', AsyncMock(return_value=mock_crm_config)):
             with patch(
                 'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
@@ -215,7 +215,7 @@ class TestCRMSyncService:
         sync_service = CRMSyncService(mock_db, batch_size=10)
         
         # Mock no CRM config
-        with patch.object(sync_service, '_get_crm_config', return_value=None):
+        with patch.object(sync_service, '_get_crm_config', AsyncMock(return_value=None)):
             # Act
             stats = await sync_service.sync_provider(
                 CRMProvider.SALESFORCE,
@@ -243,7 +243,7 @@ class TestCRMSyncService:
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
         
-        with patch.object(sync_service, '_get_crm_config', return_value=hubspot_config):
+        with patch.object(sync_service, '_get_crm_config', AsyncMock(return_value=hubspot_config)):
             with patch(
                 'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
@@ -276,7 +276,7 @@ class TestCRMSyncService:
             async def execute(self, input_data):
                 raise Exception("API Error: Rate limit exceeded")
         
-        with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
+        with patch.object(sync_service, '_get_crm_config', AsyncMock(return_value=mock_crm_config)):
             with patch(
                 'src.services.crm_sync_service.GetProspectDataTool',
                 FailingTool
@@ -310,7 +310,7 @@ class TestCRMSyncService:
         mock_result.scalar_one_or_none.return_value = existing_account
         mock_db.execute.return_value = mock_result
         
-        with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
+        with patch.object(sync_service, '_get_crm_config', AsyncMock(return_value=mock_crm_config)):
             with patch(
                 'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool
@@ -351,8 +351,9 @@ class TestCRMSyncService:
         mock_db.execute.return_value = mock_result
         
         # Act
-        with patch.object(sync_service, '_get_accounts_to_sync', return_value=["001STALE1", "001STALE2"]):
+        with patch.object(sync_service, '_get_accounts_to_sync', AsyncMock(return_value=["001STALE1", "001STALE2"])):
             account_ids = await sync_service._get_accounts_to_sync(
+                "default",
                 CRMProvider.SALESFORCE,
                 incremental=True
             )
@@ -361,7 +362,8 @@ class TestCRMSyncService:
             assert isinstance(account_ids, list)
             assert len(account_ids) == 2
     
-    def test_get_crm_config_from_env(self, mock_db):
+    @pytest.mark.asyncio
+    async def test_get_crm_config_from_env_fallback(self, mock_db):
         """Test loading CRM config from environment variables."""
         # Arrange
         sync_service = CRMSyncService(mock_db, batch_size=10)
@@ -371,18 +373,20 @@ class TestCRMSyncService:
             "CRM_API_KEY": "test_key",
             "CRM_API_SECRET": "test_secret",
             "CRM_INSTANCE_URL": "https://test.salesforce.com",
+            "ALLOW_ENV_CRM_FALLBACK": "true",
         }
         
         with patch.dict(os.environ, env_vars, clear=True):
             # Act
-            config = sync_service._get_crm_config(CRMProvider.SALESFORCE)
+            config = await sync_service._get_crm_config(CRMProvider.SALESFORCE, "default")
             
             # Assert
             assert config is not None
             assert config["crm_type"] == "salesforce"
             assert config["crm_api_key"] == "test_key"
     
-    def test_get_crm_config_wrong_provider(self, mock_db):
+    @pytest.mark.asyncio
+    async def test_get_crm_config_wrong_provider(self, mock_db):
         """Test that config returns None when provider doesn't match CRM_TYPE."""
         # Arrange
         sync_service = CRMSyncService(mock_db, batch_size=10)
@@ -390,11 +394,12 @@ class TestCRMSyncService:
         env_vars = {
             "CRM_TYPE": "hubspot",  # Different from requested provider
             "CRM_API_KEY": "test_key",
+            "ALLOW_ENV_CRM_FALLBACK": "true",
         }
         
         with patch.dict(os.environ, env_vars, clear=True):
             # Act
-            config = sync_service._get_crm_config(CRMProvider.SALESFORCE)
+            config = await sync_service._get_crm_config(CRMProvider.SALESFORCE, "default")
             
             # Assert
             assert config is None
@@ -569,7 +574,7 @@ class TestSyncFlow:
         
         mock_db.execute.side_effect = side_effect
         
-        with patch.object(sync_service, '_get_crm_config', return_value=mock_crm_config):
+        with patch.object(sync_service, '_get_crm_config', AsyncMock(return_value=mock_crm_config)):
             with patch(
                 'src.services.crm_sync_service.GetProspectDataTool',
                 MockProspectDataTool

@@ -103,6 +103,7 @@ class SyncTriggerResponse(BaseModel):
     sync_id: str
     status: str
     provider: str
+    queued_at: str | None = None
 
 
 # -----------------------------------------------------------------------------
