@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 
@@ -23,21 +25,25 @@ def load_traces() -> list[dict[str, Any]]:
     return data["traces"]
 
 
+@pytest.fixture(scope="module")
+def traces() -> list[dict[str, Any]]:
+    """Load fixture traces once for all semantic-search contract checks."""
+    return load_traces()
+
+
 class TestSemanticSearchContract:
     """Validate that semantic_search output conforms to its tool manifest."""
 
-    def test_fixture_has_required_fields(self) -> None:
+    def test_fixture_has_required_fields(self, traces: list[dict[str, Any]]) -> None:
         """All fixture traces have required input fields."""
-        traces = load_traces()
         assert traces, "Fixture must have at least one trace"
         for trace in traces:
             assert "id" in trace
             assert "input" in trace
             assert "query" in trace["input"], f"Trace {trace['id']} missing 'query' in input"
 
-    def test_similarity_threshold_constraint(self) -> None:
+    def test_similarity_threshold_constraint(self, traces: list[dict[str, Any]]) -> None:
         """similarity_threshold must be between 0.0 and 1.0 in all fixtures."""
-        traces = load_traces()
         for trace in traces:
             threshold = trace["input"].get("similarity_threshold")
             if threshold is not None:
@@ -45,9 +51,8 @@ class TestSemanticSearchContract:
                     f"Trace {trace['id']}: similarity_threshold {threshold} out of range"
                 )
 
-    def test_top_k_constraint(self) -> None:
+    def test_top_k_constraint(self, traces: list[dict[str, Any]]) -> None:
         """top_k must be between 1 and 50 in all fixtures."""
-        traces = load_traces()
         for trace in traces:
             top_k = trace["input"].get("top_k")
             if top_k is not None:
@@ -55,10 +60,9 @@ class TestSemanticSearchContract:
                     f"Trace {trace['id']}: top_k {top_k} out of range"
                 )
 
-    def test_entity_types_are_valid(self) -> None:
+    def test_entity_types_are_valid(self, traces: list[dict[str, Any]]) -> None:
         """entity_types must only contain valid ontology types."""
         valid_types = {"Capability", "UseCase", "Persona", "ValueDriver"}
-        traces = load_traces()
         for trace in traces:
             types = trace["input"].get("entity_types", [])
             invalid = set(types) - valid_types

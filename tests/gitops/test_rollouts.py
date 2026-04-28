@@ -14,6 +14,15 @@ import pytest
 import yaml
 
 
+def _load_yaml_documents(path: str) -> list[dict]:
+    """Load multi-document YAML or skip test when file is unavailable."""
+    try:
+        with open(path) as f:
+            return list(yaml.safe_load_all(f))
+    except FileNotFoundError:
+        pytest.skip(f"File not found: {path}")
+
+
 @pytest.fixture(scope="session")
 def require_gitops_config():
     """Ensure GitOps config exists - hard fail in CI."""
@@ -41,77 +50,52 @@ class TestArgoRollouts:
 
         for file in rollout_files:
             try:
-                with open(file) as f:
-                    docs = list(yaml.safe_load_all(f))
-
-                # First doc should be a Rollout
+                docs = _load_yaml_documents(file)
                 rollout = docs[0]
-                assert rollout["apiVersion"] == "argoproj.io/v1alpha1"
-                assert rollout["kind"] == "Rollout"
-                assert "spec" in rollout
-                assert "strategy" in rollout["spec"]
-                assert "canary" in rollout["spec"]["strategy"]
-            except FileNotFoundError as e:
+            except pytest.skip.Exception as e:
                 if os.getenv("CI") == "true":
                     raise FileNotFoundError(f"GitOps config required: {file}") from e
-                pytest.skip(f"File not found: {file}")
+                raise
+
+            # First doc should be a Rollout
+            assert rollout["apiVersion"] == "argoproj.io/v1alpha1"
+            assert rollout["kind"] == "Rollout"
+            assert "spec" in rollout
+            assert "strategy" in rollout["spec"]
+            assert "canary" in rollout["spec"]["strategy"]
 
     def test_canary_steps_defined(self, require_gitops_config):
         """Canary rollout has proper steps defined."""
-        try:
-            with open("k8s/gitops/rollouts/layer4-agents-rollout.yaml") as f:
-                docs = list(yaml.safe_load_all(f))
-                rollout = docs[0]
+        rollout = _load_yaml_documents("k8s/gitops/rollouts/layer4-agents-rollout.yaml")[0]
+        steps = rollout["spec"]["strategy"]["canary"]["steps"]
+        assert len(steps) > 0
 
-            steps = rollout["spec"]["strategy"]["canary"]["steps"]
-            assert len(steps) > 0
-
-            # Should have weight steps
-            weight_steps = [s for s in steps if "setWeight" in s]
-            assert len(weight_steps) >= 2  # At least 2 weight changes
-
-            # Should have pause steps
-            pause_steps = [s for s in steps if "pause" in s]
-            assert len(pause_steps) >= 1
-
-            # Should have analysis steps
-            analysis_steps = [s for s in steps if "analysis" in s]
-            assert len(analysis_steps) >= 1
-        except FileNotFoundError:
-            pytest.skip("Rollout file not found")
+        # Should have weight, pause, and analysis steps
+        assert len([s for s in steps if "setWeight" in s]) >= 2
+        assert len([s for s in steps if "pause" in s]) >= 1
+        assert len([s for s in steps if "analysis" in s]) >= 1
 
     def test_auto_rollback_enabled(self):
         """Auto-rollback is enabled for safety."""
-        try:
-            with open("k8s/gitops/rollouts/layer4-agents-rollout.yaml") as f:
-                docs = list(yaml.safe_load_all(f))
-                rollout = docs[0]
-
-            canary = rollout["spec"]["strategy"]["canary"]
-            assert canary.get("autoRollbackEnabled") is True
-        except FileNotFoundError:
-            pytest.skip("Rollout file not found")
+        rollout = _load_yaml_documents("k8s/gitops/rollouts/layer4-agents-rollout.yaml")[0]
+        canary = rollout["spec"]["strategy"]["canary"]
+        assert canary.get("autoRollbackEnabled") is True
 
     def test_analysis_templates_defined(self):
         """Analysis templates are properly configured."""
-        try:
-            with open("k8s/gitops/rollouts/layer4-agents-rollout.yaml") as f:
-                docs = list(yaml.safe_load_all(f))
+        docs = _load_yaml_documents("k8s/gitops/rollouts/layer4-agents-rollout.yaml")
 
-            # Find AnalysisTemplates
-            templates = [d for d in docs if d.get("kind") == "AnalysisTemplate"]
-            assert len(templates) >= 2  # success-rate, latency, error-rate
+        templates = [d for d in docs if d.get("kind") == "AnalysisTemplate"]
+        assert len(templates) >= 2  # success-rate, latency, error-rate
 
-            for template in templates:
-                assert "spec" in template
-                assert "metrics" in template["spec"]
+        for template in templates:
+            assert "spec" in template
+            assert "metrics" in template["spec"]
 
-                for metric in template["spec"]["metrics"]:
-                    assert "name" in metric
-                    assert "interval" in metric
-                    assert "provider" in metric
-        except FileNotFoundError:
-            pytest.skip("Rollout file not found")
+            for metric in template["spec"]["metrics"]:
+                assert "name" in metric
+                assert "interval" in metric
+                assert "provider" in metric
 
 
 class TestHealthGates:

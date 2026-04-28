@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 
@@ -22,11 +24,16 @@ def load_traces() -> list[dict[str, Any]]:
     return data["traces"]
 
 
+@pytest.fixture(scope="module")
+def traces() -> list[dict[str, Any]]:
+    """Load fixture traces once per module for faster, deterministic checks."""
+    return load_traces()
+
+
 class TestEvaluateFormulaContract:
     """Validate evaluate_formula fixture structure and scenario semantics."""
 
-    def test_fixture_has_required_fields(self) -> None:
-        traces = load_traces()
+    def test_fixture_has_required_fields(self, traces: list[dict[str, Any]]) -> None:
         assert traces, "Fixture must have at least one trace"
         for trace in traces:
             assert "id" in trace
@@ -38,28 +45,25 @@ class TestEvaluateFormulaContract:
                 f"Trace {trace['id']} missing 'variables'"
             )
 
-    def test_scenario_values_are_valid(self) -> None:
+    def test_scenario_values_are_valid(self, traces: list[dict[str, Any]]) -> None:
         """scenario must be BASE, BEST, or WORST."""
         valid = {"BASE", "BEST", "WORST"}
-        traces = load_traces()
         for trace in traces:
             scenario = trace["input"].get("scenario", "BASE")
             assert scenario in valid, (
                 f"Trace {trace['id']}: invalid scenario '{scenario}'"
             )
 
-    def test_variables_are_numeric(self) -> None:
+    def test_variables_are_numeric(self, traces: list[dict[str, Any]]) -> None:
         """All variable values must be numeric."""
-        traces = load_traces()
         for trace in traces:
             for var_name, var_value in trace["input"]["variables"].items():
                 assert isinstance(var_value, (int, float)), (
                     f"Trace {trace['id']}: variable '{var_name}' must be numeric, got {type(var_value)}"
                 )
 
-    def test_base_scenario_assertion_is_exact(self) -> None:
+    def test_base_scenario_assertion_is_exact(self, traces: list[dict[str, Any]]) -> None:
         """BASE scenario fixtures with exact 'value' assertion must be consistent."""
-        traces = load_traces()
         base_traces = [t for t in traces if t["input"].get("scenario", "BASE") == "BASE"]
         assert base_traces, "At least one BASE scenario trace is required"
         for trace in base_traces:
@@ -68,12 +72,11 @@ class TestEvaluateFormulaContract:
                     f"Trace {trace['id']}: assertion 'value' must be numeric"
                 )
 
-    def test_scenario_ordering_invariants(self) -> None:
+    def test_scenario_ordering_invariants(self, traces: list[dict[str, Any]]) -> None:
         """
         For the same formula and variables, BEST > BASE (value_gt) and WORST < BASE (value_lt).
         This validates the invariant in the fixture definitions.
         """
-        traces = load_traces()
         # Find BASE trace for each formula_id
         base_by_formula: dict[str, dict[str, Any]] = {}
         for t in traces:
