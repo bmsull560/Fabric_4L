@@ -149,14 +149,22 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 
 ---
 
-## STEP 3: TESTS — Regression Tests Created
+## STEP 3: TESTS — Regression Tests Created (REFINED)
 
 **Created:**
 - `tests/security/test_p1_14_security_middleware.py` - Validates skip list changes
 - `tests/security/test_p0_5_api_key_rejection.py` - Tests API key stub functions
+  - Added edge case tests for non-string inputs
+  - Added tests for short key masking (< 4 chars)
+  - Strengthened assertions for key preview length
 - `tests/security/test_p1_20_xxe_prevention.py` - Tests XXE prevention
 - `tests/security/test_p1_13_websocket_auth.py` - Tests WebSocket auth fix
 - `tests/security/test_p1_12_prompt_delimiters.py` - Tests prompt delimiter usage
+
+**Refinements:**
+- Removed unused imports (MagicMock, patch)
+- Added comprehensive edge case coverage
+- Tests now verify both positive and negative assertions
 
 ---
 
@@ -175,18 +183,26 @@ This document summarizes all security fixes implemented from the Fabric 4L Secur
 
 | Finding | Severity | Status | Files Modified |
 |---------|----------|--------|----------------|
-| P0-5 | P0 | ✅ Complete | 5 files |
+| P0-5 | P0 | ✅ Complete (Refined) | 5 files |
 | P1-14 | P1 | ✅ Complete | 4 files |
 | P1-19 | P1 | ✅ Verified | 0 files (already fixed) |
 | P1-20 | P1 | ✅ Complete | 1 file |
-| P1-13 | P1 | ✅ Complete | 1 file |
+| P1-13 | P1 | ✅ Complete (Refined) | 1 file |
 | P1-12 | P1 | ✅ Complete | 3 files |
 | P1-18 | P1 | ✅ Complete | 2 files |
 | P1-21 | P1 | ✅ Complete | 1 file |
 | P1-22 | P1 | ✅ Complete | 3 files |
 | P1-23 | P1 | ✅ Complete | 1 file |
 
-**Total:** 10 P0/P1 findings addressed, 21 files modified, 5 regression tests created, 1 CI gate added.
+**Total:** 10 P0/P1 findings addressed, 21 files modified, 5 regression tests created (+3 edge case tests), 1 CI gate added.
+
+### REFINEMENT SUMMARY
+
+**Improvements Made:**
+- **P0-5**: Added type validation, secure key preview constants, consistent masking
+- **P1-13**: Added `WebSocketAuthError` exception, fail-closed pattern, stronger validation
+- **Tests**: Removed unused imports, added edge case coverage (non-string inputs, short keys)
+- **Code Quality**: Consistent docstrings, proper type hints, defense-in-depth guards
 
 ---
 

@@ -11,7 +11,6 @@
  *   - Collapsible sidebar (260px expanded / 56px collapsed) with smooth transition
  *   - Header with breadcrumb navigation showing route hierarchy
  *   - Search bar in sidebar with ⌘K shortcut hint
- *   - Co-Pilot card with green pulse indicator
  *   - User profile section at bottom with expandable dropdown
  *   - Dark mode toggle in header
  *   - Notifications bell with indicator dot
@@ -23,7 +22,7 @@ import { Link, useLocation } from "wouter";
 import {
   Search, Bell, ChevronRight, ChevronDown,
   Building2, Radar, GitBranch, Package, FileOutput, Shield, Settings,
-  Sparkles, Command, Sun, Moon, Frame, LifeBuoy, Send,
+  Command, Sun, Moon, Frame, LifeBuoy, Send,
   PanelLeft, Eye, Lock, Wrench, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -633,22 +632,6 @@ const Layout = memo(function Layout({
               ))}
             </div>
           </div>
-
-          {/* Co-Pilot Card */}
-          {!collapsed && (
-            <div className="bg-sidebar-accent/60 rounded-lg p-3 border border-sidebar-border">
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="w-4 h-4 rounded-full bg-sidebar-primary/20 flex items-center justify-center">
-                  <Sparkles className="w-2.5 h-2.5 text-sidebar-primary" />
-                </div>
-                <span className="text-[10px] font-semibold text-sidebar-foreground/40 uppercase tracking-wider">Co-Pilot</span>
-                <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              </div>
-              <p className="text-[11px] text-sidebar-foreground/50 leading-relaxed">
-                AI-powered value engineering assistant ready to help with discovery, modeling, and narrative generation.
-              </p>
-            </div>
-          )}
 
           {/* Support Section */}
           {visibleSupport.length > 0 && (
