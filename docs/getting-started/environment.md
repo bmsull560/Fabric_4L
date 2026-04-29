@@ -520,3 +520,14 @@ echo -e "\n=== End Diagnostics ==="
 ---
 
 *Last updated: 2026-04-19 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/getting-started/environment.md)*
+
+
+## Release Approval Reliability Requirement
+
+For production/staging release approvals, SLO review is mandatory:
+
+- Attach latest `artifacts/performance/slo-report.md` and `artifacts/performance/slo-evaluation.json`.
+- Confirm the relevant layer/service owner reviewed error budget and burn-rate status.
+- Block release if burn-rate threshold breaches are unresolved.
+
+See `docs/troubleshooting/runbooks/infrastructure/release-checklist.md` and `docs/operations/reliability-policy.md`.

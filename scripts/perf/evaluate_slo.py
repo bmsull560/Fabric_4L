@@ -9,9 +9,18 @@ from __future__ import annotations
 import argparse
 import json
 from dataclasses import dataclass
+from math import isfinite
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+@dataclass
+class BurnRateWindow:
+    window: str
+    threshold: float
+    observed: float
+    status: str
 
 
 @dataclass
@@ -30,6 +39,7 @@ class TargetResult:
     error_status: str
     runbook: str
     incident_template: str
+    burn_rate_windows: list[BurnRateWindow]
 
     @property
     def passed(self) -> bool:
@@ -74,6 +84,23 @@ def evaluate(summary: dict[str, Any], slo: dict[str, Any]) -> list[TargetResult]
 
         breach = target.get("breach_response", {})
 
+        error_budget_fraction = 1.0 - float(target.get("availability_slo", 0.99))
+        burn_policy = target.get("burn_rate_policy", {})
+        windows: list[BurnRateWindow] = []
+        if error_budget_fraction > 0 and isfinite(error_budget_fraction):
+            observed_burn_rate = measured_error / error_budget_fraction
+            for policy_window in burn_policy.get("windows", []):
+                threshold = float(policy_window.get("threshold", 0.0))
+                status = "pass" if observed_burn_rate <= threshold else "fail"
+                windows.append(
+                    BurnRateWindow(
+                        window=str(policy_window.get("window", "unknown")),
+                        threshold=threshold,
+                        observed=observed_burn_rate,
+                        status=status,
+                    )
+                )
+
         results.append(
             TargetResult(
                 service=target["service"],
@@ -90,6 +117,7 @@ def evaluate(summary: dict[str, Any], slo: dict[str, Any]) -> list[TargetResult]
                 error_status=error_status,
                 runbook=breach.get("runbook", ""),
                 incident_template=breach.get("incident_template", ""),
+                burn_rate_windows=windows,
             )
         )
 
@@ -107,7 +135,8 @@ def render_markdown(results: list[TargetResult], generated_at: str) -> str:
     ]
 
     for result in results:
-        status = "✅ pass" if result.passed else "❌ breach"
+        burn_fail = any(w.status == "fail" for w in result.burn_rate_windows)
+        status = "✅ pass" if result.passed and not burn_fail else "❌ breach"
         lines.append(
             "| {service} | `{api}` | {p95:.2f} | {p95_limit:.2f} | {err:.4f} | {err_limit:.4f} | {status} |".format(
                 service=result.service,
@@ -122,11 +151,15 @@ def render_markdown(results: list[TargetResult], generated_at: str) -> str:
 
     lines.extend(["", "## Breach runbook linkage", ""])
     for result in results:
-        if result.passed:
+        burn_fail = any(w.status == "fail" for w in result.burn_rate_windows)
+        if result.passed and not burn_fail:
             continue
         lines.append(f"- **{result.service}**: follow `{result.runbook}` and create incident using `{result.incident_template}`.")
+        for window in result.burn_rate_windows:
+            if window.status == "fail":
+                lines.append(f"  - Burn-rate breach `{window.window}`: observed {window.observed:.2f}x > threshold {window.threshold:.2f}x")
 
-    if all(r.passed for r in results):
+    if all(r.passed and all(w.status == "pass" for w in r.burn_rate_windows) for r in results):
         lines.append("- No breaches detected.")
 
     lines.append("")
@@ -152,11 +185,22 @@ def main() -> int:
     generated_at = datetime.now(timezone.utc).isoformat()
     results = evaluate(summary, slo)
 
+    all_passed = all(
+        result.passed and all(window.status == "pass" for window in result.burn_rate_windows)
+        for result in results
+    )
+
     payload = {
         "generated_at": generated_at,
         "slo_version": slo.get("version"),
-        "all_passed": all(result.passed for result in results),
-        "results": [result.__dict__ for result in results],
+        "all_passed": all_passed,
+        "results": [
+            {
+                **result.__dict__,
+                "burn_rate_windows": [window.__dict__ for window in result.burn_rate_windows],
+            }
+            for result in results
+        ],
     }
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
