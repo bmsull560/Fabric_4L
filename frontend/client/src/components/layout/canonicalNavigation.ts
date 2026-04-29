@@ -73,8 +73,11 @@ const flatten = (routes: NavRoute[], out: NavRoute[] = []): NavRoute[] => {
 const matchesPattern = (pattern: string, path: string): boolean => {
   const p1 = pattern.split("/").filter(Boolean);
   const p2 = path.split("/").filter(Boolean);
-  if (p1.length !== p2.length) return false;
-  return p1.every((seg, i) => seg.startsWith(":") || seg === p2[i]);
+
+  if (p2.length > p1.length) return false;
+  if (!p2.every((seg, i) => p1[i]?.startsWith(":") || p1[i] === seg)) return false;
+
+  return p1.slice(p2.length).every(seg => seg.startsWith(":"));
 };
 
 export function resolveWorkspacePath(path: string, accountId: string | null): string {
