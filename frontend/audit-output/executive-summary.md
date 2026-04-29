@@ -8,9 +8,9 @@
 
 ## The 40% Facade Problem: Actually 81%
 
-The Fabric 4L frontend presents a visually complete application with **154 routes**, but the forensic audit reveals:
+The Fabric 4L frontend presents a visually complete application with **203 routes**, but the forensic audit reveals:
 
-- **84 authenticated routes** — only **15** have live backend integration
+- **102 authenticated routes** — only **19** have live backend integration
 - **81% facade rate** — routes rendering hardcoded data or no backend connection
 - **236 orphan endpoints** — backend capabilities with zero frontend surface
 - **8 connected endpoints** — only 3.3% of 244 backend endpoints are consumed
@@ -150,9 +150,9 @@ Pages with verified backend integration:
 
 | Metric | Current | Target | Impact |
 |--------|---------|--------|--------|
-| Route Facade Rate | 81% | <20% | +67 functional pages |
+| Route Facade Rate | 81% | <20% | +81 functional pages |
 | Orphan Endpoints | 236 | <50 | +186 connected capabilities |
-| Connected Hooks | 26/44 | 44/44 | +18 working features |
+| Connected Hooks | 36/55 | 55/55 | +19 working features |
 | Contract Compliance | ~60% | 100% | Maintainable architecture |
 
 ---

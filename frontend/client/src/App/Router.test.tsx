@@ -4,6 +4,7 @@ import { Router } from 'wouter';
 
 vi.mock('@/components', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Layout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   Toaster: () => null,
   TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,

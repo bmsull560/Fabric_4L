@@ -1,0 +1,31 @@
+name: Frontend Route Audit Check
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/client/src/App.tsx'
+      - 'frontend/client/src/App/Router.test.tsx'
+      - 'frontend/audit-output/route-map.md'
+      - 'frontend/audit-output/track-a-route-extraction.json'
+      - 'scripts/extract-routes-audit.py'
+      - 'scripts/check-route-audit-freshness.py'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/client/src/App.tsx'
+      - 'frontend/client/src/App/Router.test.tsx'
+      - 'frontend/audit-output/route-map.md'
+      - 'frontend/audit-output/track-a-route-extraction.json'
+      - 'scripts/extract-routes-audit.py'
+      - 'scripts/check-route-audit-freshness.py'
+
+jobs:
+  route-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify frontend route audit freshness
+        run: python3 scripts/check-route-audit-freshness.py

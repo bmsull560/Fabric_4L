@@ -1,270 +1,216 @@
-# Value Fabric — Complete Route Inventory
-**Date:** 2026-04-28  
-**Total Routes:** 154 (82 primary pages + 72 redirect aliases + 15 parameterized)
+# Value Fabric — Route Map (Generated)
 
----
+**Generated:** 2026-04-29
+**Source:** `frontend/client/src/App.tsx`
+**Total Routes:** 203 (authenticated: 102, redirects: 101, public: 0)
 
-## Route Categories
+## Notes
+- This file is generated from router source and should be refreshed via audit scripts when routes change.
+- Governance paths `/governance/evidence`, `/governance/compliance`, `/governance/audit/log`, and `/governance/audit/changes` are explicitly covered by `Router.test.tsx`.
 
-### 🔴 Critical Broken Routes
-Routes that fail with server errors or complete functional breakdown
-
-### 🟡 Warning Routes  
-Routes with significant UX issues but partially functional
-
-### ✅ Working Routes
-Routes that render and function correctly
-
-### 👻 Ghost Routes
-Routes defined in router but silently fall back to Home page
-
----
-
-## Core Workflow
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| / | ✅ Working | Primary | Redirects to /home |
-| /home | ✅ Working | Primary | Launch button broken |
-| /login | ✅ Working | Primary | |
-| /signup | ✅ Working | Primary | |
-| /accounts | 🔴 Broken | Primary | 500 error — cascading failure |
-
-**Core Workflow:** 3 Working | 1 Broken | 0 Ghost
-
----
-
-## Intelligence (20 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /intelligence | 🔴 Broken | Primary | Redirects to /accounts |
-| /intelligence/signals | 🔴 Broken | Primary | Sidebar nav broken |
-| /intelligence/drivers | 🔴 Broken | Primary | Sidebar nav broken |
-| /intelligence/evidence | 🔴 Broken | Primary | Sidebar nav broken |
-| /intelligence/cases | 🔴 Broken | Primary | |
-| /intelligence/insights | 🔴 Broken | Primary | |
-| /intelligence/narratives | 🔴 Broken | Primary | |
-| /intelligence/research | 🔴 Broken | Primary | |
-| /intelligence/benchmarks | 🔴 Broken | Primary | |
-| /intelligence/competitors | 🔴 Broken | Primary | |
-| /intelligence/trends | 🔴 Broken | Primary | |
-| /intelligence/roi | 🔴 Broken | Primary | |
-| /intelligence/impact | 🔴 Broken | Primary | |
-| /intelligence/risk | 🔴 Broken | Primary | |
-| /intelligence/opportunities | 🔴 Broken | Primary | |
-| /intelligence/threats | 🔴 Broken | Primary | |
-| /intelligence/recommendations | 🔴 Broken | Primary | |
-| /intelligence/actions | 🔴 Broken | Primary | |
-| /intelligence/plan | 🔴 Broken | Primary | |
-| /intelligence/summary | 🔴 Broken | Primary | |
-
-**Intelligence:** 0 Working | 20 Broken | 0 Ghost
-
----
-
-## Studio (23 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /studio | 🔴 Broken | Primary | |
-| /studio/models | 🔴 Broken | Primary | |
-| /studio/formulas | 🔴 Broken | Primary | |
-| /studio/ontologies | 🔴 Broken | Primary | |
-| /studio/agents | 🔴 Broken | Primary | |
-| /studio/workflows | 🔴 Broken | Primary | |
-| /studio/templates | 🔴 Broken | Primary | |
-| /studio/components | 🔴 Broken | Primary | |
-| /studio/assets | 🔴 Broken | Primary | |
-| /studio/datasets | 🔴 Broken | Primary | |
-| /studio/integrations | 🔴 Broken | Primary | |
-| /studio/publish | 🔴 Broken | Primary | |
-| /studio/share | 🔴 Broken | Primary | |
-| /studio/collaborate | 🔴 Broken | Primary | |
-| /studio/review | 🔴 Broken | Primary | |
-| /studio/approve | 🔴 Broken | Primary | |
-| /studio/deploy | 🔴 Broken | Primary | |
-| /studio/monitor | 🔴 Broken | Primary | |
-| /studio/analytics | 🔴 Broken | Primary | |
-| /studio/settings | 🔴 Broken | Primary | |
-| /studio/help | 🔴 Broken | Primary | |
-| /studio/feedback | 🔴 Broken | Primary | |
-| /studio/tutorials | 🔴 Broken | Primary | |
-
-**Studio:** 0 Working | 23 Broken | 0 Ghost
-
----
-
-## Model / Value Studio (3 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /model/value-studio | 🔴 Broken | Primary | Redirects to /accounts |
-| /model/value-studio/create | 🔴 Broken | Primary | |
-| /model/value-studio/edit/:id | 🔴 Broken | Parameterized | |
-
-**Model/Value Studio:** 0 Working | 3 Broken | 0 Ghost
-
----
-
-## Context Engine (8 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /context/models | ✅ Working | Primary | |
-| /context/value-trees/explorer | ✅ Working | Primary | |
-| /context/ingestion/jobs | ✅ Working | Primary | |
-| /context/extraction | ✅ Working | Primary | |
-| /context/packs | 🔴 Broken | Primary | Type mismatch error |
-| /context/formulas | 🔴 Broken | Primary | Type mismatch error |
-| /context/agents | 🔴 Broken | Primary | Server 500 |
-| /context/ontology | 🔴 Broken | Primary | Server 500 |
-
-**Context Engine:** 4 Working | 4 Broken | 0 Ghost
-
----
-
-## Workflow (4 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /workflow/prospect | ✅ Working | Primary | Guided value-case creation |
-| /workflow/intelligence | 🔴 Broken | Primary | Redirects to /accounts |
-| /workflow/:id | 👻 Ghost | Parameterized | Falls back to Home |
-| /workflow | ✅ Working | Alias | Redirects to /workflow/prospect |
-
-**Workflow:** 2 Working | 1 Broken | 1 Ghost
-
----
-
-## Deliverables (7 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /deliverables | ✅ Working | Primary | |
-| /deliverables/reports | ✅ Working | Primary | |
-| /deliverables/presentations | ✅ Working | Primary | |
-| /deliverables/documents | ✅ Working | Primary | |
-| /deliverables/exports | ✅ Working | Primary | |
-| /deliverables/calculators | 🟡 Tier-Gated | Primary | Requires "advanced" tier |
-| /deliverables/api | 🟡 Tier-Gated | Primary | Requires "admin" tier |
-
-**Deliverables:** 5 Working | 0 Broken | 0 Ghost | 2 Tier-Gated
-
----
-
-## Governance (9 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /governance | ✅ Working | Primary | |
-| /governance/traces | ✅ Working | Primary | |
-| /governance/evidence | 🟡 Warning | Primary | Infinite spinner |
-| /governance/provenance | 👻 Ghost | Primary | Silently renders Home |
-| /governance/integrity | 👻 Ghost | Primary | Silently renders Home |
-| /governance/compliance | 👻 Ghost | Primary | Silently renders Home |
-| /governance/benchmarks | 👻 Ghost | Primary | Silently renders Home |
-| /governance/audit/log | 👻 Ghost | Primary | Silently renders Home |
-| /governance/audit/changes | 👻 Ghost | Primary | Silently renders Home |
-| /governance/health | 👻 Ghost | Primary | Silently renders Home |
-
-**Governance:** 2 Working | 1 Warning | 0 Broken | 7 Ghost
-
----
-
-## Settings (14 Routes)
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /settings | 👻 Ghost | Primary | Silently renders Home |
-| /settings/formulas | 👻 Ghost | Primary | Silently renders Home |
-| /settings/versions | 👻 Ghost | Primary | Silently renders Home |
-| /settings/approvals | 👻 Ghost | Primary | Silently renders Home |
-| /settings/variables | 👻 Ghost | Primary | Silently renders Home |
-| /settings/bindings | 👻 Ghost | Primary | Silently renders Home |
-| /settings/quality | 👻 Ghost | Primary | Silently renders Home |
-| /settings/roles | 👻 Ghost | Primary | Silently renders Home |
-| /settings/teams | 👻 Ghost | Primary | Silently renders Home |
-| /settings/keys | 👻 Ghost | Primary | Silently renders Home |
-| /settings/system | 👻 Ghost | Primary | Silently renders Home |
-| /settings/billing | 👻 Ghost | Primary | Silently renders Home |
-| /settings/billing/plans | 👻 Ghost | Primary | Silently renders Home |
-| /settings/billing/usage | 👻 Ghost | Primary | Silently renders Home |
-| /settings/billing/invoices | 👻 Ghost | Primary | Silently renders Home |
-
-**Settings:** 0 Working | 0 Broken | 14 Ghost
-
----
-
-## Command Center
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /command-center | ✅ Working | Primary | Synthesize input, empty state |
-
-**Command Center:** 1 Working | 0 Broken | 0 Ghost
-
----
-
-## Dev
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| /dev/integration | 👻 Ghost | Primary | Silently renders Home |
-
-**Dev:** 0 Working | 0 Broken | 1 Ghost
-
----
-
-## 404 Catch-All
-
-| Route | Status | Type | Notes |
-|-------|--------|------|------- |
-| * | ✅ Working | Catch-all | Proper 404 page |
-
----
-
-## Summary by Category
-
-| Category | Total | ✅ Working | 🔴 Broken | 👻 Ghost | 🟡 Warning |
-|----------|-------|------------|-----------|----------|------------|
-| Core Workflow | 4 | 3 | 1 | 0 | 0 |
-| Intelligence | 20 | 0 | 20 | 0 | 0 |
-| Studio | 23 | 0 | 23 | 0 | 0 |
-| Model/Value Studio | 3 | 0 | 3 | 0 | 0 |
-| Context Engine | 8 | 4 | 4 | 0 | 0 |
-| Workflow | 4 | 2 | 1 | 1 | 0 |
-| Deliverables | 7 | 5 | 0 | 0 | 2 |
-| Governance | 9 | 2 | 0 | 7 | 1 |
-| Settings | 14 | 0 | 0 | 14 | 0 |
-| Command Center | 1 | 1 | 0 | 0 | 0 |
-| Dev | 1 | 0 | 0 | 1 | 0 |
-| **TOTAL** | **94** | **17** | **52** | **22** | **3** |
-
----
-
-## Fix Priority Matrix
-
-### P0 — Fix Immediately (Unblocks Everything)
-- Fix /accounts API 500 error
-- Fix Home "Launch" button
-- Persist auth tokens (localStorage/cookies)
-
-### P1 — Fix Before Demo/Launch
-- Fix API response types (string → array) for Value Packs & Formulas
-- Fix Agents and Ontology 500 errors
-- Add timeout/error fallback for /governance/evidence spinner
-- Show proper 404 for ghost routes
-
-### P2 — Fix Before Release
-- Implement Settings section (14 ghost routes)
-- Implement remaining Governance pages (7 ghost routes)
-- Fix sidebar nav links (Intelligence sub-items)
-- Make CO-PILOT, Support, Feedback, Profile functional
-- Fix dashboard empty state (misleading percentages)
-- Add CRM sync feedback
-
-### P3 — Architecture Consideration
-- Reconsider WorkspaceContextRedirect pattern
-- Consider standalone Intelligence/Studio pages
-- Persist last-selected account context
+## Routes
+| Path | Component | Category | Required Tier | Redirect |
+|---|---|---|---|---|
+| `/accounts` | `Accounts` | authenticated | standard | - |
+| `/accounts/:id` | `Accounts` | authenticated | standard | - |
+| `/command-center` | `CommandCenter` | authenticated | standard | - |
+| `/context/agents` | `AgentWorkflows` | authenticated | advanced | - |
+| `/context/extraction` | `ExtractionEngine` | authenticated | advanced | - |
+| `/context/formulas` | `FormulaList` | authenticated | advanced | - |
+| `/context/formulas/:formulaId` | `FormulaBuilder` | authenticated | advanced | - |
+| `/context/formulas/new` | `FormulaBuilder` | authenticated | advanced | - |
+| `/context/ingestion/jobs` | `IngestionJobs` | authenticated | advanced | - |
+| `/context/integrations` | `Integrations` | authenticated | advanced | - |
+| `/context/models` | `MyModels` | authenticated | standard | - |
+| `/context/ontology` | `OntologyEditor` | authenticated | advanced | - |
+| `/context/ontology/entities` | `EntityBrowser` | authenticated | advanced | - |
+| `/context/ontology/entities/:entityId` | `EntityDetail` | authenticated | advanced | - |
+| `/context/ontology/graph` | `GraphExplorer` | authenticated | advanced | - |
+| `/context/packs` | `ValuePacks` | authenticated | standard | - |
+| `/context/sources` | `SourceConfiguration` | authenticated | advanced | - |
+| `/context/value-trees/explorer` | `ValueTreeExplorer` | authenticated | advanced | - |
+| `/deliverables/api` | `Integrations` | authenticated | admin | - |
+| `/deliverables/calculators` | `InteractiveBusinessCase` | authenticated | advanced | - |
+| `/deliverables/cases` | `BusinessCaseList` | authenticated | admin | - |
+| `/deliverables/cases/:caseId` | `BusinessCase` | authenticated | standard | - |
+| `/deliverables/views/cfo` | `CFOView` | authenticated | advanced | - |
+| `/deliverables/views/executive` | `ExecutiveView` | authenticated | advanced | - |
+| `/deliverables/views/technical` | `TechnicalView` | authenticated | advanced | - |
+| `/dev/integration` | `Suspense` | authenticated | admin | - |
+| `/governance/audit/changes` | `GovernanceChangeHistory` | authenticated | admin | - |
+| `/governance/audit/log` | `GovernanceAuditLog` | authenticated | advanced | - |
+| `/governance/benchmarks` | `BenchmarkPolicies` | authenticated | advanced | - |
+| `/governance/compliance` | `GovernanceCompliance` | authenticated | advanced | - |
+| `/governance/evidence` | `GovernanceEvidence` | authenticated | standard | - |
+| `/governance/health` | `HealthMonitor` | authenticated | admin | - |
+| `/governance/integrity` | `DecisionTrace` | authenticated | advanced | - |
+| `/governance/provenance` | `DecisionTrace` | authenticated | advanced | - |
+| `/governance/traces` | `DecisionTrace` | authenticated | admin | - |
+| `/home` | `ValueNarrativeHome` | authenticated | standard | - |
+| `/intelligence` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/:accountId` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/competitive` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/drivers` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/enrichment` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/evidence` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/evidence-library` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/hypotheses` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/roi` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/signals` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/:accountId/stakeholders` | `AccountContextSync` | authenticated | standard | - |
+| `/intelligence/competitive` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/drivers` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/enrichment` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/evidence` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/evidence-library` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/hypotheses` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/roi` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/signals` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/intelligence/stakeholders` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/model/value-studio` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/model/value-studio/discovery` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/model/value-studio/mapping` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/model/value-studio/modeling` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/model/value-studio/narrative` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/model/value-studio/tracking` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/model/value-studio/validation` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/settings/access/keys` | `PermissionsAdmin` | authenticated | admin | - |
+| `/settings/access/roles` | `PermissionsAdmin` | authenticated | admin | - |
+| `/settings/access/teams` | `PermissionsAdmin` | authenticated | admin | - |
+| `/settings/content/approvals` | `FormulaGovernance` | authenticated | admin | - |
+| `/settings/content/formulas` | `FormulaGovernance` | authenticated | admin | - |
+| `/settings/content/versions` | `FormulaGovernance` | authenticated | admin | - |
+| `/settings/data/bindings` | `VariableRegistry` | authenticated | admin | - |
+| `/settings/data/quality` | `VariableRegistry` | authenticated | admin | - |
+| `/settings/data/variables` | `VariableRegistry` | authenticated | admin | - |
+| `/settings/system/billing` | `BillingRoute` | authenticated | admin | - |
+| `/settings/system/billing/invoices` | `BillingRoute` | authenticated | admin | - |
+| `/settings/system/billing/payments` | `BillingRoute` | authenticated | admin | - |
+| `/settings/system/billing/usage` | `BillingRoute` | authenticated | admin | - |
+| `/settings/system/settings` | `PlatformSettings` | authenticated | admin | - |
+| `/studio` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/:accountId` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/:accountId/action-plan` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/:accountId/competitive` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/:accountId/enrichment` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/:accountId/evidence` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/:accountId/narrative` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/:accountId/roi` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/:accountId/value-model` | `AccountContextSync` | authenticated | standard | - |
+| `/studio/action-plan` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/build/discovery` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/build/mapping` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/build/modeling` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/build/narrative` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/build/tracking` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/build/validation` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/competitive` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/enrichment` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/evidence` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/narrative` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/roi` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/studio/value-model` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/workflow` | `Navigate` | authenticated | admin | - |
+| `/workflow/intelligence` | `WorkspaceContextRedirect` | authenticated | standard | - |
+| `/workflow/prospect` | `Suspense` | authenticated | standard | - |
+| `/admin` | `Navigate` | redirect | - | /settings/content/formulas |
+| `/admin/access` | `Navigate` | redirect | - | /settings/access/roles |
+| `/admin/access/keys` | `Navigate` | redirect | - | /settings/access/keys |
+| `/admin/access/roles` | `Navigate` | redirect | - | /settings/access/roles |
+| `/admin/access/teams` | `Navigate` | redirect | - | /settings/access/teams |
+| `/admin/content` | `Navigate` | redirect | - | /settings/content/formulas |
+| `/admin/content/approvals` | `Navigate` | redirect | - | /settings/content/approvals |
+| `/admin/content/benchmarks` | `Navigate` | redirect | - | /governance/benchmarks |
+| `/admin/content/formulas` | `Navigate` | redirect | - | /settings/content/formulas |
+| `/admin/content/versions` | `Navigate` | redirect | - | /settings/content/versions |
+| `/admin/data` | `Navigate` | redirect | - | /settings/data/variables |
+| `/admin/data/bindings` | `Navigate` | redirect | - | /settings/data/bindings |
+| `/admin/data/quality` | `Navigate` | redirect | - | /settings/data/quality |
+| `/admin/data/variables` | `Navigate` | redirect | - | /settings/data/variables |
+| `/admin/system/audit` | `Navigate` | redirect | - | /governance/audit/log |
+| `/admin/system/health` | `Navigate` | redirect | - | /governance/health |
+| `/admin/system/settings` | `Navigate` | redirect | - | /settings/system/settings |
+| `/context` | `Navigate` | redirect | - | /context/packs |
+| `/deliver` | `Navigate` | redirect | - | /deliverables/cases |
+| `/deliver/agents` | `Navigate` | redirect | - | /context/agents |
+| `/deliver/cases` | `Navigate` | redirect | - | /deliverables/cases |
+| `/deliver/cases/explore` | `Navigate` | redirect | - | /deliverables/calculators |
+| `/deliver/opportunities` | `Navigate` | redirect | - | /accounts |
+| `/deliver/whitespace` | `Navigate` | redirect | - | /accounts |
+| `/deliverables` | `Navigate` | redirect | - | /deliverables/cases |
+| `/developer-console` | `Navigate` | redirect | - | /developer-console/health |
+| `/developer-console/health` | `Navigate` | redirect | - | /governance/health |
+| `/developer-console/log-diagnostics` | `Navigate` | redirect | - | /dev/integration |
+| `/developer-console/queue-diagnostics` | `Navigate` | redirect | - | /dev/integration |
+| `/developer-console/traces` | `Navigate` | redirect | - | /governance/traces |
+| `/discover` | `Navigate` | redirect | - | /accounts |
+| `/discover/accounts` | `Navigate` | redirect | - | /accounts |
+| `/discover/accounts/:id` | `Navigate` | redirect | - | /accounts |
+| `/discover/extraction` | `Navigate` | redirect | - | /context/extraction |
+| `/discover/integrations` | `Navigate` | redirect | - | /context/integrations |
+| `/discover/jobs` | `Navigate` | redirect | - | /context/ingestion/jobs |
+| `/discover/knowledge` | `Navigate` | redirect | - | /context/ontology |
+| `/discover/knowledge/entities` | `Navigate` | redirect | - | /context/ontology/entities |
+| `/discover/knowledge/graph` | `Navigate` | redirect | - | /context/ontology/graph |
+| `/discover/knowledge/ontology` | `Navigate` | redirect | - | /context/ontology |
+| `/discover/sources` | `Navigate` | redirect | - | /context/sources |
+| `/evidence` | `Navigate` | redirect | - | /governance/traces |
+| `/evidence/changelog` | `Navigate` | redirect | - | /governance/audit/changes |
+| `/evidence/compliance` | `Navigate` | redirect | - | /governance/compliance |
+| `/evidence/export` | `Navigate` | redirect | - | /governance/evidence |
+| `/evidence/lineage` | `Navigate` | redirect | - | /governance/provenance |
+| `/evidence/traces` | `Navigate` | redirect | - | /governance/traces |
+| `/governance` | `Navigate` | redirect | - | /governance-center/evidence-policy |
+| `/governance-center` | `Navigate` | redirect | - | /governance-center/evidence-policy |
+| `/governance-center/audit-retention` | `Navigate` | redirect | - | /governance/audit/log |
+| `/governance-center/compliance` | `Navigate` | redirect | - | /governance/compliance |
+| `/governance-center/evidence-policy` | `Navigate` | redirect | - | /governance/evidence |
+| `/governance-center/residency` | `Navigate` | redirect | - | /governance/compliance |
+| `/governance/audit` | `Navigate` | redirect | - | /governance/audit/log |
+| `/library` | `Navigate` | redirect | - | /context/packs |
+| `/library/authoring` | `Navigate` | redirect | - | /settings/content/formulas |
+| `/library/models` | `Navigate` | redirect | - | /context/models |
+| `/library/packs` | `Navigate` | redirect | - | /context/packs |
+| `/model` | `Navigate` | redirect | - | /accounts |
+| `/model/value-studio/explorer` | `Navigate` | redirect | - | /context/value-trees/explorer |
+| `/model/value-studio/formulas` | `Navigate` | redirect | - | /context/formulas |
+| `/model/value-studio/formulas/new` | `Navigate` | redirect | - | /context/formulas |
+| `/my-settings` | `Navigate` | redirect | - | /my-settings/profile |
+| `/my-settings/accounts` | `Navigate` | redirect | - | /accounts |
+| `/my-settings/appearance` | `Navigate` | redirect | - | /accounts |
+| `/my-settings/notifications` | `Navigate` | redirect | - | /accounts |
+| `/my-settings/preferences` | `Navigate` | redirect | - | /accounts |
+| `/my-settings/profile` | `Navigate` | redirect | - | /accounts |
+| `/organization-admin` | `Navigate` | redirect | - | /organization-admin/members |
+| `/organization-admin/billing` | `Navigate` | redirect | - | /settings/system/billing |
+| `/organization-admin/members` | `Navigate` | redirect | - | /settings/access/roles |
+| `/organization-admin/roles` | `Navigate` | redirect | - | /settings/access/roles |
+| `/organization-admin/teams` | `Navigate` | redirect | - | /settings/access/teams |
+| `/platform-configuration` | `Navigate` | redirect | - | /platform-configuration/integrations |
+| `/platform-configuration/api-keys` | `Navigate` | redirect | - | /settings/access/keys |
+| `/platform-configuration/feature-flags` | `Navigate` | redirect | - | /settings/system/settings |
+| `/platform-configuration/integrations` | `Navigate` | redirect | - | /context/integrations |
+| `/platform-configuration/model-routing` | `Navigate` | redirect | - | /settings/system/settings |
+| `/platform-configuration/webhooks` | `Navigate` | redirect | - | /settings/system/settings |
+| `/settings` | `Navigate` | redirect | - | /organization-admin/members |
+| `/settings/access` | `Navigate` | redirect | - | /settings/access/roles |
+| `/settings/content` | `Navigate` | redirect | - | /settings/content/formulas |
+| `/settings/data` | `Navigate` | redirect | - | /settings/data/variables |
+| `/studio/build` | `Navigate` | redirect | - | /accounts |
+| `/studio/deals` | `Navigate` | redirect | - | /accounts |
+| `/studio/scenarios` | `Navigate` | redirect | - | /accounts |
+| `/studio/trees` | `Navigate` | redirect | - | /accounts |
+| `/trust` | `Navigate` | redirect | - | /governance/traces |
+| `/trust/audit` | `Navigate` | redirect | - | /governance/audit/log |
+| `/trust/audit/changes` | `Navigate` | redirect | - | /governance/audit/changes |
+| `/trust/audit/log` | `Navigate` | redirect | - | /governance/audit/log |
+| `/trust/benchmarks` | `Navigate` | redirect | - | /governance/benchmarks |
+| `/trust/compliance` | `Navigate` | redirect | - | /governance/compliance |
+| `/trust/evidence` | `Navigate` | redirect | - | /governance/evidence |
+| `/trust/health` | `Navigate` | redirect | - | /governance/health |
+| `/trust/integrity` | `Navigate` | redirect | - | /governance/integrity |
+| `/trust/provenance` | `Navigate` | redirect | - | /governance/provenance |
+| `/trust/traces` | `Navigate` | redirect | - | /governance/traces |
+| `/workspace-settings` | `Navigate` | redirect | - | /workspace-settings/integrations |
+| `/workspace-settings/integrations` | `Navigate` | redirect | - | /context/integrations |
+| `/workspace-settings/sources` | `Navigate` | redirect | - | /context/sources |
