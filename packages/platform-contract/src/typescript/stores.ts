@@ -18,7 +18,7 @@ export interface AccountContextState {
   clearSelectedAccountId: () => void;
 }
 
-export const useAccountContextStore = create<AccountContextState>()
+export const useAccountContextStore = create<AccountContextState>()(
   persist(
     (set) => ({
       selectedAccountId: null,
