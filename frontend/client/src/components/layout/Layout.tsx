@@ -31,6 +31,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { useUserTierStore, type UserTier } from "@/hooks";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { resolveWorkspaceRoutePath } from "@/navigation/accountRouting";
+import { resolveBreadcrumbs } from "@/navigation/navSchema";
 
 /* ─── Nav Data ─── */
 interface NavItem {
@@ -195,40 +196,6 @@ function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
   if (userTier === "admin") return true;
   if (userTier === "advanced") return tier !== "admin";
   return tier === "standard";
-}
-
-function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
-  // Map top-level domains to readable labels
-  const domainLabels: Record<string, string> = {
-    home: "Home",
-    accounts: "Accounts",
-    intelligence: "Intelligence",
-    studio: "Value Studio",
-    context: "Context Engine",
-    deliverables: "Deliverables",
-    governance: "Governance",
-    settings: "Settings",
-    workflow: "Workflow",
-    "command-center": "Command Center",
-  };
-
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return [{ label: "Value Fabric" }];
-
-  const crumbs: { label: string; path?: string }[] = [];
-  const domain = segments[0];
-  crumbs.push({ label: domainLabels[domain] || domain, path: `/${domain}` });
-
-  // Add sub-segments as breadcrumbs
-  for (let i = 1; i < segments.length; i++) {
-    const seg = segments[i];
-    // Skip account IDs (UUIDs or numeric)
-    if (/^[0-9a-f-]{8,}$/i.test(seg) || /^\d+$/.test(seg)) continue;
-    const label = seg.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    crumbs.push({ label, path: "/" + segments.slice(0, i + 1).join("/") });
-  }
-
-  return crumbs;
 }
 
 /* ─── Tooltip ─── */
@@ -530,7 +497,7 @@ const Layout = memo(function Layout({
   }, [setTier]);
 
   // Breadcrumbs
-  const breadcrumbs = useMemo(() => getBreadcrumbs(location), [location]);
+  const breadcrumbs = useMemo(() => resolveBreadcrumbs(location), [location]);
 
   // User display
   const userEmail = user?.email ?? "";
