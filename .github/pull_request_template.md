@@ -24,6 +24,10 @@
 
 ## Code Quality Checklist
 
+- [ ] Accessibility checks passed (`pnpm run test:a11y:components`, `pnpm run test:a11y:pages`, `pnpm run test:a11y:gate`).
+- [ ] Keyboard navigation acceptance criteria validated for changed UX flows.
+- [ ] Screen-reader announcements/labels validated for changed UX flows.
+- [ ] If requesting a temporary accessibility exception, linked remediation ticket + due date.
 - [ ] No unused imports (ruff F401)
 - [ ] No unused variables (ruff F841)
 - [ ] No `console.log` in production code (without DEV guard)

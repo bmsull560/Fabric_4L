@@ -37,7 +37,7 @@ const ontologyMatch = [
 
 export default function Intelligence() {
   const [, navigate] = useLocation();
-  const { setCurrentStep } = useWorkflowStore();
+  const { setCurrentStep, setEnrichedEntities } = useWorkflowStore();
   const [activeSection, setActiveSection] = useState<string>("pain");
 
   const tabButtons = [
@@ -47,6 +47,12 @@ export default function Intelligence() {
   ];
 
   const handleContinue = () => {
+    setEnrichedEntities(painSignals.map((painSignal, index) => ({
+      id: `signal-${index + 1}`,
+      name: painSignal.signal,
+      type: "pain_signal",
+      confidence: painSignal.confidence / 100,
+    })));
     setCurrentStep(STEPS.AI_MODEL);
     navigate("/workflow/ai-model");
   };

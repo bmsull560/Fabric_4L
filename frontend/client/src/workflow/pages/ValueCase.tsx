@@ -5,6 +5,7 @@ import {
 import { StatCard, ProgressBar } from "@/components/blocks";
 import { SectionCard } from "@/value-pilot/components";
 import { WorkflowLayout } from "../components/WorkflowLayout";
+import { useWorkflowStore } from "../store/workflowStore";
 
 const results = [
   { rank: 1, area: "Labor Cost Reduction", value: "$6.20M", pct: 42, breakdown: [{ label: "Avoided New Hires", amount: "$4.25M", evidence: "NAM Skills Gap Report", conf: 94 }, { label: "Overtime Elimination", amount: "$1.45M", evidence: "BMW Cobot Case Study", conf: 88 }, { label: "Reduced Turnover", amount: "$500K", evidence: "Internal HR Data", conf: 82 }] },
@@ -15,6 +16,10 @@ const results = [
 ];
 
 export default function ValueCase() {
+  const { prospect, generatedCaseId } = useWorkflowStore();
+  const companyName = prospect?.companyName ?? "Meridian Automotive";
+  const caseId = generatedCaseId ?? "VC-2026-0417";
+
   return (
     <WorkflowLayout>
       <main className="w-full space-y-4" aria-label="Generated Value Case">
@@ -23,7 +28,7 @@ export default function ValueCase() {
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center"><FileText className="w-5 h-5 text-primary" /></div>
             <div>
               <h1 className="text-xl font-bold text-foreground">Generated Value Case</h1>
-              <p className="text-sm text-muted-foreground">Auto-generated for Meridian Automotive — personalized with prospect data and evidence anchors.</p>
+              <p className="text-sm text-muted-foreground">Auto-generated for {companyName} ({caseId}) — personalized with prospect data and evidence anchors.</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

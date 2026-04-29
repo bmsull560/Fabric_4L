@@ -541,7 +541,15 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Accessibility scan (axe critical)
+      - name: Accessibility tests (components)
+        run: pnpm run test:a11y:components
+
+      - name: Accessibility scan + thresholds (pages)
+        env:
+          A11Y_REPORT_PATH: ./a11y-report.json
+          A11Y_MAX_CRITICAL: "0"
+          A11Y_MAX_SERIOUS: "0"
+          A11Y_MIN_ROUTES_SCANNED: "4"
         run: |
           pnpm preview --host 127.0.0.1 --port 4173 &
           PREVIEW_PID=$!
@@ -552,7 +560,8 @@ jobs:
             fi
             sleep 1
           done
-          node scripts/a11y/axe-critical-scan.mjs
+          pnpm run test:a11y:pages
+          pnpm run test:a11y:gate
 
       - name: Security audit (GATING)
         run: pnpm audit --audit-level high

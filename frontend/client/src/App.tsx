@@ -43,7 +43,7 @@ function ProspectSetupWithNav() {
     stakeholders?: Record<string, string>;
   }) => {
     const result = await createAccount.mutateAsync({
-      name: payload.companyName,
+      name: payload.companyName ?? 'Unknown Account',
       industry: payload.industry,
       stage: 'prospect',
       enrichment_input: payload.painPoints?.join('\n'),
@@ -121,6 +121,12 @@ const Signup = lazy(() => import("./pages/Signup"));
 
 // ── Workflow Pages ───────────────────────────────────────────────────────────
 const ProspectSetup = lazy(() => import("./workflow/pages/ProspectSetup"));
+const Intelligence = lazy(() => import("./workflow/pages/Intelligence"));
+const AIModel = lazy(() => import("./workflow/pages/AIModel"));
+const DriverTree = lazy(() => import("./workflow/pages/DriverTree"));
+const Evidence = lazy(() => import("./workflow/pages/Evidence"));
+const Calculator = lazy(() => import("./workflow/pages/Calculator"));
+const ValueCase = lazy(() => import("./workflow/pages/ValueCase"));
 
 // ── Intelligence Workspace Tabs ──────────────────────────────────────────────
 const SignalsTab = lazy(() => import("./pages/intelligence/SignalsTab"));
@@ -431,6 +437,43 @@ function Router() {
       </Route>
 
       <AppRoutes tierProps={tierProps} isLoading={isLoading} isAuthenticated={isAuthenticated} />
+
+      {/* Guided Workflow Routes */}
+      <Route path="/workflow/prospect">
+        <AuthenticatedRoute {...tierProps}>
+          <ProspectSetupWithNav />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/intelligence">
+        <AuthenticatedRoute {...tierProps}>
+          <Intelligence />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/ai-model">
+        <AuthenticatedRoute {...tierProps}>
+          <AIModel />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/driver-tree">
+        <AuthenticatedRoute {...tierProps}>
+          <DriverTree />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/evidence">
+        <AuthenticatedRoute {...tierProps}>
+          <Evidence />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/calculator">
+        <AuthenticatedRoute {...tierProps}>
+          <Calculator />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/workflow/value-case">
+        <AuthenticatedRoute {...tierProps}>
+          <ValueCase />
+        </AuthenticatedRoute>
+      </Route>
 
       {/* ═══════════════════════════════════════════════════════════════
           2b. INTELLIGENCE — Ontology Match Tab (new)

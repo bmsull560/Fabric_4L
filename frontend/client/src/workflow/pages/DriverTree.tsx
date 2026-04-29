@@ -97,7 +97,7 @@ function NodeRow({ node, depth, onToggle }: { node: TreeNode; depth: number; onT
 
 export default function DriverTree() {
   const [, navigate] = useLocation();
-  const { setCurrentStep } = useWorkflowStore();
+  const { setCurrentStep, setSelectedTreeId } = useWorkflowStore();
   const [tree, setTree] = useState<TreeNode>(initialTree);
   const [rightPanel, setRightPanel] = useState<"formula" | "validation">("formula");
 
@@ -107,6 +107,7 @@ export default function DriverTree() {
   };
 
   const handleContinue = () => {
+    setSelectedTreeId(tree.id);
     setCurrentStep(STEPS.EVIDENCE);
     navigate("/workflow/evidence");
   };

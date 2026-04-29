@@ -1,15 +1,18 @@
+import fs from "node:fs/promises";
+import path from "node:path";
 import { chromium } from "@playwright/test";
 
 const baseUrl = process.env.A11Y_BASE_URL || "http://127.0.0.1:4173";
 const axeScriptUrl =
   process.env.AXE_SCRIPT_URL ||
   "https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.10.2/axe.min.js";
+const reportPath = process.env.A11Y_REPORT_PATH || "./a11y-report.json";
 const routes = ["/", "/home", "/login", "/discover/accounts"];
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
 
-let hasCriticalViolations = false;
+const routeResults = [];
 
 for (const route of routes) {
   const url = `${baseUrl}${route}`;
@@ -26,29 +29,42 @@ for (const route of routes) {
     });
   });
 
-  const criticalViolations = results.violations.filter(
-    (violation) => violation.impact === "critical",
-  );
-
-  if (criticalViolations.length > 0) {
-    hasCriticalViolations = true;
-    console.error(`\nCritical accessibility violations found on ${url}:`);
-    for (const violation of criticalViolations) {
-      console.error(`- [${violation.id}] ${violation.help}`);
-      for (const node of violation.nodes) {
-        console.error(`  selector: ${node.target.join(", ")}`);
-      }
-    }
-  } else {
-    console.log(`No critical violations on ${url}`);
-  }
+  routeResults.push({
+    route,
+    url,
+    violations: results.violations.map((violation) => ({
+      id: violation.id,
+      impact: violation.impact,
+      help: violation.help,
+      nodes: violation.nodes.length,
+      selectors: violation.nodes.flatMap((node) => node.target),
+    })),
+  });
 }
 
 await browser.close();
 
-if (hasCriticalViolations) {
-  console.error("\nAccessibility scan failed due to critical violations.");
-  process.exit(1);
-}
+const summary = routeResults.reduce(
+  (acc, item) => {
+    for (const violation of item.violations) {
+      if (violation.impact === "critical") acc.critical += 1;
+      if (violation.impact === "serious") acc.serious += 1;
+      acc.total += 1;
+    }
+    return acc;
+  },
+  { critical: 0, serious: 0, total: 0 },
+);
 
-console.log("\nAccessibility scan passed with no critical violations.");
+const payload = {
+  generatedAt: new Date().toISOString(),
+  standard: "WCAG 2.1 AA",
+  routes,
+  summary,
+  results: routeResults,
+};
+
+await fs.mkdir(path.dirname(reportPath), { recursive: true });
+await fs.writeFile(reportPath, JSON.stringify(payload, null, 2));
+console.log(`Accessibility report written to ${reportPath}`);
+console.log(`Summary: ${summary.total} total, ${summary.serious} serious, ${summary.critical} critical violations`);
