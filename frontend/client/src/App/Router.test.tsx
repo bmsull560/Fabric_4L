@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { Router } from 'wouter';
+import { memoryLocation } from 'wouter/memory-location';
 
 vi.mock('@/components', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -44,15 +45,22 @@ vi.mock('../pages/Signup', () => ({ default: () => <div>Signup Page</div> }));
 import { AppRouter } from '../App';
 
 function renderAt(path: string) {
-  const staticHook = () => [path, () => undefined] as [string, (to: string) => void];
+  const { hook } = memoryLocation({ path });
   return render(
-    <Router hook={staticHook}>
+    <Router hook={hook}>
       <AppRouter />
     </Router>
   );
 }
 
 describe('App governance router', () => {
+
+  it('redirects /governance to the governance traces page', async () => {
+    renderAt('/governance');
+
+    expect(await screen.findByText('Decision Trace Viewer')).toBeInTheDocument();
+    expect(screen.queryByText('Governance Evidence Page')).not.toBeInTheDocument();
+  });
   it('does not render Decision Trace Viewer at /governance/evidence', async () => {
     renderAt('/governance/evidence');
 

@@ -737,9 +737,6 @@ function Router() {
       {/* ═══════════════════════════════════════════════════════════════
           6. GOVERNANCE — Trust Layer
           ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/governance">
-        <Navigate to="/governance-center/evidence-policy" />
-      </Route>
       <Route path="/governance/traces">
         <AuthenticatedRoute {...tierProps}>
           <DecisionTrace />
