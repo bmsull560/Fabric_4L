@@ -42,25 +42,29 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     outputs:
-      vault_token: ${{ steps.vault-login.outputs.vault_token }}
+      vault_token: ${{ steps.vault-login.outputs.token }}
       auth_success: ${{ steps.vault-login.outputs.success }}
     steps:
       - name: Import Secrets from Vault
         id: vault-login
-        uses: hashicorp/vault-action@v2.8.0
+        uses: hashicorp/vault-action@v3
         with:
           url: ${{ env.VAULT_ADDR }}
           method: jwt
           role: ${{ env.VAULT_ROLE }}
           jwtGithubAudience: sigstore
           exportToken: true
+          exportEnvironmentVariables: false
           secrets: |
             secret/data/ci/common VAULT_ADDR | VAULT_ADDR;
         env:
           VAULT_AUTH_ROLE: ${{ env.VAULT_ROLE }}
 
       - name: Verify Vault connection
+        env:
+          VAULT_TOKEN: ${{ steps.vault-login.outputs.token }}
         run: |
+          export VAULT_TOKEN="$VAULT_TOKEN"
           vault status
           vault token lookup
           echo "✅ Successfully authenticated to Vault at $VAULT_ADDR"
@@ -239,12 +243,12 @@ jobs:
           echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
 
   # ============================================================================
-  # Reusable Workflow Outputs
+  # Reusable Workflow Outputs (defined in workflow_call at top of file)
+  # Outputs available to calling workflows:
+  #   - secrets_injected: Whether secrets were successfully injected
+  #   - secrets_hash: Hash for cache invalidation
+  #   - environment: Target environment name
   # ============================================================================
-  outputs:
-    success: ${{ jobs.fetch-secrets.outputs.success }}
-    secrets_hash: ${{ jobs.fetch-secrets.outputs.secrets_hash }}
-    environment: ${{ inputs.environment }}
 
 # ============================================================================
 # Usage Examples

@@ -108,10 +108,11 @@ export interface AccountFilters {
 }
 
 export interface AccountListResponse {
-  accounts: Account[];
+  items: Account[];
   total: number;
   page: number;
   page_size: number;
+  has_more: boolean;
 }
 
 export interface FilterOptions {
@@ -137,7 +138,23 @@ async function fetchAccounts(filters: AccountFilters): Promise<AccountListRespon
   if (filters.sort_order) params.set('sort_order', filters.sort_order);
 
   const response = await apiClient.get('l4', `/accounts?${params.toString()}`);
-  return response.data as AccountListResponse;
+  // Backend returns { items, total, page, page_size, has_more }
+  // Map to frontend contract for backward compatibility
+  const data = response.data as {
+    items?: Account[];
+    accounts?: Account[];
+    total: number;
+    page: number;
+    page_size: number;
+    has_more?: boolean;
+  };
+  return {
+    items: data.items ?? data.accounts ?? [],
+    total: data.total,
+    page: data.page,
+    page_size: data.page_size,
+    has_more: data.has_more ?? false,
+  };
 }
 
 export function useAccounts(filters: AccountFilters = {}) {

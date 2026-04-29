@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "mcp_server": {
+    "name": "ci-mcp",
+    "version": "1.0.0",
+    "description": "CI/CD tools for triggering builds, polling status, and fetching test results",
+    "base_url": "http://ci-mcp:8081",
+    "tools": [
+      {
+        "name": "trigger_build",
+        "description": "Trigger a CI build for a branch or PR",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "branch": { "type": "string" },
+            "commit_sha": { "type": "string" },
+            "workflow": { "type": "string", "default": "ci.yml" },
+            "extra_inputs": { "type": "object" }
+          },
+          "required": ["branch"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "build_id": { "type": "string" },
+            "status_url": { "type": "string" },
+            "estimated_duration_sec": { "type": "integer" }
+          }
+        }
+      },
+      {
+        "name": "get_build_status",
+        "description": "Poll the status of a CI build",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "build_id": { "type": "string" }
+          },
+          "required": ["build_id"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "running", "success", "failure", "cancelled"] },
+            "stage": { "type": "string" },
+            "duration_sec": { "type": "integer" },
+            "failure_logs": { "type": "string" }
+          }
+        }
+      },
+      {
+        "name": "fetch_test_results",
+        "description": "Fetch parsed test results from a completed build",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "build_id": { "type": "string" },
+            "format": { "type": "string", "enum": ["junit", "json"], "default": "json" }
+          },
+          "required": ["build_id"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "total_tests": { "type": "integer" },
+            "passed": { "type": "integer" },
+            "failed": { "type": "integer" },
+            "skipped": { "type": "integer" },
+            "failed_tests": { "type": "array" },
+            "coverage_percent": { "type": "number" }
+          }
+        }
+      }
+    ],
+    "health": {
+      "endpoint": "/health",
+      "expected_status": 200
+    }
+  }
+}

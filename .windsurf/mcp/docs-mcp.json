@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "mcp_server": {
+    "name": "docs-mcp",
+    "version": "1.0.0",
+    "description": "Documentation query tools for semantic search and API reference validation",
+    "base_url": "http://docs-mcp:8083",
+    "tools": [
+      {
+        "name": "query_docs",
+        "description": "Query documentation via semantic search over vectorized docs",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "doc_source": { "type": "string", "enum": ["api", "adr", "runbook", "all"], "default": "all" },
+            "top_k": { "type": "integer", "default": 5 }
+          },
+          "required": ["query"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "source": { "type": "string" },
+                  "snippet": { "type": "string" },
+                  "relevance": { "type": "number" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "check_api_reference",
+        "description": "Check if an API endpoint or type is documented and up to date",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "endpoint_path": { "type": "string" },
+            "schema_name": { "type": "string" }
+          },
+          "required": ["endpoint_path"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "documented": { "type": "boolean" },
+            "doc_path": { "type": "string" },
+            "drift_detected": { "type": "boolean" },
+            "missing_fields": { "type": "array" }
+          }
+        }
+      }
+    ],
+    "health": {
+      "endpoint": "/health",
+      "expected_status": 200
+    }
+  }
+}

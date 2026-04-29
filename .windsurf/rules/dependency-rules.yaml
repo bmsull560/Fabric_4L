@@ -1,0 +1,101 @@
+# Dependency Rules
+# Enforced by the monorepo graph and module boundaries.
+# These prevent architectural erosion and circular dependencies.
+
+rules:
+  - id: DR-001
+    name: frontend-cannot-import-backend
+    severity: block
+    description: >
+      frontend-app cannot import from backend-service modules directly.
+    rationale: >
+      Frontend must consume backend via API contracts (OpenAPI/REST), not direct module imports.
+    trigger:
+      type: import_violation
+      files:
+        - "frontend/**/*.ts"
+        - "frontend/**/*.tsx"
+      forbidden_imports:
+        - "value-fabric/layer*"
+        - "value-fabric/shared/**"
+        - "shared/**"
+      # Allow frontend's local shared/ alias
+      allowed_imports:
+        - "@shared/*"
+        - "frontend/shared/*"
+    action:
+      type: block
+      message: "Frontend code importing backend modules. Use API contracts instead."
+      required_verification:
+        - "dependency_graph_check"
+
+  - id: DR-002
+    name: layer-import-order
+    severity: block
+    description: >
+      Layers can only import from lower-numbered layers or shared/.
+      L4 may import L3, L2, L1, shared. L3 may import L2, L1, shared.
+      L5 and L6 may import from lower layers and shared/.
+      Root tests/ are exempt (cross-layer integration tests).
+    rationale: >
+      Prevents circular dependencies and maintains clean architecture boundaries.
+    trigger:
+      type: import_violation
+      files:
+        - "value-fabric/layer*/**/*.py"
+      exemptions:
+        - "tests/**/*.py"
+        - "value-fabric/layer*/tests/**/*.py"
+      allowed_patterns:
+        - "layer1": ["shared"]
+        - "layer2": ["layer1", "shared"]
+        - "layer3": ["layer2", "layer1", "shared"]
+        - "layer4": ["layer3", "layer2", "layer1", "shared"]
+        - "layer5": ["layer4", "layer3", "layer2", "layer1", "shared"]
+        - "layer6": ["layer5", "layer4", "layer3", "layer2", "layer1", "shared"]
+    action:
+      type: block
+      message: "Layer importing from a higher layer. Only lower-layer and shared/ imports are permitted. Root tests/ are exempt."
+      required_verification:
+        - "layer_graph_check"
+
+  - id: DR-003
+    name: shared-identity-is-leaf
+    severity: warn
+    description: >
+      shared/identity/ should not import from application layers to avoid circular dependencies.
+      It may import from other shared/ submodules (e.g., shared.audit, shared.crypto).
+    rationale: >
+      Identity is a foundational shared module. It must be a leaf in the dependency graph.
+    trigger:
+      type: import_violation
+      files:
+        - "shared/identity/**/*.py"
+        - "value-fabric/shared/identity/**/*.py"
+      forbidden_imports:
+        - "layer*"
+        - "value_fabric.layer*"
+    action:
+      type: warn
+      message: "shared/identity/ importing from application layers risks circular dependencies."
+      required_verification:
+        - "circular_dependency_check"
+
+  - id: DR-004
+    name: packs-are-domain-isolated
+    severity: warn
+    description: >
+      Domain packs (packs/*) should not import from each other. Use shared/ for cross-domain logic.
+    rationale: >
+      Domain verticals are independent extensions. Cross-pack coupling defeats the purpose.
+    trigger:
+      type: import_violation
+      files:
+        - "packs/**/*.py"
+      forbidden_patterns:
+        - "from packs.(?!${self_pack})"
+    action:
+      type: warn
+      message: "Domain pack importing from another domain pack. Use shared/ for cross-domain logic."
+      required_verification:
+        - "pack_dependency_check"

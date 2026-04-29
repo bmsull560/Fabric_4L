@@ -1,0 +1,114 @@
+# MCP Gateway Configuration
+# The gateway is the single entry point for all MCP servers.
+# Agents do not connect directly to MCP servers; they connect through the gateway.
+
+gateway:
+  name: value-fabric-mcp-gateway
+  version: 1.0.0
+  listen:
+    host: "0.0.0.0"
+    port: 3001
+
+  # Discovery endpoint — agents query this at startup
+  discovery:
+    enabled: true
+    endpoint: /list_tools
+    refresh_interval_minutes: 5
+    include_schemas: true
+    include_rate_limits: true
+
+  # Unified authentication
+  auth:
+    type: jwt
+    jwt:
+      issuer: "https://auth.valuefabric.ai"
+      audience: "mcp-gateway"
+      algorithms: ["RS256"]
+      # Public key fetched from JWKS endpoint
+      jwks_url: "${AUTH_JWKS_URL}"
+    # Role-based access control mapped to required_roles in tool manifests
+    rbac:
+      enabled: true
+      claim_path: "roles"
+
+  # Routing to MCP servers
+  routing:
+    strategy: prefix
+    routes:
+      - path: /repo-graph
+        server: repo-graph-mcp
+        rewrite_path: true
+        timeout_ms: 15000
+      - path: /ci
+        server: ci-mcp
+        rewrite_path: true
+        timeout_ms: 30000
+      - path: /code
+        server: code-mcp
+        rewrite_path: true
+        timeout_ms: 10000
+      - path: /docs
+        server: docs-mcp
+        rewrite_path: true
+        timeout_ms: 10000
+
+  # Health & resilience
+  health:
+    check_interval_seconds: 10
+    timeout_seconds: 5
+    unhealthy_threshold: 3
+    healthy_threshold: 2
+    # On failure, return 503 with fallback_tool_list from cache
+    fallback_on_failure: true
+
+  # Rate limiting (per-agent, per-tool)
+  rate_limiting:
+    enabled: true
+    strategy: token_bucket
+    default:
+      requests_per_minute: 120
+      burst: 20
+    overrides:
+      - tool_id: "ci/trigger_build"
+        requests_per_minute: 30
+        burst: 5
+      - tool_id: "code/read_file"
+        requests_per_minute: 2000
+        burst: 100
+
+  # Observability
+  observability:
+    log_level: info
+    request_log_format: "[{timestamp}] {agent_id} {tool_id} {duration_ms}ms {status}"
+    metrics_endpoint: /metrics
+    tracing:
+      enabled: true
+      exporter: otlp
+      service_name: mcp-gateway
+
+  # Sandbox policies for write/exec tools
+  sandbox:
+    read_only_tools:
+      - repo-graph/*
+      - code/read_file
+      - code/search_symbols
+      - code/get_type_definition
+      - docs/*
+      - ci/get_build_status
+      - ci/fetch_test_results
+    write_tools:
+      sandbox_type: docker
+      network: disabled
+      secrets_access: false
+      resource_limits:
+        cpu: "1.0"
+        memory: "512Mi"
+        max_execution_seconds: 300
+    exec_tools:
+      sandbox_type: firecracker
+      network: isolated
+      secrets_access: false
+      resource_limits:
+        cpu: "2.0"
+        memory: "2Gi"
+        max_execution_seconds: 600

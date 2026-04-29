@@ -59,20 +59,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state from storage on mount
   useEffect(() => {
-    const initAuth = () => {
-      const session = authClient.getCurrentSession();
+    const initAuth = async () => {
       const storedToken = localStorage.getItem('accessToken');
+      const session = authClient.getCurrentSession();
 
       if (storedToken && session) {
-        setAuthState({
-          state: 'authenticated',
-          user: session,
-          accessToken: storedToken,
-          error: null,
-        });
-
-        // Synchronize restored role with userTierStore
-        useUserTierStore.getState().setUserRole(session.role);
+        // Validate token expiry before restoring session
+        const isValid = await authClient.refreshToken();
+        if (isValid) {
+          setAuthState({
+            state: 'authenticated',
+            user: session,
+            accessToken: storedToken,
+            error: null,
+          });
+          // Synchronize restored role with userTierStore
+          useUserTierStore.getState().setUserRole(session.role);
+        } else {
+          // Token expired — clear and stay idle
+          authClient.clearSession();
+          setAuthState({
+            state: 'idle',
+            user: null,
+            accessToken: null,
+            error: null,
+          });
+        }
       } else {
         // Clear any partial/invalid data
         authClient.clearSession();
@@ -249,7 +261,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshToken = useCallback(async (): Promise<boolean> => {
     const isValid = await authClient.refreshToken();
 
-    if (!isValid) {
+    if (isValid) {
+      // Re-hydrate state from storage in case token was refreshed
+      const session = authClient.getCurrentSession();
+      const storedToken = localStorage.getItem('accessToken');
+      if (session && storedToken) {
+        setAuthState({
+          state: 'authenticated',
+          user: session,
+          accessToken: storedToken,
+          error: null,
+        });
+        useUserTierStore.getState().setUserRole(session.role);
+      }
+    } else {
       // Session expired or invalid, clear state
       setAuthState({
         state: 'idle',
@@ -272,18 +297,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     // Set mock authenticated state for development testing
+    const mockUser: UserInfo = {
+      id: 'dev-user-123',
+      email: 'dev@example.com',
+      role: 'admin',
+      tenantId: 'dev-tenant',
+      tenantSlug: 'dev',
+    };
+    const mockToken = 'dev-token-bypass';
+    authClient.persistSession(mockToken, mockUser, 'dev-tenant');
     setAuthState({
       state: 'authenticated',
-      user: {
-        id: 'dev-user-123',
-        email: 'dev@example.com',
-        role: 'admin',
-        tenantId: 'dev-tenant',
-        tenantSlug: 'dev',
-      },
-      accessToken: 'dev-token-bypass',
+      user: mockUser,
+      accessToken: mockToken,
       error: null,
     });
+    // Synchronize role with userTierStore
+    useUserTierStore.getState().setUserRole('admin');
   }, []);
 
   const value: AuthContextType = {

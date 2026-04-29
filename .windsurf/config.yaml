@@ -1,9 +1,20 @@
+# Windsurf Agent Fleet Runtime Configuration
+# Aligns with production-grade architecture blueprint:
+# - Circuit breakers, state machines, context budgets, memory tiers, MCP gateway
+
+# -----------------------------------------------------------------------------
+# Auto Review
+# -----------------------------------------------------------------------------
 auto_review:
   enabled: true
   on_save: true
   interval_minutes: 5
   max_fixes_per_session: 3
+  side_effect_policy: read-only  # Auto-review never writes code
 
+# -----------------------------------------------------------------------------
+# Autonomous Test Assurance
+# -----------------------------------------------------------------------------
 autonomous_test_assurance:
   enabled: true
   max_tests_per_session: 10
@@ -18,3 +29,171 @@ autonomous_test_assurance:
     - refactoring
     - verification
     - reporting
+
+# -----------------------------------------------------------------------------
+# Circuit Breakers (NEW)
+# -----------------------------------------------------------------------------
+circuit_breaker:
+  enabled: true
+  max_consecutive_tool_errors: 3
+  max_self_correction_loops: 2
+  max_workflow_retries: 2
+  action_on_trip: halt_and_escalate  # Options: halt_and_escalate, human_in_the_loop, degrade_to_readonly
+  escalation_channel: log_and_notify  # Options: log_and_notify, pagerduty, slack
+
+# -----------------------------------------------------------------------------
+# Context Budget (NEW) — 40/40/20 Split
+# -----------------------------------------------------------------------------
+context_budget:
+  enabled: true
+  default_total_tokens: 128000
+  split:
+    system_grounding: 0.40   # Rules, graph, memory, agent identity
+    code_snippets: 0.40      # Retrieved + validated code, diffs
+    conversation_history: 0.20  # Summarized turns, state JSON
+  reserved_for_response: 4000
+  enforce_pruning: true
+
+# -----------------------------------------------------------------------------
+# State Machine (NEW)
+# -----------------------------------------------------------------------------
+state_machine:
+  enabled: true
+  require_explicit_state_json: true
+  state_schema: "memory/working/session-template.json"
+  mandatory_fields:
+    - stage
+    - agent_id
+    - files_touched
+    - tests_run
+    - decisions_made
+    - blocked_by
+  checkpoint_interval: 3  # Turns between state checkpoints
+
+# -----------------------------------------------------------------------------
+# Memory Tiers (NEW)
+# -----------------------------------------------------------------------------
+memory:
+  working:
+    max_sessions: 10
+    ttl_minutes: 60
+    storage: memory/working/
+  episodic:
+    retention_days: 30
+    storage: memory/episodic/
+    vector_namespace: windsurf-episodes
+  semantic:
+    storage: memory/semantic/
+    review_interval_days: 90
+    min_confidence: 0.70
+  distillation:
+    enabled: true
+    trigger: on_task_complete  # Options: on_task_complete, scheduled, manual
+    auto_archive_low_confidence: true
+
+# -----------------------------------------------------------------------------
+# MCP Gateway (NEW)
+# -----------------------------------------------------------------------------
+mcp:
+  gateway:
+    enabled: true
+    url: "${MCP_GATEWAY_URL:-http://localhost:3001}"
+    auth:
+      type: jwt
+      token_source: env
+      env_var: MCP_JWT_TOKEN
+    discovery:
+      enabled: true
+      refresh_interval_minutes: 5
+      endpoint: "/list_tools"
+    routing:
+      - path: "/repo-graph/*"
+        server: repo-graph-mcp
+      - path: "/ci/*"
+        server: ci-mcp
+      - path: "/code/*"
+        server: code-mcp
+      - path: "/docs/*"
+        server: docs-mcp
+  servers:
+    - name: repo-graph-mcp
+      manifest: mcp/repo-graph-mcp.json
+      health_check: "/health"
+    - name: ci-mcp
+      manifest: mcp/ci-mcp.json
+      health_check: "/health"
+    - name: code-mcp
+      manifest: mcp/code-mcp.json
+      health_check: "/health"
+    - name: docs-mcp
+      manifest: mcp/docs-mcp.json
+      health_check: "/health"
+
+# -----------------------------------------------------------------------------
+# Cross-Agent Sync (NEW)
+# -----------------------------------------------------------------------------
+cross_agent_sync:
+  enabled: true
+  coordinator_interval_seconds: 60
+  lock_ttl_seconds: 1800  # 30 minutes
+  lock_storage: memory/working/agent-locks.json
+  conflict_resolution: pause_and_notify  # Options: pause_and_notify, last_write_wins, merge
+
+# -----------------------------------------------------------------------------
+# Task Deduplication (NEW)
+# -----------------------------------------------------------------------------
+task_deduplication:
+  enabled: true
+  hash_algorithm: sha256
+  check_fields:
+    - task_description
+    - target_files
+  storage: memory/episodic/active-tasks.json
+  action_on_duplicate: join_existing  # Options: join_existing, skip, notify
+
+# -----------------------------------------------------------------------------
+# Affected Analysis (NEW)
+# -----------------------------------------------------------------------------
+affected_analysis:
+  enabled: true
+  tool: repo-graph-mcp.get_affected_projects
+  post_change_verification: true
+  dependent_test_policy: queue_all  # Options: queue_all, queue_critical_only, notify
+
+# -----------------------------------------------------------------------------
+# Policy Engine (NEW)
+# -----------------------------------------------------------------------------
+policy_engine:
+  enabled: true
+  rules_source:
+    - registry/rules.json
+    - rules/hard-constraints.yaml
+    - rules/dependency-rules.yaml
+    - rules/safety-rules.yaml
+  evaluation_order:
+    - hard-constraints
+    - safety-rules
+    - dependency-rules
+    - style-rules
+  default_verdict: warn
+  block_on: [hard-constraints, safety-rules]
+
+# -----------------------------------------------------------------------------
+# Observability
+# -----------------------------------------------------------------------------
+observability:
+  audit_trail:
+    enabled: true
+    storage: memory/episodic/audit-trail/
+    log_fields:
+      - timestamp
+      - agent_id
+      - stage
+      - rules_loaded
+      - memories_retrieved
+      - tools_called
+      - llm_raw_output
+      - decisions_made
+  metrics:
+    enabled: true
+    emit_interval_minutes: 5

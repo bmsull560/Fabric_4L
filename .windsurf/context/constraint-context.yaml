@@ -1,0 +1,75 @@
+# Constraint Context Provider
+# Loads only the rules relevant to the files being touched.
+
+provider: registry_rules
+source_files:
+  - registry/rules.json
+  - rules/hard-constraints.yaml
+  - rules/dependency-rules.yaml
+  - rules/safety-rules.yaml
+
+# Mapping from file paths to applicable rule categories
+file_to_rule_mapping:
+  - pattern: "shared/identity/**/*"
+    rules:
+      - hard-constraints.yaml#no-identity-modifications-without-review
+      - dependency-rules.yaml#shared-identity-is-leaf
+  - pattern: "contracts/tool-manifests/*"
+    rules:
+      - hard-constraints.yaml#tool-manifest-sync-required
+  - pattern: "layer4-agents/migrations/**/*"
+    rules:
+      - hard-constraints.yaml#no-manual-migration-changes
+  - pattern: "**/test_*.py"
+    rules:
+      - hard-constraints.yaml#never-weaken-tests
+  - pattern: "frontend/**/*.ts"
+    rules:
+      - dependency-rules.yaml#frontend-cannot-import-backend
+      - safety-rules.yaml#no-pii-in-prompts
+  - pattern: "layer*/src/api/**/*.py"
+    rules:
+      - safety-rules.yaml#auth-middleware-on-all-routes
+      - safety-rules.yaml#rate-limiting-on-public-endpoints
+  - pattern: "**/*.py"
+    rules:
+      - safety-rules.yaml#parameterized-queries-only
+      - safety-rules.yaml#secrets-in-vault-only
+  - pattern: "layer*/**/*.py"
+    rules:
+      - dependency-rules.yaml#layer-import-order
+  - pattern: "packs/**/*.py"
+    rules:
+      - dependency-rules.yaml#packs-are-domain-isolated
+  - pattern: "**/*.sql"
+    rules:
+      - safety-rules.yaml#sql-change-requires-migration-and-rollback
+
+# Evaluation flow
+evaluation_order:
+  1. hard-constraints
+  2. safety-rules
+  3. dependency-rules
+  4. style-rules
+
+# Action mapping
+verdict_actions:
+  block:
+    action: halt_immediately
+    message_template: "BLOCKED by {rule_id}: {message}"
+    log_level: error
+  warn:
+    action: surface_and_continue
+    message_template: "WARNING from {rule_id}: {message}"
+    log_level: warning
+    require_acknowledgment: true
+  pass:
+    action: continue
+    log_level: debug
+
+# Policy agent
+policy_agent:
+  enabled: true
+  evaluation_strategy: lightweight_yaml_scan
+  timeout_ms: 2000
+  max_rules_evaluated: 20

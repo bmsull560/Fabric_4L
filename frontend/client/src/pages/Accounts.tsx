@@ -463,7 +463,7 @@ function Accounts() {
   const { data: syncStatusList } = useAccountSyncStatus();
   const syncAccounts = useSyncAccounts();
 
-  const accounts = data?.accounts || [];
+  const accounts = data?.items || [];
   const total = data?.total || 0;
 
   const handleExport = () => {

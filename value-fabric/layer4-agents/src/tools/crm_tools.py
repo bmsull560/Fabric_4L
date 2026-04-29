@@ -99,6 +99,25 @@ class GetProspectDataTool(BaseTool):
             )
         return value
 
+    @classmethod
+    def _soql_safe_id(cls, value: str, field_name: str = "prospect_id") -> str:
+        """Return a SOQL-safe ID string with defense-in-depth escaping.
+
+        Validates the ID format then escapes any single quotes per SOQL spec.
+        This is defense-in-depth: callers should already have validated via
+        _validate_sfdc_id, but this helper ensures safety even if they don't.
+
+        Args:
+            value: Raw ID value
+            field_name: Name of field for error messages
+
+        Returns:
+            SOQL-safe ID string (single quotes doubled)
+        """
+        validated = cls._validate_sfdc_id(value, field_name)
+        # Escape single quotes per SOQL spec (defense-in-depth)
+        return validated.replace("'", "''")
+
     async def _get_salesforce_data(
         self, client: httpx.AsyncClient, input_data: GetProspectDataInput
     ) -> GetProspectDataOutput:
@@ -129,7 +148,8 @@ class GetProspectDataTool(BaseTool):
 
         # Fetch opportunities
         if "opportunities" in input_data.data_types:
-            opp_query = f"SELECT Id, Name, StageName, Amount, Probability, CloseDate FROM Opportunity WHERE AccountId = '{prospect_id}'"
+            safe_id = self._soql_safe_id(prospect_id)
+            opp_query = f"SELECT Id, Name, StageName, Amount, Probability, CloseDate FROM Opportunity WHERE AccountId = '{safe_id}'"
             query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(opp_query)}"
             response = await client.get(query_url)
             if response.status_code == 200:
@@ -150,7 +170,8 @@ class GetProspectDataTool(BaseTool):
 
         # Fetch interactions (activities)
         if "interactions" in input_data.data_types:
-            task_query = f"SELECT Id, Subject, ActivityDate, Status, Description FROM Task WHERE WhatId = '{prospect_id}' ORDER BY ActivityDate DESC"
+            safe_id = self._soql_safe_id(prospect_id)
+            task_query = f"SELECT Id, Subject, ActivityDate, Status, Description FROM Task WHERE WhatId = '{safe_id}' ORDER BY ActivityDate DESC"
             query_url = f"{self.instance_url}/services/data/v58.0/query?q={urllib.parse.quote(task_query)}"
             response = await client.get(query_url)
             if response.status_code == 200:

@@ -45,12 +45,32 @@ router = APIRouter(prefix="/accounts", tags=["Accounts"])
 # ============================================================================
 
 
+def _safe_enum(enum_cls, value, default=None):
+    """Safely parse an enum value, returning default on failure.
+
+    Prevents 500 errors when DB contains unexpected enum values or NULLs.
+    """
+    if value is None:
+        return default
+    try:
+        return enum_cls(value)
+    except (ValueError, TypeError):
+        logger.warning("Invalid %s value: %r, using default %s", enum_cls.__name__, value, default)
+        return default
+
+
 def format_source_attribution(account) -> str:
     """Generate human-readable source attribution string."""
+    provider = account.provider or "unknown"
     if not account.last_synced_at:
-        return f"Pending sync from {account.provider}"
+        return f"Pending sync from {provider}"
 
-    time_diff = datetime.now(UTC) - account.last_synced_at
+    # Ensure timezone-aware comparison to avoid TypeError
+    last_synced = account.last_synced_at
+    if last_synced.tzinfo is None:
+        last_synced = last_synced.replace(tzinfo=UTC)
+
+    time_diff = datetime.now(UTC) - last_synced
     if time_diff.days > 0:
         time_str = f"{time_diff.days} day{'s' if time_diff.days > 1 else ''} ago"
     elif time_diff.seconds // 3600 > 0:
@@ -62,14 +82,15 @@ def format_source_attribution(account) -> str:
     else:
         time_str = "just now"
 
-    return f"Synced from {account.provider.capitalize()} {time_str}"
+    return f"Synced from {provider.capitalize()} {time_str}"
 
 
 def to_list_item_schema(account) -> AccountListItemSchema:
     """Convert Account model to list item schema."""
+    provider = account.provider or "unknown"
     return AccountListItemSchema(
         id=account.id,
-        provider=CRMProvider(account.provider),
+        provider=_safe_enum(CRMProvider, account.provider, CRMProvider.SALESFORCE),
         name=account.name,
         domain=account.domain,
         industry=account.industry,
@@ -78,24 +99,36 @@ def to_list_item_schema(account) -> AccountListItemSchema:
         owner_name=account.owner_name,
         stage=account.stage,
         segment=account.segment,
-        sync_status=SyncStatus(account.sync_status),
+        sync_status=_safe_enum(SyncStatus, account.sync_status, SyncStatus.PENDING),
         last_synced_at=account.last_synced_at,
         updated_at=account.updated_at,
-        provider_badge=account.provider.capitalize(),
+        provider_badge=provider.capitalize(),
     )
 
 
 def to_detail_schema(account) -> AccountDetailSchema:
     """Convert Account model to detail schema."""
-    # Convert embedded opportunities
-    opportunities = [OpportunitySchema(**opp) for opp in (account.opportunities or [])]
+    provider = account.provider or "unknown"
 
-    # Convert embedded contacts
-    contacts = [ContactSchema(**contact) for contact in (account.contacts or [])]
+    # Convert embedded opportunities — skip malformed entries rather than crash
+    opportunities = []
+    for opp in (account.opportunities or []):
+        try:
+            opportunities.append(OpportunitySchema(**opp))
+        except Exception as exc:
+            logger.warning("Skipping malformed opportunity for account %s: %s", account.id, exc)
+
+    # Convert embedded contacts — skip malformed entries rather than crash
+    contacts = []
+    for contact in (account.contacts or []):
+        try:
+            contacts.append(ContactSchema(**contact))
+        except Exception as exc:
+            logger.warning("Skipping malformed contact for account %s: %s", account.id, exc)
 
     return AccountDetailSchema(
         id=account.id,
-        provider=CRMProvider(account.provider),
+        provider=_safe_enum(CRMProvider, account.provider, CRMProvider.SALESFORCE),
         provider_record_id=account.provider_record_id,
         name=account.name,
         domain=account.domain,
@@ -113,9 +146,9 @@ def to_detail_schema(account) -> AccountDetailSchema:
         created_at=account.created_at,
         updated_at=account.updated_at,
         last_synced_at=account.last_synced_at,
-        sync_status=SyncStatus(account.sync_status),
+        sync_status=_safe_enum(SyncStatus, account.sync_status, SyncStatus.PENDING),
         source_attribution=format_source_attribution(account),
-        provider_badge=account.provider.capitalize(),
+        provider_badge=provider.capitalize(),
         opportunities=opportunities,
         contacts=contacts,
     )

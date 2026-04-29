@@ -1,0 +1,43 @@
+# Diff Context Provider
+# Ensures every agent understands what has already changed in this session.
+
+provider: git
+fetch_commands:
+  unstaged: "git diff"
+  staged: "git diff --cached"
+  recent_commits: "git log --oneline -5"
+  branch: "git branch --show-current"
+
+# When to fetch
+fetch_conditions:
+  - at_session_start
+  - before_file_edit
+  - every_5_turns
+
+# What to inject
+injection_format: markdown
+sections:
+  - name: current_branch
+    label: "Current Branch"
+    command: "git branch --show-current"
+  - name: unstaged_changes
+    label: "Unstaged Changes"
+    command: "git diff --stat"
+  - name: staged_changes
+    label: "Staged Changes"
+    command: "git diff --cached --stat"
+  - name: recent_commits
+    label: "Recent Commits"
+    command: "git log --oneline -5"
+  - name: full_diff
+    label: "Full Diff (if small)"
+    command: "git diff"
+    max_lines: 100
+    condition: "diff_stat_lines < 100"
+
+# Agent obligations
+agent_obligations:
+  - Review diff context before proposing new changes
+  - Avoid modifying files already changed in this session unless explicitly continuing that work
+  - Reference recent commit messages to maintain consistent commit style
+  - If merge conflicts are detected, halt and notify

@@ -1,0 +1,583 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "registry_version": "1.0.0",
+  "description": "Value Fabric agent skill registry with schemas, side effects, and context requirements",
+  "skills": [
+    {
+      "skill_id": "agentic-ux",
+      "name": "agentic-ux",
+      "version": "1.0.0",
+      "description": "UI patterns for streaming agents, tool execution visibility, confirmation flows, progress indication",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "pattern_type": { "type": "string", "enum": ["streaming", "tool_visibility", "confirmation", "progress"] },
+          "component_name": { "type": "string" },
+          "context": { "type": "string" }
+        },
+        "required": ["pattern_type"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "pattern_definition": { "type": "string" },
+          "tsx_example": { "type": "string" },
+          "accessibility_notes": { "type": "string" }
+        }
+      },
+      "side_effects": "none",
+      "timeout_ms": 30000,
+      "required_context": ["frontend/component_inventory"],
+      "allowed_agents": ["ui-drift", "facade-connector"]
+    },
+    {
+      "skill_id": "autonomous-test-assurance",
+      "name": "autonomous-test-assurance",
+      "version": "1.1.0",
+      "description": "Level 3 autonomous testing with production invariant categories (tenant isolation, auth, validation, secrets, idempotency, LLM safety)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "target_layer": { "type": "string", "enum": ["layer1", "layer2", "layer3", "layer4", "frontend"] },
+          "severity_threshold": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
+          "max_tests": { "type": "integer", "default": 10 },
+          "require_negative_tests": { "type": "boolean", "default": true }
+        },
+        "required": ["target_layer"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "tests_written": { "type": "array", "items": { "type": "string" } },
+          "gap_matrix": { "type": "object" },
+          "verification_result": { "type": "string", "enum": ["pass", "fail", "partial"] },
+          "report_path": { "type": "string" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 300000,
+      "required_context": ["project_graph", "test_inventory", "production_invariants"],
+      "allowed_agents": ["test-assurance"]
+    },
+    {
+      "skill_id": "contract-enforcement-auditor",
+      "name": "contract-enforcement-auditor",
+      "version": "1.0.0",
+      "description": "Scans for violations of 6 canonical contracts from packages/platform-contract/CONTRACT.md",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "target_files": { "type": "array", "items": { "type": "string" } },
+          "contracts": { "type": "array", "items": { "type": "string" }, "default": ["all"] }
+        },
+        "required": ["target_files"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "violations": { "type": "array" },
+          "enforcement_rate": { "type": "number" },
+          "severity_counts": { "type": "object" }
+        }
+      },
+      "side_effects": "none",
+      "timeout_ms": 60000,
+      "required_context": ["contracts/platform-contract"],
+      "allowed_agents": ["code-reviewer", "drift-assessor"]
+    },
+    {
+      "skill_id": "dead-code-sweeper",
+      "name": "dead-code-sweeper",
+      "version": "1.0.0",
+      "description": "Identifies and removes dead code safely after verifying zero consumers",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": { "type": "string", "enum": ["audit", "sweep"], "default": "audit" },
+          "target_paths": { "type": "array", "items": { "type": "string" } },
+          "dry_run": { "type": "boolean", "default": true }
+        },
+        "required": ["target_paths"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "dead_code_catalog": { "type": "array" },
+          "files_removed": { "type": "array" },
+          "tests_impacted": { "type": "array" },
+          "verification_passed": { "type": "boolean" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 120000,
+      "required_context": ["project_graph", "import_graph"],
+      "allowed_agents": ["dead-code-sweeper", "code-reviewer"]
+    },
+    {
+      "skill_id": "deprecation-migrator",
+      "name": "deprecation-migrator",
+      "version": "1.0.0",
+      "description": "Fixes 10 anti-pattern categories (~280 instances) like tenant_id as parameter, raw SQL, imperative navigation",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "anti_pattern_id": { "type": "string", "enum": ["AP-1", "AP-2", "AP-3", "AP-4", "AP-5", "AP-6", "AP-7", "AP-8", "AP-9", "AP-10", "all"] },
+          "target_files": { "type": "array", "items": { "type": "string" } },
+          "dry_run": { "type": "boolean", "default": true }
+        },
+        "required": ["anti_pattern_id"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "instances_found": { "type": "integer" },
+          "instances_fixed": { "type": "integer" },
+          "files_modified": { "type": "array" },
+          "tests_updated": { "type": "array" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 300000,
+      "required_context": ["project_graph", "anti_pattern_catalog"],
+      "allowed_agents": ["deprecation-migrator"]
+    },
+    {
+      "skill_id": "dil-hook-scaffolder",
+      "name": "dil-hook-scaffolder",
+      "version": "1.0.0",
+      "description": "Scaffolds TanStack Query hooks for 8 backend services with 52 unintegrated endpoints",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "service_name": { "type": "string" },
+          "endpoint_pattern": { "type": "string" },
+          "hook_type": { "type": "string", "enum": ["useQuery", "useMutation", "useInfiniteQuery"] }
+        },
+        "required": ["service_name", "hook_type"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "hook_code": { "type": "string" },
+          "test_stub": { "type": "string" },
+          "integration_checklist": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 60000,
+      "required_context": ["openapi_spec", "frontend_hook_inventory"],
+      "allowed_agents": ["facade-connector"]
+    },
+    {
+      "skill_id": "evals",
+      "name": "evals",
+      "version": "1.0.0",
+      "description": "Evaluation frameworks for extraction accuracy, agent trajectory, regression testing, prompt A/B testing",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "eval_type": { "type": "string", "enum": ["extraction_accuracy", "trajectory", "regression", "prompt_ab"] },
+          "baseline_path": { "type": "string" },
+          "candidate_path": { "type": "string" }
+        },
+        "required": ["eval_type"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "score": { "type": "number" },
+          "metrics": { "type": "object" },
+          "comparison_result": { "type": "string", "enum": ["improved", "degraded", "unchanged"] }
+        }
+      },
+      "side_effects": "none",
+      "timeout_ms": 300000,
+      "required_context": ["golden_dataset"],
+      "allowed_agents": ["test-assurance", "drift-assessor"]
+    },
+    {
+      "skill_id": "facade-page-connector",
+      "name": "facade-page-connector",
+      "version": "1.0.0",
+      "description": "Rewires frontend pages from mock data to real backend hooks (addresses 74% of pages with zero API calls)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "page_path": { "type": "string" },
+          "backend_service": { "type": "string" },
+          "preserve_mock_fallback": { "type": "boolean", "default": false }
+        },
+        "required": ["page_path", "backend_service"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "modified_files": { "type": "array" },
+          "hooks_added": { "type": "array" },
+          "api_coverage_before": { "type": "number" },
+          "api_coverage_after": { "type": "number" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 120000,
+      "required_context": ["frontend_pages", "backend_endpoints", "hook_inventory"],
+      "allowed_agents": ["facade-connector"]
+    },
+    {
+      "skill_id": "frontend-audit-refactor",
+      "name": "frontend-audit-refactor",
+      "version": "1.0.0",
+      "description": "3-phase process: audit → backend connection audit → iterative refactor loops",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "target_page": { "type": "string" },
+          "phase": { "type": "string", "enum": ["audit", "connect", "refactor"] },
+          "severity_threshold": { "type": "string", "enum": ["P0", "P1", "P2"] }
+        },
+        "required": ["target_page", "phase"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "audit_findings": { "type": "array" },
+          "refactor_plan": { "type": "object" },
+          "files_modified": { "type": "array" },
+          "verification_passed": { "type": "boolean" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 300000,
+      "required_context": ["frontend_source", "backend_api_contracts"],
+      "allowed_agents": ["ui-drift", "facade-connector"]
+    },
+    {
+      "skill_id": "fumadocs",
+      "name": "fumadocs",
+      "version": "1.0.0",
+      "description": "Documentation framework guidelines for Fumadocs (MDX, content sources, components, theming)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["create_page", "update_page", "audit_drift", "migrate_component"] },
+          "page_path": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": ["action"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "file_path": { "type": "string" },
+          "mdx_content": { "type": "string" },
+          "diataxis_alignment": { "type": "string" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 60000,
+      "required_context": ["fumadocs_config", "existing_docs"],
+      "allowed_agents": ["docs-writer"]
+    },
+    {
+      "skill_id": "gate-hardening",
+      "name": "gate-hardening",
+      "version": "1.0.0",
+      "description": "7-phase TDD process for building machine-verifiable production release gates",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "gate_type": { "type": "string", "enum": ["security", "performance", "contract", "accessibility"] },
+          "target_layer": { "type": "string" }
+        },
+        "required": ["gate_type"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "gate_definition": { "type": "object" },
+          "test_files": { "type": "array" },
+          "verification_result": { "type": "string" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 300000,
+      "required_context": ["ci_config", "test_pyramid"],
+      "allowed_agents": ["test-assurance"]
+    },
+    {
+      "skill_id": "login-signup-ux",
+      "name": "login-signup-ux",
+      "version": "1.0.0",
+      "description": "Production-grade auth UX patterns, OAuth with Vite/SPA, accessibility, testing edge cases",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "flow_type": { "type": "string", "enum": ["login", "signup", "oauth", "mfa", "password_reset"] },
+          "provider": { "type": "string", "enum": ["google", "github", "oidc", "saml"] }
+        },
+        "required": ["flow_type"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "tsx_component": { "type": "string" },
+          "test_cases": { "type": "array" },
+          "a11y_checklist": { "type": "array" }
+        }
+      },
+      "side_effects": "none",
+      "timeout_ms": 60000,
+      "required_context": ["frontend_auth_state", "oauth_config"],
+      "allowed_agents": ["facade-connector", "ui-drift"]
+    },
+    {
+      "skill_id": "memory-context",
+      "name": "memory-context",
+      "version": "1.0.0",
+      "description": "Vector store and knowledge graph integration for semantic memory, conversation context management, and cross-session persistence",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "operation": { "type": "string", "enum": ["remember", "recall", "summarize", "distill"] },
+          "content": { "type": "string" },
+          "namespace": { "type": "string", "default": "conversations" },
+          "top_k": { "type": "integer", "default": 5 }
+        },
+        "required": ["operation"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "results": { "type": "array" },
+          "token_count": { "type": "integer" },
+          "namespace": { "type": "string" }
+        }
+      },
+      "side_effects": "read",
+      "timeout_ms": 30000,
+      "required_context": ["vector_store_config", "graph_schema"],
+      "allowed_agents": ["*"]
+    },
+    {
+      "skill_id": "orchestration",
+      "name": "orchestration",
+      "version": "1.0.0",
+      "description": "LangGraph workflow patterns with checkpointing and human-in-the-loop",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "workflow_name": { "type": "string" },
+          "pattern": { "type": "string", "enum": ["state_graph", "hierarchical", "map_reduce"] },
+          "requires_approval": { "type": "boolean", "default": false }
+        },
+        "required": ["workflow_name", "pattern"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "graph_definition": { "type": "object" },
+          "checkpoint_config": { "type": "object" },
+          "interrupt_points": { "type": "array" }
+        }
+      },
+      "side_effects": "none",
+      "timeout_ms": 60000,
+      "required_context": ["layer4_agent_state_schema"],
+      "allowed_agents": ["drift-assessor", "test-assurance"]
+    },
+    {
+      "skill_id": "playwright",
+      "name": "playwright",
+      "version": "1.0.0",
+      "description": "E2E testing with local/cloud execution, POM patterns, CI/CD integration",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["create_test", "run_suite", "debug_failure", "update_pom"] },
+          "target_url": { "type": "string" },
+          "test_name": { "type": "string" }
+        },
+        "required": ["action"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "test_file": { "type": "string" },
+          "run_result": { "type": "object" },
+          "screenshot_path": { "type": "string" }
+        }
+      },
+      "side_effects": "exec",
+      "timeout_ms": 300000,
+      "required_context": ["frontend_routes", "playwright_config"],
+      "allowed_agents": ["test-assurance", "ui-drift"]
+    },
+    {
+      "skill_id": "pytest",
+      "name": "pytest",
+      "version": "1.0.0",
+      "description": "Python testing patterns (fixtures, parametrize, markers, mocking, async)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["create_test", "run_test", "refactor_test", "audit_quality"] },
+          "target_module": { "type": "string" },
+          "test_type": { "type": "string", "enum": ["unit", "integration", "security"] }
+        },
+        "required": ["action", "target_module"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "test_file": { "type": "string" },
+          "coverage_percent": { "type": "number" },
+          "failures": { "type": "array" },
+          "quality_score": { "type": "number" }
+        }
+      },
+      "side_effects": "exec",
+      "timeout_ms": 180000,
+      "required_context": ["python_source", "pytest_config"],
+      "allowed_agents": ["test-assurance", "deprecation-migrator", "dead-code-sweeper"]
+    },
+    {
+      "skill_id": "pre-production-audit",
+      "name": "pre-production-audit",
+      "version": "1.0.0",
+      "description": "Enterprise SaaS pre-production audit across 8 domains (security, AI/ML, observability, performance, infrastructure)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "audit_scope": { "type": "array", "items": { "type": "string" } },
+          "target_release": { "type": "string" }
+        },
+        "required": ["audit_scope"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "audit_report": { "type": "object" },
+          "blockers": { "type": "array" },
+          "warnings": { "type": "array" },
+          "risk_score": { "type": "number" }
+        }
+      },
+      "side_effects": "none",
+      "timeout_ms": 300000,
+      "required_context": ["release_notes", "infrastructure_manifests"],
+      "allowed_agents": ["drift-assessor"]
+    },
+    {
+      "skill_id": "shadcn-fabric",
+      "name": "shadcn-fabric",
+      "version": "1.0.0",
+      "description": "UI component guidelines (50+ installed components), Tailwind v4, semantic colors, Fabric domain components",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "component_name": { "type": "string" },
+          "action": { "type": "string", "enum": ["install", "customize", "audit_drift"] },
+          "theme_variant": { "type": "string", "enum": ["light", "dark", "system"] }
+        },
+        "required": ["component_name", "action"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "component_code": { "type": "string" },
+          "theme_tokens": { "type": "object" },
+          "drift_findings": { "type": "array" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 60000,
+      "required_context": ["tailwind_config", "shadcn_registry"],
+      "allowed_agents": ["ui-drift", "facade-connector"]
+    },
+    {
+      "skill_id": "structured-outputs",
+      "name": "structured-outputs",
+      "version": "1.0.0",
+      "description": "Pydantic-based LLM response validation (OpenAI/Anthropic function calling)",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "provider": { "type": "string", "enum": ["openai", "anthropic"] },
+          "response_model": { "type": "string" },
+          "prompt": { "type": "string" },
+          "fallback_enabled": { "type": "boolean", "default": true }
+        },
+        "required": ["provider", "response_model", "prompt"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "parsed_result": { "type": "object" },
+          "raw_response": { "type": "string" },
+          "validation_passed": { "type": "boolean" },
+          "fallback_used": { "type": "boolean" }
+        }
+      },
+      "side_effects": "network",
+      "timeout_ms": 60000,
+      "required_context": ["pydantic_models"],
+      "allowed_agents": ["*"]
+    },
+    {
+      "skill_id": "test-quality-auditor",
+      "name": "test-quality-auditor",
+      "version": "1.0.0",
+      "description": "Evaluates tests against 7 principles with P0-P3 severity and safe rewrite patterns",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "target_test_files": { "type": "array", "items": { "type": "string" } },
+          "principles": { "type": "array", "items": { "type": "string" }, "default": ["all"] },
+          "auto_rewrite": { "type": "boolean", "default": false }
+        },
+        "required": ["target_test_files"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "quality_score": { "type": "number" },
+          "violations": { "type": "array" },
+          "rewritten_tests": { "type": "array" },
+          "severity_breakdown": { "type": "object" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 180000,
+      "required_context": ["test_files", "production_source"],
+      "allowed_agents": ["test-assurance", "code-reviewer", "deprecation-migrator", "dead-code-sweeper"]
+    },
+    {
+      "skill_id": "tool-contract-sync",
+      "name": "tool-contract-sync",
+      "version": "1.1.0",
+      "description": "Audit and fix the three-way sync between tool implementations, skill definitions, and tool manifests",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "mode": { "type": "string", "enum": ["audit", "generate_missing", "validate"], "default": "audit" },
+          "target_tools": { "type": "array", "items": { "type": "string" }, "default": ["all"] }
+        },
+        "required": []
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "gap_matrix": { "type": "object" },
+          "missing_skills": { "type": "array" },
+          "missing_manifests": { "type": "array" },
+          "missing_evals": { "type": "array" },
+          "consistency_passed": { "type": "boolean" }
+        }
+      },
+      "side_effects": "write",
+      "timeout_ms": 120000,
+      "required_context": ["layer4_tools", "contracts/tool-manifests", "tests/evals"],
+      "allowed_agents": ["code-reviewer", "drift-assessor"]
+    }
+  ]
+}

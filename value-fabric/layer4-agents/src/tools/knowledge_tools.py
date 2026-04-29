@@ -412,19 +412,37 @@ class GetEntityTool(BaseTool):
         return self._driver
 
     async def execute(self, input_data: GetEntityInput) -> GetEntityOutput:
-        """Get entity by ID from Neo4j."""
+        """Get entity by ID from Neo4j with mandatory tenant isolation.
+        
+        SECURITY: This tool enforces tenant isolation by requiring valid TenantContext
+        and injecting tenant_id filter into Cypher queries.
+        """
+        # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
+        try:
+            tenant_ctx = get_current_tenant_context()
+            tenant_ctx.assert_valid()
+        except TenantContextError as e:
+            logger.warning(f"Tenant context error in get_entity: {e}")
+            return GetEntityOutput(
+                found=False,
+                error=f"Tenant context required: {e}. Authentication required."
+            )
+        
         driver = self._get_driver()
         entity_id = input_data.entity_id
 
         try:
             async with driver.session(database=self.database) as session:
-                # Query entity by ID
+                # P0 FIX: Query entity by ID with mandatory tenant filter
                 entity_query = """
-                    MATCH (n {id: $entity_id})
+                    MATCH (n {id: $entity_id, tenant_id: $tenant_id})
                     RETURN n, labels(n) as labels
                     LIMIT 1
                 """
-                entity_result = await session.run(entity_query, {"entity_id": entity_id})
+                entity_result = await session.run(entity_query, {
+                    "entity_id": entity_id,
+                    "tenant_id": str(tenant_ctx.tenant_id)
+                })
                 entity_record = await entity_result.single()
 
                 if not entity_record:
@@ -438,16 +456,18 @@ class GetEntityTool(BaseTool):
 
                 relationships = []
                 if input_data.include_relationships:
-                    # Query relationships
+                    # P0 FIX: Query relationships with mandatory tenant filter on both nodes
                     rel_query = """
-                        MATCH (n {id: $entity_id})-[r]-(m)
+                        MATCH (n {id: $entity_id, tenant_id: $tenant_id})-[r]-(m {tenant_id: $tenant_id})
                         RETURN type(r) as predicate, m.id as target_id, 
                                m.name as target_name, labels(m) as target_labels
                         LIMIT $limit
                     """
-                    rel_result = await session.run(
-                        rel_query, {"entity_id": entity_id, "limit": input_data.relationship_limit}
-                    )
+                    rel_result = await session.run(rel_query, {
+                        "entity_id": entity_id,
+                        "tenant_id": str(tenant_ctx.tenant_id),
+                        "limit": input_data.relationship_limit
+                    })
 
                     async for record in rel_result:
                         relationships.append(
@@ -497,16 +517,33 @@ class GetRelationshipsTool(BaseTool):
         return self._driver
 
     async def execute(self, input_data: GetRelationshipsInput) -> GetRelationshipsOutput:
-        """Get relationships for entity from Neo4j."""
+        """Get relationships for entity from Neo4j with mandatory tenant isolation.
+        
+        SECURITY: This tool enforces tenant isolation by requiring valid TenantContext
+        and injecting tenant_id filter into Cypher queries.
+        """
+        # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
+        try:
+            tenant_ctx = get_current_tenant_context()
+            tenant_ctx.assert_valid()
+        except TenantContextError as e:
+            logger.warning(f"Tenant context error in get_relationships: {e}")
+            return GetRelationshipsOutput(
+                relationships=[],
+                total_count=0,
+                error=f"Tenant context required: {e}. Authentication required."
+            )
+        
         driver = self._get_driver()
 
         try:
             async with driver.session(database=self.database) as session:
-                # Build query with optional predicate filter
+                # P0 FIX: Build query with mandatory tenant filter and optional predicate
+                tenant_id_str = str(tenant_ctx.tenant_id)
                 if input_data.predicate:
                     query = (
                         """
-                        MATCH (n {id: $entity_id})-[r:%s]->(m)
+                        MATCH (n {id: $entity_id, tenant_id: $tenant_id})-[r:%s]->(m {tenant_id: $tenant_id})
                         RETURN n.id as source_id, type(r) as predicate, 
                                m.id as target_id, m.name as target_name, r.confidence as confidence
                     """
@@ -514,12 +551,15 @@ class GetRelationshipsTool(BaseTool):
                     )
                 else:
                     query = """
-                        MATCH (n {id: $entity_id})-[r]->(m)
+                        MATCH (n {id: $entity_id, tenant_id: $tenant_id})-[r]->(m {tenant_id: $tenant_id})
                         RETURN n.id as source_id, type(r) as predicate, 
                                m.id as target_id, m.name as target_name, r.confidence as confidence
                     """
 
-                result = await session.run(query, {"entity_id": input_data.entity_id})
+                result = await session.run(query, {
+                    "entity_id": input_data.entity_id,
+                    "tenant_id": tenant_id_str
+                })
 
                 relationships = []
                 async for record in result:
@@ -573,7 +613,23 @@ class TraverseTreeTool(BaseTool):
         return self._driver
 
     async def execute(self, input_data: TraverseTreeInput) -> TraverseTreeOutput:
-        """Traverse tree from starting entity using Neo4j."""
+        """Traverse tree from starting entity using Neo4j with mandatory tenant isolation.
+        
+        SECURITY: This tool enforces tenant isolation by requiring valid TenantContext
+        and injecting tenant_id filter into Cypher queries.
+        """
+        # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
+        try:
+            tenant_ctx = get_current_tenant_context()
+            tenant_ctx.assert_valid()
+        except TenantContextError as e:
+            logger.warning(f"Tenant context error in traverse_tree: {e}")
+            return TraverseTreeOutput(
+                paths=[],
+                nodes_discovered=0,
+                error=f"Tenant context required: {e}. Authentication required."
+            )
+        
         driver = self._get_driver()
 
         try:
@@ -585,15 +641,19 @@ class TraverseTreeTool(BaseTool):
                     else "ENABLES|REQUIRES|BENEFITS"
                 )
 
+                # P0 FIX: Query with mandatory tenant filter on all nodes in path
                 query = """
-                    MATCH path = (start {id: $start_id})-[%s*1..%d]->(end)
+                    MATCH path = (start {id: $start_id, tenant_id: $tenant_id})-[%s*1..%d]->(end {tenant_id: $tenant_id})
+                    WHERE ALL(n IN nodes(path) WHERE n.tenant_id = $tenant_id)
                     RETURN [node in nodes(path) | {id: node.id, name: node.name, type: labels(node)[0]}] as path_nodes
                     LIMIT $limit
                 """ % (rel_pattern, input_data.max_depth)
 
-                result = await session.run(
-                    query, {"start_id": input_data.start_entity_id, "limit": input_data.max_paths}
-                )
+                result = await session.run(query, {
+                    "start_id": input_data.start_entity_id,
+                    "tenant_id": str(tenant_ctx.tenant_id),
+                    "limit": input_data.max_paths
+                })
 
                 paths = []
                 nodes_discovered = set()
@@ -641,16 +701,34 @@ class FindPathsTool(BaseTool):
         return self._driver
 
     async def execute(self, input_data: FindPathsInput) -> FindPathsOutput:
-        """Find paths between entities using Neo4j shortest path algorithms."""
+        """Find paths between entities using Neo4j shortest path algorithms with mandatory tenant isolation.
+        
+        SECURITY: This tool enforces tenant isolation by requiring valid TenantContext
+        and injecting tenant_id filter into Cypher queries.
+        """
+        # P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
+        try:
+            tenant_ctx = get_current_tenant_context()
+            tenant_ctx.assert_valid()
+        except TenantContextError as e:
+            logger.warning(f"Tenant context error in find_paths: {e}")
+            return FindPathsOutput(
+                paths=[],
+                shortest_path_length=None,
+                error=f"Tenant context required: {e}. Authentication required."
+            )
+        
         driver = self._get_driver()
 
         try:
             async with driver.session(database=self.database) as session:
-                # Use apoc.algo.allSimplePaths if available, otherwise variable-length match
+                # P0 FIX: Query with mandatory tenant filter on source, target, and all path nodes
                 query = (
                     """
-                    MATCH (source {id: $source_id}), (target {id: $target_id})
+                    MATCH (source {id: $source_id, tenant_id: $tenant_id}), 
+                          (target {id: $target_id, tenant_id: $tenant_id})
                     MATCH path = allShortestPaths((source)-[*1..%d]->(target))
+                    WHERE ALL(n IN nodes(path) WHERE n.tenant_id = $tenant_id)
                     RETURN [node in nodes(path) | {id: node.id, name: node.name}] as path_nodes,
                            [rel in relationships(path) | type(rel)] as rel_types,
                            length(path) as path_length
@@ -659,14 +737,12 @@ class FindPathsTool(BaseTool):
                     % input_data.max_depth
                 )
 
-                result = await session.run(
-                    query,
-                    {
-                        "source_id": input_data.source_id,
-                        "target_id": input_data.target_id,
-                        "limit": input_data.max_paths,
-                    },
-                )
+                result = await session.run(query, {
+                    "source_id": input_data.source_id,
+                    "target_id": input_data.target_id,
+                    "tenant_id": str(tenant_ctx.tenant_id),
+                    "limit": input_data.max_paths,
+                })
 
                 paths = []
                 shortest_length = None

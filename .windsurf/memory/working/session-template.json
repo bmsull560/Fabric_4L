@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkingMemorySession",
+  "description": "Ephemeral session state for a single agent turn/thread",
+  "type": "object",
+  "required": ["session_id", "agent_id", "started_at"],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique session identifier"
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "Agent instance identifier"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "context_budget": {
+      "type": "object",
+      "properties": {
+        "total_tokens": { "type": "integer", "default": 128000 },
+        "system_grounding": { "type": "integer" },
+        "code_snippets": { "type": "integer" },
+        "conversation_history": { "type": "integer" },
+        "reserved_for_response": { "type": "integer", "default": 4000 }
+      }
+    },
+    "active_rules": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Rule IDs loaded from constraint-context.yaml"
+    },
+    "files_in_context": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "reason": { "type": "string", "enum": ["primary_target", "dependency", "test", "retrieved"] },
+          "token_count": { "type": "integer" },
+          "ast_hash": { "type": "string" }
+        }
+      }
+    },
+    "retrieved_memories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["semantic", "episodic"] },
+          "rule_id": { "type": "string" },
+          "relevance": { "type": "number" }
+        }
+      }
+    },
+    "pending_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "decision_id": { "type": "string" },
+          "description": { "type": "string" },
+          "options": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "last_action": {
+      "type": "string",
+      "description": "Description of the last action taken"
+    },
+    "turn_count": {
+      "type": "integer",
+      "description": "Number of turns in this session"
+    },
+    "workflow_state": {
+      "type": "object",
+      "description": "Optional workflow-specific state (see WORKFLOW.md)"
+    }
+  }
+}

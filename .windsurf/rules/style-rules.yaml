@@ -1,0 +1,57 @@
+# Style Rules
+# These are ENFORCED BY LINTERS, not by the policy engine.
+# Agents do not need to reason about these; they run the linter and fix errors iteratively.
+# This file exists as a reference for agents to know which linters to invoke.
+
+linters:
+  python:
+    tool: ruff
+    command: "ruff check --fix"
+    format_command: "ruff format"
+    config: "pyproject.toml"
+    enforce_in_ci: true
+    zero_warnings: true
+
+  typescript:
+    tool: eslint
+    command: "eslint --fix"
+    format_command: "prettier --write"
+    config: "frontend/.eslintrc.js"
+    enforce_in_ci: true
+    zero_warnings: true
+    note: "Legacy .eslintrc.js format (not flat config). @typescript-eslint/no-explicit-any is off for gradual migration."
+
+  type_checking:
+    python:
+      tool: mypy
+      command: "mypy --strict"
+      config: "pyproject.toml"
+    typescript:
+      tool: tsc
+      command: "tsc --noEmit"
+      config: "frontend/tsconfig.json"
+
+# Tailwind
+tailwind:
+  version: 4
+  config_location: "frontend/client/src/index.css"
+  note: "Tailwind v4 uses CSS-based config (@theme inline). No tailwind.config.js exists."
+
+# Agent instructions
+agent_guidance:
+  - When modifying Python files, run `ruff check --fix` and `ruff format` before finishing.
+  - When modifying TypeScript files, run `eslint --fix` and `prettier --write` before finishing.
+  - Do NOT manually fix style issues that a linter can fix automatically.
+  - If linter reports an error you cannot auto-fix, understand the rule before suppressing it.
+  - Never add `# noqa` or `// eslint-disable` without a comment explaining why.
+  - Tailwind v4 config is in `frontend/client/src/index.css` using `@theme inline` — do not create a `tailwind.config.js`.
+
+# Coverage gates ( informational — enforced by CI, not policy engine )
+coverage:
+  layer1: 80%
+  layer2: 85%
+  layer3: 80%
+  layer4: 75%
+  layer5: 75%
+  layer6: 75%
+  frontend: 70%

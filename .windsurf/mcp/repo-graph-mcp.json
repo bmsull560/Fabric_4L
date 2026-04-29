@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "mcp_server": {
+    "name": "repo-graph-mcp",
+    "version": "1.0.0",
+    "description": "Monorepo graph tools for dependency analysis, affected project computation, and visualization",
+    "base_url": "http://repo-graph-mcp:8080",
+    "tools": [
+      {
+        "name": "get_project_dependencies",
+        "description": "Fetch dependencies, dependents, and task graph for a target module",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "target_file": { "type": "string" },
+            "depth": { "type": "integer", "default": 2 },
+            "include_dev": { "type": "boolean", "default": false }
+          },
+          "required": ["target_file"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "dependencies": { "type": "array", "items": { "type": "string" } },
+            "dependents": { "type": "array", "items": { "type": "string" } },
+            "affected_tests": { "type": "array", "items": { "type": "string" } },
+            "boundary_violations": { "type": "array" }
+          }
+        }
+      },
+      {
+        "name": "get_affected_projects",
+        "description": "Compute affected packages/apps given a set of changed files",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "changed_files": { "type": "array", "items": { "type": "string" } },
+            "base_ref": { "type": "string", "default": "main" }
+          },
+          "required": ["changed_files"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "affected_projects": { "type": "array", "items": { "type": "string" } },
+            "affected_tests": { "type": "array", "items": { "type": "string" } },
+            "estimated_blast_radius": { "type": "string", "enum": ["minimal", "moderate", "large", "critical"] }
+          }
+        }
+      },
+      {
+        "name": "visualize_graph",
+        "description": "Generate a Mermaid or DOT graph visualization of the project graph",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "root_package": { "type": "string" },
+            "format": { "type": "string", "enum": ["mermaid", "dot", "json"], "default": "mermaid" },
+            "max_depth": { "type": "integer", "default": 3 }
+          },
+          "required": ["root_package"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "graph_data": { "type": "string" },
+            "node_count": { "type": "integer" },
+            "edge_count": { "type": "integer" }
+          }
+        }
+      }
+    ],
+    "health": {
+      "endpoint": "/health",
+      "expected_status": 200
+    }
+  }
+}

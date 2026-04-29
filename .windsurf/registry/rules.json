@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "registry_version": "1.0.0",
+  "description": "Machine-readable rule engine manifest mapping rules to file patterns and enforcement actions",
+  "rules": [
+    {
+      "rule_id": "HC-001",
+      "name": "tool-manifest-sync-required",
+      "category": "hard-constraints",
+      "severity": "block",
+      "description": "Do not change a tool manifest without updating the corresponding skill definition",
+      "source_file": "rules/hard-constraints.yaml",
+      "pattern": {
+        "files_glob": ["contracts/tool-manifests/*.json", "value-fabric/layer4-agents/skills/*.md"],
+        "trigger": "any_change"
+      },
+      "action": {
+        "type": "block",
+        "message": "Tool manifest change requires synchronized skill definition update. Run tool-contract-sync skill.",
+        "required_verification": ["registry/skills.json", "registry/tools.json"]
+      }
+    },
+    {
+      "rule_id": "HC-002",
+      "name": "no-identity-modifications-without-review",
+      "category": "hard-constraints",
+      "severity": "block",
+      "description": "Never modify shared/identity/ without a security review",
+      "source_file": "rules/hard-constraints.yaml",
+      "pattern": {
+        "files_glob": ["shared/identity/**/*"],
+        "trigger": "any_change"
+      },
+      "action": {
+        "type": "block",
+        "message": "Modifications to shared/identity/ require explicit security review and 2 approvals.",
+        "escalation_path": "security-team"
+      }
+    },
+    {
+      "rule_id": "HC-003",
+      "name": "no-manual-migration-changes",
+      "category": "hard-constraints",
+      "severity": "block",
+      "description": "Never modify layer4-agents/migrations/ by hand. Use Alembic.",
+      "source_file": "rules/hard-constraints.yaml",
+      "pattern": {
+        "files_glob": [
+          "value-fabric/layer4-agents/migrations/*.py",
+          "value-fabric/layer4-agents/migrations/versions/*.py",
+          "value-fabric/layer1-ingestion/migrations/**/*.py",
+          "value-fabric/layer2-extraction/migrations/**/*.py",
+          "value-fabric/layer5-ground-truth/migrations/**/*.py"
+        ],
+        "trigger": "any_change"
+      },
+      "action": {
+        "type": "block",
+        "message": "Use 'alembic revision --autogenerate -m \"description\"' instead of hand-editing migrations.",
+        "required_verification": ["alembic_head_check"]
+      }
+    },
+    {
+      "rule_id": "HC-004",
+      "name": "never-weaken-tests",
+      "category": "hard-constraints",
+      "severity": "block",
+      "description": "Never remove or weaken existing tests. If a test blocks you, understand why.",
+      "source_file": "rules/hard-constraints.yaml",
+      "pattern": {
+        "files_glob": ["**/test_*.py", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts"],
+        "trigger": "deletion_or_coverage_decrease"
+      },
+      "action": {
+        "type": "block",
+        "message": "Test removal or weakening requires explicit justification and team approval.",
+        "required_verification": ["coverage_report", "team_approval"]
+      }
+    },
+    {
+      "rule_id": "SR-001",
+      "name": "no-pii-in-prompts",
+      "category": "safety-rules",
+      "severity": "block",
+      "description": "No PII in prompts — pre-process with detector",
+      "source_file": "rules/safety-rules.yaml",
+      "pattern": {
+        "files_glob": ["value-fabric/layer*/**/*.py", "frontend/**/*.ts", "frontend/**/*.tsx"],
+        "trigger": "llm_prompt_content"
+      },
+      "action": {
+        "type": "block",
+        "message": "PII detected in LLM prompt. Scrub before sending to external model.",
+        "required_verification": ["pii_scan_pass"]
+      }
+    },
+    {
+      "rule_id": "SR-002",
+      "name": "parameterized-queries-only",
+      "category": "safety-rules",
+      "severity": "block",
+      "description": "All SQL must use parameterized queries",
+      "source_file": "rules/safety-rules.yaml",
+      "pattern": {
+        "files_glob": ["**/*.py"],
+        "trigger": "raw_sql_concatenation"
+      },
+      "action": {
+        "type": "block",
+        "message": "Raw SQL string concatenation detected. Use SQLAlchemy parameters or prepared statements.",
+        "required_verification": ["sql_injection_scan"]
+      }
+    },
+    {
+      "rule_id": "SR-003",
+      "name": "auth-middleware-on-all-routes",
+      "category": "safety-rules",
+      "severity": "block",
+      "description": "All API routes must have auth middleware unless explicitly exempted",
+      "source_file": "rules/safety-rules.yaml",
+      "pattern": {
+        "files_glob": ["value-fabric/layer*/src/api/**/*.py"],
+        "trigger": "missing_auth_dependency"
+      },
+      "action": {
+        "type": "block",
+        "message": "API route missing authentication. Add @require_auth or document exemption.",
+        "required_verification": ["auth_middleware_check"]
+      }
+    },
+    {
+      "rule_id": "SR-004",
+      "name": "sql-change-requires-migration-and-rollback",
+      "category": "safety-rules",
+      "severity": "warn",
+      "description": "Any SQL change requires a migration file and a rollback script",
+      "source_file": "rules/safety-rules.yaml",
+      "pattern": {
+        "files_glob": ["**/*.sql", "**/migrations/**/*.py"],
+        "trigger": "schema_change"
+      },
+      "action": {
+        "type": "warn",
+        "message": "Schema change detected. Ensure migration file AND rollback script exist.",
+        "required_verification": ["migration_exists", "rollback_exists"]
+      }
+    },
+    {
+      "rule_id": "DR-001",
+      "name": "frontend-cannot-import-backend",
+      "category": "dependency-rules",
+      "severity": "block",
+      "description": "frontend-app cannot import from backend-service",
+      "source_file": "rules/dependency-rules.yaml",
+      "pattern": {
+        "files_glob": ["frontend/**/*.ts", "frontend/**/*.tsx"],
+        "trigger": "import_from_backend"
+      },
+      "action": {
+        "type": "block",
+        "message": "Frontend code importing backend modules. Use API contracts instead.",
+        "required_verification": ["dependency_graph_check"]
+      }
+    },
+    {
+      "rule_id": "DR-002",
+      "name": "layer-import-order",
+      "category": "dependency-rules",
+      "severity": "block",
+      "description": "Layers can only import from lower layers or shared/",
+      "source_file": "rules/dependency-rules.yaml",
+      "pattern": {
+        "files_glob": ["value-fabric/layer*/**/*.py"],
+        "exemptions": ["tests/**/*.py", "value-fabric/layer*/tests/**/*.py"],
+        "trigger": "upstream_import"
+      },
+      "action": {
+        "type": "block",
+        "message": "Layer importing from a higher layer. Only lower-layer and shared/ imports are permitted.",
+        "required_verification": ["layer_graph_check"]
+      }
+    },
+    {
+      "rule_id": "DR-003",
+      "name": "shared-identity-is-leaf",
+      "category": "dependency-rules",
+      "severity": "warn",
+      "description": "shared/identity/ should not import from other layers to avoid circular dependencies",
+      "source_file": "rules/dependency-rules.yaml",
+      "pattern": {
+        "files_glob": ["shared/identity/**/*.py"],
+        "trigger": "non-leaf-import"
+      },
+      "action": {
+        "type": "warn",
+        "message": "shared/identity/ importing from application layers risks circular dependencies.",
+        "required_verification": ["circular_dependency_check"]
+      }
+    },
+    {
+      "rule_id": "ST-001",
+      "name": "ruff-zero-warnings",
+      "category": "style-rules",
+      "severity": "warn",
+      "description": "Ruff linting must pass with zero warnings in CI",
+      "source_file": "rules/style-rules.yaml",
+      "pattern": {
+        "files_glob": ["**/*.py"],
+        "trigger": "lint_failure"
+      },
+      "action": {
+        "type": "warn",
+        "message": "Ruff warnings detected. Run 'ruff check --fix' before committing.",
+        "auto_fix": "ruff check --fix"
+      }
+    },
+    {
+      "rule_id": "ST-002",
+      "name": "eslint-zero-warnings",
+      "category": "style-rules",
+      "severity": "warn",
+      "description": "ESLint must pass with zero warnings in CI",
+      "source_file": "rules/style-rules.yaml",
+      "pattern": {
+        "files_glob": ["**/*.ts", "**/*.tsx"],
+        "trigger": "lint_failure"
+      },
+      "action": {
+        "type": "warn",
+        "message": "ESLint warnings detected. Run linter auto-fix before committing.",
+        "auto_fix": "eslint --fix"
+      }
+    },
+    {
+      "rule_id": "ST-003",
+      "name": "type-checking-pass",
+      "category": "style-rules",
+      "severity": "warn",
+      "description": "mypy/pyright must pass for Python; tsc must pass for TypeScript",
+      "source_file": "rules/style-rules.yaml",
+      "pattern": {
+        "files_glob": ["**/*.py", "**/*.ts", "**/*.tsx"],
+        "trigger": "type_error"
+      },
+      "action": {
+        "type": "warn",
+        "message": "Type checking failed. Fix type errors before committing.",
+        "auto_fix": false
+      }
+    },
+    {
+      "rule_id": "SR-007",
+      "name": "no-soql-string-interpolation",
+      "category": "safety-rules",
+      "severity": "block",
+      "description": "Never interpolate user input into SOQL or SQL query strings",
+      "source_file": "rules/safety-rules.yaml",
+      "pattern": {
+        "files_glob": ["**/*.py"],
+        "trigger": "soql_string_interpolation"
+      },
+      "action": {
+        "type": "block",
+        "message": "SOQL/SQL string interpolation detected. Use parameterized queries or query builders.",
+        "required_verification": ["sql_injection_scan"]
+      }
+    },
+    {
+      "rule_id": "SR-008",
+      "name": "no-dev-auth-bypass-in-production",
+      "category": "safety-rules",
+      "severity": "block",
+      "description": "DevAuthBypassMiddleware must never be enabled in production",
+      "source_file": "rules/safety-rules.yaml",
+      "pattern": {
+        "files_glob": ["value-fabric/layer*/src/**/*.py", "shared/**/*.py", "k8s/**/*.yaml", "k8s/**/*.yml"],
+        "trigger": "dev_auth_bypass_in_production"
+      },
+      "action": {
+        "type": "block",
+        "message": "Dev auth bypass detected in production-facing code or config. Remove immediately.",
+        "required_verification": ["security_gate_pass"]
+      }
+    }
+  ]
+}

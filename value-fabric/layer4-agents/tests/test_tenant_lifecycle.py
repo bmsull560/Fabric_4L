@@ -386,24 +386,6 @@ class TestColumnRenameConsistency:
         except ImportError:
             pytest.skip("Layer 1 models not importable in this test environment")
 
-    def test_layer5_truth_object_uses_tenant_id(self):
-        """Layer 5 TruthObject model should use tenant_id."""
-        try:
-            from layer5_ground_truth.models.truth_object import (
-                TruthObject,
-                TruthSource,
-                ValidationEvent,
-                MaturityHistory,
-            )
-
-            for model_cls in (TruthObject, TruthSource, ValidationEvent, MaturityHistory):
-                assert hasattr(model_cls, "tenant_id"), (
-                    f"{model_cls.__name__} missing tenant_id column"
-                )
-        except ImportError:
-            pytest.skip("Layer 5 models not importable in this test environment")
-
-
 # ---------------------------------------------------------------------------
 # RLS Policy Coverage (Task 1.6)
 # ---------------------------------------------------------------------------

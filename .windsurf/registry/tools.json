@@ -1,0 +1,350 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "registry_version": "1.0.0",
+  "description": "Tool manifest registry with MCP routing, side effects, rate limits, and idempotency",
+  "tools": [
+    {
+      "tool_id": "repo-graph/get_project_dependencies",
+      "name": "get_project_dependencies",
+      "mcp_server": "repo-graph-mcp",
+      "version": "1.0.0",
+      "description": "Fetch dependencies, dependents, and task graph for a target module",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "target_file": { "type": "string", "description": "Absolute or relative path to the target file" },
+          "depth": { "type": "integer", "default": 2, "description": "Dependency traversal depth" },
+          "include_dev": { "type": "boolean", "default": false }
+        },
+        "required": ["target_file"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "dependencies": { "type": "array", "items": { "type": "string" } },
+          "dependents": { "type": "array", "items": { "type": "string" } },
+          "affected_tests": { "type": "array", "items": { "type": "string" } },
+          "boundary_violations": { "type": "array" }
+        }
+      },
+      "side_effects": "none",
+      "rate_limit": "1000/min",
+      "timeout_ms": 5000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "repo-graph/get_affected_projects",
+      "name": "get_affected_projects",
+      "mcp_server": "repo-graph-mcp",
+      "version": "1.0.0",
+      "description": "Compute affected packages/apps given a set of changed files",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "changed_files": { "type": "array", "items": { "type": "string" } },
+          "base_ref": { "type": "string", "default": "main" }
+        },
+        "required": ["changed_files"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "affected_projects": { "type": "array", "items": { "type": "string" } },
+          "affected_tests": { "type": "array", "items": { "type": "string" } },
+          "estimated_blast_radius": { "type": "string", "enum": ["minimal", "moderate", "large", "critical"] }
+        }
+      },
+      "side_effects": "none",
+      "rate_limit": "500/min",
+      "timeout_ms": 10000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "repo-graph/visualize_graph",
+      "name": "visualize_graph",
+      "mcp_server": "repo-graph-mcp",
+      "version": "1.0.0",
+      "description": "Generate a Mermaid or DOT graph visualization of the project graph",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "root_package": { "type": "string" },
+          "format": { "type": "string", "enum": ["mermaid", "dot", "json"], "default": "mermaid" },
+          "max_depth": { "type": "integer", "default": 3 }
+        },
+        "required": ["root_package"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "graph_data": { "type": "string" },
+          "node_count": { "type": "integer" },
+          "edge_count": { "type": "integer" }
+        }
+      },
+      "side_effects": "none",
+      "rate_limit": "100/min",
+      "timeout_ms": 15000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "ci/trigger_build",
+      "name": "trigger_build",
+      "mcp_server": "ci-mcp",
+      "version": "1.0.0",
+      "description": "Trigger a CI build for a branch or PR",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "branch": { "type": "string" },
+          "commit_sha": { "type": "string" },
+          "workflow": { "type": "string", "default": "ci.yml" },
+          "extra_inputs": { "type": "object" }
+        },
+        "required": ["branch"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "build_id": { "type": "string" },
+          "status_url": { "type": "string" },
+          "estimated_duration_sec": { "type": "integer" }
+        }
+      },
+      "side_effects": "network",
+      "rate_limit": "30/min",
+      "timeout_ms": 10000,
+      "required_roles": ["senior-agent", "test-assurance"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "ci/get_build_status",
+      "name": "get_build_status",
+      "mcp_server": "ci-mcp",
+      "version": "1.0.0",
+      "description": "Poll the status of a CI build",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "build_id": { "type": "string" }
+        },
+        "required": ["build_id"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "enum": ["pending", "running", "success", "failure", "cancelled"] },
+          "stage": { "type": "string" },
+          "duration_sec": { "type": "integer" },
+          "failure_logs": { "type": "string" }
+        }
+      },
+      "side_effects": "network",
+      "rate_limit": "120/min",
+      "timeout_ms": 5000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "ci/fetch_test_results",
+      "name": "fetch_test_results",
+      "mcp_server": "ci-mcp",
+      "version": "1.0.0",
+      "description": "Fetch parsed test results (JUnit XML or JSON) from a completed build",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "build_id": { "type": "string" },
+          "format": { "type": "string", "enum": ["junit", "json"], "default": "json" }
+        },
+        "required": ["build_id"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "total_tests": { "type": "integer" },
+          "passed": { "type": "integer" },
+          "failed": { "type": "integer" },
+          "skipped": { "type": "integer" },
+          "failed_tests": { "type": "array" },
+          "coverage_percent": { "type": "number" }
+        }
+      },
+      "side_effects": "network",
+      "rate_limit": "60/min",
+      "timeout_ms": 10000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "code/read_file",
+      "name": "read_file",
+      "mcp_server": "code-mcp",
+      "version": "1.0.0",
+      "description": "Read file contents with optional line range",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "offset": { "type": "integer", "default": 0 },
+          "limit": { "type": "integer", "default": 200 }
+        },
+        "required": ["path"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "string" },
+          "total_lines": { "type": "integer" },
+          "language": { "type": "string" },
+          "ast_hash": { "type": "string" }
+        }
+      },
+      "side_effects": "read",
+      "rate_limit": "2000/min",
+      "timeout_ms": 3000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "code/search_symbols",
+      "name": "search_symbols",
+      "mcp_server": "code-mcp",
+      "version": "1.0.0",
+      "description": "AST-aware symbol search (functions, classes, variables) with vector ranking",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "symbol_type": { "type": "string", "enum": ["function", "class", "variable", "any"], "default": "any" },
+          "language": { "type": "string", "enum": ["python", "typescript", "any"], "default": "any" },
+          "top_k": { "type": "integer", "default": 10 }
+        },
+        "required": ["query"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "file": { "type": "string" },
+                "line": { "type": "integer" },
+                "type": { "type": "string" },
+                "relevance": { "type": "number" },
+                "ast_hash": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "side_effects": "read",
+      "rate_limit": "500/min",
+      "timeout_ms": 10000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "code/get_type_definition",
+      "name": "get_type_definition",
+      "mcp_server": "code-mcp",
+      "version": "1.0.0",
+      "description": "Get the AST-validated type definition for a symbol",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "symbol_name": { "type": "string" },
+          "file_path": { "type": "string" }
+        },
+        "required": ["symbol_name", "file_path"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "definition": { "type": "string" },
+          "type_info": { "type": "object" },
+          "ast_hash": { "type": "string" },
+          "is_stale": { "type": "boolean" }
+        }
+      },
+      "side_effects": "read",
+      "rate_limit": "500/min",
+      "timeout_ms": 5000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "docs/query_docs",
+      "name": "query_docs",
+      "mcp_server": "docs-mcp",
+      "version": "1.0.0",
+      "description": "Query documentation via semantic search over vectorized docs",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "doc_source": { "type": "string", "enum": ["api", "adr", "runbook", "all"], "default": "all" },
+          "top_k": { "type": "integer", "default": 5 }
+        },
+        "required": ["query"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string" },
+                "source": { "type": "string" },
+                "snippet": { "type": "string" },
+                "relevance": { "type": "number" }
+              }
+            }
+          }
+        }
+      },
+      "side_effects": "read",
+      "rate_limit": "200/min",
+      "timeout_ms": 8000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    },
+    {
+      "tool_id": "docs/check_api_reference",
+      "name": "check_api_reference",
+      "mcp_server": "docs-mcp",
+      "version": "1.0.0",
+      "description": "Check if an API endpoint or type is documented and up to date",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "endpoint_path": { "type": "string" },
+          "schema_name": { "type": "string" }
+        },
+        "required": ["endpoint_path"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "documented": { "type": "boolean" },
+          "doc_path": { "type": "string" },
+          "drift_detected": { "type": "boolean" },
+          "missing_fields": { "type": "array" }
+        }
+      },
+      "side_effects": "read",
+      "rate_limit": "200/min",
+      "timeout_ms": 5000,
+      "required_roles": ["*"],
+      "idempotency_key": true
+    }
+  ]
+}

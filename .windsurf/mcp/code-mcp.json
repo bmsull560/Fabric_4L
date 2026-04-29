@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "mcp_server": {
+    "name": "code-mcp",
+    "version": "1.0.0",
+    "description": "AST-aware code tools for reading files, searching symbols, and validating type definitions",
+    "base_url": "http://code-mcp:8082",
+    "tools": [
+      {
+        "name": "read_file",
+        "description": "Read file contents with optional line range",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "offset": { "type": "integer", "default": 0 },
+            "limit": { "type": "integer", "default": 200 }
+          },
+          "required": ["path"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "content": { "type": "string" },
+            "total_lines": { "type": "integer" },
+            "language": { "type": "string" },
+            "ast_hash": { "type": "string" }
+          }
+        }
+      },
+      {
+        "name": "search_symbols",
+        "description": "AST-aware symbol search with vector ranking",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "symbol_type": { "type": "string", "enum": ["function", "class", "variable", "any"], "default": "any" },
+            "language": { "type": "string", "enum": ["python", "typescript", "any"], "default": "any" },
+            "top_k": { "type": "integer", "default": 10 }
+          },
+          "required": ["query"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "results": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "file": { "type": "string" },
+                  "line": { "type": "integer" },
+                  "type": { "type": "string" },
+                  "relevance": { "type": "number" },
+                  "ast_hash": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "get_type_definition",
+        "description": "Get the AST-validated type definition for a symbol",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "symbol_name": { "type": "string" },
+            "file_path": { "type": "string" }
+          },
+          "required": ["symbol_name", "file_path"]
+        },
+        "output_schema": {
+          "type": "object",
+          "properties": {
+            "definition": { "type": "string" },
+            "type_info": { "type": "object" },
+            "ast_hash": { "type": "string" },
+            "is_stale": { "type": "boolean" }
+          }
+        }
+      }
+    ],
+    "health": {
+      "endpoint": "/health",
+      "expected_status": 200
+    }
+  }
+}

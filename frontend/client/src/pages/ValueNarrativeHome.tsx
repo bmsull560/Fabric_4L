@@ -12,6 +12,7 @@ import { MetricCard, DataTable, StatusBadge } from "@/components/WfPrimitives";
 import { ProspectPromptBuilder } from "@/components/workspace/ProspectPromptBuilder";
 import type { ProspectSetupPromptPayload } from "@/components/workspace/ProspectPromptBuilder";
 import { useLocation } from "wouter";
+import { apiClient } from "@/api/client";
 
 export default function ValueNarrativeHome() {
   const { data: recentJobs = [], isLoading: jobsLoading } = useRecentIngestionJobs(5);
@@ -21,13 +22,20 @@ export default function ValueNarrativeHome() {
   const [, navigate] = useLocation();
 
   const handleCreateSetup = async (payload: ProspectSetupPromptPayload) => {
-    const response = await fetch("/api/v1/workflow/prospect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    const response = await apiClient.post("l4", "/prospects/setup", {
+      prospect_data: {
+        account_id: payload.companyDomain || "new",
+        company_name: payload.companyName,
+        industry: payload.industry,
+        business_pains: payload.businessPain,
+        friction_points: payload.currentFriction,
+        desired_outcomes: payload.desiredOutcomes,
+        prompt_text: payload.freeformPrompt,
+        attachments: payload.sourceArtifacts,
+      },
+      options: { mode: payload.mode, depth: payload.enrichmentDepth },
     });
-    if (!response.ok) throw new Error("Failed to launch intelligence");
-    return response.json();
+    return response.data;
   };
 
   const handleNavigateToWorkspace = (_path: string, accountId: string) => {

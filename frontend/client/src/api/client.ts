@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import axiosRetry from 'axios-retry';
 import { z } from 'zod';
 
@@ -303,7 +303,7 @@ class ApiClient {
 
   // MANDATE 4: INPUT VALIDATION - All HTTP methods validate path starts with /
   // PERF: Request deduplication applied to GET requests
-  async get(layer: LayerKey, path: string, config?: AxiosRequestConfig) {
+  async get(layer: LayerKey, path: string, config?: AxiosRequestConfig): Promise<AxiosResponse> {
     const validatedPath = ApiPathSchema.parse(path);
     const requestKey = this.getRequestKey(layer, 'GET', validatedPath);
 
@@ -311,7 +311,7 @@ class ApiClient {
     const existing = this.inFlightRequests.get(requestKey);
     if (existing) {
       logWarn('Deduplicating identical in-flight GET request', { path: validatedPath, layer });
-      return existing.promise as Promise<unknown>;
+      return existing.promise as Promise<AxiosResponse>;
     }
 
     // Create new request promise
@@ -319,7 +319,7 @@ class ApiClient {
 
     // Track in-flight request
     this.inFlightRequests.set(requestKey, {
-      promise: promise as Promise<unknown>,
+      promise: promise as Promise<AxiosResponse>,
       timestamp: Date.now(),
     });
 
@@ -332,7 +332,7 @@ class ApiClient {
   }
 
   // PERF: Request deduplication applied to POST requests (for idempotent operations)
-  async post(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig) {
+  async post(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse> {
     const validatedPath = ApiPathSchema.parse(path);
     const requestKey = this.getRequestKey(layer, 'POST', validatedPath, data);
 
@@ -340,7 +340,7 @@ class ApiClient {
     const existing = this.inFlightRequests.get(requestKey);
     if (existing) {
       logWarn('Deduplicating identical in-flight POST request', { path: validatedPath, layer });
-      return existing.promise as Promise<unknown>;
+      return existing.promise as Promise<AxiosResponse>;
     }
 
     // Create new request promise
@@ -348,7 +348,7 @@ class ApiClient {
 
     // Track in-flight request
     this.inFlightRequests.set(requestKey, {
-      promise: promise as Promise<unknown>,
+      promise: promise as Promise<AxiosResponse>,
       timestamp: Date.now(),
     });
 
@@ -360,7 +360,7 @@ class ApiClient {
     return promise;
   }
 
-  async put(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig) {
+  async put(layer: LayerKey, path: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse> {
     const validatedPath = ApiPathSchema.parse(path);
     return this.getClient(layer).put(validatedPath, data, config);
   }
@@ -370,7 +370,7 @@ class ApiClient {
     return this.getClient(layer).patch(validatedPath, data, config);
   }
 
-  async delete(layer: LayerKey, path: string, config?: AxiosRequestConfig) {
+  async delete(layer: LayerKey, path: string, config?: AxiosRequestConfig): Promise<AxiosResponse> {
     const validatedPath = ApiPathSchema.parse(path);
     return this.getClient(layer).delete(validatedPath, config);
   }

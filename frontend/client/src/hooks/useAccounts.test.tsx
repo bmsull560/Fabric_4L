@@ -48,10 +48,11 @@ const sampleAccount: Account = {
 };
 
 const sampleAccountsResponse: AccountListResponse = {
-  accounts: [sampleAccount],
+  items: [sampleAccount],
   total: 1,
   page: 1,
   page_size: 20,
+  has_more: false,
 };
 
 const sampleSyncStatus: AccountSyncStatusInfo[] = [
@@ -170,7 +171,7 @@ describe('useAccounts', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-      expect(result.current.data?.accounts).toHaveLength(0);
+      expect(result.current.data?.items).toHaveLength(0);
       expect(result.current.data?.total).toBe(0);
     });
 

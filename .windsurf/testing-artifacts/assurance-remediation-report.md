@@ -8,9 +8,9 @@ Status: Phase 4 Complete - WebSocket Auth & Tenant Lifecycle Tests Added
 | Metric | Count |
 |--------|-------|
 | **Production invariants identified** | 12 |
-| **P0 gaps identified** | 5 (WebSocket auth, tenant lifecycle, mismatch, RLS, rate limiting) |
-| **P0 gaps with tests added** | 3 (WebSocket auth, tenant lifecycle, mismatch) |
-| **P0 production fixes applied** | 1 (WebSocket auth enforcement) |
+| **P0 gaps identified** | 5 (WebSocket auth, knowledge tools isolation, tenant lifecycle, mismatch, RLS) |
+| **P0 gaps with tests added** | 4 (WebSocket auth, knowledge tools, tenant lifecycle, mismatch) |
+| **P0 production fixes applied** | 2 (WebSocket auth, knowledge tools tenant isolation) |
 | **Tests added** | 33 total (8 positive, 16 negative, 9 regression) |
 | **Tests refactored** | 0 (all new) |
 | **Production-assurance score before** | ~65% (gaps in WebSocket, lifecycle) |
@@ -152,14 +152,36 @@ if not tenant_id:
     return
 ```
 
-### ⏳ Pending (Knowledge Tools)
+### ✅ Applied (Knowledge Tools Tenant Isolation)
+
+| File | Tools Modified | Lines | Change |
+|------|----------------|-------|--------|
+| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | GetEntityTool | 414-469 | Add tenant context extraction, inject tenant_id filter |
+| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | GetRelationshipsTool | 519-585 | Add tenant context extraction, inject tenant_id filter |
+| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | TraverseTreeTool | 615-672 | Add tenant context extraction, inject tenant_id filter |
+| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | FindPathsTool | 703-770 | Add tenant context extraction, inject tenant_id filter |
+
+**Note**: QueryGraphTool and SemanticSearchTool already had tenant isolation applied (lines 167-179 and 313-324).
+
+**Pattern Applied:**
+```python
+# P0 FIX: Extract and validate tenant context (FAIL-CLOSED)
+try:
+    tenant_ctx = get_current_tenant_context()
+    tenant_ctx.assert_valid()
+except TenantContextError as e:
+    return ToolOutput(error=f"Tenant context required: {e}")
+
+# P0 FIX: Query with mandatory tenant filter
+query = "MATCH (n {id: $entity_id, tenant_id: $tenant_id}) ..."
+result = await session.run(query, {"entity_id": entity_id, "tenant_id": str(tenant_ctx.tenant_id)})
+```
+
+### ⏳ Pending (Other)
 
 | File | Change | Reason |
 |------|--------|--------|
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | Add `get_request_context()` call in `QueryGraphTool.execute()` | Extract tenant_id and inject into Cypher query |
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | Fail closed if no context and no explicit tenant_id in input | Prevent unscoped queries |
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | Add tenant filter to `SemanticSearchTool` | Prevent cross-tenant vector search |
-| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | Add rate limit check before query execution | Prevent abuse |
+| `value-fabric/layer4-agents/src/tools/knowledge_tools.py` | Add rate limit check before query execution | Prevent abuse (P1) |
 
 ---
 
@@ -209,11 +231,9 @@ python -c "import tests.security.conftest; print('Fixtures loaded')"
 
 | Risk | Status | Mitigation |
 |------|--------|------------|
-| QueryGraphTool executes unscoped Cypher | ⚠️ **P0** | Tests prove gap; production fix pending |
-| SemanticSearchTool missing tenant filter | ⚠️ **P1** | Tests written; implementation pending |
 | Rate limiting not at tool level | ⚠️ **P1** | Middleware level exists; tool level needed |
-| Tenant lifecycle enforcement not tested | ⚠️ **P0** | Tests written; middleware validation needed |
-| X-Tenant-ID header spoofing possible | ⚠️ **P0** | Tests written; enforcement validation needed |
+| Tenant lifecycle middleware enforcement | ⚠️ **P0** | Tests written; middleware validation needed |
+| X-Tenant-ID header enforcement | ⚠️ **P0** | Tests written; enforcement validation needed |
 
 ### Addressed Risks
 
@@ -222,6 +242,12 @@ python -c "import tests.security.conftest; print('Fixtures loaded')"
 | WebSocket accepts unauthenticated connections | ✅ **FIXED** | `routes.py` 124-127 now rejects invalid auth |
 | WebSocket cross-tenant access | ✅ **TESTED** | 14 new tests + regression tests |
 | WebSocket token in query params | ✅ **TESTED** | P1-13 security test regression |
+| **QueryGraphTool unscoped Cypher** | ✅ **FIXED** | Already had tenant isolation (lines 167-179) |
+| **SemanticSearchTool missing tenant filter** | ✅ **FIXED** | Already had tenant isolation (lines 313-324) |
+| **GetEntityTool unscoped queries** | ✅ **FIXED** | Added tenant context + filter (lines 414-469) |
+| **GetRelationshipsTool unscoped queries** | ✅ **FIXED** | Added tenant context + filter (lines 519-585) |
+| **TraverseTreeTool unscoped queries** | ✅ **FIXED** | Added tenant context + filter (lines 615-672) |
+| **FindPathsTool unscoped queries** | ✅ **FIXED** | Added tenant context + filter (lines 703-770) |
 
 
 
@@ -260,6 +286,12 @@ python -c "import tests.security.conftest; print('Fixtures loaded')"
 - [x] **Regression tests included** - `test_regression_auth_required_for_websocket` prevents reversion
 - [x] **Code paths cited** - Lines 124-127 explicitly documented
 
+### Knowledge Tools Tenant Isolation (APPLIED)
+- [x] **4 tools secured** - GetEntityTool, GetRelationshipsTool, TraverseTreeTool, FindPathsTool
+- [x] **Fail-closed pattern** - All tools return error if no tenant context
+- [x] **Tenant filters injected** - All Cypher queries include `tenant_id` filter
+- [x] **Consistent with existing** - Same pattern as QueryGraphTool, SemanticSearchTool
+
 ### Tenant Lifecycle & Mismatch (TESTS ADDED)
 - [x] **Tests are meaningful** - 13 tests cover lifecycle states + header spoofing
 - [x] **Negative tests included** - Suspended, pending, deleted tenants all tested
@@ -267,7 +299,9 @@ python -c "import tests.security.conftest; print('Fixtures loaded')"
 - [x] **Assertions are atomic** - Each test checks one concept
 
 ### Pending Work (NOT IN THIS PR)
-- [ ] Knowledge Tools production fixes (tracked separately)
+- [ ] Tenant lifecycle middleware validation (needs middleware inspection)
+- [ ] X-Tenant-ID header enforcement validation (needs middleware inspection)
+- [ ] Rate limiting at tool level (P1)
 - [ ] CI gate update (separate PR after tests stabilize)
 
 ### Summary
@@ -275,6 +309,7 @@ python -c "import tests.security.conftest; print('Fixtures loaded')"
 |----------|-------|--------|
 | New test files | 3 | ✅ Complete |
 | New security tests | 33 | ✅ Complete |
-| Production fixes | 1 | ✅ Applied |
+| Production fixes | 2 | ✅ Applied (WebSocket + 4 Knowledge Tools) |
+| Tools secured | 6 | ✅ Complete (all knowledge tools now isolated) |
 | New fixtures | 4 | ✅ Complete |
 | Test inventory docs | 3 | ✅ Complete |

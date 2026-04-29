@@ -8,6 +8,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Models that are expected to remain tenant-scoped.
@@ -159,3 +161,29 @@ def test_tenant_required_api_dependencies_reject_missing_and_invalid_tenant() ->
     assert _function_calls_uuid(resolve_identity), (
         "_resolve_identity must parse tenant identifiers with UUID(...) validation"
     )
+
+
+# ---------------------------------------------------------------------------
+# Cross-Layer Tenant ID Consistency
+# ---------------------------------------------------------------------------
+
+
+def test_layer5_truth_object_uses_tenant_id() -> None:
+    """Layer 5 TruthObject model must declare tenant_id for tenant scoping."""
+    path = REPO_ROOT / "value-fabric/layer5-ground-truth/src/models/truth_object.py"
+    if not path.exists():
+        pytest.skip("Layer 5 truth_object model not found")
+
+    tree = _parse(path)
+    classes = {
+        n.name: n
+        for n in tree.body  # type: ignore[attr-defined]
+        if isinstance(n, ast.ClassDef)
+        and n.name in {"TruthObject", "TruthSource", "ValidationEvent", "MaturityHistory"}
+    }
+
+    for class_name in ("TruthObject", "TruthSource", "ValidationEvent", "MaturityHistory"):
+        assert class_name in classes, f"{path}: expected class {class_name} missing"
+        assert _class_has_tenant_id_field(classes[class_name]), (
+            f"{path}:{class_name} must declare tenant_id for tenant scoping"
+        )
