@@ -30,6 +30,25 @@ from ...models.valuepack import (
     ValuePackComparisonResponse,
     DEFAULT_VALUEPACKS,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class _build_fork_paramsResult(TypedDictModel):
+    created_at: Any
+    created_by: Any
+    description: Any
+    industry: Any
+    name: Any
+    new_pack_id: Any
+    old_pack_id: Any
+    segment: Any
+    status: Any
+    version: Any
+    workspace_id: Any
+
+class seed_valuepack_dataResult(TypedDictModel):
+    industry_id: Any
+    status: str
 
 logger = get_logger(__name__)
 
@@ -963,7 +982,7 @@ def _build_fork_params(
     name = request.name or f"{orig.get('name', 'Unnamed')} (Fork)"
     now = datetime.now(UTC).isoformat()
 
-    return {
+    return _build_fork_paramsResult.model_validate({
         "old_pack_id": orig["id"],
         "new_pack_id": new_pack_id,
         "name": name,
@@ -975,7 +994,7 @@ def _build_fork_params(
         "workspace_id": request.workspace_id,
         "created_at": now,
         "created_by": request.user_id,
-    }
+    })
 
 
 async def _execute_fork(
@@ -1465,4 +1484,4 @@ async def seed_valuepack_data(
             raise HTTPException(status_code=500, detail="Failed to seed ValuePack data")
     
     logger.info(f"Seeded ValuePack data to Neo4j: {industry_id}")
-    return {"status": "seeded", "industry_id": industry_id}
+    return seed_valuepack_dataResult.model_validate({"status": "seeded", "industry_id": industry_id})

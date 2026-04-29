@@ -11,6 +11,17 @@ import jwt
 from fastapi import HTTPException, status
 
 from .models import TokenClaims
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_jwksResult(TypedDictModel):
+    keys: list[Any]
+
+class _build_keysetResult(TypedDictModel):
+    active_kid: Any
+    algorithm: Any
+    signing_key: Any
+    verify: Any
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +94,7 @@ def _build_keyset() -> Dict[str, Any]:
         verify = {active_kid: active_secret}
         if previous_kid and previous_secret:
             verify[previous_kid] = previous_secret
-        return {"algorithm": algorithm, "active_kid": active_kid, "signing_key": active_secret, "verify": verify}
+        return _build_keysetResult.model_validate({"algorithm": algorithm, "active_kid": active_kid, "signing_key": active_secret, "verify": verify})
 
     if algorithm in {"RS256", "ES256"}:
         active_private = os.getenv("JWT_PRIVATE_KEY_PEM", "").strip()
@@ -96,7 +107,7 @@ def _build_keyset() -> Dict[str, Any]:
         verify = {active_kid: active_public}
         if previous_kid and previous_public:
             verify[previous_kid] = previous_public
-        return {"algorithm": algorithm, "active_kid": active_kid, "signing_key": active_private, "verify": verify}
+        return _build_keysetResult.model_validate({"algorithm": algorithm, "active_kid": active_kid, "signing_key": active_private, "verify": verify})
 
     raise RuntimeError(f"Unsupported JWT_ALGORITHM: {algorithm}")
 
@@ -105,7 +116,7 @@ def get_jwks() -> Dict[str, Any]:
     keyset = _build_keyset()
     alg = keyset["algorithm"]
     if alg not in {"RS256", "ES256"}:
-        return {"keys": []}
+        return get_jwksResult.model_validate({"keys": []})
     keys = []
     for kid, public_key in keyset["verify"].items():
         jwk_json = jwt.algorithms.get_default_algorithms()[alg].to_jwk(public_key)
@@ -114,7 +125,7 @@ def get_jwks() -> Dict[str, Any]:
         key_obj["alg"] = alg
         key_obj["use"] = "sig"
         keys.append(key_obj)
-    return {"keys": keys}
+    return get_jwksResult.model_validate({"keys": keys})
 
 
 # ---------------------------------------------------------------------------

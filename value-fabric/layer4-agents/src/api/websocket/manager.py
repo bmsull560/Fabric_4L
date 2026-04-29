@@ -12,6 +12,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import WebSocket
+from shared.models.typed_dict import TypedDictModel
+
+
+class WorkflowWebSocketManager__summarize_outputResult(TypedDictModel):
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -381,7 +386,7 @@ class WorkflowWebSocketManager:
     def _summarize_output(self, output: dict, max_keys: int = 5) -> dict:
         """Create a summarized version of output for streaming."""
         if not output:
-            return {}
+            return WorkflowWebSocketManager__summarize_outputResult.model_validate({})
 
         summary = {}
         for i, (key, value) in enumerate(output.items()):

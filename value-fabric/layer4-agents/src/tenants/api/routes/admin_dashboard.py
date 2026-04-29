@@ -39,6 +39,43 @@ from shared.identity.dependencies import require_tenant_admin
 from ....database import get_db_from_context
 from ...tier_enforcement import TierEnforcement
 from ...usage_tracking import UsageTrackingService
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_tenant_usageResult(TypedDictModel):
+    agent_executions: dict[str, Any]
+    api_calls: dict[str, Any]
+    llm_usage: dict[str, Any]
+    period: dict[str, Any]
+    tenant_id: Any
+    users: dict[str, Any]
+
+class get_daily_usageResult(TypedDictModel):
+    data: Any
+    days: Any
+    tenant_id: Any
+
+class get_top_endpointsResult(TypedDictModel):
+    days: Any
+    endpoints: Any
+    tenant_id: Any
+
+class get_tenant_audit_logResult(TypedDictModel):
+    events: Any
+    limit: Any
+    offset: Any
+    tenant_id: Any
+    total: Any
+
+class get_tenant_settingsResult(TypedDictModel):
+    created_at: Any
+    id: Any
+    name: Any
+    settings: bool
+    slug: Any
+    status: Any
+    tier_id: Any
+    updated_at: Any
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +146,7 @@ async def get_tenant_usage(
     service = UsageTrackingService(db)
     summary = await service.get_usage_summary(tenant_id, days)
 
-    return {
+    return get_tenant_usageResult.model_validate({
         "tenant_id": str(tenant_id),
         "period": {
             "start": summary.period_start.isoformat(),
@@ -134,7 +171,7 @@ async def get_tenant_usage(
         "users": {
             "active": summary.active_users,
         },
-    }
+    })
 
 
 @router.get("/{tenant_id}/dashboard/daily-usage")
@@ -154,7 +191,7 @@ async def get_daily_usage(
     service = UsageTrackingService(db)
     daily = await service.get_daily_usage(tenant_id, days)
 
-    return {
+    return get_daily_usageResult.model_validate({
         "tenant_id": str(tenant_id),
         "days": days,
         "data": [
@@ -166,7 +203,7 @@ async def get_daily_usage(
             }
             for d in daily
         ],
-    }
+    })
 
 
 @router.get("/{tenant_id}/dashboard/tier-usage")
@@ -224,11 +261,11 @@ async def get_top_endpoints(
     service = UsageTrackingService(db)
     endpoints = await service.get_top_endpoints(tenant_id, days, limit)
 
-    return {
+    return get_top_endpointsResult.model_validate({
         "tenant_id": str(tenant_id),
         "days": days,
         "endpoints": endpoints,
-    }
+    })
 
 
 @router.get("/{tenant_id}/dashboard/audit-log")
@@ -301,13 +338,13 @@ async def get_tenant_audit_log(
         events = []
         total = 0
 
-    return {
+    return get_tenant_audit_logResult.model_validate({
         "tenant_id": str(tenant_id),
         "events": events,
         "total": total,
         "limit": limit,
         "offset": offset,
-    }
+    })
 
 
 # ── Settings Endpoints ──────────────────────────────────────────────
@@ -335,7 +372,7 @@ async def get_tenant_settings(
     if not row:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    return {
+    return get_tenant_settingsResult.model_validate({
         "id": str(row[0]),
         "name": row[1],
         "slug": row[2],
@@ -344,7 +381,7 @@ async def get_tenant_settings(
         "settings": row[5] or {},
         "created_at": str(row[6]),
         "updated_at": str(row[7]),
-    }
+    })
 
 
 @router.patch("/{tenant_id}/settings")

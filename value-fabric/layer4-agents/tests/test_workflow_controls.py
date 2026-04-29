@@ -10,6 +10,21 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from shared.models.typed_dict import TypedDictModel
+
+
+class MockOrchestrationController_get_workflow_statusResult(TypedDictModel):
+    current_node: Any
+    progress_percentage: Any
+    started_at: Any
+    status: Any
+    tenant_id: Any
+    user_id: Any
+    workflow_id: Any
+
+class get_workflow_eventsResult(TypedDictModel):
+    events: list[Any]
+    workflow_id: Any
 
 # ============================================================================
 # Local Helpers & Fixtures (no global shared test utility module)
@@ -63,7 +78,7 @@ class MockOrchestrationController:
         workflow = self.state.get_workflow(workflow_id)
         if not workflow:
             return None
-        return {
+        return MockOrchestrationController_get_workflow_statusResult.model_validate({
             "workflow_id": workflow_id,
             "status": workflow.get("status", "unknown"),
             "current_node": workflow.get("current_node"),
@@ -71,7 +86,8 @@ class MockOrchestrationController:
             "started_at": workflow.get("started_at"),
             "tenant_id": workflow.get("tenant_id"),
             "user_id": workflow.get("user_id"),
-        }
+        })
+
 
     async def pause_workflow(self, workflow_id: str, user_id: str, reason: str | None = None) -> bool:
         workflow = self.state.get_workflow(workflow_id)
@@ -261,7 +277,7 @@ def app(mock_executor):
         status = await executor.get_workflow_status(workflow_id)
         if not status:
             raise HTTPException(status_code=404, detail="Workflow not found")
-        return {"workflow_id": workflow_id, "events": []}
+        return get_workflow_eventsResult.model_validate({"workflow_id": workflow_id, "events": []})
 
     return app
 

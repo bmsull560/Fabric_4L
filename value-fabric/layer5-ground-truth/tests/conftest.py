@@ -36,6 +36,12 @@ os.environ["JWT_FALLBACK_TO_QUERY_PARAM"] = "true"
 from layer5_ground_truth import database as db_module  # noqa: E402
 from layer5_ground_truth.api.main import create_app  # noqa: E402
 from layer5_ground_truth.models import Base  # noqa: E402
+from shared.models.typed_dict import TypedDictModel
+
+
+class auth_headersResult(TypedDictModel):
+    Authorization: str
+    Content-Type: str
 
 # ---------------------------------------------------------------------------
 # Shared test organization ID
@@ -160,10 +166,10 @@ async def async_client(client) -> AsyncGenerator[AsyncClient, None]:
 @pytest.fixture
 def auth_headers() -> dict:
     """Return authentication headers for API tests."""
-    return {
+    return auth_headersResult.model_validate({
         "Authorization": "Bearer test-token",
         "Content-Type": "application/json",
-    }
+    })
 
 
 # ---------------------------------------------------------------------------

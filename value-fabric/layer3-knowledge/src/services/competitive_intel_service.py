@@ -36,6 +36,39 @@ from typing import Any
 
 import structlog
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
+
+
+class CompetitiveIntelService_add_competitorResult(TypedDictModel):
+    id: Any
+
+class CompetitiveIntelService_get_competitorResult(TypedDictModel):
+    battlecards: Any
+    competing_products: Any
+
+class CompetitiveIntelService_list_competitorsResult(TypedDictModel):
+    competitors: Any
+    limit: Any
+    skip: Any
+    total: Any
+
+class CompetitiveIntelService_add_battlecardResult(TypedDictModel):
+    id: Any
+
+class CompetitiveIntelService_record_win_lossResult(TypedDictModel):
+    id: Any
+    outcome: Any
+
+class CompetitiveIntelService_analyze_competitive_landscapeResult(TypedDictModel):
+    landscape: Any
+    overall_win_rate: Any
+    total_competitors: Any
+    total_losses: Any
+    total_wins: Any
+
+class CompetitiveIntelService_get_win_loss_summaryResult(TypedDictModel):
+    competitors: Any
+    total_competitors: Any
 
 try:
     from shared.identity.context import require_context
@@ -168,7 +201,7 @@ class CompetitiveIntelService:
             competitor_id=competitor_id,
             name=competitor.name,
         )
-        return {"id": competitor_id, **(record["competitor"] if record else {})}
+        return CompetitiveIntelService_add_competitorResult.model_validate({"id": competitor_id, **(record["competitor"] if record else {})})
 
     async def get_competitor(
         self, competitor_id: str
@@ -193,11 +226,12 @@ class CompetitiveIntelService:
         if not record or not record["competitor"]:
             return None
 
-        return {
+        return CompetitiveIntelService_get_competitorResult.model_validate({
             **record["competitor"],
             "competing_products": record["competing_products"],
             "battlecards": record["battlecards"],
-        }
+        })
+
 
     async def list_competitors(
         self,
@@ -247,12 +281,13 @@ class CompetitiveIntelService:
             for r in records
         ]
 
-        return {
+        return CompetitiveIntelService_list_competitorsResult.model_validate({
             "competitors": competitors,
             "total": total,
             "skip": skip,
             "limit": limit,
-        }
+        })
+
 
     async def update_competitor(
         self, competitor_id: str, updates: dict[str, Any]
@@ -368,7 +403,7 @@ class CompetitiveIntelService:
             competitor_id=competitor_id,
             product_id=battlecard.product_id,
         )
-        return {"id": bc_id, **(record["battlecard"] if record else {})}
+        return CompetitiveIntelService_add_battlecardResult.model_validate({"id": bc_id, **(record["battlecard"] if record else {})})
 
     async def get_battlecard(
         self, competitor_id: str, product_id: str | None = None
@@ -448,11 +483,12 @@ class CompetitiveIntelService:
             competitor_id=record_data.competitor_id,
             product_id=record_data.product_id,
         )
-        return {
+        return CompetitiveIntelService_record_win_lossResult.model_validate({
             "id": wl_id,
             "outcome": record_data.outcome,
             **(rec["record"] if rec else {}),
-        }
+        })
+
 
     # ------------------------------------------------------------------
     # Competitive Analysis
@@ -518,13 +554,14 @@ class CompetitiveIntelService:
             else 0.0
         )
 
-        return {
+        return CompetitiveIntelService_analyze_competitive_landscapeResult.model_validate({
             "landscape": landscape,
             "total_competitors": len(landscape),
             "total_wins": total_wins,
             "total_losses": total_losses,
             "overall_win_rate": round(overall_win_rate, 3),
-        }
+        })
+
 
     async def get_win_loss_summary(
         self
@@ -565,4 +602,4 @@ class CompetitiveIntelService:
                 "lost_revenue": r["lost_revenue"],
             })
 
-        return {"competitors": summary, "total_competitors": len(summary)}
+        return CompetitiveIntelService_get_win_loss_summaryResult.model_validate({"competitors": summary, "total_competitors": len(summary)})

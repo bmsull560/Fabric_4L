@@ -14,6 +14,17 @@ import httpx
 
 from layer2_extraction.models import ExtractionResult
 from layer2_extraction.output.rdf_generator import generate_rdf
+from shared.models.typed_dict import TypedDictModel
+
+
+class Layer3KnowledgeClient_detailed_health_checkResult(TypedDictModel):
+    error: Any
+    status: str
+
+class Layer3KnowledgeClient_graph_rag_queryResult(TypedDictModel):
+    entities: list[Any]
+    error: Any
+    relationships: list[Any]
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +149,7 @@ class Layer3KnowledgeClient:
             return response.json()
         except Exception as e:
             logger.error(f"Detailed health check failed: {e}")
-            return {"status": "error", "error": str(e)}
+            return Layer3KnowledgeClient_detailed_health_checkResult.model_validate({"status": "error", "error": str(e)})
 
     async def ingest_extraction_result(
         self,
@@ -355,7 +366,7 @@ class Layer3KnowledgeClient:
             return response.json()
         except Exception as e:
             logger.error(f"GraphRAG query failed: {e}")
-            return {"error": str(e), "entities": [], "relationships": []}
+            return Layer3KnowledgeClient_graph_rag_queryResult.model_validate({"error": str(e), "entities": [], "relationships": []})
 
     async def initialize_schema(self, drop_existing: bool = False) -> bool:
         """Initialize Neo4j schema (constraints, indexes).

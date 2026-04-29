@@ -14,6 +14,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config.plans import USAGE_LIMITS, Plan, UsageLimit, get_plan
 from ..models.billing import BillingSubscription, BillingUsageEvent, UsageEventStatus
+from shared.models.typed_dict import TypedDictModel
+
+
+class OverageService_validate_requestResult(TypedDictModel):
+    allowed: bool
+    current_usage: Any
+    error: str
+    limit: Any
+    overage: Any
+    upgrade_required: bool
+
+class OverageService_get_plan_limitsResult(TypedDictModel):
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -318,14 +331,15 @@ class OverageService:
         )
 
         if check.limit_exceeded:
-            return {
+            return OverageService_validate_requestResult.model_validate({
                 "allowed": False,
                 "error": f"Usage limit exceeded for {metric_name}",
                 "limit": check.limit,
                 "current_usage": check.current_usage,
                 "overage": check.overage,
                 "upgrade_required": True,
-            }
+            })
+
 
         result = {
             "allowed": True,
@@ -356,7 +370,7 @@ class OverageService:
         """
         plan = get_plan(plan_id)
         if not plan or not plan.usage_limits:
-            return {}
+            return OverageService_get_plan_limitsResult.model_validate({})
 
         return {
             metric_name: {

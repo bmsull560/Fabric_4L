@@ -7,6 +7,18 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from shared.models.typed_dict import TypedDictModel
+
+
+class SqlitePendingIngestionStore_get_retry_metadataResult(TypedDictModel):
+    last_error: Any
+    next_retry_at: Any
+    retry_count: Any
+
+class PostgresPendingIngestionStore_get_retry_metadataResult(TypedDictModel):
+    last_error: Any
+    next_retry_at: Any
+    retry_count: Any
 
 
 @dataclass
@@ -211,11 +223,11 @@ class SqlitePendingIngestionStore(PendingIngestionStore):
         if not row:
             return None
 
-        return {
+        return SqlitePendingIngestionStore_get_retry_metadataResult.model_validate({
             "retry_count": row["retry_count"],
             "last_error": row["last_error"],
             "next_retry_at": row["next_retry_at"],
-        }
+        })
 
 
 class PostgresPendingIngestionStore(PendingIngestionStore):
@@ -377,11 +389,11 @@ class PostgresPendingIngestionStore(PendingIngestionStore):
         if not row:
             return None
 
-        return {
+        return PostgresPendingIngestionStore_get_retry_metadataResult.model_validate({
             "retry_count": row[0],
             "last_error": row[1],
             "next_retry_at": row[2].isoformat() if row[2] else None,
-        }
+        })
 
 
 def _sqlite_path_from_url(database_url: str) -> str:

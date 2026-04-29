@@ -15,6 +15,14 @@ from langgraph.graph import StateGraph
 from ..models.agent_state import AgentState, BaseAgentState, WorkflowStatus
 from ..models.workflow_config import EdgeConfig, NodeConfig, NodeType, WorkflowConfig
 from ..tools.registry import ToolRegistry
+from shared.models.typed_dict import TypedDictModel
+
+
+class BaseWorkflow__execute_llmResult(TypedDictModel):
+    status: str
+
+class BaseWorkflow__execute_agentResult(TypedDictModel):
+    status: str
 
 # Default recursion limit for LangGraph workflows
 # Prevents infinite loops in malformed workflows
@@ -230,14 +238,14 @@ class BaseWorkflow(ABC):
 
         Subclasses should override for LLM-specific logic.
         """
-        return {"status": "llm_not_implemented"}
+        return BaseWorkflow__execute_llmResult.model_validate({"status": "llm_not_implemented"})
 
     async def _execute_agent(self, node_config: NodeConfig, state: AgentState) -> dict[str, Any]:
         """Execute agent node (sub-workflow).
 
         Subclasses should override for agent-specific logic.
         """
-        return {"status": "agent_not_implemented"}
+        return BaseWorkflow__execute_agentResult.model_validate({"status": "agent_not_implemented"})
 
     def _create_router(self, edge_config: EdgeConfig) -> Callable:
         """Create a router function for conditional edges."""

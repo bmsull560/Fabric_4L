@@ -18,6 +18,16 @@ from httpx import ASGITransport, AsyncClient
 
 from shared.identity.context import RequestContext
 from shared.identity.middleware import GovernanceMiddleware
+from shared.models.typed_dict import TypedDictModel
+
+
+class TestMiddlewareTenantStatusEnforcement__jwt_payloadResult(TypedDictModel):
+    roles: list[Any]
+    sub: Any
+    tenant_id: Any
+
+class TestMiddlewareTenantStatusEnforcement_get_dataResult(TypedDictModel):
+    ok: bool
 
 
 # ---------------------------------------------------------------------------
@@ -167,16 +177,17 @@ class TestMiddlewareTenantStatusEnforcement:
 
         @app.get("/data")
         async def get_data(request: Request):
-            return {"ok": True}
+            return TestMiddlewareTenantStatusEnforcement_get_dataResult.model_validate({"ok": True})
 
         return app
 
     def _jwt_payload(self, tenant_id: str):
-        return {
+        return TestMiddlewareTenantStatusEnforcement__jwt_payloadResult.model_validate({
             "sub": str(uuid.uuid4()),
             "tenant_id": tenant_id,
             "roles": ["user"],
-        }
+        })
+
 
     @pytest.mark.asyncio
     async def test_active_tenant_allowed(self, app_with_status_check):

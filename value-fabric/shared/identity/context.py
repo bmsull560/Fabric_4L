@@ -18,6 +18,15 @@ from typing import Any, Dict, FrozenSet, List, Optional
 from uuid import UUID
 
 from .permissions import Permission, Role
+from shared.models.typed_dict import TypedDictModel
+
+
+class RequestContext_to_log_dictResult(TypedDictModel):
+    api_key_id: Any
+    roles: Any
+    source: Any
+    tenant_id: Any
+    user_id: Any
 
 
 @dataclass
@@ -66,13 +75,13 @@ class RequestContext:
 
     def to_log_dict(self) -> Dict[str, Any]:
         """Serialise for structured logging (no sensitive data)."""
-        return {
+        return RequestContext_to_log_dictResult.model_validate({
             "tenant_id": str(self.tenant_id),
             "user_id": self.user_id,
             "roles": self.roles,
             "api_key_id": self.api_key_id,
             "source": self.source,
-        }
+        })
 
 
 # ---------------------------------------------------------------------------

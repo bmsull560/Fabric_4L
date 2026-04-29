@@ -13,6 +13,13 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
+from shared.models.typed_dict import TypedDictModel
+
+
+class LoadBalancingSystem_get_system_statsResult(TypedDictModel):
+    auto_scaler: dict[str, Any]
+    load_balancer: Any
+    system: dict[str, Any]
 
 logger = logging.getLogger(__name__)
 
@@ -940,7 +947,7 @@ class LoadBalancingSystem:
         lb_stats = self.load_balancer.get_stats()
         uptime = (datetime.utcnow() - self.start_time).total_seconds()
 
-        return {
+        return LoadBalancingSystem_get_system_statsResult.model_validate({
             "load_balancer": lb_stats.dict(),
             "auto_scaler": {
                 "scaling_history": self.auto_scaler.get_scaling_history(),
@@ -951,7 +958,7 @@ class LoadBalancingSystem:
                 "total_requests": self.request_count,
                 "requests_per_second": self.request_count / max(uptime, 1),
             },
-        }
+        })
 
 
 # Global load balancing system instance

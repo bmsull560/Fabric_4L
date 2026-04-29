@@ -20,6 +20,11 @@ from uuid import UUID, uuid4
 
 import jwt as pyjwt
 import pytest
+from shared.models.typed_dict import TypedDictModel
+
+
+class AuthFactory_headerResult(TypedDictModel):
+    Authorization: str
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -96,7 +101,7 @@ class AuthFactory:
 
     def header(self, tenant_id: UUID, role: str = "user") -> dict[str, str]:
         """Return Authorization header dict."""
-        return {"Authorization": f"Bearer {self.valid(tenant_id, role)}"}
+        return AuthFactory_headerResult.model_validate({"Authorization": f"Bearer {self.valid(tenant_id, role)}"})
 
 
 # ---------------------------------------------------------------------------

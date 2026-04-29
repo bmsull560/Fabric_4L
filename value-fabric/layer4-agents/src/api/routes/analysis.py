@@ -20,6 +20,35 @@ from ...services.account_service import AccountService
 from ...services.business_case_service import BusinessCaseService
 from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
+from shared.models.typed_dict import TypedDictModel
+
+
+class export_business_caseResult(TypedDictModel):
+    blocked: bool
+    case_id: Any
+    document_url: Any
+    download_ready: bool
+    export_id: Any
+    format: Any
+    manifest: dict[str, Any]
+    manifest_url: Any | None = None
+    remediation_items: Any
+    truth_references: Any
+    url_expires_at: Any | None = None
+
+class get_workspace_tabResult(TypedDictModel):
+    pass
+
+class update_workspace_tabResult(TypedDictModel):
+    case_id: Any
+    tab: Any
+    updated: bool
+
+class generate_workspace_intelligenceResult(TypedDictModel):
+    account_id: Any
+    case_id: Any
+    generated: bool
+    stats: dict[str, Any]
 
 router = APIRouter()
 
@@ -364,7 +393,7 @@ async def export_business_case(
     export_id = str(uuid4())
 
     if blocked:
-        return {
+        return export_business_caseResult.model_validate({
             "case_id": case_id,
             "export_id": export_id,
             "format": format,
@@ -384,7 +413,8 @@ async def export_business_case(
                     "requirements": truth_gate.get("requirements", []),
                 },
             },
-        }
+        })
+
 
     if not document_bytes:
         raise HTTPException(status_code=409, detail="Business case document bytes unavailable")
@@ -491,7 +521,7 @@ async def export_business_case(
     )
     await AuditEmitter.write_to_db(access_event, get_db_from_context)
 
-    return {
+    return export_business_caseResult.model_validate({
         "case_id": case_id,
         "export_id": export_id,
         "format": format,
@@ -502,7 +532,7 @@ async def export_business_case(
         "remediation_items": remediation_items,
         "truth_references": truth_references,
         "url_expires_at": expires_at,
-    }
+    })
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -645,7 +675,7 @@ async def get_workspace_tab(
     workspace = _workspace_data.get(case_id, {})
     data = workspace.get(tab_key, [])
 
-    return {tab_key: data}
+    return get_workspace_tabResult.model_validate({tab_key: data})
 
 
 @router.put("/cases/{case_id}/workspace/{tab_key}")
@@ -675,7 +705,7 @@ async def update_workspace_tab(
     # Update the specific tab data
     _workspace_data[case_id][tab_key] = payload.get(tab_key, payload)
 
-    return {"case_id": case_id, "tab": tab_key, "updated": True}
+    return update_workspace_tabResult.model_validate({"case_id": case_id, "tab": tab_key, "updated": True})
 
 
 @router.post("/cases/{case_id}/workspace/generate")
@@ -764,7 +794,7 @@ async def generate_workspace_intelligence(
         "narrative": narratives,
     }
 
-    return {
+    return generate_workspace_intelligenceResult.model_validate({
         "case_id": case_id,
         "account_id": str(record.account_id),
         "generated": True,
@@ -777,4 +807,6 @@ async def generate_workspace_intelligence(
             "value_model": len(value_model),
             "narratives": len(narratives),
         },
-    }
+    })
+
+

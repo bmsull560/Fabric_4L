@@ -37,6 +37,42 @@ from ..tools.registry import ToolRegistry
 from ..workflows import create_workflow
 from .scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from .state_manager import StateManager
+from shared.models.typed_dict import TypedDictModel
+
+
+class OrchestrationController_get_resultResult(TypedDictModel):
+    completed_at: Any
+    created_at: Any
+    metadata: Any
+    output: dict[str, Any]
+    started_at: Any
+    status: Any
+    workflow_id: Any
+
+class OrchestrationController_get_workflow_statusResult(TypedDictModel):
+    completed_at: Any
+    current_node: Any
+    error_count: Any
+    estimated_duration_seconds: Any
+    has_output: Any
+    priority: Any
+    progress_percentage: Any
+    scheduler_status: Any
+    started_at: Any
+    status: Any
+    tenant_id: Any
+    user_id: Any
+    workflow_id: Any
+    workflow_type: Any
+
+class OrchestrationController_get_cluster_healthResult(TypedDictModel):
+    active_workflows: Any
+    avg_load: Any
+    pending_tasks: Any
+    registered_agents: Any
+    running_tasks: Any
+    status: Any
+    utilization: Any
 
 logger = logging.getLogger(__name__)
 
@@ -372,7 +408,7 @@ class OrchestrationController:
                 else str(state.workflow_type)
             )
 
-        return {
+        return OrchestrationController_get_resultResult.model_validate({
             "workflow_id": state.workflow_id,
             "output": dict(state.output_data or {}),
             "metadata": persisted_metadata,
@@ -380,7 +416,8 @@ class OrchestrationController:
             "created_at": state.started_at.isoformat() if state.started_at else None,
             "started_at": state.started_at.isoformat() if state.started_at else None,
             "completed_at": state.completed_at.isoformat() if state.completed_at else None,
-        }
+        })
+
 
     async def schedule_workflow(
         self,
@@ -512,7 +549,7 @@ class OrchestrationController:
         # Get metadata
         metadata = self._workflow_metadata.get(workflow_id, {})
 
-        return {
+        return OrchestrationController_get_workflow_statusResult.model_validate({
             "workflow_id": workflow_id,
             "workflow_type": state.workflow_type.value
             if hasattr(state.workflow_type, "value")
@@ -529,7 +566,8 @@ class OrchestrationController:
             "user_id": metadata.get("user_id"),
             "priority": metadata.get("priority"),
             "scheduler_status": scheduler_status.get("status") if scheduler_status else None,
-        }
+        })
+
 
     async def cancel_workflow(self, workflow_id: str, reason: str | None = None) -> bool:
         """Cancel a workflow.
@@ -683,7 +721,7 @@ class OrchestrationController:
         router_health = self.message_router.get_cluster_health()
         scheduler_stats = self.scheduler.get_stats()
 
-        return {
+        return OrchestrationController_get_cluster_healthResult.model_validate({
             "status": router_health.get("status", "unknown"),
             "registered_agents": len(self._registered_agents),
             "active_workflows": len(self._active_workflows),
@@ -691,7 +729,8 @@ class OrchestrationController:
             "running_tasks": scheduler_stats.get("running_tasks", 0),
             "avg_load": router_health.get("avg_load", 0),
             "utilization": scheduler_stats.get("utilization", 0),
-        }
+        })
+
 
     async def recover_workflows(self) -> list[dict[str, Any]]:
         """On startup, identify and handle orphaned workflows from previous pod.

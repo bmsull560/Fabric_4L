@@ -22,6 +22,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.audit.emitter import emit_audit_event
 from shared.audit.models import AuditAction, AuditOutcome
+from shared.models.typed_dict import TypedDictModel
+
+
+class TenantProvisioningService__get_tenant_by_nameResult(TypedDictModel):
+    created_at: Any
+    id: Any
+    isolation_tier: Any
+    name: Any
 
 logger = logging.getLogger(__name__)
 
@@ -245,12 +253,14 @@ class TenantProvisioningService:
         row = result.fetchone()
         
         if row:
-            return {
+            return TenantProvisioningService__get_tenant_by_nameResult.model_validate({
                 "id": row[0],
                 "name": row[1],
                 "created_at": row[2],
                 "isolation_tier": row[3],
-            }
+            })
+
+
         return None
     
     async def _get_existing_tenant_result(

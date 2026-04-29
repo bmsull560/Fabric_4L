@@ -22,6 +22,21 @@ from .service import (
     get_tenant,
     update_tenant_status,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class ProvisioningState_to_dictResult(TypedDictModel):
+    completed_at: Any
+    completed_steps: Any
+    current_step: Any
+    error: Any
+    max_retries: Any
+    retry_count: Any
+    retryable: Any
+    started_at: Any
+    status: Any
+    step_results: Any
+    tenant_id: Any
 
 if TYPE_CHECKING:
     from shared.identity.models import TenantModel
@@ -74,7 +89,7 @@ class ProvisioningState:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert state to dictionary for serialization."""
-        return {
+        return ProvisioningState_to_dictResult.model_validate({
             "tenant_id": str(self.tenant_id),
             "status": self.status.value,
             "current_step": self.current_step.name if self.current_step else None,
@@ -86,7 +101,7 @@ class ProvisioningState:
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "retry_count": self.retry_count,
             "max_retries": self.max_retries,
-        }
+        })
 
 
 class TenantProvisioningService:

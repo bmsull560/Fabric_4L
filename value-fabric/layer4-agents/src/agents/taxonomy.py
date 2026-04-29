@@ -30,6 +30,66 @@ from enum import Enum
 from typing import Any
 
 from .base import AgentCapability, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class ContextExtractionAgent_executeResult(TypedDictModel):
+    categories: list[Any]
+    confidence: Any | None = None
+    pain_points: Any | None = None
+    profile: dict[str, Any] | None = None
+    risks: Any
+    stakeholders: Any | None = None
+
+class ValueModelAgent_executeResult(TypedDictModel):
+    coverage_percentage: Any
+    gaps: Any
+    nodes_created: Any | None = None
+    value_tree: Any | None = None
+
+class IntegrityAgent_executeResult(TypedDictModel):
+    audit_result: dict[str, Any]
+    discrepancies: Any | None = None
+    stale_evidence: Any
+    validated: Any | None = None
+    verified: Any | None = None
+    violations: Any | None = None
+
+class NarrativeAgent_executeResult(TypedDictModel):
+    key_points: Any | None = None
+    proposal: Any
+    risk_mitigation: Any
+    slides: Any | None = None
+    speaker_notes: list[Any] | None = None
+    summary: Any | None = None
+    word_count: Any | None = None
+
+class CompetitiveIntelAgent_executeResult(TypedDictModel):
+    analysis: Any | None = None
+    battlecard: Any | None = None
+    differentiators: Any
+    factors: Any | None = None
+    positioning: Any
+    win_rate: Any | None = None
+
+class ConversationAgent_executeResult(TypedDictModel):
+    actions_taken: Any
+    confidence: Any | None = None
+    context_data: Any | None = None
+    entities: Any | None = None
+    intent: Any | None = None
+    response: Any
+    sources: Any | None = None
+
+class OrchestrationController_executeResult(TypedDictModel):
+    agent_load: dict[str, Any] | None = None
+    assignments: Any | None = None
+    current_instances: Any
+    estimated_start: Any | None = None
+    recovery_action: str | None = None
+    retry_scheduled: bool | None = None
+    scaling_action: str
+    schedule_id: Any | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -203,17 +263,18 @@ class ContextExtractionAgent(BaseAgent):
                 context, "semantic_search",
                 {"query": f"company profile {params['account_id']}", "top_k": 10},
             )
-            return {
+            return ContextExtractionAgent_executeResult.model_validate({
                 "profile": {**account_data, "enrichment_sources": enrichment.get("results", [])},
                 "confidence": enrichment.get("avg_score", 0.0),
-            }
+            })
+
 
         elif capability == "extract_stakeholders":
             results = await _gate_execute(
                 context, "get_relationships",
                 {"entity_id": params["account_id"], "relationship_type": "HAS_STAKEHOLDER"},
             )
-            return {"stakeholders": results.get("relationships", [])}
+            return ContextExtractionAgent_executeResult.model_validate({"stakeholders": results.get("relationships", [])})
 
         elif capability == "extract_pain_points":
             search_results = await _gate_execute(
@@ -225,10 +286,11 @@ class ContextExtractionAgent(BaseAgent):
                 context, "validate_input",
                 {"data": search_results.get("results", []), "schema": "pain_point"},
             )
-            return {
+            return ContextExtractionAgent_executeResult.model_validate({
                 "pain_points": validated.get("valid_items", []),
                 "categories": validated.get("categories", []),
-            }
+            })
+
 
         elif capability == "extract_financials":
             # Delegate to Layer 2 for base extraction, then enrich via graph
@@ -257,10 +319,11 @@ class ContextExtractionAgent(BaseAgent):
                 context, "semantic_search",
                 {"query": "risk factors regulatory compliance", "top_k": 15},
             )
-            return {
+            return ContextExtractionAgent_executeResult.model_validate({
                 "risks": search_results.get("results", []),
                 "categories": ["regulatory", "market", "operational", "financial"],
-            }
+            })
+
 
         raise ValueError(f"Unknown capability: {capability}")
 
@@ -356,10 +419,11 @@ class ValueModelAgent(BaseAgent):
                     "capabilities": capabilities.get("nodes", []),
                 },
             )
-            return {
+            return ValueModelAgent_executeResult.model_validate({
                 "value_tree": tree,
                 "nodes_created": tree.get("nodes_created", 0),
-            }
+            })
+
 
         elif capability == "identify_gaps":
             # Find paths between needs and capabilities
@@ -371,10 +435,11 @@ class ValueModelAgent(BaseAgent):
                     "prospect_id": params["prospect_id"],
                 },
             )
-            return {
+            return ValueModelAgent_executeResult.model_validate({
                 "gaps": gap_analysis.get("unmatched", []),
                 "coverage_percentage": gap_analysis.get("coverage_pct", 0.0),
-            }
+            })
+
 
         elif capability == "calculate_roi":
             result = await _gate_execute(
@@ -494,7 +559,7 @@ class IntegrityAgent(BaseAgent):
                             "type": "evidence_not_found",
                             "message": f"Evidence {ref} not found in graph",
                         })
-            return {"validated": validated, "violations": violations}
+            return IntegrityAgent_executeResult.model_validate({"validated": validated, "violations": violations})
 
         elif capability == "verify_formulas":
             verified = []
@@ -520,7 +585,7 @@ class IntegrityAgent(BaseAgent):
                 else:
                     entry["status"] = "verified"
                     verified.append(entry)
-            return {"verified": verified, "discrepancies": discrepancies}
+            return IntegrityAgent_executeResult.model_validate({"verified": verified, "discrepancies": discrepancies})
 
         elif capability == "audit_evidence":
             audit_results = []
@@ -536,10 +601,11 @@ class IntegrityAgent(BaseAgent):
                 max_age = params.get("max_age_days", 90)
                 if age_days > max_age:
                     stale.append({"evidence_id": eid, "age_days": age_days})
-            return {
+            return IntegrityAgent_executeResult.model_validate({
                 "audit_result": {"total": len(audit_results), "stale_count": len(stale)},
                 "stale_evidence": stale,
-            }
+            })
+
 
         raise ValueError(f"Unknown capability: {capability}")
 
@@ -646,11 +712,12 @@ class NarrativeAgent(BaseAgent):
                 context, "assemble_document",
                 {"sections": sections, "template": params.get("template")},
             )
-            return {
+            return NarrativeAgent_executeResult.model_validate({
                 "summary": assembled.get("content", ""),
                 "key_points": assembled.get("key_points", []),
                 "word_count": assembled.get("word_count", 0),
-            }
+            })
+
 
         elif capability == "create_slide_deck":
             content = params.get("content", {})
@@ -662,7 +729,7 @@ class NarrativeAgent(BaseAgent):
                     {"chart_type": "auto", "data": content, "slide_index": i},
                 )
                 slides.append(chart)
-            return {"slides": slides, "speaker_notes": []}
+            return NarrativeAgent_executeResult.model_validate({"slides": slides, "speaker_notes": []})
 
         elif capability == "draft_proposal":
             business_case = params.get("business_case", {})
@@ -675,10 +742,11 @@ class NarrativeAgent(BaseAgent):
                     "risk_assessment": risk_assessment,
                 },
             )
-            return {
+            return NarrativeAgent_executeResult.model_validate({
                 "proposal": proposal.get("content", ""),
                 "risk_mitigation": proposal.get("risk_mitigation", []),
-            }
+            })
+
 
         elif capability == "export_document":
             # This tool requires human approval per ABOM invariant
@@ -765,10 +833,11 @@ class CompetitiveIntelAgent(BaseAgent):
                     "competitor_data": competitors,
                 },
             )
-            return {
+            return CompetitiveIntelAgent_executeResult.model_validate({
                 "analysis": analysis,
                 "battlecard": analysis.get("battlecard", {}),
-            }
+            })
+
 
         elif capability == "win_loss_analysis":
             # Query historical deal outcomes
@@ -780,10 +849,11 @@ class CompetitiveIntelAgent(BaseAgent):
                     "deal_ids": params.get("deal_ids", []),
                 },
             )
-            return {
+            return CompetitiveIntelAgent_executeResult.model_validate({
                 "win_rate": deals.get("win_rate", 0.0),
                 "factors": deals.get("contributing_factors", []),
-            }
+            })
+
 
         elif capability == "market_positioning":
             positioning = await _gate_execute(
@@ -794,10 +864,11 @@ class CompetitiveIntelAgent(BaseAgent):
                     "analysis_type": "positioning",
                 },
             )
-            return {
+            return CompetitiveIntelAgent_executeResult.model_validate({
                 "positioning": positioning.get("positioning", {}),
                 "differentiators": positioning.get("differentiators", []),
-            }
+            })
+
 
         raise ValueError(f"Unknown capability: {capability}")
 
@@ -873,11 +944,12 @@ class ConversationAgent(BaseAgent):
                 {"query": params["message"], "top_k": 3, "index": "intent_patterns"},
             )
             top_match = search.get("results", [{}])[0] if search.get("results") else {}
-            return {
+            return ConversationAgent_executeResult.model_validate({
                 "intent": top_match.get("intent", "general_question"),
                 "confidence": top_match.get("score", 0.0),
                 "entities": top_match.get("entities", {}),
-            }
+            })
+
 
         elif capability == "gather_context":
             intent = params.get("intent", "general_question")
@@ -900,10 +972,11 @@ class ConversationAgent(BaseAgent):
                     )
                     context_data["relationships"] = rels
 
-            return {
+            return ConversationAgent_executeResult.model_validate({
                 "context_data": context_data,
                 "sources": [s.get("source", "graph") for s in context_data.values() if isinstance(s, dict)],
-            }
+            })
+
 
         elif capability == "chat":
             # Full chat pipeline: classify → gather → respond
@@ -934,11 +1007,12 @@ class ConversationAgent(BaseAgent):
                     "user_message": params["message"],
                 },
             )
-            return {
+            return ConversationAgent_executeResult.model_validate({
                 "response": response.get("content", "I can help with that."),
                 "intent": intent_result["intent"],
                 "actions_taken": response.get("actions", []),
-            }
+            })
+
 
         raise ValueError(f"Unknown capability: {capability}")
 
@@ -1035,10 +1109,11 @@ class OrchestrationController(BaseAgent):
                     "priority": params.get("priority", "normal"),
                 },
             )
-            return {
+            return OrchestrationController_executeResult.model_validate({
                 "schedule_id": task_result.get("task_id", "unknown"),
                 "estimated_start": task_result.get("estimated_start", "immediate"),
-            }
+            })
+
 
         elif capability == "distribute_tasks":
             assignments = []
@@ -1048,10 +1123,11 @@ class OrchestrationController(BaseAgent):
                     "assigned_agent": t.get("agent_type", "auto"),
                     "status": "queued",
                 })
-            return {
+            return OrchestrationController_executeResult.model_validate({
                 "assignments": assignments,
                 "agent_load": {"active": len(self.running_tasks), "queued": len(self.task_queue)},
-            }
+            })
+
 
         elif capability == "recover_failure":
             # Notify about failure and schedule retry
@@ -1063,16 +1139,18 @@ class OrchestrationController(BaseAgent):
                     "reason": params["failure_reason"],
                 },
             )
-            return {
+            return OrchestrationController_executeResult.model_validate({
                 "recovery_action": "retry_with_backoff",
                 "retry_scheduled": True,
-            }
+            })
+
 
         elif capability == "manage_resources":
-            return {
+            return OrchestrationController_executeResult.model_validate({
                 "scaling_action": "no_change",
                 "current_instances": len(self.agent_pool),
-            }
+            })
+
 
         raise ValueError(f"Unknown capability: {capability}")
 

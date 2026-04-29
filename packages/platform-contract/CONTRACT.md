@@ -535,3 +535,24 @@ const accountId = useAccountContextStore((s) => s.selectedAccountId);
 // Read server state
 const { data } = useQuery({ queryKey: ['key'], queryFn: fetchFn });
 `
+
+---
+
+## 7. Adding a New Canonical Contract (Quick Guide)
+
+When you add a new canonical contract, treat it as **code + enforcement + docs** in one change set.
+
+1. Add or update canonical source files under:
+   - `packages/platform-contract/src/python/canonical/` for Python signatures/patterns.
+   - `packages/platform-contract/src/typescript/` for frontend/public TS contract types.
+2. Add invariant and negative tests adjacent to canonical sources:
+   - Python: `packages/platform-contract/src/python/canonical/test_contract_invariants.py`.
+   - TypeScript compile-time assertions: `packages/platform-contract/src/typescript/contract-tests.ts`.
+3. Ensure negative tests check error messaging (or static type errors) so enforcement failures are actionable.
+4. Wire the checks into contract CI stages (Make + workflow jobs), not only local scripts.
+5. Run verification before PR:
+   - `make contract-tests`
+   - `make verify`
+6. If the new contract deprecates an older pattern, update `docs/platform-contract/DEPRECATION_MAP.md` in the same PR.
+
+**Definition of done:** if the canonical rule is violated, CI fails with a clear, contract-specific failure.

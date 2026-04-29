@@ -8,6 +8,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import yaml
+from shared.models.typed_dict import TypedDictModel
+
+
+class CrawlerConfig_viewportResult(TypedDictModel):
+    height: Any
+    width: Any
 
 
 @dataclass
@@ -135,7 +141,7 @@ class CrawlerConfig:
     @property
     def viewport(self) -> dict:
         """Get viewport configuration as dict for Playwright."""
-        return {"width": self.viewport_width, "height": self.viewport_height}
+        return CrawlerConfig_viewportResult.model_validate({"width": self.viewport_width, "height": self.viewport_height})
 
 
 def load_config(path: Path | str | None = None) -> CrawlerConfig:

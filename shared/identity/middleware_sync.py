@@ -12,6 +12,22 @@ import os
 import threading
 from typing import Any, Callable, Optional
 from uuid import UUID, uuid4
+from shared.models.typed_dict import TypedDictModel
+
+
+class SyncRequestContext_to_dictResult(TypedDictModel):
+    api_key_id: Any
+    auth_source: Any
+    isolation_tier: Any
+    org_id: Any
+    permissions: Any
+    request_id: Any
+    roles: Any
+    service_account_id: Any
+    service_account_scopes: Any
+    tenant_id: Any
+    tenant_role: Any
+    user_id: Any
 
 # Thread-local storage for sync context
 _thread_local = threading.local()
@@ -72,7 +88,7 @@ class SyncRequestContext:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary."""
-        return {
+        return SyncRequestContext_to_dictResult.model_validate({
             "tenant_id": str(self.tenant_id) if self.tenant_id else None,
             "user_id": str(self.user_id) if self.user_id else None,
             "api_key_id": str(self.api_key_id) if self.api_key_id else None,
@@ -85,7 +101,7 @@ class SyncRequestContext:
             "auth_source": self.auth_source,
             "service_account_id": str(self.service_account_id) if self.service_account_id else None,
             "service_account_scopes": self.service_account_scopes,
-        }
+        })
 
 
 class GovernanceMiddlewareSync:

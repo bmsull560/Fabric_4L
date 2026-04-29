@@ -23,6 +23,24 @@ from shared.security.dil_auth import (
     validate_enum_value,
     VALID_WIN_LOSS_OUTCOMES,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class add_competitorResult(TypedDictModel):
+    status: str
+
+class update_competitorResult(TypedDictModel):
+    status: str
+
+class delete_competitorResult(TypedDictModel):
+    competitor_id: Any
+    status: str
+
+class add_battlecardResult(TypedDictModel):
+    status: str
+
+class record_win_lossResult(TypedDictModel):
+    status: str
 
 router = APIRouter(prefix="/competitive", tags=["Competitive Intelligence"])
 
@@ -126,7 +144,7 @@ async def add_competitor(
         target_segments=body.target_segments,
     )
     result = await svc.add_competitor(competitor)
-    return {"status": "created", **result}
+    return add_competitorResult.model_validate({"status": "created", **result})
 
 
 @router.get("/competitors")
@@ -200,7 +218,7 @@ async def update_competitor(
     result = await svc.update_competitor(competitor_id, safe_updates)
     if not result:
         raise HTTPException(status_code=404, detail="Competitor not found")
-    return {"status": "updated", **result}
+    return update_competitorResult.model_validate({"status": "updated", **result})
 
 
 @router.delete("/competitors/{competitor_id}")
@@ -218,7 +236,7 @@ async def delete_competitor(
     deleted = await svc.delete_competitor(competitor_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Competitor not found")
-    return {"status": "deleted", "competitor_id": competitor_id}
+    return delete_competitorResult.model_validate({"status": "deleted", "competitor_id": competitor_id})
 
 
 # ---------------------------------------------------------------------------
@@ -249,7 +267,7 @@ async def add_battlecard(
         trap_questions=body.trap_questions,
     )
     result = await svc.add_battlecard(competitor_id, bc)
-    return {"status": "created", **result}
+    return add_battlecardResult.model_validate({"status": "created", **result})
 
 
 @router.get("/competitors/{competitor_id}/battlecards")
@@ -297,7 +315,7 @@ async def record_win_loss(
         industry=body.industry,
     )
     result = await svc.record_win_loss(wl)
-    return {"status": "recorded", **result}
+    return record_win_lossResult.model_validate({"status": "recorded", **result})
 
 
 @router.get("/win-loss/summary")

@@ -24,6 +24,29 @@ from ..tools.crm_tools import (
     FetchInteractionHistoryTool,
 )
 from .crm_sync_service import CRMSyncService
+from shared.models.typed_dict import TypedDictModel
+
+
+class AccountService_get_filter_optionsResult(TypedDictModel):
+    industries: Any
+    owners: Any
+    providers: Any
+    regions: Any
+    segments: Any
+    stages: Any
+
+class AccountService_get_account_activityResult(TypedDictModel):
+    account_id: Any
+    interactions: list[Any]
+    summary: str
+    total_count: int
+
+class AccountService_trigger_syncResult(TypedDictModel):
+    message: str
+    provider: Any
+    stats: Any
+    status: str
+    sync_id: Any
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +297,7 @@ class AccountService:
                 )
             )
 
-            return {
+            return AccountService_get_account_activityResult.model_validate({
                 "account_id": account_id,
                 "interactions": [
                     {
@@ -290,15 +313,18 @@ class AccountService:
                 ],
                 "total_count": result.total_count,
                 "summary": result.summary,
-            }
+            })
+
+
         except Exception as e:
             logger.error(f"Failed to fetch activity for account {account_id}: {e}")
-            return {
+            return AccountService_get_account_activityResult.model_validate({
                 "account_id": account_id,
                 "interactions": [],
                 "total_count": 0,
                 "summary": "Activity data unavailable",
-            }
+            })
+
 
     # ========================================================================
     # Sync Operations
@@ -345,13 +371,15 @@ class AccountService:
                 incremental=not force_refresh,
                 account_ids=account_ids,
             )
-            return {
+            return AccountService_trigger_syncResult.model_validate({
                 "sync_id": sync_id,
                 "status": "completed" if not stats["errors"] else "partial",
                 "provider": provider.value,
                 "message": f"Synced {stats['updated']} accounts, {stats['failed']} failed",
                 "stats": stats,
-            }
+            })
+
+
         elif account_ids:
             # Sync specific accounts (try both providers)
             all_stats = []
@@ -366,13 +394,15 @@ class AccountService:
             total_updated = sum(s["updated"] for s in all_stats)
             total_failed = sum(s["failed"] for s in all_stats)
 
-            return {
+            return AccountService_trigger_syncResult.model_validate({
                 "sync_id": sync_id,
                 "status": "completed" if total_failed == 0 else "partial",
                 "provider": None,
                 "message": f"Synced {total_updated} accounts, {total_failed} failed",
                 "stats": all_stats,
-            }
+            })
+
+
         else:
             # Sync all providers
             all_stats = []
@@ -386,13 +416,14 @@ class AccountService:
             total_updated = sum(s["updated"] for s in all_stats)
             total_failed = sum(s["failed"] for s in all_stats)
 
-            return {
+            return AccountService_trigger_syncResult.model_validate({
                 "sync_id": sync_id,
                 "status": "completed" if total_failed == 0 else "partial",
                 "provider": None,
                 "message": f"Synced {total_updated} accounts across all providers, {total_failed} failed",
                 "stats": all_stats,
-            }
+            })
+
 
     async def refresh_account(self, account_id: UUID) -> Account | None:
         """Refresh single account from CRM provider.
@@ -442,14 +473,14 @@ class AccountService:
             {"id": row[0], "name": row[1] or "Unknown"} for row in owner_result.all() if row[0]
         ]
 
-        return {
+        return AccountService_get_filter_optionsResult.model_validate({
             "industries": industries,
             "stages": stages,
             "regions": regions,
             "segments": segments,
             "providers": [p.value for p in CRMProvider],
             "owners": owners,
-        }
+        })
 
 
 # Factory function for dependency injection

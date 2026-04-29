@@ -30,6 +30,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ....database import get_db_from_context
 from ....tenants.models.tenant import Tenant
 from ....tenants.models.user import User
+from shared.models.typed_dict import TypedDictModel
+
+
+class oidc_loginResult(TypedDictModel):
+    authorization_url: Any
+    state: Any
+
+class oidc_callbackResult(TypedDictModel):
+    access_token: Any
+    email: Any
+    expires_in: int
+    role: Any
+    token_type: str
+    user_id: Any
+
+class oidc_metadataResult(TypedDictModel):
+    auto_provision_users: Any
+    claim_mapping_keys: list[Any]
+    default_role: Any
+    enabled: Any
+    issuer_url: Any
+    provider_name: Any
+    scopes: Any
 
 router = APIRouter(prefix="/auth/oidc", tags=["OIDC SSO"])
 
@@ -180,7 +203,7 @@ async def oidc_login(
         code_challenge_method="S256",
     )
 
-    return {"authorization_url": auth_url, "state": state}
+    return oidc_loginResult.model_validate({"authorization_url": auth_url, "state": state})
 
 
 @router.get("/callback")
@@ -367,14 +390,14 @@ async def oidc_callback(
         details={"provider": oidc_config.provider_name, "email": email},
     )
 
-    return {
+    return oidc_callbackResult.model_validate({
         "access_token": access_token,
         "token_type": "Bearer",
         "expires_in": 3600,
         "user_id": str(user.id),
         "email": email,
         "role": user.role,
-    }
+    })
 
 
 @router.get("/{tenant_slug}/metadata")
@@ -391,7 +414,7 @@ async def oidc_metadata(
     if oidc_config is None:
         raise HTTPException(status_code=400, detail="OIDC is not configured for this tenant")
 
-    return {
+    return oidc_metadataResult.model_validate({
         "provider_name": oidc_config.provider_name,
         "issuer_url": oidc_config.issuer_url,
         "scopes": oidc_config.scopes,
@@ -399,4 +422,6 @@ async def oidc_metadata(
         "default_role": oidc_config.default_role,
         "auto_provision_users": oidc_config.auto_provision_users,
         "enabled": oidc_config.enabled,
-    }
+    })
+
+

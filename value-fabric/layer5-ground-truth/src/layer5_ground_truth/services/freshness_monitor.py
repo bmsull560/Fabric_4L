@@ -21,6 +21,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
 from ..models.truth_object import ClaimType, TruthObject, ValidationEvent
+from shared.models.typed_dict import TypedDictModel
+
+
+class FreshnessMonitor_check_and_mark_staleResult(TypedDictModel):
+    checked: Any
+    dry_run: Any
+    marked_stale: Any
+    timestamp: Any
+
+class FreshnessMonitor_get_freshness_summaryResult(TypedDictModel):
+    summary: dict[str, Any]
+    tenant_id: Any
+    timestamp: Any
+    warning_threshold_days: Any
 
 logger = logging.getLogger(__name__)
 
@@ -173,12 +187,13 @@ class FreshnessMonitor:
                 marked_count,
             )
 
-        return {
+        return FreshnessMonitor_check_and_mark_staleResult.model_validate({
             "checked": len(expired_truths),
             "marked_stale": marked_count if not dry_run else 0,
             "dry_run": dry_run,
             "timestamp": now.isoformat(),
-        }
+        })
+
 
     async def list_stale_truths(
         self,
@@ -269,7 +284,7 @@ class FreshnessMonitor:
         expiring_soon_result = await db.execute(expiring_soon_stmt)
         expiring_soon_count = expiring_soon_result.scalar() or 0
 
-        return {
+        return FreshnessMonitor_get_freshness_summaryResult.model_validate({
             "tenant_id": str(tenant_id),
             "timestamp": now.isoformat(),
             "summary": {
@@ -279,7 +294,8 @@ class FreshnessMonitor:
                 "total": stale_count + fresh_count,
             },
             "warning_threshold_days": self._settings.stale_warning_days,
-        }
+        })
+
 
     async def _count_by_stale_status(
         self,

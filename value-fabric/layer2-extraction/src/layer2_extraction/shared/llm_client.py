@@ -18,6 +18,18 @@ from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel
+from shared.models.typed_dict import TypedDictModel
+
+
+class CostRecord_to_dictResult(TypedDictModel):
+    cost_usd: Any
+    endpoint: Any
+    extraction_job_id: Any
+    input_tokens: Any
+    model: Any
+    output_tokens: Any
+    provider: Any
+    timestamp: Any
 
 # Import LLM safety module (Week 4 hardening)
 # Add shared/ to path if needed for imports
@@ -100,7 +112,7 @@ class CostRecord:
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return CostRecord_to_dictResult.model_validate({
             "extraction_job_id": self.extraction_job_id,
             "provider": self.provider,
             "model": self.model,
@@ -109,7 +121,7 @@ class CostRecord:
             "output_tokens": self.output_tokens,
             "cost_usd": round(self.cost_usd, 6),
             "timestamp": self.timestamp.isoformat(),
-        }
+        })
 
 
 # Pricing per 1M tokens (as of April 2026)

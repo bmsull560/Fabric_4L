@@ -21,6 +21,19 @@ from typing import Any
 import jwt
 
 from .mcp_types import ManifestValidationError, ToolManifest
+from shared.models.typed_dict import TypedDictModel
+
+
+class ManifestSigner__create_payloadResult(TypedDictModel):
+    capabilities: Any
+    description: Any
+    endpoint: Any
+    exp: Any
+    iat: Any
+    required_scopes: Any
+    tenant_scoped: Any
+    tool_name: Any
+    version: Any
 
 logger = logging.getLogger(__name__)
 
@@ -274,7 +287,7 @@ class ManifestSigner:
     def _create_payload(self, manifest: ToolManifest) -> dict[str, Any]:
         now = datetime.utcnow()
         exp = now + timedelta(seconds=self.token_ttl_seconds)
-        return {
+        return ManifestSigner__create_payloadResult.model_validate({
             "tool_name": manifest.tool_name,
             "version": manifest.version,
             "description": manifest.description,
@@ -284,7 +297,8 @@ class ManifestSigner:
             "tenant_scoped": manifest.tenant_scoped,
             "iat": int(now.timestamp()),
             "exp": int(exp.timestamp()),
-        }
+        })
+
 
     def _create_jws(self, header: dict[str, Any], payload: dict[str, Any]) -> str:
         """Create compact JWS using RS256 private-key signing."""

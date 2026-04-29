@@ -26,6 +26,21 @@ from datetime import datetime, timezone
 from typing import Any
 
 from shared.audit.emitter import emit_audit_event
+from shared.models.typed_dict import TypedDictModel
+
+
+class ConversationService_handle_messageResult(TypedDictModel):
+    content: Any
+    metadata: dict[str, Any]
+
+class ConversationService__gather_contextResult(TypedDictModel):
+    entities: Any
+    intent: Any
+
+class ConversationService__heuristic_classifyResult(TypedDictModel):
+    confidence: float
+    entities: dict[str, Any]
+    intent: str
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +215,7 @@ class ConversationService:
             has_workflow=workflow_result is not None,
         )
 
-        return {
+        return ConversationService_handle_messageResult.model_validate({
             "content": response_content,
             "metadata": {
                 "trace_id": trace_id,
@@ -213,7 +228,8 @@ class ConversationService:
                 "confidence": confidence,
                 "workflow_triggered": workflow_result is not None,
             },
-        }
+        })
+
 
     def _build_gate_context(self) -> dict[str, Any]:
         """Build the GATE execution context for ConversationAgent."""
@@ -273,7 +289,7 @@ class ConversationService:
             except Exception:
                 logger.warning("ConversationAgent context gathering failed")
 
-        return {"intent": intent, "entities": entities}
+        return ConversationService__gather_contextResult.model_validate({"intent": intent, "entities": entities})
 
     async def _delegate_to_orchestrator(
         self,
@@ -468,17 +484,17 @@ class ConversationService:
         lower = message.lower()
 
         if any(w in lower for w in ("roi", "return", "payback", "cost", "savings", "value model")):
-            return {"intent": "value_analysis", "confidence": 0.75, "entities": {}}
+            return ConversationService__heuristic_classifyResult.model_validate({"intent": "value_analysis", "confidence": 0.75, "entities": {}})
         if any(w in lower for w in ("competitor", "competitive", "versus", "vs", "battlecard")):
-            return {"intent": "competitive_intel", "confidence": 0.75, "entities": {}}
+            return ConversationService__heuristic_classifyResult.model_validate({"intent": "competitive_intel", "confidence": 0.75, "entities": {}})
         if any(w in lower for w in ("export", "document", "pdf", "slide", "deck", "proposal")):
-            return {"intent": "document_export", "confidence": 0.75, "entities": {}}
+            return ConversationService__heuristic_classifyResult.model_validate({"intent": "document_export", "confidence": 0.75, "entities": {}})
         if any(w in lower for w in ("status", "workflow", "progress", "running")):
-            return {"intent": "workflow_status", "confidence": 0.70, "entities": {}}
+            return ConversationService__heuristic_classifyResult.model_validate({"intent": "workflow_status", "confidence": 0.70, "entities": {}})
         if any(w in lower for w in ("account", "company", "prospect", "customer", "who")):
-            return {"intent": "account_inquiry", "confidence": 0.65, "entities": {}}
+            return ConversationService__heuristic_classifyResult.model_validate({"intent": "account_inquiry", "confidence": 0.65, "entities": {}})
 
-        return {"intent": "general_question", "confidence": 0.50, "entities": {}}
+        return ConversationService__heuristic_classifyResult.model_validate({"intent": "general_question", "confidence": 0.50, "entities": {}})
 
     def _heuristic_response(
         self,

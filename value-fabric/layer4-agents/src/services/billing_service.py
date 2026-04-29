@@ -18,6 +18,15 @@ logger = logging.getLogger(__name__)
 from ..config.plans import check_entitlement, get_entitlements_response
 from ..models.billing import BillingCustomer, BillingSubscription, BillingWebhookEvent, SubscriptionStatus
 from .stripe_client import get_price_id, get_stripe, StripeNotConfiguredError, StripeError
+from shared.models.typed_dict import TypedDictModel
+
+
+class BillingService_create_checkout_sessionResult(TypedDictModel):
+    session_id: Any
+    url: Any
+
+class BillingService_create_portal_sessionResult(TypedDictModel):
+    url: Any
 
 # Lazy-loaded stripe module
 _stripe = None
@@ -206,10 +215,12 @@ class BillingService:
                 cancel_url=cancel_url,
                 metadata={"plan_id": plan_id, "customer_id": customer_id},
             )
-            return {
+            return BillingService_create_checkout_sessionResult.model_validate({
                 "session_id": session.id,
                 "url": session.url,
-            }
+            })
+
+
         except StripeError as e:
             raise ValueError(f"Failed to create checkout session: {e}") from e
 
@@ -233,7 +244,7 @@ class BillingService:
                 customer=customer.stripe_customer_id,
                 return_url=return_url,
             )
-            return {"url": session.url}
+            return BillingService_create_portal_sessionResult.model_validate({"url": session.url})
         except StripeError as e:
             raise ValueError(f"Failed to create portal session: {e}") from e
 

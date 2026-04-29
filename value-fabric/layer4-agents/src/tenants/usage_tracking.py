@@ -27,6 +27,16 @@ from uuid import UUID
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from shared.models.typed_dict import TypedDictModel
+
+
+class UsageTrackingService__get_llm_usageResult(TypedDictModel):
+    requests: int
+    tokens_input: int
+    tokens_output: int
+
+class UsageTrackingService__count_events_by_fieldResult(TypedDictModel):
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -335,7 +345,7 @@ class UsageTrackingService:
             return {row[0]: row[1] for row in result.fetchall()}
         except Exception:
             logger.warning("Failed to count events by %s", group_field, exc_info=True)
-            return {}
+            return UsageTrackingService__count_events_by_fieldResult.model_validate({})
 
     async def _sum_detail_field(
         self,
@@ -395,15 +405,17 @@ class UsageTrackingService:
             )
             row = result.fetchone()
             if row:
-                return {
+                return UsageTrackingService__get_llm_usageResult.model_validate({
                     "tokens_input": row[0],
                     "tokens_output": row[1],
                     "requests": row[2],
-                }
+                })
+
+
         except Exception:
             logger.warning("Failed to query LLM usage", exc_info=True)
 
-        return {"tokens_input": 0, "tokens_output": 0, "requests": 0}
+        return UsageTrackingService__get_llm_usageResult.model_validate({"tokens_input": 0, "tokens_output": 0, "requests": 0})
 
     async def _count_active_users(
         self,

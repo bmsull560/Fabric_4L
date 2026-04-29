@@ -15,6 +15,30 @@ from typing import Any
 from neo4j import AsyncDriver
 
 from .base import AgentResult, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class ROICalculationAgent__run_sensitivity_analysisResult(TypedDictModel):
+    base_inputs: Any | None = None
+    error: str
+    formula_id: Any | None = None
+    most_sensitive_variable: Any | None = None
+    variable_analysis: Any | None = None
+
+class ROICalculationAgent__retrieve_formulasResult(TypedDictModel):
+    error: str
+    formulas: list[Any]
+    formulas_found: Any | None = None
+    use_case_id: Any | None = None
+
+class ROICalculationAgent__calculate_sensitivityResult(TypedDictModel):
+    elasticity_metrics: Any
+    variables_analyzed: list[Any]
+
+class ROICalculationAgent__execute_formulaResult(TypedDictModel):
+    error: str
+    formula: Any
+    validation_errors: Any | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -171,20 +195,21 @@ class ROICalculationAgent(BaseAgent):
             Dict with calculation results
         """
         if not self._driver:
-            return {"error": "No database driver"}
+            return ROICalculationAgent__execute_formulaResult.model_validate({"error": "No database driver"})
 
         # Retrieve formula from graph
         formula = await self._get_formula(formula_id, tenant_id)
         if not formula:
-            return {"error": f"Formula {formula_id} not found"}
+            return ROICalculationAgent__execute_formulaResult.model_validate({"error": f"Formula {formula_id} not found"})
 
         # Validate inputs
         validation_errors = self._validate_inputs(formula, inputs)
         if validation_errors:
-            return {
+            return ROICalculationAgent__execute_formulaResult.model_validate({
                 "error": "Input validation failed",
                 "validation_errors": validation_errors,
-            }
+            })
+
 
         # Prepare execution context
         execution_context = {
@@ -196,10 +221,11 @@ class ROICalculationAgent(BaseAgent):
         try:
             result = self._safe_eval(formula.formula_expression, execution_context)
         except Exception as e:
-            return {
+            return ROICalculationAgent__execute_formulaResult.model_validate({
                 "error": f"Formula execution failed: {e}",
                 "formula": formula.formula_expression,
-            }
+            })
+
 
         # Build execution trace
         trace = self._build_execution_trace(formula, inputs, execution_context)
@@ -249,11 +275,11 @@ class ROICalculationAgent(BaseAgent):
             Dict with sensitivity analysis results
         """
         if not self._driver:
-            return {"error": "No database driver"}
+            return ROICalculationAgent__run_sensitivity_analysisResult.model_validate({"error": "No database driver"})
 
         formula = await self._get_formula(formula_id, tenant_id)
         if not formula:
-            return {"error": f"Formula {formula_id} not found"}
+            return ROICalculationAgent__run_sensitivity_analysisResult.model_validate({"error": f"Formula {formula_id} not found"})
 
         results = {}
 
@@ -296,7 +322,7 @@ class ROICalculationAgent(BaseAgent):
                     "test_points": variable_results,
                 }
 
-        return {
+        return ROICalculationAgent__run_sensitivity_analysisResult.model_validate({
             "formula_id": formula_id,
             "base_inputs": base_inputs,
             "variable_analysis": results,
@@ -306,7 +332,8 @@ class ROICalculationAgent(BaseAgent):
             )[0]
             if results
             else None,
-        }
+        })
+
 
     async def _retrieve_formulas(self, use_case_id: str, tenant_id: str = "system") -> dict[str, Any]:
         """Retrieve formulas applicable to a use case.
@@ -323,7 +350,7 @@ class ROICalculationAgent(BaseAgent):
             Dict with formulas
         """
         if not self._driver:
-            return {"formulas": [], "error": "No database driver"}
+            return ROICalculationAgent__retrieve_formulasResult.model_validate({"formulas": [], "error": "No database driver"})
 
         query = """
         MATCH (uc:UseCase {id: $use_case_id})-[:delivers]->(vd:ValueDriver)
@@ -355,11 +382,12 @@ class ROICalculationAgent(BaseAgent):
                         }
                     )
 
-        return {
+        return ROICalculationAgent__retrieve_formulasResult.model_validate({
             "use_case_id": use_case_id,
             "formulas_found": len(formulas),
             "formulas": formulas,
-        }
+        })
+
 
     async def _get_formula(self, formula_id: str, tenant_id: str = "system") -> FormulaNode | None:
         """Retrieve formula from graph by ID.
@@ -607,7 +635,9 @@ class ROICalculationAgent(BaseAgent):
                     else 0,
                 }
 
-        return {
+        return ROICalculationAgent__calculate_sensitivityResult.model_validate({
             "variables_analyzed": list(sensitivities.keys()),
             "elasticity_metrics": sensitivities,
-        }
+        })
+
+

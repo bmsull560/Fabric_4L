@@ -36,6 +36,57 @@ from typing import Any
 from uuid import uuid4
 
 import structlog
+from shared.models.typed_dict import TypedDictModel
+
+
+class CaseStudyOutcome_to_dictResult(TypedDictModel):
+    after_value: Any
+    before_value: Any
+    improvement_pct: Any
+    metric: Any
+    time_to_achieve_days: Any
+
+class CaseStudy_to_node_propertiesResult(TypedDictModel):
+    company_name: Any
+    company_size: Any
+    content: Any
+    created_at: Any
+    deal_size_usd: Any
+    evidence_type: str
+    id: Any
+    industry: Any
+    outcomes: Any
+    pain_signals_addressed: Any
+    products_used: Any
+    published_date: Any
+    summary: Any
+    tags: Any
+    tenant_id: Any
+    time_to_value_days: Any
+    title: Any
+    updated_at: Any
+
+class CaseStudyService_createResult(TypedDictModel):
+    id: Any
+    industry: Any
+    status: str
+    title: Any
+
+class CaseStudyService_bulk_importResult(TypedDictModel):
+    created: Any
+    errors: Any
+    total: Any
+
+class CaseStudyService_updateResult(TypedDictModel):
+    id: Any
+    status: str
+    title: Any
+
+class CaseStudyService_searchResult(TypedDictModel):
+    items: Any
+    limit: Any
+    offset: Any
+    total: Any
 
 try:
     from shared.identity.context import require_context
@@ -80,13 +131,13 @@ class CaseStudyOutcome:
         self.time_to_achieve_days = time_to_achieve_days
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return CaseStudyOutcome_to_dictResult.model_validate({
             "metric": self.metric,
             "before_value": self.before_value,
             "after_value": self.after_value,
             "improvement_pct": self.improvement_pct,
             "time_to_achieve_days": self.time_to_achieve_days,
-        }
+        })
 
 
 class CaseStudy:
@@ -128,7 +179,7 @@ class CaseStudy:
 
     def to_node_properties(self) -> dict[str, Any]:
         """Convert to Neo4j node properties dict."""
-        return {
+        return CaseStudy_to_node_propertiesResult.model_validate({
             "id": self.id,
             "tenant_id": self.tenant_id,
             "evidence_type": "case_study",
@@ -147,7 +198,7 @@ class CaseStudy:
             "tags": self.tags,
             "created_at": datetime.now(UTC).isoformat(),
             "updated_at": datetime.now(UTC).isoformat(),
-        }
+        })
 
 
 # ---------------------------------------------------------------------------
@@ -222,12 +273,13 @@ class CaseStudyService:
             industry=case_study.industry,
         )
 
-        return {
+        return CaseStudyService_createResult.model_validate({
             "id": record["id"] if record else case_study.id,
             "title": record["title"] if record else case_study.title,
             "industry": record["industry"] if record else case_study.industry,
             "status": "created",
-        }
+        })
+
 
     async def get(self, case_study_id: str) -> dict[str, Any] | None:
         """Get a case study by ID."""
@@ -281,7 +333,7 @@ class CaseStudyService:
             if not record:
                 return None
 
-            return {"id": record["id"], "title": record["title"], "status": "updated"}
+            return CaseStudyService_updateResult.model_validate({"id": record["id"], "title": record["title"], "status": "updated"})
 
     async def delete(self, case_study_id: str) -> bool:
         """Delete a case study and its relationships."""
@@ -382,12 +434,13 @@ class CaseStudyService:
                     if any(t in (cs.get("tags") or []) for t in tags)
                 ]
 
-            return {
+            return CaseStudyService_searchResult.model_validate({
                 "total": total,
                 "offset": offset,
                 "limit": limit,
                 "items": items,
-            }
+            })
+
 
     async def get_by_industry(self) -> dict[str, int]:
         """Get case study counts grouped by industry."""
@@ -476,8 +529,10 @@ class CaseStudyService:
             errors=len(errors),
         )
 
-        return {
+        return CaseStudyService_bulk_importResult.model_validate({
             "total": len(case_studies),
             "created": created,
             "errors": errors,
-        }
+        })
+
+

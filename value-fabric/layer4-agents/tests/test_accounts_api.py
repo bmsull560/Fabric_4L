@@ -26,6 +26,13 @@ from src.api.routes.analysis import get_executor
 from src.database import Base, get_db
 from src.models.business_case_record import BusinessCaseRecord
 from src.models.account import Account, AccountSyncStatus, CRMProvider, SyncStatus
+from shared.models.typed_dict import TypedDictModel
+
+
+class mock_sync_providerResult(TypedDictModel):
+    errors: list[Any]
+    failed: int
+    updated: int
 
 
 @pytest.fixture(scope="session")
@@ -551,7 +558,7 @@ async def test_sync_accounts_all_providers(client: AsyncClient, monkeypatch):
     from src.services.crm_sync_service import CRMSyncService
     
     async def mock_sync_provider(self, provider, incremental=True, account_ids=None):
-        return {"updated": 5, "failed": 0, "errors": []}
+        return mock_sync_providerResult.model_validate({"updated": 5, "failed": 0, "errors": []})
     
     monkeypatch.setattr(CRMSyncService, "sync_provider", mock_sync_provider)
     
@@ -576,7 +583,7 @@ async def test_sync_accounts_specific_provider(client: AsyncClient, monkeypatch)
     from src.services.crm_sync_service import CRMSyncService
     
     async def mock_sync_provider(self, provider, incremental=True, account_ids=None):
-        return {"updated": 3, "failed": 0, "errors": []}
+        return mock_sync_providerResult.model_validate({"updated": 3, "failed": 0, "errors": []})
     
     monkeypatch.setattr(CRMSyncService, "sync_provider", mock_sync_provider)
     
@@ -602,7 +609,7 @@ async def test_sync_accounts_force_refresh(client: AsyncClient, monkeypatch):
     from src.services.crm_sync_service import CRMSyncService
     
     async def mock_sync_provider(self, provider, incremental=False, account_ids=None):
-        return {"updated": 10, "failed": 0, "errors": []}
+        return mock_sync_providerResult.model_validate({"updated": 10, "failed": 0, "errors": []})
     
     monkeypatch.setattr(CRMSyncService, "sync_provider", mock_sync_provider)
     

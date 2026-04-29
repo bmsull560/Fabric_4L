@@ -26,6 +26,34 @@ import os
 from typing import Any
 
 from neo4j import AsyncDriver, AsyncGraphDatabase
+from shared.models.typed_dict import TypedDictModel
+
+
+class TenantIdMigration_migrate_nativeResult(TypedDictModel):
+    batches: Any
+    errors: Any
+    method: str
+    total_updated: Any
+
+class TenantIdMigration_create_constraintsResult(TypedDictModel):
+    constraints: Any | None = None
+    error: str
+    status: str
+
+class TenantIdMigration_migrate_with_apocResult(TypedDictModel):
+    batches: Any
+    error: str | None = None
+    errors: Any
+    method: str
+    total_updated: Any
+    update_stats: Any
+
+class TenantIdMigration_run_migrationResult(TypedDictModel):
+    default_tenant_id: Any | None = None
+    message: str
+    nodes_to_migrate: Any | None = None
+    status: str
+    total_updated: int
 
 logger = logging.getLogger(__name__)
 
@@ -126,14 +154,16 @@ class TenantIdMigration:
             record = await result.single()
             
             if record:
-                return {
+                return TenantIdMigration_migrate_with_apocResult.model_validate({
                     "method": "apoc.periodic.iterate",
                     "batches": record["batches"],
                     "total_updated": record["total"],
                     "errors": record["errorMessages"],
                     "update_stats": record["updateStatistics"],
-                }
-            return {"method": "apoc.periodic.iterate", "error": "No result returned"}
+                })
+
+
+            return TenantIdMigration_migrate_with_apocResult.model_validate({"method": "apoc.periodic.iterate", "error": "No result returned"})
 
     async def migrate_native(
         self,
@@ -179,12 +209,13 @@ class TenantIdMigration:
                 # Small delay to avoid overwhelming the database
                 await asyncio.sleep(0.1)
         
-        return {
+        return TenantIdMigration_migrate_nativeResult.model_validate({
             "method": "native_cypher",
             "batches": batches,
             "total_updated": total_updated,
             "errors": errors if errors else None,
-        }
+        })
+
 
     async def run_migration(
         self,
@@ -209,15 +240,17 @@ class TenantIdMigration:
         logger.info(f"Found {count} nodes without tenant_id")
         
         if dry_run:
-            return {
+            return TenantIdMigration_run_migrationResult.model_validate({
                 "status": "dry_run",
                 "nodes_to_migrate": count,
                 "default_tenant_id": default_tenant_id,
-            }
+            })
+
+
         
         if count == 0:
             logger.info("No migration needed - all nodes have tenant_id")
-            return {"status": "complete", "total_updated": 0, "message": "No migration needed"}
+            return TenantIdMigration_run_migrationResult.model_validate({"status": "complete", "total_updated": 0, "message": "No migration needed"})
         
         # Check for APOC availability
         has_apoc = await self.check_apoc_available()
@@ -248,10 +281,12 @@ class TenantIdMigration:
         # Check remaining nodes without tenant_id
         remaining = await self.count_nodes_without_tenant()
         if remaining > 0:
-            return {
+            return TenantIdMigration_create_constraintsResult.model_validate({
                 "error": f"Cannot create constraints: {remaining} nodes still missing tenant_id",
                 "status": "failed"
-            }
+            })
+
+
         
         # Create composite unique constraints for each entity type
         from ..schema.constraints import CONSTRAINTS
@@ -279,10 +314,10 @@ class TenantIdMigration:
                                 "error": str(e)
                             })
         
-        return {
+        return TenantIdMigration_create_constraintsResult.model_validate({
             "status": "complete",
             "constraints": results
-        }
+        })
 
 
 async def main():

@@ -21,6 +21,16 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator
 
 from ..logging_config import get_logger
+from shared.models.typed_dict import TypedDictModel
+
+
+class APIKeyManager_get_usage_statisticsResult(TypedDictModel):
+    enabled_keys: Any
+    expired_keys: Any
+    recently_active: Any
+    total_keys: Any
+    total_usage: Any
+    usage_by_role: Any
 
 logger = get_logger(__name__)
 
@@ -573,14 +583,14 @@ class APIKeyManager:
             [k for k in keys if k.last_used_at and k.last_used_at > recent_cutoff]
         )
 
-        return {
+        return APIKeyManager_get_usage_statisticsResult.model_validate({
             "total_keys": total_keys,
             "enabled_keys": enabled_keys,
             "expired_keys": expired_keys,
             "recently_active": recently_active,
             "total_usage": total_usage,
             "usage_by_role": usage_by_role,
-        }
+        })
 
 
 class AuthorizationChecker:

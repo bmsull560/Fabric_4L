@@ -49,6 +49,20 @@ from .schemas import (
     ValidateResponse,
     ValidationEventResponse,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class sync_to_kgResult(TypedDictModel):
+    failed: Any
+    synced: Any
+    total_pending: Any
+
+class list_staleResult(TypedDictModel):
+    has_more: bool
+    items: Any
+    limit: Any
+    offset: Any
+    total: Any
 
 logger = logging.getLogger(__name__)
 
@@ -487,11 +501,11 @@ async def sync_to_kg(
         else:
             failed += 1
 
-    return {
+    return sync_to_kgResult.model_validate({
         "synced": synced,
         "failed": failed,
         "total_pending": len(pending),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -632,13 +646,13 @@ async def list_stale(
         for t in items
     ]
 
-    return {
+    return list_staleResult.model_validate({
         "items": summaries,
         "total": total,
         "limit": limit,
         "offset": offset,
         "has_more": (offset + limit) < total,
-    }
+    })
 
 
 # ---------------------------------------------------------------------------

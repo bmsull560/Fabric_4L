@@ -13,6 +13,12 @@ from src.engine.executor import OrchestrationController, WorkflowExecutionError
 from src.engine.state_manager import StateManager
 from src.models.agent_state import BaseAgentState, WorkflowStatus
 from src.tools.registry import ToolRegistry
+from shared.models.typed_dict import TypedDictModel
+
+
+class CorruptedCheckpointSaver_aget_tupleResult(TypedDictModel):
+    checkpoint: dict[str, Any]
+    parent_config: Any
 
 TEST_WORKFLOW_TYPE = "roi_calculator"
 
@@ -22,14 +28,14 @@ class CorruptedCheckpointSaver(InMemorySaver):
 
     async def aget_tuple(self, config):
         # Return corrupted state
-        return {
+        return CorruptedCheckpointSaver_aget_tupleResult.model_validate({
             "checkpoint": {
                 "ts": "invalid-timestamp",
                 "channel_versions": {"__root__": 1},
                 "versions_seen": {},
             },
             "parent_config": None,
-        }
+        })
 
 
 class FailingCheckpointSaver(InMemorySaver):

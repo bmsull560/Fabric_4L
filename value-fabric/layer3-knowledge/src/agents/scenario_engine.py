@@ -6,6 +6,16 @@ Handles sensitivity analysis and scenario comparison for business cases.
 import logging
 from dataclasses import dataclass
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class ScenarioEngine_compare_scenariosResult(TypedDictModel):
+    base_payback: Any
+    base_roi: Any
+    base_value: Any
+    best_scenario: Any
+    comparison: Any
+    worst_scenario: Any
 
 logger = logging.getLogger(__name__)
 
@@ -155,14 +165,15 @@ class ScenarioEngine:
         # Sort by adjusted value (descending)
         results.sort(key=lambda x: x["adjusted_value"], reverse=True)
 
-        return {
+        return ScenarioEngine_compare_scenariosResult.model_validate({
             "comparison": results,
             "base_value": base_case_data.get("total_value", 0.0),
             "base_roi": base_case_data.get("roi_ratio", 0.0),
             "base_payback": base_case_data.get("payback_months", 0.0),
             "best_scenario": results[0] if results else None,
             "worst_scenario": results[-1] if len(results) > 1 else None,
-        }
+        })
+
 
     def sensitivity_analysis(
         self,

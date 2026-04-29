@@ -194,7 +194,7 @@ def _load_deprecation_register() -> dict:
                 return json.load(f)
     except (OSError, json.JSONDecodeError, TypeError) as e:
         logger.warning("Failed to load deprecation register: %s", e)
-    return {"deprecations": []}
+    return _load_deprecation_registerResult.model_validate({"deprecations": []})
 
 
 def _check_deprecation_warnings(register: dict) -> None:
@@ -688,6 +688,39 @@ if SecurityConfig and add_security_middleware:
 # GovernanceMiddleware — provides verified JWT + API-key auth for L3 (mandatory)
 from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.api_key_stub import reject_api_key_unsupported
+from shared.models.typed_dict import TypedDictModel
+
+
+class _load_deprecation_registerResult(TypedDictModel):
+    deprecations: list[Any]
+
+class init_schemaResult(TypedDictModel):
+    drop_existing: Any
+    status: str
+
+class delete_sourceResult(TypedDictModel):
+    entities_deleted: Any
+    relationships_deleted: Any
+    source_id: Any
+    status: str
+
+class agent_workflowResult(TypedDictModel):
+    results: Any
+    steps_completed: Any
+    workflow_type: Any
+
+class _create_entityResult(TypedDictModel):
+    entity_id: Any
+    error: str | None = None
+    success: bool
+
+class _update_entityResult(TypedDictModel):
+    error: str | None = None
+    success: bool
+
+class _delete_entityResult(TypedDictModel):
+    error: str | None = None
+    success: bool
 
 app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported)
 
@@ -1434,7 +1467,7 @@ async def init_schema(
     if schema_initializer is None:
         raise HTTPException(status_code=503, detail="Schema initializer not available")
     await schema_initializer.initialize_schema(drop_existing=drop_existing)
-    return {"status": "initialized", "drop_existing": drop_existing}
+    return init_schemaResult.model_validate({"status": "initialized", "drop_existing": drop_existing})
 
 
 @app.get("/v1/schema/statistics", response_model=SchemaStatistics)
@@ -1535,12 +1568,12 @@ async def delete_source(
 ):
     """Delete all data from a source."""
     stats = await sync_manager.delete_source(source_id)
-    return {
+    return delete_sourceResult.model_validate({
         "status": "deleted",
         "source_id": source_id,
         "entities_deleted": stats["entities_deleted"],
         "relationships_deleted": stats["relationships_deleted"],
-    }
+    })
 
 
 # Query endpoints
@@ -2752,10 +2785,10 @@ async def _create_entity(driver, operation: BatchEntityOperation) -> dict[str, A
             )
             record = await result.single()
             if record:
-                return {"success": True, "entity_id": record["entity_id"]}
-            return {"success": False, "error": "Failed to create entity"}
+                return _create_entityResult.model_validate({"success": True, "entity_id": record["entity_id"]})
+            return _create_entityResult.model_validate({"success": False, "error": "Failed to create entity"})
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return _create_entityResult.model_validate({"success": False, "error": str(e)})
 
 
 async def _update_entity(
@@ -2774,7 +2807,7 @@ async def _update_entity(
     try:
         # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
         if not tenant_id:
-            return {"success": False, "error": "tenant_id is required for entity updates"}
+            return _update_entityResult.model_validate({"success": False, "error": "tenant_id is required for entity updates"})
         
         async with driver.session() as session:
             # Update entity with mandatory tenant filtering
@@ -2791,10 +2824,10 @@ async def _update_entity(
             result = await session.run(query, params)
             record = await result.single()
             if record:
-                return {"success": True}
-            return {"success": False, "error": "Entity not found"}
+                return _update_entityResult.model_validate({"success": True})
+            return _update_entityResult.model_validate({"success": False, "error": "Entity not found"})
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return _update_entityResult.model_validate({"success": False, "error": str(e)})
 
 
 async def _delete_entity(
@@ -2813,7 +2846,7 @@ async def _delete_entity(
     try:
         # Require tenant_id for multi-tenant security (Task 1: Multi-Tenancy Hardening)
         if not tenant_id:
-            return {"success": False, "error": "tenant_id is required for entity deletion"}
+            return _delete_entityResult.model_validate({"success": False, "error": "tenant_id is required for entity deletion"})
         
         async with driver.session() as session:
             # Delete entity with mandatory tenant filtering
@@ -2826,10 +2859,10 @@ async def _delete_entity(
             result = await session.run(query, params)
             record = await result.single()
             if record and record["deleted"] > 0:
-                return {"success": True}
-            return {"success": False, "error": "Entity not found"}
+                return _delete_entityResult.model_validate({"success": True})
+            return _delete_entityResult.model_validate({"success": False, "error": "Entity not found"})
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return _delete_entityResult.model_validate({"success": False, "error": str(e)})
 
 
 async def _delete_entity_by_id(
@@ -3015,11 +3048,12 @@ async def agent_workflow(
                 status_code=400, detail=f"Unknown workflow type: {workflow_type}"
             )
 
-        return {
+        return agent_workflowResult.model_validate({
             "workflow_type": workflow_type,
             "steps_completed": len(results),
             "results": results,
-        }
+        })
+
 
     except HTTPException:
         raise

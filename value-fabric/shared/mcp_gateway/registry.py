@@ -11,6 +11,19 @@ from typing import Any
 from uuid import UUID
 
 from .mcp_types import ToolAccessDeniedError, ToolManifest, ToolRequest
+from shared.models.typed_dict import TypedDictModel
+
+
+class ToolRegistry_get_tool_metadataResult(TypedDictModel):
+    capabilities: Any
+    description: Any
+    endpoint: Any
+    has_signature: bool
+    required_scopes: Any
+    tenant_scoped: Any
+    tool_name: Any
+    verified: bool
+    version: Any
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +304,7 @@ class ToolRegistry:
             return None
         
         manifest = self._tools[tool_name]
-        return {
+        return ToolRegistry_get_tool_metadataResult.model_validate({
             "tool_name": manifest.tool_name,
             "version": manifest.version,
             "description": manifest.description,
@@ -301,4 +314,6 @@ class ToolRegistry:
             "has_signature": manifest.signature is not None,
             "verified": tool_name in self._verified_tools,
             "tenant_scoped": manifest.tenant_scoped,
-        }
+        })
+
+

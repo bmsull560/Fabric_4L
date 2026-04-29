@@ -16,6 +16,19 @@ from layer2_extraction.models import (
     Relationship,
     UseCase,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class request_payloadResult(TypedDictModel):
+    content_id: str
+    extraction_config: dict[str, Any]
+    markdown_content: str
+    source_url: str
+
+class FakePendingIngestionStore_get_retry_metadataResult(TypedDictModel):
+    last_error: Any
+    next_retry_at: Any
+    retry_count: Any
 
 _UNIX_EPOCH = real_datetime(1970, 1, 1)
 
@@ -85,11 +98,11 @@ class FakePendingIngestionStore:
         record = self.records.get(job_id)
         if not record:
             return None
-        return {
+        return FakePendingIngestionStore_get_retry_metadataResult.model_validate({
             "retry_count": record.retry_count,
             "last_error": record.last_error,
             "next_retry_at": record.next_retry_at.isoformat(),
-        }
+        })
 
 
 class FrozenClock:
@@ -185,7 +198,7 @@ def build_artifacts(job_id: str, source_url: str) -> api_main.ExtractionArtifact
 
 
 def request_payload() -> dict:
-    return {
+    return request_payloadResult.model_validate({
         "content_id": "content-123",
         "source_url": "https://example.com/doc",
         "markdown_content": "# Test\n\nPipeline orchestration content.",
@@ -194,7 +207,7 @@ def request_payload() -> dict:
             "chunk_overlap": 20,
             "confidence_threshold": 0.8,
         },
-    }
+    })
 
 
 @pytest.fixture(autouse=True)

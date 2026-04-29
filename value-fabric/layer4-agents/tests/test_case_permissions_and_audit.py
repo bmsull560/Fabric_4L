@@ -11,6 +11,14 @@ from shared.identity.context import RequestContext
 from src.api.main import app
 from src.api.routes import analysis
 from shared.identity.dependencies import require_authenticated
+from shared.models.typed_dict import TypedDictModel
+
+
+class _FakeExecutor_get_resultResult(TypedDictModel):
+    metadata: dict[str, Any]
+    output: dict[str, Any]
+    status: str
+    workflow_id: Any
 
 
 class _FakeExecutor:
@@ -32,7 +40,7 @@ class _FakeExecutor:
         )
 
     async def get_result(self, case_id: str):
-        return {
+        return _FakeExecutor_get_resultResult.model_validate({
             "workflow_id": case_id,
             "metadata": {"tenant_id": self.tenant_id, "workflow_id": case_id},
             "status": "completed",
@@ -45,7 +53,7 @@ class _FakeExecutor:
                 },
                 "verify_truth_requirements": {"passed": True},
             },
-        }
+        })
 
 
 @pytest.fixture

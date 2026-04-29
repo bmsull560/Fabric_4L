@@ -6,6 +6,39 @@ from typing import Any
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from ..config import Settings, get_settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class CommunityDetector__fallback_community_detectionResult(TypedDictModel):
+    algorithm: str
+    communities: Any
+    note: str
+    total_communities: Any
+
+class CommunityDetector_detect_by_value_treeResult(TypedDictModel):
+    algorithm: str
+    communities: Any
+    total_communities: Any
+
+class CommunityDetector__build_rel_filterResult(TypedDictModel):
+    BENEFITS: dict[str, Any]
+    DRIVES: dict[str, Any]
+    ENABLES: dict[str, Any]
+
+class CommunityDetector_detect_louvainResult(TypedDictModel):
+    algorithm: str
+    communities: Any
+    modularity: Any
+    total_communities: Any
+    total_nodes: Any
+    valid_communities: Any
+
+class CommunityDetector_detect_leidenResult(TypedDictModel):
+    algorithm: str
+    communities: Any
+    total_communities: Any
+    total_nodes: Any
+    valid_communities: Any
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +173,7 @@ class CommunityDetector:
                     k: v for k, v in communities.items() if len(v) >= min_community_size
                 }
 
-                return {
+                return CommunityDetector_detect_louvainResult.model_validate({
                     "algorithm": "louvain",
                     "total_communities": len(communities),
                     "valid_communities": len(valid_communities),
@@ -156,7 +189,8 @@ class CommunityDetector:
                     "modularity": await self._calculate_modularity(
                         session, graph_name, valid_communities
                     ),
-                }
+                })
+
 
             finally:
                 # Cleanup graph projection
@@ -250,7 +284,7 @@ class CommunityDetector:
                     k: v for k, v in communities.items() if len(v) >= min_community_size
                 }
 
-                return {
+                return CommunityDetector_detect_leidenResult.model_validate({
                     "algorithm": "leiden",
                     "total_communities": len(communities),
                     "valid_communities": len(valid_communities),
@@ -263,7 +297,8 @@ class CommunityDetector:
                         }
                         for cid, members in valid_communities.items()
                     ],
-                }
+                })
+
 
             finally:
                 try:
@@ -325,13 +360,14 @@ class CommunityDetector:
                         }
                     )
 
-            return {
+            return CommunityDetector_detect_by_value_treeResult.model_validate({
                 "algorithm": "value_tree",
                 "total_communities": len(communities),
                 "communities": sorted(
                     communities, key=lambda x: x["size"], reverse=True
                 ),
-            }
+            })
+
 
     async def _fallback_community_detection(
         self,
@@ -377,12 +413,13 @@ class CommunityDetector:
                 }
             )
 
-        return {
+        return CommunityDetector__fallback_community_detectionResult.model_validate({
             "algorithm": "connected_components_fallback",
             "total_communities": len(communities),
             "communities": communities,
             "note": "Using fallback method - GDS not available",
-        }
+        })
+
 
     async def _calculate_modularity(
         self,
@@ -417,11 +454,13 @@ class CommunityDetector:
     def _build_rel_filter(self, relationship_types: list[str] | None) -> Any:
         """Build relationship filter for GDS graph projection."""
         if not relationship_types:
-            return {
+            return CommunityDetector__build_rel_filterResult.model_validate({
                 "ENABLES": {"orientation": "UNDIRECTED"},
                 "BENEFITS": {"orientation": "UNDIRECTED"},
                 "DRIVES": {"orientation": "UNDIRECTED"},
-            }
+            })
+
+
         return {rel: {"orientation": "UNDIRECTED"} for rel in relationship_types}
 
     def _random_id(self) -> str:

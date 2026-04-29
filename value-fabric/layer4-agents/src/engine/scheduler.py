@@ -14,6 +14,38 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class TaskScheduler__run_task_handlerResult(TypedDictModel):
+    capability: Any
+    result: dict[str, Any]
+    status: str
+    task_id: Any
+
+class TaskScheduler__task_to_dictResult(TypedDictModel):
+    agent_type: Any
+    capability: Any
+    completed_at: Any
+    error: Any
+    max_retries: Any
+    priority: Any
+    result: Any
+    retry_count: Any
+    scheduled_time: Any
+    started_at: Any
+    status: Any
+    task_id: Any
+    tenant_id: Any
+    workflow_instance_id: Any
+
+class TaskScheduler_get_statsResult(TypedDictModel):
+    completed_tasks: Any
+    failed_tasks: Any
+    max_concurrent: Any
+    pending_tasks: Any
+    running_tasks: Any
+    utilization: Any
 
 logger = logging.getLogger(__name__)
 
@@ -466,12 +498,13 @@ class TaskScheduler:
             Task result
         """
         # Placeholder - actual implementation would dispatch to appropriate agent
-        return {
+        return TaskScheduler__run_task_handlerResult.model_validate({
             "task_id": task.task_id,
             "capability": task.capability,
             "status": "completed",
             "result": {},
-        }
+        })
+
 
     async def _handle_retry(self, task: ScheduledTask) -> None:
         """Handle task retry with exponential backoff.
@@ -549,7 +582,7 @@ class TaskScheduler:
         Returns:
             Dict representation
         """
-        return {
+        return TaskScheduler__task_to_dictResult.model_validate({
             "task_id": task.task_id,
             "workflow_instance_id": task.workflow_instance_id,
             "capability": task.capability,
@@ -564,7 +597,8 @@ class TaskScheduler:
             "result": task.result,
             "error": task.error,
             "tenant_id": task.get_tenant_id(),  # Task 2.1
-        }
+        })
+
 
     def get_stats(self) -> dict[str, Any]:
         """Get scheduler statistics.
@@ -581,11 +615,13 @@ class TaskScheduler:
         )
         failed_count = sum(1 for t in self._task_history if t["status"] == TaskStatus.FAILED.value)
 
-        return {
+        return TaskScheduler_get_statsResult.model_validate({
             "pending_tasks": pending_count,
             "running_tasks": running_count,
             "completed_tasks": completed_count,
             "failed_tasks": failed_count,
             "max_concurrent": self.max_concurrent_tasks,
             "utilization": round(running_count / self.max_concurrent_tasks * 100, 2),
-        }
+        })
+
+

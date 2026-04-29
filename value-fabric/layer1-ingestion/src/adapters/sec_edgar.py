@@ -25,6 +25,14 @@ from .base import (
     FilingType,
     SearchResult,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class SECEdgarAdapter__fetch_xbrl_dataResult(TypedDictModel):
+    parsed: bool
+    xbrl_available: bool
+    xbrl_url: Any
+    xbrl_xml_size: Any
 
 logger = structlog.get_logger()
 
@@ -400,12 +408,13 @@ class SECEdgarAdapter(DataSourceAdapter):
 
             # For now, return raw XML content
             # Full XBRL parsing would be in xbrl_parser.py
-            return {
+            return SECEdgarAdapter__fetch_xbrl_dataResult.model_validate({
                 "xbrl_available": True,
                 "xbrl_url": xbrl_url,
                 "xbrl_xml_size": len(response.text),
                 "parsed": False,  # Would be True if fully parsed
-            }
+            })
+
 
         except Exception as e:
             self.logger.debug("XBRL not available", cik=cik, error=str(e))

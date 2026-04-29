@@ -21,6 +21,19 @@ from .tenant_rate_limiter import (
     TenantTier,
     RateLimitConfig,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class list_rate_limit_tiersResult(TypedDictModel):
+    tiers: Any
+
+class set_custom_limitsResult(TypedDictModel):
+    limits: dict[str, Any]
+    message: str
+
+class reset_tenant_limitsResult(TypedDictModel):
+    keys_deleted: Any
+    message: str
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +230,7 @@ async def set_custom_limits(
             f"Super-admin {context.user_id} set custom rate limits for tenant {tenant_id}"
         )
         
-        return {
+        return set_custom_limitsResult.model_validate({
             "message": f"Custom rate limits set for tenant {tenant_id}",
             "limits": {
                 "requests_per_minute": config.requests_per_minute,
@@ -225,7 +238,9 @@ async def set_custom_limits(
                 "requests_per_day": config.requests_per_day,
                 "burst_allowance": config.burst_allowance,
             },
-        }
+        })
+
+
         
     except Exception as e:
         logger.error(f"Failed to set custom limits: {e}")
@@ -269,10 +284,12 @@ async def reset_tenant_limits(
             f"({deleted_count} keys deleted)"
         )
         
-        return {
+        return reset_tenant_limitsResult.model_validate({
             "message": f"Rate limits reset for tenant {tenant_id}",
             "keys_deleted": deleted_count,
-        }
+        })
+
+
         
     except Exception as e:
         logger.error(f"Failed to reset tenant limits: {e}")
@@ -313,4 +330,4 @@ async def list_rate_limit_tiers(
             "burst_allowance": config.burst_allowance,
         }
     
-    return {"tiers": tiers}
+    return list_rate_limit_tiersResult.model_validate({"tiers": tiers})

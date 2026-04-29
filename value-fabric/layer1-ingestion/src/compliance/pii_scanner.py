@@ -20,6 +20,33 @@ except ImportError:
     PRESIDIO_AVAILABLE = False
 
 from ..shared.config import settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class PIIEntity_to_dictResult(TypedDictModel):
+    end: Any
+    entity_type: Any
+    score: Any
+    start: Any
+    text: Any
+
+class PIIScanResult_to_dictResult(TypedDictModel):
+    engine_version: Any
+    entities: Any
+    entity_count: Any
+    has_pii: Any
+    highest_score: Any
+    scan_timestamp: Any
+    text_hash: Any
+
+class PIIScanner_get_summary_statsResult(TypedDictModel):
+    clean: Any
+    detection_rate: Any
+    entity_type_counts: Any
+    flagged: Any
+    pii_detected: Any
+    quarantined: Any
+    total_scanned: Any
 
 logger = structlog.get_logger()
 
@@ -57,13 +84,13 @@ class PIIEntity:
     score: float  # Confidence score 0.0-1.0
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return PIIEntity_to_dictResult.model_validate({
             "entity_type": self.entity_type,
             "text": self.text,
             "start": self.start,
             "end": self.end,
             "score": round(self.score, 4),
-        }
+        })
 
 
 @dataclass
@@ -78,7 +105,7 @@ class PIIScanResult:
     engine_version: str = "presidio"
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return PIIScanResult_to_dictResult.model_validate({
             "text_hash": self.text_hash,
             "has_pii": self.has_pii,
             "entities": [e.to_dict() for e in self.entities],
@@ -86,7 +113,7 @@ class PIIScanResult:
             "entity_count": len(self.entities),
             "scan_timestamp": self.scan_timestamp.isoformat(),
             "engine_version": self.engine_version,
-        }
+        })
 
 
 class PIIScanner:
@@ -306,7 +333,7 @@ class PIIScanner:
             for entity in result.entities:
                 entity_counts[entity.entity_type] = entity_counts.get(entity.entity_type, 0) + 1
 
-        return {
+        return PIIScanner_get_summary_statsResult.model_validate({
             "total_scanned": total_scanned,
             "pii_detected": pii_detected,
             "quarantined": quarantined,
@@ -314,7 +341,7 @@ class PIIScanner:
             "clean": total_scanned - pii_detected,
             "entity_type_counts": entity_counts,
             "detection_rate": round(pii_detected / total_scanned, 4) if total_scanned > 0 else 0,
-        }
+        })
 
 
 # Global scanner instance

@@ -4,6 +4,13 @@ from .base import BaseWorkflow, NodeExecutionError, WorkflowBuilder, WorkflowErr
 from .business_case import BusinessCaseGeneratorWorkflow
 from .roi_calculator import ROICalculatorWorkflow
 from .whitespace import WhitespaceAnalysisWorkflow
+from shared.models.typed_dict import TypedDictModel
+
+
+class list_workflow_typesResult(TypedDictModel):
+    business_case: dict[str, Any]
+    roi_calculator: dict[str, Any]
+    whitespace_analysis: dict[str, Any]
 
 # Workflow type registry
 WORKFLOW_TYPES = {
@@ -36,7 +43,7 @@ def create_workflow(workflow_type: str, tool_registry, checkpoint_saver=None) ->
 
 def list_workflow_types() -> dict:
     """List available workflow types and their descriptions."""
-    return {
+    return list_workflow_typesResult.model_validate({
         "roi_calculator": {
             "name": "ROI Calculator",
             "description": "Calculates ROI from value driver formulas with prospect data",
@@ -52,7 +59,7 @@ def list_workflow_types() -> dict:
             "description": "Generates comprehensive business case documents",
             "class": BusinessCaseGeneratorWorkflow,
         },
-    }
+    })
 
 
 __all__ = [

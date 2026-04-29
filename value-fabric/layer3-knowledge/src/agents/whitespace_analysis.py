@@ -13,6 +13,29 @@ from typing import Any
 from neo4j import AsyncDriver
 
 from .base import AgentResult, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class WhitespaceAnalysisAgent__identify_gapsResult(TypedDictModel):
+    error: str
+    gap_summary: Any | None = None
+    gaps: list[Any]
+    gaps_identified: Any | None = None
+    prospect_company: Any | None = None
+
+class WhitespaceAnalysisAgent__assess_maturityResult(TypedDictModel):
+    assessments: list[Any]
+    average_maturity_score: Any | None = None
+    error: str
+    prospect_company: Any | None = None
+    total_capabilities_assessed: Any | None = None
+
+class WhitespaceAnalysisAgent__generate_expansion_pathwaysResult(TypedDictModel):
+    error: str
+    pathways: list[Any]
+    prospect_company: Any | None = None
+    starting_capability: Any | None = None
+    total_pathways: Any | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +212,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
             Dict with identified gaps
         """
         if not self._driver:
-            return {"gaps": [], "error": "No database driver"}
+            return WhitespaceAnalysisAgent__identify_gapsResult.model_validate({"gaps": [], "error": "No database driver"})
 
         # Query for missing capabilities (with tenant isolation)
         missing_query = """
@@ -228,12 +251,13 @@ class WhitespaceAnalysisAgent(BaseAgent):
                         }
                     )
 
-        return {
+        return WhitespaceAnalysisAgent__identify_gapsResult.model_validate({
             "prospect_company": prospect_company,
             "gaps_identified": len(gaps),
             "gaps": gaps,
             "gap_summary": self._summarize_gaps_by_category(gaps),
-        }
+        })
+
 
     async def _assess_maturity(
         self,
@@ -252,7 +276,7 @@ class WhitespaceAnalysisAgent(BaseAgent):
             Dict with maturity assessments
         """
         if not self._driver:
-            return {"assessments": [], "error": "No database driver"}
+            return WhitespaceAnalysisAgent__assess_maturityResult.model_validate({"assessments": [], "error": "No database driver"})
 
         # Query capability maturity indicators (with tenant isolation)
         maturity_query = """
@@ -286,12 +310,13 @@ class WhitespaceAnalysisAgent(BaseAgent):
                         }
                     )
 
-        return {
+        return WhitespaceAnalysisAgent__assess_maturityResult.model_validate({
             "prospect_company": prospect_company,
             "total_capabilities_assessed": len(assessments),
             "assessments": assessments,
             "average_maturity_score": self._calculate_average_maturity(assessments),
-        }
+        })
+
 
     async def _generate_expansion_pathways(
         self,
@@ -314,10 +339,10 @@ class WhitespaceAnalysisAgent(BaseAgent):
             Dict with expansion pathways
         """
         if not self._driver:
-            return {"pathways": [], "error": "No database driver"}
+            return WhitespaceAnalysisAgent__generate_expansion_pathwaysResult.model_validate({"pathways": [], "error": "No database driver"})
 
         if not target_capability_id:
-            return {"pathways": [], "error": "target_capability_id required"}
+            return WhitespaceAnalysisAgent__generate_expansion_pathwaysResult.model_validate({"pathways": [], "error": "target_capability_id required"})
 
         # Query for expansion pathways (with tenant isolation)
         expansion_query = """
@@ -354,12 +379,13 @@ class WhitespaceAnalysisAgent(BaseAgent):
                     }
                 )
 
-        return {
+        return WhitespaceAnalysisAgent__generate_expansion_pathwaysResult.model_validate({
             "prospect_company": prospect_company,
             "starting_capability": target_capability_id,
             "pathways": pathways,
             "total_pathways": len(pathways),
-        }
+        })
+
 
     async def _synthesize_account_plan(
         self,

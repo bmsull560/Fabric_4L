@@ -18,6 +18,36 @@ from typing import Any
 
 import structlog
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
+
+
+class ProductService_create_productResult(TypedDictModel):
+    id: Any
+
+class ProductService_get_productResult(TypedDictModel):
+    capabilities: Any
+    features: Any
+
+class ProductService_list_productsResult(TypedDictModel):
+    limit: Any
+    products: Any
+    skip: Any
+    total: Any
+
+class ProductService_add_featureResult(TypedDictModel):
+    id: Any
+
+class ProductService_link_capabilityResult(TypedDictModel):
+    capability: Any
+    strength: Any
+
+class ProductService_get_portfolio_summaryResult(TypedDictModel):
+    avg_capabilities_per_product: Any | None = None
+    avg_features_per_product: Any | None = None
+    categories: list[Any]
+    total_capabilities: int
+    total_features: int
+    total_products: int
 
 try:
     from shared.identity.context import require_context
@@ -146,7 +176,7 @@ class ProductService:
                 tenant_id=tenant_id,
                 name=product.name,
             )
-            return {"id": product_id, **(record["product"] if record else {})}
+            return ProductService_create_productResult.model_validate({"id": product_id, **(record["product"] if record else {})})
 
     async def get_product(
         self, product_id: str
@@ -171,11 +201,12 @@ class ProductService:
             record = await result.single()
             if not record or not record["product"]:
                 return None
-            return {
+            return ProductService_get_productResult.model_validate({
                 **record["product"],
                 "features": record["features"],
                 "capabilities": record["capabilities"],
-            }
+            })
+
 
     async def list_products(
         self,
@@ -234,7 +265,7 @@ class ProductService:
                     "capability_count": record["capability_count"],
                 })
 
-            return {"products": products, "total": total, "skip": skip, "limit": limit}
+            return ProductService_list_productsResult.model_validate({"products": products, "total": total, "skip": skip, "limit": limit})
 
     async def update_product(
         self, product_id: str, updates: dict[str, Any]
@@ -340,7 +371,7 @@ class ProductService:
                 feature_id=feature_id,
                 product_id=product_id,
             )
-            return {"id": feature_id, **record["feature"]}
+            return ProductService_add_featureResult.model_validate({"id": feature_id, **record["feature"]})
 
     async def remove_feature(
         self, tenant_id: str, product_id: str, feature_id: str
@@ -401,10 +432,11 @@ class ProductService:
             record = await result.single()
             if not record:
                 return None
-            return {
+            return ProductService_link_capabilityResult.model_validate({
                 "capability": record["capability"],
                 "strength": record["strength"],
-            }
+            })
+
 
     async def unlink_capability(
         self, tenant_id: str, product_id: str, capability_id: str
@@ -513,20 +545,23 @@ class ProductService:
             result = await session.run(query, {"tenant_id": tenant_id})
             record = await result.single()
             if not record:
-                return {
+                return ProductService_get_portfolio_summaryResult.model_validate({
                     "total_products": 0,
                     "total_features": 0,
                     "total_capabilities": 0,
                     "categories": [],
-                }
-            return {
+                })
+
+
+            return ProductService_get_portfolio_summaryResult.model_validate({
                 "total_products": record["total_products"],
                 "total_features": record["total_features"],
                 "total_capabilities": record["total_capabilities"],
                 "categories": [c for c in record["categories"] if c],
                 "avg_features_per_product": round(record["avg_features_per_product"] or 0, 1),
                 "avg_capabilities_per_product": round(record["avg_capabilities_per_product"] or 0, 1),
-            }
+            })
+
 
     async def get_capability_coverage(self) -> list[dict[str, Any]]:
         """Show which capabilities are covered by products and which are gaps."""

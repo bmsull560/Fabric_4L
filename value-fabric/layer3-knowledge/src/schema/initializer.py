@@ -15,6 +15,14 @@ from neo4j.exceptions import (
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from .constraints import CONSTRAINTS, INDEXES, TENANT_CONSTRAINTS, Constraint, Index
+from shared.models.typed_dict import TypedDictModel
+
+
+class SchemaInitializer_health_checkResult(TypedDictModel):
+    database: Any
+    error: str | None = None
+    status: str
+    uri: Any
 
 if TYPE_CHECKING:
     from neo4j import AsyncSession
@@ -415,22 +423,26 @@ class SchemaInitializer:
                 result = await session.run("RETURN 1 as check")
                 record = await result.single()
                 if record and record["check"] == 1:
-                    return {
+                    return SchemaInitializer_health_checkResult.model_validate({
                         "status": "healthy",
                         "database": self.settings.neo4j_database,
                         "uri": self.settings.neo4j_uri,
-                    }
-                return {
+                    })
+
+
+                return SchemaInitializer_health_checkResult.model_validate({
                     "status": "unhealthy",
                     "error": "Query returned unexpected result",
-                }
+                })
+
+
         except (ServiceUnavailable, TransientError) as e:
-            return {"status": "unhealthy", "error": f"Neo4j service unavailable: {e}"}
+            return SchemaInitializer_health_checkResult.model_validate({"status": "unhealthy", "error": f"Neo4j service unavailable: {e}"})
         except ConfigurationError as e:
-            return {"status": "unhealthy", "error": f"Neo4j configuration error: {e}"}
+            return SchemaInitializer_health_checkResult.model_validate({"status": "unhealthy", "error": f"Neo4j configuration error: {e}"})
         except DatabaseError as e:
-            return {"status": "unhealthy", "error": f"Neo4j database error: {e}"}
+            return SchemaInitializer_health_checkResult.model_validate({"status": "unhealthy", "error": f"Neo4j database error: {e}"})
         except ClientError as e:
-            return {"status": "unhealthy", "error": f"Neo4j client error: {e}"}
+            return SchemaInitializer_health_checkResult.model_validate({"status": "unhealthy", "error": f"Neo4j client error: {e}"})
         except Exception as e:
-            return {"status": "unhealthy", "error": f"Unexpected error: {e}"}
+            return SchemaInitializer_health_checkResult.model_validate({"status": "unhealthy", "error": f"Unexpected error: {e}"})

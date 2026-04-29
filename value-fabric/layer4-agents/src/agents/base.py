@@ -10,6 +10,19 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class AgentState_to_dictResult(TypedDictModel):
+    agent_id: Any
+    agent_type: Any
+    completed_at: Any
+    context: Any
+    current_task: Any
+    errors: Any
+    metadata: Any
+    started_at: Any
+    status: Any
 
 try:
     from shared.testability import Clock, IDGenerator, SystemClock, UUIDGenerator
@@ -92,7 +105,7 @@ class AgentState:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert state to dictionary."""
-        return {
+        return AgentState_to_dictResult.model_validate({
             "agent_id": self.agent_id,
             "agent_type": self.agent_type,
             "status": self.status.name,
@@ -102,7 +115,7 @@ class AgentState:
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "errors": self.errors,
             "metadata": self.metadata,
-        }
+        })
 
 
 class BaseAgent(ABC):

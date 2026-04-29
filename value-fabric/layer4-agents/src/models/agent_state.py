@@ -9,6 +9,19 @@ from typing import TYPE_CHECKING, Annotated, Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from shared.models.typed_dict import TypedDictModel
+
+
+class _merge_dictsResult(TypedDictModel):
+    pass
+
+class BaseAgentState_get_pause_summaryResult(TypedDictModel):
+    paused_at: Any
+    paused_by: Any
+    reason: Any
+    required_inputs: Any
+    severity: Any
+    title: Any
 
 if TYPE_CHECKING:
     pass
@@ -28,7 +41,7 @@ def _merge_dicts(left: dict[str, Any] | None, right: dict[str, Any] | None) -> d
 
     Used with Annotated for output_data to accumulate node results.
     """
-    return {**(left or {}), **(right or {})}
+    return _merge_dictsResult.model_validate({**(left or {}), **(right or {})})
 
 
 class WorkflowStatus(str, Enum):
@@ -155,7 +168,7 @@ class BaseAgentState(BaseModel):
         """Get summary of current pause point if paused."""
         if not self.is_paused() or not self.pause_point:
             return None
-        return {
+        return BaseAgentState_get_pause_summaryResult.model_validate({
             "title": self.pause_point.get("title"),
             "reason": self.pause_point.get("reason"),
             "severity": self.pause_point.get("severity"),
@@ -164,7 +177,7 @@ class BaseAgentState(BaseModel):
             ],
             "paused_at": self.paused_at.isoformat() if self.paused_at else None,
             "paused_by": self.paused_by,
-        }
+        })
 
 
 class ROIInputData(BaseModel):

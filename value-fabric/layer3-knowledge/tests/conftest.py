@@ -13,6 +13,52 @@ from httpx import ASGITransport, AsyncClient
 from src.api.dependencies import AppState
 from src.api.main import app
 from src.config import Settings, get_settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class sample_search_requestResult(TypedDictModel):
+    entity_type: str
+    query: str
+    search_type: str
+    top_k: int
+
+class sample_graphrag_queryResult(TypedDictModel):
+    confidence_threshold: float
+    max_hops: int
+    max_results: int
+    query: str
+
+class sample_search_resultsResult(TypedDictModel):
+    processing_time_ms: float
+    query: str
+    results: list[Any]
+    search_type: str
+    total_results: int
+
+class sample_graphrag_responseResult(TypedDictModel):
+    answer: str
+    confidence_score: float
+    context_graph: dict[str, Any]
+    entities: list[Any]
+    processing_time_ms: float
+    query: str
+    relationships: list[Any]
+    sources: list[Any]
+
+class sample_ingestion_requestResult(TypedDictModel):
+    content_hash: str
+    extraction_job_id: str
+    rdf_data: str
+    source_id: str
+
+class sample_ingestion_responseResult(TypedDictModel):
+    duration_seconds: float
+    entities_loaded: int
+    relationships_loaded: int
+    source_id: str
+    status: str
+    triples_processed: int
+    warnings: list[Any]
 
 
 class TestSettings(Settings):
@@ -173,29 +219,29 @@ def sample_rdf_data() -> str:
 @pytest.fixture
 def sample_search_request() -> dict[str, Any]:
     """Sample search request for testing."""
-    return {
+    return sample_search_requestResult.model_validate({
         "query": "automated invoice processing",
         "search_type": "hybrid",
         "top_k": 5,
         "entity_type": "Capability"
-    }
+    })
 
 
 @pytest.fixture
 def sample_graphrag_query() -> dict[str, Any]:
     """Sample GraphRAG query for testing."""
-    return {
+    return sample_graphrag_queryResult.model_validate({
         "query": "What capabilities enable automated invoice processing?",
         "max_hops": 3,
         "max_results": 10,
         "confidence_threshold": 0.7
-    }
+    })
 
 
 @pytest.fixture
 def sample_search_results() -> dict[str, Any]:
     """Sample search results for testing."""
-    return {
+    return sample_search_resultsResult.model_validate({
         "query": "automated invoice processing",
         "results": [
             {
@@ -213,13 +259,13 @@ def sample_search_results() -> dict[str, Any]:
         "total_results": 1,
         "search_type": "hybrid",
         "processing_time_ms": 150.5
-    }
+    })
 
 
 @pytest.fixture
 def sample_graphrag_response() -> dict[str, Any]:
     """Sample GraphRAG response for testing."""
-    return {
+    return sample_graphrag_responseResult.model_validate({
         "query": "What capabilities enable automated invoice processing?",
         "entities": [
             {
@@ -245,13 +291,13 @@ def sample_graphrag_response() -> dict[str, Any]:
         "sources": ["capability1", "usecase1"],
         "processing_time_ms": 250.0,
         "answer": "The Automated Invoice Processing capability enables automated invoice processing."
-    }
+    })
 
 
 @pytest.fixture
 def sample_ingestion_request() -> dict[str, Any]:
     """Sample ingestion request for testing."""
-    return {
+    return sample_ingestion_requestResult.model_validate({
         "rdf_data": """
             @prefix ex: <http://example.com/> .
             @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -262,13 +308,13 @@ def sample_ingestion_request() -> dict[str, Any]:
         "source_id": "test_doc_123",
         "extraction_job_id": "test_job_456",
         "content_hash": "abc123def456789"
-    }
+    })
 
 
 @pytest.fixture
 def sample_ingestion_response() -> dict[str, Any]:
     """Sample ingestion response for testing."""
-    return {
+    return sample_ingestion_responseResult.model_validate({
         "status": "success",
         "source_id": "test_doc_123",
         "entities_loaded": 5,
@@ -276,7 +322,7 @@ def sample_ingestion_response() -> dict[str, Any]:
         "triples_processed": 13,
         "duration_seconds": 2.5,
         "warnings": []
-    }
+    })
 
 
 # Mock response helpers

@@ -47,6 +47,13 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 from pydantic import BaseModel, Field
+from shared.models.typed_dict import TypedDictModel
+
+
+class AnalyzeCompetitionTool__query_graph_for_competitorResult(TypedDictModel):
+    capabilities: list[Any]
+    cost_items: list[Any]
+    risks: list[Any]
 
 
 class AnalyzeCompetitionInput(BaseModel):
@@ -206,18 +213,20 @@ Return a JSON array of EconomicDifference objects with these fields:
                 await driver.close()
 
                 if records:
-                    return {
+                    return AnalyzeCompetitionTool__query_graph_for_competitorResult.model_validate({
                         "capabilities": records[0].get("capabilities", []),
                         "risks": records[0].get("risks", []),
                         "cost_items": records[0].get("cost_items", []),
-                    }
+                    })
+
+
         except Exception as e:
             logger.warning(
                 "Could not query Knowledge Graph for competitor '%s': %s",
                 competitor_name,
                 e,
             )
-        return {"capabilities": [], "risks": [], "cost_items": []}
+        return AnalyzeCompetitionTool__query_graph_for_competitorResult.model_validate({"capabilities": [], "risks": [], "cost_items": []})
 
     async def _extract_differences_via_llm(
         self,

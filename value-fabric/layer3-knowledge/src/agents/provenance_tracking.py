@@ -16,6 +16,57 @@ from uuid import UUID
 from neo4j import AsyncDriver
 
 from .base import AgentResult, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class ProvenanceTrackingAgent__record_entityResult(TypedDictModel):
+    entity_id: Any | None = None
+    error: str
+    full_id: Any | None = None
+    label: Any | None = None
+    recorded: bool | None = None
+    type: Any | None = None
+
+class ProvenanceTrackingAgent__record_activityResult(TypedDictModel):
+    activity_id: Any | None = None
+    error: str
+    full_id: Any | None = None
+    label: Any | None = None
+    recorded: bool | None = None
+    type: Any | None = None
+
+class ProvenanceTrackingAgent__record_derivationResult(TypedDictModel):
+    derivation_type: Any | None = None
+    derived_entity: Any | None = None
+    error: str
+    recorded: bool | None = None
+    source_entity: Any | None = None
+
+class ProvenanceTrackingAgent__create_decision_traceResult(TypedDictModel):
+    completed_at: Any
+    created_at: Any
+    output_id: Any
+    output_type: Any
+    step_count: Any
+    steps: Any
+    trace_id: Any
+    workflow_id: Any
+    workflow_instance_id: Any
+
+class ProvenanceTrackingAgent__query_lineageResult(TypedDictModel):
+    downstream_lineage: Any | None = None
+    entity_id: Any | None = None
+    error: str
+    full_lineage_depth: Any | None = None
+    lineage: list[Any]
+    upstream_lineage: Any | None = None
+
+class ProvenanceTrackingAgent_build_provenance_recordResult(TypedDictModel):
+    attribution: dict[str, Any]
+    entity: dict[str, Any]
+    generation: dict[str, Any]
+    rdf_triples: list[Any]
+    usage: dict[str, Any]
 
 logger = logging.getLogger(__name__)
 
@@ -340,7 +391,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             Dict with recorded entity info
         """
         if not self._driver:
-            return {"error": "No database driver"}
+            return ProvenanceTrackingAgent__record_entityResult.model_validate({"error": "No database driver"})
 
         full_entity_id = f"{self.PROV_NAMESPACES['vf']}entity/{entity_id}"
 
@@ -371,13 +422,14 @@ class ProvenanceTrackingAgent(BaseAgent):
             )
             record = await result.single()
 
-        return {
+        return ProvenanceTrackingAgent__record_entityResult.model_validate({
             "entity_id": entity_id,
             "full_id": full_entity_id,
             "type": entity_type,
             "label": label,
             "recorded": record is not None,
-        }
+        })
+
 
     async def _record_activity(
         self,
@@ -398,7 +450,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             Dict with recorded activity info
         """
         if not self._driver:
-            return {"error": "No database driver"}
+            return ProvenanceTrackingAgent__record_activityResult.model_validate({"error": "No database driver"})
 
         full_activity_id = f"{self.PROV_NAMESPACES['vf']}activity/{activity_id}"
 
@@ -427,13 +479,14 @@ class ProvenanceTrackingAgent(BaseAgent):
             )
             record = await result.single()
 
-        return {
+        return ProvenanceTrackingAgent__record_activityResult.model_validate({
             "activity_id": activity_id,
             "full_id": full_activity_id,
             "type": activity_type,
             "label": label,
             "recorded": record is not None,
-        }
+        })
+
 
     async def _record_derivation(
         self,
@@ -454,7 +507,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             Dict with derivation record
         """
         if not self._driver:
-            return {"error": "No database driver"}
+            return ProvenanceTrackingAgent__record_derivationResult.model_validate({"error": "No database driver"})
 
         query = """
         MATCH (derived:PROVEntity {entity_id: $derived_id, tenant_id: $tenant_id})
@@ -478,12 +531,13 @@ class ProvenanceTrackingAgent(BaseAgent):
             )
             record = await result.single()
 
-        return {
+        return ProvenanceTrackingAgent__record_derivationResult.model_validate({
             "derivation_type": derivation_type,
             "derived_entity": derived_entity_id,
             "source_entity": source_entity_id,
             "recorded": record is not None,
-        }
+        })
+
 
     async def _create_decision_trace(
         self,
@@ -546,7 +600,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         if self._driver:
             await self._store_decision_trace(decision_trace)
 
-        return {
+        return ProvenanceTrackingAgent__create_decision_traceResult.model_validate({
             "trace_id": trace_id,
             "workflow_id": workflow_id,
             "workflow_instance_id": workflow_instance_id,
@@ -567,7 +621,8 @@ class ProvenanceTrackingAgent(BaseAgent):
             "completed_at": decision_trace.completed_at.isoformat()
             if decision_trace.completed_at
             else None,
-        }
+        })
+
 
     async def _store_decision_trace(self, trace: DecisionTrace) -> None:
         """Store decision trace in Neo4j.
@@ -653,7 +708,7 @@ class ProvenanceTrackingAgent(BaseAgent):
             Dict with lineage information
         """
         if not self._driver:
-            return {"lineage": [], "error": "No database driver"}
+            return ProvenanceTrackingAgent__query_lineageResult.model_validate({"lineage": [], "error": "No database driver"})
 
         # Query upstream lineage (what this entity was derived from)
         upstream_query = """
@@ -683,12 +738,13 @@ class ProvenanceTrackingAgent(BaseAgent):
             async for record in result:
                 downstream.extend(record.get("lineage", []))
 
-        return {
+        return ProvenanceTrackingAgent__query_lineageResult.model_validate({
             "entity_id": entity_id,
             "upstream_lineage": upstream,
             "downstream_lineage": downstream,
             "full_lineage_depth": len(upstream) + len(downstream),
-        }
+        })
+
 
     def create_rdf_star_annotation(
         self,
@@ -737,7 +793,7 @@ class ProvenanceTrackingAgent(BaseAgent):
         Returns:
             Dict with complete provenance
         """
-        return {
+        return ProvenanceTrackingAgent_build_provenance_recordResult.model_validate({
             "entity": {
                 "id": entity_id,
                 "type": entity_type,
@@ -760,4 +816,6 @@ class ProvenanceTrackingAgent(BaseAgent):
                     for used in used_entities
                 ],
             ],
-        }
+        })
+
+

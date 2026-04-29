@@ -24,6 +24,21 @@ from src.models.agent_state import (
 from src.tools.registry import ToolRegistry
 from src.workflows.business_case import BusinessCaseGeneratorWorkflow
 from src.workflows.roi_calculator import ROICalculatorWorkflow
+from shared.models.typed_dict import TypedDictModel
+
+
+class TestBusinessCaseGeneratorWorkflow_mock_execute_errorResult(TypedDictModel):
+    status: str
+
+class TestWorkflowToolFailureHandling_mock_execute_all_failResult(TypedDictModel):
+    status: str
+
+class TestBusinessCaseGeneratorWorkflow_mock_executeResult(TypedDictModel):
+    chart_data: dict[str, Any] | None = None
+    content: str | None = None
+    key_points: list[Any] | None = None
+    status: str
+    word_count: int | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -240,15 +255,17 @@ class TestBusinessCaseGeneratorWorkflow:
         # Mock generate_section tool to return content
         async def mock_execute(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
-                return {
+                return TestBusinessCaseGeneratorWorkflow_mock_executeResult.model_validate({
                     "content": f"Mock content for {params.get('section_type', 'unknown')}",
                     "word_count": 150,
                     "key_points": ["Point 1", "Point 2"],
-                }
+                })
+
+
             elif tool_name == "create_chart":
-                return {"chart_data": {"type": "bar", "data": []}}
+                return TestBusinessCaseGeneratorWorkflow_mock_executeResult.model_validate({"chart_data": {"type": "bar", "data": []}})
             else:
-                return {"status": "ok"}
+                return TestBusinessCaseGeneratorWorkflow_mock_executeResult.model_validate({"status": "ok"})
 
         registry.execute = AsyncMock(side_effect=mock_execute)
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
@@ -303,7 +320,7 @@ class TestBusinessCaseGeneratorWorkflow:
         async def mock_execute_error(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
                 raise RuntimeError("LLM API unavailable")
-            return {"status": "ok"}
+            return TestBusinessCaseGeneratorWorkflow_mock_execute_errorResult.model_validate({"status": "ok"})
 
         registry.execute = AsyncMock(side_effect=mock_execute_error)
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)
@@ -755,7 +772,7 @@ class TestWorkflowToolFailureHandling:
         async def mock_execute_all_fail(tool_name: str, params: dict[str, Any]) -> dict[str, Any]:
             if tool_name == "generate_section":
                 raise RuntimeError("LLM API is down for all calls")
-            return {"status": "ok"}
+            return TestWorkflowToolFailureHandling_mock_execute_all_failResult.model_validate({"status": "ok"})
 
         registry.execute = AsyncMock(side_effect=mock_execute_all_fail)
         workflow = BusinessCaseGeneratorWorkflow(tool_registry=registry)

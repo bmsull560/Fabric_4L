@@ -14,6 +14,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from .exceptions import TokenLimitError
+from shared.models.typed_dict import TypedDictModel
+
+
+class TokenLimiter_get_limit_infoResult(TypedDictModel):
+    max_input_tokens: Any
+    max_output_tokens: Any
+    total_limit: Any
 
 logger = logging.getLogger(__name__)
 
@@ -176,8 +183,10 @@ class TokenLimiter:
         Returns:
             Dict with max_input_tokens and max_output_tokens
         """
-        return {
+        return TokenLimiter_get_limit_infoResult.model_validate({
             "max_input_tokens": self.max_input_tokens,
             "max_output_tokens": self.max_output_tokens,
             "total_limit": self.max_input_tokens + self.max_output_tokens,
-        }
+        })
+
+

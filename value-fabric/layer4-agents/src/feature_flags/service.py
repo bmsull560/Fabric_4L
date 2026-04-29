@@ -21,6 +21,16 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import FeatureFlag
+from shared.models.typed_dict import TypedDictModel
+
+
+class FeatureFlagService_lookup_flagResult(TypedDictModel):
+    enabled: Any
+    rollout_percentage: Any
+
+class _lookup_flagResult(TypedDictModel):
+    enabled: Any
+    rollout_percentage: Any
 
 logger = logging.getLogger(__name__)
 
@@ -171,10 +181,10 @@ class FeatureFlagService:
         flag = await FeatureFlagService.get_flag(db, flag_key, tenant_id)
         if flag is None:
             return None
-        return {
+        return FeatureFlagService_lookup_flagResult.model_validate({
             "enabled": flag.enabled,
             "rollout_percentage": flag.rollout_percentage,
-        }
+        })
 
 
 async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] | None:
@@ -194,10 +204,11 @@ async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] 
             )
             row = result.scalar_one_or_none()
             if row is not None:
-                return {
+                return _lookup_flagResult.model_validate({
                     "enabled": row.enabled,
                     "rollout_percentage": row.rollout_percentage,
-                }
+                })
+
 
     # Fall back to platform-wide (no tenant context)
     factory = get_session_factory()
@@ -211,10 +222,12 @@ async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] 
         )
         row = result.scalar_one_or_none()
         if row is not None:
-            return {
+            return _lookup_flagResult.model_validate({
                 "enabled": row.enabled,
                 "rollout_percentage": row.rollout_percentage,
-            }
+            })
+
+
     return None
 
 

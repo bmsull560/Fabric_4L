@@ -20,6 +20,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...database import get_db_from_context
 from ..service import FeatureFlagService
+from shared.models.typed_dict import TypedDictModel
+
+
+class evaluate_feature_flagResult(TypedDictModel):
+    enabled: Any
+    flag_key: Any
+    tenant_id: Any
+    user_id: Any
 
 router = APIRouter(prefix="/feature-flags", tags=["Feature Flags"])
 
@@ -170,9 +178,11 @@ async def evaluate_feature_flag(
         tenant_id=ctx.tenant_id,
         user_id=ctx.user_id,
     )
-    return {
+    return evaluate_feature_flagResult.model_validate({
         "flag_key": flag_key,
         "tenant_id": str(ctx.tenant_id),
         "user_id": ctx.user_id,
         "enabled": result,
-    }
+    })
+
+

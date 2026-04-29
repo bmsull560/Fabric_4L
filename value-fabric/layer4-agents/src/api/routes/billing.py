@@ -109,6 +109,131 @@ from ...services.usage_service import UsageService, UsageValidationError
 
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_subscriptionResult(TypedDictModel):
+    cancel_at_period_end: bool
+    current_period_end: Any
+    current_period_start: Any
+    id: Any
+    plan_id: str
+    status: str
+
+class check_featureResult(TypedDictModel):
+    feature_id: Any
+    has_access: Any
+
+class sync_customerResult(TypedDictModel):
+    email: Any
+    id: Any
+    name: Any
+    stripe_customer_id: Any
+    tenant_id: Any
+
+class get_plan_limitsResult(TypedDictModel):
+    limits: Any
+    plan_id: Any
+    plan_name: Any
+
+class stripe_webhookResult(TypedDictModel):
+    received: bool
+
+class ingest_usage_eventResult(TypedDictModel):
+    created_at: Any
+    customer_id: Any
+    event_id: Any
+    id: Any
+    metric_name: Any
+    quantity: Any
+    status: Any
+    tenant_id: Any
+    timestamp: Any
+
+class ingest_usage_batchResult(TypedDictModel):
+    created: Any
+    duplicates: Any
+    error_details: Any
+    errors: Any
+
+class get_usage_limitsResult(TypedDictModel):
+    all_limits_ok: Any
+    customer_id: Any
+    metrics: Any
+    plan_id: Any
+    total_overage_cost: Any
+    warnings: Any
+
+class list_invoicesResult(TypedDictModel):
+    invoices: Any
+    pagination: dict[str, Any]
+
+class create_invoiceResult(TypedDictModel):
+    created_at: Any
+    customer_id: Any
+    id: Any
+    invoice_number: Any
+    status: Any
+    total_cents: Any
+    total_dollars: Any
+
+class get_invoiceResult(TypedDictModel):
+    amount_due_cents: Any
+    amount_due_dollars: Any
+    amount_paid_cents: Any
+    balance_cents: Any
+    charges: Any
+    created_at: Any
+    currency: Any
+    customer_id: Any
+    description: Any
+    due_date: Any
+    hosted_invoice_url: Any
+    id: Any
+    invoice_number: Any
+    invoice_pdf_url: Any
+    items: Any
+    paid_at: Any
+    period_end: Any
+    period_start: Any
+    status: Any
+    subtotal_cents: Any
+    tax_cents: Any
+    total_cents: Any
+    total_dollars: Any
+
+class add_invoice_itemResult(TypedDictModel):
+    amount_cents: Any
+    amount_dollars: Any
+    description: Any
+    id: Any
+    invoice_id: Any
+    type: Any
+
+class finalize_invoiceResult(TypedDictModel):
+    amount_due_cents: Any
+    amount_due_dollars: Any
+    id: Any
+    status: Any
+    total_cents: Any
+    total_dollars: Any
+
+class void_invoiceResult(TypedDictModel):
+    id: Any
+    status: Any
+    voided_at: Any
+
+class list_chargesResult(TypedDictModel):
+    charges: Any
+    pagination: dict[str, Any]
+
+class record_chargeResult(TypedDictModel):
+    amount_cents: Any
+    amount_dollars: Any
+    created_at: Any
+    id: Any
+    status: Any
+    stripe_charge_id: Any
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["Billing"])
@@ -194,23 +319,24 @@ async def get_subscription(
 
     if not subscription:
         # Return free tier default
-        return {
+        return get_subscriptionResult.model_validate({
             "id": None,
             "plan_id": "free",
             "status": "active",
             "current_period_start": None,
             "current_period_end": None,
             "cancel_at_period_end": False,
-        }
+        })
 
-    return {
+
+    return get_subscriptionResult.model_validate({
         "id": subscription.id,
         "plan_id": subscription.plan_id,
         "status": subscription.status,
         "current_period_start": subscription.current_period_start.isoformat() if subscription.current_period_start else None,
         "current_period_end": subscription.current_period_end.isoformat() if subscription.current_period_end else None,
         "cancel_at_period_end": subscription.cancel_at_period_end,
-    }
+    })
 
 
 @router.post("/checkout")
@@ -320,10 +446,10 @@ async def check_feature(
     service = BillingService(db)
     has_access = await service.check_entitlement(customer_id, feature_id)
 
-    return {
+    return check_featureResult.model_validate({
         "feature_id": feature_id,
         "has_access": has_access,
-    }
+    })
 
 
 # ============================================================================
@@ -358,13 +484,13 @@ async def sync_customer(
         tenant_id=tenant_id,
     )
 
-    return {
+    return sync_customerResult.model_validate({
         "id": customer.id,
         "stripe_customer_id": customer.stripe_customer_id,
         "email": customer.email,
         "name": customer.name,
         "tenant_id": customer.tenant_id,
-    }
+    })
 
 
 # ============================================================================
@@ -419,7 +545,7 @@ async def stripe_webhook(
 
     try:
         await service.handle_webhook(body, stripe_signature, STRIPE_WEBHOOK_SECRET)
-        return {"received": True}
+        return stripe_webhookResult.model_validate({"received": True})
     except ValueError as e:
         logger.warning(f"Webhook validation failed: {e}")
         raise HTTPException(
@@ -478,7 +604,7 @@ async def ingest_usage_event(
             metadata=request.metadata,
         )
         
-        return {
+        return ingest_usage_eventResult.model_validate({
             "id": event.id,
             "event_id": event.event_id,
             "status": event.status,
@@ -488,7 +614,9 @@ async def ingest_usage_event(
             "quantity": event.quantity,
             "timestamp": event.timestamp.isoformat(),
             "created_at": event.created_at.isoformat(),
-        }
+        })
+
+
         
     except UsageValidationError as e:
         raise HTTPException(
@@ -529,12 +657,14 @@ async def ingest_usage_batch(
         events_data = [event.model_dump() for event in request.events]
         result = await service.ingest_batch(events_data)
         
-        return {
+        return ingest_usage_batchResult.model_validate({
             "created": result["created"],
             "duplicates": result["duplicates"],
             "errors": result["errors"],
             "error_details": result.get("error_details"),
-        }
+        })
+
+
         
     except UsageValidationError as e:
         raise HTTPException(
@@ -750,7 +880,7 @@ async def get_usage_limits(
     try:
         quota_check = await service.check_all_limits(customer_id)
         
-        return {
+        return get_usage_limitsResult.model_validate({
             "customer_id": quota_check.customer_id,
             "plan_id": quota_check.plan_id,
             "all_limits_ok": quota_check.all_limits_ok,
@@ -774,7 +904,9 @@ async def get_usage_limits(
                 }
                 for check in quota_check.checks
             ],
-        }
+        })
+
+
         
     except Exception as e:
         logger.exception(f"Usage limits check failed: {e}")
@@ -869,11 +1001,11 @@ async def get_plan_limits(
     service = OverageService(None, tenant_id=None)  # No DB needed
     limits = service.get_plan_limits(plan_id)
     
-    return {
+    return get_plan_limitsResult.model_validate({
         "plan_id": plan_id,
         "plan_name": plan.name,
         "limits": limits,
-    }
+    })
 
 
 # ============================================================================
@@ -943,7 +1075,7 @@ async def list_invoices(
             offset=offset,
         )
         
-        return {
+        return list_invoicesResult.model_validate({
             "invoices": [
                 {
                     "id": inv.id,
@@ -965,7 +1097,9 @@ async def list_invoices(
                 for inv in invoices
             ],
             "pagination": {"limit": limit, "offset": offset},
-        }
+        })
+
+
     except Exception as e:
         logger.exception(f"Failed to list invoices: {e}")
         raise HTTPException(
@@ -1001,7 +1135,7 @@ async def create_invoice(
             description=request.description,
         )
         
-        return {
+        return create_invoiceResult.model_validate({
             "id": invoice.id,
             "invoice_number": invoice.invoice_number,
             "customer_id": invoice.customer_id,
@@ -1009,7 +1143,9 @@ async def create_invoice(
             "total_cents": invoice.total,
             "total_dollars": invoice.total_dollars,
             "created_at": invoice.created_at.isoformat(),
-        }
+        })
+
+
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
@@ -1041,7 +1177,7 @@ async def get_invoice(
                 detail="Invoice not found",
             )
         
-        return {
+        return get_invoiceResult.model_validate({
             "id": invoice.id,
             "invoice_number": invoice.invoice_number,
             "customer_id": invoice.customer_id,
@@ -1091,7 +1227,9 @@ async def get_invoice(
                 }
                 for charge in invoice.charges
             ],
-        }
+        })
+
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1129,14 +1267,16 @@ async def add_invoice_item(
             discount_amount=request.discount_cents,
         )
         
-        return {
+        return add_invoice_itemResult.model_validate({
             "id": item.id,
             "invoice_id": item.invoice_id,
             "type": item.type,
             "description": item.description,
             "amount_cents": item.amount,
             "amount_dollars": item.amount_dollars,
-        }
+        })
+
+
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
@@ -1165,14 +1305,16 @@ async def finalize_invoice(
     try:
         invoice = await service.finalize_invoice(invoice_id)
         
-        return {
+        return finalize_invoiceResult.model_validate({
             "id": invoice.id,
             "status": invoice.status,
             "total_cents": invoice.total,
             "total_dollars": invoice.total_dollars,
             "amount_due_cents": invoice.amount_due,
             "amount_due_dollars": invoice.amount_due_dollars,
-        }
+        })
+
+
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
@@ -1199,11 +1341,13 @@ async def void_invoice(
     try:
         invoice = await service.void_invoice(invoice_id, reason=reason)
         
-        return {
+        return void_invoiceResult.model_validate({
             "id": invoice.id,
             "status": invoice.status,
             "voided_at": invoice.voided_at.isoformat() if invoice.voided_at else None,
-        }
+        })
+
+
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
@@ -1243,7 +1387,7 @@ async def list_charges(
             offset=offset,
         )
         
-        return {
+        return list_chargesResult.model_validate({
             "charges": [
                 {
                     "id": chg.id,
@@ -1264,7 +1408,9 @@ async def list_charges(
                 for chg in charges
             ],
             "pagination": {"limit": limit, "offset": offset},
-        }
+        })
+
+
     except Exception as e:
         logger.exception(f"Failed to list charges: {e}")
         raise HTTPException(
@@ -1297,14 +1443,16 @@ async def record_charge(
             description=request.description,
         )
         
-        return {
+        return record_chargeResult.model_validate({
             "id": charge.id,
             "status": charge.status,
             "amount_cents": charge.amount,
             "amount_dollars": charge.amount_dollars,
             "stripe_charge_id": charge.stripe_charge_id,
             "created_at": charge.created_at.isoformat(),
-        }
+        })
+
+
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:

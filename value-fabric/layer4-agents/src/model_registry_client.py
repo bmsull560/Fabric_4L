@@ -9,6 +9,14 @@ import os
 from dataclasses import dataclass
 
 from shared.audit import audit_log
+from shared.models.typed_dict import TypedDictModel
+
+
+class ModelRegistryClient_get_fallback_statsResult(TypedDictModel):
+    fallback_count: Any
+    fallback_model: Any
+    registry_url: Any
+    strict_mode: bool
 
 
 @dataclass
@@ -126,9 +134,11 @@ class ModelRegistryClient:
         Returns:
             Dict with fallback count and configuration
         """
-        return {
+        return ModelRegistryClient_get_fallback_statsResult.model_validate({
             "fallback_count": self._fallback_count,
             "fallback_model": os.getenv("FALLBACK_MODEL"),
             "strict_mode": os.getenv("STRICT_MODE") == "true",
             "registry_url": self.registry_url,
-        }
+        })
+
+

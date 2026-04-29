@@ -19,6 +19,15 @@ from typing import Any
 from uuid import UUID
 
 import redis.asyncio as redis
+from shared.models.typed_dict import TypedDictModel
+
+
+class TenantRateLimiter_get_tenant_quota_statusResult(TypedDictModel):
+    custom_limits: bool
+    limits: dict[str, Any]
+    tenant_id: Any
+    tier: Any
+    usage: Any
 
 logger = logging.getLogger(__name__)
 
@@ -405,7 +414,7 @@ class TenantRateLimiter:
         config = self._get_limit_config(tenant_id, tenant_tier)
         usage = await self.get_tenant_usage(tenant_id)
         
-        return {
+        return TenantRateLimiter_get_tenant_quota_statusResult.model_validate({
             "tenant_id": str(tenant_id),
             "tier": tenant_tier.value,
             "limits": {
@@ -416,4 +425,6 @@ class TenantRateLimiter:
             },
             "usage": usage,
             "custom_limits": tenant_id in self.custom_limits,
-        }
+        })
+
+

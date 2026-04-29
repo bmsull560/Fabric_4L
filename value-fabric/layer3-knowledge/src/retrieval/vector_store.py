@@ -25,6 +25,22 @@ from neo4j.exceptions import ClientError, ServiceUnavailable
 
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
+from shared.models.typed_dict import TypedDictModel
+
+
+class Neo4jVectorStore_index_healthResult(TypedDictModel):
+    error: Any
+    indexes: dict[str, Any]
+    status: str
+
+class Neo4jVectorStore_upsert_batchResult(TypedDictModel):
+    failed: list[Any]
+    upserted: int
+
+class Neo4jVectorStore_upsert_entityResult(TypedDictModel):
+    entity_id: Any
+    entity_type: Any
+    upserted: Any
 
 logger = logging.getLogger(__name__)
 
@@ -140,11 +156,13 @@ class Neo4jVectorStore:
             async with driver.session(database=self.settings.neo4j_database) as session:
                 result = await session.run(query, params)
                 record = await result.single()
-                return {
+                return Neo4jVectorStore_upsert_entityResult.model_validate({
                     "entity_id": record["entity_id"] if record else entity_id,
                     "entity_type": entity_type,
                     "upserted": record["upserted"] if record else False,
-                }
+                })
+
+
         except (ClientError, ServiceUnavailable) as exc:
             raise VectorStoreError(
                 f"Failed to upsert entity {entity_id}: {exc}"
@@ -157,7 +175,7 @@ class Neo4jVectorStore:
     ) -> dict[str, Any]:
         """Batch upsert entity embeddings."""
         if not entities:
-            return {"upserted": 0, "failed": []}
+            return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": 0, "failed": []})
 
         texts = [e.get("text", e.get("name", "")) for e in entities]
         embeddings = self._embed_batch(texts)
@@ -198,10 +216,10 @@ class Neo4jVectorStore:
             async with driver.session(database=self.settings.neo4j_database) as session:
                 result = await session.run(query, {"records": records})
                 record = await result.single()
-                return {"upserted": record["upserted"] if record else 0, "failed": []}
+                return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": record["upserted"] if record else 0, "failed": []})
         except (ClientError, ServiceUnavailable) as exc:
             logger.error("Batch upsert failed for %s: %s", entity_type, exc)
-            return {"upserted": 0, "failed": [e["id"] for e in entities]}
+            return Neo4jVectorStore_upsert_batchResult.model_validate({"upserted": 0, "failed": [e["id"] for e in entities]})
 
     # ------------------------------------------------------------------
     # Read operations
@@ -334,12 +352,12 @@ class Neo4jVectorStore:
                 }
 
         except (ClientError, ServiceUnavailable) as exc:
-            return {"status": "unhealthy", "error": str(exc), "indexes": {}}
+            return Neo4jVectorStore_index_healthResult.model_validate({"status": "unhealthy", "error": str(exc), "indexes": {}})
 
-        return {
+        return Neo4jVectorStore_index_healthResult.model_validate({
             "status": "healthy" if all_online else "degraded",
             "indexes": details,
-        }
+        })
 
 
 # Backwards-compatibility alias

@@ -7,6 +7,12 @@ from uuid import UUID
 from shared.identity.context import RequestContext
 from .knowledge import get_entity, update_entity
 from .analytics import compute_metrics
+from shared.models.typed_dict import TypedDictModel
+
+
+class analyze_entityResult(TypedDictModel):
+    entity: Any
+    metrics: Any
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +40,10 @@ async def analyze_entity(
     # Compute metrics (maintains tenant context)
     metrics = await compute_metrics(entity_data=entity_data)
     
-    return {
+    return analyze_entityResult.model_validate({
         "entity": entity_data,
         "metrics": metrics
-    }
+    })
 
 
 async def read_and_update(

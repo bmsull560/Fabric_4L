@@ -5,6 +5,34 @@ import logging
 from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from ..config import Settings, get_settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class CentralityAnalyzer__fallback_centralityResult(TypedDictModel):
+    algorithm: str
+    note: str
+    top_entities: Any
+    total_ranked: Any
+
+class CentralityAnalyzer_calculate_degree_centralityResult(TypedDictModel):
+    algorithm: str
+    top_entities: Any
+    total_ranked: Any
+
+class CentralityAnalyzer_get_value_tree_centralityResult(TypedDictModel):
+    algorithm: str
+    by_layer: dict[str, Any]
+    key_connectors: Any
+
+class CentralityAnalyzer_calculate_pagerankResult(TypedDictModel):
+    algorithm: str
+    top_entities: Any
+    total_ranked: Any
+
+class CentralityAnalyzer_calculate_betweennessResult(TypedDictModel):
+    algorithm: str
+    top_entities: Any
+    total_ranked: Any
 
 logger = logging.getLogger(__name__)
 
@@ -116,11 +144,12 @@ class CentralityAnalyzer:
                         }
                     )
 
-                return {
+                return CentralityAnalyzer_calculate_pagerankResult.model_validate({
                     "algorithm": "pagerank",
                     "total_ranked": len(rankings),
                     "top_entities": rankings,
-                }
+                })
+
 
             finally:
                 await self._drop_graph(session, graph_name)
@@ -180,11 +209,12 @@ class CentralityAnalyzer:
                         }
                     )
 
-                return {
+                return CentralityAnalyzer_calculate_betweennessResult.model_validate({
                     "algorithm": "betweenness",
                     "total_ranked": len(rankings),
                     "top_entities": rankings,
-                }
+                })
+
 
             finally:
                 await self._drop_graph(session, graph_name)
@@ -233,11 +263,12 @@ class CentralityAnalyzer:
                     }
                 )
 
-            return {
+            return CentralityAnalyzer_calculate_degree_centralityResult.model_validate({
                 "algorithm": "degree",
                 "total_ranked": len(rankings),
                 "top_entities": rankings,
-            }
+            })
+
 
     async def get_value_tree_centrality(self) -> dict:
         """Analyze centrality within the 4-layer value tree.
@@ -333,7 +364,7 @@ class CentralityAnalyzer:
                 async for r in connectors_result
             ]
 
-            return {
+            return CentralityAnalyzer_get_value_tree_centralityResult.model_validate({
                 "algorithm": "value_tree_analysis",
                 "by_layer": {
                     "capabilities": top_capabilities,
@@ -341,7 +372,8 @@ class CentralityAnalyzer:
                     "personas": top_personas,
                 },
                 "key_connectors": key_connectors,
-            }
+            })
+
 
     async def _project_graph(
         self,
@@ -423,12 +455,13 @@ class CentralityAnalyzer:
                 }
             )
 
-        return {
+        return CentralityAnalyzer__fallback_centralityResult.model_validate({
             "algorithm": f"{metric}_fallback",
             "note": "Using degree centrality fallback - GDS not available",
             "total_ranked": len(rankings),
             "top_entities": rankings,
-        }
+        })
+
 
     def _random_id(self) -> str:
         """Generate random ID."""

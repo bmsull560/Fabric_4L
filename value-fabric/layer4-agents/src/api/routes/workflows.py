@@ -22,6 +22,29 @@ from shared.identity.dependencies import require_authenticated
 from ...engine.executor import OrchestrationController, WorkflowExecutionError
 from ...engine.scheduler import TaskPriority
 from ...workflows import list_workflow_types
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_workflow_resultResult(TypedDictModel):
+    completed_at: Any
+    errors: Any
+    output: Any
+    status: Any
+    workflow_id: Any
+
+class cancel_workflowResult(TypedDictModel):
+    status: str
+    workflow_id: Any
+
+class list_available_workflowsResult(TypedDictModel):
+    workflows: Any
+
+class list_active_workflowsResult(TypedDictModel):
+    has_more: Any
+    items: Any
+    limit: Any
+    offset: Any
+    total: Any
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -325,13 +348,13 @@ async def get_workflow_result(
             detail=f"Workflow {workflow_id} not complete (status: {status.get('status')})",
         )
 
-    return {
+    return get_workflow_resultResult.model_validate({
         "workflow_id": workflow_id,
         "status": status.get("status"),
         "output": status.get("output"),
         "errors": status.get("errors", []),
         "completed_at": status.get("completed_at"),
-    }
+    })
 
 
 @router.delete("/workflows/{workflow_id}")
@@ -348,7 +371,7 @@ async def cancel_workflow(
             status_code=400, detail=f"Workflow {workflow_id} could not be cancelled"
         )
 
-    return {"workflow_id": workflow_id, "status": "cancelled"}
+    return cancel_workflowResult.model_validate({"workflow_id": workflow_id, "status": "cancelled"})
 
 
 @router.post("/workflows/{workflow_id}/resume", response_model=WorkflowResumeResponse)
@@ -497,12 +520,12 @@ async def list_available_workflows() -> dict[str, Any]:
     """List available workflow types."""
     types = list_workflow_types()
 
-    return {
+    return list_available_workflowsResult.model_validate({
         "workflows": [
             {"type": key, "name": info["name"], "description": info["description"]}
             for key, info in types.items()
         ]
-    }
+    })
 
 
 @router.get("/workflows/active")
@@ -532,13 +555,13 @@ async def list_active_workflows(
     paginated = all_active[offset:offset + limit]
     has_more = (offset + limit) < total
     
-    return {
+    return list_active_workflowsResult.model_validate({
         "items": paginated,
         "total": total,
         "limit": limit,
         "offset": offset,
         "has_more": has_more,
-    }
+    })
 
 
 @router.get("/workflows/{workflow_id}/events")

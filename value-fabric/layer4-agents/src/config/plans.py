@@ -6,6 +6,13 @@ Defines available plans, their entitlements, and usage limits for overage detect
 from dataclasses import dataclass, field
 from enum import Enum as PyEnum
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_entitlements_responseResult(TypedDictModel):
+    features: dict[str, Any]
+    plan_id: Any
+    plan_name: Any | None = None
 
 
 class FeatureId(str, PyEnum):
@@ -287,7 +294,7 @@ def get_entitlements_response(plan_id: str) -> dict[str, Any]:
     """Get entitlements response for API."""
     plan = get_plan(plan_id)
     if not plan:
-        return {"plan_id": plan_id, "features": {}}
+        return get_entitlements_responseResult.model_validate({"plan_id": plan_id, "features": {}})
 
     features = {}
     for fid, feature in FEATURES.items():
@@ -297,8 +304,10 @@ def get_entitlements_response(plan_id: str) -> dict[str, Any]:
             "description": feature.description,
         }
 
-    return {
+    return get_entitlements_responseResult.model_validate({
         "plan_id": plan_id,
         "plan_name": plan.name,
         "features": features,
-    }
+    })
+
+

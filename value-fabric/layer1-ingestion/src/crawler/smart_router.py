@@ -11,6 +11,13 @@ from enum import Enum
 from typing import Any
 from urllib.parse import urlparse
 import re
+from shared.models.typed_dict import TypedDictModel
+
+
+class SmartRouter__default_browser_configResult(TypedDictModel):
+    scroll_percent: int
+    timeout: int
+    wait_for: str
 
 
 class RouteType(str, Enum):
@@ -407,8 +414,10 @@ class SmartRouter:
 
     def _default_browser_config(self) -> dict[str, Any]:
         """Default browser configuration."""
-        return {
+        return SmartRouter__default_browser_configResult.model_validate({
             "scroll_percent": 50,
             "wait_for": "domcontentloaded",
             "timeout": 30000,
-        }
+        })
+
+

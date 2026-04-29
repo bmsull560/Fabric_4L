@@ -99,7 +99,7 @@ def _load_deprecation_register() -> dict:
                 return json.load(f)
     except Exception as e:
         logger.warning("Failed to load deprecation register", error=str(e))
-    return {"deprecations": []}
+    return _load_deprecation_registerResult.model_validate({"deprecations": []})
 
 
 def _check_deprecation_warnings(register: dict) -> None:
@@ -218,6 +218,49 @@ except Exception:
     pass
 
 from shared.identity.api_key_stub import reject_api_key_unsupported
+from shared.models.typed_dict import TypedDictModel
+
+
+class _load_deprecation_registerResult(TypedDictModel):
+    deprecations: list[Any]
+
+class cancel_jobResult(TypedDictModel):
+    job_id: Any
+    status: str
+
+class get_job_resultsResult(TypedDictModel):
+    data: Any
+    format: Any
+    job_id: Any
+    limit: Any
+    page: Any
+    total_records: Any
+
+class retry_jobResult(TypedDictModel):
+    new_job_id: Any
+    original_job_id: Any
+    status: Any
+
+class list_contentResult(TypedDictModel):
+    items: Any
+    limit: Any
+    page: Any
+    total: Any
+
+class list_compliance_logsResult(TypedDictModel):
+    items: Any
+    limit: Any
+    page: Any
+    total: Any
+
+class trigger_cleanupResult(TypedDictModel):
+    message: str
+    status: str
+
+class legacy_health_checkResult(TypedDictModel):
+    dependencies: Any
+    note: str
+    status: Any
 
 app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=redis_rate_limiter)
 
@@ -1705,7 +1748,7 @@ async def cancel_job(
 
     logger.info("Cancelled scraping job", job_id=str(job_id))
 
-    return {"status": "CANCELLED", "job_id": str(job_id)}
+    return cancel_jobResult.model_validate({"status": "CANCELLED", "job_id": str(job_id)})
 
 
 @router.get("/jobs/{job_id}/progress", response_model=JobProgressResponse)
@@ -1766,7 +1809,7 @@ async def get_job_results(
     offset = (page - 1) * limit
     data = query.offset(offset).limit(limit).all()
 
-    return {
+    return get_job_resultsResult.model_validate({
         "job_id": str(job_id),
         "format": format,
         "total_records": total,
@@ -1785,7 +1828,7 @@ async def get_job_results(
         ],
         "page": page,
         "limit": limit,
-    }
+    })
 
 
 @router.post("/jobs/{job_id}/retry", status_code=202)
@@ -1842,11 +1885,11 @@ async def retry_job(
 
     logger.info("Created retry job", original_job_id=str(job_id), new_job_id=str(new_job.id))
 
-    return {
+    return retry_jobResult.model_validate({
         "original_job_id": str(job_id),
         "new_job_id": str(new_job.id),
         "status": JobStatus.QUEUED.value,
-    }
+    })
 
 
 # =============================================================================
@@ -1978,7 +2021,7 @@ async def list_content(
     offset = (page - 1) * limit
     items = query.order_by(RawContent.created_at.desc()).offset(offset).limit(limit).all()
 
-    return {
+    return list_contentResult.model_validate({
         "items": [
             {
                 "id": str(item.id),
@@ -1993,7 +2036,7 @@ async def list_content(
         "total": total,
         "page": page,
         "limit": limit,
-    }
+    })
 
 
 # =============================================================================
@@ -2040,7 +2083,7 @@ async def list_compliance_logs(
     offset = (page - 1) * limit
     logs = query.order_by(ComplianceLog.created_at.desc()).offset(offset).limit(limit).all()
 
-    return {
+    return list_compliance_logsResult.model_validate({
         "items": [
             {
                 "id": str(log.id),
@@ -2056,7 +2099,7 @@ async def list_compliance_logs(
         "total": total,
         "page": page,
         "limit": limit,
-    }
+    })
 
 
 @router.get("/compliance/summary", response_model=ComplianceSummaryResponse)
@@ -2266,10 +2309,10 @@ async def trigger_cleanup(
 ):
     """Trigger content cleanup for old data."""
     cleanup_old_content.delay(days)
-    return {
+    return trigger_cleanupResult.model_validate({
         "message": f"Cleanup initiated for content older than {days} days",
         "status": "processing",
-    }
+    })
 
 
 # =============================================================================
@@ -2378,11 +2421,11 @@ async def legacy_health_check():
         dependencies.append({"name": "redis", "status": "degraded", "error": str(e)})
         overall_status = "degraded"
 
-    return {
+    return legacy_health_checkResult.model_validate({
         "status": overall_status,
         "note": "Legacy endpoint; use /api/v1/ingestion/health for full schema response",
         "dependencies": dependencies,
-    }
+    })
 
 
 if __name__ == "__main__":

@@ -47,6 +47,17 @@ from .models.api_key import APIKey
 from .models.isolation_tier_history import TenantIsolationTierHistory
 from .models.tenant import IsolationTier, Tenant
 from .models.user import User
+from shared.models.typed_dict import TypedDictModel
+
+
+class lookup_api_key_by_hashResult(TypedDictModel):
+    enabled: Any
+    key_id: Any
+    permissions: Any
+    rate_limit_per_minute: Any
+    role: Any
+    tenant_id: Any
+    user_id: Any
 
 logger = logging.getLogger(__name__)
 
@@ -642,7 +653,7 @@ async def lookup_api_key_by_hash(db: AsyncSession, raw_key: str) -> dict | None:
         return None
     # Update last_used_at asynchronously (fire-and-forget inside same session)
     key.last_used_at = datetime.now(UTC)
-    return {
+    return lookup_api_key_by_hashResult.model_validate({
         "key_id": key.key_id,
         "tenant_id": str(key.tenant_id),
         "user_id": str(key.user_id) if key.user_id else None,
@@ -650,7 +661,7 @@ async def lookup_api_key_by_hash(db: AsyncSession, raw_key: str) -> dict | None:
         "permissions": key.permissions,
         "enabled": key.enabled,
         "rate_limit_per_minute": key.rate_limit_per_minute,
-    }
+    })
 
 
 # ---------------------------------------------------------------------------

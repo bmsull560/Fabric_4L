@@ -7,6 +7,15 @@ import pytest
 from src.api import main as main_module
 from src.api import versioning as versioning_module
 from src.api.versioning import VersionCompatibility
+from shared.models.typed_dict import TypedDictModel
+
+
+class incompatible_handlerResult(TypedDictModel):
+    pass
+
+class async_handlerResult(TypedDictModel):
+    migrated: bool | None = None
+    migrated_sync: bool
 
 
 def test_register_migration_handler_accepts_valid_callable() -> None:
@@ -44,7 +53,7 @@ def test_register_migration_handler_rejects_incompatible_signature() -> None:
     compatibility = VersionCompatibility(current_version="v1")
 
     def incompatible_handler(data: dict, extra: dict) -> dict:
-        return {**data, **extra}
+        return incompatible_handlerResult.model_validate({**data, **extra})
 
     with pytest.raises(TypeError, match="callable signature"):
         compatibility.register_migration_handler("v1", "v2", incompatible_handler)
@@ -78,7 +87,7 @@ async def test_migrate_request_data_async_supports_async_handler() -> None:
     compatibility = VersionCompatibility(current_version="v1")
 
     async def async_handler(data: dict) -> dict:
-        return {**data, "migrated": True}
+        return async_handlerResult.model_validate({**data, "migrated": True})
 
     compatibility.register_migration_handler("v1", "v2", async_handler)
 
@@ -92,7 +101,7 @@ def test_migrate_request_data_supports_async_handler_from_sync_context() -> None
     compatibility = VersionCompatibility(current_version="v1")
 
     async def async_handler(data: dict) -> dict:
-        return {**data, "migrated_sync": True}
+        return async_handlerResult.model_validate({**data, "migrated_sync": True})
 
     compatibility.register_migration_handler("v1", "v2", async_handler)
 

@@ -15,6 +15,20 @@ import pytest
 from ..clock import Clock, FixedClock, SystemClock
 from ..id_generator import IDGenerator, SequentialIDGenerator, UUIDGenerator
 from ..interfaces import CacheBackendProtocol, HTTPClientProtocol
+from shared.models.typed_dict import TypedDictModel
+
+
+class _FakeHTTPClient_getResult(TypedDictModel):
+    status: int
+
+class _FakeHTTPClient_postResult(TypedDictModel):
+    status: int
+
+class _FakeHTTPClient_putResult(TypedDictModel):
+    status: int
+
+class _FakeHTTPClient_deleteResult(TypedDictModel):
+    status: int
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -175,16 +189,16 @@ class _FakeHTTPClient:
     """Minimal stub for testing HTTPClientProtocol conformance."""
 
     async def get(self, url, **kw):
-        return {"status": 200}
+        return _FakeHTTPClient_getResult.model_validate({"status": 200})
 
     async def post(self, url, **kw):
-        return {"status": 201}
+        return _FakeHTTPClient_postResult.model_validate({"status": 201})
 
     async def put(self, url, **kw):
-        return {"status": 200}
+        return _FakeHTTPClient_putResult.model_validate({"status": 200})
 
     async def delete(self, url, **kw):
-        return {"status": 204}
+        return _FakeHTTPClient_deleteResult.model_validate({"status": 204})
 
 
 class _FakeCacheBackend:

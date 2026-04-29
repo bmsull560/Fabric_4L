@@ -15,6 +15,21 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
+
+
+class SignalQuantificationService__select_formulaResult(TypedDictModel):
+    expression: str
+    id: str
+    name: str
+    output_unit: Any
+    variables: list[Any]
+
+class SignalQuantificationService__execute_formulaResult(TypedDictModel):
+    error: str
+    expression: Any | None = None
+    success: bool
+    value: Any | None = None
 
 try:
     from shared.identity.context import require_context
@@ -286,7 +301,7 @@ class SignalQuantificationService:
                 return record["formula"]
 
         # Fallback: Return a default formula structure if none found in graph
-        return {
+        return SignalQuantificationService__select_formulaResult.model_validate({
             "id": "default-operational",
             "name": "Default Operational Impact",
             "expression": "estimated_annual_cost",
@@ -298,7 +313,8 @@ class SignalQuantificationService:
                     "data_type": "currency",
                 }
             ],
-        }
+        })
+
 
     async def _extract_variables(
         self,
@@ -451,18 +467,20 @@ class SignalQuantificationService:
             # For production, use a proper formula engine
             result = self._safe_eval(expression, inputs)
 
-            return {
+            return SignalQuantificationService__execute_formulaResult.model_validate({
                 "success": True,
                 "value": result,
                 "expression": expression,
-            }
+            })
+
 
         except Exception as e:
             logger.error(f"Formula execution failed: {e}")
-            return {
+            return SignalQuantificationService__execute_formulaResult.model_validate({
                 "success": False,
                 "error": f"Formula execution failed: {e}",
-            }
+            })
+
 
     def _safe_eval(self, expression: str, context: dict[str, Any]) -> float:
         """Safely evaluate a formula expression using AST parsing.

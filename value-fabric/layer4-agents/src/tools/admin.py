@@ -7,6 +7,12 @@ from uuid import UUID
 from fastapi import HTTPException, status
 
 from shared.identity.context import RequestContext
+from shared.models.typed_dict import TypedDictModel
+
+
+class suspend_tenantResult(TypedDictModel):
+    success: bool
+    tenant_id: Any
 
 logger = logging.getLogger(__name__)
 
@@ -37,4 +43,4 @@ async def suspend_tenant(
     # TODO: Implement actual tenant suspension
     admin_id = context.user_id if context else "unknown"
     logger.info(f"Tenant {tenant_id} suspended by admin {admin_id}")
-    return {"success": True, "tenant_id": str(tenant_id)}
+    return suspend_tenantResult.model_validate({"success": True, "tenant_id": str(tenant_id)})

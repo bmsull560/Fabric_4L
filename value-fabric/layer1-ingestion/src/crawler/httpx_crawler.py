@@ -17,6 +17,11 @@ import httpx
 import structlog
 import trafilatura
 from selectolax.lexbor import LexborHTMLParser
+from shared.models.typed_dict import TypedDictModel
+
+
+class HttpxCrawler_get_statsResult(TypedDictModel):
+    config: dict[str, Any]
 
 logger = structlog.get_logger()
 
@@ -417,10 +422,12 @@ class HttpxCrawler:
     def get_stats(self) -> dict[str, Any]:
         """Get crawler statistics (if implemented)."""
         # Placeholder for future metrics implementation
-        return {
+        return HttpxCrawler_get_statsResult.model_validate({
             "config": {
                 "timeout_seconds": self.config.timeout_seconds,
                 "max_connections": self.config.max_connections,
                 "max_concurrent": self.config.max_concurrent_requests,
             }
-        }
+        })
+
+

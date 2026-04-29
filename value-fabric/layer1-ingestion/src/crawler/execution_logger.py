@@ -15,6 +15,17 @@ import structlog
 
 from .httpx_crawler import FastPathResult
 from .smart_router import QualityDecision, RoutingDecision
+from shared.models.typed_dict import TypedDictModel
+
+
+class ExecutionLogger_get_stats_for_jobResult(TypedDictModel):
+    avg_time_ms: Any | None = None
+    fallback_rate: Any | None = None
+    job_id: Any
+    path_breakdown: dict[str, Any] | None = None
+    total_bytes: Any | None = None
+    total_time_ms: Any | None = None
+    urls_processed: int
 
 logger = structlog.get_logger()
 
@@ -392,7 +403,7 @@ data needed to calculate it later.
         job_entries = [e for e in entries if e.job_id == job_id]
 
         if not job_entries:
-            return {"job_id": job_id, "urls_processed": 0}
+            return ExecutionLogger_get_stats_for_jobResult.model_validate({"job_id": job_id, "urls_processed": 0})
 
         fast_count = sum(1 for e in job_entries if e.final_path == ExecutionPath.FAST.value)
         browser_count = sum(1 for e in job_entries if e.final_path == ExecutionPath.BROWSER.value)
@@ -401,7 +412,7 @@ data needed to calculate it later.
         total_time = sum(e.total_time_ms for e in job_entries)
         total_bytes = sum(e.bytes_transferred for e in job_entries)
 
-        return {
+        return ExecutionLogger_get_stats_for_jobResult.model_validate({
             "job_id": job_id,
             "urls_processed": len(job_entries),
             "path_breakdown": {
@@ -413,7 +424,7 @@ data needed to calculate it later.
             "total_time_ms": total_time,
             "total_bytes": total_bytes,
             "avg_time_ms": total_time / len(job_entries) if job_entries else 0,
-        }
+        })
 
 
 class NoOpExecutionLogger(ExecutionLogger):

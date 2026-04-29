@@ -30,6 +30,48 @@ from enum import Enum
 from typing import Any
 
 import structlog
+from shared.models.typed_dict import TypedDictModel
+
+
+class ValueHypothesis_to_node_propertiesResult(TypedDictModel):
+    account_id: Any
+    capability_id: Any
+    capability_name: Any
+    confidence_score: Any
+    created_at: Any
+    entity_type: str
+    estimated_impact_usd: Any
+    evidence_ids: Any
+    hypothesis_text: Any
+    id: Any
+    impact_timeframe_days: Any
+    product_id: Any
+    product_name: Any
+    signal_id: Any
+    signal_name: Any
+    status: Any
+    tenant_id: Any
+    updated_at: Any
+
+class ValueHypothesisEngine_get_account_hypothesesResult(TypedDictModel):
+    hypotheses: Any
+    limit: Any
+    skip: Any
+    total: Any
+
+class ValueHypothesisEngine_get_hypothesisResult(TypedDictModel):
+    evidence_detail: Any
+    product_detail: Any
+    signal_detail: Any
+
+class ValueHypothesisEngine_get_hypothesis_summaryResult(TypedDictModel):
+    avg_confidence: Any | None = None
+    avg_estimated_impact: Any | None = None
+    by_status: dict[str, Any] | None = None
+    total: int
+    total_estimated_impact: Any | None = None
+    unique_accounts: Any | None = None
+    unique_products: Any | None = None
 
 logger = structlog.get_logger()
 
@@ -80,7 +122,7 @@ class ValueHypothesis:
 
     def to_node_properties(self) -> dict[str, Any]:
         """Serialize to Neo4j node properties."""
-        return {
+        return ValueHypothesis_to_node_propertiesResult.model_validate({
             "id": self.id,
             "tenant_id": self.tenant_id,
             "account_id": self.account_id,
@@ -99,7 +141,7 @@ class ValueHypothesis:
             "entity_type": "ValueHypothesis",
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-        }
+        })
 
 
 # ---------------------------------------------------------------------------
@@ -393,12 +435,13 @@ class ValueHypothesisEngine:
             record = await result.single()
             if not record or not record["hypothesis"]:
                 return None
-            return {
+            return ValueHypothesisEngine_get_hypothesisResult.model_validate({
                 **record["hypothesis"],
                 "signal_detail": record["signal"],
                 "product_detail": record["product"],
                 "evidence_detail": record["evidence"],
-            }
+            })
+
 
     async def get_account_hypotheses(
         self,
@@ -442,12 +485,13 @@ class ValueHypothesisEngine:
             list_result = await session.run(list_query, params)
             records = [record async for record in list_result]
 
-        return {
+        return ValueHypothesisEngine_get_account_hypothesesResult.model_validate({
             "hypotheses": [r["hypothesis"] for r in records],
             "total": total,
             "skip": skip,
             "limit": limit,
-        }
+        })
+
 
     async def validate_hypothesis(
         self,
@@ -569,9 +613,9 @@ class ValueHypothesisEngine:
             result = await session.run(query, params)
             record = await result.single()
             if not record:
-                return {"total": 0}
+                return ValueHypothesisEngine_get_hypothesis_summaryResult.model_validate({"total": 0})
 
-            return {
+            return ValueHypothesisEngine_get_hypothesis_summaryResult.model_validate({
                 "total": record["total"],
                 "by_status": {
                     "draft": record["draft_count"],
@@ -584,4 +628,6 @@ class ValueHypothesisEngine:
                 "avg_estimated_impact": round(record["avg_estimated_impact"] or 0, 2),
                 "unique_products": record["unique_products"],
                 "unique_accounts": record["unique_accounts"],
-            }
+            })
+
+

@@ -20,6 +20,21 @@ from ...services.export_provenance import build_export_provenance_manifest
 from ...services.export_storage import generate_download_url, upload_bytes
 from ...tools import create_default_registry
 from ...tools.registry import ToolCategory, ToolRegistry
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_tool_schemaResult(TypedDictModel):
+    category: Any
+    description: Any
+    examples: Any
+    input_schema: Any
+    name: Any
+    output_schema: Any
+    requires_auth: Any
+    timeout_seconds: Any
+
+class list_tool_categoriesResult(TypedDictModel):
+    categories: Any
 
 try:
     from shared.governance.abom import AgentBillOfMaterials
@@ -122,7 +137,7 @@ async def get_tool_schema(
     tool = registry.get(tool_name)
     schema = tool.get_schema()
 
-    return {
+    return get_tool_schemaResult.model_validate({
         "name": schema.name,
         "category": schema.category.value,
         "description": schema.description,
@@ -131,7 +146,7 @@ async def get_tool_schema(
         "timeout_seconds": schema.timeout_seconds,
         "requires_auth": schema.requires_auth,
         "examples": schema.examples,
-    }
+    })
 
 
 @router.post("/tools/invoke", response_model=ToolInvokeResponse)
@@ -513,4 +528,4 @@ async def list_tool_categories(
         {"id": cat.value, "name": cat.value.replace("_", " ").title()} for cat in ToolCategory
     ]
 
-    return {"categories": categories}
+    return list_tool_categoriesResult.model_validate({"categories": categories})

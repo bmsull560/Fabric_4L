@@ -31,6 +31,13 @@ from shared.mcp_gateway.mcp_types import (
     ToolAccessDeniedError,
     PKCEChallenge,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class sample_rsa_keypairResult(TypedDictModel):
+    key_id: str
+    private: str
+    public: str
 
 
 # =============================================================================
@@ -394,11 +401,11 @@ def sample_rsa_keypair() -> dict:
     """
     # In real implementation, these would be actual RSA keys
     # For unit tests, we use placeholder strings that represent key material
-    return {
+    return sample_rsa_keypairResult.model_validate({
         "private": "mock-private-key-for-testing-only-do-not-use-in-production",
         "public": "mock-public-key-for-testing-only-do-not-use-in-production",
         "key_id": "test-key-001",
-    }
+    })
 
 
 # =============================================================================

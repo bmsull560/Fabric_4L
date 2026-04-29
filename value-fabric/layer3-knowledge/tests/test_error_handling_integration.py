@@ -20,6 +20,11 @@ from shared.error_handling.exceptions import (
 )
 from shared.error_handling.middleware import RequestIDMiddleware
 from shared.error_handling.models import ErrorCode
+from shared.models.typed_dict import TypedDictModel
+
+
+class echo_traceResult(TypedDictModel):
+    trace_id: Any
 
 # ---------------------------------------------------------------------------
 # Helpers: minimal FastAPI app with middleware + handlers for isolated testing
@@ -38,7 +43,7 @@ def _build_test_app() -> FastAPI:
     @test_app.get("/echo-trace")
     async def echo_trace(request: Request):
         """Return the trace_id stored by middleware."""
-        return {"trace_id": getattr(request.state, "trace_id", None)}
+        return echo_traceResult.model_validate({"trace_id": getattr(request.state, "trace_id", None)})
 
     @test_app.get("/raise-vf")
     async def raise_vf(request: Request):

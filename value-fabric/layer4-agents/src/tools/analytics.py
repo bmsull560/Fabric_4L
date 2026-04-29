@@ -6,6 +6,12 @@ import logging
 from uuid import UUID
 
 from shared.identity.context import RequestContext, require_context
+from shared.models.typed_dict import TypedDictModel
+
+
+class compute_metricsResult(TypedDictModel):
+    score: float
+    status: str
 
 logger = logging.getLogger(__name__)
 
@@ -62,4 +68,4 @@ async def compute_metrics(
     tenant_id = _get_tenant_id()
     logger.debug(f"Metrics computation requested for tenant {tenant_id}")
     # Stub: Requires value pack formula engine integration
-    return {"score": 0.0, "status": "unimplemented"}
+    return compute_metricsResult.model_validate({"score": 0.0, "status": "unimplemented"})

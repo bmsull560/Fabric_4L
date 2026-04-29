@@ -23,6 +23,63 @@ from ..models.workflow_config import BUSINESS_CASE_WORKFLOW_CONFIG
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
 from .roi_calculator import ROICalculatorWorkflow
+from shared.models.typed_dict import TypedDictModel
+
+
+class BusinessCaseGeneratorWorkflow__execute_agentResult(TypedDictModel):
+    status: str
+
+class BusinessCaseGeneratorWorkflow__execute_llmResult(TypedDictModel):
+    status: str
+
+class BusinessCaseGeneratorWorkflow__execute_gather_inputsResult(TypedDictModel):
+    account_id: Any | None = None
+    error: str
+    interactions: Any | None = None
+    lead_score: Any | None = None
+    output_format: Any | None = None
+    prospect: Any | None = None
+    sections_requested: Any | None = None
+
+class BusinessCaseGeneratorWorkflow__execute_generate_sectionsResult(TypedDictModel):
+    blocked: bool
+    error: str
+    remediation_items: Any
+    section_count: Any | None = None
+    sections: list[Any]
+    truth_references: Any
+
+class BusinessCaseGeneratorWorkflow__execute_roi_subworkflowResult(TypedDictModel):
+    account_id: Any | None = None
+    detailed_calculations: Any | None = None
+    error: str | None = None
+    roi_results: dict[str, Any]
+    status: str
+
+class BusinessCaseGeneratorWorkflow__execute_verify_truth_requirementsResult(TypedDictModel):
+    error: str | None = None
+    organization_id: Any
+    passed: bool
+    remediation_items: list[Any]
+    requirements: list[Any]
+    truth_references: list[Any]
+
+class BusinessCaseGeneratorWorkflow__execute_assemble_documentResult(TypedDictModel):
+    blocked: bool | None = None
+    case_metadata: dict[str, Any] | None = None
+    error: str
+    remediation_items: Any | None = None
+    truth_references: Any | None = None
+
+class BusinessCaseGeneratorWorkflow__promote_case_claims_to_truth_objectsResult(TypedDictModel):
+    claim_traceability: list[Any]
+    threshold_decisions: list[Any]
+    truth_object_ids: list[Any]
+
+class BusinessCaseGeneratorWorkflow__sync_ground_truths_to_kgResult(TypedDictModel):
+    error: Any
+    failed: int
+    synced: int
 
 logger = logging.getLogger(__name__)
 
@@ -94,19 +151,19 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         if node_config.id == "run_roi":
             return await self._execute_roi_subworkflow(state)
 
-        return {"status": "agent_not_implemented"}
+        return BusinessCaseGeneratorWorkflow__execute_agentResult.model_validate({"status": "agent_not_implemented"})
 
     async def _execute_llm(self, node_config, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Execute LLM node for section generation."""
         if node_config.id == "generate_narrative":
             return await self._execute_generate_sections(state)
 
-        return {"status": "llm_not_implemented"}
+        return BusinessCaseGeneratorWorkflow__execute_llmResult.model_validate({"status": "llm_not_implemented"})
 
     async def _execute_gather_inputs(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Gather all inputs needed for business case generation."""
         if not state.case_input:
-            return {"error": "No business case input configured"}
+            return BusinessCaseGeneratorWorkflow__execute_gather_inputsResult.model_validate({"error": "No business case input configured"})
 
         account_id = str(state.case_input.account_id)
         prospect_id = state.case_input.custom_inputs.get("provider_record_id", account_id)
@@ -128,19 +185,20 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         # Score lead for additional context
         lead_score = await self.tool_registry.execute("score_lead", {"prospect_id": prospect_id})
 
-        return {
+        return BusinessCaseGeneratorWorkflow__execute_gather_inputsResult.model_validate({
             "account_id": account_id,
             "prospect": prospect_data,
             "interactions": interactions,
             "lead_score": lead_score,
             "sections_requested": state.case_input.sections_requested,
             "output_format": state.case_input.output_format,
-        }
+        })
+
 
     async def _execute_roi_subworkflow(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Execute ROI calculation as sub-workflow."""
         if not state.case_input:
-            return {"error": "No business case input configured"}
+            return BusinessCaseGeneratorWorkflow__execute_roi_subworkflowResult.model_validate({"error": "No business case input configured"})
 
         account_id = str(state.case_input.account_id)
         prospect_id = state.case_input.custom_inputs.get("provider_record_id", account_id)
@@ -158,14 +216,16 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         try:
             roi_result = await self.roi_workflow.run(roi_initial_state)
 
-            return {
+            return BusinessCaseGeneratorWorkflow__execute_roi_subworkflowResult.model_validate({
                 "status": "completed",
                 "account_id": account_id,
                 "roi_results": roi_result.output_data.get("aggregate", {}),
                 "detailed_calculations": roi_result.calculation_results,
-            }
+            })
+
+
         except Exception as e:
-            return {"status": "failed", "error": str(e), "roi_results": {}}
+            return BusinessCaseGeneratorWorkflow__execute_roi_subworkflowResult.model_validate({"status": "failed", "error": str(e), "roi_results": {}})
 
     async def _execute_generate_sections(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Generate all requested narrative sections.
@@ -174,17 +234,18 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
         the new LLM-powered section enhancement feature.
         """
         if not state.case_input:
-            return {"error": "No business case input configured", "sections": []}
+            return BusinessCaseGeneratorWorkflow__execute_generate_sectionsResult.model_validate({"error": "No business case input configured", "sections": []})
 
         gate_result = state.output_data.get("verify_truth_requirements", {})
         if gate_result and not gate_result.get("passed", True):
-            return {
+            return BusinessCaseGeneratorWorkflow__execute_generate_sectionsResult.model_validate({
                 "error": "Narrative generation blocked by truth verification gate",
                 "blocked": True,
                 "sections": [],
                 "remediation_items": gate_result.get("remediation_items", []),
                 "truth_references": gate_result.get("truth_references", []),
-            }
+            })
+
 
         # Check feature flag for enhanced narrative generation (Task 83: is_enabled usage)
         enhanced_mode = is_enabled(
@@ -281,21 +342,22 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 )
                 sections_generated.append(section)
 
-        return {
+        return BusinessCaseGeneratorWorkflow__execute_generate_sectionsResult.model_validate({
             "sections": [s.model_dump() for s in sections_generated],
             "section_count": len(sections_generated),
-        }
+        })
+
 
     async def _execute_verify_truth_requirements(
         self, state: BusinessCaseAgentState
     ) -> dict[str, Any]:
         """Verify required claims/metrics against Layer 5 TruthObjects."""
         if not state.case_input:
-            return {"error": "No business case input configured", "passed": False}
+            return BusinessCaseGeneratorWorkflow__execute_verify_truth_requirementsResult.model_validate({"error": "No business case input configured", "passed": False})
 
         requirements = state.case_input.custom_inputs.get("truth_requirements", [])
         if not requirements:
-            return {"passed": True, "requirements": [], "truth_references": [], "remediation_items": []}
+            return BusinessCaseGeneratorWorkflow__execute_verify_truth_requirementsResult.model_validate({"passed": True, "requirements": [], "truth_references": [], "remediation_items": []})
 
         organization_id = self._resolve_organization_id(state)
         service_token: str | None = os.getenv("LAYER5_SERVICE_TOKEN")
@@ -438,24 +500,26 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                             }
                         )
 
-            return {
+            return BusinessCaseGeneratorWorkflow__execute_verify_truth_requirementsResult.model_validate({
                 "passed": all_passed,
                 "requirements": requirement_results,
                 "truth_references": truth_references,
                 "remediation_items": remediation_items,
                 "organization_id": organization_id,
-            }
+            })
+
+
         finally:
             await client.close()
 
     async def _execute_assemble_document(self, state: BusinessCaseAgentState) -> dict[str, Any]:
         """Assemble sections into final document, then sync ground truths to KG."""
         if not state.case_input:
-            return {"error": "No business case input configured"}
+            return BusinessCaseGeneratorWorkflow__execute_assemble_documentResult.model_validate({"error": "No business case input configured"})
 
         gate_result = state.output_data.get("verify_truth_requirements", {})
         if gate_result and not gate_result.get("passed", True):
-            return {
+            return BusinessCaseGeneratorWorkflow__execute_assemble_documentResult.model_validate({
                 "blocked": True,
                 "error": "Final narrative/export blocked: required claims are not verified",
                 "remediation_items": gate_result.get("remediation_items", []),
@@ -468,12 +532,13 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                     },
                     "truth_references": gate_result.get("truth_references", []),
                 },
-            }
+            })
+
 
         sections_data = state.output_data.get("generate_narrative", {}).get("sections", [])
 
         if not sections_data:
-            return {"error": "No sections generated"}
+            return BusinessCaseGeneratorWorkflow__execute_assemble_documentResult.model_validate({"error": "No sections generated"})
 
         # Prepare sections for assembly
         assembly_sections = []
@@ -629,7 +694,7 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
     ) -> dict[str, Any]:
         """Create/promote deterministic claims to Layer 5 and persist traceability."""
         if not state.case_input:
-            return {"truth_object_ids": [], "claim_traceability": [], "threshold_decisions": []}
+            return BusinessCaseGeneratorWorkflow__promote_case_claims_to_truth_objectsResult.model_validate({"truth_object_ids": [], "claim_traceability": [], "threshold_decisions": []})
 
         thresholds = state.case_input.custom_inputs.get("claim_promotion_thresholds", {})
         min_confidence = float(thresholds.get("min_confidence", 0.75))
@@ -740,11 +805,13 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 )
                 threshold_decisions.append(decision)
 
-            return {
+            return BusinessCaseGeneratorWorkflow__promote_case_claims_to_truth_objectsResult.model_validate({
                 "truth_object_ids": sorted(set(truth_object_ids)),
                 "claim_traceability": claim_traceability,
                 "threshold_decisions": threshold_decisions,
-            }
+            })
+
+
         finally:
             await client.close()
 
@@ -801,6 +868,6 @@ class BusinessCaseGeneratorWorkflow(BaseWorkflow):
                 organization_id,
                 exc,
             )
-            return {"error": str(exc), "synced": 0, "failed": 0}
+            return BusinessCaseGeneratorWorkflow__sync_ground_truths_to_kgResult.model_validate({"error": str(exc), "synced": 0, "failed": 0})
         finally:
             await client.close()

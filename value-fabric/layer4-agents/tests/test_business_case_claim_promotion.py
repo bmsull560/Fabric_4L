@@ -8,6 +8,21 @@ import pytest
 
 from src.services.export_provenance import build_export_provenance_manifest
 from src.workflows.business_case import BusinessCaseGeneratorWorkflow
+from shared.models.typed_dict import TypedDictModel
+
+
+class _FakeLayer5Client_list_truthsResult(TypedDictModel):
+    items: list[Any]
+
+class _FakeLayer5Client_submit_truthResult(TypedDictModel):
+    id: Any
+
+class _FakeLayer5Client_validate_truthResult(TypedDictModel):
+    ok: bool
+
+class _FakeLayer5Client_sync_approved_truthsResult(TypedDictModel):
+    failed: int
+    synced: int
 
 
 class _FakeLayer5Client:
@@ -16,19 +31,19 @@ class _FakeLayer5Client:
         self.validations: list[dict] = []
 
     async def list_truths(self, **kwargs):
-        return {"items": []}
+        return _FakeLayer5Client_list_truthsResult.model_validate({"items": []})
 
     async def submit_truth(self, **kwargs):
         truth_id = f"truth-{len(self.created_truths) + 1}"
         self.created_truths.append({"id": truth_id, **kwargs})
-        return {"id": truth_id}
+        return _FakeLayer5Client_submit_truthResult.model_validate({"id": truth_id})
 
     async def validate_truth(self, **kwargs):
         self.validations.append(kwargs)
-        return {"ok": True}
+        return _FakeLayer5Client_validate_truthResult.model_validate({"ok": True})
 
     async def sync_approved_truths(self, **kwargs):
-        return {"synced": 0, "failed": 0}
+        return _FakeLayer5Client_sync_approved_truthsResult.model_validate({"synced": 0, "failed": 0})
 
     async def close(self):
         return None

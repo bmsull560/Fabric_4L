@@ -14,6 +14,13 @@ from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import Message, Receive, Scope, Send
+from shared.models.typed_dict import TypedDictModel
+
+
+class SecurityMiddleware_receiveResult(TypedDictModel):
+    body: Any
+    more_body: bool
+    type: str
 
 # Security patterns for injection detection
 # WARNING: This is a defense-in-depth layer only. These patterns can be bypassed via:
@@ -407,11 +414,13 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             nonlocal body_sent
             if not body_sent and cached_body:
                 body_sent = True
-                return {
+                return SecurityMiddleware_receiveResult.model_validate({
                     "type": "http.request",
                     "body": cached_body,
                     "more_body": False,
-                }
+                })
+
+
             # After body is consumed, delegate to original receive
             return await original_receive()
 
