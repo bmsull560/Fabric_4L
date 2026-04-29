@@ -4,58 +4,106 @@ Knowledge graph tools with tenant isolation.
 All tools enforce tenant boundaries and audit tool invocations.
 """
 
+from __future__ import annotations
+
 import logging
+import os
+from typing import Any
 from uuid import UUID
+
+from neo4j import AsyncGraphDatabase
+
 from shared.identity.context import RequestContext, require_context
 from shared.audit import emit_audit_event, AuditAction, AuditOutcome
 
 logger = logging.getLogger(__name__)
 
+_NEO4J_URI = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+_NEO4J_USER = os.getenv("NEO4J_USER", "neo4j")
+_NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "password")
+_NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "valuefabric")
+_DRIVER = None
 
-def _get_tenant_id() -> str:
-    """Safely retrieve tenant ID from request context.
 
-    Returns "default" if context is not available (e.g., in tests or background tasks).
-    """
+def _get_driver():
+    """Lazy initialize Neo4j driver."""
+    global _DRIVER
+    if _DRIVER is None:
+        _DRIVER = AsyncGraphDatabase.driver(_NEO4J_URI, auth=(_NEO4J_USER, _NEO4J_PASSWORD))
+    return _DRIVER
+
+
+def _resolve_tenant_id(context: RequestContext | None = None) -> str:
+    """Resolve tenant ID from explicit context or ambient request context."""
+    if context and context.tenant_id:
+        return str(context.tenant_id)
+
     try:
         return str(require_context().tenant_id)
     except RuntimeError:
+        # Non-request execution path (e.g., tests/background jobs)
         return "default"
+
+
+def _tenant_uuid_or_none(tenant_id: str) -> UUID | None:
+    try:
+        return UUID(tenant_id)
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_entity_dict(node: Any, labels: list[str]) -> dict[str, Any]:
+    entity = dict(node)
+    entity["entity_type"] = labels[0] if labels else "Unknown"
+    return entity
 
 
 async def get_entity(
     entity_id: str,
     context: RequestContext | None = None
 ) -> dict | None:
-    """Get entity by ID with tenant scoping.
-    
-    Args:
-        entity_id: Entity identifier
-        context: Request context (optional)
-    
-    Returns:
-        Entity data or None if not found/invalid
-    """
-    tenant_id = _get_tenant_id()
-    
-    # Validate entity_id
+    """Get entity by ID with tenant scoping."""
+    tenant_id = _resolve_tenant_id(context)
+
     if "'" in entity_id or "--" in entity_id or "OR" in entity_id.upper():
-        logger.warning(f"Invalid characters in entity_id: {entity_id}")
+        logger.warning("Invalid characters in entity_id: %s", entity_id)
         return None
-    
-    # TODO: Implement actual database query with tenant filtering
-    # For now, return None
-    
-    # Audit the access attempt
-    await emit_audit_event(
-        action=AuditAction.READ,
-        outcome=AuditOutcome.SUCCESS,
-        resource_type="entity",
-        resource_id=entity_id,
-        tenant_id=tenant_id
-    )
-    
-    return None
+
+    outcome = AuditOutcome.FAILURE
+    reason = "not_found"
+
+    try:
+        driver = _get_driver()
+        async with driver.session(database=_NEO4J_DATABASE) as session:
+            result = await session.run(
+                """
+                MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+                RETURN n, labels(n) AS labels
+                LIMIT 1
+                """,
+                {"entity_id": entity_id, "tenant_id": tenant_id},
+            )
+            record = await result.single()
+
+            if not record:
+                return None
+
+            outcome = AuditOutcome.SUCCESS
+            reason = "ok"
+            return _build_entity_dict(record["n"], record["labels"])
+    except Exception as exc:
+        logger.error("get_entity failed for tenant=%s, entity=%s: %s", tenant_id, entity_id, exc)
+        reason = "error"
+        return None
+    finally:
+        emit_audit_event(
+            action=AuditAction.KG_NODE_UPDATED,
+            outcome=outcome,
+            resource_type="entity",
+            resource_id=entity_id,
+            tenant_id=_tenant_uuid_or_none(tenant_id),
+            details={"operation": "get_entity", "reason": reason},
+        )
 
 
 async def update_entity(
@@ -63,102 +111,172 @@ async def update_entity(
     updates: dict,
     context: RequestContext | None = None
 ) -> dict | None:
-    """Update entity with tenant scoping.
-    
-    Args:
-        entity_id: Entity identifier
-        updates: Fields to update
-        context: Request context (required for permission check)
-    
-    Returns:
-        Updated entity data or None if permission denied/not found
-    """
-    tenant_id = _get_tenant_id()
-    
-    # Check write permission
+    """Update entity with tenant scoping."""
+    tenant_id = _resolve_tenant_id(context)
+
     if context and "write" not in context.permissions:
+        emit_audit_event(
+            action=AuditAction.KG_NODE_UPDATED,
+            outcome=AuditOutcome.FAILURE,
+            resource_type="entity",
+            resource_id=entity_id,
+            tenant_id=_tenant_uuid_or_none(tenant_id),
+            details={"operation": "update_entity", "reason": "denied"},
+        )
         logger.warning("Write permission required for update_entity")
         return None
-    
-    # TODO: Implement actual update with tenant filtering
-    # For now, return None
-    logger.info(f"Entity {entity_id} not found for tenant {tenant_id}")
-    return None
+
+    safe_updates = {k: v for k, v in updates.items() if k not in {"id", "tenant_id"}}
+    outcome = AuditOutcome.FAILURE
+    reason = "not_found"
+
+    try:
+        driver = _get_driver()
+        async with driver.session(database=_NEO4J_DATABASE) as session:
+            result = await session.run(
+                """
+                MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+                SET n += $updates
+                RETURN n, labels(n) AS labels
+                LIMIT 1
+                """,
+                {"entity_id": entity_id, "tenant_id": tenant_id, "updates": safe_updates},
+            )
+            record = await result.single()
+            if not record:
+                return None
+
+            outcome = AuditOutcome.SUCCESS
+            reason = "ok"
+            return _build_entity_dict(record["n"], record["labels"])
+    except Exception as exc:
+        logger.error("update_entity failed for tenant=%s, entity=%s: %s", tenant_id, entity_id, exc)
+        reason = "error"
+        return None
+    finally:
+        emit_audit_event(
+            action=AuditAction.KG_NODE_UPDATED,
+            outcome=outcome,
+            resource_type="entity",
+            resource_id=entity_id,
+            tenant_id=_tenant_uuid_or_none(tenant_id),
+            details={"operation": "update_entity", "reason": reason},
+        )
 
 
 async def delete_entity(
     entity_id: str,
     context: RequestContext | None = None
 ) -> bool:
-    """Delete entity with tenant scoping.
-    
-    Args:
-        entity_id: Entity identifier
-        context: Request context (required for permission check)
-    
-    Returns:
-        True if deleted, False if permission denied or not found
-    """
-    tenant_id = _get_tenant_id()
-    
-    # Check delete permission
+    """Delete entity with tenant scoping."""
+    tenant_id = _resolve_tenant_id(context)
+
     if context and "delete" not in context.permissions:
+        emit_audit_event(
+            action=AuditAction.KG_NODE_DELETED,
+            outcome=AuditOutcome.FAILURE,
+            resource_type="entity",
+            resource_id=entity_id,
+            tenant_id=_tenant_uuid_or_none(tenant_id),
+            details={"operation": "delete_entity", "reason": "denied"},
+        )
         logger.warning("Delete permission required for delete_entity")
         return False
-    
-    # TODO: Implement actual delete with tenant filtering
-    # For now, return False
-    
-    # Audit the deletion attempt
-    await emit_audit_event(
-        action=AuditAction.DELETE,
-        outcome=AuditOutcome.FAILURE,
-        resource_type="entity",
-        resource_id=entity_id,
-        tenant_id=tenant_id
-    )
-    
-    logger.info(f"Entity {entity_id} not found for tenant {tenant_id}")
-    return False
+
+    outcome = AuditOutcome.FAILURE
+    reason = "not_found"
+
+    try:
+        driver = _get_driver()
+        async with driver.session(database=_NEO4J_DATABASE) as session:
+            result = await session.run(
+                """
+                MATCH (n {id: $entity_id, tenant_id: $tenant_id})
+                WITH n LIMIT 1
+                DETACH DELETE n
+                RETURN 1 AS deleted
+                """,
+                {"entity_id": entity_id, "tenant_id": tenant_id},
+            )
+            record = await result.single()
+            deleted = bool(record and record.get("deleted") == 1)
+            if deleted:
+                outcome = AuditOutcome.SUCCESS
+                reason = "ok"
+            return deleted
+    except Exception as exc:
+        logger.error("delete_entity failed for tenant=%s, entity=%s: %s", tenant_id, entity_id, exc)
+        reason = "error"
+        return False
+    finally:
+        emit_audit_event(
+            action=AuditAction.KG_NODE_DELETED,
+            outcome=outcome,
+            resource_type="entity",
+            resource_id=entity_id,
+            tenant_id=_tenant_uuid_or_none(tenant_id),
+            details={"operation": "delete_entity", "reason": reason},
+        )
 
 
 async def search_entities(
     query: str,
     context: RequestContext | None = None
 ) -> list[dict]:
-    """Search entities with tenant scoping.
-    
-    Args:
-        query: Search query
-        context: Request context (optional)
-    
-    Returns:
-        List of matching entities (empty if query too large)
-    """
-    tenant_id = _get_tenant_id()
-    
-    # Validate query size
+    """Search entities with tenant scoping."""
+    tenant_id = _resolve_tenant_id(context)
+
     if len(query) > 10000:
-        logger.warning(f"Query too large: {len(query)} characters (max 10000)")
+        logger.warning("Query too large: %s characters (max 10000)", len(query))
         return []
-    
-    # TODO: Implement actual search with tenant filtering
-    # For now, return empty list
-    return []
+
+    try:
+        driver = _get_driver()
+        async with driver.session(database=_NEO4J_DATABASE) as session:
+            result = await session.run(
+                """
+                MATCH (n {tenant_id: $tenant_id})
+                WHERE toLower(coalesce(n.name, "")) CONTAINS toLower($query)
+                   OR toLower(coalesce(n.id, "")) CONTAINS toLower($query)
+                   OR toLower(coalesce(n.description, "")) CONTAINS toLower($query)
+                RETURN n, labels(n) AS labels
+                ORDER BY coalesce(n.name, n.id)
+                LIMIT 50
+                """,
+                {"tenant_id": tenant_id, "query": query.strip()},
+            )
+
+            entities: list[dict] = []
+            async for record in result:
+                entities.append(_build_entity_dict(record["n"], record["labels"]))
+            return entities
+    except Exception as exc:
+        logger.error("search_entities failed for tenant=%s query=%s: %s", tenant_id, query, exc)
+        return []
 
 
 async def list_entities(
     context: RequestContext | None = None
 ) -> list[dict]:
-    """List entities with tenant scoping.
-    
-    Args:
-        context: Request context (optional)
-    
-    Returns:
-        List of entities for tenant
-    """
-    tenant_id = _get_tenant_id()
-    # TODO: Implement actual list with tenant filtering
-    # For now, return empty list
-    return []
+    """List entities with tenant scoping."""
+    tenant_id = _resolve_tenant_id(context)
+    try:
+        driver = _get_driver()
+        async with driver.session(database=_NEO4J_DATABASE) as session:
+            result = await session.run(
+                """
+                MATCH (n {tenant_id: $tenant_id})
+                RETURN n, labels(n) AS labels
+                ORDER BY coalesce(n.name, n.id)
+                LIMIT 100
+                """,
+                {"tenant_id": tenant_id},
+            )
+
+            entities: list[dict] = []
+            async for record in result:
+                entities.append(_build_entity_dict(record["n"], record["labels"]))
+            return entities
+    except Exception as exc:
+        logger.error("list_entities failed for tenant=%s: %s", tenant_id, exc)
+        return []
