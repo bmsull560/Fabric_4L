@@ -5,7 +5,7 @@ import { chromium, Page, ConsoleMessage, Request, Response } from '@playwright/t
 import * as fs from 'fs';
 import * as path from 'path';
 
-const BASE_URL = process.env.AUDIT_BASE_URL || 'http://localhost:3001';
+const BASE_URL = process.env.AUDIT_BASE_URL || 'http://localhost:3002';
 const OUT = path.resolve(process.cwd(), '../audit-output');
 const SCR = path.join(OUT, 'screenshots');
 fs.mkdirSync(OUT, { recursive: true });
