@@ -21,10 +21,9 @@ import { memo, useState, useCallback, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Search, Bell, ChevronRight, ChevronDown,
-  Building2, Radar, GitBranch, Package, FileOutput, Shield, Settings,
+  Building2, Radar, Settings,
   Command, Sun, Moon, Frame, LifeBuoy, Send,
-  PanelLeft, Eye, Lock, Wrench, Crown,
-  Lightbulb, FileCheck, Calculator, FileText, Cog,
+  PanelLeft, Eye, Lock, Wrench, Crown, Cog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -55,7 +54,6 @@ interface NavChild {
 }
 
 const NAV_DOMAINS: NavItem[] = [
-  // ── Home & Accounts ─────────────────────────────────────────────────────────
   {
     id: "home",
     label: "Home",
@@ -72,60 +70,13 @@ const NAV_DOMAINS: NavItem[] = [
     tier: "standard",
     description: "Select or create a prospect account",
   },
-  // ── 7-Step Methodology Workflow ─────────────────────────────────────────────
-  // Step 1: Intelligence
   {
     id: "intelligence",
     label: "Intelligence",
     icon: Radar,
     path: "/intelligence",
     tier: "standard",
-    description: "AI-enriched prospect profile: signals, stakeholders, ontology",
-  },
-  // Step 2: Value Hypothesis
-  {
-    id: "hypothesis",
-    label: "Value Hypothesis",
-    icon: Lightbulb,
-    path: "/hypothesis",
-    tier: "standard",
-    description: "AI-generated value hypotheses for the account",
-  },
-  // Step 3: Driver Tree
-  {
-    id: "drivers",
-    label: "Driver Tree",
-    icon: GitBranch,
-    path: "/drivers",
-    tier: "standard",
-    description: "Map signals to business value drivers",
-  },
-  // Step 4: Evidence
-  {
-    id: "evidence",
-    label: "Evidence",
-    icon: FileCheck,
-    path: "/evidence",
-    tier: "standard",
-    description: "Verified evidence points supporting the drivers",
-  },
-  // Step 5: Calculator
-  {
-    id: "calculator",
-    label: "Calculator",
-    icon: Calculator,
-    path: "/calculator",
-    tier: "standard",
-    description: "ROI calculator and value model",
-  },
-  // Step 6: Value Case
-  {
-    id: "value-case",
-    label: "Value Case",
-    icon: FileText,
-    path: "/value-case",
-    tier: "standard",
-    description: "Generated narrative and messaging",
+    description: "Account Intelligence workspace — all workflow steps as tabs",
   },
 ];
 
@@ -169,11 +120,11 @@ function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
 
 function resolveWorkspacePath(path: string, accountId: string | null): string {
   if (!accountId) return path;
-  // Account-scoped workflow steps
-  const ACCOUNT_PREFIXES = ["/intelligence", "/hypothesis", "/drivers", "/evidence", "/calculator", "/value-case"];
-  for (const prefix of ACCOUNT_PREFIXES) {
-    if (path === prefix) return `${prefix}/${accountId}`;
-    if (path.startsWith(prefix + "/")) return path.replace(prefix + "/", `${prefix}/${accountId}/`);
+  // New unified workspace route: /accounts/:accountId/intelligence/:tabId
+  if (path === "/intelligence") return `/accounts/${accountId}/intelligence/signals`;
+  if (path.startsWith("/intelligence/")) {
+    const tab = path.replace("/intelligence/", "");
+    return `/accounts/${accountId}/intelligence/${tab}`;
   }
   // Legacy studio routes (backward compat)
   if (path === "/studio") return `/studio/${accountId}`;

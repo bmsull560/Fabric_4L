@@ -152,18 +152,12 @@ const StudioROITab = lazy(() => import("./pages/studio/StudioROITab"));
 const StudioEvidenceTab = lazy(() => import("./pages/studio/StudioEvidenceTab"));
 // ── New Workflow Tab Pages ────────────────────────────────────────────────────
 // Intelligence new tabs
-const OntologyMatchTab = lazy(() => import("./pages/intelligence/OntologyMatchTab"));
+const IntelligenceWorkspacePage = lazy(() => import("./pages/intelligence/IntelligenceWorkspacePage"));
 // Value Hypothesis tabs
-const HypothesisTab = lazy(() => import("./pages/hypothesis/HypothesisTab"));
-const DiscoveryQuestionsTab = lazy(() => import("./pages/hypothesis/DiscoveryQuestionsTab"));
-const PersonaFitTab = lazy(() => import("./pages/hypothesis/PersonaFitTab"));
-const AssumptionsTab = lazy(() => import("./pages/hypothesis/AssumptionsTab"));
 // Evidence tabs
 const AlternativesTab = lazy(() => import("./pages/evidence/AlternativesTab"));
 const SolutionCostTab = lazy(() => import("./pages/evidence/SolutionCostTab"));
 // Calculator tabs
-const CalcROITab = lazy(() => import("./pages/calculator/ROITab"));
-const CalcValueModelTab = lazy(() => import("./pages/calculator/ValueModelTab"));
 // Driver Tree (reuses existing DriversTab from intelligence)
 // Value Case (reuses NarrativeTab from studio)
 // Value Realization (reuses ActionPlanTab from studio)
@@ -421,6 +415,22 @@ function Router() {
           <Accounts />
         </AuthenticatedRoute>
       </Route>
+      {/* ═══════════════════════════════════════════════════════════════
+          ACCOUNT INTELLIGENCE WORKSPACE — Unified tab-based workspace
+          Route: /accounts/:accountId/intelligence/:tabId
+          ═══════════════════════════════════════════════════════════════ */}
+      <Route path="/accounts/:accountId/intelligence/:tabId">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <IntelligenceWorkspacePage />
+        </AuthenticatedRoute>
+      </Route>
+      <Route path="/accounts/:accountId/intelligence">
+        <AuthenticatedRoute {...tierProps}>
+          <AccountContextSync />
+          <IntelligenceWorkspacePage />
+        </AuthenticatedRoute>
+      </Route>
 
       {/* Guided Workflow Routes */}
       <Route path="/workflow/prospect">
@@ -460,135 +470,66 @@ function Router() {
       </Route>
 
       {/* ═══════════════════════════════════════════════════════════════
-          2b. INTELLIGENCE — Ontology Match Tab (new)
+          LEGACY ROUTE REDIRECTS — Forward old URLs to new workspace
           ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/intelligence/:accountId/ontology-match">
+      <Route path="/hypothesis/:accountId/:tab">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <OntologyMatchTab />
-        </AuthenticatedRoute>
-      </Route>
-      {/* ═══════════════════════════════════════════════════════════════
-          3. VALUE HYPOTHESIS — AI-Generated Hypotheses
-          ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/hypothesis">
-        <AuthenticatedRoute {...tierProps}>
-          <WorkspaceContextRedirect workspace="intelligence" />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
       <Route path="/hypothesis/:accountId">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <HypothesisRedirect />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/hypothesis/:accountId/hypothesis">
+      <Route path="/hypothesis">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <HypothesisTab />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/hypothesis/:accountId/discovery-questions">
-        <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <DiscoveryQuestionsTab />
-        </AuthenticatedRoute>
-      </Route>
-      <Route path="/hypothesis/:accountId/persona-fit">
-        <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <PersonaFitTab />
-        </AuthenticatedRoute>
-      </Route>
-      <Route path="/hypothesis/:accountId/assumptions">
-        <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <AssumptionsTab />
-        </AuthenticatedRoute>
-      </Route>
-      {/* ═══════════════════════════════════════════════════════════════
-          4. DRIVER TREE — Single Page
-          ═══════════════════════════════════════════════════════════════ */}
       <Route path="/drivers/:accountId">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <DriversTab />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      {/* ═══════════════════════════════════════════════════════════════
-          5. EVIDENCE — Evidence Workspace
-          ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/evidence">
+      <Route path="/evidence/:accountId/:tab">
         <AuthenticatedRoute {...tierProps}>
-          <WorkspaceContextRedirect workspace="intelligence" />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
       <Route path="/evidence/:accountId">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <EvidenceRedirect />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/evidence/:accountId/evidence">
+      <Route path="/evidence">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <EvidenceTab />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/evidence/:accountId/alternatives">
+      <Route path="/calculator/:accountId/:tab">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <AlternativesTab />
-        </AuthenticatedRoute>
-      </Route>
-      <Route path="/evidence/:accountId/solution-cost">
-        <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <SolutionCostTab />
-        </AuthenticatedRoute>
-      </Route>
-      {/* ═══════════════════════════════════════════════════════════════
-          6. CALCULATOR — ROI & Value Model
-          ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/calculator">
-        <AuthenticatedRoute {...tierProps}>
-          <WorkspaceContextRedirect workspace="intelligence" />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
       <Route path="/calculator/:accountId">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <CalculatorRedirect />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/calculator/:accountId/roi">
+      <Route path="/calculator">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <CalcROITab />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/calculator/:accountId/value-model">
-        <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <CalcValueModelTab />
-        </AuthenticatedRoute>
-      </Route>
-      {/* ═══════════════════════════════════════════════════════════════
-          7. VALUE CASE — Narrative (Single Page)
-          ═══════════════════════════════════════════════════════════════ */}
       <Route path="/value-case/:accountId">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <NarrativeTab />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
-      {/* ═══════════════════════════════════════════════════════════════
-          8. VALUE REALIZATION — Action Plan (Single Page)
-          ═══════════════════════════════════════════════════════════════ */}
       <Route path="/realization/:accountId">
         <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <ActionPlanTab />
+          <Navigate to="/accounts" />
         </AuthenticatedRoute>
       </Route>
       {/* ═══════════════════════════════════════════════════════════════

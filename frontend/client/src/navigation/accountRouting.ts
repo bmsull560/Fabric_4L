@@ -3,14 +3,18 @@ export type AccountWorkspace = "intelligence" | "studio";
 const WORKSPACE_TABS = {
   intelligence: [
     "signals",
+    "enrichment",
+    "stakeholders",
+    "ontology-match",
+    "hypotheses",
     "drivers",
     "evidence",
-    "stakeholders",
-    "enrichment",
-    "hypotheses",
-    "competitive",
-    "roi",
-    "evidence-library",
+    "alternatives",
+    "solution-cost",
+    "calculator",
+    "value-model",
+    "value-case",
+    "value-realization",
   ],
   studio: [
     "action-plan",
@@ -41,9 +45,10 @@ export function getWorkspaceTabOrDefault(
 
 export function resolveWorkspaceRoutePath(path: string, accountId: string | null): string {
   if (!accountId) return path;
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
+  if (path === "/intelligence") return `/accounts/${accountId}/intelligence/signals`;
   if (path.startsWith("/intelligence/")) {
-    return path.replace("/intelligence/", `/intelligence/${accountId}/`);
+    const tab = path.replace("/intelligence/", "");
+    return `/accounts/${accountId}/intelligence/${tab}`;
   }
   if (path === "/studio") return `/studio/${accountId}`;
   if (path.startsWith("/studio/")) {
@@ -60,5 +65,8 @@ export function resolveAccountScopedWorkspacePath(options: {
   const { workspace, accountId, tab } = options;
   if (!accountId) return "/accounts";
   const resolvedTab = getWorkspaceTabOrDefault(workspace, tab);
+  if (workspace === "intelligence") {
+    return `/accounts/${accountId}/intelligence/${resolvedTab}`;
+  }
   return `/${workspace}/${accountId}/${resolvedTab}`;
 }
