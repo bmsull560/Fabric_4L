@@ -219,4 +219,23 @@ export default defineConfig({
       },
     },
   },
+  test: {
+    environment: "jsdom",
+    setupFiles: [path.resolve(import.meta.dirname, "test", "setup.ts")],
+    coverage: {
+      provider: "v8",
+      include: ["client/src/**/*.{ts,tsx}"],
+      exclude: [
+        "client/src/**/*.d.ts",
+        "client/src/**/*.test.{ts,tsx}",
+        "client/src/test/**",
+      ],
+      thresholds: {
+        lines: 35,
+        functions: 35,
+        statements: 35,
+        branches: 25,
+      },
+    },
+  },
 });
