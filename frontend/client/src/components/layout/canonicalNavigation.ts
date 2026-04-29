@@ -99,7 +99,7 @@ export function resolveBreadcrumbs(pathname: string): { label: string; path?: st
     const current = segments[i - 1];
     if (!match && isOpaqueId(current)) continue;
     crumbs.push({
-      label: match?.breadcrumbLabel ?? match?.label ?? current.split("-").map(w => w[0]?.toUpperCase() + w.slice(1)).join(" "),
+      label: match?.breadcrumbLabel ?? match?.label ?? current.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
       path: match ? partial : undefined,
     });
   }
