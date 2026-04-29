@@ -23,7 +23,10 @@
     "test:e2e:report": "playwright show-report",
     "preinstall": "node ./scripts/enforce-package-manager.cjs",
     "generate:types": "npx tsx scripts/generate-api-types.ts",
-    "generate:api-types": "pnpm run generate:types"
+    "generate:api-types": "pnpm run generate:types",
+    "test:a11y:components": "vitest run client/src/accessibility.a11y.spec.tsx",
+    "test:a11y:pages": "node scripts/a11y/axe-critical-scan.mjs",
+    "test:a11y:gate": "node scripts/a11y/enforce-thresholds.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
