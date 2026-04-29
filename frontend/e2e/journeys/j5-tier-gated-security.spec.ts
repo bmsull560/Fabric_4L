@@ -104,19 +104,19 @@ journeyTest.describe('Journey 5: Tier-Gated Access & Security', () => {
   journeyTest('Step 6: Tier switch mid-session updates access controls', async ({ authedPage, switchTier }) => {
     // Start as admin — should access admin route
     await switchTier('admin');
-    await navigateAndWait(authedPage, '/admin/content/formulas');
+    await navigateAndWait(authedPage, '/settings/content/formulas');
     await expectNoErrors(authedPage);
-    await expect(authedPage).toHaveURL(/\/admin\/content\/formulas/);
+    await expect(authedPage).toHaveURL(/\/settings\/content\/formulas/);
 
     // Switch to standard — same route should now redirect
     await switchTier('standard');
-    await authedPage.goto('/admin/content/formulas', { waitUntil: 'domcontentloaded' });
+    await authedPage.goto('/settings/content/formulas', { waitUntil: 'domcontentloaded' });
     await authedPage.waitForTimeout(1000);
     await expect(authedPage).toHaveURL(new RegExp(TIER_REDIRECTS.standard));
 
     // Switch back to admin — should regain access
     await switchTier('admin');
-    await navigateAndWait(authedPage, '/admin/content/formulas');
-    await expect(authedPage).toHaveURL(/\/admin\/content\/formulas/);
+    await navigateAndWait(authedPage, '/settings/content/formulas');
+    await expect(authedPage).toHaveURL(/\/settings\/content\/formulas/);
   });
 });

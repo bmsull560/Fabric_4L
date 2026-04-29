@@ -157,63 +157,84 @@ export async function getCurrentTier(page: Page): Promise<UserTier | null> {
 }
 
 /**
- * Routes accessible by tier — canonical navigation taxonomy
+ * Routes accessible by tier — uses CANONICAL URLs (not redirect aliases).
+ *
+ * IMPORTANT: The app defines many legacy alias routes (e.g., /library/packs,
+ * /discover/accounts) that immediately redirect via <Navigate>. Tests must
+ * use the canonical destination URLs so assertions match the final URL after
+ * redirect.
+ *
+ * Mapping of aliases → canonical:
+ *   /library/packs          → /context/packs
+ *   /discover/accounts      → /accounts
+ *   /discover/jobs          → /context/ingestion/jobs
+ *   /discover/extraction    → /context/extraction
+ *   /discover/knowledge/graph    → /context/ontology/graph
+ *   /discover/knowledge/ontology → /context/ontology
+ *   /model/value-studio/explorer → /context/value-trees/explorer
+ *   /model/value-studio/formulas → /context/formulas
+ *   /deliver/cases          → /deliverables/cases
+ *   /deliver/agents         → /context/agents
+ *   /evidence/traces        → /governance/traces
+ *   /admin/content/formulas → /settings/content/formulas
+ *   /admin/content/benchmarks → /governance/benchmarks
+ *   /admin/data/variables   → /settings/data/variables
  */
 export const ROUTES_BY_TIER: Record<UserTier, { accessible: string[]; restricted: string[] }> = {
   standard: {
     accessible: [
       '/home',
-      '/library/packs',
-      '/discover/accounts',
-      '/discover/jobs',
-      '/deliver/cases',
-      '/evidence/traces',
+      '/context/packs',
+      '/accounts',
+      '/context/ingestion/jobs',
+      '/deliverables/cases',
+      '/governance/traces',
     ],
     restricted: [
-      '/discover/extraction',
-      '/discover/knowledge/graph',
-      '/discover/knowledge/ontology',
-      '/model/value-studio/explorer',
-      '/model/value-studio/formulas',
-      '/admin/content/formulas',
+      '/context/extraction',
+      '/context/ontology/graph',
+      '/context/ontology',
+      '/context/value-trees/explorer',
+      '/context/formulas',
+      '/settings/content/formulas',
     ],
   },
   advanced: {
     accessible: [
       '/home',
-      '/library/packs',
-      '/discover/accounts',
-      '/discover/jobs',
-      '/discover/extraction',
-      '/discover/knowledge/graph',
-      '/discover/knowledge/ontology',
-      '/model/value-studio/explorer',
-      '/model/value-studio/formulas',
-      '/deliver/cases',
-      '/deliver/agents',
-      '/evidence/traces',
+      '/context/packs',
+      '/accounts',
+      '/context/ingestion/jobs',
+      '/context/extraction',
+      '/context/ontology/graph',
+      '/context/ontology',
+      '/context/value-trees/explorer',
+      '/context/formulas',
+      '/deliverables/cases',
+      '/context/agents',
+      '/governance/traces',
     ],
     restricted: [
-      '/admin/content/formulas',
-      '/admin/content/benchmarks',
-      '/admin/data/variables',
+      '/settings/content/formulas',
+      '/governance/benchmarks',
+      '/settings/data/variables',
     ],
   },
   admin: {
     accessible: [
       '/home',
-      '/library/packs',
-      '/discover/accounts',
-      '/discover/extraction',
-      '/discover/knowledge/graph',
-      '/model/value-studio/explorer',
-      '/model/value-studio/formulas',
-      '/deliver/cases',
-      '/deliver/agents',
-      '/evidence/traces',
-      '/admin/content/formulas',
-      '/admin/content/benchmarks',
-      '/admin/data/variables',
+      '/context/packs',
+      '/accounts',
+      '/context/extraction',
+      '/context/ontology/graph',
+      '/context/value-trees/explorer',
+      '/context/formulas',
+      '/deliverables/cases',
+      '/context/agents',
+      '/governance/traces',
+      '/settings/content/formulas',
+      '/governance/benchmarks',
+      '/settings/data/variables',
     ],
     restricted: [],
   },
