@@ -14,12 +14,55 @@ import { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
+import { authClient } from '../services/authClient';
 import { SignupForm } from '../components/login-form';
 import { getSSOTenantSlug } from '../config/auth';
+import { registerWithEmailPassword } from '../api/auth';
+import { ApiError } from '../api/client';
+
+function getSignupErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    const normalizedMessage = err.message.toLowerCase();
+    const normalizedCode = err.errorCode.toLowerCase();
+
+    if (
+      err.statusCode === 409 ||
+      normalizedCode.includes('duplicate') ||
+      normalizedCode.includes('already_exists') ||
+      normalizedMessage.includes('already exists') ||
+      normalizedMessage.includes('already registered') ||
+      normalizedMessage.includes('duplicate')
+    ) {
+      return 'An account with this email already exists. Please sign in instead.';
+    }
+
+    if (
+      err.statusCode === 422 ||
+      normalizedCode.includes('validation') ||
+      normalizedMessage.includes('invalid email') ||
+      normalizedMessage.includes('validation')
+    ) {
+      return 'Please check your email and password and try again.';
+    }
+
+    if (
+      normalizedCode.includes('password') ||
+      normalizedMessage.includes('password') ||
+      normalizedMessage.includes('weak') ||
+      normalizedMessage.includes('complex')
+    ) {
+      return 'Password does not meet security requirements. Use at least 8 characters with a mix of character types.';
+    }
+
+    return err.message || 'Registration failed. Please try again.';
+  }
+
+  return err instanceof Error ? err.message : 'Registration failed. Please try again.';
+}
 
 export default function Signup() {
   const [, navigate] = useLocation();
-  const { isAuthenticated, isLoading, initiateLogin, devBypass } = useAuthContext();
+  const { isAuthenticated, isLoading, initiateLogin } = useAuthContext();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,25 +74,41 @@ export default function Signup() {
     }
   }, [isAuthenticated, isLoading, navigate]);
 
-  const handleSignup = useCallback(async (_data: { email: string; password: string }) => {
+  const handleSignup = useCallback(async (data: { email: string; password: string }) => {
     setIsSubmitting(true);
     setError(null);
 
     try {
-      // TODO: Wire to real signup endpoint when backend supports it.
-      // Auto-login after signup (Skill §2)
-      if (import.meta.env.DEV && devBypass) {
-        devBypass();
+      const response = await registerWithEmailPassword(data);
+
+      const canAutoLogin = Boolean(response.access_token && response.user_id && response.email);
+
+      if (canAutoLogin && response.access_token && response.user_id && response.email) {
+        const tenantSlug = response.tenant_slug || 'default';
+        authClient.persistSession(
+          response.access_token,
+          {
+            id: response.user_id,
+            email: response.email,
+            role: response.role || 'standard',
+            tenantId: response.tenant_id || tenantSlug,
+            tenantSlug,
+          },
+          response.tenant_id || tenantSlug
+        );
+
         navigate('/home');
-      } else {
-        // Redirect to login with success indicator in query string
-        navigate('/login?signup=success');
+        return;
       }
+
+      // Deterministic fallback: send users to login with success state
+      navigate('/login?signup=success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      setError(getSignupErrorMessage(err));
+    } finally {
       setIsSubmitting(false);
     }
-  }, [devBypass, navigate]);
+  }, [navigate]);
 
   /**
    * SSO provider → OIDC flow (same as Login page).
