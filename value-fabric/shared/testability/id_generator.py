@@ -16,7 +16,7 @@ Example — production::
             self._id_gen = id_gen
 
         def create_event(self, payload: dict) -> dict:
-            return {"id": self._id_gen.generate(), "payload": payload}
+            return dict(id=self._id_gen.generate(), payload=payload)
 
 Example — test::
 

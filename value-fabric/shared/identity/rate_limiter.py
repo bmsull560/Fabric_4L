@@ -25,9 +25,9 @@ local count = redis.call('ZCARD', key)
 if count < limit then
     redis.call('ZADD', key, now, now .. ':' .. math.random(1000000))
     redis.call('EXPIRE', key, window)
-    return {1, limit - count - 1}
+    return({1, limit - count - 1})
 else
-    return {0, 0}
+    return({0, 0})
 end
 """
 

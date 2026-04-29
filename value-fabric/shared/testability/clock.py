@@ -16,7 +16,7 @@ Example — production wiring::
             self._clock = clock
 
         def log(self, action: str) -> dict:
-            return {"action": action, "timestamp": self._clock.now()}
+            return dict(action=action, timestamp=self._clock.now())
 
 Example — test with frozen time::
 

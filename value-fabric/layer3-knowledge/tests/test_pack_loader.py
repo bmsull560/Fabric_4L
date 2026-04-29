@@ -115,7 +115,7 @@ class TestPathTraversalProtection:
 
         for pack_id, expected in dangerous_cases:
             result = _extract_pack_slug(pack_id)
-            assert result == expected, f"Pack ID {pack_id} should return {expected}, got {result}"
+            assert result == expected, f"Pack ID {pack_id} should produce {expected}, got {result}"
 
     def test_directory_escape_attempts_blocked(self) -> None:
         """Various escape attempts should return empty list."""

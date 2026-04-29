@@ -92,7 +92,7 @@ def get_request_id(request: Request) -> str:
         @app.get("/example")
         async def example(request: Request):
             trace_id = get_request_id(request)
-            return {"trace_id": trace_id}
+            return dict(trace_id=trace_id)
     """
     # Try to get from request state (set by middleware)
     trace_id = getattr(request.state, "trace_id", None)

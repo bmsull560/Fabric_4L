@@ -21,7 +21,7 @@ Production code::
             self._clock = clock
 
         def record(self) -> dict:
-            return {"ts": self._clock.now().isoformat()}
+            return dict(ts=self._clock.now().isoformat())
 
 Test code::
 

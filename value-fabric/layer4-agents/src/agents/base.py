@@ -134,7 +134,7 @@ class BaseAgent(ABC):
 
             async def execute(self, task: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
                 # Implementation here
-                return {"result": "success"}
+                return dict(result="success")
     """
 
     agent_type: str = "BASE"
