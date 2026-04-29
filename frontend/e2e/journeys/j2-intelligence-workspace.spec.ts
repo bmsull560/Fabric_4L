@@ -93,7 +93,6 @@ journeyTest.describe('Journey 2: Intelligence Workspace Synthesis', () => {
     // The Signals tab should be active/selected
     await expect(
       authedPage.getByRole('tab', { name: /signals/i })
-        .or(authedPage.getByText(/signals/i).first())
     ).toBeVisible();
   });
 
@@ -114,10 +113,14 @@ journeyTest.describe('Journey 2: Intelligence Workspace Synthesis', () => {
     // Type a message and send it
     await chatInput.first().fill('Analyze the key pain signals for this account');
 
-    // Find and click the send button
-    const sendButton = authedPage.getByRole('button', { name: /send/i })
-      .or(authedPage.locator('button[type="submit"]').last());
-    await sendButton.first().click();
+    // The send button is an icon-only button (Lucide Send icon) next to the input.
+    // It has no accessible name, so target it by its position: the button inside
+    // the same container as the chat input.
+    const sendButton = authedPage.getByPlaceholder(/ask a follow-up/i)
+      .or(authedPage.getByPlaceholder(/type a message/i))
+      .first()
+      .locator('xpath=ancestor::div[1]//button');
+    await sendButton.click({ timeout: 15000 });
 
     // The user message should appear in the chat
     await expect(

@@ -17,6 +17,12 @@
  *     await authedPage.goto('/home');
  *     // ...
  *   });
+ *
+ * IMPORTANT: The `addMocks` fixture depends on `authedPage` to guarantee that
+ * `installApiHarness` (which registers DEFAULT_MOCKS) runs BEFORE any journey-
+ * specific mocks are registered. Playwright routes use last-registered-first
+ * priority, so journey mocks registered via `addMocks` will correctly override
+ * the DEFAULT_MOCKS from the harness.
  */
 import { test as base, Page, expect } from '@playwright/test';
 import { seedAuthState, DEFAULT_TEST_USER, type TestUserInfo } from '../fixtures/auth-helpers';
@@ -58,7 +64,7 @@ export const journeyTest = base.extend<JourneyFixtures>({
     // 3. Set account context
     await setSelectedAccount(page, testAccount);
 
-    // 4. Install API harness
+    // 4. Install API harness (registers DEFAULT_MOCKS)
     const teardown = await installApiHarness(page);
 
     // 5. Provide the page to the test
@@ -76,10 +82,14 @@ export const journeyTest = base.extend<JourneyFixtures>({
     await use(fn);
   },
 
-  addMocks: async ({ page }, use) => {
+  // CRITICAL: `addMocks` depends on `authedPage` (not just `page`) to ensure
+  // that installApiHarness has already run and registered DEFAULT_MOCKS before
+  // any journey-specific mocks are added. This guarantees that journey mocks
+  // are registered LAST and therefore take priority (Playwright last-registered-first).
+  addMocks: async ({ authedPage }, use) => {
     const fn = async (mocks: MockEndpoint[]) => {
       for (const mock of mocks) {
-        await page.route(mock.pattern, async (route) => {
+        await authedPage.route(mock.pattern, async (route) => {
           if (mock.delay) {
             await new Promise((resolve) => setTimeout(resolve, mock.delay));
           }

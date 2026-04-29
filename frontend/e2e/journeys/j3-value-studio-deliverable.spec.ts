@@ -128,7 +128,6 @@ journeyTest.describe('Journey 3: Value Studio → Deliverable Generation', () =>
     // The business cases list should be visible
     await expect(
       authedPage.getByRole('heading', { name: /business case/i })
-        .or(authedPage.getByText(/business case/i).first())
     ).toBeVisible({ timeout: 10000 });
   });
 
@@ -139,8 +138,6 @@ journeyTest.describe('Journey 3: Value Studio → Deliverable Generation', () =>
     // The CFO view should render
     await expect(
       authedPage.getByRole('heading', { name: /cfo/i })
-        .or(authedPage.getByText(/cfo view/i).first())
-        .or(authedPage.getByText(/financial/i).first())
     ).toBeVisible({ timeout: 10000 });
   });
 
