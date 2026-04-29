@@ -9,3 +9,4 @@ export { StatCard } from './StatCard';
 export { StatusBadge } from './StatusBadge';
 export { ProgressBar } from './ProgressBar';
 export type { StatusVariant } from './StatusBadge';
+export { default as ValuePilotLayout } from './ValuePilotLayout';
