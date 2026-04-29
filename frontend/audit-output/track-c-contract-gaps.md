@@ -111,14 +111,14 @@
 | getDefaultSuggestedActions | No         | Default | Default | Yes           |
 | invoiceKeys          | Yes        | Default | Default | No            |
 | usageKeys            | Yes        | Default | Default | No            |
+| useAccountBriefing   | No         | Default | Default | Yes           |
 | useAccounts          | No         | Default | Default | Yes           |
-| useActiveWorkflows   | No         | Default | Default | Yes           |
+| useActiveWorkflows   | Yes        | Default | Default | Yes           |
 | useAuth              | No         | Default | Default | No            |
 | useBenchmarks        | No         | Default | Default | Yes           |
 | useBusinessCase      | Yes        | Default | Default | Yes           |
 | useC1Stream          | No         | Default | Default | Yes           |
 | useCanonicalCaseId   | No         | Default | Default | Yes           |
-| useComposition       | No         | Default | Default | No            |
 
 ---
 

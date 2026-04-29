@@ -1,42 +1,35 @@
 path,component,tier,category,required_tier,hook_name,backend_endpoint,data_source_color,notes
-* (catch-all),NotFound,authenticated,authenticated,,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /accounts,Accounts,authenticated,authenticated,standard,useAccounts,GET l4,green,Live integration via useAccounts
 /accounts/:id,Accounts,authenticated,authenticated,standard,useAccounts,GET l4,green,Live integration via useAccounts
 /command-center,CommandCenter,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /context/agents,AgentWorkflows,authenticated,authenticated,advanced,useWorkflows,N/A,unknown,No backend integration found; Advanced tier route
-/context/extraction,ExtractionEngine,authenticated,authenticated,advanced,useExtraction,POST l2,green,Live integration via useExtraction; Advanced tier route
-/context/formulas,FormulaList,authenticated,authenticated,advanced,useFormulas,DELETE l3,green,Live integration via useFormulas; Advanced tier route
+/context/extraction,ExtractionEngine,authenticated,authenticated,advanced,useExtraction,POST /v1/extract,green,Live integration via useExtraction; Advanced tier route
+/context/formulas,FormulaList,authenticated,authenticated,advanced,useFormulas,GET l3,green,Live integration via useFormulas; Advanced tier route
 /context/formulas/:formulaId,FormulaBuilder,authenticated,authenticated,advanced,useFormula,N/A,unknown,No backend integration found; Advanced tier route
 /context/formulas/new,FormulaBuilder,authenticated,authenticated,advanced,useFormula,N/A,unknown,No backend integration found; Advanced tier route
 /context/ingestion/jobs,IngestionJobs,authenticated,authenticated,advanced,useIngestion,N/A,unknown,No backend integration found; Advanced tier route
 /context/integrations,Integrations,authenticated,authenticated,advanced,useIntegrations,GET l4,green,Live integration via useIntegrations; Advanced tier route
-/context/models,MyModels,authenticated,authenticated,standard,useModels,DELETE l3,green,Live integration via useModels
+/context/models,MyModels,authenticated,authenticated,standard,useModels,GET l3,green,Live integration via useModels
 /context/ontology,OntologyEditor,authenticated,authenticated,advanced,useOntology,N/A,unknown,No backend integration found; Advanced tier route
-/context/ontology/entities,EntityBrowser,authenticated,authenticated,advanced,useEntities,"GET /v1/entities?search_text={query}
- */
-export function useEntitySearch(query: string) {
-  return useQuery({
-    queryKey: QK.entities.search(query),
-    queryFn: async (): Promise<EntityListResponse> => {
-      const params = new URLSearchParams({
-        search_text: query.trim(),
-        limit: ",green,Live integration via useEntities; Advanced tier route
+/context/ontology/entities,EntityBrowser,authenticated,authenticated,advanced,useEntities,GET l3,green,Live integration via useEntities; Advanced tier route
 /context/ontology/entities/:entityId,EntityDetail,authenticated,authenticated,advanced,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
-/context/ontology/graph,GraphExplorer,authenticated,authenticated,advanced,useGraphQuery,POST l3,green,Live integration via useGraphQuery; Advanced tier route
-/context/packs,ValuePacks,authenticated,authenticated,standard,useValuePacks,POST l3,green,Live integration via useValuePacks
+/context/ontology/graph,GraphExplorer,authenticated,authenticated,advanced,useGraphQuery,GET l3,green,Live integration via useGraphQuery; Advanced tier route
+/context/packs,ValuePacks,authenticated,authenticated,standard,useValuePacks,GET l3,green,Live integration via useValuePacks
 /context/sources,SourceConfiguration,authenticated,authenticated,advanced,useSources,DELETE l1,red,Hardcoded/mock data in useSources; Advanced tier route
+/context/value-trees/explorer,ValueTreeExplorer,authenticated,authenticated,advanced,useValueTrees,N/A,unknown,No backend integration found; Advanced tier route
 /deliverables/api,Integrations,authenticated,authenticated,admin,useIntegrations,GET l4,green,Live integration via useIntegrations; Admin tier route
 /deliverables/calculators,InteractiveBusinessCase,authenticated,authenticated,advanced,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /deliverables/cases,BusinessCaseList,authenticated,authenticated,admin,useBusinessCases,N/A,unknown,No backend integration found; Admin tier route
 /deliverables/cases/:caseId,BusinessCase,authenticated,authenticated,standard,useBusinessCases,N/A,unknown,No backend integration found
-/deliverables/views/cfo,BusinessCase,authenticated,authenticated,advanced,useBusinessCases,N/A,unknown,No backend integration found; Advanced tier route
-/deliverables/views/executive,BusinessCase,authenticated,authenticated,advanced,useBusinessCases,N/A,unknown,No backend integration found; Advanced tier route
-/deliverables/views/technical,BusinessCase,authenticated,authenticated,advanced,useBusinessCases,N/A,unknown,No backend integration found; Advanced tier route
-/governance/audit/changes,DecisionTrace,authenticated,authenticated,admin,useProvenance,N/A,unknown,No backend integration found; Admin tier route
-/governance/audit/log,DecisionTrace,authenticated,authenticated,advanced,useProvenance,N/A,unknown,No backend integration found; Advanced tier route
-/governance/benchmarks,BenchmarkPolicies,authenticated,authenticated,advanced,useBenchmarks,GET l6,green,Live integration via useBenchmarks; Advanced tier route
-/governance/compliance,DecisionTrace,authenticated,authenticated,advanced,useProvenance,N/A,unknown,No backend integration found; Advanced tier route
-/governance/evidence,DecisionTrace,authenticated,authenticated,standard,useProvenance,N/A,unknown,No backend integration found
+/deliverables/views/cfo,CFOView,authenticated,authenticated,advanced,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/deliverables/views/executive,ExecutiveView,authenticated,authenticated,advanced,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/deliverables/views/technical,TechnicalView,authenticated,authenticated,advanced,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/dev/integration,Suspense,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/governance/audit/changes,GovernanceChangeHistory,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/governance/audit/log,GovernanceAuditLog,authenticated,authenticated,advanced,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/governance/benchmarks,BenchmarkPolicies,authenticated,authenticated,advanced,useBenchmarks,GET l3,green,Live integration via useBenchmarks; Advanced tier route
+/governance/compliance,GovernanceCompliance,authenticated,authenticated,advanced,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/governance/evidence,GovernanceEvidence,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /governance/health,HealthMonitor,authenticated,authenticated,admin,useSystemHealth,GET l4,green,Live integration via useSystemHealth; Admin tier route
 /governance/integrity,DecisionTrace,authenticated,authenticated,advanced,useProvenance,N/A,unknown,No backend integration found; Advanced tier route
 /governance/provenance,DecisionTrace,authenticated,authenticated,advanced,useProvenance,N/A,unknown,No backend integration found; Advanced tier route
@@ -44,17 +37,26 @@ export function useEntitySearch(query: string) {
 /home,ValueNarrativeHome,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/:accountId,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/:accountId/competitive,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/:accountId/drivers,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/:accountId/enrichment,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/:accountId/evidence,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/:accountId/evidence-library,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/:accountId/hypotheses,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/:accountId/roi,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/:accountId/signals,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/:accountId/stakeholders,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/competitive,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/drivers,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/enrichment,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/evidence,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/evidence-library,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/hypotheses,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/intelligence/roi,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/signals,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /intelligence/stakeholders,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /model/value-studio,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /model/value-studio/discovery,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
-/model/value-studio/explorer,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /model/value-studio/mapping,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /model/value-studio/modeling,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /model/value-studio/narrative,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
@@ -66,9 +68,9 @@ export function useEntitySearch(query: string) {
 /settings/content/approvals,FormulaGovernance,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /settings/content/formulas,FormulaGovernance,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /settings/content/versions,FormulaGovernance,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
-/settings/data/bindings,VariableRegistry,authenticated,authenticated,admin,useVariables,POST l3,green,Live integration via useVariables; Admin tier route
-/settings/data/quality,VariableRegistry,authenticated,authenticated,admin,useVariables,POST l3,green,Live integration via useVariables; Admin tier route
-/settings/data/variables,VariableRegistry,authenticated,authenticated,admin,useVariables,POST l3,green,Live integration via useVariables; Admin tier route
+/settings/data/bindings,VariableRegistry,authenticated,authenticated,admin,useVariables,GET l3,green,Live integration via useVariables; Admin tier route
+/settings/data/quality,VariableRegistry,authenticated,authenticated,admin,useVariables,GET l3,green,Live integration via useVariables; Admin tier route
+/settings/data/variables,VariableRegistry,authenticated,authenticated,admin,useVariables,GET l3,green,Live integration via useVariables; Admin tier route
 /settings/system/billing,BillingRoute,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /settings/system/billing/invoices,BillingRoute,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /settings/system/billing/payments,BillingRoute,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
@@ -77,7 +79,11 @@ export function useEntitySearch(query: string) {
 /studio,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/:accountId,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/:accountId/action-plan,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/:accountId/competitive,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/:accountId/enrichment,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/:accountId/evidence,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/:accountId/narrative,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/:accountId/roi,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/:accountId/value-model,AccountContextSync,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/action-plan,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/build/discovery,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
@@ -86,7 +92,11 @@ export function useEntitySearch(query: string) {
 /studio/build/narrative,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/build/tracking,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/build/validation,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/competitive,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/enrichment,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/evidence,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/narrative,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
+/studio/roi,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /studio/value-model,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /workflow,Navigate,authenticated,authenticated,admin,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
 /workflow/intelligence,WorkspaceContextRedirect,authenticated,authenticated,standard,UNKNOWN,,red,No hooks mapped - likely hardcoded or incomplete
@@ -116,6 +126,11 @@ export function useEntitySearch(query: string) {
 /deliver/opportunities,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
 /deliver/whitespace,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
 /deliverables,Navigate,redirect,redirect,,N/A (redirect),/deliverables/cases,redirect,Redirects to /deliverables/cases
+/developer-console,Navigate,redirect,redirect,,N/A (redirect),/developer-console/health,redirect,Redirects to /developer-console/health
+/developer-console/health,Navigate,redirect,redirect,,N/A (redirect),/governance/health,redirect,Redirects to /governance/health
+/developer-console/log-diagnostics,Navigate,redirect,redirect,,N/A (redirect),/dev/integration,redirect,Redirects to /dev/integration
+/developer-console/queue-diagnostics,Navigate,redirect,redirect,,N/A (redirect),/dev/integration,redirect,Redirects to /dev/integration
+/developer-console/traces,Navigate,redirect,redirect,,N/A (redirect),/governance/traces,redirect,Redirects to /governance/traces
 /discover,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
 /discover/accounts,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
 /discover/accounts/:id,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
@@ -133,16 +148,39 @@ export function useEntitySearch(query: string) {
 /evidence/export,Navigate,redirect,redirect,,N/A (redirect),/governance/evidence,redirect,Redirects to /governance/evidence
 /evidence/lineage,Navigate,redirect,redirect,,N/A (redirect),/governance/provenance,redirect,Redirects to /governance/provenance
 /evidence/traces,Navigate,redirect,redirect,,N/A (redirect),/governance/traces,redirect,Redirects to /governance/traces
-/governance,Navigate,redirect,redirect,,N/A (redirect),/governance/traces,redirect,Redirects to /governance/traces
+/governance,Navigate,redirect,redirect,,N/A (redirect),/governance-center/evidence-policy,redirect,Redirects to /governance-center/evidence-policy
+/governance-center,Navigate,redirect,redirect,,N/A (redirect),/governance-center/evidence-policy,redirect,Redirects to /governance-center/evidence-policy
+/governance-center/audit-retention,Navigate,redirect,redirect,,N/A (redirect),/governance/audit/log,redirect,Redirects to /governance/audit/log
+/governance-center/compliance,Navigate,redirect,redirect,,N/A (redirect),/governance/compliance,redirect,Redirects to /governance/compliance
+/governance-center/evidence-policy,Navigate,redirect,redirect,,N/A (redirect),/governance/evidence,redirect,Redirects to /governance/evidence
+/governance-center/residency,Navigate,redirect,redirect,,N/A (redirect),/governance/compliance,redirect,Redirects to /governance/compliance
 /governance/audit,Navigate,redirect,redirect,,N/A (redirect),/governance/audit/log,redirect,Redirects to /governance/audit/log
 /library,Navigate,redirect,redirect,,N/A (redirect),/context/packs,redirect,Redirects to /context/packs
 /library/authoring,Navigate,redirect,redirect,,N/A (redirect),/settings/content/formulas,redirect,Redirects to /settings/content/formulas
 /library/models,Navigate,redirect,redirect,,N/A (redirect),/context/models,redirect,Redirects to /context/models
 /library/packs,Navigate,redirect,redirect,,N/A (redirect),/context/packs,redirect,Redirects to /context/packs
 /model,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
+/model/value-studio/explorer,Navigate,redirect,redirect,,N/A (redirect),/context/value-trees/explorer,redirect,Redirects to /context/value-trees/explorer
 /model/value-studio/formulas,Navigate,redirect,redirect,,N/A (redirect),/context/formulas,redirect,Redirects to /context/formulas
 /model/value-studio/formulas/new,Navigate,redirect,redirect,,N/A (redirect),/context/formulas,redirect,Redirects to /context/formulas
-/settings,Navigate,redirect,redirect,,N/A (redirect),/settings/content/formulas,redirect,Redirects to /settings/content/formulas
+/my-settings,Navigate,redirect,redirect,,N/A (redirect),/my-settings/profile,redirect,Redirects to /my-settings/profile
+/my-settings/accounts,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
+/my-settings/appearance,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
+/my-settings/notifications,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
+/my-settings/preferences,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
+/my-settings/profile,Navigate,redirect,redirect,,N/A (redirect),/accounts,redirect,Redirects to /accounts
+/organization-admin,Navigate,redirect,redirect,,N/A (redirect),/organization-admin/members,redirect,Redirects to /organization-admin/members
+/organization-admin/billing,Navigate,redirect,redirect,,N/A (redirect),/settings/system/billing,redirect,Redirects to /settings/system/billing
+/organization-admin/members,Navigate,redirect,redirect,,N/A (redirect),/settings/access/roles,redirect,Redirects to /settings/access/roles
+/organization-admin/roles,Navigate,redirect,redirect,,N/A (redirect),/settings/access/roles,redirect,Redirects to /settings/access/roles
+/organization-admin/teams,Navigate,redirect,redirect,,N/A (redirect),/settings/access/teams,redirect,Redirects to /settings/access/teams
+/platform-configuration,Navigate,redirect,redirect,,N/A (redirect),/platform-configuration/integrations,redirect,Redirects to /platform-configuration/integrations
+/platform-configuration/api-keys,Navigate,redirect,redirect,,N/A (redirect),/settings/access/keys,redirect,Redirects to /settings/access/keys
+/platform-configuration/feature-flags,Navigate,redirect,redirect,,N/A (redirect),/settings/system/settings,redirect,Redirects to /settings/system/settings
+/platform-configuration/integrations,Navigate,redirect,redirect,,N/A (redirect),/context/integrations,redirect,Redirects to /context/integrations
+/platform-configuration/model-routing,Navigate,redirect,redirect,,N/A (redirect),/settings/system/settings,redirect,Redirects to /settings/system/settings
+/platform-configuration/webhooks,Navigate,redirect,redirect,,N/A (redirect),/settings/system/settings,redirect,Redirects to /settings/system/settings
+/settings,Navigate,redirect,redirect,,N/A (redirect),/organization-admin/members,redirect,Redirects to /organization-admin/members
 /settings/access,Navigate,redirect,redirect,,N/A (redirect),/settings/access/roles,redirect,Redirects to /settings/access/roles
 /settings/content,Navigate,redirect,redirect,,N/A (redirect),/settings/content/formulas,redirect,Redirects to /settings/content/formulas
 /settings/data,Navigate,redirect,redirect,,N/A (redirect),/settings/data/variables,redirect,Redirects to /settings/data/variables
@@ -161,3 +199,6 @@ export function useEntitySearch(query: string) {
 /trust/integrity,Navigate,redirect,redirect,,N/A (redirect),/governance/integrity,redirect,Redirects to /governance/integrity
 /trust/provenance,Navigate,redirect,redirect,,N/A (redirect),/governance/provenance,redirect,Redirects to /governance/provenance
 /trust/traces,Navigate,redirect,redirect,,N/A (redirect),/governance/traces,redirect,Redirects to /governance/traces
+/workspace-settings,Navigate,redirect,redirect,,N/A (redirect),/workspace-settings/integrations,redirect,Redirects to /workspace-settings/integrations
+/workspace-settings/integrations,Navigate,redirect,redirect,,N/A (redirect),/context/integrations,redirect,Redirects to /context/integrations
+/workspace-settings/sources,Navigate,redirect,redirect,,N/A (redirect),/context/sources,redirect,Redirects to /context/sources
