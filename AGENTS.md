@@ -5,6 +5,27 @@ whether you are a human developer or an AI coding agent. Read this before making
 
 ---
 
+## Codex + Windsurf Bridge
+
+This repository also includes a `.windsurf/` runtime workspace with agent rules, skills,
+workflows, and memory artifacts. Codex should treat `.windsurf/` as a reference source of
+project-specific operating guidance, not as an executable runtime.
+
+When working in this repo:
+
+- Read `.windsurf/README.md` for the runtime layout when the task touches agent behavior.
+- Use `.windsurf/AGENTS.md`, `.windsurf/CONTEXT.md`, and `.windsurf/MEMORY.md` as supporting
+  guidance for planning, context assembly, and artifact discovery.
+- Treat `.windsurf/rules/`, `.windsurf/registry/`, `.windsurf/skills/`, and
+  `.windsurf/workflows/` as versioned project documentation unless the user explicitly asks to
+  modify them.
+- Prefer this root `AGENTS.md` and `packages/platform-contract/CONTRACT.md` when there is any
+  conflict with guidance inside `.windsurf/`.
+- Never assume `.windsurf/mcp/` manifests are live Codex tools in the current session; use only
+  tools actually exposed in the environment.
+
+---
+
 ## Repository structure at a glance
 
 ```
