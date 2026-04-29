@@ -27,9 +27,6 @@ export { PageShell } from "./layout/PageShell";
 export { TieredNav, type UserTier } from "./navigation/TieredNav";
 // ── Workspace Shells ───────────────────────────────────────────────────────────
 export { default as IntelligenceShell } from "./workspace/IntelligenceShell";
-export { default as ValueHypothesisShell } from "./workspace/ValueHypothesisShell";
-export { default as EvidenceShell } from "./workspace/EvidenceShell";
-export { default as CalculatorShell } from "./workspace/CalculatorShell";
 
 // ── UI Primitives (shadcn/ui) ──────────────────────────────────────────────────
 
