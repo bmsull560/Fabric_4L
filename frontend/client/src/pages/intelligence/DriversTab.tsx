@@ -26,9 +26,9 @@ export default function DriversTab() {
   const grouped = useMemo(() => drivers.reduce<Record<string, Driver[]>>((acc, d) => { (acc[d.parentSignal] ??= []).push(d); return acc; }, {}), [drivers]);
 
   if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading drivers…</div>;
-  if (error || !account) return <div className="p-6 text-sm text-destructive">Failed to load drivers.</div>;
+  if (error) return <div className="p-6 text-sm text-destructive">Failed to load drivers.</div>;
 
-  return <IntelligenceShell account={{ accountName: account.name, industry: account.industry ?? "Unknown", revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="drivers" detailContent={selectedDriver ? <div className="space-y-3"><h3 className="text-sm font-bold">{selectedDriver.name}</h3><p className="text-xs text-muted-foreground">{selectedDriver.parentSignal}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}>
+  return <IntelligenceShell account={{ accountName: account?.name ?? "Account", industry: account?.industry ?? "Unknown", revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A" }} rightRail={<RightRail mode={railMode} onModeChange={setRailMode} activeTab="drivers" detailContent={selectedDriver ? <div className="space-y-3"><h3 className="text-sm font-bold">{selectedDriver.name}</h3><p className="text-xs text-muted-foreground">{selectedDriver.parentSignal}</p></div> : null} messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}>
     {drivers.length === 0 ? <SectionCard title="Root Drivers"><div className="text-sm text-muted-foreground">No root-driver output available yet for this case.</div></SectionCard> : <>
       <div className="grid grid-cols-3 gap-4 mb-6">
         <MetricCard label="Root Drivers" value={String(drivers.length)} />

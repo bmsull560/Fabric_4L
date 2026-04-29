@@ -663,6 +663,59 @@ async def db_session(
             raise
 
 
+@asynccontextmanager
+async def db_session_for_context(
+    context: "RequestContext",
+) -> AsyncGenerator[AsyncSession, None]:
+    """Context manager for DB sessions outside FastAPI request lifecycle.
+
+    Uses RequestContext (set by GovernanceMiddleware) to extract tenant_id,
+    validate it, and set PostgreSQL RLS context.  Commits on success and
+    rolls back on exception — callers MUST NOT call commit/rollback manually.
+
+    Args:
+        context: The RequestContext containing tenant_id and isolation_tier.
+
+    Raises:
+        TenantContextError: If tenant_id is missing or invalid.
+        HTTPException: If an unimplemented isolation tier is requested.
+    """
+    if not SHARED_IDENTITY_AVAILABLE:
+        raise RuntimeError("shared.identity package required for db_session_for_context")
+
+    if not context or not context.tenant_id:
+        raise TenantContextError(
+            "Tenant context required. Ensure request has passed through GovernanceMiddleware."
+        )
+
+    try:
+        tenant_id = validate_tenant_id(context.tenant_id)
+    except TenantContextError:
+        raise
+
+    factory = get_session_factory()
+    async with factory() as session:
+        if context.isolation_tier == "shared":
+            await session.execute(
+                text("SET LOCAL app.tenant_id = :tenant_id"),
+                {"tenant_id": tenant_id}
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail=f"Isolation tier '{context.isolation_tier}' not yet implemented",
+            )
+
+        await _emit_tenant_context_set_audit(context, str(tenant_id), is_bypass=False)
+
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
 # ---------------------------------------------------------------------------
 # Lifecycle helpers (called from FastAPI lifespan)
 # ---------------------------------------------------------------------------

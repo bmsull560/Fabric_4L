@@ -59,7 +59,7 @@ export default function SignalsTab() {
   }, [caseId, signals.length, isLoading]);
 
   if (accountLoading || isLoading || generateMutation.isPending) return <div className="p-6 text-sm text-muted-foreground">{generateMutation.isPending ? "Generating intelligence..." : "Loading signals…"}</div>;
-  if (accountError || error || generateMutation.isError || !account) return <div className="p-6 text-sm text-destructive">Failed to load signal data.</div>;
+  if (accountError || error || generateMutation.isError) return <div className="p-6 text-sm text-destructive">Failed to load signal data.</div>;
 
   const detailContent = selectedSignal ? (
     <div className="space-y-4">
@@ -75,9 +75,9 @@ export default function SignalsTab() {
   return (
     <IntelligenceShell
       account={{
-        accountName: account.name,
-        industry: account.industry ?? "Unknown",
-        revenue: account.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
+        accountName: account?.name ?? "Account",
+        industry: account?.industry ?? "Unknown",
+        revenue: account?.annual_revenue ? `$${account.annual_revenue.toLocaleString()}` : "N/A",
       }}
       rightRail={<RightRail mode={railMode} onModeChange={setRailMode} detailContent={detailContent} activeTab="signals" messages={messages} onSendMessage={sendMessage} suggestedActions={suggestedActions} steps={steps} isStreaming={isStreaming} runMetadata={metadata} />}
     >

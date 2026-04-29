@@ -178,16 +178,16 @@ export default function HypothesesTab() {
     );
   }
 
-  if (error || !account) {
+  if (error) {
     return <div className="p-6 text-sm text-destructive">Failed to load hypotheses.</div>;
   }
 
   return (
     <IntelligenceShell
       account={{
-        accountName: account.name,
-        industry: account.industry ?? "Unknown",
-        revenue: account.annual_revenue
+        accountName: account?.name ?? "Account",
+        industry: account?.industry ?? "Unknown",
+        revenue: account?.annual_revenue
           ? `$${account.annual_revenue.toLocaleString()}`
           : "N/A",
       }}
