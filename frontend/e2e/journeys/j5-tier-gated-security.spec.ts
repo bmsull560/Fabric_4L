@@ -28,10 +28,10 @@ journeyTest.describe('Journey 5: Tier-Gated Access & Security', () => {
     await navigateAndWait(authedPage, '/home');
     await expectNoErrors(authedPage);
 
-    // The Command Center should be visible (accessible to all tiers)
+    // The Home page should be visible (accessible to all tiers)
+    // /home renders "Create a value case" as the main heading
     await expect(
-      authedPage.getByRole('heading', { name: /command center/i })
-        .or(authedPage.getByText(/command center/i).first())
+      authedPage.getByRole('heading', { name: /create a value case/i })
     ).toBeVisible({ timeout: 10000 });
 
     // Standard-restricted routes should NOT appear in navigation

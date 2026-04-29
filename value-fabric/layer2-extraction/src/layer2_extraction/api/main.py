@@ -154,7 +154,7 @@ app.add_middleware(
 # SecurityMiddleware — input validation and security headers (mandatory)
 # P1-14 FIX: Removed /v1/extract paths from skip list
 # All untrusted input must pass through SecurityMiddleware validation
-_security_config_l2 = SecurityConfig(
+_security_config_l2 = SecurityConfig.from_env(
     skip_validation_paths=frozenset({
         "/health",
         "/metrics",

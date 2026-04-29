@@ -74,6 +74,43 @@ class SecurityConfig:
     strict_mode: bool = True
     max_body_size_bytes: int = 1_048_576  # 1MB
     validate_json_bodies: bool = True
+    max_json_depth: int = 10
+    sanitize_json_strings: bool = True
+
+    @staticmethod
+    def from_env(
+        *,
+        skip_validation_paths: FrozenSet[str] = frozenset(),
+        strict_mode: bool = True,
+    ) -> "SecurityConfig":
+        """Build security configuration from env vars with safe defaults."""
+        import os
+
+        def _bool_from_env(name: str, default: bool) -> bool:
+            raw = os.getenv(name)
+            if raw is None:
+                return default
+            return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+        def _int_from_env(name: str, default: int, minimum: int) -> int:
+            raw = os.getenv(name)
+            if raw is None:
+                return default
+            try:
+                return max(int(raw), minimum)
+            except (TypeError, ValueError):
+                return default
+
+        return SecurityConfig(
+            skip_validation_paths=skip_validation_paths,
+            strict_mode=strict_mode,
+            max_body_size_bytes=_int_from_env(
+                "SECURITY_MAX_BODY_SIZE_BYTES", 1_048_576, 1024
+            ),
+            validate_json_bodies=_bool_from_env("SECURITY_VALIDATE_JSON_BODIES", True),
+            max_json_depth=_int_from_env("SECURITY_MAX_JSON_DEPTH", 10, 1),
+            sanitize_json_strings=_bool_from_env("SECURITY_SANITIZE_JSON_STRINGS", True),
+        )
 
 
 class SecurityValidator:
@@ -203,6 +240,17 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
+        content_length = request.headers.get("content-length")
+        if content_length and content_length.isdigit():
+            if int(content_length) > self.config.max_body_size_bytes:
+                return JSONResponse(
+                    status_code=413,
+                    content={
+                        "detail": "Request body too large",
+                        "max_body_size_bytes": self.config.max_body_size_bytes,
+                    },
+                )
+
         violations = []
 
         # Validate query parameters
@@ -232,6 +280,14 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             and request.method in ("POST", "PUT", "PATCH")
         ):
             body_content = await self._cache_and_validate_body(request, violations)
+            if body_content == b"__SECURITY_BODY_TOO_LARGE__":
+                return JSONResponse(
+                    status_code=413,
+                    content={
+                        "detail": "Request body too large",
+                        "max_body_size_bytes": self.config.max_body_size_bytes,
+                    },
+                )
 
         # Handle violations
         if violations:
@@ -268,6 +324,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # If we cached body content, inject a new receive() that returns it
         if body_content is not None:
             original_receive = request.receive
+            request._body = body_content
             request._receive = self._make_receive_override(original_receive, body_content)
 
         response = await call_next(request)
@@ -294,27 +351,35 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     ) -> bytes | None:
         """Cache body content and validate for injection patterns.
         
-        Returns the cached body content if valid size, None if too large.
+        Returns the cached body content, or a sentinel if too large.
         """
         try:
             body = await request.body()
             
-            # Skip if body is too large
+            # Reject if body is too large
             if len(body) > self.config.max_body_size_bytes:
-                return body  # Return but don't validate - too large to scan
+                return b"__SECURITY_BODY_TOO_LARGE__"
 
             if body:
                 try:
                     json_data = json.loads(body.decode("utf-8"))
 
                     # Validate JSON structure
-                    if not SecurityValidator.validate_json_structure(json_data):
+                    if not SecurityValidator.validate_json_structure(
+                        json_data, max_depth=self.config.max_json_depth
+                    ):
                         violations.append(
                             "Invalid JSON structure - possible recursion attack"
                         )
 
                     # Scan JSON values for injection patterns
                     self._validate_json_data(json_data, violations)
+
+                    if self.config.sanitize_json_strings:
+                        sanitized_json = self._sanitize_json_data(json_data)
+                        body = json.dumps(
+                            sanitized_json, ensure_ascii=False, separators=(",", ":")
+                        ).encode("utf-8")
 
                 except json.JSONDecodeError:
                     # Invalid JSON will be handled by FastAPI
@@ -377,6 +442,16 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                 elif isinstance(item, (dict, list)):
                     self._validate_json_data(item, violations, current_path)
 
+    def _sanitize_json_data(self, data: Any) -> Any:
+        """Recursively sanitize all user-supplied string fields."""
+        if isinstance(data, dict):
+            return {key: self._sanitize_json_data(value) for key, value in data.items()}
+        if isinstance(data, list):
+            return [self._sanitize_json_data(item) for item in data]
+        if isinstance(data, str):
+            return SecurityValidator.sanitize_string(data)
+        return data
+
     @staticmethod
     def _is_rdf_data(value: str) -> bool:
         """Check if string looks like RDF/Turtle data (not injection)."""
@@ -397,14 +472,6 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         """Check string value for various injection patterns."""
         # Skip injection checks for legitimate RDF/Turtle data
         if self._is_rdf_data(value):
-            return
-
-        # Skip short common text patterns that trigger false positives
-        if (
-            len(value) < 50
-            and " " in value
-            and not any(c in value for c in "<>;|&`$()[]")
-        ):
             return
 
         if SecurityValidator.detect_injection(value, SQL_INJECTION_PATTERNS):

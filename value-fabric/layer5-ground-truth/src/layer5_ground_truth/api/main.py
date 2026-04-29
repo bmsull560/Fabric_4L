@@ -226,7 +226,7 @@ def create_app() -> FastAPI:
     # SecurityMiddleware — input validation and security headers (before CORS)
     # L5 has no skip paths — all endpoints require strict validation
     if SecurityConfig and add_security_middleware:
-        _security_config_l5 = SecurityConfig(
+        _security_config_l5 = SecurityConfig.from_env(
             skip_validation_paths=frozenset(),
             strict_mode=True,
         )

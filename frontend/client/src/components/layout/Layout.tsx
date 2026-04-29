@@ -30,6 +30,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useUserTierStore, type UserTier } from "@/hooks";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import { resolveWorkspaceRoutePath } from "@/navigation/accountRouting";
 
 /* ─── Nav Data ─── */
 interface NavItem {
@@ -196,15 +197,6 @@ function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
   return tier === "standard";
 }
 
-function resolveWorkspacePath(path: string, accountId: string | null): string {
-  if (!accountId) return path;
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
-  if (path.startsWith("/intelligence/")) return path.replace("/intelligence/", `/intelligence/${accountId}/`);
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) return path.replace("/studio/", `/studio/${accountId}/`);
-  return path;
-}
-
 function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
   // Map top-level domains to readable labels
   const domainLabels: Record<string, string> = {
@@ -345,7 +337,7 @@ interface NavSectionProps {
 }
 
 function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAccountId, onNavigate }: NavSectionProps) {
-  const resolvedPath = resolveWorkspacePath(item.path, selectedAccountId);
+  const resolvedPath = resolveWorkspaceRoutePath(item.path, selectedAccountId);
   const isActive = currentPath === resolvedPath || currentPath.startsWith(resolvedPath + "/");
   const [isOpen, setIsOpen] = useState(isActive);
 
@@ -372,7 +364,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
       {!isCollapsed && hasChildren && isOpen && (
         <div className="ml-7 mt-1 space-y-0.5 border-l border-sidebar-border pl-3">
           {visibleChildren!.map(child => {
-            const childResolved = resolveWorkspacePath(child.path, selectedAccountId);
+            const childResolved = resolveWorkspaceRoutePath(child.path, selectedAccountId);
             const childActive = currentPath === childResolved || currentPath.startsWith(childResolved + "/");
             return (
               <Link

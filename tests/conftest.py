@@ -26,6 +26,73 @@ from uuid import UUID
 import jwt as pyjwt
 import pytest
 
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class InfraDependency:
+    """Dependency metadata used for skip/fail messaging and reporting."""
+
+    key: str
+    display_name: str
+    startup_command: str
+    categories: tuple[str, ...]
+
+
+INFRA_DEPENDENCIES: Dict[str, InfraDependency] = {
+    "postgres": InfraDependency(
+        key="postgres",
+        display_name="Postgres",
+        startup_command="docker compose up -d postgres",
+        categories=(
+            "RLS and tenant-isolation persistence tests",
+            "DB-backed integration contracts",
+            "cross-tenant state consistency checks",
+        ),
+    ),
+    "redis": InfraDependency(
+        key="redis",
+        display_name="Redis",
+        startup_command="docker compose up -d redis",
+        categories=(
+            "cache isolation and cache consistency tests",
+            "rate-limit and shared-state controls",
+            "state lifecycle integration checks",
+        ),
+    ),
+    "neo4j": InfraDependency(
+        key="neo4j",
+        display_name="Neo4j",
+        startup_command="docker compose up -d neo4j",
+        categories=(
+            "graph traversal and retrieval contracts",
+            "knowledge graph tenant-boundary tests",
+            "graph-backed integration workflows",
+        ),
+    ),
+}
+
+
+def make_infra_skip_reason(dependency_key: str) -> str:
+    """Return a standardized high-visibility reason for infra-gated skips."""
+    dep = INFRA_DEPENDENCIES[dependency_key]
+    categories = "; ".join(dep.categories)
+    return (
+        f"[INFRA_GATE:{dep.display_name.upper()}] {dep.display_name} is unavailable locally. "
+        f"Start it with: `{dep.startup_command}`. "
+        f"Affected categories: {categories}."
+    )
+
+
+def make_infra_ci_failure_reason(dependency_key: str) -> str:
+    """Return a standardized reason for CI hard failures."""
+    dep = INFRA_DEPENDENCIES[dependency_key]
+    return (
+        f"[INFRA_GATE:{dep.display_name.upper()}] {dep.display_name} is required in CI but unreachable. "
+        f"Start it with: `{dep.startup_command}`."
+    )
+
+
 # ---------------------------------------------------------------------------
 # Deterministic tenant / user identifiers
 # ---------------------------------------------------------------------------
@@ -316,8 +383,8 @@ def require_postgres():
     if _check_postgres():
         return True
     if os.getenv("CI") == "true":
-        pytest.fail("PostgreSQL required in CI. Run: docker-compose up postgres")
-    pytest.skip("PostgreSQL not available locally")
+        pytest.fail(make_infra_ci_failure_reason("postgres"))
+    pytest.skip(make_infra_skip_reason("postgres"))
 
 
 @pytest.fixture(scope="session")
@@ -326,8 +393,8 @@ def require_redis():
     if _check_redis():
         return True
     if os.getenv("CI") == "true":
-        pytest.fail("Redis required in CI. Run: docker-compose up redis")
-    pytest.skip("Redis not available locally")
+        pytest.fail(make_infra_ci_failure_reason("redis"))
+    pytest.skip(make_infra_skip_reason("redis"))
 
 
 @pytest.fixture(scope="session")
@@ -336,8 +403,8 @@ def require_neo4j():
     if _check_neo4j():
         return True
     if os.getenv("CI") == "true":
-        pytest.fail("Neo4j required in CI. Run: docker-compose up neo4j")
-    pytest.skip("Neo4j not available locally")
+        pytest.fail(make_infra_ci_failure_reason("neo4j"))
+    pytest.skip(make_infra_skip_reason("neo4j"))
 
 
 # ---------------------------------------------------------------------------
@@ -429,3 +496,29 @@ def l4_route_files(project_root) -> list[Path]:
     return sorted(
         (project_root / "value-fabric" / "layer4-agents" / "src" / "api" / "routes").glob("*.py")
     )
+
+
+# ---------------------------------------------------------------------------
+# Terminal summary reporting (infra-gated skips)
+# ---------------------------------------------------------------------------
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """Report infra-gated skip counts so coverage loss is explicit."""
+    skipped = terminalreporter.stats.get("skipped", [])
+    counts = {key: 0 for key in INFRA_DEPENDENCIES}
+
+    for report in skipped:
+        longrepr = getattr(report, "longrepr", "")
+        reason = longrepr[2] if isinstance(longrepr, tuple) and len(longrepr) >= 3 else str(longrepr)
+        for key, dep in INFRA_DEPENDENCIES.items():
+            token = f"[INFRA_GATE:{dep.display_name.upper()}]"
+            if token in reason:
+                counts[key] += 1
+
+    total = sum(counts.values())
+    if total == 0:
+        return
+
+    terminalreporter.section("infra-gated skip coverage", sep="-")
+    for key, dep in INFRA_DEPENDENCIES.items():
+        terminalreporter.write_line(f"{dep.display_name}: {counts[key]} skipped tests")
+    terminalreporter.write_line(f"Total infra-gated skips: {total}")

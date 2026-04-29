@@ -144,7 +144,6 @@ journeyTest.describe('Journey 1: Domain Ingestion → Value Tree Exploration', (
     // The Value Tree Explorer page should load
     await expect(
       authedPage.getByRole('heading', { name: /value tree/i })
-        .or(authedPage.getByText(/value tree explorer/i))
         .first()
     ).toBeVisible({ timeout: 10000 });
 

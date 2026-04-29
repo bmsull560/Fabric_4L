@@ -158,6 +158,19 @@ The `SecurityMiddleware` in each API layer provides:
 5. **Input Sanitization**: HTML escaping and null byte removal
 6. **JSON Validation**: Deep nesting and large payload protection
 
+### SecurityMiddleware Runtime Configuration
+
+Security limits are configured centrally through environment variables:
+
+| Variable | Default | Behavior |
+|----------|---------|----------|
+| `SECURITY_MAX_BODY_SIZE_BYTES` | `1048576` | Rejects oversized request bodies with `413 Request Entity Too Large` before route handling. |
+| `SECURITY_MAX_JSON_DEPTH` | `10` | Rejects deeply nested JSON objects/arrays before app-level processing. |
+| `SECURITY_VALIDATE_JSON_BODIES` | `true` | Enables/disables JSON body inspection for injection/structure checks. |
+| `SECURITY_SANITIZE_JSON_STRINGS` | `true` | Enables centralized HTML/script sanitization for user-supplied string fields in JSON bodies. |
+
+All values should be explicitly set in production environment manifests for auditable operational control.
+
 ### Validation Bypass Paths
 
 The following paths skip validation (legitimate data triggers false positives):

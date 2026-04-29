@@ -357,11 +357,11 @@ export default function IngestionJobs() {
             </div>
             <div className="flex-1 overflow-auto p-4">
               {!selectedJobId ? (
-                <p className="text-[12px] text-muted-foreground text-center py-8">
+                <p data-testid="job-detail-empty-state" className="text-[12px] text-muted-foreground text-center py-8">
                   Select a job from the queue to view details
                 </p>
               ) : detailLoading ? (
-                <div className="space-y-3">
+                <div className="space-y-3" data-testid="job-detail-loading-state">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-4 w-1/2" />
                   <Skeleton className="h-4 w-2/3" />
@@ -494,13 +494,13 @@ export default function IngestionJobs() {
                   Select a job to view logs
                 </p>
               ) : logsLoading ? (
-                <div className="space-y-2">
+                <div className="space-y-2" data-testid="job-logs-loading-state">
                   <Skeleton className="h-3 w-full" />
                   <Skeleton className="h-3 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
               ) : logsData && logsData.length > 0 ? (
-                <div className="space-y-1">
+                <div className="space-y-1" data-testid="job-logs-list-state">
                   {logsData.map((log) => (
                     <div key={log.id} className="text-[11px] border-b border-border/50 pb-1">
                       <div className="flex items-center gap-2">
@@ -531,7 +531,7 @@ export default function IngestionJobs() {
                   ))}
                 </div>
               ) : (
-                <p className="text-[11px] text-muted-foreground text-center py-4">No logs available</p>
+                <p data-testid="job-logs-empty-state" className="text-[11px] text-muted-foreground text-center py-4">No logs available</p>
               )}
             </div>
           </div>

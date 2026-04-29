@@ -6,8 +6,7 @@ Covers OAuth 2.1 + PKCE, RFC 8693 Token Exchange, and JWS manifest verification.
 
 import pytest
 import time
-from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 from shared.mcp_gateway import (
@@ -19,14 +18,12 @@ from shared.mcp_gateway import (
     ToolRegistry,
 )
 from shared.mcp_gateway.mcp_types import (
-    ToolRequest,
     ToolResponse,
     ToolManifest,
     OAuthClientConfig,
     AuthenticationError,
     ManifestValidationError,
     ToolAccessDeniedError,
-    GatewayError,
     DelegatedToken,
 )
 
@@ -220,6 +217,11 @@ class TestManifestVerifier:
     def manifest_verifier(self, sample_rsa_keypair):
         """Create manifest verifier with test public key."""
         return ManifestVerifier(sample_rsa_keypair["public"])
+
+    @pytest.fixture
+    def manifest_verifier_with_kid(self, sample_rsa_keypair):
+        """Create verifier with kid-aware trust store for rotation testing."""
+        return ManifestVerifier(trusted_keys={"primary": sample_rsa_keypair["public"]})
     
     @pytest.fixture
     def manifest_signer(self, sample_rsa_keypair):
@@ -227,48 +229,80 @@ class TestManifestVerifier:
         from shared.mcp_gateway.manifest import ManifestSigner
         return ManifestSigner(sample_rsa_keypair["private"])
     
-    def test_verify_manifest_succeeds_with_valid_signature(self, manifest_signer, manifest_verifier, sample_tool_manifest, sample_rsa_keypair):
+    def test_verify_manifest_succeeds_with_valid_signature(self, manifest_signer, manifest_verifier, sample_tool_manifest):
         """Manifest verification succeeds with valid JWS signature."""
         # Sign the manifest
         signed_manifest = manifest_signer.sign_manifest(sample_tool_manifest)
         
-        # Verify with public key (pass explicitly since verify_manifest is static)
-        from shared.mcp_gateway.manifest import ManifestVerifier
-        result = ManifestVerifier.verify_manifest(signed_manifest, sample_rsa_keypair["public"])
+        result = manifest_verifier.verify_manifest(signed_manifest)
         
         assert result is True
         
-    def test_verify_manifest_fails_with_invalid_signature(self, manifest_verifier, sample_tool_manifest, sample_rsa_keypair):
+    def test_verify_manifest_fails_with_invalid_signature(self, manifest_verifier, sample_tool_manifest):
         """Manifest verification fails with invalid signature."""
         # Manifest with fake signature
         sample_tool_manifest.signature = "invalid.signature.here"
         
-        from shared.mcp_gateway.manifest import ManifestVerifier
-        result = ManifestVerifier.verify_manifest(sample_tool_manifest, sample_rsa_keypair["public"])
+        result = manifest_verifier.verify_manifest(sample_tool_manifest)
         
         assert result is False
         
-    def test_verify_manifest_fails_with_tampered_content(self, manifest_signer, manifest_verifier, sample_tool_manifest, sample_rsa_keypair):
-        """Manifest verification fails if content is tampered after signing.
-        
-        Note: This test documents expected behavior. The current placeholder
-        implementation may not detect all tampering - production JWS verification
-        would catch content modifications via signature mismatch.
-        """
+    def test_verify_manifest_fails_with_tampered_content(self, manifest_signer, manifest_verifier, sample_tool_manifest):
+        """Manifest verification fails if content is tampered after signing."""
         # Sign the manifest
         signed_manifest = manifest_signer.sign_manifest(sample_tool_manifest)
         
         # Tamper with the content
         signed_manifest.description = "Tampered description"
         
-        # Verification should fail (in production implementation)
-        from shared.mcp_gateway.manifest import ManifestVerifier
-        result = ManifestVerifier.verify_manifest(signed_manifest, sample_rsa_keypair["public"])
-        
-        # Placeholder implementation may return True - document this as known limitation
-        # Production: assert result is False
-        # For now, verify the test setup is correct
-        assert signed_manifest.description == "Tampered description"
+        result = manifest_verifier.verify_manifest(signed_manifest)
+
+        assert result is False
+
+    def test_verify_manifest_fails_when_payload_claims_do_not_bind_manifest(self, manifest_signer, manifest_verifier, sample_tool_manifest):
+        """Verification fails when manifest fields differ from signed payload fields."""
+        signed_manifest = manifest_signer.sign_manifest(sample_tool_manifest)
+        signed_manifest.capabilities = ["write"]
+
+        assert manifest_verifier.verify_manifest(signed_manifest) is False
+
+    def test_verify_manifest_rejects_none_algorithm(self, manifest_verifier, sample_tool_manifest):
+        """Verification rejects unsigned alg=none tokens."""
+        import jwt
+
+        payload = {
+            "tool_name": sample_tool_manifest.tool_name,
+            "version": sample_tool_manifest.version,
+            "description": sample_tool_manifest.description,
+            "endpoint": sample_tool_manifest.endpoint,
+            "capabilities": sample_tool_manifest.capabilities,
+            "required_scopes": sample_tool_manifest.required_scopes,
+            "tenant_scoped": sample_tool_manifest.tenant_scoped,
+            "iat": int(time.time()),
+            "exp": int(time.time()) + 300,
+        }
+        sample_tool_manifest.signature = jwt.encode(payload, key="", algorithm="none")
+
+        assert manifest_verifier.verify_manifest(sample_tool_manifest) is False
+
+    def test_verify_manifest_supports_kid_key_lookup(self, sample_rsa_keypair, manifest_verifier_with_kid, sample_tool_manifest):
+        """Verification resolves public key by kid from trusted key map."""
+        from shared.mcp_gateway.manifest import ManifestSigner
+
+        signer = ManifestSigner(sample_rsa_keypair["private"], key_id="primary")
+        signed_manifest = signer.sign_manifest(sample_tool_manifest)
+
+        assert manifest_verifier_with_kid.verify_manifest(signed_manifest) is True
+
+    def test_verify_manifest_fails_when_kid_missing_in_trust_store(self, sample_rsa_keypair, sample_tool_manifest):
+        """Verification fails closed when token kid is unknown."""
+        from shared.mcp_gateway.manifest import ManifestSigner
+
+        signer = ManifestSigner(sample_rsa_keypair["private"], key_id="old-key")
+        signed_manifest = signer.sign_manifest(sample_tool_manifest)
+        verifier = ManifestVerifier(trusted_keys={"new-key": sample_rsa_keypair["public"]})
+
+        assert verifier.verify_manifest(signed_manifest) is False
         
     def test_sign_manifest_produces_valid_jws(self, manifest_signer, sample_tool_manifest):
         """Signing produces valid JWS format manifest."""
