@@ -676,7 +676,7 @@ if SHARED_ERROR_HANDLING_AVAILABLE:
 # P1-14 FIX: Removed /v1/query paths from skip list
 # All untrusted input must pass through SecurityMiddleware validation
 if SecurityConfig and add_security_middleware:
-    _security_config_l3 = SecurityConfig(
+    _security_config_l3 = SecurityConfig.from_env(
         skip_validation_paths=frozenset({
             "/health",
             "/metrics",

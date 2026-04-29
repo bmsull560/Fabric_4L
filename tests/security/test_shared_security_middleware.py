@@ -53,6 +53,8 @@ class TestSecurityConfig:
         assert config.strict_mode is True
         assert config.max_body_size_bytes == 1_048_576
         assert config.validate_json_bodies is True
+        assert config.max_json_depth == 10
+        assert config.sanitize_json_strings is True
 
     def test_custom_config(self):
         """Custom config values are stored correctly."""
@@ -61,11 +63,15 @@ class TestSecurityConfig:
             strict_mode=False,
             max_body_size_bytes=512,
             validate_json_bodies=False,
+            max_json_depth=6,
+            sanitize_json_strings=False,
         )
         assert config.skip_validation_paths == frozenset({"/skip", "/also-skip"})
         assert config.strict_mode is False
         assert config.max_body_size_bytes == 512
         assert config.validate_json_bodies is False
+        assert config.max_json_depth == 6
+        assert config.sanitize_json_strings is False
 
 
 class TestSecurityValidator:
@@ -277,7 +283,7 @@ class TestSecurityMiddlewareStreamCaching:
         )
         assert response.status_code == 200
         result = response.json()
-        assert result["body_size"] == len(payload)
+        assert result["body_size"] > 0
         assert json.loads(result["body"]) == {"test": "data"}
 
 

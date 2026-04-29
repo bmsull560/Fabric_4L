@@ -115,7 +115,8 @@ class ToolManifest:
         """
         # Implementation in ManifestVerifier
         from .manifest import ManifestVerifier
-        return ManifestVerifier.verify_manifest(self, public_key)
+
+        return ManifestVerifier(public_key=public_key).verify_manifest(self)
 
 
 @dataclass

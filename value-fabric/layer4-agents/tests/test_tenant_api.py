@@ -137,7 +137,7 @@ class TestProvisionTenantEndpoint:
         mock_result = TenantProvisionResult(
             tenant_id=existing_tenant_id,
             admin_user_id=uuid4(),
-            admin_temp_password="<already_provisioned>",
+            admin_temp_password=None,
             created_at=datetime.utcnow(),
             isolation_tier="shared",
             status="success",
@@ -145,7 +145,7 @@ class TestProvisionTenantEndpoint:
         )
         
         # Verify result indicates existing tenant
-        assert mock_result.admin_temp_password == "<already_provisioned>"
+        assert mock_result.admin_temp_password is None
         assert "already exists" in (mock_result.errors[0] if mock_result.errors else "")
     
     @pytest.mark.asyncio

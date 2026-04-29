@@ -637,6 +637,90 @@ jobs:
             .pytest_cache/
           retention-days: 7
 
+  runtime-contract-checks:
+    name: Runtime Contract Tests (Services Up)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest requests
+
+      - name: Start runtime contract services
+        run: |
+          cd value-fabric
+          export OPENAI_API_KEY=test-key
+          export REDIS_PASSWORD=test-redis
+          export NEO4J_PASSWORD=test-neo4j
+          export JWT_SECRET=test-jwt-secret
+          docker compose up -d postgres redis neo4j layer5-migrate layer5-ground-truth layer1-ingestion layer2-extraction layer3-knowledge layer4-agents
+
+      - name: Wait for L1-L4 health endpoints
+        run: |
+          python - <<'PY'
+          import time
+          import requests
+
+          endpoints = {
+              "L1": "http://localhost:8001/health",
+              "L2": "http://localhost:8002/health",
+              "L3": "http://localhost:8003/health",
+              "L4": "http://localhost:8004/health",
+          }
+
+          deadline = time.time() + 300
+          failed = dict(endpoints)
+
+          while time.time() < deadline and failed:
+              pending = {}
+              for name, url in failed.items():
+                  try:
+                      response = requests.get(url, timeout=5)
+                      if response.status_code == 200:
+                          print(f"✅ {name} healthy at {url}")
+                      else:
+                          pending[name] = url
+                          print(f"⏳ {name} not ready: HTTP {response.status_code}")
+                  except Exception as exc:
+                      pending[name] = url
+                      print(f"⏳ {name} not ready: {exc}")
+              failed = pending
+              if failed:
+                  time.sleep(5)
+
+          if failed:
+              raise SystemExit(f"Services did not become healthy in time: {failed}")
+          PY
+
+      - name: Run runtime contract marker suite
+        env:
+          RUN_RUNTIME_CONTRACTS: "1"
+          L1_URL: http://localhost:8001
+          L2_URL: http://localhost:8002
+          L3_URL: http://localhost:8003
+          L4_URL: http://localhost:8004
+        run: |
+          pytest tests/contract/test_layer_integration.py -m runtime_contract -v --tb=short
+
+      - name: Upload runtime contract artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-contract-test-results
+          path: |
+            .pytest_cache/
+          retention-days: 7
+
   # Schemathesis — Property-based OpenAPI contract validation
   schemathesis-checks:
     name: Schemathesis Property-Based Contract Tests
