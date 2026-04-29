@@ -12,6 +12,10 @@ import { BillingProvider } from "./context/BillingContext";
 import { useUserTierStore, useCreateAccount, type UserTier } from "@/hooks";
 import { Route, Switch, useLocation, useParams } from "wouter";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import {
+  getWorkspaceTabOrDefault,
+  resolveAccountScopedWorkspacePath,
+} from "@/navigation/accountRouting";
 
 // ── Navigate Component for wouter ───────────────────────────────────────────
 function Navigate({ to }: { to: string }) {
@@ -149,14 +153,28 @@ function PageLoader() {
 // Redirects /intelligence/:accountId → /intelligence/:accountId/signals
 function IntelligenceRedirect() {
   const params = useParams<{ accountId: string }>();
-  return <Navigate to={`/intelligence/${params.accountId}/signals`} />;
+  return (
+    <Navigate
+      to={resolveAccountScopedWorkspacePath({
+        workspace: "intelligence",
+        accountId: params.accountId,
+      })}
+    />
+  );
 }
 
 // ── Value Studio Default Redirect ────────────────────────────────────────────
 // Redirects /studio/:accountId → /studio/:accountId/action-plan
 function StudioRedirect() {
   const params = useParams<{ accountId: string }>();
-  return <Navigate to={`/studio/${params.accountId}/action-plan`} />;
+  return (
+    <Navigate
+      to={resolveAccountScopedWorkspacePath({
+        workspace: "studio",
+        accountId: params.accountId,
+      })}
+    />
+  );
 }
 
 function AccountContextSync() {
@@ -188,38 +206,17 @@ function WorkspaceContextRedirect({
     state => state.selectedAccountId
   );
 
-  if (!selectedAccountId) {
-    return <Navigate to="/accounts" />;
-  }
+  const resolvedTab = getWorkspaceTabOrDefault(workspace, explicitTab ?? params.tab);
 
-  const intelligenceTabs = new Set([
-    "signals",
-    "drivers",
-    "evidence",
-    "stakeholders",
-    "enrichment",
-    "hypotheses",
-    "competitive",
-    "roi",
-    "evidence-library",
-  ]);
-  const studioTabs = new Set(["action-plan", "value-model", "narrative", "enrichment", "competitive", "roi", "evidence"]);
-
-  if (workspace === "intelligence") {
-    const resolvedTabCandidate = explicitTab ?? params.tab;
-    const tab =
-      resolvedTabCandidate && intelligenceTabs.has(resolvedTabCandidate)
-        ? resolvedTabCandidate
-        : "signals";
-    return <Navigate to={`/intelligence/${selectedAccountId}/${tab}`} />;
-  }
-
-  const resolvedTabCandidate = explicitTab ?? params.tab;
-  const tab =
-    resolvedTabCandidate && studioTabs.has(resolvedTabCandidate)
-      ? resolvedTabCandidate
-      : "action-plan";
-  return <Navigate to={`/studio/${selectedAccountId}/${tab}`} />;
+  return (
+    <Navigate
+      to={resolveAccountScopedWorkspacePath({
+        workspace,
+        accountId: selectedAccountId,
+        tab: resolvedTab,
+      })}
+    />
+  );
 }
 
 function BillingRoute({ children }: { children: React.ReactNode }) {
