@@ -24,7 +24,7 @@ import {
   Building2, Radar, GitBranch, Package, FileOutput, Shield, Settings,
   Command, Sun, Moon, Frame, LifeBuoy, Send,
   PanelLeft, Eye, Lock, Wrench, Crown,
-  Lightbulb, FileCheck, Calculator, FileText, TrendingUp, Cog,
+  Lightbulb, FileCheck, Calculator, FileText, Cog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -127,15 +127,6 @@ const NAV_DOMAINS: NavItem[] = [
     tier: "standard",
     description: "Generated narrative and messaging",
   },
-  // Step 7: Value Realization
-  {
-    id: "realization",
-    label: "Value Realization",
-    icon: TrendingUp,
-    path: "/realization",
-    tier: "standard",
-    description: "GTM action plan based on validated hypotheses",
-  },
 ];
 
 // ── Setup / Admin Section ─────────────────────────────────────────────────────
@@ -150,7 +141,7 @@ const SUPPORT_ITEMS: NavItem[] = [
   },
   {
     id: "settings",
-    label: "Settings",
+    label: "Settings (admin only)",
     icon: Settings,
     path: "/settings/system/settings",
     tier: "admin",
@@ -179,7 +170,7 @@ function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
 function resolveWorkspacePath(path: string, accountId: string | null): string {
   if (!accountId) return path;
   // Account-scoped workflow steps
-  const ACCOUNT_PREFIXES = ["/intelligence", "/hypothesis", "/drivers", "/evidence", "/calculator", "/value-case", "/realization"];
+  const ACCOUNT_PREFIXES = ["/intelligence", "/hypothesis", "/drivers", "/evidence", "/calculator", "/value-case"];
   for (const prefix of ACCOUNT_PREFIXES) {
     if (path === prefix) return `${prefix}/${accountId}`;
     if (path.startsWith(prefix + "/")) return path.replace(prefix + "/", `${prefix}/${accountId}/`);
@@ -201,7 +192,6 @@ function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
     evidence: "Evidence",
     calculator: "Calculator",
     "value-case": "Value Case",
-    realization: "Value Realization",
     studio: "Value Studio",
     context: "Context Engine",
     deliverables: "Deliverables",
