@@ -1,7 +1,7 @@
 {
   "version": "v1",
   "last_updated": "2026-04-14",
-  "description": "Baseline SLO targets for critical L2/L3/L4 APIs exercised by the k6 performance suite.",
+  "description": "Baseline SLO targets for critical L2/L3/L4 APIs exercised by the k6 performance suite. Includes burn-rate windows for CI enforcement.",
   "regression_policy": {
     "latency_regression_pct": 0.2,
     "error_rate_regression_abs": 0.005,
@@ -21,8 +21,21 @@
         "max": 0.02
       },
       "breach_response": {
-        "runbook": "docs/runbooks/slo-breach-response.md",
+        "runbook": "docs/troubleshooting/runbooks/application/slo-breach-response.md",
         "incident_template": "docs/runbooks/high-error-rate.md"
+      },
+      "availability_slo": 0.995,
+      "burn_rate_policy": {
+        "windows": [
+          {
+            "window": "1h",
+            "threshold": 5.0
+          },
+          {
+            "window": "6h",
+            "threshold": 2.0
+          }
+        ]
       }
     },
     {
@@ -38,8 +51,21 @@
         "max": 0.01
       },
       "breach_response": {
-        "runbook": "docs/runbooks/slo-breach-response.md",
+        "runbook": "docs/troubleshooting/runbooks/application/slo-breach-response.md",
         "incident_template": "docs/runbooks/slow-queries.md"
+      },
+      "availability_slo": 0.995,
+      "burn_rate_policy": {
+        "windows": [
+          {
+            "window": "1h",
+            "threshold": 5.0
+          },
+          {
+            "window": "6h",
+            "threshold": 2.0
+          }
+        ]
       }
     },
     {
@@ -55,8 +81,21 @@
         "max": 0.01
       },
       "breach_response": {
-        "runbook": "docs/runbooks/slo-breach-response.md",
+        "runbook": "docs/troubleshooting/runbooks/application/slo-breach-response.md",
         "incident_template": "docs/runbooks/workflow-stalled.md"
+      },
+      "availability_slo": 0.995,
+      "burn_rate_policy": {
+        "windows": [
+          {
+            "window": "1h",
+            "threshold": 5.0
+          },
+          {
+            "window": "6h",
+            "threshold": 2.0
+          }
+        ]
       }
     }
   ]

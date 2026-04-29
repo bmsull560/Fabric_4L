@@ -6,7 +6,7 @@
         check-env check-env-backend check-env-frontend validate-env-contract \
         preflight up down logs check-deprecations test-backup-drills \
         gate-security gate-state gate-arch gate-config gate-all \
-        platform-contract-lint setup-hooks
+        platform-contract-lint setup-hooks check-ui-duplicates
 
 # Strict shell settings for production safety
 .ONESHELL:
@@ -26,8 +26,11 @@ help: ## Show this help
 
 # ─── Verification ────────────────────────────────────────────────────────────
 
-verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts) — required before PR
+verify: lint typecheck test contract-tests security-smoke check-deprecations check-tool-contracts platform-contract-lint check-ui-duplicates ## Run all checks (lint + typecheck + tests + contracts + security + deprecations + tool-contracts + ui-dup-guard) — required before PR
 	@echo "✅  All checks passed"
+
+check-ui-duplicates: ## Block new duplicate UI component filenames between prototype and production trees
+	@python3 scripts/check_ui_duplicate_filenames.py
 
 verify-strict: verify contract-drift ## Full verification including contract drift detection (slower)
 	@echo "✅  Strict verification passed"
@@ -140,6 +143,8 @@ test-backend-contracts: ## Layer 3: Run backend contract/integration assertions
 contract-tests: ## Run cross-layer contract + architecture tests (fast, no secrets required)
 	@echo "→ Running contract tests (L2-L3, L4-Frontend, Tool Manifests)..."
 	$(PYTEST) tests/contract/ -v --tb=short
+	$(PYTEST) packages/platform-contract/src/python/canonical/test_contract_invariants.py -v --tb=short
+	cd packages/platform-contract && npm run check
 	@echo "→ Running architecture tests (tenant isolation guards)..."
 	$(PYTEST) tests/arch/ -v --tb=short
 	@echo "✅  Contract and architecture tests passed"

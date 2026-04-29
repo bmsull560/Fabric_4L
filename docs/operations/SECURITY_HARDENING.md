@@ -258,3 +258,30 @@ See `docs/compliance/control-matrix.md` for detailed mappings.
 **Last Updated**: 2026-04-15  
 **Version**: 1.0  
 **Classification**: Internal
+
+## Kubernetes Workload Hardening Baseline (Enforced)
+
+All Kubernetes workload manifests under `k8s/` must satisfy the following controls:
+
+- Pod `securityContext.runAsNonRoot: true`
+- Pod `securityContext.seccompProfile.type: RuntimeDefault`
+- Container and initContainer `securityContext.readOnlyRootFilesystem: true`
+- Container and initContainer `securityContext.allowPrivilegeEscalation: false`
+- Container and initContainer `securityContext.capabilities.drop` includes `ALL`
+- Container and initContainer must not set `securityContext.privileged: true`
+
+These controls are enforced as **hard-fail** checks in CI via:
+
+- Rego policy: `k8s/policy/security-hardening.rego`
+- Conftest gate in `.github/workflows/k8s-readiness.yml`
+- Regression tests in `tests/k8s/test_security_policies.py`
+
+### Local validation commands
+
+```bash
+# Policy evaluation against rendered manifests
+conftest test /tmp/k8s-renders/*.yaml -p k8s/policy
+
+# Regression policy tests
+pytest tests/k8s/test_security_policies.py
+```

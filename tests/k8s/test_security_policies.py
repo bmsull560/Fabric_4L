@@ -9,6 +9,7 @@ Validates:
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -28,15 +29,15 @@ class TestRegoPolicies:
         """Verify Rego policy syntax is valid."""
         policy = k8s_policy_dir / "security-hardening.rego"
         
+        if shutil.which("opa") is None:
+            pytest.skip("opa CLI not available")
+
         result = subprocess.run(
             ["opa", "parse", str(policy)],
             capture_output=True,
             text=True,
         )
-        
-        if result.returncode != 0 and "command not found" in result.stderr:
-            pytest.skip("opa CLI not available")
-        
+
         assert result.returncode == 0, f"Rego syntax error: {result.stderr}"
 
     def test_rego_has_run_as_non_root_check(self, k8s_policy_dir: Path) -> None:
@@ -82,6 +83,17 @@ class TestRegoPolicies:
         
         assert "initContainers" in content, "Policy must check initContainers"
 
+
+    def test_rego_disallows_privileged_containers(self, k8s_policy_dir: Path) -> None:
+        """Verify Rego policy rejects privileged containers."""
+        policy = k8s_policy_dir / "security-hardening.rego"
+
+        with open(policy) as f:
+            content = f.read()
+
+        assert "privileged" in content
+        assert "must not set securityContext.privileged=true" in content
+
     def test_rego_policy_evaluates(self, k8s_policy_dir: Path, repo_root: Path) -> None:
         """Test that Rego policy can evaluate against a sample deployment."""
         policy = k8s_policy_dir / "security-hardening.rego"
@@ -112,15 +124,15 @@ class TestRegoPolicies:
             }
         }
         
+        if shutil.which("conftest") is None:
+            pytest.skip("conftest not available")
+
         result = subprocess.run(
-            ["conftest", "test", "-", "-p", str(policy), "-n", "rego"],
+            ["conftest", "test", "-", "-p", str(k8s_policy_dir), "--policy", "main"],
             input=yaml.dump(test_deployment),
             capture_output=True,
             text=True,
         )
-        
-        if "command not found" in result.stderr or "not available" in result.stderr:
-            pytest.skip("conftest not available")
         
         # Should pass (exit code 0)
         assert result.returncode == 0, f"Valid deployment failed policy check: {result.stdout}"
@@ -144,20 +156,24 @@ class TestKyvernoPolicies:
         policy = k8s_policy_dir / "kyverno-slsa-provenance.yaml"
         
         with open(policy) as f:
-            doc = yaml.safe_load(f)
-        
-        assert doc.get("apiVersion") == "kyverno.io/v1"
-        assert doc.get("kind") in ("ClusterPolicy", "Policy")
+            docs = [d for d in yaml.safe_load_all(f) if d]
+
+        assert docs, "expected at least one YAML document"
+        for doc in docs:
+            assert doc.get("apiVersion") == "kyverno.io/v1"
+            assert doc.get("kind") in ("ClusterPolicy", "Policy")
 
     def test_signature_policy_valid_yaml(self, k8s_policy_dir: Path) -> None:
         """Verify signature policy is valid YAML."""
         policy = k8s_policy_dir / "kyverno-verify-signatures.yaml"
         
         with open(policy) as f:
-            doc = yaml.safe_load(f)
-        
-        assert doc.get("apiVersion") == "kyverno.io/v1"
-        assert doc.get("kind") in ("ClusterPolicy", "Policy")
+            docs = [d for d in yaml.safe_load_all(f) if d]
+
+        assert docs, "expected at least one YAML document"
+        for doc in docs:
+            assert doc.get("apiVersion") == "kyverno.io/v1"
+            assert doc.get("kind") in ("ClusterPolicy", "Policy")
 
     def test_slsa_policy_requires_provenance(self, k8s_policy_dir: Path) -> None:
         """Verify SLSA policy requires attestation."""
