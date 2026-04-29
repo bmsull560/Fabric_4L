@@ -196,7 +196,7 @@ app.add_middleware(
 )
 
 # SecurityMiddleware — input validation and security headers (mandatory)
-_security_config_l1 = SecurityConfig(
+_security_config_l1 = SecurityConfig.from_env(
     # P1-14 FIX: Removed /v1/ingest paths from skip list
     # All untrusted input must pass through SecurityMiddleware validation
     skip_validation_paths=frozenset({

@@ -345,7 +345,7 @@ if "*" in _cors_origins:
 # SecurityMiddleware — input validation and security headers (mandatory)
 # P1-14 FIX: Removed /agents/v1 paths from skip list
 # All untrusted input must pass through SecurityMiddleware validation
-_security_config_l4 = SecurityConfig(
+_security_config_l4 = SecurityConfig.from_env(
     skip_validation_paths=frozenset({
         "/health",
         "/metrics",

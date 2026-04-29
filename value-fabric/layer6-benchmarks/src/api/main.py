@@ -163,7 +163,7 @@ if os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT"):
 # SecurityMiddleware — input validation and security headers (before CORS)
 # L6 has no skip paths — all endpoints require strict validation
 if SecurityConfig and add_security_middleware:
-    _security_config_l6 = SecurityConfig(
+    _security_config_l6 = SecurityConfig.from_env(
         skip_validation_paths=frozenset(),
         strict_mode=True,
     )
