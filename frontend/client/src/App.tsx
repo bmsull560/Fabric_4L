@@ -12,6 +12,9 @@ import { BillingProvider } from "./context/BillingContext";
 import { useUserTierStore, useCreateAccount, type UserTier } from "@/hooks";
 import { Route, Switch, useLocation, useParams } from "wouter";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import { WorkspaceRoutes } from "./routes/workspace";
+import { GovernanceRoutes } from "./routes/governance";
+import { aliasNamespaceDeprecationMap } from "./routes/deprecationMap";
 
 // ── Navigate Component for wouter ───────────────────────────────────────────
 function Navigate({ to }: { to: string }) {
@@ -304,6 +307,17 @@ interface AuthenticatedRouteProps {
   effectiveTier: RequiredUserTier;
 }
 
+
+function AppRoutes({ tierProps, isLoading, isAuthenticated }: { tierProps: { currentTier: RequiredUserTier; effectiveTier: RequiredUserTier }; isLoading: boolean; isAuthenticated: boolean; }) {
+  void aliasNamespaceDeprecationMap;
+  return (
+    <>
+      {WorkspaceRoutes({ tierProps, AuthenticatedRoute, Navigate, AccountContextSync, WorkspaceContextRedirect, IntelligenceRedirect, StudioRedirect, BillingRoute }, { SignalsTab, DriversTab, EvidenceTab, StakeholdersTab, EnrichmentTab, HypothesesTab, CompetitiveTab, ROITab, EvidenceLibraryTab, ActionPlanTab, ValueModelTab, NarrativeTab, StudioEnrichmentTab, StudioCompetitiveTab, StudioROITab, StudioEvidenceTab })}
+      {GovernanceRoutes({ tierProps, AuthenticatedRoute, Navigate, AccountContextSync, WorkspaceContextRedirect, IntelligenceRedirect, StudioRedirect, BillingRoute }, { DecisionTrace, GovernanceEvidence, GovernanceCompliance, GovernanceAuditLog, GovernanceChangeHistory, BenchmarkPolicies, HealthMonitor })}
+    </>
+  );
+}
+
 const AuthenticatedRoute = memo(function AuthenticatedRoute({
   children,
   requiredTier = "standard",
@@ -387,9 +401,9 @@ function Router() {
         </AuthenticatedRoute>
       </Route>
 
-      {/* ═══════════════════════════════════════════════════════════════
-          2. INTELLIGENCE — Discovery Workspace
-          ═══════════════════════════════════════════════════════════════ */}
+      <AppRoutes tierProps={tierProps} isLoading={isLoading} isAuthenticated={isAuthenticated} />
+
+      {/* legacy in-file routes retained below during IA modularization */}
       <Route path="/intelligence">
         <AuthenticatedRoute {...tierProps}>
           <WorkspaceContextRedirect workspace="intelligence" />
