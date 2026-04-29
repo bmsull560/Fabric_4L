@@ -722,7 +722,7 @@ function Router() {
           6. GOVERNANCE — Trust Layer
           ═══════════════════════════════════════════════════════════════ */}
       <Route path="/governance">
-        <Navigate to="/governance/traces" />
+        <Navigate to="/governance-center/evidence-policy" />
       </Route>
       <Route path="/governance/traces">
         <AuthenticatedRoute {...tierProps}>
@@ -777,7 +777,7 @@ function Router() {
           7. SETTINGS — Tenant Configuration (Admin)
           ═══════════════════════════════════════════════════════════════ */}
       <Route path="/settings">
-        <Navigate to="/settings/content/formulas" />
+        <Navigate to="/organization-admin/members" />
       </Route>
       <Route path="/settings/content">
         <Navigate to="/settings/content/formulas" />
@@ -897,6 +897,46 @@ function Router() {
           <WorkspaceContextRedirect workspace="intelligence" />
         </AuthenticatedRoute>
       </Route>
+
+
+      {/* Canonical top-level settings and administration schema */}
+      <Route path="/my-settings">
+        <Navigate to="/my-settings/profile" />
+      </Route>
+      <Route path="/my-settings/profile"><Navigate to="/accounts" /></Route>
+      <Route path="/my-settings/preferences"><Navigate to="/accounts" /></Route>
+      <Route path="/my-settings/notifications"><Navigate to="/accounts" /></Route>
+      <Route path="/my-settings/appearance"><Navigate to="/accounts" /></Route>
+      <Route path="/my-settings/accounts"><Navigate to="/accounts" /></Route>
+
+      <Route path="/workspace-settings"><Navigate to="/workspace-settings/integrations" /></Route>
+      <Route path="/workspace-settings/integrations"><Navigate to="/context/integrations" /></Route>
+      <Route path="/workspace-settings/sources"><Navigate to="/context/sources" /></Route>
+
+      <Route path="/organization-admin"><Navigate to="/organization-admin/members" /></Route>
+      <Route path="/organization-admin/members"><Navigate to="/settings/access/roles" /></Route>
+      <Route path="/organization-admin/roles"><Navigate to="/settings/access/roles" /></Route>
+      <Route path="/organization-admin/teams"><Navigate to="/settings/access/teams" /></Route>
+      <Route path="/organization-admin/billing"><Navigate to="/settings/system/billing" /></Route>
+
+      <Route path="/platform-configuration"><Navigate to="/platform-configuration/integrations" /></Route>
+      <Route path="/platform-configuration/integrations"><Navigate to="/context/integrations" /></Route>
+      <Route path="/platform-configuration/api-keys"><Navigate to="/settings/access/keys" /></Route>
+      <Route path="/platform-configuration/webhooks"><Navigate to="/settings/system/settings" /></Route>
+      <Route path="/platform-configuration/model-routing"><Navigate to="/settings/system/settings" /></Route>
+      <Route path="/platform-configuration/feature-flags"><Navigate to="/settings/system/settings" /></Route>
+
+      <Route path="/governance-center"><Navigate to="/governance-center/evidence-policy" /></Route>
+      <Route path="/governance-center/evidence-policy"><Navigate to="/governance/evidence" /></Route>
+      <Route path="/governance-center/compliance"><Navigate to="/governance/compliance" /></Route>
+      <Route path="/governance-center/audit-retention"><Navigate to="/governance/audit/log" /></Route>
+      <Route path="/governance-center/residency"><Navigate to="/governance/compliance" /></Route>
+
+      <Route path="/developer-console"><Navigate to="/developer-console/health" /></Route>
+      <Route path="/developer-console/health"><Navigate to="/governance/health" /></Route>
+      <Route path="/developer-console/traces"><Navigate to="/governance/traces" /></Route>
+      <Route path="/developer-console/queue-diagnostics"><Navigate to="/dev/integration" /></Route>
+      <Route path="/developer-console/log-diagnostics"><Navigate to="/dev/integration" /></Route>
 
       {/* ═══════════════════════════════════════════════════════════════
           LEGACY REDIRECTS — Backward Compatibility
