@@ -64,12 +64,12 @@ async def get_vault_health(
 
             return get_vault_healthResult.model_validate({
                 "status": "healthy" if response.status_code == 200 else "degraded",
+                "reachable": True,
                 "initialized": data.get("initialized", False),
                 "sealed": data.get("sealed", True),
                 "standby": data.get("standby", False),
                 "version": data.get("version", "unknown"),
             })
-
 
     except Exception as e:
         logger.warning(f"Vault health check failed: {e}")

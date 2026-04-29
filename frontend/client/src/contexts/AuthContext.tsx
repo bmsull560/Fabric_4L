@@ -304,7 +304,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenantId: 'dev-tenant',
       tenantSlug: 'dev',
     };
-    const mockToken = 'dev-token-bypass';
+    // Generate a valid JWT-format token so refreshToken() doesn't clear it
+    const payload = {
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+      sub: mockUser.id,
+      tenant_id: mockUser.tenantId,
+    };
+    const mockToken = `header.${btoa(JSON.stringify(payload))}.signature`;
     authClient.persistSession(mockToken, mockUser, 'dev-tenant');
     setAuthState({
       state: 'authenticated',

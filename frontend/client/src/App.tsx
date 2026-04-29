@@ -314,21 +314,7 @@ function RouteGuard({ children, requiredTier = "standard" }: RouteGuardProps) {
     console.warn(
       `[RouteGuard] Access denied to ${location}: ${accessDecision.reason}`
     );
-    return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] px-6">
-        <h1 className="text-xl font-bold text-foreground">Access Denied</h1>
-        <p className="text-sm text-muted-foreground mt-2 text-center max-w-md">
-          This page requires <span className="font-medium text-foreground">{requiredTier}</span> tier access.
-          Your current tier is <span className="font-medium text-foreground">{currentTier}</span>.
-        </p>
-        <button
-          className="mt-4 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-          onClick={() => window.location.href = '/home'}
-        >
-          Go to Home
-        </button>
-      </div>
-    );
+    return <Navigate to="/home" />;
   }
 
   return <>{children}</>;
@@ -435,8 +421,6 @@ function Router() {
           <Accounts />
         </AuthenticatedRoute>
       </Route>
-
-      <AppRoutes tierProps={tierProps} isLoading={isLoading} isAuthenticated={isAuthenticated} />
 
       {/* Guided Workflow Routes */}
       <Route path="/workflow/prospect">
@@ -702,9 +686,6 @@ function Router() {
       {/* ═══════════════════════════════════════════════════════════════
           4. CONTEXT ENGINE — Vendor Knowledge Base
           ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/context">
-        <Navigate to="/context/packs" />
-      </Route>
       <Route path="/context/packs">
         <AuthenticatedRoute {...tierProps}>
           <ValuePacks />
@@ -780,13 +761,13 @@ function Router() {
           <SourceConfiguration />
         </AuthenticatedRoute>
       </Route>
+      <Route path="/context">
+        <Navigate to="/context/packs" />
+      </Route>
 
       {/* ═══════════════════════════════════════════════════════════════
           5. DELIVERABLES — Activation Layer
           ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/deliverables">
-        <Navigate to="/deliverables/cases" />
-      </Route>
       <Route path="/deliverables/cases">
         <AuthenticatedRoute {...tierProps}>
           <BusinessCaseList />
@@ -822,17 +803,13 @@ function Router() {
           <Integrations />
         </AuthenticatedRoute>
       </Route>
-
+      <Route path="/deliverables">
+        <Navigate to="/deliverables/cases" />
+      </Route>
 
       {/* ═══════════════════════════════════════════════════════════════
           7. SETTINGS — Tenant Configuration (Admin)
           ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/settings">
-        <Navigate to="/organization-admin/members" />
-      </Route>
-      <Route path="/settings/content">
-        <Navigate to="/settings/content/formulas" />
-      </Route>
       <Route path="/settings/content/formulas">
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
           <FormulaGovernance />
@@ -848,8 +825,8 @@ function Router() {
           <FormulaGovernance />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/settings/data">
-        <Navigate to="/settings/data/variables" />
+      <Route path="/settings/content">
+        <Navigate to="/settings/content/formulas" />
       </Route>
       <Route path="/settings/data/variables">
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
@@ -866,8 +843,8 @@ function Router() {
           <VariableRegistry />
         </AuthenticatedRoute>
       </Route>
-      <Route path="/settings/access">
-        <Navigate to="/settings/access/roles" />
+      <Route path="/settings/data">
+        <Navigate to="/settings/data/variables" />
       </Route>
       <Route path="/settings/access/roles">
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
@@ -883,6 +860,9 @@ function Router() {
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
           <PermissionsAdmin />
         </AuthenticatedRoute>
+      </Route>
+      <Route path="/settings/access">
+        <Navigate to="/settings/access/roles" />
       </Route>
       <Route path="/settings/system/settings">
         <AuthenticatedRoute {...tierProps} requiredTier="admin">
@@ -916,6 +896,9 @@ function Router() {
             <PaymentHistory />
           </BillingRoute>
         </AuthenticatedRoute>
+      </Route>
+      <Route path="/settings">
+        <Navigate to="/organization-admin/members" />
       </Route>
 
       {/* ═══════════════════════════════════════════════════════════════
@@ -1207,6 +1190,8 @@ function Router() {
       <Route path="/studio/scenarios">
         <Navigate to="/accounts" />
       </Route>
+
+      <AppRoutes tierProps={tierProps} isLoading={isLoading} isAuthenticated={isAuthenticated} />
 
       {/* ─── Catch-all ─── */}
       <Route>

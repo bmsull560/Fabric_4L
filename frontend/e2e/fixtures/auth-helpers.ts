@@ -47,6 +47,22 @@ async function ensureSameOrigin(page: Page): Promise<void> {
 }
 
 /**
+ * Generate a valid JWT-format token for E2E tests.
+ * refreshToken() validates JWT structure (header.payload.signature)
+ * and checks expiry, so test tokens must conform.
+ */
+function generateTestToken(userId: string, tenantId: string): string {
+  const payload = {
+    exp: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
+    iat: Math.floor(Date.now() / 1000),
+    sub: userId,
+    tenant_id: tenantId,
+  };
+  const base64Payload = btoa(JSON.stringify(payload));
+  return `header.${base64Payload}.signature`;
+}
+
+/**
  * Seed authenticated session in localStorage.
  * Must be called before any route navigation that requires auth.
  *
@@ -60,7 +76,17 @@ export async function seedAuthState(
   await ensureSameOrigin(page);
 
   await page.evaluate((u) => {
-    localStorage.setItem('accessToken', 'e2e-test-token-valid');
+    // Generate a valid JWT-format token so refreshToken() doesn't clear it
+    const payload = {
+      exp: Math.floor(Date.now() / 1000) + 86400, // 24 hours from now
+      iat: Math.floor(Date.now() / 1000),
+      sub: u.id,
+      tenant_id: u.tenantId,
+    };
+    const base64Payload = btoa(JSON.stringify(payload));
+    const token = `header.${base64Payload}.signature`;
+
+    localStorage.setItem('accessToken', token);
     localStorage.setItem('userInfo', JSON.stringify(u));
     localStorage.setItem('tenantId', u.tenantId);
   }, user);
