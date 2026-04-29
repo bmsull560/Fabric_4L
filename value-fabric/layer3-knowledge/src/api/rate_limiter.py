@@ -9,6 +9,13 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..logging_config import get_logger
+from shared.models.typed_dict import TypedDictModel
+
+
+class RateLimitMiddleware_get_statsResult(TypedDictModel):
+    active_clients: Any
+    endpoint_limits: Any
+    total_requests: Any
 
 logger = get_logger(__name__)
 
@@ -281,13 +288,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Returns:
             Dictionary with rate limiting stats
         """
-        return {
+        return RateLimitMiddleware_get_statsResult.model_validate({
             "active_clients": len(self.rate_limiter.client_requests),
             "total_requests": sum(
                 len(requests) for requests in self.rate_limiter.client_requests.values()
             ),
             "endpoint_limits": len(self.rate_limiter.endpoint_limits),
-        }
+        })
 
 
 def add_rate_limiting(

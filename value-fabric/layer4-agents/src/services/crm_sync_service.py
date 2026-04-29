@@ -25,6 +25,15 @@ from ..models.integration import Integration
 from ..models.tool_schemas import GetProspectDataInput
 from ..tools.crm_tools import GetProspectDataTool
 from .integration_service import IntegrationService
+from shared.models.typed_dict import TypedDictModel
+
+
+class CRMSyncService__get_crm_configResult(TypedDictModel):
+    api_key: Any
+    crm_api_key: Any
+    crm_api_secret: Any
+    crm_instance_url: bool
+    crm_type: Any
 
 logger = logging.getLogger(__name__)
 
@@ -390,25 +399,27 @@ class CRMSyncService:
 
         if integration and integration.enabled:
             decrypted = await integration_service.decrypt_credentials(integration)
-            return {
+            return CRMSyncService__get_crm_configResult.model_validate({
                 "crm_type": provider.value,
                 "api_key": decrypted.get("api_key"),
                 "crm_api_key": decrypted.get("api_key"),
                 "crm_api_secret": decrypted.get("api_secret"),
                 "crm_instance_url": integration.instance_url or decrypted.get("instance_url"),
-            }
+            })
+
 
         if os.getenv("ALLOW_ENV_CRM_FALLBACK", "").lower() == "true":
             crm_type = os.getenv("CRM_TYPE", "").lower()
             if crm_type and crm_type != provider.value:
                 return None
-            return {
+            return CRMSyncService__get_crm_configResult.model_validate({
                 "crm_type": provider.value,
                 "api_key": os.getenv("CRM_API_KEY"),
                 "crm_api_key": os.getenv("CRM_API_KEY"),
                 "crm_api_secret": os.getenv("CRM_API_SECRET"),
                 "crm_instance_url": os.getenv("CRM_INSTANCE_URL"),
-            }
+            })
+
 
         return None
 

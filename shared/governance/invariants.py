@@ -17,6 +17,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .abom import AgentBillOfMaterials
+from shared.models.typed_dict import TypedDictModel
+
+
+class InvariantEvaluator_get_run_summaryResult(TypedDictModel):
+    agent_type: Any
+    budget_limit_usd: Any
+    budget_used_usd: Any
+    max_tool_calls: Any
+    tool_calls: Any
+    violations_would_occur: bool
 
 logger = logging.getLogger(__name__)
 
@@ -148,11 +158,13 @@ class InvariantEvaluator:
     def get_run_summary(self) -> dict[str, Any]:
         """Return summary of invariant state for this run."""
         inv = self._abom.invariants
-        return {
+        return InvariantEvaluator_get_run_summaryResult.model_validate({
             "agent_type": self._abom.agent_type,
             "tool_calls": self._tool_call_count,
             "max_tool_calls": inv.max_tool_calls_per_run,
             "budget_used_usd": self._budget_used_usd,
             "budget_limit_usd": inv.budget_limit_usd,
             "violations_would_occur": self._tool_call_count >= inv.max_tool_calls_per_run,
-        }
+        })
+
+

@@ -13,6 +13,39 @@ from typing import Any
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
+from shared.models.typed_dict import TypedDictModel
+
+
+class SecurityEvent_to_dictResult(TypedDictModel):
+    api_key_id: Any
+    endpoint: Any
+    event_id: Any
+    event_type: Any
+    geo_location: Any
+    metadata: Any
+    method: Any
+    reputation_score: Any
+    request_body: Any
+    request_headers: Any
+    request_size: Any
+    response_headers: Any
+    response_size: Any
+    response_time_ms: Any
+    risk_score: Any
+    source_ip: Any
+    status_code: Any
+    tags: list[Any]
+    timestamp: Any
+    user_agent: Any
+    user_id: Any
+
+class SecurityMonitor_get_security_summaryResult(TypedDictModel):
+    active_signatures: Any
+    alert_levels: dict[str, Any]
+    blocked_ips: Any
+    blocked_users: Any
+    recent_alerts: Any
+    stats: Any
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +124,7 @@ class SecurityEvent:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return SecurityEvent_to_dictResult.model_validate({
             "event_id": self.event_id,
             "timestamp": self.timestamp.isoformat(),
             "event_type": self.event_type,
@@ -113,7 +146,7 @@ class SecurityEvent:
             "risk_score": self.risk_score,
             "tags": list(self.tags),
             "metadata": self.metadata,
-        }
+        })
 
 
 class ThreatSignature(BaseModel):
@@ -1043,7 +1076,7 @@ class SecurityMonitor:
         """
         recent_alerts = await self.store.get_alerts_by_status(AlertStatus.NEW, limit=10)
 
-        return {
+        return SecurityMonitor_get_security_summaryResult.model_validate({
             "stats": self.stats,
             "blocked_ips": len(self.blocked_ips),
             "blocked_users": len(self.blocked_users),
@@ -1065,7 +1098,8 @@ class SecurityMonitor:
                     [a for a in recent_alerts if a.threat_level == ThreatLevel.CRITICAL]
                 ),
             },
-        }
+        })
+
 
     async def cleanup(self):
         """Cleanup old security data."""

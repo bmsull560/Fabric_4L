@@ -13,6 +13,13 @@ from typing import Any
 from urllib.parse import urljoin
 
 import httpx
+from shared.models.typed_dict import TypedDictModel
+
+
+class TenantSecretManager_seed_default_tenant_secretsResult(TypedDictModel):
+    data: Any | None = None
+    error: Any
+    success: bool
 
 logger = logging.getLogger(__name__)
 
@@ -466,10 +473,10 @@ class TenantSecretManager:
                 environment, tenant_path, default_secrets
             )
             logger.info("Seeded default secrets for tenant %s in %s", tenant_id, environment)
-            return {"success": True, "data": result}
+            return TenantSecretManager_seed_default_tenant_secretsResult.model_validate({"success": True, "data": result})
         except InfisicalAPIError as e:
             logger.error("Failed to seed secrets for tenant %s: %s", tenant_id, e)
-            return {"success": False, "error": str(e)}
+            return TenantSecretManager_seed_default_tenant_secretsResult.model_validate({"success": False, "error": str(e)})
 
     async def delete_tenant_secrets_path(
         self,

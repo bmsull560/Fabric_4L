@@ -24,6 +24,12 @@ from sqlalchemy.orm import sessionmaker
 from src.api.main import app
 from src.database import Base, get_db
 from src.feature_flags.service import FeatureFlagService
+from shared.models.typed_dict import TypedDictModel
+
+
+class lookupResult(TypedDictModel):
+    enabled: bool
+    rollout_percentage: int
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -195,7 +201,7 @@ async def test_rollout_bucketing_determinism(mock_redis):
     init_feature_flags(mock_redis)
 
     async def lookup(flag_key: str, tenant_id: UUID | None):
-        return {"enabled": True, "rollout_percentage": 50}
+        return lookupResult.model_validate({"enabled": True, "rollout_percentage": 50})
 
     register_feature_flag_lookup(lookup)
 
@@ -235,7 +241,7 @@ async def test_redis_cache_write_on_miss(mock_redis):
     mock_redis.get = AsyncMock(return_value=None)
 
     async def lookup(flag_key: str, tenant_id: UUID | None):
-        return {"enabled": True, "rollout_percentage": 100}
+        return lookupResult.model_validate({"enabled": True, "rollout_percentage": 100})
 
     register_feature_flag_lookup(lookup)
 
@@ -251,7 +257,7 @@ async def test_graceful_degradation_without_redis():
     init_feature_flags(None)
 
     async def lookup(flag_key: str, tenant_id: UUID | None):
-        return {"enabled": True, "rollout_percentage": 100}
+        return lookupResult.model_validate({"enabled": True, "rollout_percentage": 100})
 
     register_feature_flag_lookup(lookup)
 

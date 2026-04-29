@@ -22,6 +22,13 @@ from ..interfaces.formula_governance import (
     IFormulaGovernanceService,
 )
 from ..metrics import get_metrics
+from shared.models.typed_dict import TypedDictModel
+
+
+class Neo4jFormulaGovernanceService_validate_activationResult(TypedDictModel):
+    can_activate: bool
+    errors: list[Any]
+    warnings: list[Any]
 
 
 class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalWorkflow):
@@ -456,11 +463,12 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
             record = await result.single()
 
             if not record:
-                return {
+                return Neo4jFormulaGovernanceService_validate_activationResult.model_validate({
                     "can_activate": False,
                     "errors": ["Formula not found"],
                     "warnings": [],
-                }
+                })
+
 
             errors = []
             warnings = []
@@ -478,11 +486,12 @@ class Neo4jFormulaGovernanceService(IFormulaGovernanceService, IFormulaApprovalW
             if inactive_deps > 0:
                 warnings.append(f"Formula has {inactive_deps} inactive dependencies")
 
-            return {
+            return Neo4jFormulaGovernanceService_validate_activationResult.model_validate({
                 "can_activate": len(errors) == 0,
                 "errors": errors,
                 "warnings": warnings,
-            }
+            })
+
 
     # Approval Workflow Implementation
 

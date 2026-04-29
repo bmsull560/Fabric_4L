@@ -13,6 +13,18 @@ from uuid import UUID
 
 from shared.identity.context import RequestContext
 from ..models.tool_schemas import ToolCategory, ToolSchema
+from shared.models.typed_dict import TypedDictModel
+
+
+class ToolRegistry_get_all_schemasResult(TypedDictModel):
+    pass
+
+
+class get_tool_metadataResult(TypedDictModel):
+    category: Any
+    description: Any
+    name: Any
+    tenant_scoped: Any
 
 logger = logging.getLogger(__name__)
 
@@ -427,7 +439,7 @@ class ToolRegistry:
         Returns:
             Dict mapping tool names to schemas
         """
-        return {name: tool.get_schema() for name, tool in self._tools.items()}
+        return ToolRegistry_get_all_schemasResult.model_validate({name: tool.get_schema() for name, tool in self._tools.items()})
 
     def clear(self) -> None:
         """Clear all registered tools."""
@@ -541,12 +553,12 @@ def get_tool_metadata(registry: "ToolRegistry", tool_name: str) -> dict:
     sig = inspect.signature(tool_class().execute)
     tenant_scoped = "tenant_id" in sig.parameters
     
-    return {
+    return get_tool_metadataResult.model_validate({
         "name": tool_class.name,
         "category": tool_class.category,
         "description": tool_class.description,
         "tenant_scoped": tenant_scoped,
-    }
+    })
 
 
 def get_available_tools(registry: "ToolRegistry", context: RequestContext) -> list[str]:

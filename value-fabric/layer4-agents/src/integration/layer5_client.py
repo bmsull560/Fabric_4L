@@ -22,6 +22,27 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class Layer5GroundTruthClient_sync_approved_truthsResult(TypedDictModel):
+    detail: Any | None = None
+    error: str
+    failed: int
+    synced: int
+
+class Layer5GroundTruthClient_submit_truthResult(TypedDictModel):
+    detail: Any | None = None
+    error: str
+
+class Layer5GroundTruthClient_list_truthsResult(TypedDictModel):
+    error: Any
+    items: list[Any]
+    total: int
+
+class Layer5GroundTruthClient_validate_truthResult(TypedDictModel):
+    error: Any
+    truth_object_id: Any
 
 logger = logging.getLogger(__name__)
 
@@ -155,15 +176,17 @@ class Layer5GroundTruthClient:
                 exc.response.status_code,
                 exc.response.text[:200],
             )
-            return {
+            return Layer5GroundTruthClient_sync_approved_truthsResult.model_validate({
                 "error": f"HTTP {exc.response.status_code}",
                 "detail": exc.response.text[:200],
                 "synced": 0,
                 "failed": 0,
-            }
+            })
+
+
         except Exception as exc:
             logger.warning("Layer 5 sync-kg failed (non-blocking): %s", exc)
-            return {"error": str(exc), "synced": 0, "failed": 0}
+            return Layer5GroundTruthClient_sync_approved_truthsResult.model_validate({"error": str(exc), "synced": 0, "failed": 0})
 
     # ------------------------------------------------------------------
     # Submit a new TruthObject
@@ -240,13 +263,15 @@ class Layer5GroundTruthClient:
                 exc.response.status_code,
                 exc.response.text[:200],
             )
-            return {
+            return Layer5GroundTruthClient_submit_truthResult.model_validate({
                 "error": f"HTTP {exc.response.status_code}",
                 "detail": exc.response.text[:200],
-            }
+            })
+
+
         except Exception as exc:
             logger.warning("Layer 5 submit_truth failed: %s", exc)
-            return {"error": str(exc)}
+            return Layer5GroundTruthClient_submit_truthResult.model_validate({"error": str(exc)})
 
     # ------------------------------------------------------------------
     # Query TruthObjects
@@ -289,7 +314,7 @@ class Layer5GroundTruthClient:
             return resp.json()
         except Exception as exc:
             logger.warning("Layer 5 list_truths failed: %s", exc)
-            return {"error": str(exc), "items": [], "total": 0}
+            return Layer5GroundTruthClient_list_truthsResult.model_validate({"error": str(exc), "items": [], "total": 0})
 
     async def validate_truth(
         self,
@@ -323,7 +348,7 @@ class Layer5GroundTruthClient:
             return resp.json()
         except Exception as exc:
             logger.warning("Layer 5 validate_truth failed for %s: %s", truth_id, exc)
-            return {"error": str(exc), "truth_object_id": truth_id}
+            return Layer5GroundTruthClient_validate_truthResult.model_validate({"error": str(exc), "truth_object_id": truth_id})
 
     # ------------------------------------------------------------------
     # Lifecycle

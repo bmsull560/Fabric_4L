@@ -7,6 +7,18 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, Optional
+from shared.models.typed_dict import TypedDictModel
+
+
+class StatisticalProfile_to_dictResult(TypedDictModel):
+    mean: Any
+    p10: Any
+    p25: Any
+    p50: Any
+    p75: Any
+    p90: Any
+    sample_size: Any
+    std_dev: Any
 
 
 @dataclass
@@ -23,7 +35,7 @@ class StatisticalProfile:
     sample_size: int
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        return StatisticalProfile_to_dictResult.model_validate({
             "p10": str(self.p10),
             "p25": str(self.p25),
             "p50": str(self.p50),
@@ -32,7 +44,8 @@ class StatisticalProfile:
             "mean": str(self.mean),
             "std_dev": str(self.std_dev),
             "sample_size": self.sample_size,
-        }
+        })
+
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "StatisticalProfile":

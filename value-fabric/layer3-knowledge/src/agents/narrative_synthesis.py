@@ -16,6 +16,35 @@ from enum import Enum
 from typing import Any
 
 from .base import AgentResult, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class NarrativeSynthesisAgent__generate_executive_summaryResult(TypedDictModel):
+    content: dict[str, Any]
+    format: Any
+    generated_at: Any
+    narrative_id: str
+    structured_data: dict[str, Any]
+    template_used: Any
+    title: Any
+
+class NarrativeSynthesisAgent__generate_slide_deckResult(TypedDictModel):
+    format: Any
+    generated_at: Any
+    narrative_id: str
+    slide_count: Any
+    slides: Any
+    template_used: Any
+    title: Any
+
+class NarrativeSynthesisAgent__generate_risk_proposalResult(TypedDictModel):
+    content: dict[str, Any]
+    format: Any
+    generated_at: Any
+    narrative_id: str
+    structured_data: dict[str, Any]
+    template_used: Any
+    title: Any
 
 logger = logging.getLogger(__name__)
 
@@ -297,7 +326,7 @@ class NarrativeSynthesisAgent(BaseAgent):
         # Simple template substitution (in production, use Jinja2)
         content = self._substitute_template(template.content, formatted_data)
 
-        return {
+        return NarrativeSynthesisAgent__generate_executive_summaryResult.model_validate({
             "narrative_id": f"exec-summary-{int(time.time())}",
             "format": OutputFormat.EXECUTIVE_SUMMARY.value,
             "title": title,
@@ -312,7 +341,8 @@ class NarrativeSynthesisAgent(BaseAgent):
             },
             "template_used": template_id,
             "generated_at": datetime.utcnow().isoformat(),
-        }
+        })
+
 
     async def _generate_slide_deck(
         self, title: str, data: dict[str, Any], template_id: str
@@ -351,7 +381,7 @@ class NarrativeSynthesisAgent(BaseAgent):
                 }
             )
 
-        return {
+        return NarrativeSynthesisAgent__generate_slide_deckResult.model_validate({
             "narrative_id": f"slide-deck-{int(time.time())}",
             "format": OutputFormat.SLIDE_DECK.value,
             "title": title,
@@ -359,7 +389,8 @@ class NarrativeSynthesisAgent(BaseAgent):
             "slides": slides,
             "template_used": template_id,
             "generated_at": datetime.utcnow().isoformat(),
-        }
+        })
+
 
     async def _generate_risk_proposal(
         self, title: str, data: dict[str, Any], template_id: str
@@ -381,7 +412,7 @@ class NarrativeSynthesisAgent(BaseAgent):
         formatted_data = self._apply_filters(data)
         content = self._substitute_template(template.content, formatted_data)
 
-        return {
+        return NarrativeSynthesisAgent__generate_risk_proposalResult.model_validate({
             "narrative_id": f"risk-proposal-{int(time.time())}",
             "format": OutputFormat.RISK_PROPOSAL.value,
             "title": title,
@@ -396,7 +427,8 @@ class NarrativeSynthesisAgent(BaseAgent):
             },
             "template_used": template_id,
             "generated_at": datetime.utcnow().isoformat(),
-        }
+        })
+
 
     def _apply_filters(self, data: dict[str, Any]) -> dict[str, Any]:
         """Apply template filters to data values.

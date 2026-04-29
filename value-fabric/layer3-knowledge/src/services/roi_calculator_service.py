@@ -43,6 +43,41 @@ from typing import Any
 
 import structlog
 from neo4j import AsyncDriver
+from shared.models.typed_dict import TypedDictModel
+
+
+class ROICalculatorService_compare_scenariosResult(TypedDictModel):
+    discount_rate: Any
+    scenarios: Any
+    time_horizon_months: Any
+
+class ROICalculatorService_create_templateResult(TypedDictModel):
+    id: Any
+
+class ROICalculatorService_get_templatesResult(TypedDictModel):
+    limit: Any
+    skip: Any
+    templates: Any
+    total: Any
+
+class ROICalculatorService_save_calculationResult(TypedDictModel):
+    id: Any
+
+class ROICalculatorService_list_calculationsResult(TypedDictModel):
+    calculations: Any
+    limit: Any
+    skip: Any
+    total: Any
+
+class ROICalculatorService_get_industry_benchmarksResult(TypedDictModel):
+    avg_deal_size: Any | None = None
+    avg_time_to_value_days: Any | None = None
+    case_count: Any | None = None
+    company_sizes: Any | None = None
+    defaults: dict[str, Any]
+    has_benchmarks: bool
+    industry: Any
+    message: str
 
 try:
     from shared.identity.context import require_context
@@ -318,11 +353,12 @@ class ROICalculatorService:
                 "total_cost_3year": result.total_cost_3year,
             }
 
-        return {
+        return ROICalculatorService_compare_scenariosResult.model_validate({
             "scenarios": results,
             "time_horizon_months": time_horizon_months,
             "discount_rate": discount_rate,
-        }
+        })
+
 
     # ------------------------------------------------------------------
     # Financial Math Helpers
@@ -423,7 +459,7 @@ class ROICalculatorService:
             record = await result.single()
 
         logger.info("roi_template_created", template_id=template_id, name=template.name)
-        return {"id": template_id, **(record["template"] if record else {})}
+        return ROICalculatorService_create_templateResult.model_validate({"id": template_id, **(record["template"] if record else {})})
 
     async def get_templates(
         self,
@@ -468,12 +504,13 @@ class ROICalculatorService:
             list_result = await session.run(query, params)
             records = [record async for record in list_result]
 
-        return {
+        return ROICalculatorService_get_templatesResult.model_validate({
             "templates": [r["template"] for r in records],
             "total": total,
             "skip": skip,
             "limit": limit,
-        }
+        })
+
 
     # ------------------------------------------------------------------
     # Calculation Persistence
@@ -533,7 +570,7 @@ class ROICalculatorService:
             record = await result.single()
 
         logger.info("roi_calculation_saved", calc_id=calc_id, scenario=scenario_name)
-        return {"id": calc_id, **(record["calculation"] if record else {})}
+        return ROICalculatorService_save_calculationResult.model_validate({"id": calc_id, **(record["calculation"] if record else {})})
 
     async def get_calculation(
         self, calc_id: str
@@ -614,12 +651,13 @@ class ROICalculatorService:
                         pass
             calculations.append(calc)
 
-        return {
+        return ROICalculatorService_list_calculationsResult.model_validate({
             "calculations": calculations,
             "total": total,
             "skip": skip,
             "limit": limit,
-        }
+        })
+
 
     # ------------------------------------------------------------------
     # Industry Benchmarks
@@ -653,7 +691,7 @@ class ROICalculatorService:
             record = await result.single()
 
         if not record or record["case_count"] == 0:
-            return {
+            return ROICalculatorService_get_industry_benchmarksResult.model_validate({
                 "industry": industry,
                 "has_benchmarks": False,
                 "message": "No case studies found for this industry",
@@ -663,9 +701,10 @@ class ROICalculatorService:
                     "time_savings_hours_per_week": 4.0,
                     "avg_time_to_value_days": 180,
                 },
-            }
+            })
 
-        return {
+
+        return ROICalculatorService_get_industry_benchmarksResult.model_validate({
             "industry": industry,
             "has_benchmarks": True,
             "case_count": record["case_count"],
@@ -678,4 +717,6 @@ class ROICalculatorService:
                 "time_savings_hours_per_week": 5.0,
                 "avg_time_to_value_days": round(record["avg_time_to_value_days"] or 180, 0),
             },
-        }
+        })
+
+

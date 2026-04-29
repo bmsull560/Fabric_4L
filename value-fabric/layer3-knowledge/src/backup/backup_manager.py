@@ -20,6 +20,44 @@ except ImportError:
     Fernet = None  # type: ignore
 
 from ..logging_config import get_logger
+from shared.models.typed_dict import TypedDictModel
+
+
+class BackupMetadata_to_dictResult(TypedDictModel):
+    backup_id: Any
+    backup_type: Any
+    checksum: Any
+    completed_at: Any
+    compressed_size_bytes: Any
+    compression_algorithm: Any
+    created_at: Any
+    description: Any
+    encrypted: Any
+    file_path: Any
+    retention_days: Any
+    size_bytes: Any
+    status: Any
+    storage_type: Any
+    tags: Any
+
+class LocalStorage_get_backup_infoResult(TypedDictModel):
+    backup_id: Any
+    created_at: Any
+    file_path: Any
+    modified_at: Any
+    size_bytes: Any
+
+class BackupManager_get_backup_statisticsResult(TypedDictModel):
+    backup_type_distribution: Any
+    completed_backups: Any
+    compressed_size_bytes: Any
+    compression_ratio: Any
+    failed_backups: Any
+    newest_backup: Any
+    oldest_backup: Any
+    storage_type_distribution: Any
+    total_backups: Any
+    total_size_bytes: Any
 
 logger = get_logger(__name__)
 
@@ -76,7 +114,7 @@ class BackupMetadata:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return BackupMetadata_to_dictResult.model_validate({
             "backup_id": self.backup_id,
             "backup_type": self.backup_type.value,
             "created_at": self.created_at.isoformat(),
@@ -94,7 +132,8 @@ class BackupMetadata:
             "retention_days": self.retention_days,
             "encrypted": self.encrypted,
             "compression_algorithm": self.compression_algorithm,
-        }
+        })
+
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BackupMetadata":
@@ -375,13 +414,13 @@ class LocalStorage(BackupStorage):
 
         stat = file_path.stat()
 
-        return {
+        return LocalStorage_get_backup_infoResult.model_validate({
             "backup_id": backup_id,
             "file_path": str(file_path),
             "size_bytes": stat.st_size,
             "created_at": datetime.fromtimestamp(stat.st_ctime),
             "modified_at": datetime.fromtimestamp(stat.st_mtime),
-        }
+        })
 
 
 class BackupManager:
@@ -1145,7 +1184,7 @@ class BackupManager:
             storage_type = backup.storage_type.value
             storage_counts[storage_type] = storage_counts.get(storage_type, 0) + 1
 
-        return {
+        return BackupManager_get_backup_statisticsResult.model_validate({
             "total_backups": total_backups,
             "completed_backups": completed_backups,
             "failed_backups": failed_backups,
@@ -1162,7 +1201,7 @@ class BackupManager:
             "newest_backup": max(
                 (b.created_at for b in self.backup_history), default=None
             ),
-        }
+        })
 
 
 # Global backup manager instance

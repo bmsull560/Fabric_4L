@@ -1163,7 +1163,7 @@ async def health_check():
         system_metrics["memory_usage_mb"] = memory_info.used / (1024 * 1024)
         system_metrics["cpu_percent"] = psutil.cpu_percent()
 
-    return {
+    return health_checkResult.model_validate({
         "status": overall_status,
         "service": "layer2-extraction",
         "version": "1.0.0",
@@ -1172,7 +1172,7 @@ async def health_check():
         "response_time_ms": total_response_ms,
         "dependencies": dependencies,
         "metrics": system_metrics,
-    }
+    })
 
 
 async def metrics_endpoint(request: Request):
@@ -1294,12 +1294,12 @@ async def extract_batch(requests: list[ExtractRequest], background_tasks: Backgr
             config=req.extraction_config,
         )
 
-    return {
+    return extract_batchResult.model_validate({
         "batch_job_id": batch_id,
         "job_ids": job_ids,
         "status": "queued",
         "total_jobs": len(requests),
-    }
+    })
 
 
 async def list_entities(
@@ -1521,6 +1521,24 @@ async def stream_job_events(job_id: str):
 
 
 from .routes import audit, extraction, ontology, system
+from shared.models.typed_dict import TypedDictModel
+
+
+class health_checkResult(TypedDictModel):
+    dependencies: Any
+    metrics: Any
+    response_time_ms: Any
+    service: str
+    status: Any
+    timestamp: Any
+    uptime_seconds: Any
+    version: str
+
+class extract_batchResult(TypedDictModel):
+    batch_job_id: Any
+    job_ids: Any
+    status: str
+    total_jobs: Any
 
 app.include_router(system.router)
 app.include_router(extraction.router)

@@ -19,6 +19,16 @@ except ImportError:
     REDIS_AVAILABLE = False
 
 from ..logging_config import get_logger
+from shared.models.typed_dict import TypedDictModel
+
+
+class RedisCache_get_statsResult(TypedDictModel):
+    connected_clients: Any | None = None
+    keyspace_hits: Any | None = None
+    keyspace_misses: Any | None = None
+    total_commands_processed: Any | None = None
+    used_memory: Any | None = None
+    used_memory_human: Any | None = None
 
 logger = get_logger(__name__)
 
@@ -331,17 +341,19 @@ class RedisCache:
 
         try:
             info = await self._redis_client.info()
-            return {
+            return RedisCache_get_statsResult.model_validate({
                 "connected_clients": info.get("connected_clients", 0),
                 "used_memory": info.get("used_memory", 0),
                 "used_memory_human": info.get("used_memory_human", "0B"),
                 "keyspace_hits": info.get("keyspace_hits", 0),
                 "keyspace_misses": info.get("keyspace_misses", 0),
                 "total_commands_processed": info.get("total_commands_processed", 0),
-            }
+            })
+
+
         except Exception as e:
             logger.warning(f"Cache stats error: {e}")
-            return {}
+            return RedisCache_get_statsResult.model_validate({})
 
 
 class CacheManager:

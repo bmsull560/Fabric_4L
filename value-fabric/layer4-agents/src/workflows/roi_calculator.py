@@ -6,6 +6,34 @@ from ..models.agent_state import ROIAgentState, ROIInputData, ROIResult, Workflo
 from ..models.workflow_config import ROI_WORKFLOW_CONFIG
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
+from shared.models.typed_dict import TypedDictModel
+
+
+class ROICalculatorWorkflow__execute_get_prospect_dataResult(TypedDictModel):
+    enriched: Any | None = None
+    error: str
+    prospect_id: Any | None = None
+    raw_data: Any | None = None
+
+class ROICalculatorWorkflow__execute_fetch_benchmarksResult(TypedDictModel):
+    benchmarks: Any | None = None
+    error: str
+    industry: Any | None = None
+
+class ROICalculatorWorkflow__execute_substitute_variablesResult(TypedDictModel):
+    confidence: float
+    variable_count: Any
+    variables: Any
+
+class ROICalculatorWorkflow__execute_evaluate_formulaResult(TypedDictModel):
+    calculated_count: Any | None = None
+    error: str
+    results: Any | None = None
+
+class ROICalculatorWorkflow__execute_aggregate_roiResult(TypedDictModel):
+    aggregated: Any | None = None
+    detailed_results: Any | None = None
+    error: str
 
 
 class ROICalculatorWorkflow(BaseWorkflow):
@@ -79,7 +107,7 @@ class ROICalculatorWorkflow(BaseWorkflow):
     async def _execute_get_prospect_data(self, state: ROIAgentState) -> dict[str, Any]:
         """Load and enrich prospect data."""
         if not state.roi_input:
-            return {"error": "No ROI input configured"}
+            return ROICalculatorWorkflow__execute_get_prospect_dataResult.model_validate({"error": "No ROI input configured"})
 
         # Get prospect data from CRM
         result = await self.tool_registry.execute(
@@ -101,16 +129,17 @@ class ROICalculatorWorkflow(BaseWorkflow):
             "pain_points": custom_fields.get("pain_points", []),
         }
 
-        return {
+        return ROICalculatorWorkflow__execute_get_prospect_dataResult.model_validate({
             "raw_data": result,
             "enriched": enriched_data,
             "prospect_id": state.roi_input.prospect_id,
-        }
+        })
+
 
     async def _execute_fetch_benchmarks(self, state: ROIAgentState) -> dict[str, Any]:
         """Fetch industry benchmarks for comparison."""
         if not state.roi_input:
-            return {"error": "No ROI input configured"}
+            return ROICalculatorWorkflow__execute_fetch_benchmarksResult.model_validate({"error": "No ROI input configured"})
 
         industry = state.roi_input.industry_vertical
         company_size = state.roi_input.company_size
@@ -133,7 +162,7 @@ class ROICalculatorWorkflow(BaseWorkflow):
             except Exception:
                 benchmarks[metric] = None
 
-        return {"benchmarks": benchmarks, "industry": industry}
+        return ROICalculatorWorkflow__execute_fetch_benchmarksResult.model_validate({"benchmarks": benchmarks, "industry": industry})
 
     async def _execute_substitute_variables(self, state: ROIAgentState) -> dict[str, Any]:
         """Substitute variables in value driver formulas from Neo4j."""
@@ -178,16 +207,17 @@ class ROICalculatorWorkflow(BaseWorkflow):
         custom = prospect_data.get("custom_variables", {})
         variables.update(custom)
 
-        return {
+        return ROICalculatorWorkflow__execute_substitute_variablesResult.model_validate({
             "variables": variables,
             "variable_count": len(variables),
             "confidence": 0.85 if prospect_data else 0.6,
-        }
+        })
+
 
     async def _execute_evaluate_formula(self, state: ROIAgentState) -> dict[str, Any]:
         """Evaluate formulas for each value driver from Neo4j."""
         if not state.roi_input:
-            return {"error": "No ROI input configured"}
+            return ROICalculatorWorkflow__execute_evaluate_formulaResult.model_validate({"error": "No ROI input configured"})
 
         variables = state.output_data.get("substitute_vars", {}).get("variables", {})
 
@@ -272,14 +302,14 @@ class ROICalculatorWorkflow(BaseWorkflow):
                     )
                 )
 
-        return {"calculated_count": len(results), "results": [r.model_dump() for r in results]}
+        return ROICalculatorWorkflow__execute_evaluate_formulaResult.model_validate({"calculated_count": len(results), "results": [r.model_dump() for r in results]})
 
     async def _execute_aggregate_roi(self, state: ROIAgentState) -> dict[str, Any]:
         """Aggregate individual ROI calculations."""
         calc_results = state.output_data.get("evaluate", {}).get("results", [])
 
         if not calc_results:
-            return {"error": "No calculation results to aggregate"}
+            return ROICalculatorWorkflow__execute_aggregate_roiResult.model_validate({"error": "No calculation results to aggregate"})
 
         # Sum up all value drivers
         total_annual_value = sum(r.get("result", 0) for r in calc_results)
@@ -313,4 +343,4 @@ class ROICalculatorWorkflow(BaseWorkflow):
             / len(calc_results),
         }
 
-        return {"aggregated": aggregated, "detailed_results": calc_results}
+        return ROICalculatorWorkflow__execute_aggregate_roiResult.model_validate({"aggregated": aggregated, "detailed_results": calc_results})

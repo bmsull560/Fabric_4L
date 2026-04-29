@@ -6,6 +6,12 @@ Loads prompt templates from files and renders them with variable substitution.
 import json
 from pathlib import Path
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class PromptRegistry_list_all_promptsResult(TypedDictModel):
+    entity_extraction: Any
+    relationship_extraction: Any
 
 
 class PromptTemplate:
@@ -101,10 +107,10 @@ class PromptRegistry:
     @classmethod
     def list_all_prompts(cls) -> dict[str, list[str]]:
         """List all available prompts."""
-        return {
+        return PromptRegistry_list_all_promptsResult.model_validate({
             "entity_extraction": cls.ENTITY_PROMPTS,
             "relationship_extraction": cls.RELATIONSHIP_PROMPTS,
-        }
+        })
 
 
 def render_entity_prompt(

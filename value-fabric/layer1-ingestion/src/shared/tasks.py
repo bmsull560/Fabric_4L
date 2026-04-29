@@ -38,6 +38,81 @@ from ..shared.models import (
     ScrapingJob,
     ScrapingTarget,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class _execute_browser_pathResult(TypedDictModel):
+    blocked_resources: Any
+    config_used: Any
+    content_length: Any
+    duration_ms: Any
+    error: Any
+    final_url: Any
+    scroll_triggered: Any
+    status_code: bool
+    text_length: Any
+    title: Any
+
+class process_scraping_jobResult(TypedDictModel):
+    job_id: Any
+    success: bool
+    task_id: Any
+
+class crawl_url_with_routingResult(TypedDictModel):
+    decision_id: Any
+    duration_ms: Any
+    final_path: Any
+    job_id: Any
+    success: bool
+    url: Any
+
+class cleanup_old_contentResult(TypedDictModel):
+    cutoff_date: Any
+    deleted_count: Any
+
+class compliance_check_stageResult(TypedDictModel):
+    error: str
+    job_id: Any
+    success: bool
+
+class browser_launch_stageResult(TypedDictModel):
+    job_id: Any
+    success: bool
+
+class navigation_stageResult(TypedDictModel):
+    job_id: Any
+    navigation_result: Any
+    success: bool
+
+class content_capture_stageResult(TypedDictModel):
+    html_content: Any
+    job_id: Any
+    raw_content_id: Any
+    success: bool
+
+class ai_extraction_stageResult(TypedDictModel):
+    entities_extracted: Any | None = None
+    job_id: Any
+    skipped: bool
+    success: bool
+    tokens_consumed: Any | None = None
+
+class post_processing_stageResult(TypedDictModel):
+    job_id: Any
+    success: bool
+
+class validation_stageResult(TypedDictModel):
+    job_id: Any
+    success: bool
+
+class storage_stageResult(TypedDictModel):
+    job_id: Any
+    success: bool
+
+class notification_stageResult(TypedDictModel):
+    error: Any
+    job_id: Any
+    success: bool
 
 logger = structlog.get_logger()
 
@@ -104,7 +179,7 @@ def process_scraping_job(self, job_id: str):
 
         result = pipeline_chain.apply_async()
 
-        return {"success": True, "job_id": str(job_id), "task_id": result.id}
+        return process_scraping_jobResult.model_validate({"success": True, "job_id": str(job_id), "task_id": result.id})
 
     except Exception as exc:
         logger.error("Pipeline orchestration failed", job_id=str(job_id), error=str(exc))
@@ -167,7 +242,7 @@ def compliance_check_stage(self, job_id: UUID):
 
                 if not result.allowed:
                     _fail_job(job_id, "URL blocked by robots.txt", PipelineStage.COMPLIANCE_CHECK)
-                    return {"success": False, "error": "robots.txt blocked", "job_id": str(job_id)}
+                    return compliance_check_stageResult.model_validate({"success": False, "error": "robots.txt blocked", "job_id": str(job_id)})
 
                 # Apply crawl delay
                 if result.crawl_delay:
@@ -180,7 +255,7 @@ def compliance_check_stage(self, job_id: UUID):
             session.commit()
 
             logger.info("Compliance check completed", job_id=str(job_id))
-            return {"success": True, "job_id": str(job_id)}
+            return compliance_check_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
     except Exception as exc:
         logger.error("Compliance check failed", job_id=str(job_id), error=str(exc))
@@ -220,7 +295,7 @@ def browser_launch_stage(self, prev_result: dict):
             session.commit()
 
             logger.info("Browser launch completed", job_id=str(job_id))
-            return {"success": True, "job_id": str(job_id)}
+            return browser_launch_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
     except Exception as exc:
         logger.error("Browser launch failed", job_id=str(job_id), error=str(exc))
@@ -275,11 +350,12 @@ def navigation_stage(self, prev_result: dict):
             session.commit()
 
             logger.info("Navigation completed", job_id=str(job_id), final_url=nav_result.final_url)
-            return {
+            return navigation_stageResult.model_validate({
                 "success": True,
                 "job_id": str(job_id),
                 "navigation_result": nav_result.__dict__,
-            }
+            })
+
 
     except Exception as exc:
         logger.error("Navigation failed", job_id=str(job_id), error=str(exc))
@@ -379,12 +455,13 @@ def content_capture_stage(self, prev_result: dict):
             logger.info(
                 "Content capture completed", job_id=str(job_id), raw_content_id=str(raw_content.id)
             )
-            return {
+            return content_capture_stageResult.model_validate({
                 "success": True,
                 "job_id": str(job_id),
                 "raw_content_id": str(raw_content.id),
                 "html_content": capture_result.html_content,
-            }
+            })
+
 
     except Exception as exc:
         logger.error("Content capture failed", job_id=str(job_id), error=str(exc))
@@ -412,7 +489,7 @@ def ai_extraction_stage(self, prev_result: dict):
             if method == ExtractionMethod.DETERMINISTIC.value:
                 # Skip AI extraction for deterministic method
                 logger.info("Skipping AI extraction (deterministic mode)", job_id=str(job_id))
-                return {"success": True, "job_id": str(job_id), "skipped": True}
+                return ai_extraction_stageResult.model_validate({"success": True, "job_id": str(job_id), "skipped": True})
 
             _update_stage(session, job_id, PipelineStage.AI_EXTRACTION, "RUNNING")
             job.progress_stage = PipelineStage.AI_EXTRACTION.value
@@ -498,12 +575,13 @@ def ai_extraction_stage(self, prev_result: dict):
                 tokens_consumed=tokens_consumed,
                 entities_extracted=len(extraction_result.get("entities", [])),
             )
-            return {
+            return ai_extraction_stageResult.model_validate({
                 "success": True,
                 "job_id": str(job_id),
                 "tokens_consumed": tokens_consumed,
                 "entities_extracted": len(extraction_result.get("entities", [])),
-            }
+            })
+
 
     except Exception as exc:
         logger.error("AI extraction failed", job_id=str(job_id), error=str(exc))
@@ -568,7 +646,7 @@ def post_processing_stage(self, prev_result: dict):
             session.commit()
 
             logger.info("Post-processing completed", job_id=str(job_id))
-            return {"success": True, "job_id": str(job_id)}
+            return post_processing_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
     except Exception as exc:
         logger.error("Post-processing failed", job_id=str(job_id), error=str(exc))
@@ -604,7 +682,7 @@ def validation_stage(self, prev_result: dict):
             session.commit()
 
             logger.info("Validation completed", job_id=str(job_id))
-            return {"success": True, "job_id": str(job_id)}
+            return validation_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
     except Exception as exc:
         logger.error("Validation failed", job_id=str(job_id), error=str(exc))
@@ -673,7 +751,7 @@ def storage_stage(self, prev_result: dict):
             session.commit()
 
             logger.info("Storage completed", job_id=str(job_id))
-            return {"success": True, "job_id": str(job_id)}
+            return storage_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
     except Exception as exc:
         logger.error("Storage failed", job_id=str(job_id), error=str(exc))
@@ -722,12 +800,12 @@ def notification_stage(prev_result: dict):
                 session.commit()
 
             logger.info("Job completed successfully", job_id=str(job_id))
-            return {"success": True, "job_id": str(job_id)}
+            return notification_stageResult.model_validate({"success": True, "job_id": str(job_id)})
 
     except Exception as exc:
         logger.error("Notification stage failed", job_id=str(job_id), error=str(exc))
         _update_stage(get_db_session(), job_id, PipelineStage.NOTIFICATION, "FAILED", str(exc))
-        return {"success": False, "job_id": str(job_id), "error": str(exc)}
+        return notification_stageResult.model_validate({"success": False, "job_id": str(job_id), "error": str(exc)})
 
 
 # =============================================================================
@@ -992,14 +1070,15 @@ def crawl_url_with_routing(self, job_id: str, url: str, target_mode: str = "brow
             duration_ms=decision_record.fetch_time_ms,
         )
 
-        return {
+        return crawl_url_with_routingResult.model_validate({
             "success": True,
             "job_id": job_id,
             "url": url,
             "final_path": decision_record.final_path,
             "duration_ms": decision_record.fetch_time_ms,
             "decision_id": decision_record.decision_id,
-        }
+        })
+
 
     except Exception as exc:
         logger.error(
@@ -1068,7 +1147,7 @@ async def _execute_browser_path(url: str, config: dict | None) -> dict:
 
     duration_ms = int((time.monotonic() - start_time) * 1000)
 
-    return {
+    return _execute_browser_pathResult.model_validate({
         "status_code": result.status_code or 200,
         "duration_ms": duration_ms,
         "content_length": len(result.html_content or ""),
@@ -1079,7 +1158,7 @@ async def _execute_browser_path(url: str, config: dict | None) -> dict:
         "config_used": config,
         "blocked_resources": result.blocked_resources,
         "scroll_triggered": result.scroll_triggered,
-    }
+    })
 
 
 def _should_fail_closed(
@@ -1147,4 +1226,4 @@ def cleanup_old_content(days: int = 30):
             cutoff_date=cutoff_date.isoformat(),
         )
 
-        return {"deleted_count": deleted_count, "cutoff_date": cutoff_date.isoformat()}
+        return cleanup_old_contentResult.model_validate({"deleted_count": deleted_count, "cutoff_date": cutoff_date.isoformat()})

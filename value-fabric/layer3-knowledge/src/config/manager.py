@@ -10,6 +10,14 @@ from typing import Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from shared.models.typed_dict import TypedDictModel
+
+
+class ConfigurationManager__load_from_vaultResult(TypedDictModel):
+    pass
+
+class ConfigurationManager__load_from_fileResult(TypedDictModel):
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -461,7 +469,7 @@ class ConfigurationManager:
                 raise FileNotFoundError(
                     f"Required configuration file not found: {file_path}"
                 )
-            return {}
+            return ConfigurationManager__load_from_fileResult.model_validate({})
 
         with open(file_path, encoding="utf-8") as f:
             if source.format == ConfigFormat.YAML:
@@ -543,7 +551,7 @@ class ConfigurationManager:
         # Placeholder for Vault integration
         # In production, this would use hvac or similar library
         logger.warning("Vault integration not implemented")
-        return {}
+        return ConfigurationManager__load_from_vaultResult.model_validate({})
 
     def _convert_env_value(self, value: str) -> Any:
         """Convert environment variable value to appropriate type.

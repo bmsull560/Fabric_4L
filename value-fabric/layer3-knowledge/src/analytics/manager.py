@@ -12,6 +12,41 @@ from typing import Any
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
+from shared.models.typed_dict import TypedDictModel
+
+
+class AnalyticsEvent_to_dictResult(TypedDictModel):
+    api_key_id: Any
+    endpoint: Any
+    event_id: Any
+    event_type: Any
+    ip_address: Any
+    metadata: Any
+    method: Any
+    request_id: Any
+    request_size_bytes: Any
+    response_size_bytes: Any
+    response_time_ms: Any
+    status_code: Any
+    tags: Any
+    timestamp: Any
+    user_agent: Any
+    user_id: Any
+
+class AnalyticsManager_get_dashboard_dataResult(TypedDictModel):
+    dashboard: Any | None = None
+    data: Any | None = None
+    generated_at: Any | None = None
+
+class AnalyticsManager_get_metrics_summaryResult(TypedDictModel):
+    avg_response_time: Any
+    success_rate: Any
+    throughput_rps: Any
+    top_endpoints: Any
+    total_errors: Any
+    total_requests: Any
+    unique_api_keys: Any
+    unique_users: Any
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +117,7 @@ class AnalyticsEvent:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return AnalyticsEvent_to_dictResult.model_validate({
             "event_id": self.event_id,
             "timestamp": self.timestamp.isoformat(),
             "event_type": self.event_type,
@@ -99,7 +134,7 @@ class AnalyticsEvent:
             "request_id": self.request_id,
             "tags": self.tags,
             "metadata": self.metadata,
-        }
+        })
 
 
 class MetricDefinition(BaseModel):
@@ -991,7 +1026,7 @@ class AnalyticsManager:
         """
         dashboard = self.dashboards.get(dashboard_id)
         if not dashboard:
-            return {}
+            return AnalyticsManager_get_dashboard_dataResult.model_validate({})
 
         # Execute queries for all widgets
         widget_data = {}
@@ -1020,11 +1055,12 @@ class AnalyticsManager:
                     )
                     widget_data[f"widget_{i}"] = data
 
-        return {
+        return AnalyticsManager_get_dashboard_dataResult.model_validate({
             "dashboard": dashboard.dict(),
             "data": widget_data,
             "generated_at": datetime.utcnow().isoformat(),
-        }
+        })
+
 
     async def get_metrics_summary(self) -> dict[str, Any]:
         """Get metrics summary.
@@ -1032,7 +1068,7 @@ class AnalyticsManager:
         Returns:
             Metrics summary
         """
-        return {
+        return AnalyticsManager_get_metrics_summaryResult.model_validate({
             "total_requests": self.collector.counters.get("api_requests_total", 0),
             "total_errors": self.collector.counters.get("api_errors_total", 0),
             "success_rate": self.collector.calculate_success_rate(),
@@ -1043,7 +1079,8 @@ class AnalyticsManager:
                 "api_response_time_ms", AggregationType.AVERAGE
             ),
             "top_endpoints": self.collector.get_top_metrics("endpoint:", 10),
-        }
+        })
+
 
     async def cleanup(self):
         """Cleanup old analytics data."""

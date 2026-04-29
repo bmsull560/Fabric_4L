@@ -16,6 +16,36 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models.billing import BillingCustomer, BillingUsageEvent, UsageEventStatus
+from shared.models.typed_dict import TypedDictModel
+
+
+class UsageService_ingest_batchResult(TypedDictModel):
+    created: Any
+    duplicates: Any
+    error_details: Any
+    errors: Any
+
+class UsageService_get_usage_summaryResult(TypedDictModel):
+    customer_id: Any
+    event_count: bool
+    first_event: Any
+    last_event: Any
+    metric_name: Any
+    period_end: Any
+    period_start: Any
+    total_quantity: Any
+
+class UsageService_sync_to_stripeResult(TypedDictModel):
+    customer_id: Any | None = None
+    details: Any
+    error: str | None = None
+    message: str | None = None
+    metrics: Any | None = None
+    stripe_customer_id: Any | None = None
+    synced: int
+
+class UsageService__report_to_stripeResult(TypedDictModel):
+    error: Any
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +144,7 @@ class UsageService:
             return None
         except StripeMeterEventError as e:
             logger.warning(f"Failed to report meter event: {e}")
-            return {"error": str(e)}
+            return UsageService__report_to_stripeResult.model_validate({"error": str(e)})
         except Exception as e:
             logger.error(f"Unexpected error reporting to Stripe: {e}")
             return None
@@ -292,12 +322,13 @@ class UsageService:
                 duplicates += 1
                 logger.debug(f"Duplicate event in batch: {event_data.get('event_id')}")
 
-        return {
+        return UsageService_ingest_batchResult.model_validate({
             "created": created,
             "duplicates": duplicates,
             "errors": errors,
             "error_details": error_details if errors > 0 else None,
-        }
+        })
+
 
     async def get_usage_summary(
         self,
@@ -342,7 +373,7 @@ class UsageService:
         result = await self.db.execute(query)
         row = result.one()
 
-        return {
+        return UsageService_get_usage_summaryResult.model_validate({
             "customer_id": customer_id,
             "metric_name": metric_name,
             "period_start": start.isoformat(),
@@ -351,7 +382,8 @@ class UsageService:
             "event_count": row.event_count or 0,
             "first_event": row.first_event.isoformat() if row.first_event else None,
             "last_event": row.last_event.isoformat() if row.last_event else None,
-        }
+        })
+
 
     async def list_customer_usage(
         self,
@@ -496,10 +528,11 @@ class UsageService:
             # Get Stripe customer ID
             stripe_customer_id = await self._get_stripe_customer_id(customer_id)
             if not stripe_customer_id:
-                return {
+                return UsageService_sync_to_stripeResult.model_validate({
                     "synced": 0,
                     "error": f"No Stripe customer ID found for {customer_id}",
-                }
+                })
+
 
             # Build query for pending events
             query = select(
@@ -519,7 +552,7 @@ class UsageService:
             metrics_to_sync = result.all()
 
             if not metrics_to_sync:
-                return {"synced": 0, "message": "No pending events to sync"}
+                return UsageService_sync_to_stripeResult.model_validate({"synced": 0, "message": "No pending events to sync"})
 
             sync_results = []
             total_synced = 0
@@ -571,18 +604,21 @@ class UsageService:
                         "error": str(e),
                     })
                 except StripeNotConfiguredError as e:
-                    return {
+                    return UsageService_sync_to_stripeResult.model_validate({
                         "synced": 0,
                         "error": "Stripe not configured",
                         "details": str(e),
-                    }
+                    })
 
-            return {
+
+            return UsageService_sync_to_stripeResult.model_validate({
                 "synced": total_synced,
                 "customer_id": customer_id,
                 "stripe_customer_id": stripe_customer_id,
                 "metrics": sync_results,
-            }
+            })
+
+
         except Exception:
             # Rollback on any database error to prevent partial state
             await self.db.rollback()

@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import get_settings
-from ..database import get_db
+from ..database import get_db_from_context
 from ..integration.layer3_client import get_layer3_client
 from ..models.truth_object import ClaimType, TruthStatus
 from ..services.state_machine import InsufficientEvidenceError, InvalidTransitionError
@@ -49,6 +49,20 @@ from .schemas import (
     ValidateResponse,
     ValidationEventResponse,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class sync_to_kgResult(TypedDictModel):
+    failed: Any
+    synced: Any
+    total_pending: Any
+
+class list_staleResult(TypedDictModel):
+    has_more: bool
+    items: Any
+    limit: Any
+    offset: Any
+    total: Any
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +92,7 @@ router = APIRouter(prefix="/api/v1", tags=["ground-truth"])
 async def create_truth(
     payload: TruthObjectCreate,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> TruthObjectResponse:
     tenant_id = caller.tenant_id
     sources_data = (
@@ -142,7 +156,7 @@ async def create_truth(
 )
 async def list_truths(
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     status_filter: TruthStatus | None = Query(
         default=None,
         alias="status",
@@ -233,7 +247,7 @@ async def list_truths(
 async def get_truth(
     truth_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> TruthObjectResponse:
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
@@ -269,7 +283,7 @@ async def validate_truth(
     truth_id: UUID,
     payload: ValidateRequest,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ValidateResponse:
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
@@ -357,7 +371,7 @@ async def add_truth_source(
     truth_id: UUID,
     payload: AddSourceRequest,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> TruthSourceResponse:
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
@@ -391,7 +405,7 @@ async def add_truth_source(
 async def get_audit_trail(
     truth_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> list[ValidationEventResponse]:
     tenant_id = caller.tenant_id
     truth = await get_truth_object(db, truth_id, tenant_id)
@@ -417,7 +431,7 @@ async def get_audit_trail(
 async def delete_truth(
     truth_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> None:
     tenant_id = caller.tenant_id
     deleted_by = caller.user_id
@@ -445,7 +459,7 @@ async def delete_truth(
 )
 async def sync_to_kg(
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict:
     tenant_id = caller.tenant_id
     from sqlalchemy import and_, select
@@ -487,11 +501,11 @@ async def sync_to_kg(
         else:
             failed += 1
 
-    return {
+    return sync_to_kgResult.model_validate({
         "synced": synced,
         "failed": failed,
         "total_pending": len(pending),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -575,7 +589,7 @@ async def get_maturity_ladder() -> MaturityLadderResponse:
 async def check_stale(
     dry_run: bool = Query(default=False, description="Preview only, don't mark stale"),
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict:
     from ..services.freshness_monitor import check_freshness
 
@@ -600,7 +614,7 @@ async def check_stale(
 )
 async def list_stale(
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     limit: int = Query(default=50, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
 ) -> dict:
@@ -632,13 +646,13 @@ async def list_stale(
         for t in items
     ]
 
-    return {
+    return list_staleResult.model_validate({
         "items": summaries,
         "total": total,
         "limit": limit,
         "offset": offset,
         "has_more": (offset + limit) < total,
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -653,7 +667,7 @@ async def list_stale(
 )
 async def freshness_summary(
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict:
     from ..services.freshness_monitor import FreshnessMonitor
 
@@ -673,7 +687,7 @@ async def freshness_summary(
     summary="Health check",
     tags=["system"],
 )
-async def health_check(db: AsyncSession = Depends(get_db)) -> HealthResponse:
+async def health_check(db: AsyncSession = Depends(get_db_from_context)) -> HealthResponse:
     """Public health check - returns minimal safe information only."""
     # Check DB connectivity
     db_status = "ok"

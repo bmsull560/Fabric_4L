@@ -20,6 +20,18 @@ Usage:
 
 from typing import Any, Optional
 from neo4j import AsyncSession
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_entity_contextResult(TypedDictModel):
+    center: Any
+    neighbors: list[Any]
+    relationships: list[Any]
+
+class count_entity_relationshipsResult(TypedDictModel):
+    incoming: int
+    outgoing: int
+    total: int
 
 
 async def get_entity_by_id(
@@ -272,7 +284,7 @@ async def get_entity_context(
     record = await result.single()
     
     if not record:
-        return {"center": None, "neighbors": [], "relationships": []}
+        return get_entity_contextResult.model_validate({"center": None, "neighbors": [], "relationships": []})
     
     # Serialize results
     center = dict(record["center"]) if record["center"] else None
@@ -286,11 +298,11 @@ async def get_entity_context(
         else:
             relationships.append(dict(rel_list))
     
-    return {
+    return get_entity_contextResult.model_validate({
         "center": center,
         "neighbors": neighbors,
         "relationships": relationships,
-    }
+    })
 
 
 async def count_entity_relationships(
@@ -329,16 +341,16 @@ async def count_entity_relationships(
     record = await result.single()
     
     if not record:
-        return {"outgoing": 0, "incoming": 0, "total": 0}
+        return count_entity_relationshipsResult.model_validate({"outgoing": 0, "incoming": 0, "total": 0})
     
     outgoing = record["outgoing"] or 0
     incoming = record["incoming"] or 0
     
-    return {
+    return count_entity_relationshipsResult.model_validate({
         "outgoing": outgoing,
         "incoming": incoming,
         "total": outgoing + incoming,
-    }
+    })
 
 
 async def update_entity_properties(

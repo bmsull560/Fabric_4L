@@ -260,6 +260,21 @@ from .schemas import (
 
 import time
 from datetime import datetime
+from shared.models.typed_dict import TypedDictModel
+
+
+class health_checkResult(TypedDictModel):
+    datasets_loaded: Any
+    dependencies: Any
+    response_time_ms: Any
+    service: str
+    status: Any
+    system: dict[str, Any]
+    timestamp: Any
+    version: str
+
+class list_industriesResult(TypedDictModel):
+    industries: Any
 
 
 async def health_check(request: Request = None):
@@ -292,7 +307,7 @@ async def health_check(request: Request = None):
         request.app.state.metrics.set_health_status(overall_status == "healthy", component="api")
         request.app.state.metrics.set_datasets_loaded(dataset_count)
 
-    return {
+    return health_checkResult.model_validate({
         "status": overall_status,
         "service": "layer6-benchmarks",
         "version": "1.0.0",
@@ -305,7 +320,7 @@ async def health_check(request: Request = None):
             "memory_percent": memory_info.percent,
             "cpu_percent": cpu_percent,
         },
-    }
+    })
 
 
 async def list_datasets(
@@ -483,7 +498,7 @@ async def list_industries():
     industries = set()
     for dataset in _benchmark_store.values():
         industries.add(dataset.industry)
-    return {"industries": sorted(industries)}
+    return list_industriesResult.model_validate({"industries": sorted(industries)})
 
 app.include_router(system.router)
 app.include_router(benchmarks.router)

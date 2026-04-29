@@ -134,9 +134,9 @@ class TruthSourceResponse(TruthSourceCreate):
         if isinstance(v, dict):
             return v
         if v is None:
-            return {}
+            return TruthSourceResponse_extract_metadataResult.model_validate({})
         # Handle case where SQLAlchemy's MetaData is returned instead
-        return {}
+        return TruthSourceResponse_extract_metadataResult.model_validate({})
 
 
 # ---------------------------------------------------------------------------
@@ -450,6 +450,11 @@ from ..models.model_registry import (
     ModelCapability,
     ModelProvider,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class TruthSourceResponse_extract_metadataResult(TypedDictModel):
+    pass
 
 
 class ModelVersionCreate(BaseModel):

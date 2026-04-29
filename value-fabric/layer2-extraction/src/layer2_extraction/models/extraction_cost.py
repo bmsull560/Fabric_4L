@@ -8,6 +8,19 @@ from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
+from shared.models.typed_dict import TypedDictModel
+
+
+class ExtractionCost_to_dictResult(TypedDictModel):
+    cost_usd: Any
+    endpoint: Any
+    extraction_job_id: Any
+    input_tokens: Any
+    model: Any
+    output_tokens: Any
+    provider: Any
+    timestamp: Any
+    total_tokens: Any
 
 
 class ExtractionCost(BaseModel):
@@ -50,7 +63,7 @@ class ExtractionCost(BaseModel):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        return ExtractionCost_to_dictResult.model_validate({
             "extraction_job_id": self.extraction_job_id,
             "provider": self.provider,
             "model": self.model,
@@ -60,7 +73,7 @@ class ExtractionCost(BaseModel):
             "total_tokens": self.total_tokens(),
             "cost_usd": round(self.cost_usd, 6),
             "timestamp": self.timestamp.isoformat(),
-        }
+        })
 
 
 class JobCostSummary(BaseModel):

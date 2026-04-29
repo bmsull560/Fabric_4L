@@ -11,6 +11,14 @@ import pytest
 
 from src.crawler.crawler_config import CrawlerConfig
 from src.crawler.playwright_crawler import CrawlResult, PlaywrightCrawler
+from shared.models.typed_dict import TypedDictModel
+
+
+class mock_playwrightResult(TypedDictModel):
+    browser: Any
+    context: Any
+    page: Any
+    playwright: Any
 
 
 # Fixtures
@@ -31,12 +39,12 @@ def mock_playwright():
     mock_page.title = AsyncMock(return_value="Test Page")
     mock_page.url = "https://example.com/final"
     
-    return {
+    return mock_playwrightResult.model_validate({
         "playwright": mock_pw,
         "browser": mock_browser,
         "context": mock_context,
         "page": mock_page,
-    }
+    })
 
 
 @pytest.fixture

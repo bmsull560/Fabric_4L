@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 from ..metrics import MetricsMiddleware, get_metrics, initialize_metrics
 from ..shared.config import settings
-from ..shared.database import get_db
+from ..shared.database import get_db_from_context_sync
 from ..shared.models import (
     AuthenticationType,
     BrowserEngine,
@@ -99,7 +99,7 @@ def _load_deprecation_register() -> dict:
                 return json.load(f)
     except Exception as e:
         logger.warning("Failed to load deprecation register", error=str(e))
-    return {"deprecations": []}
+    return _load_deprecation_registerResult.model_validate({"deprecations": []})
 
 
 def _check_deprecation_warnings(register: dict) -> None:
@@ -218,6 +218,49 @@ except Exception:
     pass
 
 from shared.identity.api_key_stub import reject_api_key_unsupported
+from shared.models.typed_dict import TypedDictModel
+
+
+class _load_deprecation_registerResult(TypedDictModel):
+    deprecations: list[Any]
+
+class cancel_jobResult(TypedDictModel):
+    job_id: Any
+    status: str
+
+class get_job_resultsResult(TypedDictModel):
+    data: Any
+    format: Any
+    job_id: Any
+    limit: Any
+    page: Any
+    total_records: Any
+
+class retry_jobResult(TypedDictModel):
+    new_job_id: Any
+    original_job_id: Any
+    status: Any
+
+class list_contentResult(TypedDictModel):
+    items: Any
+    limit: Any
+    page: Any
+    total: Any
+
+class list_compliance_logsResult(TypedDictModel):
+    items: Any
+    limit: Any
+    page: Any
+    total: Any
+
+class trigger_cleanupResult(TypedDictModel):
+    message: str
+    status: str
+
+class legacy_health_checkResult(TypedDictModel):
+    dependencies: Any
+    note: str
+    status: Any
 
 app.add_middleware(GovernanceMiddleware, api_key_resolver=reject_api_key_unsupported, rate_limiter=redis_rate_limiter)
 
@@ -812,7 +855,7 @@ async def list_targets(
     ),
     sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """List all scraping targets for the organization."""
     query = db.query(ScrapingTarget).filter(ScrapingTarget.tenant_id == org_id)
@@ -872,7 +915,7 @@ async def create_target(
     request: CreateTargetRequest,
     org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Create a new scraping target."""
     # Validate URL
@@ -985,7 +1028,6 @@ async def create_target(
         target.authentication = authentication
 
     db.add(target)
-    db.commit()
     db.refresh(target)
 
     logger.info("Created scraping target", target_id=str(target.id), name=target.name)
@@ -995,7 +1037,7 @@ async def create_target(
 
 @router.get("/targets/{target_id}", response_model=ScrapingTargetDetail)
 async def get_target(
-    target_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
+    target_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db_from_context_sync)
 ):
     """Get detailed information about a specific target."""
     target = (
@@ -1015,7 +1057,7 @@ async def update_target(
     target_id: UUID,
     request: UpdateTargetRequest,
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Update a scraping target."""
     target = (
@@ -1152,7 +1194,6 @@ async def update_target(
             target.authentication = None
 
     target.updated_at = datetime.utcnow()
-    db.commit()
     db.refresh(target)
 
     logger.info("Updated scraping target", target_id=str(target.id))
@@ -1165,7 +1206,7 @@ async def delete_target(
     target_id: UUID,
     force: bool = Query(default=False, description="Hard delete if no jobs exist"),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Archive a scraping target (soft delete)."""
     target = (
@@ -1182,7 +1223,6 @@ async def delete_target(
     if force and job_count == 0:
         # Hard delete
         db.delete(target)
-        db.commit()
         logger.info("Hard deleted scraping target", target_id=str(target_id))
     else:
         # Soft delete (archive)
@@ -1190,7 +1230,6 @@ async def delete_target(
             target.status = TargetStatus.ARCHIVED.value
         else:
             db.delete(target)
-        db.commit()
         logger.info("Archived scraping target", target_id=str(target_id))
 
     return None
@@ -1201,7 +1240,7 @@ async def validate_target(
     target_id: UUID,
     request: ValidateTargetRequest,
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Validate target configuration without executing."""
     target = (
@@ -1261,7 +1300,7 @@ async def execute_target(
     background_tasks: BackgroundTasks,
     org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Trigger immediate execution of a target."""
     target = (
@@ -1306,7 +1345,6 @@ async def execute_target(
     )
 
     db.add(job)
-    db.commit()
     db.refresh(job)
 
     # Initialize pipeline stages
@@ -1316,11 +1354,9 @@ async def execute_target(
         )
         db.add(stage_detail)
 
-    db.commit()
 
     # Queue job
     job.status = JobStatus.QUEUED.value
-    db.commit()
 
     # Start background processing
     process_scraping_job.delay(str(job.id))
@@ -1355,7 +1391,7 @@ async def get_target_decisions(
     target_id: UUID,
     limit: int = Query(default=50, ge=1, le=100),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Get recent crawl decisions for a target's jobs.
 
@@ -1407,7 +1443,7 @@ async def get_target_decisions(
 async def get_job_router_report(
     job_id: UUID,
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Get routing quality report for a specific job.
 
@@ -1448,7 +1484,7 @@ async def get_domain_fallback_stats(
     domain: str,
     days: int = Query(default=7, ge=1, le=30),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Get fallback statistics for a specific domain.
 
@@ -1513,7 +1549,7 @@ async def list_jobs(
     ),
     sort_order: str = Query(default="desc", regex="^(asc|desc)$"),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """List all scraping jobs with filtering and pagination."""
     query = db.query(ScrapingJob).filter(ScrapingJob.tenant_id == org_id)
@@ -1593,7 +1629,7 @@ async def list_jobs(
 
 @router.get("/jobs/{job_id}", response_model=ScrapingJobDetail)
 async def get_job(
-    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
+    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db_from_context_sync)
 ):
     """Get detailed job information including execution stages."""
     job = (
@@ -1684,7 +1720,7 @@ async def get_job(
 
 @router.delete("/jobs/{job_id}", status_code=202)
 async def cancel_job(
-    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
+    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db_from_context_sync)
 ):
     """Cancel a running or queued job."""
     job = (
@@ -1709,16 +1745,15 @@ async def cancel_job(
 
     job.status = JobStatus.CANCELLED.value
     job.completed_at = datetime.utcnow()
-    db.commit()
 
     logger.info("Cancelled scraping job", job_id=str(job_id))
 
-    return {"status": "CANCELLED", "job_id": str(job_id)}
+    return cancel_jobResult.model_validate({"status": "CANCELLED", "job_id": str(job_id)})
 
 
 @router.get("/jobs/{job_id}/progress", response_model=JobProgressResponse)
 async def get_job_progress(
-    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db)
+    job_id: UUID, org_id: UUID = Depends(get_tenant_id), db: Session = Depends(get_db_from_context_sync)
 ):
     """Get real-time job progress."""
     job = (
@@ -1754,7 +1789,7 @@ async def get_job_results(
     include_raw: bool = Query(default=False),
     fields: list[str] | None = Query(None),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Get extracted data results for a job."""
     job = (
@@ -1774,7 +1809,7 @@ async def get_job_results(
     offset = (page - 1) * limit
     data = query.offset(offset).limit(limit).all()
 
-    return {
+    return get_job_resultsResult.model_validate({
         "job_id": str(job_id),
         "format": format,
         "total_records": total,
@@ -1793,7 +1828,7 @@ async def get_job_results(
         ],
         "page": page,
         "limit": limit,
-    }
+    })
 
 
 @router.post("/jobs/{job_id}/retry", status_code=202)
@@ -1803,7 +1838,7 @@ async def retry_job(
     background_tasks: BackgroundTasks,
     org_id: UUID = Depends(get_tenant_id),
     user_id: UUID = Depends(get_current_user_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Retry a failed or partially successful job."""
     original_job = (
@@ -1833,7 +1868,6 @@ async def retry_job(
     )
 
     db.add(new_job)
-    db.commit()
     db.refresh(new_job)
 
     # Initialize stages
@@ -1843,21 +1877,19 @@ async def retry_job(
         )
         db.add(stage_detail)
 
-    db.commit()
 
     # Queue new job
     new_job.status = JobStatus.QUEUED.value
-    db.commit()
 
     process_scraping_job.delay(str(new_job.id))
 
     logger.info("Created retry job", original_job_id=str(job_id), new_job_id=str(new_job.id))
 
-    return {
+    return retry_jobResult.model_validate({
         "original_job_id": str(job_id),
         "new_job_id": str(new_job.id),
         "status": JobStatus.QUEUED.value,
-    }
+    })
 
 
 # =============================================================================
@@ -1872,7 +1904,7 @@ async def get_raw_content(
     include_screenshot: bool = Query(default=False),
     include_har: bool = Query(default=False),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Retrieve raw content by ID."""
     content = (
@@ -1925,7 +1957,7 @@ async def get_extracted_data(
     extracted_data_id: UUID,
     format: str = Query(default="json", regex="^(json|markdown|flattened)$"),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Retrieve extracted data by ID."""
     data = (
@@ -1971,7 +2003,7 @@ async def list_content(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """List raw content with filtering."""
     query = db.query(RawContent).filter(RawContent.tenant_id == org_id)
@@ -1989,7 +2021,7 @@ async def list_content(
     offset = (page - 1) * limit
     items = query.order_by(RawContent.created_at.desc()).offset(offset).limit(limit).all()
 
-    return {
+    return list_contentResult.model_validate({
         "items": [
             {
                 "id": str(item.id),
@@ -2004,7 +2036,7 @@ async def list_content(
         "total": total,
         "page": page,
         "limit": limit,
-    }
+    })
 
 
 # =============================================================================
@@ -2023,7 +2055,7 @@ async def list_compliance_logs(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Query compliance logs."""
     query = db.query(ComplianceLog).filter(ComplianceLog.tenant_id == org_id)
@@ -2051,7 +2083,7 @@ async def list_compliance_logs(
     offset = (page - 1) * limit
     logs = query.order_by(ComplianceLog.created_at.desc()).offset(offset).limit(limit).all()
 
-    return {
+    return list_compliance_logsResult.model_validate({
         "items": [
             {
                 "id": str(log.id),
@@ -2067,7 +2099,7 @@ async def list_compliance_logs(
         "total": total,
         "page": page,
         "limit": limit,
-    }
+    })
 
 
 @router.get("/compliance/summary", response_model=ComplianceSummaryResponse)
@@ -2075,7 +2107,7 @@ async def get_compliance_summary(
     period_start: datetime = Query(...),
     period_end: datetime = Query(...),
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Get compliance summary for organization."""
     query = db.query(ComplianceLog).filter(
@@ -2167,7 +2199,7 @@ async def get_compliance_summary(
 
 
 @router.get("/health", response_model=HealthCheckResponse)
-async def health_check(db: Session = Depends(get_db)):
+async def health_check(db: Session = Depends(get_db_from_context_sync)):
     """Enhanced health check endpoint."""
     components = {}
     metrics = {}
@@ -2277,10 +2309,10 @@ async def trigger_cleanup(
 ):
     """Trigger content cleanup for old data."""
     cleanup_old_content.delay(days)
-    return {
+    return trigger_cleanupResult.model_validate({
         "message": f"Cleanup initiated for content older than {days} days",
         "status": "processing",
-    }
+    })
 
 
 # =============================================================================
@@ -2292,7 +2324,7 @@ async def trigger_cleanup(
 async def create_proxy_pool_endpoint(
     request: CreateProxyPoolRequest,
     org_id: UUID = Depends(get_tenant_id),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db_from_context_sync),
 ):
     """Create a proxy pool."""
     pool = create_proxy_pool(
@@ -2303,7 +2335,6 @@ async def create_proxy_pool_endpoint(
     )
 
     db.add(pool)
-    db.commit()
     db.refresh(pool)
 
     return ProxyPoolResponse(
@@ -2390,11 +2421,11 @@ async def legacy_health_check():
         dependencies.append({"name": "redis", "status": "degraded", "error": str(e)})
         overall_status = "degraded"
 
-    return {
+    return legacy_health_checkResult.model_validate({
         "status": overall_status,
         "note": "Legacy endpoint; use /api/v1/ingestion/health for full schema response",
         "dependencies": dependencies,
-    }
+    })
 
 
 if __name__ == "__main__":

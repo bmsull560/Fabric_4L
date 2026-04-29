@@ -8,6 +8,55 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+from shared.models.typed_dict import TypedDictModel
+
+
+class AgentMessage_to_dictResult(TypedDictModel):
+    correlation_id: Any
+    message_id: Any
+    message_type: Any
+    payload: Any
+    priority: Any
+    recipient_id: Any
+    sender_id: Any
+    timestamp: Any
+    ttl_seconds: Any
+
+class TaskAssignment_to_dictResult(TypedDictModel):
+    capability: Any
+    deadline: Any
+    parameters: Any
+    task_id: Any
+    tenant_id: Any
+
+class TaskResult_to_dictResult(TypedDictModel):
+    error: Any
+    execution_time_ms: Any
+    result: Any
+    success: Any
+    task_id: Any
+
+class StatusUpdate_to_dictResult(TypedDictModel):
+    agent_id: Any
+    current_task: Any
+    metadata: Any
+    progress_percent: Any
+    status: Any
+
+class ErrorNotification_to_dictResult(TypedDictModel):
+    context: Any
+    error_id: Any
+    message: Any
+    severity: Any
+    stack_trace: Any
+
+class ProvenanceEvent_to_dictResult(TypedDictModel):
+    activity_id: Any
+    agent_id: Any
+    attributes: Any
+    entity_id: Any
+    event_type: Any
+    timestamp: Any
 
 
 class MessageType(Enum):
@@ -82,7 +131,7 @@ class AgentMessage:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert message to dictionary."""
-        return {
+        return AgentMessage_to_dictResult.model_validate({
             "message_id": self.message_id,
             "message_type": self.message_type.value,
             "sender_id": self.sender_id,
@@ -92,7 +141,8 @@ class AgentMessage:
             "correlation_id": self.correlation_id,
             "priority": self.priority.value,
             "ttl_seconds": self.ttl_seconds,
-        }
+        })
+
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "AgentMessage":
@@ -138,13 +188,13 @@ class TaskAssignment:
     tenant_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return TaskAssignment_to_dictResult.model_validate({
             "task_id": self.task_id,
             "capability": self.capability,
             "parameters": self.parameters,
             "deadline": self.deadline.isoformat() if self.deadline else None,
             "tenant_id": self.tenant_id,
-        }
+        })
 
 
 @dataclass
@@ -166,13 +216,13 @@ class TaskResult:
     execution_time_ms: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return TaskResult_to_dictResult.model_validate({
             "task_id": self.task_id,
             "success": self.success,
             "result": self.result,
             "error": self.error,
             "execution_time_ms": self.execution_time_ms,
-        }
+        })
 
 
 @dataclass
@@ -194,13 +244,13 @@ class StatusUpdate:
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return StatusUpdate_to_dictResult.model_validate({
             "agent_id": self.agent_id,
             "status": self.status,
             "current_task": self.current_task,
             "progress_percent": self.progress_percent,
             "metadata": self.metadata,
-        }
+        })
 
 
 @dataclass
@@ -222,13 +272,13 @@ class ErrorNotification:
     context: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return ErrorNotification_to_dictResult.model_validate({
             "error_id": self.error_id,
             "severity": self.severity,
             "message": self.message,
             "stack_trace": self.stack_trace,
             "context": self.context,
-        }
+        })
 
 
 @dataclass
@@ -252,11 +302,13 @@ class ProvenanceEvent:
     attributes: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return ProvenanceEvent_to_dictResult.model_validate({
             "event_type": self.event_type,
             "activity_id": self.activity_id,
             "entity_id": self.entity_id,
             "agent_id": self.agent_id,
             "timestamp": self.timestamp.isoformat(),
             "attributes": self.attributes,
-        }
+        })
+
+

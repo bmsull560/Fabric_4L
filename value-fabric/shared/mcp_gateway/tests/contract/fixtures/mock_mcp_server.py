@@ -14,6 +14,36 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from .mock_mcp_client import MCPMessage, MCPErrorCode
+from shared.models.typed_dict import TypedDictModel
+
+
+class MockMCPServer__handle_initializeResult(TypedDictModel):
+    capabilities: Any
+    protocolVersion: Any
+    serverInfo: dict[str, Any]
+
+class MockMCPServer__handle_pingResult(TypedDictModel):
+    pass
+
+class MockMCPServer__handle_tools_callResult(TypedDictModel):
+    content: list[Any]
+    isError: bool
+
+class MockMCPServer__handle_resources_listResult(TypedDictModel):
+    resources: Any
+
+class MockMCPServer__handle_resources_readResult(TypedDictModel):
+    contents: list[Any]
+
+class MockMCPServer__handle_prompts_listResult(TypedDictModel):
+    prompts: Any
+
+class MockMCPServer__handle_prompts_getResult(TypedDictModel):
+    description: Any
+    messages: list[Any]
+
+class MockMCPServer__handle_set_levelResult(TypedDictModel):
+    pass
 
 
 class ServerBehavior(Enum):
@@ -261,18 +291,20 @@ class MockMCPServer:
         if client_version not in ["2024-11-05"]:
             raise ValueError(f"Unsupported protocol version: {client_version}")
         
-        return {
+        return MockMCPServer__handle_initializeResult.model_validate({
             "protocolVersion": self.protocol_version,
             "capabilities": self._capabilities,
             "serverInfo": {
                 "name": self.name,
                 "version": "1.0.0",
             },
-        }
+        })
+
+
     
     async def _handle_ping(self, params: dict) -> dict:
         """Handle ping request."""
-        return {}  # Empty result per spec
+        return MockMCPServer__handle_pingResult.model_validate({})  # Empty result per spec
     
     async def _handle_tools_list(self, params: dict) -> dict:
         """Handle tools/list request."""
@@ -304,7 +336,7 @@ class MockMCPServer:
             raise ValueError(f"Tool not found: {tool_name}")
         
         if tool.should_fail:
-            return {
+            return MockMCPServer__handle_tools_callResult.model_validate({
                 "content": [
                     {
                         "type": "text",
@@ -312,12 +344,14 @@ class MockMCPServer:
                     }
                 ],
                 "isError": True,
-            }
+            })
+
+
         
         # Execute tool handler
         result = tool.handler(arguments)
         
-        return {
+        return MockMCPServer__handle_tools_callResult.model_validate({
             "content": [
                 {
                     "type": "text",
@@ -325,7 +359,9 @@ class MockMCPServer:
                 }
             ],
             "isError": False,
-        }
+        })
+
+
     
     async def _handle_resources_list(self, params: dict) -> dict:
         """Handle resources/list request."""
@@ -338,7 +374,7 @@ class MockMCPServer:
             for r in self._resources.values()
         ]
         
-        return {"resources": resources}
+        return MockMCPServer__handle_resources_listResult.model_validate({"resources": resources})
     
     async def _handle_resources_read(self, params: dict) -> dict:
         """Handle resources/read request."""
@@ -358,7 +394,7 @@ class MockMCPServer:
             text = str(content)
             blob = None
         
-        return {
+        return MockMCPServer__handle_resources_readResult.model_validate({
             "contents": [
                 {
                     "uri": uri,
@@ -367,7 +403,9 @@ class MockMCPServer:
                     "blob": blob,
                 }
             ]
-        }
+        })
+
+
     
     async def _handle_prompts_list(self, params: dict) -> dict:
         """Handle prompts/list request."""
@@ -380,7 +418,7 @@ class MockMCPServer:
             for p in self._prompts.values()
         ]
         
-        return {"prompts": prompts}
+        return MockMCPServer__handle_prompts_listResult.model_validate({"prompts": prompts})
     
     async def _handle_prompts_get(self, params: dict) -> dict:
         """Handle prompts/get request."""
@@ -390,7 +428,7 @@ class MockMCPServer:
         if prompt is None:
             raise ValueError(f"Prompt not found: {name}")
         
-        return {
+        return MockMCPServer__handle_prompts_getResult.model_validate({
             "description": prompt["description"],
             "messages": [
                 {
@@ -401,13 +439,15 @@ class MockMCPServer:
                     }
                 }
             ]
-        }
+        })
+
+
     
     async def _handle_set_level(self, params: dict) -> dict:
         """Handle logging/setLevel request."""
         level = params.get("level", "info")
         # In real implementation, would set log level
-        return {}
+        return MockMCPServer__handle_set_levelResult.model_validate({})
     
     # =========================================================================
     # Utility Methods

@@ -8,6 +8,21 @@ from neo4j import AsyncDriver
 
 from ..config import Settings, get_settings
 from .neo4j_loader import Neo4jLoader, RDFLoadError
+from shared.models.typed_dict import TypedDictModel
+
+
+class SyncManager_sync_extraction_resultResult(TypedDictModel):
+    reason: str
+    source_id: Any
+    status: str
+
+class SyncManager_get_sync_statusResult(TypedDictModel):
+    content_hash: Any
+    error: Any
+    last_extraction_job_id: Any
+    source_id: Any
+    status: Any
+    synced_at: Any
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +96,12 @@ class SyncManager:
             existing_hash = await self._get_source_hash(source_id)
             if existing_hash == content_hash:
                 logger.info(f"Source {source_id} unchanged, skipping sync")
-                return {
+                return SyncManager_sync_extraction_resultResult.model_validate({
                     "status": "skipped",
                     "reason": "content_unchanged",
                     "source_id": source_id,
-                }
+                })
+
 
         # Perform sync
         stats = {
@@ -163,14 +179,16 @@ class SyncManager:
 
             if record:
                 node = record["s"]
-                return {
+                return SyncManager_get_sync_statusResult.model_validate({
                     "source_id": node["source_id"],
                     "last_extraction_job_id": node.get("extraction_job_id"),
                     "content_hash": node.get("content_hash"),
                     "synced_at": node.get("synced_at"),
                     "status": node.get("status"),
                     "error": node.get("error"),
-                }
+                })
+
+
             return None
 
     async def list_synced_sources(self) -> list[dict]:

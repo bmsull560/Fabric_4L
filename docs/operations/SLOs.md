@@ -187,3 +187,8 @@ histogram_quantile(0.99,
 
 - Google SRE Book: https://sre.google/sre-book/table-of-contents/
 - SLO Workshop: https://sre.google/workbook/slo-document/
+
+
+## Reliability policy
+
+Canonical policy for SLO/SLA ownership, error budgets, burn-rate CI gating, and artifact standards: `docs/operations/reliability-policy.md`.

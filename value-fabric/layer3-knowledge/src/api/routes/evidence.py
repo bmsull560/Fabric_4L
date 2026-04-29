@@ -26,11 +26,21 @@ from ...services.case_study_service import CaseStudyService, CaseStudy
 from ...services.evidence_search import EvidenceSearchService
 from shared.security.dil_auth import get_verified_tenant_id
 from ..dependencies import get_neo4j_driver
+from shared.models.typed_dict import TypedDictModel
+
+
+class delete_case_studyResult(TypedDictModel):
+    id: Any
+    status: str
+
+class semantic_searchResult(TypedDictModel):
+    query: Any
+    results: Any
+    total: Any
 
 logger = structlog.get_logger()
 
 router = APIRouter(prefix="/evidence", tags=["evidence"])
-
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +219,7 @@ async def delete_case_study(
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Case study {case_study_id} not found")
 
-    return {"status": "deleted", "id": case_study_id}
+    return delete_case_studyResult.model_validate({"status": "deleted", "id": case_study_id})
 
 
 # ---------------------------------------------------------------------------
@@ -286,8 +296,10 @@ async def semantic_search(
         limit=request.limit,
     )
 
-    return {
+    return semantic_searchResult.model_validate({
         "query": request.query,
         "total": len(results),
         "results": results,
-    }
+    })
+
+

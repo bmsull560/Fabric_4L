@@ -22,6 +22,15 @@ from shared.mcp_gateway.mcp_types import (
     AuthenticationError,
     ToolAccessDeniedError,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class TestTokenValidation_validateResult(TypedDictModel):
+    aud: str
+    exp: Any
+    org_id: str | None = None
+    scope: str
+    sub: str
 
 
 @pytest.mark.security
@@ -34,31 +43,37 @@ class TestTokenValidation:
         def validate(token: str) -> dict:
             # Simulated validation logic
             if token == "valid-token":
-                return {
+                return TestTokenValidation_validateResult.model_validate({
                     "sub": "user-123",
                     "scope": "tools:read tools:write",
                     "aud": "mcp-gateway",
                     "exp": time.time() + 3600,
                     "org_id": "tenant-abc-123",
-                }
+                })
+
+
             elif token == "expired-token":
                 raise AuthenticationError("Token expired")
             elif token == "invalid-signature":
                 raise AuthenticationError("Invalid token signature")
             elif token == "wrong-audience":
-                return {
+                return TestTokenValidation_validateResult.model_validate({
                     "sub": "user-123",
                     "scope": "tools:read",
                     "aud": "different-service",
                     "exp": time.time() + 3600,
-                }
+                })
+
+
             elif token == "missing-scope":
-                return {
+                return TestTokenValidation_validateResult.model_validate({
                     "sub": "user-123",
                     "scope": "profile:read",  # Wrong scope
                     "aud": "mcp-gateway",
                     "exp": time.time() + 3600,
-                }
+                })
+
+
             else:
                 raise AuthenticationError("Invalid token")
         

@@ -24,6 +24,17 @@ from src.services.pack_variable_loader import (
     _PACK_VERSION_PATTERN,
     _TYPE_MAP,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class sample_pack_variablesResult(TypedDictModel):
+    pack_id: str
+    variables: list[Any]
+    version: str
+
+class sample_pack_formulasResult(TypedDictModel):
+    formulas: list[Any]
+    pack_id: str
 
 
 @pytest.fixture
@@ -38,7 +49,7 @@ def mock_registry():
 @pytest.fixture
 def sample_pack_variables() -> dict[str, Any]:
     """Sample variables.json content for testing."""
-    return {
+    return sample_pack_variablesResult.model_validate({
         "pack_id": "test-pack-v1",
         "version": "1.0.0",
         "variables": [
@@ -71,13 +82,13 @@ def sample_pack_variables() -> dict[str, Any]:
                 "max_value": 1.0,
             },
         ],
-    }
+    })
 
 
 @pytest.fixture
 def sample_pack_formulas() -> dict[str, Any]:
     """Sample formulas.json content for testing."""
-    return {
+    return sample_pack_formulasResult.model_validate({
         "pack_id": "test-pack-v1",
         "formulas": [
             {
@@ -89,7 +100,7 @@ def sample_pack_formulas() -> dict[str, Any]:
                 },
             },
         ],
-    }
+    })
 
 
 class TestPackVersionPattern:

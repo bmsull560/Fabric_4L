@@ -16,6 +16,34 @@ from ..models.workflow_config import WHITESPACE_WORKFLOW_CONFIG
 from ..services.llm_budget_guardrails import LLMBudgetExceededError, get_llm_budget_guardrails
 from ..tools.registry import ToolRegistry
 from .base import BaseWorkflow
+from shared.models.typed_dict import TypedDictModel
+
+
+class WhitespaceAnalysisWorkflow__execute_analyze_prospectResult(TypedDictModel):
+    analysis_confidence: float | None = None
+    company_size: Any | None = None
+    error: str
+    extracted_needs: Any | None = None
+    industry_context: Any | None = None
+    need_count: Any | None = None
+
+class WhitespaceAnalysisWorkflow__execute_query_capabilitiesResult(TypedDictModel):
+    capabilities: Any
+    capability_count: Any
+    categories: list[Any]
+
+class WhitespaceAnalysisWorkflow__execute_identify_gapsResult(TypedDictModel):
+    coverage_percentage: Any | None = None
+    error: str
+    gap_count: Any | None = None
+    gaps: list[Any]
+
+class WhitespaceAnalysisWorkflow__execute_score_opportunityResult(TypedDictModel):
+    assessment: str
+    factors: dict[str, Any] | None = None
+    opportunity_score: Any | None = None
+    recommendations: Any | None = None
+    score: int
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +115,7 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
     async def _execute_analyze_prospect(self, state: WhitespaceAgentState) -> dict[str, Any]:
         """Analyze prospect needs using LLM extraction."""
         if not state.whitespace_input:
-            return {"error": "No whitespace input configured"}
+            return WhitespaceAnalysisWorkflow__execute_analyze_prospectResult.model_validate({"error": "No whitespace input configured"})
 
         needs_text = state.whitespace_input.prospect_needs
 
@@ -168,7 +196,7 @@ Return ONLY the JSON array, no other text."""
             # Fallback to basic extraction
             extracted_needs = self._extract_needs_basic(needs_text)
 
-        return {
+        return WhitespaceAnalysisWorkflow__execute_analyze_prospectResult.model_validate({
             "extracted_needs": extracted_needs
             if isinstance(extracted_needs, list)
             else [extracted_needs],
@@ -176,7 +204,8 @@ Return ONLY the JSON array, no other text."""
             "industry_context": profile.get("industry", "Unknown"),
             "company_size": profile.get("employees", 0),
             "analysis_confidence": 0.85,
-        }
+        })
+
 
     def _extract_needs_basic(self, text: str) -> list[str]:
         """Basic keyword-based extraction as fallback."""
@@ -225,11 +254,12 @@ Return ONLY the JSON array, no other text."""
             for i, c in enumerate(capabilities)
         ]
 
-        return {
+        return WhitespaceAnalysisWorkflow__execute_query_capabilitiesResult.model_validate({
             "capabilities": simplified,
             "capability_count": len(simplified),
             "categories": list(set(c.get("category", "General") for c in simplified)),
-        }
+        })
+
 
     async def _execute_identify_gaps(self, state: WhitespaceAgentState) -> dict[str, Any]:
         """Identify gaps between needs and capabilities using embeddings."""
@@ -237,10 +267,10 @@ Return ONLY the JSON array, no other text."""
         capabilities = state.output_data.get("query_capabilities", {}).get("capabilities", [])
 
         if not needs:
-            return {"error": "No needs extracted", "gaps": []}
+            return WhitespaceAnalysisWorkflow__execute_identify_gapsResult.model_validate({"error": "No needs extracted", "gaps": []})
 
         if not capabilities:
-            return {"error": "No capabilities available", "gaps": []}
+            return WhitespaceAnalysisWorkflow__execute_identify_gapsResult.model_validate({"error": "No capabilities available", "gaps": []})
 
         gaps: list[GapAnalysis] = []
 
@@ -294,13 +324,14 @@ Return ONLY the JSON array, no other text."""
             )
             gaps.append(gap)
 
-        return {
+        return WhitespaceAnalysisWorkflow__execute_identify_gapsResult.model_validate({
             "gaps": [g.model_dump() for g in gaps],
             "gap_count": len(gaps),
             "coverage_percentage": sum(1 for g in gaps if g.gap_type == "none") / len(gaps) * 100
             if gaps
             else 0,
-        }
+        })
+
 
     def _calculate_similarity(self, text1: str, text2: str) -> float:
         """Calculate simple text similarity as fallback."""
@@ -319,7 +350,7 @@ Return ONLY the JSON array, no other text."""
         gaps = gaps_data.get("gaps", [])
 
         if not gaps:
-            return {"score": 0, "assessment": "No gaps analyzed"}
+            return WhitespaceAnalysisWorkflow__execute_score_opportunityResult.model_validate({"score": 0, "assessment": "No gaps analyzed"})
 
         # Calculate opportunity score based on gap analysis
         high_impact_gaps = sum(1 for g in gaps if g.get("impact") == "high")
@@ -367,7 +398,7 @@ Return ONLY the JSON array, no other text."""
 
         recommendations.append("Schedule technical deep-dive to validate assumptions")
 
-        return {
+        return WhitespaceAnalysisWorkflow__execute_score_opportunityResult.model_validate({
             "opportunity_score": round(total_score, 1),
             "assessment": assessment,
             "factors": {
@@ -376,4 +407,6 @@ Return ONLY the JSON array, no other text."""
                 "needs_contribution": round(needs_factor, 1),
             },
             "recommendations": recommendations,
-        }
+        })
+
+

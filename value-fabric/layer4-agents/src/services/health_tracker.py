@@ -17,6 +17,14 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class HealthTracker_to_dictResult(TypedDictModel):
+    active_badges: Any
+    checked_at: Any
+    components: Any
+    overall_status: Any
 
 logger = logging.getLogger(__name__)
 
@@ -470,7 +478,7 @@ class HealthTracker:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert health status to dictionary for API response."""
-        return {
+        return HealthTracker_to_dictResult.model_validate({
             "overall_status": self.get_overall_status().value,
             "checked_at": datetime.now(UTC).isoformat(),
             "components": {
@@ -499,7 +507,7 @@ class HealthTracker:
                 }
                 for b in self.get_active_badges()
             ],
-        }
+        })
 
 
 # Global singleton

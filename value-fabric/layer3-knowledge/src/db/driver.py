@@ -20,6 +20,14 @@ from neo4j.exceptions import (
 )
 
 from ..config import Settings, get_settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class health_checkResult(TypedDictModel):
+    database: Any
+    error: str | None = None
+    status: str
+    uri: Any
 
 logger = logging.getLogger(__name__)
 
@@ -155,15 +163,17 @@ async def health_check(settings: Settings | None = None) -> dict:
             result = await session.run("RETURN 1 AS check")
             record = await result.single()
             if record and record["check"] == 1:
-                return {
+                return health_checkResult.model_validate({
                     "status": "healthy",
                     "uri": cfg.neo4j_uri,
                     "database": cfg.neo4j_database,
-                }
-        return {"status": "unhealthy", "error": "Unexpected query result"}
+                })
+
+
+        return health_checkResult.model_validate({"status": "unhealthy", "error": "Unexpected query result"})
     except (ServiceUnavailable, TransientError) as exc:
-        return {"status": "unhealthy", "error": f"Service unavailable: {exc}"}
+        return health_checkResult.model_validate({"status": "unhealthy", "error": f"Service unavailable: {exc}"})
     except ConfigurationError as exc:
-        return {"status": "unhealthy", "error": f"Configuration error: {exc}"}
+        return health_checkResult.model_validate({"status": "unhealthy", "error": f"Configuration error: {exc}"})
     except Exception as exc:  # noqa: BLE001
-        return {"status": "unhealthy", "error": str(exc)}
+        return health_checkResult.model_validate({"status": "unhealthy", "error": str(exc)})

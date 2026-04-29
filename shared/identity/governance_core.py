@@ -26,6 +26,26 @@ from .context import (
     RequestContext,
 )
 from .jwt import decode_jwt
+from shared.models.typed_dict import TypedDictModel
+
+
+class GovernanceCore_create_audit_payloadResult(TypedDictModel):
+    api_key_id: Any
+    auth_method: Any
+    failure_reason: Any
+    has_org_id: bool
+    is_super_admin: Any
+    isolation_tier: Any
+    org_id: Any
+    outcome: Any
+    request_method: Any
+    request_path: Any
+    resolution_source: Any
+    resolved_tenant_id: Any
+    roles: bool
+    service_account_id: Any
+    tenant_role: Any
+    user_id: Any
 
 logger = logging.getLogger(__name__)
 
@@ -294,7 +314,7 @@ class GovernanceCore:
         Returns:
             Dictionary suitable for audit event details
         """
-        return {
+        return GovernanceCore_create_audit_payloadResult.model_validate({
             "resolution_source": source,
             "resolved_tenant_id": str(context.tenant_id) if context.tenant_id else None,
             "user_id": str(context.user_id) if context.user_id else None,
@@ -311,7 +331,7 @@ class GovernanceCore:
             "failure_reason": failure_reason,
             "request_path": request_path,
             "request_method": request_method,
-        }
+        })
 
 
 # Singleton instance for simple use cases

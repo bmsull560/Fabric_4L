@@ -7,6 +7,17 @@ import os
 from typing import Any
 
 import httpx
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_vault_healthResult(TypedDictModel):
+    error: Any
+    initialized: Any | None = None
+    reachable: bool
+    sealed: Any | None = None
+    standby: Any | None = None
+    status: str
+    version: Any | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -51,21 +62,22 @@ async def get_vault_health(
 
             data = response.json() if response.status_code != 503 else {}
 
-            return {
+            return get_vault_healthResult.model_validate({
                 "status": "healthy" if response.status_code == 200 else "degraded",
                 "initialized": data.get("initialized", False),
                 "sealed": data.get("sealed", True),
                 "standby": data.get("standby", False),
                 "version": data.get("version", "unknown"),
-            }
+            })
+
 
     except Exception as e:
         logger.warning(f"Vault health check failed: {e}")
-        return {
+        return get_vault_healthResult.model_validate({
             "status": "unreachable",
             "error": str(e),
             "reachable": False,
-        }
+        })
 
 
 async def is_vault_healthy(

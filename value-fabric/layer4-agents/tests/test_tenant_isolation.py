@@ -27,6 +27,14 @@ from shared.identity.context import (
 )
 from shared.identity.dependencies import require_tenant_context
 from shared.identity.middleware import GovernanceMiddleware
+from shared.models.typed_dict import TypedDictModel
+
+
+class TestCrossTenantDenial_get_tenant_dataResult(TypedDictModel):
+    tenant_id: Any
+
+class TestCrossTenantDenial_get_admin_dataResult(TypedDictModel):
+    tenant_id: Any
 
 
 class TestRequestContextTenantClaims:
@@ -313,13 +321,13 @@ class TestCrossTenantDenial:
             ctx = getattr(request.state, "context", RequestContext())
             if not ctx.tenant_id:
                 raise HTTPException(status_code=400, detail="Tenant required")
-            return {"tenant_id": str(ctx.tenant_id)}
+            return TestCrossTenantDenial_get_tenant_dataResult.model_validate({"tenant_id": str(ctx.tenant_id)})
 
         @app.get("/admin-data")
         async def get_admin_data(
             context: RequestContext = require_tenant_context,
         ):
-            return {"tenant_id": str(context.tenant_id)}
+            return TestCrossTenantDenial_get_admin_dataResult.model_validate({"tenant_id": str(context.tenant_id)})
 
         return app
 

@@ -13,6 +13,55 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
+from shared.models.typed_dict import TypedDictModel
+
+
+class PROVNamespace_get_prefixesResult(TypedDictModel):
+    prov: Any
+    rdf: Any
+    rdfs: Any
+    vf: Any
+    xsd: Any
+
+class PROVEntity_to_dictResult(TypedDictModel):
+    @id: Any
+    @type: Any
+    attributes: Any
+    generatedAt: Any
+    generatedBy: Any
+    label: Any
+
+class PROVActivity_to_dictResult(TypedDictModel):
+    @id: Any
+    @type: Any
+    associatedWith: Any
+    attributes: Any
+    endedAt: Any
+    generated: Any
+    label: Any
+    startedAt: Any
+    used: Any
+
+class PROVAgent_to_dictResult(TypedDictModel):
+    @id: Any
+    @type: Any
+    actedOnBehalfOf: Any
+    attributes: Any
+    label: Any
+
+class RDFStarTriple_to_dictResult(TypedDictModel):
+    annotations: Any
+    object: Any
+    predicate: Any
+    subject: Any
+
+class PROVGraph_to_dictResult(TypedDictModel):
+    @context: dict[str, Any]
+    @id: Any
+    activities: Any
+    agents: Any
+    annotations: Any
+    entities: Any
 
 
 class PROVNamespace:
@@ -30,13 +79,13 @@ class PROVNamespace:
     # Common prefixes
     @classmethod
     def get_prefixes(cls) -> dict[str, str]:
-        return {
+        return PROVNamespace_get_prefixesResult.model_validate({
             "prov": cls.PROV,
             "rdf": cls.RDF,
             "rdfs": cls.RDFS,
             "xsd": cls.XSD,
             "vf": cls.VF,
-        }
+        })
 
 
 class PROVType(str, Enum):
@@ -119,14 +168,14 @@ class PROVEntity:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return PROVEntity_to_dictResult.model_validate({
             "@id": self.entity_id,
             "@type": self.entity_type.value,
             "label": self.label,
             "generatedAt": self.generated_at.isoformat() if self.generated_at else None,
             "generatedBy": self.generated_by,
             "attributes": self.attributes,
-        }
+        })
 
 
 @dataclass
@@ -195,7 +244,7 @@ class PROVActivity:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return PROVActivity_to_dictResult.model_validate({
             "@id": self.activity_id,
             "@type": self.activity_type.value,
             "label": self.label,
@@ -205,7 +254,7 @@ class PROVActivity:
             "generated": self.generated_entities,
             "associatedWith": self.was_associated_with,
             "attributes": self.attributes,
-        }
+        })
 
 
 @dataclass
@@ -253,13 +302,13 @@ class PROVAgent:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return PROVAgent_to_dictResult.model_validate({
             "@id": self.agent_id,
             "@type": self.agent_type.value,
             "label": self.label,
             "actedOnBehalfOf": self.acted_on_behalf_of,
             "attributes": self.attributes,
-        }
+        })
 
 
 @dataclass
@@ -307,12 +356,12 @@ class RDFStarTriple:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return RDFStarTriple_to_dictResult.model_validate({
             "subject": self.subject,
             "predicate": self.predicate,
             "object": self.object_,
             "annotations": self.annotations,
-        }
+        })
 
 
 class PROVGraph:
@@ -417,7 +466,7 @@ class PROVGraph:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return PROVGraph_to_dictResult.model_validate({
             "@id": self.graph_id,
             "@context": {
                 "prov": "http://www.w3.org/ns/prov#",
@@ -427,7 +476,7 @@ class PROVGraph:
             "activities": [a.to_dict() for a in self.activities.values()],
             "agents": [a.to_dict() for a in self.agents.values()],
             "annotations": [t.to_dict() for t in self.rdf_star_triples],
-        }
+        })
 
 
 def create_prov_graph(

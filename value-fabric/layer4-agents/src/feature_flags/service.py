@@ -17,10 +17,20 @@ except ImportError as e:
         "shared.audit and shared.identity packages are required for feature flag functionality. "
         "Install the shared package or set PYTHONPATH to include value-fabric/shared"
     ) from e
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import FeatureFlag
+from shared.models.typed_dict import TypedDictModel
+
+
+class FeatureFlagService_lookup_flagResult(TypedDictModel):
+    enabled: Any
+    rollout_percentage: Any
+
+class _lookup_flagResult(TypedDictModel):
+    enabled: Any
+    rollout_percentage: Any
 
 logger = logging.getLogger(__name__)
 
@@ -171,19 +181,21 @@ class FeatureFlagService:
         flag = await FeatureFlagService.get_flag(db, flag_key, tenant_id)
         if flag is None:
             return None
-        return {
+        return FeatureFlagService_lookup_flagResult.model_validate({
             "enabled": flag.enabled,
             "rollout_percentage": flag.rollout_percentage,
-        }
+        })
 
 
 async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] | None:
     """DB lookup callback registered with ``shared.identity.feature_flags``."""
-    from ..database import db_session
+    from ..database import db_session_for_context, get_session_factory
+    from shared.identity.context import RequestContext
 
-    async with db_session() as db:
-        # Try tenant-specific first
-        if tenant_id is not None:
+    # Try tenant-specific first
+    if tenant_id is not None:
+        context = RequestContext(tenant_id=tenant_id)
+        async with db_session_for_context(context) as db:
             result = await db.execute(
                 select(FeatureFlag).where(
                     FeatureFlag.tenant_id == tenant_id,
@@ -192,12 +204,16 @@ async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] 
             )
             row = result.scalar_one_or_none()
             if row is not None:
-                return {
+                return _lookup_flagResult.model_validate({
                     "enabled": row.enabled,
                     "rollout_percentage": row.rollout_percentage,
-                }
+                })
 
-        # Fall back to platform-wide
+
+    # Fall back to platform-wide (no tenant context)
+    factory = get_session_factory()
+    async with factory() as db:
+        await db.execute(text("SET LOCAL app.tenant_id = ''"))
         result = await db.execute(
             select(FeatureFlag).where(
                 FeatureFlag.tenant_id.is_(None),
@@ -206,10 +222,12 @@ async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] 
         )
         row = result.scalar_one_or_none()
         if row is not None:
-            return {
+            return _lookup_flagResult.model_validate({
                 "enabled": row.enabled,
                 "rollout_percentage": row.rollout_percentage,
-            }
+            })
+
+
     return None
 
 

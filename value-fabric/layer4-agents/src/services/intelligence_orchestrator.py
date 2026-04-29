@@ -26,6 +26,33 @@ from datetime import UTC, datetime
 from typing import Any
 
 import structlog
+from shared.models.typed_dict import TypedDictModel
+
+
+class IntelligenceOrchestrator_get_deal_readinessResult(TypedDictModel):
+    account_id: Any
+    generated_at: Any
+
+class IntelligenceOrchestrator__compute_deal_readinessResult(TypedDictModel):
+    components: Any
+    label: Any
+    recommendations: Any
+    score: Any
+
+class IntelligenceOrchestrator_get_pipeline_summaryResult(TypedDictModel):
+    accounts: Any
+    generated_at: Any
+    summary: dict[str, Any]
+    tenant_id: Any
+
+class IntelligenceOrchestrator__get_competitive_landscapeResult(TypedDictModel):
+    overall_win_rate: Any | None = None
+    total_competitors: bool | int
+    total_losses: int
+    total_wins: int
+
+class IntelligenceOrchestrator__get_roi_summaryResult(TypedDictModel):
+    pass
 
 try:
     from shared.identity.context import require_context
@@ -305,11 +332,12 @@ class IntelligenceOrchestrator:
             narrative=narrative,
         )
 
-        return {
+        return IntelligenceOrchestrator_get_deal_readinessResult.model_validate({
             "account_id": account_id,
             "generated_at": datetime.now(UTC).isoformat(),
             **readiness,
-        }
+        })
+
 
     def _compute_deal_readiness(
         self,
@@ -368,12 +396,13 @@ class IntelligenceOrchestrator:
         )
         score = round(min(score, 1.0), 3)
 
-        return {
+        return IntelligenceOrchestrator__compute_deal_readinessResult.model_validate({
             "score": score,
             "label": _readiness_label(score),
             "components": {k: round(v, 3) for k, v in components.items()},
             "recommendations": self._generate_recommendations(components),
-        }
+        })
+
 
     @staticmethod
     def _generate_recommendations(components: dict[str, float]) -> list[str]:
@@ -443,7 +472,7 @@ class IntelligenceOrchestrator:
                 "has_converted": "converted" in statuses,
             })
 
-        return {
+        return IntelligenceOrchestrator_get_pipeline_summaryResult.model_validate({
             "tenant_id": tenant_id,
             "generated_at": datetime.now(UTC).isoformat(),
             "summary": {
@@ -455,7 +484,8 @@ class IntelligenceOrchestrator:
                 ),
             },
             "accounts": accounts,
-        }
+        })
+
 
     # ------------------------------------------------------------------
     # Internal Data Fetchers (Neo4j)
@@ -520,18 +550,19 @@ class IntelligenceOrchestrator:
             record = await result.single()
 
         if not record:
-            return {"total_competitors": 0, "total_wins": 0, "total_losses": 0}
+            return IntelligenceOrchestrator__get_competitive_landscapeResult.model_validate({"total_competitors": 0, "total_wins": 0, "total_losses": 0})
 
         total_wins = record["total_wins"] or 0
         total_losses = record["total_losses"] or 0
         total_deals = total_wins + total_losses
 
-        return {
+        return IntelligenceOrchestrator__get_competitive_landscapeResult.model_validate({
             "total_competitors": record["total_competitors"] or 0,
             "total_wins": total_wins,
             "total_losses": total_losses,
             "overall_win_rate": round(total_wins / total_deals, 3) if total_deals > 0 else 0,
-        }
+        })
+
 
     async def _get_roi_summary(
         self, account_id: str
@@ -552,7 +583,7 @@ class IntelligenceOrchestrator:
             record = await result.single()
 
         if not record or not record["calculation"]:
-            return {}
+            return IntelligenceOrchestrator__get_roi_summaryResult.model_validate({})
 
         import json
         calc = record["calculation"]

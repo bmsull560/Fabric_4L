@@ -16,6 +16,26 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ...engine.executor import OrchestrationController
 from .workflows import get_executor
+from shared.models.typed_dict import TypedDictModel
+
+
+class _calculate_state_diffResult(TypedDictModel):
+    added: Any
+    modified: Any
+    removed: Any
+    summary: Any
+    unchanged: Any
+
+class _summarize_stateResult(TypedDictModel):
+    pass
+
+class _get_checkpoint_dataResult(TypedDictModel):
+    checkpoint_id: Any
+    node_name: Any
+    state: Any
+    thread_id: Any
+    timestamp: Any
+    workflow_type: Any
 
 logger = logging.getLogger(__name__)
 checkpoint_router = APIRouter()
@@ -477,7 +497,7 @@ async def _get_checkpoint_data(
 
             if row:
                 state_data = row["state_data"] or {}
-                return {
+                return _get_checkpoint_dataResult.model_validate({
                     "checkpoint_id": row["checkpoint_id"],
                     "thread_id": row["thread_id"],
                     "state": state_data,
@@ -490,7 +510,8 @@ async def _get_checkpoint_data(
                     "workflow_type": state_data.get("workflow_type", "unknown")
                     if isinstance(state_data, dict)
                     else "unknown",
-                }
+                })
+
 
     except Exception as e:
         logger.error(f"Error retrieving checkpoint data: {e}")
@@ -501,7 +522,7 @@ async def _get_checkpoint_data(
 def _summarize_state(state: dict[str, Any]) -> dict[str, Any]:
     """Create a summary of state for checkpoint list."""
     if not isinstance(state, dict):
-        return {}
+        return _summarize_stateResult.model_validate({})
 
     summary = {
         "status": state.get("status", "unknown"),
@@ -550,13 +571,13 @@ def _calculate_state_diff(state_a: dict, state_b: dict) -> dict[str, Any]:
 
     summary = "; ".join(summary_parts) if summary_parts else "No changes detected"
 
-    return {
+    return _calculate_state_diffResult.model_validate({
         "added": added,
         "removed": removed,
         "modified": modified,
         "unchanged": unchanged,
         "summary": summary,
-    }
+    })
 
 
 def _truncate_value(value: Any, max_length: int = 100) -> Any:

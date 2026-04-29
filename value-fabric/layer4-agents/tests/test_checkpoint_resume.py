@@ -18,6 +18,13 @@ from src.models.agent_state import BaseAgentState, WorkflowStatus
 from src.models.workflow_config import EdgeConfig, NodeConfig, NodeType
 from src.tools.registry import ToolRegistry
 from src.workflows.base import BaseWorkflow, WorkflowConfig
+from shared.models.typed_dict import TypedDictModel
+
+
+class SimpleTestWorkflow__execute_toolResult(TypedDictModel):
+    node: Any
+    status: str
+    tool: Any | None = None
 
 # Reuse fixtures from conftest.py: mock_checkpoint_saver, mock_tool_registry,
 # state_manager, orchestrator_with_checkpoint, controller_with_running_state,
@@ -59,9 +66,9 @@ class SimpleTestWorkflow(BaseWorkflow):
         # Simulate pause after specified node
         if self.pause_after_node and current_node == self.pause_after_node:
             state.status = WorkflowStatus.PENDING
-            return {"status": "paused", "node": current_node}
+            return SimpleTestWorkflow__execute_toolResult.model_validate({"status": "paused", "node": current_node})
 
-        return {"status": "completed", "node": current_node, "tool": tool_name}
+        return SimpleTestWorkflow__execute_toolResult.model_validate({"status": "completed", "node": current_node, "tool": tool_name})
 
     def create_initial_state(self, input_data: dict[str, Any]):
         """Create initial state."""

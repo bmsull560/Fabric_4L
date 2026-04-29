@@ -20,6 +20,36 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.account import CRMProvider
 from ..models.integration import Integration, IntegrationStatus
 from .encryption_service import DEFAULT_KEY_ID, EncryptionService
+from shared.models.typed_dict import TypedDictModel
+
+
+class IntegrationService_trigger_syncResult(TypedDictModel):
+    provider: Any
+    queued_at: Any
+    status: str
+    sync_id: Any
+
+class IntegrationService_test_connectionResult(TypedDictModel):
+    error_code: str
+    message: str
+    success: bool
+
+class IntegrationService__test_salesforce_connectionResult(TypedDictModel):
+    details: dict[str, Any] | None = None
+    error_code: str | None = None
+    message: str
+    success: bool
+
+class IntegrationService__test_hubspot_connectionResult(TypedDictModel):
+    details: dict[str, Any] | None = None
+    error_code: str | None = None
+    message: str
+    success: bool
+
+class IntegrationService__test_crm_connectionResult(TypedDictModel):
+    error_code: str
+    message: str
+    success: bool
 
 # CRM API endpoint constants
 SALESFORCE_API_VERSION = "v58.0"
@@ -236,18 +266,20 @@ class IntegrationService:
         """
         integration = await self.get_integration(tenant_id, provider)
         if not integration:
-            return {
+            return IntegrationService_test_connectionResult.model_validate({
                 "success": False,
                 "message": f"No {provider.value} integration configured",
                 "error_code": "NOT_CONFIGURED",
-            }
+            })
+
 
         if not integration.enabled:
-            return {
+            return IntegrationService_test_connectionResult.model_validate({
                 "success": False,
                 "message": "Integration is disabled",
                 "error_code": "DISABLED",
-            }
+            })
+
 
         try:
             creds_json = await EncryptionService.decrypt(
@@ -263,11 +295,12 @@ class IntegrationService:
 
         except Exception as e:
             logger.error("Connection test failed for %s: %s", provider, e)
-            return {
+            return IntegrationService_test_connectionResult.model_validate({
                 "success": False,
                 "message": f"Connection failed: {str(e)}",
                 "error_code": "CONNECTION_FAILED",
-            }
+            })
+
 
     async def _test_crm_connection(
         self,
@@ -293,11 +326,12 @@ class IntegrationService:
             elif provider == CRMProvider.HUBSPOT:
                 return await self._test_hubspot_connection(client, credentials)
             else:
-                return {
+                return IntegrationService__test_crm_connectionResult.model_validate({
                     "success": False,
                     "message": f"Unsupported provider: {provider.value}",
                     "error_code": "UNSUPPORTED_PROVIDER",
-                }
+                })
+
 
     async def _test_salesforce_connection(
         self,
@@ -317,20 +351,22 @@ class IntegrationService:
         """
         access_token = credentials.get("api_key")
         if not access_token:
-            return {
+            return IntegrationService__test_salesforce_connectionResult.model_validate({
                 "success": False,
                 "message": "Missing OAuth access token in credentials",
                 "error_code": "MISSING_CREDENTIALS",
-            }
+            })
+
 
         # Use provided instance_url or construct from credentials
         base_url = instance_url or credentials.get("instance_url", "")
         if not base_url:
-            return {
+            return IntegrationService__test_salesforce_connectionResult.model_validate({
                 "success": False,
                 "message": "Salesforce instance URL is required",
                 "error_code": "MISSING_INSTANCE_URL",
-            }
+            })
+
 
         try:
             # Test API access by querying Organization info (lightweight call)
@@ -344,7 +380,7 @@ class IntegrationService:
                 data = response.json()
                 org_name = data.get("records", [{}])[0].get("Name", "Unknown")
 
-                return {
+                return IntegrationService__test_salesforce_connectionResult.model_validate({
                     "success": True,
                     "message": f"Connected to Salesforce: {org_name}",
                     "details": {
@@ -353,32 +389,40 @@ class IntegrationService:
                         "organization": org_name,
                         "api_version": SALESFORCE_API_VERSION,
                     },
-                }
+                })
+
+
             elif response.status_code == 401:
-                return {
+                return IntegrationService__test_salesforce_connectionResult.model_validate({
                     "success": False,
                     "message": "Authentication failed - token may be expired",
                     "error_code": "AUTH_FAILED",
-                }
+                })
+
+
             else:
-                return {
+                return IntegrationService__test_salesforce_connectionResult.model_validate({
                     "success": False,
                     "message": f"Salesforce API error: {response.status_code}",
                     "error_code": f"API_ERROR_{response.status_code}",
-                }
+                })
+
 
         except httpx.TimeoutException:
-            return {
+            return IntegrationService__test_salesforce_connectionResult.model_validate({
                 "success": False,
                 "message": "Connection timed out after 30 seconds",
                 "error_code": "TIMEOUT",
-            }
+            })
+
+
         except httpx.NetworkError as e:
-            return {
+            return IntegrationService__test_salesforce_connectionResult.model_validate({
                 "success": False,
                 "message": f"Network error: {str(e)}",
                 "error_code": "NETWORK_ERROR",
-            }
+            })
+
 
     async def _test_hubspot_connection(
         self,
@@ -396,11 +440,12 @@ class IntegrationService:
         """
         api_key = credentials.get("api_key")
         if not api_key:
-            return {
+            return IntegrationService__test_hubspot_connectionResult.model_validate({
                 "success": False,
                 "message": "Missing API key in credentials",
                 "error_code": "MISSING_CREDENTIALS",
-            }
+            })
+
 
         try:
             # Test API access by querying account info
@@ -413,7 +458,7 @@ class IntegrationService:
                 data = response.json()
                 portal_name = data.get("portalName", "Unknown")
 
-                return {
+                return IntegrationService__test_hubspot_connectionResult.model_validate({
                     "success": True,
                     "message": f"Connected to HubSpot: {portal_name}",
                     "details": {
@@ -422,32 +467,40 @@ class IntegrationService:
                         "portal_name": portal_name,
                         "api_version": HUBSPOT_API_VERSION,
                     },
-                }
+                })
+
+
             elif response.status_code == 401:
-                return {
+                return IntegrationService__test_hubspot_connectionResult.model_validate({
                     "success": False,
                     "message": "Authentication failed - API key may be invalid",
                     "error_code": "AUTH_FAILED",
-                }
+                })
+
+
             else:
-                return {
+                return IntegrationService__test_hubspot_connectionResult.model_validate({
                     "success": False,
                     "message": f"HubSpot API error: {response.status_code}",
                     "error_code": f"API_ERROR_{response.status_code}",
-                }
+                })
+
 
         except httpx.TimeoutException:
-            return {
+            return IntegrationService__test_hubspot_connectionResult.model_validate({
                 "success": False,
                 "message": "Connection timed out after 30 seconds",
                 "error_code": "TIMEOUT",
-            }
+            })
+
+
         except httpx.NetworkError as e:
-            return {
+            return IntegrationService__test_hubspot_connectionResult.model_validate({
                 "success": False,
                 "message": f"Network error: {str(e)}",
                 "error_code": "NETWORK_ERROR",
-            }
+            })
+
 
     async def trigger_sync(
         self, tenant_id: str, provider: CRMProvider, user_id: str | None = None
@@ -478,10 +531,12 @@ class IntegrationService:
         await self.db.commit()
 
         async def _run_sync_job() -> None:
-            from ..database import db_session
+            from ..database import db_session_for_context
+            from shared.identity.context import RequestContext
             from .crm_sync_service import CRMSyncService
 
-            async with db_session() as bg_db:
+            context = RequestContext(tenant_id=tenant_id)
+            async with db_session_for_context(context) as bg_db:
                 bg_integration_service = IntegrationService(bg_db)
                 bg_integration = await bg_integration_service.get_integration(tenant_id, provider)
                 if not bg_integration:
@@ -535,12 +590,13 @@ class IntegrationService:
             user_id,
         )
 
-        return {
+        return IntegrationService_trigger_syncResult.model_validate({
             "sync_id": sync_id,
             "status": "queued",
             "provider": provider.value,
             "queued_at": queued_at,
-        }
+        })
+
 
     def _validate_config(
         self,

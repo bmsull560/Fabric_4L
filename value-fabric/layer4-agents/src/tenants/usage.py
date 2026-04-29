@@ -11,6 +11,14 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from shared.models.typed_dict import TypedDictModel
+
+
+class UsageTrackingService_get_current_month_usageResult(TypedDictModel):
+    agent_executions: Any
+    api_calls: Any
+    llm_tokens: Any
+    period: str
 
 if TYPE_CHECKING:
     from ..database import AsyncSession as DBSession
@@ -242,12 +250,12 @@ class UsageTrackingService:
             days=(today - start_of_month).days + 1,
         )
 
-        return {
+        return UsageTrackingService_get_current_month_usageResult.model_validate({
             "api_calls": summary.api_calls_total,
             "llm_tokens": summary.llm_tokens_input + summary.llm_tokens_output,
             "agent_executions": summary.agent_executions,
             "period": "current_month",
-        }
+        })
 
 
 # Convenience functions for one-off usage tracking

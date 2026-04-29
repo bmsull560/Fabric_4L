@@ -16,6 +16,16 @@ from db.tenant_queries import (
     update_entity_properties,
     delete_entity,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class mock_entityResult(TypedDictModel):
+    confidence: float
+    created_at: str
+    entity_type: str
+    id: str
+    name: str
+    tenant_id: str
 
 
 @pytest.fixture
@@ -28,14 +38,14 @@ def mock_session():
 @pytest.fixture
 def mock_entity():
     """Sample entity data."""
-    return {
+    return mock_entityResult.model_validate({
         "id": "entity-123",
         "name": "Test Entity",
         "entity_type": "Capability",
         "tenant_id": "tenant-a",
         "confidence": 0.95,
         "created_at": "2026-04-23T10:00:00Z",
-    }
+    })
 
 
 class TestGetEntityById:

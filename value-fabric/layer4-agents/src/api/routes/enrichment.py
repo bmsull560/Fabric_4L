@@ -30,6 +30,20 @@ from ...services.enrichment_orchestrator import (
     EnrichmentSource,
     EnrichmentStatus,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_account_enrichmentResult(TypedDictModel):
+    account_id: Any
+    competitive_landscape: bool
+    enriched_at: Any
+    enrichment_sources: bool
+    enrichment_status: Any
+    executives: bool
+    financials: Any
+    name: Any
+    pain_signals: bool
+    tech_stack: Any
 
 logger = structlog.get_logger()
 
@@ -186,7 +200,7 @@ async def get_account_enrichment(
     # V-003: Tenant-scoped account lookup
     account = await _get_tenant_scoped_account(db, account_id, tenant_id)
 
-    return {
+    return get_account_enrichmentResult.model_validate({
         "account_id": str(account.id),
         "name": account.name,
         "enrichment_status": account.enrichment_status,
@@ -197,4 +211,6 @@ async def get_account_enrichment(
         "financials": account.financials,
         "competitive_landscape": account.competitive_landscape or [],
         "pain_signals": account.pain_signals or [],
-    }
+    })
+
+

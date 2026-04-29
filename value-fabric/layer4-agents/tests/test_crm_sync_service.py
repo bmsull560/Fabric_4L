@@ -24,6 +24,29 @@ from src.models.account import (
     SyncStatus,
 )
 from src.services.crm_sync_service import CRMSyncService
+from shared.models.typed_dict import TypedDictModel
+
+
+class mock_crm_configResult(TypedDictModel):
+    api_key: str
+    crm_api_key: str
+    crm_api_secret: str
+    crm_instance_url: str
+    crm_type: str
+
+class sample_salesforce_account_dataResult(TypedDictModel):
+    AnnualRevenue: int
+    BillingCity: str
+    BillingState: str
+    Id: str
+    Industry: str
+    Name: str
+    NumberOfEmployees: int
+    Website: str
+
+class sample_hubspot_company_dataResult(TypedDictModel):
+    id: str
+    properties: dict[str, Any]
 
 # =============================================================================
 # Fixtures
@@ -58,19 +81,19 @@ def override_app_db_dependency(mock_db):
 @pytest.fixture
 def mock_crm_config():
     """Mock CRM environment configuration."""
-    return {
+    return mock_crm_configResult.model_validate({
         "crm_type": "salesforce",
         "api_key": "test_token",
         "crm_api_key": "test_token",
         "crm_api_secret": "test_secret",
         "crm_instance_url": "https://test.salesforce.com",
-    }
+    })
 
 
 @pytest.fixture
 def sample_salesforce_account_data():
     """Sample Salesforce account data for mocking."""
-    return {
+    return sample_salesforce_account_dataResult.model_validate({
         "Id": "001XXXXXXXXXXXX",
         "Name": "Test Company Inc",
         "Industry": "Technology",
@@ -79,13 +102,13 @@ def sample_salesforce_account_data():
         "Website": "https://testcompany.com",
         "BillingCity": "San Francisco",
         "BillingState": "CA",
-    }
+    })
 
 
 @pytest.fixture
 def sample_hubspot_company_data():
     """Sample HubSpot company data for mocking."""
-    return {
+    return sample_hubspot_company_dataResult.model_validate({
         "id": "123456789",
         "properties": {
             "name": "Test Company Inc",
@@ -96,7 +119,7 @@ def sample_hubspot_company_data():
             "address": "123 Main St, Boston, MA",
             "domain": "testcompany.com",
         }
-    }
+    })
 
 
 class MockProspectDataTool:

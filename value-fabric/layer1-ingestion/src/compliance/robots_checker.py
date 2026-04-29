@@ -15,6 +15,22 @@ from protego import Protego
 from ..shared.config import settings
 from ..shared.database import get_db_session
 from ..shared.models import RobotsTxtCache
+from shared.models.typed_dict import TypedDictModel
+
+
+class RobotsChecker__get_robots_txtResult(TypedDictModel):
+    content: Any
+    http_status: Any
+    rules: Any
+
+class RobotsChecker__parse_robots_txtResult(TypedDictModel):
+    parse_error: Any
+
+class RobotsChecker__get_cached_robots_txtResult(TypedDictModel):
+    content: Any
+    expires_at: Any
+    fetched_at: Any
+    rules: Any
 
 logger = structlog.get_logger()
 
@@ -154,7 +170,7 @@ class RobotsChecker:
 
             self.logger.info("Fetched and cached robots.txt", domain=domain, size=len(content))
 
-            return {"content": content, "rules": parsed_rules, "http_status": response.status_code}
+            return RobotsChecker__get_robots_txtResult.model_validate({"content": content, "rules": parsed_rules, "http_status": response.status_code})
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
@@ -204,12 +220,13 @@ class RobotsChecker:
                 )
 
                 if cache_entry:
-                    return {
+                    return RobotsChecker__get_cached_robots_txtResult.model_validate({
                         "content": cache_entry.content,
                         "rules": cache_entry.rules,
                         "fetched_at": cache_entry.fetched_at,
                         "expires_at": cache_entry.expires_at,
-                    }
+                    })
+
 
                 return None
 
@@ -308,7 +325,7 @@ class RobotsChecker:
 
         except Exception as e:
             self.logger.error("Failed to parse robots.txt content", error=str(e))
-            return {"parse_error": str(e)}
+            return RobotsChecker__parse_robots_txtResult.model_validate({"parse_error": str(e)})
 
     async def get_crawl_delay(self, url: str) -> float | None:
         """Get crawl-delay directive for a domain.

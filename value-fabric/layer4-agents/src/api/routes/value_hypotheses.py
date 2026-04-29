@@ -22,6 +22,27 @@ from shared.security.dil_auth import (
     validate_enum_value,
     VALID_HYPOTHESIS_STATUSES,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class generate_hypothesesResult(TypedDictModel):
+    account_id: Any
+    count: Any
+    hypotheses: Any
+    status: str
+
+class validate_hypothesisResult(TypedDictModel):
+    hypothesis: Any
+    status: str
+
+class delete_hypothesisResult(TypedDictModel):
+    hypothesis_id: Any
+    status: str
+
+class rank_hypothesesResult(TypedDictModel):
+    count: Any
+    hypotheses: Any
+    strategy: Any
 
 router = APIRouter(prefix="/hypotheses", tags=["Value Hypotheses"])
 
@@ -99,12 +120,12 @@ async def generate_hypotheses(
         include_evidence=body.include_evidence,
     )
 
-    return {
+    return generate_hypothesesResult.model_validate({
         "status": "success",
         "account_id": body.account_id,
         "count": len(hypotheses),
         "hypotheses": hypotheses,
-    }
+    })
 
 
 @router.get("/{hypothesis_id}")
@@ -178,7 +199,7 @@ async def validate_hypothesis(
     if not result:
         raise HTTPException(status_code=404, detail="Hypothesis not found")
 
-    return {"status": "updated", "hypothesis": result}
+    return validate_hypothesisResult.model_validate({"status": "updated", "hypothesis": result})
 
 
 @router.delete("/{hypothesis_id}")
@@ -197,7 +218,7 @@ async def delete_hypothesis(
     if not deleted:
         raise HTTPException(status_code=404, detail="Hypothesis not found")
 
-    return {"status": "deleted", "hypothesis_id": hypothesis_id}
+    return delete_hypothesisResult.model_validate({"status": "deleted", "hypothesis_id": hypothesis_id})
 
 
 @router.get("/summary/stats")
@@ -239,8 +260,10 @@ async def rank_hypotheses(
 
     ranked = engine.rank_hypotheses(hypotheses, body.strategy)
 
-    return {
+    return rank_hypothesesResult.model_validate({
         "strategy": body.strategy,
         "count": len(ranked),
         "hypotheses": ranked,
-    }
+    })
+
+

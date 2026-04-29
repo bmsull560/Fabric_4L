@@ -34,6 +34,11 @@ except ImportError:
     _AUDIT_WRITE_FAILURES = None
 
 from .models import AuditAction, AuditEvent, AuditOutcome
+from shared.models.typed_dict import TypedDictModel
+
+
+class _scrub_detailsResult(TypedDictModel):
+    pass
 
 logger = logging.getLogger("vf.audit")
 
@@ -54,10 +59,10 @@ _SENSITIVE_KEYS: Set[str] = {
 
 def _scrub_details(details: Dict[str, Any]) -> Dict[str, Any]:
     """Return a copy of *details* with sensitive keys replaced by '[REDACTED]'."""
-    return {
+    return _scrub_detailsResult.model_validate({
         k: "[REDACTED]" if k.lower() in _SENSITIVE_KEYS else v
         for k, v in details.items()
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +158,7 @@ class AuditEmitter:
             request: TenantCreateRequest,
             background_tasks: BackgroundTasks,
             ctx = Depends(require_super_admin),
-            db: AsyncSession = Depends(get_db),
+            db: AsyncSession = Depends(get_db_from_context),
         ):
             tenant = await service.create_tenant(db, request)
             event = emit_audit_event(
@@ -163,7 +168,7 @@ class AuditEmitter:
                 resource_type="Tenant",
                 resource_id=str(tenant.id),
             )
-            background_tasks.add_task(AuditEmitter.write_to_db, event, get_db)
+            background_tasks.add_task(AuditEmitter.write_to_db, event, get_db_from_context)
             return tenant
     """
 

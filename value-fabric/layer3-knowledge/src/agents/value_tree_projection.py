@@ -17,6 +17,28 @@ from uuid import UUID
 from neo4j import AsyncDriver
 
 from .base import AgentResult, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class ValueTreeProjectionAgent__upward_traversalResult(TypedDictModel):
+    error: str
+    outcomes: list[Any]
+    paths: list[Any]
+    start_node: Any | None = None
+    traversal_direction: str | None = None
+
+class ValueTreeProjectionAgent__downward_traversalResult(TypedDictModel):
+    capabilities: list[Any]
+    error: str
+    paths: list[Any]
+    start_node: Any | None = None
+    traversal_direction: str | None = None
+
+class ValueTreeProjectionAgent__semantic_matchResult(TypedDictModel):
+    matches: list[Any]
+    min_confidence: Any
+    note: str
+    query: Any
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +251,7 @@ class ValueTreeProjectionAgent(BaseAgent):
             Dict with paths and outcomes
         """
         if not self._driver:
-            return {"paths": [], "outcomes": [], "error": "No database driver"}
+            return ValueTreeProjectionAgent__upward_traversalResult.model_validate({"paths": [], "outcomes": [], "error": "No database driver"})
 
         query = """
         MATCH path = (start {id: $start_id, tenant_id: $tenant_id})-[:enables|delivers|impacts|contributesTo|drives*1..$max_hops]->(target)
@@ -262,12 +284,13 @@ class ValueTreeProjectionAgent(BaseAgent):
             )
             outcomes.add((record["target_id"], record["target_name"]))
 
-        return {
+        return ValueTreeProjectionAgent__upward_traversalResult.model_validate({
             "paths": paths,
             "outcomes": [{"id": o[0], "name": o[1]} for o in outcomes],
             "traversal_direction": "upward",
             "start_node": start_node_id,
-        }
+        })
+
 
     async def _downward_traversal(
         self, start_node_id: str, max_hops: int = 5, tenant_id: str = "system"
@@ -283,7 +306,7 @@ class ValueTreeProjectionAgent(BaseAgent):
             Dict with paths and capabilities
         """
         if not self._driver:
-            return {"paths": [], "capabilities": [], "error": "No database driver"}
+            return ValueTreeProjectionAgent__downward_traversalResult.model_validate({"paths": [], "capabilities": [], "error": "No database driver"})
 
         query = """
         MATCH path = (start {id: $start_id, tenant_id: $tenant_id})<-[:enables|delivers|impacts|contributesTo|drivenBy|requires*1..$max_hops]-(target)
@@ -316,12 +339,13 @@ class ValueTreeProjectionAgent(BaseAgent):
             )
             capabilities.add((record["target_id"], record["target_name"]))
 
-        return {
+        return ValueTreeProjectionAgent__downward_traversalResult.model_validate({
             "paths": paths,
             "capabilities": [{"id": c[0], "name": c[1]} for c in capabilities],
             "traversal_direction": "downward",
             "start_node": start_node_id,
-        }
+        })
+
 
     async def _semantic_match(
         self, query_text: str, min_confidence: float = 0.7, tenant_id: str = "system"
@@ -340,12 +364,13 @@ class ValueTreeProjectionAgent(BaseAgent):
         # from the vector store to find semantically similar nodes
         logger.info(f"Semantic matching for: {query_text}")
 
-        return {
+        return ValueTreeProjectionAgent__semantic_matchResult.model_validate({
             "query": query_text,
             "matches": [],  # Would be populated with actual matches
             "min_confidence": min_confidence,
             "note": "Semantic matching requires embedding model integration",
-        }
+        })
+
 
     async def project_pain_point(
         self,

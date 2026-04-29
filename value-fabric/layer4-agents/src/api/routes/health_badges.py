@@ -16,6 +16,13 @@ from pydantic import BaseModel, Field
 
 from ...api.websocket import get_ws_manager
 from ...services.health_tracker import HealthStatus, HealthTracker, get_health_tracker
+from shared.models.typed_dict import TypedDictModel
+
+
+class report_connection_qualityResult(TypedDictModel):
+    assessed_quality: Any
+    received: bool
+    timestamp: Any
 
 # Security imports
 try:
@@ -353,11 +360,11 @@ async def report_connection_quality(
             },
         )
 
-    return {
+    return report_connection_qualityResult.model_validate({
         "received": True,
         "assessed_quality": quality,
         "timestamp": datetime.now(UTC).isoformat(),
-    }
+    })
 
 
 @health_badges_router.get(

@@ -27,9 +27,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # SECURITY: OIDC login/callback endpoints are pre-authentication flows.
 # The user does not yet have a JWT, so get_db (no tenant context) is
 # intentional here. Authentication is via OIDC provider + PKCE.
-from ....database import get_db
+from ....database import get_db_from_context
 from ....tenants.models.tenant import Tenant
 from ....tenants.models.user import User
+from shared.models.typed_dict import TypedDictModel
+
+
+class oidc_loginResult(TypedDictModel):
+    authorization_url: Any
+    state: Any
+
+class oidc_callbackResult(TypedDictModel):
+    access_token: Any
+    email: Any
+    expires_in: int
+    role: Any
+    token_type: str
+    user_id: Any
+
+class oidc_metadataResult(TypedDictModel):
+    auto_provision_users: Any
+    claim_mapping_keys: list[Any]
+    default_role: Any
+    enabled: Any
+    issuer_url: Any
+    provider_name: Any
+    scopes: Any
 
 router = APIRouter(prefix="/auth/oidc", tags=["OIDC SSO"])
 
@@ -118,7 +141,7 @@ async def _get_client_secret(config: OIDCProviderConfig) -> str:
 async def oidc_login(
     tenant_slug: str,
     redirect_uri: str | None = Query(None),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, str]:
     """Initiate OIDC login for a tenant.
 
@@ -167,7 +190,6 @@ async def oidc_login(
             "use_pkce": True,
         },
     )
-    await db.commit()
 
     # P0-10: Build authorize URL with PKCE code_challenge
     auth_url = oidc_client.build_authorize_url(
@@ -181,7 +203,7 @@ async def oidc_login(
         code_challenge_method="S256",
     )
 
-    return {"authorization_url": auth_url, "state": state}
+    return oidc_loginResult.model_validate({"authorization_url": auth_url, "state": state})
 
 
 @router.get("/callback")
@@ -189,7 +211,7 @@ async def oidc_callback(
     request: Request,
     state: str = Query(...),
     code: str = Query(...),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Handle OIDC callback from the identity provider.
 
@@ -221,7 +243,6 @@ async def oidc_callback(
 
     if row["expires_at"] < datetime.now(UTC):
         await db.execute(text("DELETE FROM oidc_sessions WHERE state = :state"), {"state": state})
-        await db.commit()
         emit_audit_event(
             AuditAction.OIDC_LOGIN_FAILED,
             tenant_id=row["tenant_id"],
@@ -238,7 +259,6 @@ async def oidc_callback(
 
     # Clean up session
     await db.execute(text("DELETE FROM oidc_sessions WHERE state = :state"), {"state": state})
-    await db.commit()
 
     tenant_result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = tenant_result.scalar_one_or_none()
@@ -351,7 +371,6 @@ async def oidc_callback(
             user.role = mapped_role
         user.last_login_at = datetime.now(UTC)
 
-    await db.commit()
 
     # Issue internal JWT
     access_token = encode_jwt(
@@ -371,20 +390,20 @@ async def oidc_callback(
         details={"provider": oidc_config.provider_name, "email": email},
     )
 
-    return {
+    return oidc_callbackResult.model_validate({
         "access_token": access_token,
         "token_type": "Bearer",
         "expires_in": 3600,
         "user_id": str(user.id),
         "email": email,
         "role": user.role,
-    }
+    })
 
 
 @router.get("/{tenant_slug}/metadata")
 async def oidc_metadata(
     tenant_slug: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Return non-sensitive OIDC configuration for a tenant."""
     tenant = await _get_tenant_by_slug(db, tenant_slug)
@@ -395,7 +414,7 @@ async def oidc_metadata(
     if oidc_config is None:
         raise HTTPException(status_code=400, detail="OIDC is not configured for this tenant")
 
-    return {
+    return oidc_metadataResult.model_validate({
         "provider_name": oidc_config.provider_name,
         "issuer_url": oidc_config.issuer_url,
         "scopes": oidc_config.scopes,
@@ -403,4 +422,6 @@ async def oidc_metadata(
         "default_role": oidc_config.default_role,
         "auto_provision_users": oidc_config.auto_provision_users,
         "enabled": oidc_config.enabled,
-    }
+    })
+
+

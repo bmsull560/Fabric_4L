@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+import time
+import json
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -9,6 +11,17 @@ import jwt
 from fastapi import HTTPException, status
 
 from .models import TokenClaims
+from shared.models.typed_dict import TypedDictModel
+
+
+class get_jwksResult(TypedDictModel):
+    keys: list[Any]
+
+class _build_keysetResult(TypedDictModel):
+    active_kid: Any
+    algorithm: Any
+    signing_key: Any
+    verify: Any
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +83,51 @@ def _get_jwt_algorithm() -> str:
     return os.getenv("JWT_ALGORITHM", _DEFAULT_ALGORITHM).strip().upper()
 
 
+def _build_keyset() -> Dict[str, Any]:
+    algorithm = _get_jwt_algorithm()
+    active_kid = os.getenv("JWT_ACTIVE_KID", "active").strip() or "active"
+    previous_kid = os.getenv("JWT_PREVIOUS_KID", "").strip()
+
+    if algorithm == "HS256":
+        active_secret = _get_jwt_secret()
+        previous_secret = os.getenv("JWT_PREVIOUS_SECRET", "").strip()
+        verify = {active_kid: active_secret}
+        if previous_kid and previous_secret:
+            verify[previous_kid] = previous_secret
+        return _build_keysetResult.model_validate({"algorithm": algorithm, "active_kid": active_kid, "signing_key": active_secret, "verify": verify})
+
+    if algorithm in {"RS256", "ES256"}:
+        active_private = os.getenv("JWT_PRIVATE_KEY_PEM", "").strip()
+        active_public = os.getenv("JWT_PUBLIC_KEY_PEM", "").strip()
+        previous_public = os.getenv("JWT_PREVIOUS_PUBLIC_KEY_PEM", "").strip()
+        if not active_private:
+            raise RuntimeError(f"JWT_PRIVATE_KEY_PEM is required when JWT_ALGORITHM={algorithm}")
+        if not active_public:
+            raise RuntimeError(f"JWT_PUBLIC_KEY_PEM is required when JWT_ALGORITHM={algorithm}")
+        verify = {active_kid: active_public}
+        if previous_kid and previous_public:
+            verify[previous_kid] = previous_public
+        return _build_keysetResult.model_validate({"algorithm": algorithm, "active_kid": active_kid, "signing_key": active_private, "verify": verify})
+
+    raise RuntimeError(f"Unsupported JWT_ALGORITHM: {algorithm}")
+
+
+def get_jwks() -> Dict[str, Any]:
+    keyset = _build_keyset()
+    alg = keyset["algorithm"]
+    if alg not in {"RS256", "ES256"}:
+        return get_jwksResult.model_validate({"keys": []})
+    keys = []
+    for kid, public_key in keyset["verify"].items():
+        jwk_json = jwt.algorithms.get_default_algorithms()[alg].to_jwk(public_key)
+        key_obj = json.loads(jwk_json)
+        key_obj["kid"] = kid
+        key_obj["alg"] = alg
+        key_obj["use"] = "sig"
+        keys.append(key_obj)
+    return get_jwksResult.model_validate({"keys": keys})
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -86,19 +144,34 @@ def decode_jwt(token: str) -> Optional[TokenClaims]:
         ``HTTPException(401)`` if the token has expired (so callers can
         propagate an informative error to the client).
     """
-    secret = _get_jwt_secret()
-    algorithm = _get_jwt_algorithm()
+    keyset = _build_keyset()
+    algorithm = keyset["algorithm"]
     tenant_claim = os.getenv("JWT_TENANT_CLAIM", _DEFAULT_TENANT_CLAIM)
     user_claim = os.getenv("JWT_USER_CLAIM", _DEFAULT_USER_CLAIM)
     roles_claim = os.getenv("JWT_ROLES_CLAIM", _DEFAULT_ROLES_CLAIM)
 
     try:
-        payload: dict = jwt.decode(
-            token,
-            secret,
-            algorithms=[algorithm],
-            options={"verify_exp": True},
-        )
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid")
+        verify_keys = keyset["verify"]
+        if kid and kid in verify_keys:
+            candidates = [verify_keys[kid]]
+        elif kid and kid not in verify_keys:
+            logger.debug("JWT kid not recognized: %s", kid)
+            return None
+        else:
+            candidates = list(verify_keys.values())
+        payload = None
+        for key in candidates:
+            try:
+                payload = jwt.decode(token, key, algorithms=[algorithm], options={"verify_exp": True})
+                break
+            except jwt.ExpiredSignatureError:
+                raise
+            except jwt.InvalidTokenError:
+                continue
+        if payload is None:
+            return None
     except jwt.ExpiredSignatureError:
         logger.debug("JWT has expired")
         raise HTTPException(
@@ -158,10 +231,8 @@ def encode_jwt(
 
     Used by the Tenant Service when issuing tokens during login / key rotation.
     """
-    import time
-
-    secret = _get_jwt_secret()
-    algorithm = _get_jwt_algorithm()
+    keyset = _build_keyset()
+    algorithm = keyset["algorithm"]
     tenant_claim = os.getenv("JWT_TENANT_CLAIM", _DEFAULT_TENANT_CLAIM)
     user_claim = os.getenv("JWT_USER_CLAIM", _DEFAULT_USER_CLAIM)
     roles_claim = os.getenv("JWT_ROLES_CLAIM", _DEFAULT_ROLES_CLAIM)
@@ -181,4 +252,5 @@ def encode_jwt(
     if extra_claims:
         payload.update(extra_claims)
 
-    return jwt.encode(payload, secret, algorithm=algorithm)
+    headers = {"kid": keyset["active_kid"]}
+    return jwt.encode(payload, keyset["signing_key"], algorithm=algorithm, headers=headers)

@@ -3,10 +3,19 @@
 from __future__ import annotations
 
 from src.services.export_provenance import build_export_provenance_manifest
+from shared.models.typed_dict import TypedDictModel
+
+
+class _frozen_workflow_resultResult(TypedDictModel):
+    completed_at: str
+    created_at: str
+    metadata: dict[str, Any]
+    output: dict[str, Any]
+    workflow_id: str
 
 
 def _frozen_workflow_result() -> dict:
-    return {
+    return _frozen_workflow_resultResult.model_validate({
         "workflow_id": "wf-123",
         "created_at": "2026-04-01T00:00:00Z",
         "completed_at": "2026-04-01T00:05:00Z",
@@ -50,7 +59,7 @@ def _frozen_workflow_result() -> dict:
                 }
             }
         },
-    }
+    })
 
 
 def test_snapshot_replay_deterministic_snapshot_stable() -> None:

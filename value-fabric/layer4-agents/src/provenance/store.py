@@ -11,6 +11,19 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from .models import PROVGraph
+from shared.models.typed_dict import TypedDictModel
+
+
+class InMemoryTripleStore_get_lineageResult(TypedDictModel):
+    depth: Any
+    downstream: Any
+    entity_id: Any
+    upstream: Any
+
+class JenaTripleStore_get_lineageResult(TypedDictModel):
+    downstream: Any
+    entity_id: Any
+    upstream: Any
 
 logger = logging.getLogger(__name__)
 
@@ -153,12 +166,13 @@ class InMemoryTripleStore(TripleStore):
         if direction in ["downstream", "both"]:
             downstream = self._get_downstream(entity_id, depth)
 
-        return {
+        return InMemoryTripleStore_get_lineageResult.model_validate({
             "entity_id": entity_id,
             "upstream": upstream,
             "downstream": downstream,
             "depth": depth,
-        }
+        })
+
 
     def _get_upstream(
         self,
@@ -350,11 +364,12 @@ class JenaTripleStore(TripleStore):
 
         results = await self.query(query)
 
-        return {
+        return JenaTripleStore_get_lineageResult.model_validate({
             "entity_id": entity_id,
             "upstream": [r for r in results if r.get("direction") == "upstream"],
             "downstream": [r for r in results if r.get("direction") == "downstream"],
-        }
+        })
+
 
     def _build_upstream_query(self, entity_id: str, depth: int) -> str:
         """Build SPARQL query for upstream lineage."""

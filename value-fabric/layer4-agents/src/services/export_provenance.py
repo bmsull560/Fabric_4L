@@ -11,6 +11,29 @@ from shared.crypto.canonical import canonical_hash
 from shared.identity.context import RequestContext
 
 from ..config.settings import settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class _normalize_source_pointerResult(TypedDictModel):
+    locator: bool
+    pointer: bool
+    type: bool
+
+class _validate_claim_and_metric_provenanceResult(TypedDictModel):
+    is_valid: bool
+    violation_count: Any
+    violations: Any
+
+class build_export_provenance_manifestResult(TypedDictModel):
+    deterministic_snapshot: Any
+    envelope: dict[str, Any]
+    provenance_schema_version: Any
+    source_references: Any
+    truth_object_ids: Any
+    workflow_id: Any
+
+class _extract_case_versionResult(TypedDictModel):
+    version: Any
 
 PROVENANCE_SCHEMA_VERSION = "1.0.0"
 
@@ -37,9 +60,9 @@ def _sort_primitive_list(values: list[Any]) -> list[Any]:
 
 def _normalize_source_pointer(pointer: Any) -> dict[str, Any]:
     if isinstance(pointer, str):
-        return {"pointer": pointer}
+        return _normalize_source_pointerResult.model_validate({"pointer": pointer})
     if isinstance(pointer, dict):
-        return {
+        return _normalize_source_pointerResult.model_validate({
             "pointer": pointer.get("pointer")
             or pointer.get("id")
             or pointer.get("uri")
@@ -47,8 +70,10 @@ def _normalize_source_pointer(pointer: Any) -> dict[str, Any]:
             or "unknown",
             "type": pointer.get("type") or pointer.get("source_type"),
             "locator": pointer.get("locator") or pointer.get("path") or pointer.get("offset"),
-        }
-    return {"pointer": str(pointer)}
+        })
+
+
+    return _normalize_source_pointerResult.model_validate({"pointer": str(pointer)})
 
 
 def _collect_truth_ids(output: dict[str, Any], metadata: dict[str, Any], case_snapshot: dict[str, Any]) -> list[str]:
@@ -102,7 +127,7 @@ def _extract_case_version(workflow_result: dict[str, Any], metadata: dict[str, A
         workflow_result.get("case_version"),
     )
     if isinstance(raw_version, str):
-        return {"version": raw_version}
+        return _extract_case_versionResult.model_validate({"version": raw_version})
     return raw_version if isinstance(raw_version, dict) else {}
 
 
@@ -143,11 +168,11 @@ def _validate_claim_and_metric_provenance(
                 }
             )
 
-    return {
+    return _validate_claim_and_metric_provenanceResult.model_validate({
         "is_valid": not violations,
         "violation_count": len(violations),
         "violations": violations,
-    }
+    })
 
 
 def build_export_provenance_manifest(
@@ -298,7 +323,7 @@ def build_export_provenance_manifest(
         deterministic_snapshot
     )
 
-    return {
+    return build_export_provenance_manifestResult.model_validate({
         "provenance_schema_version": PROVENANCE_SCHEMA_VERSION,
         "deterministic_snapshot": deterministic_snapshot,
         # Legacy compatibility for existing audit/event readers.
@@ -331,5 +356,6 @@ def build_export_provenance_manifest(
                 "workflow_completed_at": workflow_result.get("completed_at"),
             },
         },
-    }
+    })
+
 

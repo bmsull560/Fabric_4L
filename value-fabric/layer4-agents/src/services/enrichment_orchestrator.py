@@ -30,6 +30,69 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.security.dil_auth import SSRFBlockedError, validate_url_safe
 from ..models.account import Account
+from shared.models.typed_dict import TypedDictModel
+
+
+class EnrichmentOrchestrator_enrich_accountResult(TypedDictModel):
+    account_id: Any | None = None
+    enriched_at: Any
+    errors: Any | None = None
+    message: str
+    results: Any | None = None
+    sources_used: Any | None = None
+    status: str
+
+class EnrichmentOrchestrator_enrich_batchResult(TypedDictModel):
+    failed: Any | None = None
+    message: str
+    results: Any | None = None
+    status: str
+    success: Any | None = None
+    total: Any | None = None
+
+class EnrichmentOrchestrator_get_enrichment_statusResult(TypedDictModel):
+    coverage_pct: Any
+    enriched: Any
+    failed: Any
+    in_progress: Any
+    pending: Any
+    stale: Any
+    total_accounts: Any
+
+class EnrichmentOrchestrator__enrich_from_domainResult(TypedDictModel):
+    domain: Any | None = None
+    error: str
+    executives_found: int | None = None
+    note: str | None = None
+    source: str | None = None
+    success: bool
+
+class EnrichmentOrchestrator__enrich_from_newsResult(TypedDictModel):
+    company_name: Any | None = None
+    error: str
+    note: str | None = None
+    signals_found: int | None = None
+    source: str | None = None
+    success: bool
+
+class EnrichmentOrchestrator__enrich_from_sourceResult(TypedDictModel):
+    error: str
+    success: bool
+
+class EnrichmentOrchestrator__enrich_from_sec_edgarResult(TypedDictModel):
+    entity_name: Any | None = None
+    error: str
+    filing_date: Any | None = None
+    source: str | None = None
+    success: bool
+
+class EnrichmentOrchestrator__enrich_from_web_crawlResult(TypedDictModel):
+    error: str | None = None
+    source: str | None = None
+    success: bool
+    tech_stack: Any | None = None
+    technologies_found: Any | None = None
+    url: Any | None = None
 
 logger = structlog.get_logger()
 
@@ -167,14 +230,15 @@ class EnrichmentOrchestrator:
         """
         account = await self.db.get(Account, account_id)
         if account is None:
-            return {"status": "error", "message": f"Account {account_id} not found"}
+            return EnrichmentOrchestrator_enrich_accountResult.model_validate({"status": "error", "message": f"Account {account_id} not found"})
 
         if account.enrichment_status == EnrichmentStatus.ENRICHED and not force:
-            return {
+            return EnrichmentOrchestrator_enrich_accountResult.model_validate({
                 "status": "skipped",
                 "message": "Already enriched. Use force=True to re-enrich.",
                 "enriched_at": account.enriched_at.isoformat() if account.enriched_at else None,
-            }
+            })
+
 
         # Mark as in-progress
         account.enrichment_status = EnrichmentStatus.IN_PROGRESS
@@ -227,13 +291,14 @@ class EnrichmentOrchestrator:
             errors=errors,
         )
 
-        return {
+        return EnrichmentOrchestrator_enrich_accountResult.model_validate({
             "status": account.enrichment_status,
             "account_id": str(account_id),
             "sources_used": sources_used,
             "errors": errors,
             "results": results,
-        }
+        })
+
 
     async def enrich_batch(
         self,
@@ -264,7 +329,7 @@ class EnrichmentOrchestrator:
         account_ids = [row[0] for row in result.fetchall()]
 
         if not account_ids:
-            return {"status": "no_accounts", "message": "No accounts need enrichment"}
+            return EnrichmentOrchestrator_enrich_batchResult.model_validate({"status": "no_accounts", "message": "No accounts need enrichment"})
 
         batch_results = []
         success_count = 0
@@ -283,12 +348,13 @@ class EnrichmentOrchestrator:
                 fail_count += 1
                 batch_results.append({"account_id": str(account_id), "status": "error", "error": str(e)})
 
-        return {
+        return EnrichmentOrchestrator_enrich_batchResult.model_validate({
             "total": len(account_ids),
             "success": success_count,
             "failed": fail_count,
             "results": batch_results,
-        }
+        })
+
 
     async def get_enrichment_status(self, tenant_id: str) -> dict[str, Any]:
         """Get enrichment coverage statistics for a tenant."""
@@ -308,7 +374,7 @@ class EnrichmentOrchestrator:
         total = sum(status_counts.values())
         enriched = status_counts.get(EnrichmentStatus.ENRICHED, 0)
 
-        return {
+        return EnrichmentOrchestrator_get_enrichment_statusResult.model_validate({
             "total_accounts": total,
             "enriched": enriched,
             "pending": status_counts.get(EnrichmentStatus.PENDING, 0),
@@ -316,7 +382,8 @@ class EnrichmentOrchestrator:
             "failed": status_counts.get(EnrichmentStatus.FAILED, 0),
             "stale": status_counts.get(EnrichmentStatus.STALE, 0),
             "coverage_pct": round((enriched / total * 100), 1) if total > 0 else 0.0,
-        }
+        })
+
 
     # -------------------------------------------------------------------
     # Source Determination
@@ -364,7 +431,7 @@ class EnrichmentOrchestrator:
         }
         handler = handlers.get(source)
         if handler is None:
-            return {"success": False, "error": f"Unknown source: {source}"}
+            return EnrichmentOrchestrator__enrich_from_sourceResult.model_validate({"success": False, "error": f"Unknown source: {source}"})
         return await handler(account)
 
     async def _enrich_from_sec_edgar(self, account: Account) -> dict[str, Any]:
@@ -392,7 +459,7 @@ class EnrichmentOrchestrator:
 
             hits = data.get("hits", {}).get("hits", [])
             if not hits:
-                return {"success": False, "error": "No SEC filings found"}
+                return EnrichmentOrchestrator__enrich_from_sec_edgarResult.model_validate({"success": False, "error": "No SEC filings found"})
 
             # Extract financial summary from the first hit
             filing = hits[0].get("_source", {})
@@ -422,17 +489,18 @@ class EnrichmentOrchestrator:
                 filing_date=filing_date,
             )
 
-            return {
+            return EnrichmentOrchestrator__enrich_from_sec_edgarResult.model_validate({
                 "success": True,
                 "source": "sec_edgar",
                 "entity_name": entity_name,
                 "filing_date": filing_date,
-            }
+            })
+
 
         except httpx.HTTPStatusError as e:
-            return {"success": False, "error": f"SEC API error: {e.response.status_code}"}
+            return EnrichmentOrchestrator__enrich_from_sec_edgarResult.model_validate({"success": False, "error": f"SEC API error: {e.response.status_code}"})
         except Exception as e:
-            return {"success": False, "error": f"SEC enrichment failed: {str(e)}"}
+            return EnrichmentOrchestrator__enrich_from_sec_edgarResult.model_validate({"success": False, "error": f"SEC enrichment failed: {str(e)}"})
 
     async def _enrich_from_web_crawl(self, account: Account) -> dict[str, Any]:
         """Enrich account with tech stack detection via website crawl.
@@ -442,7 +510,7 @@ class EnrichmentOrchestrator:
         """
         url = account.website or (f"https://{account.domain}" if account.domain else None)
         if not url:
-            return {"success": False, "error": "No website or domain available"}
+            return EnrichmentOrchestrator__enrich_from_web_crawlResult.model_validate({"success": False, "error": "No website or domain available"})
 
         # Ensure URL has protocol
         if not url.startswith(("http://", "https://")):
@@ -458,7 +526,7 @@ class EnrichmentOrchestrator:
                 url=url,
                 reason=str(e),
             )
-            return {"success": False, "error": f"URL blocked by security policy: {e.reason}"}
+            return EnrichmentOrchestrator__enrich_from_web_crawlResult.model_validate({"success": False, "error": f"URL blocked by security policy: {e.reason}"})
 
         client = await self._get_http_client()
 
@@ -486,20 +554,21 @@ class EnrichmentOrchestrator:
                 technologies_found=sum(len(v) for v in detected_stack.values()),
             )
 
-            return {
+            return EnrichmentOrchestrator__enrich_from_web_crawlResult.model_validate({
                 "success": True,
                 "source": "web_crawl",
                 "url": url,
                 "tech_stack": detected_stack,
                 "technologies_found": sum(len(v) for v in detected_stack.values()),
-            }
+            })
+
 
         except httpx.HTTPStatusError as e:
-            return {"success": False, "error": f"HTTP {e.response.status_code} for {url}"}
+            return EnrichmentOrchestrator__enrich_from_web_crawlResult.model_validate({"success": False, "error": f"HTTP {e.response.status_code} for {url}"})
         except httpx.ConnectError:
-            return {"success": False, "error": f"Connection failed for {url}"}
+            return EnrichmentOrchestrator__enrich_from_web_crawlResult.model_validate({"success": False, "error": f"Connection failed for {url}"})
         except Exception as e:
-            return {"success": False, "error": f"Web crawl failed: {str(e)}"}
+            return EnrichmentOrchestrator__enrich_from_web_crawlResult.model_validate({"success": False, "error": f"Web crawl failed: {str(e)}"})
 
     async def _enrich_from_domain(self, account: Account) -> dict[str, Any]:
         """Enrich account with executive/leadership data from domain lookup.
@@ -510,7 +579,7 @@ class EnrichmentOrchestrator:
         """
         domain = account.domain
         if not domain:
-            return {"success": False, "error": "No domain available"}
+            return EnrichmentOrchestrator__enrich_from_domainResult.model_validate({"success": False, "error": "No domain available"})
 
         # In production, this would call an external API like Apollo.io or Clearbit
         # For now, we mark the source as attempted and return the expected structure
@@ -521,13 +590,14 @@ class EnrichmentOrchestrator:
             note="Production integration pending — requires Apollo/Clearbit API key",
         )
 
-        return {
+        return EnrichmentOrchestrator__enrich_from_domainResult.model_validate({
             "success": True,
             "source": "domain_lookup",
             "domain": domain,
             "note": "Executive enrichment requires external API integration (Apollo/Clearbit)",
             "executives_found": 0,
-        }
+        })
+
 
     async def _enrich_from_news(self, account: Account) -> dict[str, Any]:
         """Enrich account with pain signals from news/public sources.
@@ -537,7 +607,7 @@ class EnrichmentOrchestrator:
         """
         company_name = account.name
         if not company_name:
-            return {"success": False, "error": "No company name available"}
+            return EnrichmentOrchestrator__enrich_from_newsResult.model_validate({"success": False, "error": "No company name available"})
 
         # In production, this would call a news API (e.g., NewsAPI, GDELT)
         # For now, we mark the source as attempted
@@ -547,13 +617,14 @@ class EnrichmentOrchestrator:
             note="Production integration pending — requires news API key",
         )
 
-        return {
+        return EnrichmentOrchestrator__enrich_from_newsResult.model_validate({
             "success": True,
             "source": "news_scan",
             "company_name": company_name,
             "note": "News enrichment requires external API integration (NewsAPI/GDELT)",
             "signals_found": 0,
-        }
+        })
+
 
     # -------------------------------------------------------------------
     # Tech Stack Detection

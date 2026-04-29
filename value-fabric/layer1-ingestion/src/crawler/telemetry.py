@@ -14,6 +14,29 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.trace import Span, Status, StatusCode
+from shared.models.typed_dict import TypedDictModel
+
+
+class CrawlMetrics_to_dictResult(TypedDictModel):
+    crawl.avg_duration_ms: Any
+    crawl.blocked_resources: Any
+    crawl.count: Any
+    crawl.error_rate: Any
+    crawl.errors: Any
+    crawl.rate_limit_delays: Any
+
+class ExecutionMetrics_to_dictResult(TypedDictModel):
+    execution.avg_browser_duration_ms: Any
+    execution.avg_fast_duration_ms: Any
+    execution.browser_path.count: Any
+    execution.fallback.count: Any
+    execution.fallback.rate: Any
+    execution.fallback_reasons: Any
+    execution.fast_path.count: Any
+    execution.fast_path.rate: Any
+    execution.quality_failures: Any
+    execution.spa_detection.count: Any
+    execution.spa_detection.rate: Any
 
 logger = structlog.get_logger()
 
@@ -247,14 +270,14 @@ class CrawlMetrics:
 
     def to_dict(self) -> dict:
         """Export metrics as dictionary for telemetry."""
-        return {
+        return CrawlMetrics_to_dictResult.model_validate({
             "crawl.count": self._crawl_count,
             "crawl.errors": self._error_count,
             "crawl.error_rate": self.error_rate,
             "crawl.avg_duration_ms": self.avg_duration_ms,
             "crawl.rate_limit_delays": self._rate_limit_delays,
             "crawl.blocked_resources": self._blocked_resources_count,
-        }
+        })
 
 
 class ExecutionMetrics:
@@ -414,7 +437,7 @@ class ExecutionMetrics:
 
     def to_dict(self) -> dict:
         """Export metrics as dictionary for telemetry."""
-        return {
+        return ExecutionMetrics_to_dictResult.model_validate({
             "execution.fast_path.count": self._fast_path_count,
             "execution.browser_path.count": self._browser_path_count,
             "execution.fallback.count": self._fallback_count,
@@ -426,4 +449,6 @@ class ExecutionMetrics:
             "execution.spa_detection.count": self._spa_detected_count,
             "execution.quality_failures": self._quality_failures,
             "execution.fallback_reasons": self._fallback_reasons,
-        }
+        })
+
+

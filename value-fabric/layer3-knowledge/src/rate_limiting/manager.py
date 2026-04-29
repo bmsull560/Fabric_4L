@@ -11,6 +11,17 @@ from typing import Any
 
 import redis.asyncio as redis
 from pydantic import BaseModel, ConfigDict, Field
+from shared.models.typed_dict import TypedDictModel
+
+
+class RateLimitManager_get_metricsResult(TypedDictModel):
+    disabled_rules: Any
+    enabled_rules: Any
+    metrics: dict[str, Any]
+    rules_by_scope: dict[str, Any]
+    rules_by_type: dict[str, Any]
+    store_connected: bool
+    total_rules: Any
 
 logger = logging.getLogger(__name__)
 
@@ -979,7 +990,7 @@ class RateLimitManager:
             scope_counts[rule.scope.value] += 1
             type_counts[rule.type.value] += 1
 
-        return {
+        return RateLimitManager_get_metricsResult.model_validate({
             "total_rules": total_rules,
             "enabled_rules": enabled_rules,
             "disabled_rules": total_rules - enabled_rules,
@@ -987,7 +998,8 @@ class RateLimitManager:
             "rules_by_type": dict(type_counts),
             "metrics": dict(self.metrics),
             "store_connected": self.store.redis_client is not None,
-        }
+        })
+
 
     async def cleanup(self):
         """Cleanup expired rate limit data."""

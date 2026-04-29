@@ -23,6 +23,11 @@ from src.models.agent_state import (
 from src.workflows.base import BaseWorkflow, WorkflowError, NodeExecutionError
 from src.models.workflow_config import WorkflowConfig, NodeConfig, NodeType, EdgeConfig
 from src.tools.registry import ToolRegistry
+from shared.models.typed_dict import TypedDictModel
+
+
+class ConcreteTestWorkflow_create_initial_stateResult(TypedDictModel):
+    test: str
 
 
 class TestWorkflowStatusTransitions:
@@ -340,7 +345,7 @@ class ConcreteTestWorkflow(BaseWorkflow):
 
     def create_initial_state(self, **kwargs):
         """Create initial state for testing."""
-        return {"test": "state"}
+        return ConcreteTestWorkflow_create_initial_stateResult.model_validate({"test": "state"})
 
 
 class TestBaseWorkflow:

@@ -25,6 +25,12 @@ from shared.security.dil_auth import (
     VALID_NARRATIVE_TONES,
     VALID_NARRATIVE_AUDIENCES,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class delete_narrativeResult(TypedDictModel):
+    narrative_id: Any
+    status: str
 
 logger = structlog.get_logger()
 
@@ -245,4 +251,4 @@ async def delete_narrative(
     deleted = await svc.delete_narrative(tenant_id, narrative_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Narrative not found")
-    return {"status": "deleted", "narrative_id": narrative_id}
+    return delete_narrativeResult.model_validate({"status": "deleted", "narrative_id": narrative_id})

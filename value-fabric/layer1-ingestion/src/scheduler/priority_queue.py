@@ -12,6 +12,14 @@ import structlog
 from shared.testability import Clock, SystemClock
 
 from ..shared.config import settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class PriorityScheduler_get_queue_statsResult(TypedDictModel):
+    domains_pending: Any
+    in_progress: dict[str, Any]
+    top_domains: dict[str, Any]
+    total_pending: Any
 
 logger = structlog.get_logger()
 
@@ -168,14 +176,15 @@ class PriorityScheduler:
         for item in self._queue:
             domain_counts[item.domain] += 1
 
-        return {
+        return PriorityScheduler_get_queue_statsResult.model_validate({
             "total_pending": len(self._queue),
             "domains_pending": len(domain_counts),
             "in_progress": dict(self._in_progress),
             "top_domains": dict(
                 sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)[:10]
             ),
-        }
+        })
+
 
     def get_estimated_wait_time(self, domain: str) -> float:
         """Estimate wait time before a domain can be crawled again."""

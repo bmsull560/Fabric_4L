@@ -20,6 +20,14 @@ from uuid import uuid4
 from src.crawler.smart_router import SmartRouter, RouteType
 from src.crawler.httpx_crawler import HttpxCrawler
 from src.crawler.decision_store import InMemoryCrawlDecisionRepository
+from shared.models.typed_dict import TypedDictModel
+
+
+class generate_reportResult(TypedDictModel):
+    details: Any
+    router_rules_triggered: list[Any]
+    routing_distribution: Any
+    summary: dict[str, Any]
 
 
 @dataclass
@@ -117,7 +125,7 @@ def generate_report(results: list[BenchmarkResult]) -> dict:
     for r in results:
         route_counts[r.route_chosen] = route_counts.get(r.route_chosen, 0) + 1
 
-    return {
+    return generate_reportResult.model_validate({
         "summary": {
             "urls_tested": len(results),
             "pure_fast_count": len(fast_results),
@@ -140,7 +148,7 @@ def generate_report(results: list[BenchmarkResult]) -> dict:
             }
             for r in results
         ],
-    }
+    })
 
 
 async def main():

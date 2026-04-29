@@ -11,6 +11,26 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from .config.settings import settings
+from shared.models.typed_dict import TypedDictModel
+
+
+class CircuitBreakerRegistry_get_all_statesResult(TypedDictModel):
+    pass
+
+
+class TenantRateLimiter_get_bucket_stateResult(TypedDictModel):
+    capacity: Any
+    refill_rate: Any
+    tokens: Any
+
+class CircuitBreaker_get_stateResult(TypedDictModel):
+    failure_threshold: Any
+    failures: Any
+    half_open_calls: Any
+    half_open_max_calls: Any
+    last_failure_time: Any
+    service: Any
+    state: Any
 
 # ============================================================================
 # P1-15: Token Bucket Rate Limiter
@@ -125,11 +145,11 @@ class TenantRateLimiter:
         bucket = self._buckets.get(tenant_id)
         if bucket is None:
             return None
-        return {
+        return TenantRateLimiter_get_bucket_stateResult.model_validate({
             "tokens": bucket.tokens,
             "capacity": bucket.capacity,
             "refill_rate": bucket.refill_rate,
-        }
+        })
 
 
 # ============================================================================
@@ -256,7 +276,7 @@ class CircuitBreaker:
 
     def get_state(self) -> dict:
         """Get current circuit state for monitoring."""
-        return {
+        return CircuitBreaker_get_stateResult.model_validate({
             "service": self.service_name,
             "state": self.state.value,
             "failures": self.failures,
@@ -264,7 +284,7 @@ class CircuitBreaker:
             "last_failure_time": self.last_failure_time,
             "half_open_calls": self.half_open_calls,
             "half_open_max_calls": self.half_open_max_calls,
-        }
+        })
 
 
 class CircuitBreakerRegistry:
@@ -288,10 +308,10 @@ class CircuitBreakerRegistry:
 
     def get_all_states(self) -> dict[str, dict]:
         """Get states of all circuit breakers."""
-        return {
+        return CircuitBreakerRegistry_get_all_statesResult.model_validate({
             name: breaker.get_state()
             for name, breaker in self._breakers.items()
-        }
+        })
 
 
 # Global instances

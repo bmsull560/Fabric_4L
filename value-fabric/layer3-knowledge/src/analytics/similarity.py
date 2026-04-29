@@ -7,6 +7,17 @@ from neo4j import AsyncDriver, AsyncGraphDatabase
 
 from ..config import Settings, get_settings
 from ..retrieval.vector_store import VectorStore
+from shared.models.typed_dict import TypedDictModel
+
+
+class SimilarityAnalyzer_compare_entitiesResult(TypedDictModel):
+    common_neighbors: Any | None = None
+    entity1: dict[str, Any] | None = None
+    entity2: dict[str, Any] | None = None
+    error: str
+    jaccard_similarity: Any | None = None
+    path_info: Any | None = None
+    same_type: bool | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +212,7 @@ class SimilarityAnalyzer:
             record = await result.single()
 
             if not record:
-                return {"error": "One or both entities not found"}
+                return SimilarityAnalyzer_compare_entitiesResult.model_validate({"error": "One or both entities not found"})
 
             e1, e2 = record["e1"], record["e2"]
 
@@ -253,7 +264,7 @@ class SimilarityAnalyzer:
                 "path_nodes": path_record["path_names"] if path_record else [],
             }
 
-            return {
+            return SimilarityAnalyzer_compare_entitiesResult.model_validate({
                 "entity1": {
                     "id": entity_id1,
                     "name": e1.get("name", "Unknown"),
@@ -268,7 +279,8 @@ class SimilarityAnalyzer:
                 "jaccard_similarity": jaccard,
                 "common_neighbors": common,
                 "path_info": path_info,
-            }
+            })
+
 
     async def _jaccard_similarity(self, entity_id: str, top_k: int) -> list[dict]:
         """Calculate Jaccard similarity based on common neighbors."""

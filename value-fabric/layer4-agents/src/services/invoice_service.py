@@ -22,6 +22,19 @@ from ..models.billing import (
     InvoiceStatus,
     UsageEventStatus,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class InvoiceService_get_revenue_summaryResult(TypedDictModel):
+    charges: dict[str, Any] | None = None
+    invoices: dict[str, Any] | None = None
+    period: dict[str, Any] | None = None
+
+class InvoiceService_get_customer_balanceResult(TypedDictModel):
+    customer_id: Any | None = None
+    lifetime_paid_cents: bool | None = None
+    lifetime_paid_dollars: Any | None = None
+    open_invoices: dict[str, Any] | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -573,7 +586,7 @@ class InvoiceService:
             Revenue summary with totals
         """
         if not self.tenant_id:
-            return {}
+            return InvoiceService_get_revenue_summaryResult.model_validate({})
 
         # Invoice totals
         invoice_query = select(
@@ -606,7 +619,7 @@ class InvoiceService:
         charge_result = await self.db.execute(charge_query)
         charge_row = charge_result.one()
 
-        return {
+        return InvoiceService_get_revenue_summaryResult.model_validate({
             "period": {
                 "start": period_start.isoformat(),
                 "end": period_end.isoformat(),
@@ -624,7 +637,8 @@ class InvoiceService:
                 "total_dollars": (charge_row.total or 0) / 100.0,
                 "refunded_cents": charge_row.refunded or 0,
             },
-        }
+        })
+
 
     async def get_customer_balance(
         self,
@@ -639,7 +653,7 @@ class InvoiceService:
             Balance summary with open invoices and available credit
         """
         if not self.tenant_id:
-            return {}
+            return InvoiceService_get_customer_balanceResult.model_validate({})
 
         # Open invoices
         open_query = select(
@@ -666,7 +680,7 @@ class InvoiceService:
         paid_result = await self.db.execute(paid_query)
         paid_row = paid_result.one()
 
-        return {
+        return InvoiceService_get_customer_balanceResult.model_validate({
             "customer_id": customer_id,
             "open_invoices": {
                 "count": open_row.count or 0,
@@ -675,4 +689,6 @@ class InvoiceService:
             },
             "lifetime_paid_cents": paid_row.total_paid or 0,
             "lifetime_paid_dollars": (paid_row.total_paid or 0) / 100.0,
-        }
+        })
+
+

@@ -264,7 +264,6 @@ async def update_tenant_settings(
         tenant.settings = current_settings
 
     tenant.updated_at = datetime.now(UTC)
-    await db.commit()
 
     return TenantSettingsUpdateResponse(
         id=str(tenant.id),

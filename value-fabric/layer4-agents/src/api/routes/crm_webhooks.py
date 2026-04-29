@@ -18,9 +18,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # SECURITY: CRM webhook endpoints are server-to-server calls from
 # Salesforce/HubSpot. Authentication is via HMAC signature verification,
 # not JWT. get_db (no tenant context) is intentional here.
-from ...database import get_db
+from ...database import get_db_from_context
 from ...models.account import CRMProvider
 from ...services.crm_sync_service import CRMSyncService
+from shared.models.typed_dict import TypedDictModel
+
+
+class _handle_webhook_errorResult(TypedDictModel):
+    audit_event_id: Any
+    error_type: Any
+    provider: Any
+    status: str
+
+class webhook_healthResult(TypedDictModel):
+    status: str
+    webhooks: list[Any]
+
+class salesforce_webhookResult(TypedDictModel):
+    event_type: Any
+    provider: str
+    record_id: Any
+    status: str
+
+class hubspot_webhookResult(TypedDictModel):
+    companies_to_sync: Any
+    events_processed: Any
+    provider: str
+    status: str
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/webhooks/crm", tags=["CRM Webhooks"])
@@ -99,7 +123,7 @@ async def salesforce_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     x_salesforce_signature: str | None = Header(None, alias=SALESFORCE_SIGNATURE_HEADER),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Handle Salesforce outbound message or platform event webhook.
 
@@ -159,12 +183,13 @@ async def salesforce_webhook(
             await sync_service.sync_provider(CRMProvider.SALESFORCE, incremental=True)
             logger.info("Triggered general Salesforce incremental sync")
 
-        return {
+        return salesforce_webhookResult.model_validate({
             "status": "accepted",
             "provider": "salesforce",
             "event_type": event_type,
             "record_id": record_id,
-        }
+        })
+
 
     except Exception as e:
         return _handle_webhook_error(
@@ -262,12 +287,12 @@ def _handle_webhook_error(
         details=details,
     )
 
-    return {
+    return _handle_webhook_errorResult.model_validate({
         "status": "error",
         "provider": provider,
         "error_type": type(error).__name__,
         "audit_event_id": str(event.id),
-    }
+    })
 
 
 # ============================================================================
@@ -281,7 +306,7 @@ async def hubspot_webhook(
     background_tasks: BackgroundTasks,
     x_hubspot_signature: str | None = Header(None, alias=HUBSPOT_SIGNATURE_HEADER),
     x_hubspot_signature_v3: str | None = Header(None, alias=HUBSPOT_SIGNATURE_V3_HEADER),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Handle HubSpot webhook for contact/company/deal changes.
 
@@ -380,12 +405,13 @@ async def hubspot_webhook(
             await sync_service.sync_provider(CRMProvider.HUBSPOT, incremental=True)
             logger.info("Triggered general HubSpot incremental sync")
 
-        return {
+        return hubspot_webhookResult.model_validate({
             "status": "accepted",
             "provider": "hubspot",
             "events_processed": event_count,
             "companies_to_sync": len(company_ids),
-        }
+        })
+
 
     except Exception as e:
         return _handle_webhook_error(
@@ -405,7 +431,9 @@ async def hubspot_webhook(
 @router.get("/health")
 async def webhook_health() -> dict[str, Any]:
     """Health check endpoint for webhook monitoring."""
-    return {
+    return webhook_healthResult.model_validate({
         "status": "healthy",
         "webhooks": ["salesforce", "hubspot"],
-    }
+    })
+
+

@@ -23,6 +23,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .tiers import TierConfig, get_tier_config
+from shared.models.typed_dict import TypedDictModel
+
+
+class TierEnforcement_get_usage_summaryResult(TypedDictModel):
+    features: dict[str, Any]
+    limits: dict[str, Any]
+    tier: Any
+    tier_name: Any
 
 logger = logging.getLogger(__name__)
 
@@ -319,7 +327,7 @@ class TierEnforcement:
         except ImportError:
             pass
 
-        return {
+        return TierEnforcement_get_usage_summaryResult.model_validate({
             "tier": tier_id,
             "tier_name": config.name,
             "limits": {
@@ -359,7 +367,8 @@ class TierEnforcement:
                 "audit_export": config.features.audit_export,
                 "priority_support": config.features.priority_support,
             },
-        }
+        })
+
 
     async def _emit_limit_exceeded(
         self,

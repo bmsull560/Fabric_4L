@@ -8,6 +8,16 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class ExtractionActivity_get_provenance_chainResult(TypedDictModel):
+    activity_id: Any
+    extraction: dict[str, Any]
+    output: dict[str, Any]
+    source: dict[str, Any]
+    status: Any
+    steps: Any
 
 
 class ExtractionActivityStatus(str, Enum):
@@ -171,7 +181,7 @@ class ExtractionActivity:
         Returns structured data suitable for API responses
         showing full lineage from source to output.
         """
-        return {
+        return ExtractionActivity_get_provenance_chainResult.model_validate({
             "activity_id": self.activity_id,
             "status": self.status.value,
             "source": {
@@ -215,7 +225,7 @@ class ExtractionActivity:
                 "relationship_count": len(self.output_relationships),
                 "rdf_output_path": self.rdf_output_path,
             },
-        }
+        })
 
 
 class ProvenanceTracker:

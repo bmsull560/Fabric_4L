@@ -10,6 +10,11 @@ import sys
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 from uuid import UUID
+from shared.models.typed_dict import TypedDictModel
+
+
+class TenantContext_to_metadata_filterResult(TypedDictModel):
+    tenant_id: Any
 
 # Add shared identity to path for get_request_context
 _repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -108,7 +113,7 @@ class TenantContext:
         Returns:
             Dictionary suitable for Pinecone/other vector store filters
         """
-        return {"tenant_id": str(self.tenant_id)}
+        return TenantContext_to_metadata_filterResult.model_validate({"tenant_id": str(self.tenant_id)})
     
     def assert_valid(self) -> None:
         """Assert that this context is valid for tenant operations.

@@ -9,10 +9,24 @@ import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from ..database import db_session
+from ..database import get_session_factory
 from ..engine.scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from ..models.account import CRMProvider
 from .crm_sync_service import CRMSyncService
+from shared.models.typed_dict import TypedDictModel
+
+
+class CRMSyncScheduler_get_statusResult(TypedDictModel):
+    batch_size: Any
+    running: Any
+    scheduled_tasks: Any
+    scheduler_stats: Any
+    sync_interval_minutes: Any
+
+class CRMSyncScheduler__execute_syncResult(TypedDictModel):
+    error: str
+    reason: str | None = None
+    skipped: bool | None = None
 
 logger = logging.getLogger(__name__)
 
@@ -130,21 +144,25 @@ class CRMSyncScheduler:
             provider = CRMProvider(provider_str)
         except ValueError:
             logger.error(f"Invalid CRM provider: {provider_str}")
-            return {"error": f"Invalid provider: {provider_str}"}
+            return CRMSyncScheduler__execute_syncResult.model_validate({"error": f"Invalid provider: {provider_str}"})
 
         # Check if CRM is configured for this provider
         crm_type = os.getenv("CRM_TYPE", "").lower()
         if crm_type and crm_type != provider.value:
             logger.debug(f"Skipping {provider.value} sync - CRM_TYPE is {crm_type}")
-            return {"skipped": True, "reason": "Provider not configured"}
+            return CRMSyncScheduler__execute_syncResult.model_validate({"skipped": True, "reason": "Provider not configured"})
 
         # Check for required credentials
         api_key = os.getenv("CRM_API_KEY")
         if not api_key:
             logger.warning(f"Skipping {provider.value} sync - no CRM_API_KEY configured")
-            return {"skipped": True, "reason": "No API key configured"}
+            return CRMSyncScheduler__execute_syncResult.model_validate({"skipped": True, "reason": "No API key configured"})
 
-        async with db_session() as db:
+        from sqlalchemy import text
+
+        factory = get_session_factory()
+        async with factory() as db:
+            await db.execute(text("SET LOCAL app.tenant_id = ''"))
             service = CRMSyncService(db, batch_size=self._batch_size)
             stats = await service.sync_provider(provider, incremental=incremental)
 
@@ -178,13 +196,13 @@ class CRMSyncScheduler:
         Returns:
             Status dict with configuration and scheduler stats
         """
-        return {
+        return CRMSyncScheduler_get_statusResult.model_validate({
             "running": self._running,
             "sync_interval_minutes": self._sync_interval_minutes,
             "batch_size": self._batch_size,
             "scheduled_tasks": len(self._scheduled_task_ids),
             "scheduler_stats": self._scheduler.get_stats(),
-        }
+        })
 
 
 # Global scheduler instance for singleton access

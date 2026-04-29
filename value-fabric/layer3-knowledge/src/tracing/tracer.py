@@ -97,11 +97,11 @@ class SpanEvent:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary."""
-        return {
+        return SpanEvent_to_dictResult.model_validate({
             "timestamp": self.timestamp.isoformat(),
             "name": self.name,
             "attributes": self.attributes,
-        }
+        })
 
 
 @dataclass
@@ -114,11 +114,11 @@ class SpanLink:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert link to dictionary."""
-        return {
+        return SpanLink_to_dictResult.model_validate({
             "trace_id": self.trace_id,
             "span_id": self.span_id,
             "attributes": self.attributes,
-        }
+        })
 
 
 class Span:
@@ -433,14 +433,15 @@ class Tracer:
         """
         context = self.get_current_trace_context()
         if not context:
-            return {}
+            return Tracer_create_trace_context_headersResult.model_validate({})
 
-        return {
+        return Tracer_create_trace_context_headersResult.model_validate({
             "X-Trace-Id": context.trace_id,
             "X-Span-Id": context.span_id,
             "X-Parent-Span-Id": context.parent_span_id or "",
             "X-Trace-Sampled": str(context.sampled).lower(),
-        }
+        })
+
 
     def extract_trace_context_from_headers(
         self, headers: dict[str, str]
@@ -508,7 +509,7 @@ class Tracer:
 
         avg_duration_ms = sum(durations) / len(durations) if durations else 0
 
-        return {
+        return Tracer_get_trace_summaryResult.model_validate({
             "service_name": self.service_name,
             "active_spans": len(self.active_spans),
             "finished_spans": len(self.finished_spans),
@@ -517,7 +518,8 @@ class Tracer:
             "kind_distribution": dict(kind_counts),
             "average_duration_ms": avg_duration_ms,
             "max_finished_spans": self.max_finished_spans,
-        }
+        })
+
 
     def export_spans(self, limit: int | None = None) -> list[dict[str, Any]]:
         """Export finished spans.
@@ -713,3 +715,31 @@ def get_baggage_item(key: str) -> str | None:
 import os
 import threading
 import traceback
+from shared.models.typed_dict import TypedDictModel
+
+
+class SpanEvent_to_dictResult(TypedDictModel):
+    attributes: Any
+    name: Any
+    timestamp: Any
+
+class SpanLink_to_dictResult(TypedDictModel):
+    attributes: Any
+    span_id: Any
+    trace_id: Any
+
+class Tracer_create_trace_context_headersResult(TypedDictModel):
+    X-Parent-Span-Id: bool | None = None
+    X-Span-Id: Any | None = None
+    X-Trace-Id: Any | None = None
+    X-Trace-Sampled: Any | None = None
+
+class Tracer_get_trace_summaryResult(TypedDictModel):
+    active_spans: Any
+    average_duration_ms: Any
+    finished_spans: Any
+    kind_distribution: dict[str, Any]
+    max_finished_spans: Any
+    service_name: Any
+    status_distribution: dict[str, Any]
+    total_spans: Any

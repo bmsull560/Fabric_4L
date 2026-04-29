@@ -12,6 +12,32 @@ from neo4j.time import DateTime as Neo4jDateTime
 from ..config import Settings, get_settings
 from ..db.driver import get_driver
 from .vector_store import VectorStore
+from shared.models.typed_dict import TypedDictModel
+
+
+class _serialize_neo4j_valueResult(TypedDictModel):
+    pass
+
+
+class GraphRAGEngine__expand_contextResult(TypedDictModel):
+    entities: list[Any]
+    expanded_count: Any
+    relationships: Any
+    seed_count: Any
+    traversal_path: Any
+
+class GraphRAGEngine_get_entity_contextResult(TypedDictModel):
+    center: Any
+    entity_count: Any | None = None
+    neighbors: list[Any]
+    relationship_count: Any | None = None
+    relationships: list[Any]
+
+class GraphRAGEngine_traverse_value_treeResult(TypedDictModel):
+    direction: Any
+    path_count: Any
+    paths: Any
+    start_entity_id: Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +58,7 @@ def _serialize_neo4j_value(value: Any) -> Any:
     elif isinstance(value, list):
         return [_serialize_neo4j_value(item) for item in value]
     elif isinstance(value, dict):
-        return {k: _serialize_neo4j_value(v) for k, v in value.items()}
+        return _serialize_neo4j_valueResult.model_validate({k: _serialize_neo4j_value(v) for k, v in value.items()})
     return value
 
 
@@ -260,7 +286,7 @@ class GraphRAGEngine:
             record = await result.single()
 
             if not record:
-                return {"center": None, "neighbors": [], "relationships": []}
+                return GraphRAGEngine_get_entity_contextResult.model_validate({"center": None, "neighbors": [], "relationships": []})
 
             center = _serialize_entity(dict(record["center"]))
             neighbors = [_serialize_entity(dict(n)) for n in record["neighbors"]]
@@ -273,13 +299,14 @@ class GraphRAGEngine:
                     for rel in rels:
                         relationships.append(_serialize_relationship(rel))
 
-            return {
+            return GraphRAGEngine_get_entity_contextResult.model_validate({
                 "center": center,
                 "neighbors": neighbors,
                 "relationships": relationships,
                 "entity_count": 1 + len(neighbors),
                 "relationship_count": len(relationships),
-            }
+            })
+
 
     async def traverse_value_tree(
         self,
@@ -353,12 +380,13 @@ class GraphRAGEngine:
 
                 paths.append({"nodes": nodes, "relationships": relationships})
 
-            return {
+            return GraphRAGEngine_traverse_value_treeResult.model_validate({
                 "start_entity_id": start_entity_id,
                 "direction": direction,
                 "paths": paths,
                 "path_count": len(paths),
-            }
+            })
+
 
     async def _find_seed_entities(
         self,
@@ -536,13 +564,14 @@ class GraphRAGEngine:
                 if path_str not in traversal_path:
                     traversal_path.append(path_str)
 
-        return {
+        return GraphRAGEngine__expand_contextResult.model_validate({
             "entities": list(all_entities.values()),
             "relationships": all_relationships,
             "traversal_path": traversal_path,
             "seed_count": len(seed_entities),
             "expanded_count": len(all_entities) - len(seed_entities),
-        }
+        })
+
 
     def _build_result(
         self,

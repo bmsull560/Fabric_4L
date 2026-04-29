@@ -12,6 +12,15 @@ from typing import Any
 
 from .bus import MessageBus
 from .types import MessageType
+from shared.models.typed_dict import TypedDictModel
+
+
+class MessageRouter_get_cluster_healthResult(TypedDictModel):
+    avg_load: int
+    capabilities: Any | None = None
+    overloaded_agents: int
+    status: str
+    total_agents: int
 
 logger = logging.getLogger(__name__)
 
@@ -223,12 +232,13 @@ class MessageRouter:
         total_agents = len(self._agent_capabilities)
 
         if total_agents == 0:
-            return {
+            return MessageRouter_get_cluster_healthResult.model_validate({
                 "status": "unhealthy",
                 "total_agents": 0,
                 "avg_load": 0,
                 "overloaded_agents": 0,
-            }
+            })
+
 
         loads = list(self._agent_load.values())
         avg_load = sum(loads) / len(loads)
@@ -240,10 +250,12 @@ class MessageRouter:
         if overloaded == total_agents:
             status = "critical"
 
-        return {
+        return MessageRouter_get_cluster_healthResult.model_validate({
             "status": status,
             "total_agents": total_agents,
             "avg_load": round(avg_load, 2),
             "overloaded_agents": overloaded,
             "capabilities": len(self._capability_agents),
-        }
+        })
+
+

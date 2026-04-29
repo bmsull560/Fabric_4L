@@ -32,6 +32,15 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class ValidationFinding_to_dictResult(TypedDictModel):
+    line_number: Any
+    message: Any
+    pattern: Any
+    severity: Any
+    suggestion: Any
 
 logger = logging.getLogger(__name__)
 
@@ -77,13 +86,13 @@ class ValidationFinding:
     
     def to_dict(self) -> dict[str, Any]:
         """Convert finding to dictionary."""
-        return {
+        return ValidationFinding_to_dictResult.model_validate({
             "severity": self.severity.value,
             "message": self.message,
             "line_number": self.line_number,
             "pattern": self.pattern,
             "suggestion": self.suggestion,
-        }
+        })
 
 
 class QueryValidator:

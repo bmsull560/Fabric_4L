@@ -34,6 +34,39 @@ from enum import Enum
 from typing import Any
 
 import structlog
+from shared.models.typed_dict import TypedDictModel
+
+
+class NarrativeBuilderService__build_contextResult(TypedDictModel):
+    company_name: Any
+    competitors: Any
+    custom_next_steps: Any
+    evidence: Any
+    evidence_count: Any
+    hypotheses: Any
+    hypothesis_count: Any
+    key_differentiators: Any
+    months: Any
+    net_benefit: Any
+    npv: Any
+    payback: Any
+    ranking_strategy: Any
+    roi: Any
+    roi_scenarios: Any
+    scenario: Any
+    signal_count: Any
+    signals: Any
+    timeframe: str
+    top_n: Any
+    top_signal_areas: Any
+    total_impact: Any
+    win_rate: Any
+
+class NarrativeBuilderService_list_narrativesResult(TypedDictModel):
+    limit: Any
+    narratives: Any
+    skip: Any
+    total: Any
 
 logger = structlog.get_logger()
 
@@ -270,7 +303,7 @@ class NarrativeBuilderService:
             sorted({e.get("industry", "general") for e in evidence_data[:10]})
         ) or "various industries"
 
-        return {
+        return NarrativeBuilderService__build_contextResult.model_validate({
             "company_name": account_data.get("name", account_data.get("company_name", "the account")),
             "hypothesis_count": len(hypotheses_data),
             "signal_count": len(signals_data),
@@ -295,7 +328,8 @@ class NarrativeBuilderService:
             "evidence": evidence_data,
             "roi_scenarios": scenarios,
             "custom_next_steps": request.custom_next_steps,
-        }
+        })
+
 
     def _render_section(
         self, section_key: str, tone: str, context: dict[str, Any]
@@ -494,12 +528,13 @@ class NarrativeBuilderService:
             list_result = await session.run(list_query, params)
             records = [record async for record in list_result]
 
-        return {
+        return NarrativeBuilderService_list_narrativesResult.model_validate({
             "narratives": [r["narrative"] for r in records],
             "total": total,
             "skip": skip,
             "limit": limit,
-        }
+        })
+
 
     async def update_status(
         self, tenant_id: str, narrative_id: str, new_status: str

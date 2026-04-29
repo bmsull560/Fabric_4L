@@ -6,6 +6,22 @@ import contextvars
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 from uuid import UUID
+from shared.models.typed_dict import TypedDictModel
+
+
+class RequestContext_to_dictResult(TypedDictModel):
+    api_key_id: Any
+    auth_source: Any
+    isolation_tier: Any
+    org_id: Any
+    permissions: Any
+    request_id: Any
+    roles: Any
+    service_account_id: Any
+    service_account_scopes: Any
+    tenant_id: Any
+    tenant_role: Any
+    user_id: Any
 
 # Context variable for async-safe context storage
 _current_context: contextvars.ContextVar[RequestContext | None] = contextvars.ContextVar(
@@ -126,7 +142,7 @@ class RequestContext:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary."""
-        return {
+        return RequestContext_to_dictResult.model_validate({
             "tenant_id": self._uuid_to_str(self.tenant_id),
             "user_id": self._uuid_to_str(self.user_id),
             "api_key_id": self._uuid_to_str(self.api_key_id),
@@ -139,7 +155,7 @@ class RequestContext:
             "auth_source": self.auth_source,
             "service_account_id": self._uuid_to_str(self.service_account_id),
             "service_account_scopes": self.service_account_scopes,
-        }
+        })
 
 
 # ═══════════════════════════════════════════════════════════════════════════

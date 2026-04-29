@@ -9,6 +9,12 @@ from shared.mcp_gateway.mcp_types import (
     OAuthClientConfig,
     ToolRequest,
 )
+from shared.models.typed_dict import TypedDictModel
+
+
+class sample_rsa_keypairResult(TypedDictModel):
+    private: Any
+    public: Any
 
 
 @pytest.fixture
@@ -83,4 +89,4 @@ def sample_rsa_keypair():
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     ).decode()
     
-    return {"private": private_pem, "public": public_pem}
+    return sample_rsa_keypairResult.model_validate({"private": private_pem, "public": public_pem})

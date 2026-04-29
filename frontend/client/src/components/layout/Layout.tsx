@@ -152,16 +152,9 @@ const SUPPORT_ITEMS: NavItem[] = [
     id: "settings",
     label: "Settings",
     icon: Settings,
-    path: "/settings",
+    path: "/settings/system/settings",
     tier: "admin",
     description: "Platform configuration and user management",
-    children: [
-      { id: "content-formulas", label: "Formulas", path: "/settings/content/formulas", tier: "admin" },
-      { id: "data-variables", label: "Variables", path: "/settings/data/variables", tier: "admin" },
-      { id: "access-roles", label: "Roles", path: "/settings/access/roles", tier: "admin" },
-      { id: "system-settings", label: "System", path: "/settings/system/settings", tier: "admin" },
-      { id: "system-billing", label: "Billing", path: "/settings/system/billing", tier: "admin" },
-    ],
   },
 ];
 const BOTTOM_ITEMS = [

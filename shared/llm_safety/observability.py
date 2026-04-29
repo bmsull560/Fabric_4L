@@ -13,6 +13,27 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Generator
+from shared.models.typed_dict import TypedDictModel
+
+
+class LLMCallContext_to_dictResult(TypedDictModel):
+    extraction_job_id: Any
+    llm_call_id: Any
+    model: Any
+    provider: Any
+    request_id: Any
+    tenant_id: Any
+    trace_id: Any
+
+class LLMCallMetrics_to_dictResult(TypedDictModel):
+    cost_usd: Any
+    error_type: Any
+    input_tokens: Any
+    latency_ms: Any
+    output_tokens: Any
+    retry_count: Any
+    safety_checks: Any
+    total_tokens: Any
 
 # Try to import OpenTelemetry
 try:
@@ -45,7 +66,7 @@ class LLMCallContext:
     provider: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return LLMCallContext_to_dictResult.model_validate({
             "llm_call_id": self.call_id,
             "trace_id": self.trace_id,
             "tenant_id": self.tenant_id,
@@ -53,7 +74,7 @@ class LLMCallContext:
             "extraction_job_id": self.extraction_job_id,
             "model": self.model,
             "provider": self.provider,
-        }
+        })
 
 
 @dataclass
@@ -76,7 +97,7 @@ class LLMCallMetrics:
         return (end - self.start_time) * 1000
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        return LLMCallMetrics_to_dictResult.model_validate({
             "latency_ms": round(self.latency_ms, 2),
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
@@ -85,7 +106,7 @@ class LLMCallMetrics:
             "retry_count": self.retry_count,
             "error_type": self.error_type,
             "safety_checks": self.safety_checks,
-        }
+        })
 
 
 class LLMObservability:

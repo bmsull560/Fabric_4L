@@ -18,6 +18,41 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, StateGraph
 
 from src.workflows.base import DEFAULT_RECURSION_LIMIT
+from shared.models.typed_dict import TypedDictModel
+
+
+class _mergeResult(TypedDictModel):
+    pass
+
+class _make_initial_stateResult(TypedDictModel):
+    errors: list[Any]
+    output_data: bool
+    status: str
+    workflow_id: Any
+
+class start_nodeResult(TypedDictModel):
+    current_node: str
+    status: str
+
+class process_nodeResult(TypedDictModel):
+    current_node: str
+    output_data: dict[str, Any]
+    status: str
+
+class end_nodeResult(TypedDictModel):
+    current_node: str
+    output_data: dict[str, Any]
+    status: str
+
+class node_aResult(TypedDictModel):
+    current_node: str
+    output_data: dict[str, Any]
+    status: str
+
+class node_bResult(TypedDictModel):
+    current_node: str
+    output_data: dict[str, Any]
+    status: str
 
 
 def _last(left: Any, right: Any) -> Any:
@@ -27,7 +62,7 @@ def _last(left: Any, right: Any) -> Any:
 
 def _merge(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
     """Reducer: shallow-merge dicts, right wins on conflict."""
-    return {**left, **right}
+    return _mergeResult.model_validate({**left, **right})
 
 
 class TestState(TypedDict, total=False):
@@ -45,26 +80,26 @@ def _make_initial_state(
     pre_existing_output: dict[str, Any] | None = None,
 ) -> TestState:
     """Build a fresh initial state dict for test invocation."""
-    return {
+    return _make_initial_stateResult.model_validate({
         "workflow_id": workflow_id,
         "status": "pending",
         "output_data": pre_existing_output or {},
         "errors": [],
-    }
+    })
 
 
 def _build_simple_graph(checkpointer=None) -> Any:
     """Build a simple START → PROCESS → END graph."""
     async def start_node(state: TestState) -> dict:
-        return {"current_node": "start", "status": "running"}
+        return start_nodeResult.model_validate({"current_node": "start", "status": "running"})
 
     async def process_node(state: TestState) -> dict:
         output = state.get("output_data", {})
-        return {"current_node": "process", "output_data": {**output, "process": "done"}, "status": "running"}
+        return process_nodeResult.model_validate({"current_node": "process", "output_data": {**output, "process": "done"}, "status": "running"})
 
     async def end_node(state: TestState) -> dict:
         output = state.get("output_data", {})
-        return {"current_node": "end", "output_data": {**output, "end": "done"}, "status": "completed"}
+        return end_nodeResult.model_validate({"current_node": "end", "output_data": {**output, "end": "done"}, "status": "completed"})
 
     graph = StateGraph(TestState)
     graph.add_node("start", start_node)
@@ -84,11 +119,11 @@ def _build_looping_graph(checkpointer=None) -> Any:
     def node_a(state: TestState) -> dict:
         call_count[0] += 1
         output = state.get("output_data", {})
-        return {"current_node": "node_a", "output_data": {**output, "a_calls": call_count[0]}, "status": "running"}
+        return node_aResult.model_validate({"current_node": "node_a", "output_data": {**output, "a_calls": call_count[0]}, "status": "running"})
 
     def node_b(state: TestState) -> dict:
         output = state.get("output_data", {})
-        return {"current_node": "node_b", "output_data": {**output, "b": "executed"}, "status": "running"}
+        return node_bResult.model_validate({"current_node": "node_b", "output_data": {**output, "b": "executed"}, "status": "running"})
 
     graph = StateGraph(TestState)
     graph.add_node("node_a", node_a)

@@ -6,6 +6,14 @@ Provides thread-safe tenant context storage and retrieval.
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class TenantContext_to_dictResult(TypedDictModel):
+    metadata: Any
+    roles: Any
+    tenant_id: Any
+    user_id: Any
 
 
 @dataclass
@@ -32,12 +40,13 @@ class TenantContext:
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
-        return {
+        return TenantContext_to_dictResult.model_validate({
             "tenant_id": self.tenant_id,
             "user_id": self.user_id,
             "roles": self.roles,
             "metadata": self.metadata,
-        }
+        })
+
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TenantContext":

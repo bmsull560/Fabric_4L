@@ -25,6 +25,18 @@ from ..messaging.signal_events import (
 )
 from ..models.pain_signal import EvidenceMatch, PainSignal, SignalCategory, TrendDirection
 from .base import AgentCapability, BaseAgent
+from shared.models.typed_dict import TypedDictModel
+
+
+class SignalDetectionAgent__detect_signalsResult(TypedDictModel):
+    message: str
+    processing_metadata: Any
+    signals: list[Any]
+
+class SignalDetectionAgent__extract_signals_from_layer2Result(TypedDictModel):
+    duration_ms: int
+    error: Any
+    signals: list[Any]
 
 logger = logging.getLogger(__name__)
 
@@ -207,11 +219,12 @@ class SignalDetectionAgent(BaseAgent):
             processing_metadata["signals_found"] = len(raw_signals)
 
             if not raw_signals:
-                return {
+                return SignalDetectionAgent__detect_signalsResult.model_validate({
                     "signals": [],
                     "processing_metadata": processing_metadata,
                     "message": "No operational signals detected",
-                }
+                })
+
 
             # Stage 2: Layer 3 Enrichment
             enrichment_start = datetime.now(UTC)
@@ -295,10 +308,11 @@ class SignalDetectionAgent(BaseAgent):
                 )
                 await self._emit_event(event)
 
-            return {
+            return SignalDetectionAgent__detect_signalsResult.model_validate({
                 "signals": [s.model_dump() for s in signals],
                 "processing_metadata": processing_metadata,
-            }
+            })
+
 
         except Exception as e:
             logger.error(
@@ -358,11 +372,12 @@ class SignalDetectionAgent(BaseAgent):
         except Exception as e:
             logger.error(f"Layer 2 extraction failed: {e}")
             # Return empty result on failure
-            return {
+            return SignalDetectionAgent__extract_signals_from_layer2Result.model_validate({
                 "signals": [],
                 "duration_ms": 0,
                 "error": str(e),
-            }
+            })
+
 
     def _create_pain_signal(
         self,

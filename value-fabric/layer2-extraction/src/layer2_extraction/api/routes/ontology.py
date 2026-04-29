@@ -20,6 +20,17 @@ from layer2_extraction.models.ontology import (
     ValidationWarning,
 )
 from layer2_extraction.repositories.ontology_schema_repository import OntologySchemaRepository
+from shared.models.typed_dict import TypedDictModel
+
+
+class delete_ontology_typeResult(TypedDictModel):
+    deleted: bool
+
+class delete_type_relationshipResult(TypedDictModel):
+    deleted: bool
+
+class remove_type_propertyResult(TypedDictModel):
+    removed: bool
 
 router = APIRouter(prefix="/v1/ontology", tags=["ontology"])
 
@@ -286,7 +297,7 @@ async def delete_ontology_type(
     deleted = await repo.delete_type(type_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Type {type_id} not found")
-    return {"deleted": True}
+    return delete_ontology_typeResult.model_validate({"deleted": True})
 
 
 # Property Endpoints
@@ -332,7 +343,7 @@ async def remove_type_property(
         removed = await repo.remove_property(type_id, property_id)
         if not removed:
             raise HTTPException(status_code=404, detail=f"Property {property_id} not found")
-        return {"removed": True}
+        return remove_type_propertyResult.model_validate({"removed": True})
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -376,7 +387,7 @@ async def delete_type_relationship(
     deleted = await repo.remove_relationship(relationship_id)
     if not deleted:
         raise HTTPException(status_code=404, detail=f"Relationship {relationship_id} not found")
-    return {"deleted": True}
+    return delete_type_relationshipResult.model_validate({"deleted": True})
 
 
 # Version History Endpoints

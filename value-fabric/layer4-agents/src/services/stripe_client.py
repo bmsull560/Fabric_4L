@@ -7,6 +7,28 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
+from shared.models.typed_dict import TypedDictModel
+
+
+class report_meter_eventResult(TypedDictModel):
+    event_name: Any
+    id: Any
+    reason: str | None = None
+    skipped: bool | None = None
+    status: Any
+    stripe_customer_id: Any
+
+class sync_usage_to_stripeResult(TypedDictModel):
+    error: Any
+    stripe_response: Any | None = None
+    synced: int
+    total_quantity: int
+
+class get_billing_meterResult(TypedDictModel):
+    display_name: Any
+    event_name: Any
+    id: Any
+    status: Any
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +156,7 @@ def report_meter_event(
     """
     if not STRIPE_METER_EVENTS_ENABLED:
         logger.debug("Stripe MeterEvents disabled - skipping meter reporting")
-        return {"skipped": True, "reason": "disabled"}
+        return report_meter_eventResult.model_validate({"skipped": True, "reason": "disabled"})
 
     stripe = get_stripe()
 
@@ -161,12 +183,13 @@ def report_meter_event(
         logger.debug(
             f"MeterEvent reported: {stripe_event_name}={quantity} for {stripe_customer_id}"
         )
-        return {
+        return report_meter_eventResult.model_validate({
             "id": meter_event.id,
             "event_name": meter_event.event_name,
             "status": meter_event.status,
             "stripe_customer_id": stripe_customer_id,
-        }
+        })
+
 
     except Exception as e:
         logger.error(f"Failed to report meter event: {e}")
@@ -194,12 +217,14 @@ def get_billing_meter(
     try:
         if meter_id:
             meter = stripe.billing.meter.retrieve(meter_id)
-            return {
+            return get_billing_meterResult.model_validate({
                 "id": meter.id,
                 "display_name": meter.display_name,
                 "event_name": meter.event_name,
                 "status": meter.status,
-            }
+            })
+
+
         else:
             # List meters
             meters = stripe.billing.meter.list()
@@ -260,7 +285,7 @@ async def sync_usage_to_stripe(
     event_count = row.count or 0
 
     if total_quantity <= 0:
-        return {"synced": 0, "total_quantity": 0, "stripe_response": None}
+        return sync_usage_to_stripeResult.model_validate({"synced": 0, "total_quantity": 0, "stripe_response": None})
 
     # Report to Stripe
     try:
@@ -288,12 +313,13 @@ async def sync_usage_to_stripe(
 
         await db_session.flush()
 
-        return {
+        return sync_usage_to_stripeResult.model_validate({
             "synced": event_count,
             "total_quantity": total_quantity,
             "stripe_response": stripe_response,
-        }
+        })
+
 
     except StripeMeterEventError as e:
         logger.error(f"Failed to sync usage to Stripe: {e}")
-        return {"synced": 0, "total_quantity": total_quantity, "error": str(e)}
+        return sync_usage_to_stripeResult.model_validate({"synced": 0, "total_quantity": total_quantity, "error": str(e)})

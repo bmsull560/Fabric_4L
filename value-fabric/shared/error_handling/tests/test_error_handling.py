@@ -24,6 +24,11 @@ from ..handlers import (
 )
 from ..middleware import MAX_REQUEST_ID_LENGTH, RequestIDMiddleware, get_request_id
 from ..models import ErrorCode, ErrorResponse
+from shared.models.typed_dict import TypedDictModel
+
+
+class TestRequestIDMiddleware_test_endpointResult(TypedDictModel):
+    trace_id: Any
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -230,7 +235,7 @@ class TestRequestIDMiddleware:
 
         @app.get("/test")
         async def test_endpoint(request: Request):
-            return {"trace_id": getattr(request.state, "trace_id", None)}
+            return TestRequestIDMiddleware_test_endpointResult.model_validate({"trace_id": getattr(request.state, "trace_id", None)})
 
         return app
 

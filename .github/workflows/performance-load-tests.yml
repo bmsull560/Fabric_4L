@@ -67,13 +67,18 @@ jobs:
             --env PERF_DURATION=2m \
             tests/performance/k6/l2_l3_l4_critical_paths.js
 
-      - name: Evaluate SLO targets and regression threshold
+      - name: Evaluate SLO targets, regression threshold, and burn-rate windows
         run: |
           python3 scripts/perf/evaluate_slo.py \
             --summary artifacts/performance/k6-summary.json \
             --slo docs/slo/performance-slo.v1.json \
             --report artifacts/performance/slo-report.md \
             --output artifacts/performance/slo-evaluation.json
+
+      - name: Persist rolling-window input artifact
+        if: always()
+        run: |
+          cp artifacts/performance/slo-evaluation.json artifacts/performance/slo-window-history.json
 
       - name: Publish SLO report in workflow summary
         if: always()
