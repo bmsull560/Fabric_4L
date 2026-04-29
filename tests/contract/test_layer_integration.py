@@ -17,7 +17,7 @@ import os
 import time
 import uuid
 from functools import wraps
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
 import pytest
 import requests
@@ -28,6 +28,19 @@ L1_URL = os.environ.get("L1_URL", "http://localhost:8001")
 L2_URL = os.environ.get("L2_URL", "http://localhost:8002")
 L3_URL = os.environ.get("L3_URL", "http://localhost:8003")
 L4_URL = os.environ.get("L4_URL", "http://localhost:8004")
+RUN_RUNTIME_CONTRACTS = os.environ.get("RUN_RUNTIME_CONTRACTS", "").strip() == "1"
+RUNTIME_SERVICE_FLAGS = {
+    "l1": os.environ.get("RUN_RUNTIME_L1", "").strip() == "1",
+    "l2": os.environ.get("RUN_RUNTIME_L2", "").strip() == "1",
+    "l3": os.environ.get("RUN_RUNTIME_L3", "").strip() == "1",
+    "l4": os.environ.get("RUN_RUNTIME_L4", "").strip() == "1",
+}
+_HEALTH_ENDPOINTS = {
+    "l1": f"{L1_URL}/health",
+    "l2": f"{L2_URL}/health",
+    "l3": f"{L3_URL}/health",
+    "l4": f"{L4_URL}/health",
+}
 
 # HTTP client with retry logic
 _session = requests.Session()
@@ -53,6 +66,39 @@ def retry_on_connection_error(max_retries: int = 3, delay: float = 1.0) -> Calla
             return None  # unreachable
         return wrapper  # type: ignore
     return decorator
+
+
+def _runtime_enabled_for(services: set[str]) -> bool:
+    """Allow either global runtime enablement or per-service flags."""
+    if RUN_RUNTIME_CONTRACTS:
+        return True
+    return all(RUNTIME_SERVICE_FLAGS.get(service, False) for service in services)
+
+
+def _require_runtime_services(services: set[str]) -> None:
+    """Preflight runtime service health and skip with explicit diagnostics."""
+    if not _runtime_enabled_for(services):
+        required_flags = ", ".join(sorted(f"RUN_RUNTIME_{s.upper()}=1" for s in services))
+        pytest.skip(
+            "Runtime contracts disabled. Set RUN_RUNTIME_CONTRACTS=1 "
+            f"or service-specific flags ({required_flags})."
+        )
+
+    diagnostics: list[str] = []
+    for service in sorted(services):
+        health_url = _HEALTH_ENDPOINTS[service]
+        try:
+            response = _session.get(health_url, timeout=5)
+            if response.status_code != 200:
+                diagnostics.append(
+                    f"{service.upper()} health check failed at {health_url}: "
+                    f"HTTP {response.status_code} ({response.text[:120]!r})"
+                )
+        except requests.RequestException as exc:
+            diagnostics.append(f"{service.upper()} health check error at {health_url}: {exc}")
+
+    if diagnostics:
+        pytest.skip("Runtime preflight prerequisites not met: " + " | ".join(diagnostics))
 
 
 @pytest.fixture
@@ -169,9 +215,15 @@ class TestL2RoutesExist:
 class TestL1ToL3DataFlow:
     """Verify data flows from L1 ingestion to L3 knowledge graph."""
 
-    @pytest.mark.skip(reason="Requires full stack running - run manually")
+    @pytest.mark.runtime_contract
+    @pytest.mark.skipif(
+        not _runtime_enabled_for({"l1", "l3"}),
+        reason="Runtime contracts disabled; set RUN_RUNTIME_CONTRACTS=1 or RUN_RUNTIME_L1=1 and RUN_RUNTIME_L3=1",
+    )
     def test_l1_ingest_creates_data_in_l3(self, test_entity_data):
         """End-to-end: L1 ingest → L3 queryable."""
+        _require_runtime_services({"l1", "l3"})
+
         # 1. Create entity directly in L3 (simulating L1→L3 flow)
         entity_name = test_entity_data["name"]
 
@@ -187,9 +239,15 @@ class TestL1ToL3DataFlow:
         # 3. Verify response structure
         assert "entities" in results or "results" in results, f"Missing entities in response: {list(results.keys())}"
 
-    @pytest.mark.skip(reason="Requires Neo4j running - run manually")
+    @pytest.mark.runtime_contract
+    @pytest.mark.skipif(
+        not _runtime_enabled_for({"l3"}),
+        reason="Runtime contracts disabled; set RUN_RUNTIME_CONTRACTS=1 or RUN_RUNTIME_L3=1",
+    )
     def test_l3_entity_persistence(self):
         """L3 entities endpoint returns data."""
+        _require_runtime_services({"l3"})
+
         response = _session.post(
             f"{L3_URL}/v1/ingest",
             json={
@@ -213,9 +271,15 @@ class TestL1ToL3DataFlow:
 class TestL4WorkflowOrchestration:
     """Verify L4 workflows trigger real L1 and L2 jobs."""
 
-    @pytest.mark.skip(reason="Requires full stack running - run manually")
+    @pytest.mark.runtime_contract
+    @pytest.mark.skipif(
+        not _runtime_enabled_for({"l1", "l2", "l4"}),
+        reason="Runtime contracts disabled; set RUN_RUNTIME_CONTRACTS=1 or RUN_RUNTIME_L1=1 RUN_RUNTIME_L2=1 RUN_RUNTIME_L4=1",
+    )
     def test_l4_workflow_triggers_l1_l2(self):
         """L4 workflow orchestrates real L1 and L2 jobs."""
+        _require_runtime_services({"l1", "l2", "l4"})
+
         # Start workflow
         response = _session.post(
             f"{L4_URL}/v1/workflows/ingestion",
