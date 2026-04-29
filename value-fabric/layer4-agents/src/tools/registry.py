@@ -16,6 +16,10 @@ from ..models.tool_schemas import ToolCategory, ToolSchema
 from shared.models.typed_dict import TypedDictModel
 
 
+class ToolRegistry_get_all_schemasResult(TypedDictModel):
+    pass
+
+
 class get_tool_metadataResult(TypedDictModel):
     category: Any
     description: Any
@@ -435,7 +439,7 @@ class ToolRegistry:
         Returns:
             Dict mapping tool names to schemas
         """
-        return {name: tool.get_schema() for name, tool in self._tools.items()}
+        return ToolRegistry_get_all_schemasResult.model_validate({name: tool.get_schema() for name, tool in self._tools.items()})
 
     def clear(self) -> None:
         """Clear all registered tools."""

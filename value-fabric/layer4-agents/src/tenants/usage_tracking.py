@@ -30,6 +30,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared.models.typed_dict import TypedDictModel
 
 
+class UsageTrackingService__count_events_by_fieldResult(TypedDictModel):
+    pass
+
+
 class UsageTrackingService__get_llm_usageResult(TypedDictModel):
     requests: int
     tokens_input: int
@@ -342,7 +346,7 @@ class UsageTrackingService:
                 query,
                 {"tenant_id": str(tenant_id), "action": action, "since": since},
             )
-            return {row[0]: row[1] for row in result.fetchall()}
+            return UsageTrackingService__count_events_by_fieldResult.model_validate({row[0]: row[1] for row in result.fetchall()})
         except Exception:
             logger.warning("Failed to count events by %s", group_field, exc_info=True)
             return UsageTrackingService__count_events_by_fieldResult.model_validate({})

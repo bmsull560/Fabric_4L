@@ -121,7 +121,7 @@ def _gather_returns(tree: ast.AST, source: str) -> dict[str, list[tuple[ast.Retu
             parent_map[child] = node
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.Return) and isinstance(node.value, ast.Dict):
+        if isinstance(node, ast.Return) and isinstance(node.value, (ast.Dict, ast.DictComp, ast.Set, ast.SetComp)):
             # Skip docstring examples inside function defs (simple heuristic)
             segment = ast.get_source_segment(source, node.value)
             if segment is None:
@@ -167,21 +167,22 @@ def _build_models(
 
         for _ret, dict_node, _segment in returns:
             present_keys: set[str] = set()
-            for k, v in zip(dict_node.keys, dict_node.values):
-                if k is None:
-                    # ** unpacking — skip type inference for this return
-                    continue
-                key_name = None
-                if isinstance(k, ast.Constant) and isinstance(k.value, str):
-                    key_name = k.value
-                if key_name is None:
-                    continue
-                present_keys.add(key_name)
-                t = _infer_type(v)
-                key_types.setdefault(key_name, set()).add(t)
+            if isinstance(dict_node, ast.Dict):
+                for k, v in zip(dict_node.keys, dict_node.values):
+                    if k is None:
+                        # ** unpacking — skip type inference for this return
+                        continue
+                    key_name = None
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                        key_name = k.value
+                    if key_name is None:
+                        continue
+                    present_keys.add(key_name)
+                    t = _infer_type(v)
+                    key_types.setdefault(key_name, set()).add(t)
 
-            for key_name in key_types:
-                key_required[key_name] = key_required.get(key_name, True) and (key_name in present_keys)
+                for key_name in key_types:
+                    key_required[key_name] = key_required.get(key_name, True) and (key_name in present_keys)
 
         if not key_types:
             # All returns had only unpacking; fallback to generic wrapper

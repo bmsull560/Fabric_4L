@@ -9,6 +9,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from ..api.exceptions import IngestionError
+from shared.models.typed_dict import TypedDictModel
+
+
+class RequiredFieldValidator_get_missing_fieldsResult(TypedDictModel):
+    pass
 
 
 @dataclass
@@ -225,7 +230,7 @@ class RequiredFieldValidator:
             Set of missing field names
         """
         required = self.required_fields.get(entity_type, set())
-        return {field for field in required if field not in data or data[field] is None}
+        return RequiredFieldValidator_get_missing_fieldsResult.model_validate({field for field in required if field not in data or data[field] is None})
 
     def is_known_entity_type(self, entity_type: str) -> bool:
         """Check if entity type has validation rules defined.

@@ -17,6 +17,10 @@ from ..models.billing import BillingSubscription, BillingUsageEvent, UsageEventS
 from shared.models.typed_dict import TypedDictModel
 
 
+class OverageService_get_plan_limitsResult(TypedDictModel):
+    pass
+
+
 class OverageService_validate_requestResult(TypedDictModel):
     allowed: bool
     current_usage: Any
@@ -372,7 +376,7 @@ class OverageService:
         if not plan or not plan.usage_limits:
             return OverageService_get_plan_limitsResult.model_validate({})
 
-        return {
+        return OverageService_get_plan_limitsResult.model_validate({
             metric_name: {
                 "included_amount": limit.included_amount,
                 "period": limit.period,
@@ -381,4 +385,6 @@ class OverageService:
                 "warning_threshold": limit.warning_threshold,
             }
             for metric_name, limit in plan.usage_limits.items()
-        }
+        })
+
+

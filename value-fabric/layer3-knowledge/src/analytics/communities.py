@@ -9,6 +9,10 @@ from ..config import Settings, get_settings
 from shared.models.typed_dict import TypedDictModel
 
 
+class CommunityDetector__build_rel_filterResult(TypedDictModel):
+    pass
+
+
 class CommunityDetector__fallback_community_detectionResult(TypedDictModel):
     algorithm: str
     communities: Any
@@ -461,7 +465,7 @@ class CommunityDetector:
             })
 
 
-        return {rel: {"orientation": "UNDIRECTED"} for rel in relationship_types}
+        return CommunityDetector__build_rel_filterResult.model_validate({rel: {"orientation": "UNDIRECTED"} for rel in relationship_types})
 
     def _random_id(self) -> str:
         """Generate random ID for graph projection."""

@@ -17,6 +17,10 @@ from starlette.types import Message, Receive, Scope, Send
 from shared.models.typed_dict import TypedDictModel
 
 
+class SecurityMiddleware__sanitize_json_dataResult(TypedDictModel):
+    pass
+
+
 class SecurityMiddleware_receiveResult(TypedDictModel):
     body: Any
     more_body: bool
@@ -454,7 +458,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     def _sanitize_json_data(self, data: Any) -> Any:
         """Recursively sanitize all user-supplied string fields."""
         if isinstance(data, dict):
-            return {key: self._sanitize_json_data(value) for key, value in data.items()}
+            return SecurityMiddleware__sanitize_json_dataResult.model_validate({key: self._sanitize_json_data(value) for key, value in data.items()})
         if isinstance(data, list):
             return [self._sanitize_json_data(item) for item in data]
         if isinstance(data, str):

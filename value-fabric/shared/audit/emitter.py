@@ -34,6 +34,11 @@ except ImportError:
     _AUDIT_WRITE_FAILURES = None
 
 from .models import AuditAction, AuditEvent, AuditOutcome
+from shared.models.typed_dict import TypedDictModel
+
+
+class _scrub_detailsResult(TypedDictModel):
+    pass
 
 logger = logging.getLogger("vf.audit")
 
@@ -54,10 +59,10 @@ _SENSITIVE_KEYS: Set[str] = {
 
 def _scrub_details(details: Dict[str, Any]) -> Dict[str, Any]:
     """Return a copy of *details* with sensitive keys replaced by '[REDACTED]'."""
-    return {
+    return _scrub_detailsResult.model_validate({
         k: "[REDACTED]" if k.lower() in _SENSITIVE_KEYS else v
         for k, v in details.items()
-    }
+    })
 
 
 # ---------------------------------------------------------------------------

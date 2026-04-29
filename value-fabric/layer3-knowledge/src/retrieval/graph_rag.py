@@ -15,6 +15,10 @@ from .vector_store import VectorStore
 from shared.models.typed_dict import TypedDictModel
 
 
+class _serialize_neo4j_valueResult(TypedDictModel):
+    pass
+
+
 class GraphRAGEngine__expand_contextResult(TypedDictModel):
     entities: list[Any]
     expanded_count: Any
@@ -54,7 +58,7 @@ def _serialize_neo4j_value(value: Any) -> Any:
     elif isinstance(value, list):
         return [_serialize_neo4j_value(item) for item in value]
     elif isinstance(value, dict):
-        return {k: _serialize_neo4j_value(v) for k, v in value.items()}
+        return _serialize_neo4j_valueResult.model_validate({k: _serialize_neo4j_value(v) for k, v in value.items()})
     return value
 
 

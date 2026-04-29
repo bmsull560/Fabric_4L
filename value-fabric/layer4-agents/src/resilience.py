@@ -14,6 +14,10 @@ from .config.settings import settings
 from shared.models.typed_dict import TypedDictModel
 
 
+class CircuitBreakerRegistry_get_all_statesResult(TypedDictModel):
+    pass
+
+
 class TenantRateLimiter_get_bucket_stateResult(TypedDictModel):
     capacity: Any
     refill_rate: Any
@@ -304,10 +308,10 @@ class CircuitBreakerRegistry:
 
     def get_all_states(self) -> dict[str, dict]:
         """Get states of all circuit breakers."""
-        return {
+        return CircuitBreakerRegistry_get_all_statesResult.model_validate({
             name: breaker.get_state()
             for name, breaker in self._breakers.items()
-        }
+        })
 
 
 # Global instances

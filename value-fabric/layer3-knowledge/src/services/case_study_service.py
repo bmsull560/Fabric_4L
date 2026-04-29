@@ -39,6 +39,13 @@ import structlog
 from shared.models.typed_dict import TypedDictModel
 
 
+class CaseStudyService_get_by_industryResult(TypedDictModel):
+    pass
+
+class CaseStudyService_get_by_productResult(TypedDictModel):
+    pass
+
+
 class CaseStudyOutcome_to_dictResult(TypedDictModel):
     after_value: Any
     before_value: Any
@@ -455,7 +462,7 @@ class CaseStudyService:
                 tenant_id=tenant_id,
             )
             records = [record async for record in result]
-            return {r["industry"]: r["count"] for r in records}
+            return CaseStudyService_get_by_industryResult.model_validate({r["industry"]: r["count"] for r in records})
 
     async def get_by_product(self) -> dict[str, int]:
         """Get case study counts grouped by product."""
@@ -470,7 +477,7 @@ class CaseStudyService:
                 tenant_id=tenant_id,
             )
             records = [record async for record in result]
-            return {r["product"]: r["count"] for r in records}
+            return CaseStudyService_get_by_productResult.model_validate({r["product"]: r["count"] for r in records})
 
     # -------------------------------------------------------------------
     # Bulk Import
