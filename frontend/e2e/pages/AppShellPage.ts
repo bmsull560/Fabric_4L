@@ -3,8 +3,11 @@ import { Page, Locator, expect } from '@playwright/test';
 /**
  * Page Object for App Shell (navigation, header, sidebar)
  *
- * Canonical navigation taxonomy:
- *   Home, Library, Discover, Model, Deliver, Evidence, Govern
+ * New 7-step methodology-driven navigation:
+ *   Home, Accounts, Prospect Setup, Intelligence, Value Hypothesis,
+ *   Driver Tree, Evidence, Calculator, Value Case
+ *
+ * Lower section: Setup, Settings, Operations, Support, Feedback
  */
 export class AppShellPage {
   readonly page: Page;
@@ -13,43 +16,39 @@ export class AppShellPage {
   readonly sidebar: Locator;
   readonly navigation: Locator;
 
-  // Top-level navigation links (single-spine)
+  // Top-level workflow links (new 7-step spine)
   readonly homeLink: Locator;
+  readonly accountsLink: Locator;
+  readonly prospectSetupLink: Locator;
+  readonly intelligenceLink: Locator;
+  readonly valueHypothesisLink: Locator;
+  readonly driverTreeLink: Locator;
+  readonly evidenceLink: Locator;
+  readonly calculatorLink: Locator;
+  readonly valueCaseLink: Locator;
+
+  // Legacy aliases (kept for backward-compat tests)
   readonly libraryLink: Locator;
   readonly discoverLink: Locator;
   readonly modelLink: Locator;
   readonly deliverLink: Locator;
-  readonly evidenceLink: Locator;
   readonly governLink: Locator;
+  readonly adminSection: Locator;
 
-  // Sub-navigation links — Library
+  // Legacy sub-nav aliases
   readonly valuePacksLink: Locator;
-
-  // Sub-navigation links — Discover
-  readonly accountsLink: Locator;
   readonly ingestionJobsLink: Locator;
   readonly extractionEngineLink: Locator;
   readonly knowledgeModelLink: Locator;
   readonly entityBrowserLink: Locator;
   readonly graphExplorerLink: Locator;
   readonly ontologyEditorLink: Locator;
-
-  // Sub-navigation links — Model
   readonly valueStudioLink: Locator;
   readonly explorerLink: Locator;
   readonly formulaBuilderLink: Locator;
-
-  // Sub-navigation links — Deliver
   readonly businessCasesLink: Locator;
   readonly agentDashboardLink: Locator;
-
-  // Sub-navigation links — Evidence
   readonly decisionTracesLink: Locator;
-
-  // Admin / Govern section
-  readonly adminSection: Locator;
-
-  // Legacy aliases for backward compatibility
   readonly commandCenterLink: Locator;
   readonly valueTreesLink: Locator;
 
@@ -72,43 +71,39 @@ export class AppShellPage {
     this.sidebar = page.locator('aside').first();
     this.navigation = page.locator('aside').first();
 
-    // Top-level spine links
+    // New 7-step workflow links
     this.homeLink = page.getByRole('link', { name: /^Home$/i });
-    this.libraryLink = page.getByRole('link', { name: /^Library$/i });
-    this.discoverLink = page.getByRole('link', { name: /^Discover$/i });
-    this.modelLink = page.getByRole('link', { name: /^Model$/i });
-    this.deliverLink = page.getByRole('link', { name: /^Deliver$/i });
-    this.evidenceLink = page.getByRole('link', { name: /^Evidence$/i });
-    this.governLink = page.getByRole('link', { name: /^Govern$/i });
-
-    // Library sub-nav
-    this.valuePacksLink = page.getByRole('link', { name: /value packs/i });
-
-    // Discover sub-nav
     this.accountsLink = page.getByRole('link', { name: /^Accounts$/i });
-    this.ingestionJobsLink = page.getByRole('link', { name: /ingestion jobs/i });
-    this.extractionEngineLink = page.getByRole('link', { name: /extraction engine/i });
+    this.prospectSetupLink = page.getByRole('link', { name: /prospect setup/i });
+    this.intelligenceLink = page.getByRole('link', { name: /^Intelligence$/i });
+    this.valueHypothesisLink = page.getByRole('link', { name: /value hypothesis/i });
+    this.driverTreeLink = page.getByRole('link', { name: /driver tree/i });
+    this.evidenceLink = page.getByRole('link', { name: /^Evidence$/i });
+    this.calculatorLink = page.getByRole('link', { name: /^Calculator$/i });
+    this.valueCaseLink = page.getByRole('link', { name: /value case/i });
+
+    // Legacy aliases - point at nearest equivalent
+    this.libraryLink = this.homeLink;
+    this.discoverLink = this.intelligenceLink;
+    this.modelLink = this.valueHypothesisLink;
+    this.deliverLink = this.valueCaseLink;
+    this.governLink = page.getByRole('link', { name: /^Govern$/i });
+    this.adminSection = page.getByRole('link', { name: /^Govern$/i });
+
+    // Legacy sub-nav (may not exist in new nav)
+    this.valuePacksLink = page.getByRole('link', { name: /value packs/i });
+    this.ingestionJobsLink = page.getByRole('link', { name: /ingestion/i });
+    this.extractionEngineLink = page.getByRole('link', { name: /extraction/i });
     this.knowledgeModelLink = page.getByRole('link', { name: /knowledge model/i });
     this.entityBrowserLink = page.getByRole('link', { name: /entity browser/i });
     this.graphExplorerLink = page.getByRole('link', { name: /graph explorer/i });
     this.ontologyEditorLink = page.getByRole('link', { name: /ontology editor/i });
-
-    // Model sub-nav
     this.valueStudioLink = page.getByRole('link', { name: /value studio/i });
     this.explorerLink = page.getByRole('link', { name: /^Explorer$/i });
     this.formulaBuilderLink = page.getByRole('link', { name: /formula builder/i });
-
-    // Deliver sub-nav
     this.businessCasesLink = page.getByRole('link', { name: /business cases/i });
     this.agentDashboardLink = page.getByRole('link', { name: /agent dashboard/i });
-
-    // Evidence sub-nav
     this.decisionTracesLink = page.getByRole('link', { name: /decision traces/i });
-
-    // Admin / Govern
-    this.adminSection = page.getByRole('link', { name: /^Govern$/i });
-
-    // Legacy aliases
     this.commandCenterLink = this.homeLink;
     this.valueTreesLink = this.explorerLink;
 
@@ -135,32 +130,45 @@ export class AppShellPage {
       case 'home':
         await this.homeLink.click();
         break;
+      case 'accounts':
+        await this.accountsLink.click();
+        break;
+      case 'prospect-setup':
+        await this.prospectSetupLink.click();
+        break;
+      case 'intelligence':
+        await this.intelligenceLink.click();
+        break;
+      case 'value-hypothesis':
+        await this.valueHypothesisLink.click();
+        break;
+      case 'driver-tree':
+        await this.driverTreeLink.click();
+        break;
+      case 'evidence':
+        await this.evidenceLink.click();
+        break;
+      case 'calculator':
+        await this.calculatorLink.click();
+        break;
+      case 'value-case':
+        await this.valueCaseLink.click();
+        break;
+      // Legacy aliases
       case 'library':
       case 'value-packs':
-        await this.valuePacksLink.click();
+        await this.homeLink.click();
         break;
       case 'discover':
-        await this.discoverLink.click();
-        break;
-      case 'extraction-engine':
-        await this.extractionEngineLink.click();
-        break;
-      case 'graph-explorer':
-        await this.graphExplorerLink.click();
+        await this.intelligenceLink.click();
         break;
       case 'model':
-        await this.modelLink.click();
-        break;
       case 'formula-builder':
-        await this.formulaBuilderLink.click();
+        await this.valueHypothesisLink.click();
         break;
       case 'deliver':
       case 'business-cases':
-        await this.businessCasesLink.click();
-        break;
-      case 'evidence':
-      case 'decision-traces':
-        await this.decisionTracesLink.click();
+        await this.valueCaseLink.click();
         break;
       case 'govern':
         await this.governLink.click();
@@ -172,11 +180,9 @@ export class AppShellPage {
 
   /**
    * Check if a navigation link is visible (indicating tier access)
-   * Uses RegExp with escaped input to prevent ReDoS from malicious linkName.
    */
   async isNavigationLinkVisible(linkName: string): Promise<boolean> {
-    // Escape regex special characters to prevent ReDoS attacks
-    const escaped = linkName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = linkName.replace(/[.*+?^${}()|[\]\]/g, '\\$&');
     const link = this.page.getByRole('link', { name: new RegExp(escaped, 'i') });
     return link.isVisible();
   }
@@ -188,12 +194,10 @@ export class AppShellPage {
     const links = this.sidebar.getByRole('link');
     const texts: string[] = [];
     const count = await links.count();
-
     for (let i = 0; i < count; i++) {
       const text = await links.nth(i).textContent();
       if (text) texts.push(text.trim());
     }
-
     return texts;
   }
 
@@ -213,25 +217,15 @@ export class AppShellPage {
 
   /**
    * Assert specific navigation links are visible based on tier.
-   * Uses the canonical single-spine nav: Home/Library/Discover always visible,
-   * Model only for advanced+, Govern only for admin.
+   * New structure: All 7 workflow steps are visible to standard+.
    */
   async assertNavigationForTier(tier: 'standard' | 'advanced' | 'admin'): Promise<void> {
-    // All tiers see Home, Library, Discover, Deliver, Evidence
+    // All tiers see the 7-step workflow
     await expect(this.homeLink).toBeVisible();
-    await expect(this.libraryLink).toBeVisible();
-    await expect(this.discoverLink).toBeVisible();
-    await expect(this.deliverLink).toBeVisible();
+    await expect(this.accountsLink).toBeVisible();
+    await expect(this.intelligenceLink).toBeVisible();
     await expect(this.evidenceLink).toBeVisible();
-
-    // Advanced and above see Model
-    if (tier === 'advanced' || tier === 'admin') {
-      await expect(this.modelLink).toBeVisible();
-    }
-
-    // Admin only sees Govern
-    if (tier === 'admin') {
-      await expect(this.adminSection).toBeVisible();
-    }
+    await expect(this.calculatorLink).toBeVisible();
+    await expect(this.valueCaseLink).toBeVisible();
   }
 }

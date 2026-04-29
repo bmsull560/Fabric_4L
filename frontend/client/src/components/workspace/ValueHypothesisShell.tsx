@@ -1,17 +1,17 @@
 /**
- * Intelligence Workspace Shell
+ * Value Hypothesis Workspace Shell
  *
- * Provides the shared layout for all Intelligence workspace tabs:
- *   Signals → Stakeholder Map → Ontology Match → Enrichment
+ * Provides the shared layout for all Value Hypothesis workspace tabs:
+ *   Hypothesis → Discovery Questions → Persona Fit → Assumptions
  *
  * Layout:
  *   - Account context header (name, industry, revenue)
  *   - Horizontal workspace tabs (route-driven)
  *   - Center canvas (flex) + Right rail slot (320px)
- *   - "Generate AI Value Model" CTA in header
+ *   - "Build Driver Tree" CTA in header
  */
 import { Link, useLocation, useParams } from "wouter";
-import { Building2, Sparkles } from "lucide-react";
+import { Building2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Btn } from "@/components/WfPrimitives";
 
@@ -23,7 +23,7 @@ export interface AccountContext {
   revenue: string;
 }
 
-interface IntelligenceShellProps {
+interface ValueHypothesisShellProps {
   account: AccountContext;
   children: React.ReactNode;
   rightRail?: React.ReactNode;
@@ -32,10 +32,10 @@ interface IntelligenceShellProps {
 // ── Tab Definitions ───────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: "signals",        label: "Signals" },
-  { key: "stakeholders",   label: "Stakeholder Map" },
-  { key: "ontology-match", label: "Ontology Match" },
-  { key: "enrichment",     label: "Enrichment" },
+  { key: "hypothesis",          label: "Hypothesis" },
+  { key: "discovery-questions", label: "Discovery Questions" },
+  { key: "persona-fit",        label: "Persona Fit" },
+  { key: "assumptions",        label: "Assumptions" },
 ] as const;
 
 // ── Account Context Header ────────────────────────────────────────────────────
@@ -54,11 +54,11 @@ function AccountHeader({ account, accountId }: { account: AccountContext; accoun
       <div className="flex-1" />
       <Btn
         variant="primary"
-        onClick={() => navigate(`/hypothesis/${accountId}`)}
+        onClick={() => navigate(`/drivers/${accountId}`)}
         className="gap-1.5"
       >
-        <Sparkles size={13} />
-        Generate AI Value Model
+        <ArrowRight size={13} />
+        Build Driver Tree
       </Btn>
     </div>
   );
@@ -70,7 +70,7 @@ function WorkspaceTabs({ accountId, activeTab }: { accountId: string; activeTab:
   return (
     <div className="flex border-b border-border px-6" role="tablist">
       {TABS.map((tab) => (
-        <Link key={tab.key} href={`/intelligence/${accountId}/${tab.key}`}>
+        <Link key={tab.key} href={`/hypothesis/${accountId}/${tab.key}`}>
           <button
             role="tab"
             aria-selected={activeTab === tab.key}
@@ -91,18 +91,18 @@ function WorkspaceTabs({ accountId, activeTab }: { accountId: string; activeTab:
 
 // ── Shell ──────────────────────────────────────────────────────────────────────
 
-export default function IntelligenceShell({
+export default function ValueHypothesisShell({
   account,
   children,
   rightRail,
-}: IntelligenceShellProps) {
+}: ValueHypothesisShellProps) {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? "";
   const [location] = useLocation();
 
   // Derive active tab from URL
   const segments = location.split("/");
-  const activeTab = segments[3] || "signals";
+  const activeTab = segments[3] || "hypothesis";
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

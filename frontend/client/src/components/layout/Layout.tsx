@@ -24,6 +24,7 @@ import {
   Building2, Radar, GitBranch, Package, FileOutput, Shield, Settings,
   Command, Sun, Moon, Frame, LifeBuoy, Send,
   PanelLeft, Eye, Lock, Wrench, Crown,
+  Lightbulb, FileCheck, Calculator, FileText, TrendingUp, Cog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -54,6 +55,7 @@ interface NavChild {
 }
 
 const NAV_DOMAINS: NavItem[] = [
+  // ── Home & Accounts ─────────────────────────────────────────────────────────
   {
     id: "home",
     label: "Home",
@@ -70,98 +72,82 @@ const NAV_DOMAINS: NavItem[] = [
     tier: "standard",
     description: "Select or create a prospect account",
   },
+  // ── 7-Step Methodology Workflow ─────────────────────────────────────────────
+  // Step 1: Intelligence
   {
     id: "intelligence",
     label: "Intelligence",
     icon: Radar,
     path: "/intelligence",
     tier: "standard",
-    description: "Discover and validate prospect pain signals",
-    children: [
-      { id: "intel-signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
-      { id: "intel-drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
-      { id: "intel-evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
-      { id: "intel-stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
-      { id: "intel-enrichment", label: "Enrichment", path: "/intelligence/enrichment", tier: "advanced" },
-      { id: "intel-hypotheses", label: "Hypotheses", path: "/intelligence/hypotheses", tier: "advanced" },
-      { id: "intel-competitive", label: "Competitive", path: "/intelligence/competitive", tier: "advanced" },
-      { id: "intel-roi", label: "ROI", path: "/intelligence/roi", tier: "advanced" },
-      { id: "intel-evidence-library", label: "Evidence Library", path: "/intelligence/evidence-library", tier: "advanced" },
-    ],
+    description: "AI-enriched prospect profile: signals, stakeholders, ontology",
   },
+  // Step 2: Value Hypothesis
   {
-    id: "studio",
-    label: "Value Studio",
-    icon: GitBranch,
-    path: "/studio",
-    tier: "advanced",
-    description: "Build the product-anchored business case",
-    children: [
-      { id: "studio-action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
-      { id: "studio-value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
-      { id: "studio-narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
-      { id: "studio-enrichment", label: "Enrichment", path: "/studio/enrichment", tier: "advanced" },
-      { id: "studio-competitive", label: "Competitive", path: "/studio/competitive", tier: "advanced" },
-      { id: "studio-roi", label: "ROI", path: "/studio/roi", tier: "advanced" },
-      { id: "studio-evidence", label: "Evidence", path: "/studio/evidence", tier: "advanced" },
-    ],
-  },
-  {
-    id: "context",
-    label: "Context Engine",
-    icon: Package,
-    path: "/context",
-    tier: "advanced",
-    description: "Vendor knowledge: Value Packs, models, formulas",
-    children: [
-      { id: "packs", label: "Value Packs", path: "/context/packs", tier: "standard" },
-      { id: "models", label: "Models", path: "/context/models", tier: "standard" },
-      { id: "value-trees", label: "Tree Explorer", path: "/context/value-trees/explorer", tier: "advanced" },
-      { id: "formulas", label: "Formulas", path: "/context/formulas", tier: "advanced" },
-      { id: "agents", label: "Agents", path: "/context/agents", tier: "advanced" },
-      { id: "ontology", label: "Ontology", path: "/context/ontology", tier: "advanced" },
-      { id: "ingestion", label: "Ingestion", path: "/context/ingestion/jobs", tier: "advanced" },
-      { id: "extraction", label: "Extraction", path: "/context/extraction", tier: "advanced" },
-      { id: "integrations", label: "Integrations", path: "/context/integrations", tier: "admin", badge: "Admin" },
-      { id: "sources", label: "Sources", path: "/context/sources", tier: "admin", badge: "Admin" },
-    ],
-  },
-  {
-    id: "deliverables",
-    label: "Deliverables",
-    icon: FileOutput,
-    path: "/deliverables",
+    id: "hypothesis",
+    label: "Value Hypothesis",
+    icon: Lightbulb,
+    path: "/hypothesis",
     tier: "standard",
-    description: "Packaged outputs for sharing with prospects",
-    children: [
-      { id: "cases", label: "Business Cases", path: "/deliverables/cases", tier: "standard" },
-      { id: "calculators", label: "Calculators", path: "/deliverables/calculators", tier: "advanced" },
-      { id: "cfo", label: "CFO View", path: "/deliverables/views/cfo", tier: "standard" },
-      { id: "executive", label: "Executive View", path: "/deliverables/views/executive", tier: "standard" },
-      { id: "technical", label: "Technical View", path: "/deliverables/views/technical", tier: "standard" },
-    ],
+    description: "AI-generated value hypotheses for the account",
   },
+  // Step 3: Driver Tree
   {
-    id: "governance",
-    label: "Governance",
-    icon: Shield,
-    path: "/governance",
-    tier: "admin",
-    description: "Audit, provenance, and compliance",
-    children: [
-      { id: "traces", label: "Decision Traces", path: "/governance/traces", tier: "standard" },
-      { id: "evidence-gov", label: "Evidence", path: "/governance/evidence", tier: "standard" },
-      { id: "provenance", label: "Provenance", path: "/governance/provenance", tier: "advanced" },
-      { id: "integrity", label: "Integrity", path: "/governance/integrity", tier: "advanced" },
-      { id: "compliance", label: "Compliance", path: "/governance/compliance", tier: "advanced" },
-      { id: "benchmarks", label: "Benchmarks", path: "/governance/benchmarks", tier: "admin", badge: "Admin" },
-      { id: "audit-log", label: "Audit Log", path: "/governance/audit/log", tier: "admin", badge: "Admin" },
-      { id: "health", label: "System Health", path: "/governance/health", tier: "admin", badge: "Admin" },
-    ],
+    id: "drivers",
+    label: "Driver Tree",
+    icon: GitBranch,
+    path: "/drivers",
+    tier: "standard",
+    description: "Map signals to business value drivers",
+  },
+  // Step 4: Evidence
+  {
+    id: "evidence",
+    label: "Evidence",
+    icon: FileCheck,
+    path: "/evidence",
+    tier: "standard",
+    description: "Verified evidence points supporting the drivers",
+  },
+  // Step 5: Calculator
+  {
+    id: "calculator",
+    label: "Calculator",
+    icon: Calculator,
+    path: "/calculator",
+    tier: "standard",
+    description: "ROI calculator and value model",
+  },
+  // Step 6: Value Case
+  {
+    id: "value-case",
+    label: "Value Case",
+    icon: FileText,
+    path: "/value-case",
+    tier: "standard",
+    description: "Generated narrative and messaging",
+  },
+  // Step 7: Value Realization
+  {
+    id: "realization",
+    label: "Value Realization",
+    icon: TrendingUp,
+    path: "/realization",
+    tier: "standard",
+    description: "GTM action plan based on validated hypotheses",
   },
 ];
 
+// ── Setup / Admin Section ─────────────────────────────────────────────────────
 const SUPPORT_ITEMS: NavItem[] = [
+  {
+    id: "setup",
+    label: "Setup",
+    icon: Cog,
+    path: "/workflow/prospect",
+    tier: "standard",
+    description: "Prospect setup and onboarding",
+  },
   {
     id: "settings",
     label: "Settings",
@@ -178,7 +164,6 @@ const SUPPORT_ITEMS: NavItem[] = [
     ],
   },
 ];
-
 const BOTTOM_ITEMS = [
   { icon: LifeBuoy, label: "Support" },
   { icon: Send, label: "Feedback" },
@@ -196,6 +181,60 @@ function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
   if (userTier === "admin") return true;
   if (userTier === "advanced") return tier !== "admin";
   return tier === "standard";
+}
+
+function resolveWorkspacePath(path: string, accountId: string | null): string {
+  if (!accountId) return path;
+  // Account-scoped workflow steps
+  const ACCOUNT_PREFIXES = ["/intelligence", "/hypothesis", "/drivers", "/evidence", "/calculator", "/value-case", "/realization"];
+  for (const prefix of ACCOUNT_PREFIXES) {
+    if (path === prefix) return `${prefix}/${accountId}`;
+    if (path.startsWith(prefix + "/")) return path.replace(prefix + "/", `${prefix}/${accountId}/`);
+  }
+  // Legacy studio routes (backward compat)
+  if (path === "/studio") return `/studio/${accountId}`;
+  if (path.startsWith("/studio/")) return path.replace("/studio/", `/studio/${accountId}/`);
+  return path;
+}
+
+function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
+  // Map top-level domains to readable labels
+  const domainLabels: Record<string, string> = {
+    home: "Home",
+    accounts: "Accounts",
+    intelligence: "Intelligence",
+    hypothesis: "Value Hypothesis",
+    drivers: "Driver Tree",
+    evidence: "Evidence",
+    calculator: "Calculator",
+    "value-case": "Value Case",
+    realization: "Value Realization",
+    studio: "Value Studio",
+    context: "Context Engine",
+    deliverables: "Deliverables",
+    governance: "Governance",
+    settings: "Settings",
+    workflow: "Workflow",
+    "command-center": "Command Center",
+  };
+
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length === 0) return [{ label: "Value Fabric" }];
+
+  const crumbs: { label: string; path?: string }[] = [];
+  const domain = segments[0];
+  crumbs.push({ label: domainLabels[domain] || domain, path: `/${domain}` });
+
+  // Add sub-segments as breadcrumbs
+  for (let i = 1; i < segments.length; i++) {
+    const seg = segments[i];
+    // Skip account IDs (UUIDs or numeric)
+    if (/^[0-9a-f-]{8,}$/i.test(seg) || /^\d+$/.test(seg)) continue;
+    const label = seg.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    crumbs.push({ label, path: "/" + segments.slice(0, i + 1).join("/") });
+  }
+
+  return crumbs;
 }
 
 /* ─── Tooltip ─── */
