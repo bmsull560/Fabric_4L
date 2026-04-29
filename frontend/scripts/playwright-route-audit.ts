@@ -84,9 +84,9 @@ async function audit(page:Page,routePath:string,from:string,vpName:string,vp:{w:
   const onR=(r:Response)=>{const s=r.status();if(s>=400&&!r.url().includes('localhost:3001'))nf.push(`${r.request().method()} ${r.url()} — HTTP ${s}`);};
   page.on('console',onC);page.on('requestfailed',onF);page.on('response',onR);
   await page.setViewportSize({width:vp.w,height:vp.h});
-  try{await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'networkidle',timeout:30000});}
-  catch(e:any){notes.push(`nav timeout:${e.message}`);try{await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'load',timeout:15000});}catch(e2:any){notes.push(`load fallback:${e2.message}`);}}
-  await page.waitForTimeout(1500);
+  try{await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'load',timeout:15000});}
+  catch(e:any){notes.push(`nav timeout:${e.message}`);try{await page.goto(`${BASE_URL}${routePath}`,{waitUntil:'domcontentloaded',timeout:10000});}catch(e2:any){notes.push(`load fallback:${e2.message}`);}}
+  await page.waitForTimeout(800);
   const title=await page.title().catch(()=>'?');
   const h1=await page.locator('h1').first().textContent().catch(()=>'');
   const h2=await page.locator('h2').first().textContent().catch(()=>'');
