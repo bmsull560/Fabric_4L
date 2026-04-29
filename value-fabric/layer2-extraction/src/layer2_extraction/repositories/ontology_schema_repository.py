@@ -127,7 +127,7 @@ class OntologySchemaRepository:
                     id=row["id"],
                     name=row["name"],
                     type=row["property_type"],
-                    description=row["description"],
+                    description=row["description"] or "",
                     required=row["required"],
                     default_value=row["default_value"],
                     constraints=constraints,
@@ -699,4 +699,4 @@ class OntologySchemaRepository:
                     )
 
         # Return the imported schema
-        return await self.get_schema(tenant_id)
+        return await self.get_schema()

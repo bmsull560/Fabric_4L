@@ -112,12 +112,20 @@ class FormulaMetadata(BaseModel):
     """Metadata for a registered formula."""
 
     id: str = Field(..., description="Formula identifier")
+    formula_id: str | None = Field(default=None, description="Alias for id (frontend compatibility)")
     name: str = Field(..., description="Formula name")
     description: str = Field(..., description="Formula description")
     category: str = Field(..., description="Formula category (e.g., ROI, Payback, NPV)")
     expression: str = Field(..., description="Formula expression template")
     variables: list[VariableMetadata] = Field(..., description="Required variables")
     output_unit: str = Field(..., description="Output unit")
+    version: str = Field(default="1.0.0", description="Formula version (semver)")
+    status: str = Field(default="active", description="Formula status")
+    updated_at: str | None = Field(default=None, description="Last updated timestamp")
+    created_at: str | None = Field(default=None, description="Creation timestamp")
+    used_in_count: int = Field(default=0, description="Number of packs using this formula")
+    owner: str | None = Field(default=None, description="Formula owner email")
+    governance_score: float | None = Field(default=None, description="Governance score 0-1")
 
 
 class VariablesRegistryResponse(BaseModel):

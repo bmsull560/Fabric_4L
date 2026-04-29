@@ -16,7 +16,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from .context import RequestContext
+from .context import RequestContext, set_request_context
 from .jwt import decode_jwt
 from .permissions import get_permissions_for_role
 
@@ -293,6 +293,7 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
 
         context = await self._authenticate(request)
         request.state.governance_context = context
+        set_request_context(context)
 
         # Security hardening: Reject unauthenticated requests (no tenant resolved)
         if not context.tenant_id:
@@ -307,6 +308,19 @@ class GovernanceMiddleware(BaseHTTPMiddleware):
                 media_type="application/json",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+        # P0 FIX: Validate X-Tenant-ID header matches JWT tenant claim
+        header_tenant_id = request.headers.get("X-Tenant-ID")
+        if header_tenant_id:
+            try:
+                validate_context_consistency(context, header_tenant_id)
+            except ValueError as e:
+                logger.warning("Tenant ID mismatch: %s", e)
+                return Response(
+                    content=f'{"error":"tenant_mismatch","detail":"{str(e)}"}',
+                    status_code=400,
+                    media_type="application/json",
+                )
 
         # Task 1.5: Enforce tenant lifecycle status (suspended/pending/deleted)
         if context.tenant_id:

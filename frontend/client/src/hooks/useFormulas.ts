@@ -40,8 +40,12 @@ async function fetchFormulas(filters: FormulaFilters): Promise<Formula[]> {
 
   const response = await apiClient.get('l3', `/formulas?${params.toString()}`);
   
+  // Backend returns { formulas: [...], total: number }
+  const wrapper = response.data as { formulas?: unknown[]; total?: number } | unknown[];
+  const formulasArray = Array.isArray(wrapper) ? wrapper : (wrapper.formulas ?? []);
+  
   // Runtime validation with Zod
-  const parsed = FormulaListSchema.safeParse(response.data);
+  const parsed = FormulaListSchema.safeParse(formulasArray);
   if (!parsed.success) {
     if (process.env.NODE_ENV === 'development') {
       console.error('Formula list validation failed:', parsed.error);

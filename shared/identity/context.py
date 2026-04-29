@@ -156,7 +156,11 @@ def get_current_context() -> RequestContext | None:
     return _current_context.get()
 
 
-def set_current_context(context: RequestContext) -> None:
+# Alias for compatibility with value-fabric/shared/identity API
+get_request_context = get_current_context
+
+
+def set_current_context(context: RequestContext | None) -> None:
     """Set the current request context in async context storage.
     
     Args:
@@ -165,6 +169,28 @@ def set_current_context(context: RequestContext) -> None:
     _current_context.set(context)
 
 
+# Alias for compatibility with value-fabric/shared/identity API
+set_request_context = set_current_context
+
+
 def clear_current_context() -> None:
     """Clear the current request context from async context storage."""
     _current_context.set(None)
+
+
+def require_context() -> RequestContext:
+    """Get the current request context, raising if not set.
+    
+    Returns:
+        Current RequestContext
+        
+    Raises:
+        RuntimeError: If no context is set
+    """
+    ctx = _current_context.get()
+    if ctx is None:
+        raise RuntimeError(
+            "No RequestContext is set — ensure GovernanceMiddleware is installed "
+            "and that it calls set_request_context() after authentication."
+        )
+    return ctx

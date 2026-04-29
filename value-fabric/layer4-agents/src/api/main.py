@@ -163,7 +163,7 @@ async def lifespan(app: FastAPI):
     state_manager = StateManager()  # Add Redis client if configured
 
     # P0: Verify Redis connectivity (required for rate limiting, feature flags, and WebSocket)
-    redis_client = getattr(state_manager, "redis_client", None)
+    redis_client = getattr(state_manager, "redis", None)
     if redis_client is not None:
         try:
             await redis_client.ping()

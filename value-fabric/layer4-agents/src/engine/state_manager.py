@@ -152,8 +152,8 @@ class StateManager:
                     state_adapter = TypeAdapter(dict[str, Any])
                     state_dict = state_adapter.validate_json(data)
                     return self._deserialize_state(state_dict)
-                except ValidationError as e:
-                    logger.error(f"Failed to validate state for workflow {workflow_id}: {e}")
+                except (ValidationError, ValueError) as e:
+                    logger.error(f"Failed to deserialize state for workflow {workflow_id}: {e}")
                     return None
         else:
             stored = self._memory_store.get(key)

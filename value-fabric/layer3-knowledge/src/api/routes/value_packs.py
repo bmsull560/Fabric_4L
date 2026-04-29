@@ -149,7 +149,9 @@ class PackSummary(BaseModel):
     """Summary of Value Pack."""
 
     pack_id: str
+    id: str | None = None  # Alias for pack_id (frontend compatibility)
     name: str
+    description: str | None = None
     industry: str
     segment: str | None
     status: str
@@ -467,7 +469,9 @@ async def list_packs(
         return [
             PackSummary(
                 pack_id=r["vp"]["id"],
+                id=r["vp"]["id"],
                 name=r["vp"].get("name", ""),
+                description=r["vp"].get("description"),
                 industry=r["vp"].get("industry", ""),
                 segment=r["vp"].get("segment"),
                 status=r["vp"].get("status", "draft"),

@@ -19,25 +19,25 @@ export const CalculationStepSchema = z.object({
 
 /** Schema for formula data with governance and versioning */
 export const FormulaSchema = z.object({
-  id: z.string().uuid('ID must be a valid UUID'),
-  formula_id: z.string().min(1, 'Formula ID is required'),
+  id: z.string().min(1, 'ID is required'),
+  formula_id: z.string().optional(),
   name: z.string().min(1, 'Formula name cannot be empty'),
   description: z.string().optional(),
   domain: z.string().optional(),
   formula_type: FormulaTypeSchema.optional(),
   pack_id: z.string().optional(),
   pack_name: z.string().optional(),
-  version: z.string().regex(/^\d+\.\d+(\.\d+)?$/, 'Version must follow semantic versioning (e.g., 1.0.0)'),
-  status: FormulaStatusSchema,
-  owner: z.string().email('Owner must be a valid email').optional(),
-  updated_at: z.string().datetime({ message: 'Updated at must be ISO 8601 datetime' }),
-  created_at: z.string().datetime({ message: 'Created at must be ISO 8601 datetime' }),
-  used_in_count: z.number().int().min(0),
+  version: z.string().optional().default('1.0.0'),
+  status: z.string().optional().default('active'),
+  owner: z.string().optional(),
+  updated_at: z.string().optional(),
+  created_at: z.string().optional(),
+  used_in_count: z.number().int().min(0).optional().default(0),
   governance_score: z.number().min(0).max(1).optional(),
-  last_reviewed: z.string().datetime({ message: 'Last reviewed must be ISO 8601 datetime' }).optional(),
+  last_reviewed: z.string().optional(),
   reviewers: z.array(z.string().email('Reviewer must be a valid email')).optional(),
   expression: z.string().optional(),
-  variables: z.array(z.string()).optional(),
+  variables: z.any().optional(),
 });
 
 export const FormulaListSchema = z.array(FormulaSchema);
