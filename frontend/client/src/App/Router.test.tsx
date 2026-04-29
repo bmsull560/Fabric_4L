@@ -1,9 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { Router } from 'wouter';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 vi.mock('@/components', () => ({
   AppShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Layout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   Toaster: () => null,
   TooltipProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -74,5 +77,26 @@ describe('App governance router', () => {
 
     renderAt('/governance/audit/changes');
     expect(await screen.findByText('Governance Change History Page')).toBeInTheDocument();
+  });
+
+  it('keeps canonical workspace and governance route literals out of App.tsx', () => {
+    const appTsx = readFileSync(resolve(__dirname, '../App.tsx'), 'utf8');
+    const removedCanonicalPaths = [
+      '/intelligence',
+      '/intelligence/:accountId',
+      '/studio',
+      '/studio/:accountId',
+      '/governance',
+      '/governance/traces',
+      '/trust',
+      '/trust/traces',
+      '/evidence',
+      '/evidence/traces',
+    ];
+
+    for (const path of removedCanonicalPaths) {
+      const routeLiteral = new RegExp(`<Route\\s+path=\\"${path}\\"`, 'g');
+      expect(appTsx.match(routeLiteral) ?? []).toHaveLength(0);
+    }
   });
 });
