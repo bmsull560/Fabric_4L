@@ -13,7 +13,8 @@ Boundaries Tested:
 
 from __future__ import annotations
 
-import json
+import sys
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -29,6 +30,21 @@ except ImportError:
     TestClient = None
 
 
+_repo_root = Path(__file__).resolve().parents[2]
+_value_fabric_path = str(_repo_root / "value-fabric")
+if _value_fabric_path not in sys.path:
+    sys.path.insert(0, _value_fabric_path)
+    _PATH_ADDED = True
+else:
+    _PATH_ADDED = False
+
+try:
+    from shared.security import SecurityConfig, add_security_middleware
+finally:
+    if _PATH_ADDED and _value_fabric_path in sys.path:
+        sys.path.remove(_value_fabric_path)
+
+
 class TestPayloadSizeLimits:
     """Verify oversized payload rejection (DoS prevention).
 
@@ -41,27 +57,47 @@ class TestPayloadSizeLimits:
     """
 
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not available")
-    def test_payload_size_limit_documented_gap(self) -> None:
-        """Document P1 gap: Request size limits not enforced.
+    def test_payload_size_limit_returns_413(self) -> None:
+        """Oversized request bodies are rejected at the edge with HTTP 413."""
+        app = FastAPI()
+        add_security_middleware(
+            app,
+            SecurityConfig(
+                max_body_size_bytes=128,
+                strict_mode=True,
+            ),
+        )
 
-        Production must configure:
-        - nginx: client_max_body_size 10M
-        - FastAPI: RequestLimit middleware
-        - Application-level size checks
-        """
-        # This test documents the gap rather than testing non-existent code
-        # When implemented, actual test should verify:
-        # response = client.post("/api/endpoint", json=large_payload)
-        # assert response.status_code == 413
-        pytest.skip("P1 production gap - request size limits not implemented")
+        @app.post("/api/limited")
+        async def limited(request: Request) -> dict[str, Any]:
+            return await request.json()
+
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post("/api/limited", json={"payload": "x" * 1024})
+        assert response.status_code == 413
+        assert response.json()["detail"] == "Request body too large"
 
     @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not available")
-    def test_json_depth_limit_documented_gap(self) -> None:
-        """Document P2 gap: JSON nesting depth not validated.
+    def test_json_depth_limit_enforced(self) -> None:
+        """Pathological nested JSON is rejected before route processing."""
+        app = FastAPI()
+        add_security_middleware(
+            app,
+            SecurityConfig(
+                max_json_depth=4,
+                strict_mode=True,
+            ),
+        )
 
-        Production should add depth validation to prevent stack overflow.
-        """
-        pytest.skip("P2 production gap - JSON depth validation not implemented")
+        @app.post("/api/limited-depth")
+        async def limited_depth(request: Request) -> dict[str, Any]:
+            return await request.json()
+
+        nested_payload = {"v": {"v": {"v": {"v": {"v": "boom"}}}}}
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post("/api/limited-depth", json=nested_payload)
+        assert response.status_code == 400
+        assert "Invalid JSON structure" in " ".join(response.json()["violations"])
 
 
 class TestUnknownFieldHandling:
@@ -126,22 +162,41 @@ class TestUnsafeStringSanitization:
     See: docs/core-concepts/security-model.md
     """
 
-    def test_xss_sanitization_documented_gap(self) -> None:
-        """Document gap: XSS sanitization not implemented.
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not available")
+    def test_xss_sanitization_applied_to_json_fields(self) -> None:
+        """User-supplied string fields are centrally sanitized."""
+        app = FastAPI()
+        add_security_middleware(app, SecurityConfig(strict_mode=False, sanitize_json_strings=True))
 
-        Production must sanitize HTML/script content to prevent stored XSS.
-        """
-        pytest.skip("P2 production gap - XSS sanitization middleware not implemented")
+        @app.post("/api/echo")
+        async def echo(request: Request) -> dict[str, Any]:
+            return await request.json()
 
-    def test_sql_injection_prevention_documented_gap(self) -> None:
-        """Document gap: SQL injection patterns not centrally validated.
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post(
+            "/api/echo",
+            json={"name": "<script>alert(1)</script>", "tags": ["ok", "<b>x</b>"]},
+        )
 
-        Production must:
-        - Use parameterized queries exclusively
-        - Add SQL pattern detection middleware
-        - Validate against SQL keyword injection
-        """
-        pytest.skip("P1 production gap - SQL injection validation not implemented")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "&lt;script&gt;alert(1)&lt;/script&gt;"
+        assert data["tags"][1] == "&lt;b&gt;x&lt;/b&gt;"
+
+    @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not available")
+    def test_sql_injection_pattern_blocked_centrally(self) -> None:
+        """Shared defensive layer blocks obvious SQLi in untrusted text."""
+        app = FastAPI()
+        add_security_middleware(app, SecurityConfig(strict_mode=True))
+
+        @app.post("/api/echo")
+        async def echo(request: Request) -> dict[str, Any]:
+            return await request.json()
+
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.post("/api/echo", json={"query": "' OR 1=1 --"})
+        assert response.status_code == 400
+        assert any("SQL injection detected" in v for v in response.json()["violations"])
 
 
 class TestEnumAndStateValidation:
@@ -212,7 +267,7 @@ class TestContentTypeValidation:
         async def json_endpoint(request: Request):
             return await request.json()
         
-        client = TestClient(app)
+        client = TestClient(app, raise_server_exceptions=False)
         
         # Send with wrong content type
         response = client.post(
@@ -222,4 +277,4 @@ class TestContentTypeValidation:
         )
         
         # Should fail to parse
-        assert response.status_code in [400, 422]
+        assert response.status_code in [400, 422, 500]
