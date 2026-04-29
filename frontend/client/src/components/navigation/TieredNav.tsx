@@ -321,214 +321,90 @@ const NAV_SPINE: NavItem[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 6. GOVERNANCE — Trust Layer
-  // "Can I trust this, and can I prove it?"
+  // 6. MY SETTINGS
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "governance",
-    label: "Governance",
-    icon: <Shield size={16} />,
-    path: "/governance",
+    id: "my-settings",
+    label: "My Settings",
+    icon: <Settings size={16} />,
+    path: "/my-settings",
     tier: "standard",
-    description: "Audit, provenance, and compliance",
+    description: "Personal profile and preferences",
     children: [
-      {
-        id: "traces",
-        label: "Decision Traces",
-        path: "/governance/traces",
-        tier: "standard",
-      },
-      {
-        id: "evidence-gov",
-        label: "Evidence",
-        path: "/governance/evidence",
-        tier: "standard",
-      },
-      {
-        id: "provenance",
-        label: "Provenance",
-        path: "/governance/provenance",
-        tier: "advanced",
-      },
-      {
-        id: "integrity",
-        label: "Integrity",
-        path: "/governance/integrity",
-        tier: "advanced",
-      },
-      {
-        id: "compliance",
-        label: "Compliance",
-        path: "/governance/compliance",
-        tier: "advanced",
-      },
-      {
-        id: "benchmarks",
-        label: "Benchmarks",
-        path: "/governance/benchmarks",
-        tier: "admin",
-        badge: "Admin",
-      },
-      {
-        id: "audit",
-        label: "Audit",
-        path: "/governance/audit",
-        tier: "admin",
-        badge: "Admin",
-        children: [
-          {
-            id: "audit-log",
-            label: "Audit Log",
-            path: "/governance/audit/log",
-            tier: "admin",
-          },
-          {
-            id: "changes",
-            label: "Change History",
-            path: "/governance/audit/changes",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "health",
-        label: "System Health",
-        path: "/governance/health",
-        tier: "admin",
-        badge: "Admin",
-      },
+      { id: "my-profile", label: "Profile", path: "/my-settings/profile", tier: "standard" },
+      { id: "my-preferences", label: "Preferences", path: "/my-settings/preferences", tier: "standard" },
+      { id: "my-notifications", label: "Notifications", path: "/my-settings/notifications", tier: "standard" },
+      { id: "my-appearance", label: "Appearance", path: "/my-settings/appearance", tier: "standard" },
+      { id: "my-accounts", label: "Accounts", path: "/my-settings/accounts", tier: "standard" },
     ],
   },
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 7. SETTINGS — Tenant Configuration
-  // "How is the platform configured?"
-  // ═══════════════════════════════════════════════════════════════════════════
   {
-    id: "settings",
-    label: "Settings",
+    id: "workspace-settings",
+    label: "Workspace Settings",
     icon: <Settings size={16} />,
-    path: "/settings",
+    path: "/workspace-settings",
     tier: "admin",
-    description: "Platform configuration and user management",
     badge: "Admin",
     children: [
-      {
-        id: "content",
-        label: "Content",
-        path: "/settings/content",
-        tier: "admin",
-        children: [
-          {
-            id: "formula-registry",
-            label: "Formula Registry",
-            path: "/settings/content/formulas",
-            tier: "admin",
-          },
-          {
-            id: "versions",
-            label: "Version History",
-            path: "/settings/content/versions",
-            tier: "admin",
-          },
-          {
-            id: "approvals",
-            label: "Approval Queue",
-            path: "/settings/content/approvals",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "data",
-        label: "Data",
-        path: "/settings/data",
-        tier: "admin",
-        children: [
-          {
-            id: "variables",
-            label: "Variable Registry",
-            path: "/settings/data/variables",
-            tier: "admin",
-          },
-          {
-            id: "bindings",
-            label: "Source Bindings",
-            path: "/settings/data/bindings",
-            tier: "admin",
-          },
-          {
-            id: "quality",
-            label: "Quality Rules",
-            path: "/settings/data/quality",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "access",
-        label: "Access",
-        path: "/settings/access",
-        tier: "admin",
-        children: [
-          {
-            id: "roles",
-            label: "Roles & Permissions",
-            path: "/settings/access/roles",
-            tier: "admin",
-          },
-          {
-            id: "teams",
-            label: "Teams",
-            path: "/settings/access/teams",
-            tier: "admin",
-          },
-          {
-            id: "keys",
-            label: "API Keys",
-            path: "/settings/access/keys",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "system",
-        label: "System",
-        path: "/settings/system",
-        tier: "admin",
-        children: [
-          {
-            id: "system-settings",
-            label: "Settings",
-            path: "/settings/system/settings",
-            tier: "admin",
-          },
-          {
-            id: "system-billing",
-            label: "Billing",
-            path: "/settings/system/billing",
-            tier: "admin",
-          },
-          {
-            id: "system-billing-usage",
-            label: "Usage",
-            path: "/settings/system/billing/usage",
-            tier: "admin",
-          },
-          {
-            id: "system-billing-invoices",
-            label: "Invoices",
-            path: "/settings/system/billing/invoices",
-            tier: "admin",
-          },
-          {
-            id: "system-billing-payments",
-            label: "Payments",
-            path: "/settings/system/billing/payments",
-            tier: "admin",
-          },
-        ],
-      },
+      { id: "workspace-integrations", label: "Integrations", path: "/workspace-settings/integrations", tier: "admin" },
+      { id: "workspace-sources", label: "Sources", path: "/workspace-settings/sources", tier: "admin" },
+    ],
+  },
+  {
+    id: "organization-admin",
+    label: "Organization Admin",
+    icon: <Shield size={16} />,
+    path: "/organization-admin",
+    tier: "admin",
+    badge: "Admin",
+    children: [
+      { id: "org-members", label: "Members", path: "/organization-admin/members", tier: "admin" },
+      { id: "org-roles", label: "Roles", path: "/organization-admin/roles", tier: "admin" },
+      { id: "org-billing", label: "Billing", path: "/organization-admin/billing", tier: "admin" },
+      { id: "org-teams", label: "Teams", path: "/organization-admin/teams", tier: "admin" },
+    ],
+  },
+  {
+    id: "platform-configuration",
+    label: "Platform Configuration",
+    icon: <GitBranch size={16} />,
+    path: "/platform-configuration",
+    tier: "admin",
+    badge: "Admin",
+    children: [
+      { id: "platform-integrations", label: "Integrations", path: "/platform-configuration/integrations", tier: "admin" },
+      { id: "platform-api-keys", label: "API Keys", path: "/platform-configuration/api-keys", tier: "admin" },
+      { id: "platform-webhooks", label: "Webhooks", path: "/platform-configuration/webhooks", tier: "admin" },
+      { id: "platform-model-routing", label: "Model Routing", path: "/platform-configuration/model-routing", tier: "admin" },
+      { id: "platform-feature-flags", label: "Feature Flags", path: "/platform-configuration/feature-flags", tier: "admin" },
+    ],
+  },
+  {
+    id: "governance-center",
+    label: "Governance Center",
+    icon: <Shield size={16} />,
+    path: "/governance-center",
+    tier: "admin",
+    badge: "Admin",
+    children: [
+      { id: "gov-evidence-policy", label: "Evidence Policy", path: "/governance-center/evidence-policy", tier: "admin" },
+      { id: "gov-compliance", label: "Compliance", path: "/governance-center/compliance", tier: "admin" },
+      { id: "gov-audit-retention", label: "Audit Retention", path: "/governance-center/audit-retention", tier: "admin" },
+      { id: "gov-residency", label: "Residency", path: "/governance-center/residency", tier: "admin" },
+    ],
+  },
+  {
+    id: "developer-console",
+    label: "Developer Console",
+    icon: <Wrench size={16} />,
+    path: "/developer-console",
+    tier: "admin",
+    badge: "Admin",
+    children: [
+      { id: "dev-health", label: "Health", path: "/developer-console/health", tier: "admin" },
+      { id: "dev-traces", label: "Traces", path: "/developer-console/traces", tier: "admin" },
+      { id: "dev-queue-diagnostics", label: "Queue Diagnostics", path: "/developer-console/queue-diagnostics", tier: "admin" },
+      { id: "dev-log-diagnostics", label: "Log Diagnostics", path: "/developer-console/log-diagnostics", tier: "admin" },
     ],
   },
 ];
