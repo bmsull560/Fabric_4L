@@ -617,6 +617,8 @@ jobs:
       - name: Run contract and architecture tests
         run: |
           pytest tests/contract/ tests/arch/ -v --tb=short
+          pytest packages/platform-contract/src/python/canonical/test_contract_invariants.py -v --tb=short
+          cd packages/platform-contract && npm run check
 
       - name: Run tool contract validation
         run: |

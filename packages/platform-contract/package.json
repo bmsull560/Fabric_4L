@@ -10,7 +10,8 @@
     "./routing": "./src/typescript/routing.ts"
   },
   "scripts": {
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "contract:test": "pytest src/python/canonical/test_contract_invariants.py -v --tb=short && npm run check"
   },
   "devDependencies": {
     "typescript": "^5.6.0"
