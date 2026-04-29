@@ -31,6 +31,15 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { useUserTierStore, type UserTier } from "@/hooks";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { resolveWorkspaceRoutePath } from "@/navigation/accountRouting";
+import {
+  NAVIGATION_SCHEMA,
+  TIER_LABELS as NAV_TIER_LABELS,
+  getBreadcrumbLabels,
+  getConfigurationSlice,
+  getGovernanceSlice,
+  getSettingsSlice,
+  getSidebarTreeModel,
+} from "@/navigation/schema";
 
 /* ─── Nav Data ─── */
 interface NavItem {
@@ -39,197 +48,39 @@ interface NavItem {
   icon: React.ElementType;
   path: string;
   tier: UserTier;
-  children?: NavChild[];
-  description?: string;
-}
-
-interface NavChild {
-  id: string;
-  label: string;
-  path: string;
-  tier: UserTier;
+  children?: NavItem[];
   badge?: string;
-  children?: NavChild[];
 }
 
-const NAV_DOMAINS: NavItem[] = [
-  {
-    id: "home",
-    label: "Home",
-    icon: Frame,
-    path: "/home",
-    tier: "standard",
-    description: "Dashboard & prospect prompt builder",
-  },
-  {
-    id: "accounts",
-    label: "Accounts",
-    icon: Building2,
-    path: "/accounts",
-    tier: "standard",
-    description: "Select or create a prospect account",
-  },
-  {
-    id: "intelligence",
-    label: "Intelligence",
-    icon: Radar,
-    path: "/intelligence",
-    tier: "standard",
-    description: "Discover and validate prospect pain signals",
-    children: [
-      { id: "intel-signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
-      { id: "intel-drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
-      { id: "intel-evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
-      { id: "intel-stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
-      { id: "intel-enrichment", label: "Enrichment", path: "/intelligence/enrichment", tier: "advanced" },
-      { id: "intel-hypotheses", label: "Hypotheses", path: "/intelligence/hypotheses", tier: "advanced" },
-      { id: "intel-competitive", label: "Competitive", path: "/intelligence/competitive", tier: "advanced" },
-      { id: "intel-roi", label: "ROI", path: "/intelligence/roi", tier: "advanced" },
-      { id: "intel-evidence-library", label: "Evidence Library", path: "/intelligence/evidence-library", tier: "advanced" },
-    ],
-  },
-  {
-    id: "studio",
-    label: "Value Studio",
-    icon: GitBranch,
-    path: "/studio",
-    tier: "advanced",
-    description: "Build the product-anchored business case",
-    children: [
-      { id: "studio-action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
-      { id: "studio-value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
-      { id: "studio-narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
-      { id: "studio-enrichment", label: "Enrichment", path: "/studio/enrichment", tier: "advanced" },
-      { id: "studio-competitive", label: "Competitive", path: "/studio/competitive", tier: "advanced" },
-      { id: "studio-roi", label: "ROI", path: "/studio/roi", tier: "advanced" },
-      { id: "studio-evidence", label: "Evidence", path: "/studio/evidence", tier: "advanced" },
-    ],
-  },
-  {
-    id: "context",
-    label: "Context Engine",
-    icon: Package,
-    path: "/context",
-    tier: "advanced",
-    description: "Vendor knowledge: Value Packs, models, formulas",
-    children: [
-      { id: "packs", label: "Value Packs", path: "/context/packs", tier: "standard" },
-      { id: "models", label: "Models", path: "/context/models", tier: "standard" },
-      { id: "value-trees", label: "Tree Explorer", path: "/context/value-trees/explorer", tier: "advanced" },
-      { id: "formulas", label: "Formulas", path: "/context/formulas", tier: "advanced" },
-      { id: "agents", label: "Agents", path: "/context/agents", tier: "advanced" },
-      { id: "ontology", label: "Ontology", path: "/context/ontology", tier: "advanced" },
-      { id: "ingestion", label: "Ingestion", path: "/context/ingestion/jobs", tier: "advanced" },
-      { id: "extraction", label: "Extraction", path: "/context/extraction", tier: "advanced" },
-      { id: "integrations", label: "Integrations", path: "/context/integrations", tier: "admin", badge: "Admin" },
-      { id: "sources", label: "Sources", path: "/context/sources", tier: "admin", badge: "Admin" },
-    ],
-  },
-  {
-    id: "deliverables",
-    label: "Deliverables",
-    icon: FileOutput,
-    path: "/deliverables",
-    tier: "standard",
-    description: "Packaged outputs for sharing with prospects",
-    children: [
-      { id: "cases", label: "Business Cases", path: "/deliverables/cases", tier: "standard" },
-      { id: "calculators", label: "Calculators", path: "/deliverables/calculators", tier: "advanced" },
-      { id: "cfo", label: "CFO View", path: "/deliverables/views/cfo", tier: "standard" },
-      { id: "executive", label: "Executive View", path: "/deliverables/views/executive", tier: "standard" },
-      { id: "technical", label: "Technical View", path: "/deliverables/views/technical", tier: "standard" },
-    ],
-  },
-  {
-    id: "governance",
-    label: "Governance",
-    icon: Shield,
-    path: "/governance",
-    tier: "admin",
-    description: "Audit, provenance, and compliance",
-    children: [
-      { id: "traces", label: "Decision Traces", path: "/governance/traces", tier: "standard" },
-      { id: "evidence-gov", label: "Evidence", path: "/governance/evidence", tier: "standard" },
-      { id: "provenance", label: "Provenance", path: "/governance/provenance", tier: "advanced" },
-      { id: "integrity", label: "Integrity", path: "/governance/integrity", tier: "advanced" },
-      { id: "compliance", label: "Compliance", path: "/governance/compliance", tier: "advanced" },
-      { id: "benchmarks", label: "Benchmarks", path: "/governance/benchmarks", tier: "admin", badge: "Admin" },
-      { id: "audit-log", label: "Audit Log", path: "/governance/audit/log", tier: "admin", badge: "Admin" },
-      { id: "health", label: "System Health", path: "/governance/health", tier: "admin", badge: "Admin" },
-    ],
-  },
-];
+const ICONS: Record<string, React.ElementType> = {
+  home: Frame,
+  accounts: Building2,
+  intelligence: Radar,
+  studio: GitBranch,
+  context: Package,
+  deliverables: FileOutput,
+  governance: Shield,
+  settings: Settings,
+};
 
-const SUPPORT_ITEMS: NavItem[] = [
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    path: "/settings",
-    tier: "admin",
-    description: "Platform configuration and user management",
-    children: [
-      { id: "content-formulas", label: "Formulas", path: "/settings/content/formulas", tier: "admin" },
-      { id: "data-variables", label: "Variables", path: "/settings/data/variables", tier: "admin" },
-      { id: "access-roles", label: "Roles", path: "/settings/access/roles", tier: "admin" },
-      { id: "system-settings", label: "System", path: "/settings/system/settings", tier: "admin" },
-      { id: "system-billing", label: "Billing", path: "/settings/system/billing", tier: "admin" },
-    ],
-  },
-];
+const TIER_ICON: Record<Exclude<UserTier, "unknown">, React.ElementType> = {
+  standard: Eye,
+  advanced: Wrench,
+  admin: Crown,
+};
+
+function withIcons(items: readonly NavItem[]): NavItem[] {
+  return items.map(item => ({
+    ...item,
+    icon: ICONS[item.id] ?? Settings,
+    children: item.children ? withIcons(item.children as NavItem[]) : undefined,
+  }));
+}
 
 const BOTTOM_ITEMS = [
   { icon: LifeBuoy, label: "Support" },
   { icon: Send, label: "Feedback" },
 ];
-
-const TIER_LABELS: Record<UserTier, { label: string; icon: React.ElementType }> = {
-  unknown: { label: "Standard", icon: Eye },
-  standard: { label: "Standard", icon: Eye },
-  advanced: { label: "Advanced", icon: Wrench },
-  admin: { label: "Admin", icon: Crown },
-};
-
-/* ─── Helpers ─── */
-function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
-  if (userTier === "admin") return true;
-  if (userTier === "advanced") return tier !== "admin";
-  return tier === "standard";
-}
-
-function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
-  // Map top-level domains to readable labels
-  const domainLabels: Record<string, string> = {
-    home: "Home",
-    accounts: "Accounts",
-    intelligence: "Intelligence",
-    studio: "Value Studio",
-    context: "Context Engine",
-    deliverables: "Deliverables",
-    governance: "Governance",
-    settings: "Settings",
-    workflow: "Workflow",
-    "command-center": "Command Center",
-  };
-
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return [{ label: "Value Fabric" }];
-
-  const crumbs: { label: string; path?: string }[] = [];
-  const domain = segments[0];
-  crumbs.push({ label: domainLabels[domain] || domain, path: `/${domain}` });
-
-  // Add sub-segments as breadcrumbs
-  for (let i = 1; i < segments.length; i++) {
-    const seg = segments[i];
-    // Skip account IDs (UUIDs or numeric)
-    if (/^[0-9a-f-]{8,}$/i.test(seg) || /^\d+$/.test(seg)) continue;
-    const label = seg.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    crumbs.push({ label, path: "/" + segments.slice(0, i + 1).join("/") });
-  }
-
-  return crumbs;
-}
 
 /* ─── Tooltip ─── */
 function SidebarTooltip({ text, children }: { text: string; children: React.ReactNode }) {
@@ -331,7 +182,7 @@ interface NavSectionProps {
   item: NavItem;
   isCollapsed: boolean;
   currentPath: string;
-  effectiveTier: UserTier;
+  effectiveTier: Exclude<UserTier, "unknown">;
   selectedAccountId: string | null;
   onNavigate: (path: string) => void;
 }
@@ -342,7 +193,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
   const [isOpen, setIsOpen] = useState(isActive);
 
   const visibleChildren = useMemo(
-    () => item.children?.filter(c => isItemVisible(c.tier, effectiveTier)),
+    () => item.children,
     [item.children, effectiveTier]
   );
 
@@ -397,21 +248,22 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
 
 /* ─── Tier Switcher (compact) ─── */
 interface TierSwitcherProps {
-  currentTier: UserTier;
-  onTierChange: (tier: UserTier) => void;
+  currentTier: Exclude<UserTier, "unknown">;
+  onTierChange: (tier: Exclude<UserTier, "unknown">) => void;
   isCollapsed: boolean;
 }
 
 function TierSwitcher({ currentTier, onTierChange, isCollapsed }: TierSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const TierIcon = TIER_LABELS[currentTier].icon;
+  const safeTier = currentTier === "unknown" ? "standard" : currentTier;
+  const TierIcon = TIER_ICON[safeTier];
 
   if (isCollapsed) {
     return (
-      <SidebarTooltip text={`${TIER_LABELS[currentTier].label} Mode`}>
+      <SidebarTooltip text={`${NAV_TIER_LABELS[safeTier].label} Mode`}>
         <button
           onClick={() => {
-            const tiers: UserTier[] = ["standard", "advanced", "admin"];
+            const tiers: Array<Exclude<UserTier, "unknown">> = ["standard", "advanced", "admin"];
             const idx = tiers.indexOf(currentTier);
             onTierChange(tiers[(idx + 1) % tiers.length]);
           }}
@@ -433,14 +285,14 @@ function TierSwitcher({ currentTier, onTierChange, isCollapsed }: TierSwitcherPr
           <TierIcon className="w-3 h-3 text-sidebar-primary" />
         </div>
         <span className="text-xs font-medium text-sidebar-foreground flex-1">
-          {TIER_LABELS[currentTier].label} Mode
+          {NAV_TIER_LABELS[safeTier].label} Mode
         </span>
         <ChevronDown className={cn("w-3 h-3 text-sidebar-foreground/40 transition-transform", isOpen && "rotate-180")} />
       </button>
       {isOpen && (
         <div className="mt-1 ml-2 space-y-0.5">
-          {(["standard", "advanced", "admin"] as UserTier[]).map(tier => {
-            const TIcon = TIER_LABELS[tier].icon;
+          {(["standard", "advanced", "admin"] as Array<Exclude<UserTier, "unknown">>).map(tier => {
+            const TIcon = TIER_ICON[tier as Exclude<UserTier, "unknown">];
             return (
               <button
                 key={tier}
@@ -453,7 +305,7 @@ function TierSwitcher({ currentTier, onTierChange, isCollapsed }: TierSwitcherPr
                 )}
               >
                 <TIcon className="w-3 h-3" />
-                <span>{TIER_LABELS[tier].label}</span>
+                <span>{NAV_TIER_LABELS[tier as Exclude<UserTier, "unknown">].label}</span>
               </button>
             );
           })}
@@ -490,9 +342,9 @@ const Layout = memo(function Layout({
   const isAdvancedModeEnabled = useUserTierStore(state => state.isAdvancedModeEnabled);
   const setTier = useUserTierStore(state => state.setTier);
 
-  const currentTier: UserTier = rawCurrentTier === "unknown" ? "standard" : rawCurrentTier as UserTier;
+  const currentTier: Exclude<UserTier, "unknown"> = rawCurrentTier === "unknown" ? "standard" : rawCurrentTier as Exclude<UserTier, "unknown">;
   // Compute effectiveTier locally (mirrors store getter logic)
-  const effectiveTier: UserTier = (currentTier === "standard" && isAdvancedModeEnabled)
+  const effectiveTier: Exclude<UserTier, "unknown"> = (currentTier === "standard" && isAdvancedModeEnabled)
     ? "advanced"
     : currentTier;
 
@@ -530,7 +382,7 @@ const Layout = memo(function Layout({
   }, [setTier]);
 
   // Breadcrumbs
-  const breadcrumbs = useMemo(() => getBreadcrumbs(location), [location]);
+  const breadcrumbs = useMemo(() => getBreadcrumbLabels(location), [location]);
 
   // User display
   const userEmail = user?.email ?? "";
@@ -541,11 +393,11 @@ const Layout = memo(function Layout({
 
   // Filter nav items by tier
   const visibleDomains = useMemo(
-    () => NAV_DOMAINS.filter(item => isItemVisible(item.tier, effectiveTier)),
+    () => withIcons(getSidebarTreeModel(effectiveTier).filter(item => !item.tags?.includes("settings")) as NavItem[]),
     [effectiveTier]
   );
   const visibleSupport = useMemo(
-    () => SUPPORT_ITEMS.filter(item => isItemVisible(item.tier, effectiveTier)),
+    () => withIcons(getSidebarTreeModel(effectiveTier, [...getSettingsSlice(), ...getConfigurationSlice(), ...getGovernanceSlice()]) as NavItem[]),
     [effectiveTier]
   );
 

@@ -23,6 +23,7 @@
  */
 
 import { useState, useMemo, memo } from "react";
+import { getSidebarTreeModel } from "@/navigation/schema";
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAccountContextStore } from "@/stores/accountContextStore";
@@ -726,7 +727,7 @@ export function TieredNav({
   );
 
   const visibleNavItems = useMemo(
-    () => NAV_SPINE.filter(item => isItemVisible(item, effectiveTier)),
+    () => getSidebarTreeModel(effectiveTier) as NavItem[],
     [effectiveTier]
   );
 
