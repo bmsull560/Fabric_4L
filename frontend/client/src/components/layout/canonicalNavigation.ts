@@ -51,14 +51,109 @@ export const NAV_DOMAINS: NavRoute[] = [
   { id: "deliverables", label: "Deliverables", icon: FileOutput, path: "/deliverables", tier: "standard", description: "Packaged outputs for sharing with prospects", children: [
     { id: "cases", label: "Business Cases", path: "/deliverables/cases", tier: "standard" }, { id: "calculators", label: "Calculators", path: "/deliverables/calculators", tier: "advanced" }, { id: "cfo", label: "CFO View", path: "/deliverables/views/cfo", tier: "standard" }, { id: "executive", label: "Executive View", path: "/deliverables/views/executive", tier: "standard" }, { id: "technical", label: "Technical View", path: "/deliverables/views/technical", tier: "standard" },
   ] },
-  { id: "governance", label: "Governance", icon: Shield, path: "/governance", tier: "admin", children: [
-    { id: "traces", label: "Decision Traces", path: "/governance/traces", tier: "standard" }, { id: "evidence-gov", label: "Evidence", path: "/governance/evidence", tier: "standard" }, { id: "provenance", label: "Provenance", path: "/governance/provenance", tier: "advanced" }, { id: "integrity", label: "Integrity", path: "/governance/integrity", tier: "advanced" }, { id: "compliance", label: "Compliance", path: "/governance/compliance", tier: "advanced" }, { id: "benchmarks", label: "Benchmarks", path: "/governance/benchmarks", tier: "admin", badge: "Admin" }, { id: "audit-log", label: "Audit Log", path: "/governance/audit/log", tier: "admin", badge: "Admin" }, { id: "health", label: "System Health", path: "/governance/health", tier: "admin", badge: "Admin" },
-  ] },
+  {
+    id: "governance",
+    label: "Governance",
+    icon: Shield,
+    path: "/governance",
+    tier: "admin",
+    children: [
+      {
+        id: "traces",
+        label: "Decision Traces",
+        path: "/governance/traces",
+        tier: "standard",
+      },
+      {
+        id: "evidence-gov",
+        label: "Evidence",
+        path: "/governance/evidence",
+        tier: "standard",
+      },
+      {
+        id: "provenance",
+        label: "Provenance",
+        path: "/governance/provenance",
+        tier: "advanced",
+      },
+      {
+        id: "integrity",
+        label: "Integrity",
+        path: "/governance/integrity",
+        tier: "advanced",
+      },
+      {
+        id: "compliance",
+        label: "Compliance",
+        path: "/governance/compliance",
+        tier: "advanced",
+      },
+      {
+        id: "benchmarks",
+        label: "Benchmarks",
+        path: "/governance/benchmarks",
+        tier: "admin",
+        badge: "Admin",
+      },
+      {
+        id: "audit-log",
+        label: "Audit Log",
+        path: "/governance/audit/log",
+        tier: "admin",
+        badge: "Admin",
+      },
+      {
+        id: "health",
+        label: "System Health",
+        path: "/governance/health",
+        tier: "admin",
+        badge: "Admin",
+      },
+    ],
+  },
 ];
 
-export const SUPPORT_ITEMS: NavRoute[] = [{ id: "settings", label: "Settings", icon: Settings, path: "/settings", tier: "admin", children: [
-  { id: "content-formulas", label: "Formulas", path: "/settings/content/formulas", tier: "admin" }, { id: "data-variables", label: "Variables", path: "/settings/data/variables", tier: "admin" }, { id: "access-roles", label: "Roles", path: "/settings/access/roles", tier: "admin" }, { id: "system-settings", label: "System", path: "/settings/system/settings", tier: "admin" }, { id: "system-billing", label: "Billing", path: "/settings/system/billing", tier: "admin" },
-] }];
+export const SUPPORT_ITEMS: NavRoute[] = [
+  {
+    id: "settings",
+    label: "Settings",
+    icon: Settings,
+    path: "/settings",
+    tier: "admin",
+    children: [
+      {
+        id: "content-formulas",
+        label: "Formulas",
+        path: "/settings/content/formulas",
+        tier: "admin",
+      },
+      {
+        id: "data-variables",
+        label: "Variables",
+        path: "/settings/data/variables",
+        tier: "admin",
+      },
+      {
+        id: "access-roles",
+        label: "Roles",
+        path: "/settings/access/roles",
+        tier: "admin",
+      },
+      {
+        id: "system-settings",
+        label: "System",
+        path: "/settings/system/settings",
+        tier: "admin",
+      },
+      {
+        id: "system-billing",
+        label: "Billing",
+        path: "/settings/system/billing",
+        tier: "admin",
+      },
+    ],
+  },
+];
 
 const isOpaqueId = (segment: string) => /^[0-9a-f]{8,}$/i.test(segment) || /^\d+$/.test(segment);
 
