@@ -62,9 +62,19 @@ class ProvisionTenantResponse(BaseModel):
     
     tenant_id: UUID
     admin_user_id: UUID
-    admin_temp_password: str = Field(..., description="Temporary password - must be changed on first login")
+    admin_temp_password: str | None = Field(
+        None,
+        description=(
+            "One-time temporary password for initial admin login. "
+            "Only returned on first successful provisioning and must be changed at first login."
+        ),
+    )
     created_at: str
     isolation_tier: str
+    password_change_required: bool = Field(
+        True,
+        description="Whether the admin must rotate credentials at first login.",
+    )
     status: str = Field(..., description="success, partial, or failed")
     errors: list[str] | None = None
     message: str = Field(..., description="Human-readable status message")
@@ -158,6 +168,7 @@ async def provision_tenant(
             admin_temp_password=result.admin_temp_password,
             created_at=result.created_at.isoformat(),
             isolation_tier=result.isolation_tier,
+            password_change_required=result.password_change_required,
             status=result.status,
             errors=result.errors,
             message=message,

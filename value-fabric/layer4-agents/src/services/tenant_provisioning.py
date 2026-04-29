@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,10 +43,11 @@ class TenantProvisionResult:
     
     tenant_id: UUID
     admin_user_id: UUID
-    admin_temp_password: str
+    admin_temp_password: str | None
     created_at: datetime
     isolation_tier: str
     status: str  # success | partial | failed
+    password_change_required: bool = True
     errors: list[str] | None = None
 
 
@@ -162,6 +164,7 @@ class TenantProvisioningService:
                     "tenant_name": request.tenant_name,
                     "admin_email": request.admin_email,
                     "isolation_tier": request.isolation_tier,
+                    "temp_password_delivered": True,
                     "status": status,
                     "errors": errors if errors else None,
                 },
@@ -173,6 +176,7 @@ class TenantProvisioningService:
                 admin_temp_password=admin_temp_password,
                 created_at=datetime.utcnow(),
                 isolation_tier=request.isolation_tier,
+                password_change_required=True,
                 status=status,
                 errors=errors if errors else None,
             )
@@ -276,9 +280,10 @@ class TenantProvisioningService:
         return TenantProvisionResult(
             tenant_id=tenant["id"],
             admin_user_id=admin_user_id,
-            admin_temp_password="<already_provisioned>",
+            admin_temp_password=None,
             created_at=tenant["created_at"],
             isolation_tier=tenant["isolation_tier"],
+            password_change_required=False,
             status="success",
             errors=["Tenant already exists - idempotent operation"],
         )
@@ -340,9 +345,9 @@ class TenantProvisioningService:
             user_id: User UUID
             tenant_id: Tenant UUID
             email: Admin email
-            temp_password: Temporary password (should be hashed in production)
+            temp_password: Temporary password
         """
-        # Note: In production, hash the password with bcrypt/argon2
+        password_hash = self._hash_password(temp_password)
         query = text("""
             INSERT INTO users (id, tenant_id, email, password_hash, roles, created_at, updated_at)
             VALUES (:id, :tenant_id, :email, :password_hash, :roles, NOW(), NOW())
@@ -352,10 +357,21 @@ class TenantProvisioningService:
             "id": user_id,
             "tenant_id": tenant_id,
             "email": email,
-            "password_hash": temp_password,  # TODO: Hash in production
+            "password_hash": password_hash,
             "roles": ["tenant_admin"],
         })
         await self.db_session.commit()
+
+    def _hash_password(self, temp_password: str) -> str:
+        """Hash temporary passwords with Argon2id in PHC format."""
+        kdf = Argon2id(
+            salt=secrets.token_bytes(16),
+            length=32,
+            iterations=3,
+            lanes=4,
+            memory_cost=65536,
+        )
+        return kdf.derive_phc_encoded(temp_password.encode("utf-8"))
     
     async def _setup_postgres_rls(
         self,

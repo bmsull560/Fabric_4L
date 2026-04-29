@@ -14,6 +14,8 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+
 from src.services.tenant_provisioning import (
     TenantProvisioningService,
     TenantProvisionRequest,
@@ -98,7 +100,8 @@ class TestTenantProvisioningService:
         result = await provisioning_service.provision_tenant(request)
         
         assert result.tenant_id == existing_tenant_id
-        assert result.admin_temp_password == "<already_provisioned>"
+        assert result.admin_temp_password is None
+        assert result.password_change_required is False
         assert "already exists" in (result.errors[0] if result.errors else "")
     
     @pytest.mark.asyncio
@@ -152,6 +155,36 @@ class TestTenantProvisioningService:
         # Verify execute was called (for INSERT statements)
         assert mock_db_session.execute.call_count >= 2
         assert mock_db_session.commit.call_count >= 2
+
+    @pytest.mark.asyncio
+    async def test_provision_tenant_stores_argon2id_password_hash(
+        self,
+        provisioning_service,
+        mock_db_session,
+    ):
+        """Verify temp password is persisted as Argon2id PHC hash, never raw."""
+        request = TenantProvisionRequest(
+            tenant_name="test-tenant",
+            admin_email="admin@test.com",
+        )
+
+        mock_db_session.execute.return_value.fetchone.return_value = None
+
+        with patch("src.services.tenant_provisioning.emit_audit_event", new_callable=AsyncMock):
+            result = await provisioning_service.provision_tenant(request)
+
+        password_payload = None
+        for call in mock_db_session.execute.call_args_list:
+            maybe_params = call.args[1] if len(call.args) > 1 else None
+            if isinstance(maybe_params, dict) and "password_hash" in maybe_params:
+                password_payload = maybe_params
+                break
+
+        assert password_payload is not None
+        stored_hash = password_payload["password_hash"]
+        assert stored_hash != result.admin_temp_password
+        assert stored_hash.startswith("$argon2id$")
+        Argon2id.verify_phc_encoded(result.admin_temp_password.encode("utf-8"), stored_hash)
     
     @pytest.mark.asyncio
     async def test_provision_tenant_emits_audit_event(self, provisioning_service, mock_db_session):
@@ -172,6 +205,27 @@ class TestTenantProvisioningService:
             assert call_kwargs["resource_type"] == "tenant"
             assert call_kwargs["actor_type"] == "system"
             assert "tenant_name" in call_kwargs["details"]
+
+    @pytest.mark.asyncio
+    async def test_provision_tenant_audit_event_redacts_temp_password(
+        self,
+        provisioning_service,
+        mock_db_session,
+    ):
+        """Verify audit payload never contains raw temporary password."""
+        request = TenantProvisionRequest(
+            tenant_name="test-tenant",
+            admin_email="admin@test.com",
+        )
+        mock_db_session.execute.return_value.fetchone.return_value = None
+
+        with patch("src.services.tenant_provisioning.emit_audit_event", new_callable=AsyncMock) as mock_emit:
+            result = await provisioning_service.provision_tenant(request)
+
+            details = mock_emit.call_args.kwargs["details"]
+            serialized_details = str(details)
+            assert "password" not in details
+            assert result.admin_temp_password not in serialized_details
     
     @pytest.mark.asyncio
     async def test_provision_tenant_rollback_on_failure(self, provisioning_service, mock_db_session):
