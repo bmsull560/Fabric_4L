@@ -13,7 +13,7 @@ from .context import RequestContext, get_request_context, set_request_context, r
 from .hashing import generate_api_key, hash_api_key, verify_api_key, extract_key_prefix
 from .feature_flags import is_enabled, init_feature_flags, get_feature_flags_redis, register_feature_flag_lookup
 from .isolation import TenantScopedCypher, TenantScopedMixin, tenant_cache_key
-from .jwt import TokenClaims, decode_jwt, encode_jwt
+from .jwt import TokenClaims, decode_jwt, encode_jwt, get_jwks
 from .oidc import OIDCClient, map_role_from_claims
 from .oidc_config import OIDCProviderConfig
 from .rate_limiter import RedisRateLimiter, RateLimitResult
@@ -56,6 +56,7 @@ __all__ = [
     "TokenClaims",
     "decode_jwt",
     "encode_jwt",
+    "get_jwks",
     # OIDC
     "OIDCClient",
     "map_role_from_claims",

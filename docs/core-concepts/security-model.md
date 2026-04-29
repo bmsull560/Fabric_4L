@@ -39,7 +39,7 @@ graph TB
     
     subgraph "Identity Layer"
         IDP[Identity Provider<br/>OIDC/SAML]
-        JWT[JWT Issuer<br/>HS256]
+        JWT[JWT Issuer<br/>HS256 / RS256 / ES256 + kid]
         API_KEY[API Key Service<br/>HMAC-SHA256]
     end
     
@@ -112,7 +112,8 @@ X-Tenant-ID: 550e8400-e29b-41d4-a716-446655440000
 ```json
 {
   "header": {
-    "alg": "HS256",
+    "alg": "HS256|RS256|ES256",
+    "kid": "active-key-id",
     "typ": "JWT"
   },
   "payload": {
@@ -131,7 +132,8 @@ X-Tenant-ID: 550e8400-e29b-41d4-a716-446655440000
 
 | Property | Value | Description |
 |----------|-------|-------------|
-| Algorithm | HS256 | HMAC with SHA-256 |
+| Algorithm | HS256 / RS256 / ES256 | Symmetric or asymmetric JWT signing |
+| Key ID (`kid`) | Required | Enables active/previous key rotation and JWKS lookup |
 | Expiration | 1 hour | Short-lived for security |
 | Refresh | Supported | Silent refresh before expiry |
 | Issuer | `value-fabric` | Fixed issuer claim |
@@ -595,3 +597,13 @@ This section describes security threats using STRIDE and LINDDUN methodologies.
 ---
 
 *Last updated: 2026-04-27 | [Edit this page](https://github.com/bmsull560/Fabric_4L/edit/main/docs/core-concepts/security-model.md)*
+
+## JWT Algorithm Migration and Rollback
+
+1. Set `JWT_ACTIVE_KID` and keep current key as `JWT_PREVIOUS_KID` for overlap.
+2. For HS256 rotation, set `JWT_PREVIOUS_SECRET` during the overlap window.
+3. For RS256/ES256 migration, set `JWT_PRIVATE_KEY_PEM`, `JWT_PUBLIC_KEY_PEM`, and `JWT_PREVIOUS_PUBLIC_KEY_PEM`.
+4. Publish the new public keys via JWKS (`shared.identity.jwt.get_jwks`) before switching issuers.
+5. After token TTL + skew has elapsed, remove previous key env vars.
+
+**Rollback:** restore prior active key material, swap `JWT_ACTIVE_KID` back to the previous value, and keep both keys published until newly issued tokens expire.
