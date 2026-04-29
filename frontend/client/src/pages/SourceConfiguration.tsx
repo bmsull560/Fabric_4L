@@ -21,12 +21,15 @@ import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   useSources,
   useSourceStats,
+  useCreateSource,
   useDeleteSource,
   useTestConnection,
   useExecuteSource,
+  type CreateSourceRequest,
   type DataSource,
   type SourceType,
   type ConnectionStatus,
@@ -297,6 +300,99 @@ function SourceSkeleton() {
   );
 }
 
+function CreateSourceModal({
+  open,
+  form,
+  isSubmitting,
+  onClose,
+  onChange,
+  onSubmit,
+}: {
+  open: boolean;
+  form: CreateSourceRequest;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onChange: (updates: Partial<CreateSourceRequest>) => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-lg">
+        <h3 className="text-[16px] font-semibold text-foreground">Add Source</h3>
+        <p className="mt-1 text-[12px] text-muted-foreground">Create a new data source target for ingestion.</p>
+
+        <form className="mt-4 space-y-3" onSubmit={onSubmit}>
+          <div>
+            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Name</label>
+            <input
+              value={form.name}
+              onChange={(e) => onChange({ name: e.target.value })}
+              placeholder="Salesforce Accounts API"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">URL</label>
+            <input
+              type="url"
+              value={form.url}
+              onChange={(e) => onChange({ url: e.target.value })}
+              placeholder="https://api.example.com/accounts"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Type</label>
+            <select
+              value={form.targetType}
+              onChange={(e) => onChange({ targetType: e.target.value as SourceType })}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] outline-none"
+            >
+              <option value="api">API</option>
+              <option value="crm">CRM</option>
+              <option value="database">Database</option>
+              <option value="cloud_storage">Cloud Storage</option>
+              <option value="file">File</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Description (optional)</label>
+            <textarea
+              value={form.description ?? ""}
+              onChange={(e) => onChange({ description: e.target.value || undefined })}
+              rows={3}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-[13px] outline-none"
+            />
+          </div>
+
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="rounded-md border border-border px-3 py-2 text-[12px] font-medium text-foreground hover:bg-muted disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center rounded-md bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {isSubmitting ? <Loader2 size={14} className="mr-1 animate-spin" /> : <Plus size={14} className="mr-1" />}
+              Create Source
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Content ────────────────────────────────────────────────────────────
 
 function SourceConfigurationContent() {
@@ -306,6 +402,13 @@ function SourceConfigurationContent() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [executingId, setExecutingId] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateSourceRequest>({
+    name: "",
+    url: "",
+    targetType: "api",
+    description: "",
+  });
 
   // Build filters for the API call
   const apiFilters: SourceFilters = useMemo(() => ({
@@ -316,7 +419,8 @@ function SourceConfigurationContent() {
 
   // Server state via React Query hooks (real L1 API)
   const { data: sourceData, isLoading, error, refetch } = useSources(apiFilters);
-  const { data: stats } = useSourceStats();
+  const { data: stats, refetch: refetchStats } = useSourceStats();
+  const createSource = useCreateSource();
   const deleteSource = useDeleteSource();
   const testConnection = useTestConnection();
   const executeSource = useExecuteSource();
@@ -345,6 +449,31 @@ function SourceConfigurationContent() {
     );
   };
 
+  const openCreateFlow = () => setIsCreateOpen(true);
+  const closeCreateFlow = () => {
+    setIsCreateOpen(false);
+    setCreateForm({
+      name: "",
+      url: "",
+      targetType: "api",
+      description: "",
+    });
+  };
+
+  const handleCreateSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    createSource.mutate(createForm, {
+      onSuccess: async (source) => {
+        closeCreateFlow();
+        await Promise.all([refetch(), refetchStats()]);
+        toast.success(`Source "${source.name}" created successfully.`);
+      },
+      onError: (err) => {
+        toast.error(err.message || "Failed to create source.");
+      },
+    });
+  };
+
   // Error state
   if (error) {
     return (
@@ -370,7 +499,7 @@ function SourceConfigurationContent() {
           title="Source Configuration"
           subtitle={stats ? `${stats.total} sources · ${stats.connected} connected · ${stats.error} errors` : 'Loading...'}
         />
-        <Btn variant="primary" onClick={() => { /* TODO: open create source modal */ }}>
+        <Btn variant="primary" onClick={openCreateFlow}>
           <Plus size={14} className="mr-1" />
           Add Source
         </Btn>
@@ -482,7 +611,7 @@ function SourceConfigurationContent() {
               ? 'Try adjusting your filters'
               : 'Add a data source to start ingesting data'}
           </p>
-          <Btn variant="primary" className="mt-4" onClick={() => { /* TODO: open create source modal */ }}>
+          <Btn variant="primary" className="mt-4" onClick={openCreateFlow}>
             <Plus size={14} className="mr-1" />
             Add First Source
           </Btn>
@@ -498,6 +627,15 @@ function SourceConfigurationContent() {
           </span>
         </div>
       )}
+
+      <CreateSourceModal
+        open={isCreateOpen}
+        form={createForm}
+        isSubmitting={createSource.isPending}
+        onClose={closeCreateFlow}
+        onChange={(updates) => setCreateForm(prev => ({ ...prev, ...updates }))}
+        onSubmit={handleCreateSubmit}
+      />
     </div>
   );
 }
