@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { createWrapper, createMockResponse } from "../test-utils";
 import IngestionJobs from "./IngestionJobs";
 import { apiClient } from "@/api/client";
+import { useIngestionJobsStore } from "@/stores/ingestionJobsStore";
 
 // Mock the API client
 vi.mock("@/api/client", () => ({
@@ -102,29 +103,59 @@ describe("IngestionJobs", () => {
     ],
   };
 
+  function setupApiMocks({
+    list = mockJobListResponse,
+    detailById = {},
+    logsByJobId = {},
+  }: {
+    list?: unknown;
+    detailById?: Record<string, unknown>;
+    logsByJobId?: Record<string, unknown>;
+  } = {}) {
+    vi.mocked(apiClient.get).mockImplementation((_service, url) => {
+      if (url.startsWith("/jobs?")) {
+        return Promise.resolve(createMockResponse(list));
+      }
+
+      if (url.startsWith("/jobs/")) {
+        const jobId = url.split("/jobs/")[1];
+        if (!jobId) return Promise.resolve(createMockResponse({}));
+        return Promise.resolve(createMockResponse(detailById[jobId] ?? mockJobDetailResponse));
+      }
+
+      if (url.startsWith("/compliance/logs?")) {
+        const params = new URLSearchParams(url.split("?")[1]);
+        const jobId = params.get("job_id") ?? "";
+        return Promise.resolve(createMockResponse(logsByJobId[jobId] ?? mockLogsResponse));
+      }
+
+      return Promise.resolve(createMockResponse({}));
+    });
+  }
+
+  function renderPage(): { user: UserEvent } {
+    const user = userEvent.setup();
+    render(<IngestionJobs />, { wrapper: createWrapper() });
+    return { user };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default mock for job list - check more specific patterns first to avoid URL matching issues
-    // /compliance/logs?job_id=job-1 contains "job-1" so we must check /compliance/logs before /jobs/job-1
-    vi.mocked(apiClient.get).mockImplementation((service, url) => {
-      if (url.includes("/compliance/logs")) {
-        return Promise.resolve(createMockResponse(mockLogsResponse));
-      }
-      if (url.includes("/jobs?")) {
-        return Promise.resolve(createMockResponse(mockJobListResponse));
-      }
-      if (url.includes("/jobs/job-1")) {
-        return Promise.resolve(createMockResponse(mockJobDetailResponse));
-      }
-      if (url.includes("/jobs/job-2")) {
-        return Promise.resolve(createMockResponse({ ...mockJobDetailResponse, id: "job-2", status: "FAILED" }));
-      }
-      return Promise.resolve(createMockResponse({}));
+    useIngestionJobsStore.getState().reset();
+    setupApiMocks({
+      detailById: {
+        "job-1": mockJobDetailResponse,
+        "job-2": { ...mockJobDetailResponse, id: "job-2", status: "FAILED" },
+      },
+      logsByJobId: {
+        "job-1": mockLogsResponse,
+        "job-2": mockLogsResponse,
+      },
     });
   });
 
   it("renders page header with title and subtitle", async () => {
-    render(<IngestionJobs />, { wrapper: createWrapper() });
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("Ingestion Jobs")).toBeInTheDocument();
@@ -136,7 +167,7 @@ describe("IngestionJobs", () => {
     // Delay the response to keep loading state active
     vi.mocked(apiClient.get).mockImplementation(() => new Promise(() => {}));
 
-    render(<IngestionJobs />, { wrapper: createWrapper() });
+    renderPage();
 
     // Check for refresh button being disabled/spinning during load
     const refreshButton = screen.getByRole("button", { name: /refresh/i });
@@ -148,7 +179,7 @@ describe("IngestionJobs", () => {
   });
 
   it("renders job queue table with data", async () => {
-    render(<IngestionJobs />, { wrapper: createWrapper() });
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("Job Queue")).toBeInTheDocument();
@@ -302,80 +333,56 @@ describe("IngestionJobs", () => {
     expect(screen.getByText("5")).toBeInTheDocument();
   });
 
-  // NOTE: Test attempted un-skip as part of refinement, but still has async timing issues
-  // The beforeEach mock handles URLs correctly, but component state management
-  // needs investigation for the deselection behavior
-  it.skip("clears selection when clicking same job", async () => {
-    render(<IngestionJobs />, { wrapper: createWrapper() });
+  it("clears selection when clicking same job", async () => {
+    const { user } = renderPage();
 
-    // Wait for jobs to load - use getAllByText since domain appears in both table and potentially detail
-    await waitFor(() => {
-      expect(screen.getAllByText("https://example.com").length).toBeGreaterThan(0);
-    });
+    const jobDomainCell = await screen.findAllByText("https://example.com");
+    const jobRow = jobDomainCell[0]?.closest("tr");
+    expect(jobRow).toBeTruthy();
+    await user.click(jobRow!);
 
-    // Click job to select (first occurrence in table)
-    const jobCell = screen.getAllByText("https://example.com")[0];
-    const jobRow = jobCell.closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    await screen.findByText("Priority:");
+    expect(screen.getByText("5")).toBeInTheDocument();
+
+    await user.click(jobRow!);
 
     await waitFor(() => {
-      expect(screen.getByText("Job Detail")).toBeInTheDocument();
-    });
-
-    // Click again to deselect
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
-
-    // Should show empty state again - use regex for flexible matching
-    await waitFor(() => {
-      expect(screen.queryByText(/Select a job/)).toBeInTheDocument();
+      expect(screen.getByTestId("job-detail-empty-state")).toBeInTheDocument();
     });
   });
 
-  // NOTE: Refinement attempted to fix URL matching issues, but component has
-  // additional async timing issues with React Query caching that need investigation
-  it.skip("shows logs for selected job", async () => {
-    render(<IngestionJobs />, { wrapper: createWrapper() });
+  it("shows logs for selected job", async () => {
+    const { user } = renderPage();
 
-    // Wait for jobs to load
+    const jobDomainCell = await screen.findAllByText("https://example.com");
+    const jobRow = jobDomainCell[0]?.closest("tr");
+    expect(jobRow).toBeTruthy();
+    await user.click(jobRow!);
+
     await waitFor(() => {
-      expect(screen.getAllByText("https://example.com").length).toBeGreaterThan(0);
+      expect(screen.queryByTestId("job-logs-loading-state")).not.toBeInTheDocument();
     });
 
-    // Select job (first occurrence in table)
-    const jobCell = screen.getAllByText("https://example.com")[0];
-    const jobRow = jobCell.closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
-
-    // Wait for log content to appear
-    await waitFor(() => {
-      expect(screen.getByText(/ROBOTS_TXT_CHECK/)).toBeInTheDocument();
-    }, { timeout: 3000 });
+    expect(await screen.findByText("ROBOTS_TXT_CHECK")).toBeInTheDocument();
   });
 
-  // NOTE: Refinement attempted - URL matching fixed but component async
-  // timing issues remain with React Query state management
-  it.skip("shows empty logs state when no logs available", async () => {
-    render(<IngestionJobs />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("https://example.com").length).toBeGreaterThan(0);
+  it("shows empty logs state when no logs available", async () => {
+    setupApiMocks({
+      detailById: { "job-1": mockJobDetailResponse },
+      logsByJobId: { "job-1": { items: [] } },
     });
 
-    const jobCell = screen.getAllByText("https://example.com")[0];
-    const jobRow = jobCell.closest("tr");
-    if (jobRow) {
-      await userEvent.click(jobRow);
-    }
+    const { user } = renderPage();
+    const jobDomainCell = await screen.findAllByText("https://example.com");
+    const jobRow = jobDomainCell[0]?.closest("tr");
+    expect(jobRow).toBeTruthy();
+    await user.click(jobRow!);
 
     await waitFor(() => {
-      expect(screen.getByText("No logs available")).toBeInTheDocument();
+      expect(screen.queryByTestId("job-logs-loading-state")).not.toBeInTheDocument();
     });
+
+    expect(await screen.findByTestId("job-logs-empty-state")).toBeInTheDocument();
   });
 
   it("disables cancel button for non-cancellable jobs", async () => {
