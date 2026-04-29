@@ -89,11 +89,12 @@ jobs:
             -schema-location default -schema-location "$SCHEMAS" \
             /tmp/k8s-renders/prod-istio.yaml
 
-      - name: Policy validate hardening controls (conftest)
+      - name: Policy validate hardening controls (conftest, hard-fail)
         run: |
-          conftest test /tmp/k8s-renders/dev-nginx.yaml -p k8s/policy
-          conftest test /tmp/k8s-renders/staging-nginx.yaml -p k8s/policy
-          conftest test /tmp/k8s-renders/prod-nginx.yaml -p k8s/policy
+          for manifest in /tmp/k8s-renders/*.yaml; do
+            echo "Validating $manifest"
+            conftest test "$manifest" -p k8s/policy
+          done
 
       - name: Policy validate prod/staging secret sourcing
         run: |

@@ -37,3 +37,20 @@ has_required_container_security_context(container) {
   drops := object.get(caps, "drop", [])
   drops[_] == "ALL"
 }
+
+
+deny[msg] {
+  input.kind == "Deployment"
+  container := object.get(input.spec.template.spec, "containers", [])[_]
+  sc := object.get(container, "securityContext", {})
+  sc.privileged == true
+  msg := sprintf("Deployment %s container %s must not set securityContext.privileged=true", [input.metadata.name, container.name])
+}
+
+deny[msg] {
+  input.kind == "Deployment"
+  initContainer := object.get(input.spec.template.spec, "initContainers", [])[_]
+  sc := object.get(initContainer, "securityContext", {})
+  sc.privileged == true
+  msg := sprintf("Deployment %s initContainer %s must not set securityContext.privileged=true", [input.metadata.name, initContainer.name])
+}
