@@ -204,7 +204,7 @@ export default function NarrativeTab() {
           : "Loading narratives…"}
       </div>
     );
-  if (error || generateMutation.isError || !account)
+  if (error || generateMutation.isError)
     return (
       <div className="p-6 text-sm text-destructive">
         Failed to load narratives.
@@ -219,9 +219,9 @@ export default function NarrativeTab() {
   return (
     <ValueStudioShellComponent
       account={{
-        accountName: account.name,
-        industry: account.industry ?? "Unknown",
-        revenue: account.annual_revenue
+        accountName: account?.name ?? "Account",
+        industry: account?.industry ?? "Unknown",
+        revenue: account?.annual_revenue
           ? `$${account.annual_revenue.toLocaleString()}`
           : "N/A",
       }}
