@@ -413,7 +413,6 @@ async def update_tenant_settings(
         text(f"UPDATE tenants SET {set_clause} WHERE id = :id"),
         params,
     )
-    await db.commit()
 
     # Return updated tenant
     return await get_tenant_settings(tenant_id, db, context)

@@ -101,7 +101,7 @@ def validate_customer_id(customer_id: str) -> str:
         )
     return customer_id
 
-from ...database import get_db, get_db_from_context
+from ...database import get_db_from_context
 from ...services.billing_service import BillingService
 from ...services.overage_service import OverageService
 from ...services.stripe_client import StripeError
@@ -358,8 +358,6 @@ async def sync_customer(
         tenant_id=tenant_id,
     )
 
-    await db.commit()
-
     return {
         "id": customer.id,
         "stripe_customer_id": customer.stripe_customer_id,
@@ -380,7 +378,7 @@ async def stripe_webhook(
     # SECURITY: Webhook uses get_db (no tenant context) intentionally.
     # Stripe server-to-server calls don't carry tenant JWTs.
     # Authentication is via Stripe-Signature HMAC verification + IP allowlist.
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Handle Stripe webhook events.
 
@@ -421,24 +419,20 @@ async def stripe_webhook(
 
     try:
         await service.handle_webhook(body, stripe_signature, STRIPE_WEBHOOK_SECRET)
-        await db.commit()
         return {"received": True}
     except ValueError as e:
-        await db.rollback()
         logger.warning(f"Webhook validation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid webhook payload",
         ) from e
     except StripeError as e:
-        await db.rollback()
         logger.error(f"Stripe API error during webhook: {e}")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Stripe processing failed",
         ) from e
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Unexpected webhook error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -484,8 +478,6 @@ async def ingest_usage_event(
             metadata=request.metadata,
         )
         
-        await db.commit()
-        
         return {
             "id": event.id,
             "event_id": event.event_id,
@@ -499,13 +491,11 @@ async def ingest_usage_event(
         }
         
     except UsageValidationError as e:
-        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": e.message, "field": e.field},
         )
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Usage event ingestion failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -539,8 +529,6 @@ async def ingest_usage_batch(
         events_data = [event.model_dump() for event in request.events]
         result = await service.ingest_batch(events_data)
         
-        await db.commit()
-        
         return {
             "created": result["created"],
             "duplicates": result["duplicates"],
@@ -549,13 +537,11 @@ async def ingest_usage_batch(
         }
         
     except UsageValidationError as e:
-        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": e.message, "field": e.field},
         )
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Batch ingestion failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -708,8 +694,6 @@ async def sync_usage_to_stripe(
             metric_name=metric_name,
         )
         
-        await db.commit()
-        
         # Check for errors in result
         if "error" in result and result["synced"] == 0:
             if "No Stripe customer ID" in result["error"]:
@@ -726,13 +710,11 @@ async def sync_usage_to_stripe(
         return result
         
     except UsageValidationError as e:
-        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": e.message},
         )
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Stripe sync failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1019,8 +1001,6 @@ async def create_invoice(
             description=request.description,
         )
         
-        await db.commit()
-        
         return {
             "id": invoice.id,
             "invoice_number": invoice.invoice_number,
@@ -1031,10 +1011,8 @@ async def create_invoice(
             "created_at": invoice.created_at.isoformat(),
         }
     except ValueError as e:
-        await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Failed to create invoice: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1151,8 +1129,6 @@ async def add_invoice_item(
             discount_amount=request.discount_cents,
         )
         
-        await db.commit()
-        
         return {
             "id": item.id,
             "invoice_id": item.invoice_id,
@@ -1162,10 +1138,8 @@ async def add_invoice_item(
             "amount_dollars": item.amount_dollars,
         }
     except ValueError as e:
-        await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Failed to add invoice item: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1190,7 +1164,6 @@ async def finalize_invoice(
     
     try:
         invoice = await service.finalize_invoice(invoice_id)
-        await db.commit()
         
         return {
             "id": invoice.id,
@@ -1201,10 +1174,8 @@ async def finalize_invoice(
             "amount_due_dollars": invoice.amount_due_dollars,
         }
     except ValueError as e:
-        await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Failed to finalize invoice: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1227,7 +1198,6 @@ async def void_invoice(
     
     try:
         invoice = await service.void_invoice(invoice_id, reason=reason)
-        await db.commit()
         
         return {
             "id": invoice.id,
@@ -1235,10 +1205,8 @@ async def void_invoice(
             "voided_at": invoice.voided_at.isoformat() if invoice.voided_at else None,
         }
     except ValueError as e:
-        await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Failed to void invoice: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1329,8 +1297,6 @@ async def record_charge(
             description=request.description,
         )
         
-        await db.commit()
-        
         return {
             "id": charge.id,
             "status": charge.status,
@@ -1340,10 +1306,8 @@ async def record_charge(
             "created_at": charge.created_at.isoformat(),
         }
     except ValueError as e:
-        await db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        await db.rollback()
         logger.exception(f"Failed to record charge: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

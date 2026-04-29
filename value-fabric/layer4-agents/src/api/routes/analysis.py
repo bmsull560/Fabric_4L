@@ -13,7 +13,7 @@ from shared.identity.context import RequestContext
 from shared.identity.dependencies import get_optional_context, require_authenticated
 
 from ...config.settings import settings
-from ...database import get_db, get_db_from_context
+from ...database import get_db_from_context
 from ...engine.executor import WorkflowExecutor
 from ...models.agent_state import BusinessCaseInputData, ROIInputData, WhitespaceInputData
 from ...services.account_service import AccountService
@@ -454,7 +454,7 @@ async def export_business_case(
             "format": format,
         },
     )
-    await AuditEmitter.write_to_db(request_event, get_db)
+    await AuditEmitter.write_to_db(request_event, get_db_from_context)
 
     package_event = emit_audit_event(
         AuditAction.EXPORT_PACKAGE_GENERATED,
@@ -473,7 +473,7 @@ async def export_business_case(
             "source_references": manifest.get("source_references", []),
         },
     )
-    await AuditEmitter.write_to_db(package_event, get_db)
+    await AuditEmitter.write_to_db(package_event, get_db_from_context)
 
     access_event = emit_audit_event(
         AuditAction.EXPORT_DOWNLOAD_ACCESSED,
@@ -489,7 +489,7 @@ async def export_business_case(
             "pdf_object_key": object_key,
         },
     )
-    await AuditEmitter.write_to_db(access_event, get_db)
+    await AuditEmitter.write_to_db(access_event, get_db_from_context)
 
     return {
         "case_id": case_id,
@@ -607,8 +607,6 @@ async def create_case(
         status="created",
     )
     db.add(record)
-    await db.commit()
-    await db.refresh(record)
 
     # Initialize empty workspace data
     _workspace_data[case_id] = {

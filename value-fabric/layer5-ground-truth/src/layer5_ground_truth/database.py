@@ -140,7 +140,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     Usage::
 
         @router.get("/truths/{id}")
-        async def get_truth(id: UUID, db: AsyncSession = Depends(get_db)):
+        async def get_truth(id: UUID, db: AsyncSession = Depends(get_db_from_context)):
             ...
     """
     import warnings

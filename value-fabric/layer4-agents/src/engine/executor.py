@@ -189,9 +189,11 @@ class OrchestrationController:
         import os
 
         try:
-            from ..database import db_session
+            from ..database import db_session_for_context
+            from shared.identity.context import RequestContext
 
-            async with db_session() as db:
+            context = RequestContext(tenant_id=tenant_id)
+            async with db_session_for_context(context) as db:
                 return await resolve_llm_model(db, tenant_id, provider)
         except Exception:
             return os.getenv("LLM_MODEL", "gpt-4o")

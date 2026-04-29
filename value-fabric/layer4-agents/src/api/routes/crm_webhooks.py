@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # SECURITY: CRM webhook endpoints are server-to-server calls from
 # Salesforce/HubSpot. Authentication is via HMAC signature verification,
 # not JWT. get_db (no tenant context) is intentional here.
-from ...database import get_db
+from ...database import get_db_from_context
 from ...models.account import CRMProvider
 from ...services.crm_sync_service import CRMSyncService
 
@@ -99,7 +99,7 @@ async def salesforce_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     x_salesforce_signature: str | None = Header(None, alias=SALESFORCE_SIGNATURE_HEADER),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Handle Salesforce outbound message or platform event webhook.
 
@@ -281,7 +281,7 @@ async def hubspot_webhook(
     background_tasks: BackgroundTasks,
     x_hubspot_signature: str | None = Header(None, alias=HUBSPOT_SIGNATURE_HEADER),
     x_hubspot_signature_v3: str | None = Header(None, alias=HUBSPOT_SIGNATURE_V3_HEADER),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> dict[str, Any]:
     """Handle HubSpot webhook for contact/company/deal changes.
 

@@ -43,7 +43,7 @@ from shared.security import add_security_middleware, SecurityConfig
 
 from ..config.checkpoint import CheckpointConfig
 from ..config.settings import settings
-from ..database import close_db, db_session, init_db
+from ..database import close_db, db_session, db_session_for_context, init_db
 from ..engine.executor import OrchestrationController
 from ..engine.state_manager import StateManager
 from ..feature_flags.api import feature_flags_router
@@ -182,7 +182,11 @@ async def lifespan(app: FastAPI):
 
     # Register DB-backed feature flag lookup
     async def _feature_flag_lookup(flag_key: str, tenant_id):
-        async with db_session() as db:
+        from shared.identity.context import RequestContext
+        if tenant_id is None:
+            return None
+        context = RequestContext(tenant_id=tenant_id)
+        async with db_session_for_context(context) as db:
             return await FeatureFlagService.lookup_flag(db, flag_key, tenant_id)
 
     register_feature_flag_lookup(_feature_flag_lookup)
@@ -310,7 +314,11 @@ def on_rate_limit_hit(tenant_id: str, scope: str):
 
 async def _tenant_settings_lookup(tenant_id) -> dict | None:
     """Fetch tenant settings for rate limiting (Task 84)."""
-    async with db_session() as db:
+    from shared.identity.context import RequestContext
+    if tenant_id is None:
+        return None
+    context = RequestContext(tenant_id=tenant_id)
+    async with db_session_for_context(context) as db:
         return await get_tenant_settings(db, tenant_id)
 
 

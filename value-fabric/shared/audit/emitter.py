@@ -153,7 +153,7 @@ class AuditEmitter:
             request: TenantCreateRequest,
             background_tasks: BackgroundTasks,
             ctx = Depends(require_super_admin),
-            db: AsyncSession = Depends(get_db),
+            db: AsyncSession = Depends(get_db_from_context),
         ):
             tenant = await service.create_tenant(db, request)
             event = emit_audit_event(
@@ -163,7 +163,7 @@ class AuditEmitter:
                 resource_type="Tenant",
                 resource_id=str(tenant.id),
             )
-            background_tasks.add_task(AuditEmitter.write_to_db, event, get_db)
+            background_tasks.add_task(AuditEmitter.write_to_db, event, get_db_from_context)
             return tenant
     """
 

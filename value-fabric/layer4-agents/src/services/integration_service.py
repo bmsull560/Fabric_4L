@@ -478,10 +478,12 @@ class IntegrationService:
         await self.db.commit()
 
         async def _run_sync_job() -> None:
-            from ..database import db_session
+            from ..database import db_session_for_context
+            from shared.identity.context import RequestContext
             from .crm_sync_service import CRMSyncService
 
-            async with db_session() as bg_db:
+            context = RequestContext(tenant_id=tenant_id)
+            async with db_session_for_context(context) as bg_db:
                 bg_integration_service = IntegrationService(bg_db)
                 bg_integration = await bg_integration_service.get_integration(tenant_id, provider)
                 if not bg_integration:

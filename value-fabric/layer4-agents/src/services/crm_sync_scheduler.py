@@ -9,7 +9,7 @@ import os
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from ..database import db_session
+from ..database import get_session_factory
 from ..engine.scheduler import ScheduledTask, TaskPriority, TaskScheduler
 from ..models.account import CRMProvider
 from .crm_sync_service import CRMSyncService
@@ -144,7 +144,11 @@ class CRMSyncScheduler:
             logger.warning(f"Skipping {provider.value} sync - no CRM_API_KEY configured")
             return {"skipped": True, "reason": "No API key configured"}
 
-        async with db_session() as db:
+        from sqlalchemy import text
+
+        factory = get_session_factory()
+        async with factory() as db:
+            await db.execute(text("SET LOCAL app.tenant_id = ''"))
             service = CRMSyncService(db, batch_size=self._batch_size)
             stats = await service.sync_provider(provider, incremental=incremental)
 

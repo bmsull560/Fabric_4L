@@ -21,7 +21,7 @@ from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated, require_super_admin
 
-from ....database import get_db, get_db_from_context
+from ....database import get_db_from_context
 from ...provisioning import (
     ProvisioningState,
     ProvisioningStatus,
@@ -242,7 +242,7 @@ async def webhook_provisioning(
     ),
     # SECURITY: Webhook uses get_db intentionally — external systems
     # authenticate via HMAC signature, not JWT.
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> WebhookProvisioningResponse:
     """Trigger provisioning via webhook (external systems).
 

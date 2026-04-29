@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db
+from ..database import get_db_from_context
 from ..models.model_registry import (
     DeploymentEnvironment,
     DeploymentStatus,
@@ -70,7 +70,7 @@ router = APIRouter(prefix="/api/v1", tags=["model-registry"])
 async def create_model_version(
     payload: ModelVersionCreate,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Register a new model version."""
     tenant_id = caller.tenant_id
@@ -125,8 +125,6 @@ async def create_model_version(
     )
 
     db.add(model)
-    await db.commit()
-    await db.refresh(model)
 
     logger.info(
         "Registered model version: %s/%s@%s (org=%s)",
@@ -147,7 +145,7 @@ async def create_model_version(
 )
 async def list_model_versions(
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     provider: str | None = Query(default=None, description="Filter by provider"),
     is_active: bool | None = Query(default=None, description="Filter by active status"),
     is_default: bool | None = Query(default=None, description="Filter by default flag"),
@@ -201,7 +199,7 @@ async def list_model_versions(
 async def get_model_version(
     model_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Get a model version by ID."""
     tenant_id = caller.tenant_id
@@ -235,7 +233,7 @@ async def deprecate_model_version(
     model_id: UUID,
     reason: str | None = Query(default=None, description="Deprecation reason"),
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Deprecate a model version."""
     tenant_id = caller.tenant_id
@@ -266,9 +264,6 @@ async def deprecate_model_version(
     model.deprecation_reason = reason or "Manually deprecated"
     model.is_active = False
 
-    await db.commit()
-    await db.refresh(model)
-
     logger.info(
         "Deprecated model version: %s/%s@%s (org=%s, reason=%s)",
         model.provider,
@@ -290,7 +285,7 @@ async def deprecate_model_version(
 async def set_default_model_version(
     model_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelVersionResponse:
     """Set a model version as default for its provider."""
     tenant_id = caller.tenant_id
@@ -331,8 +326,6 @@ async def set_default_model_version(
     )
 
     model.is_default = True
-    await db.commit()
-    await db.refresh(model)
 
     logger.info(
         "Set default model: %s/%s@%s (org=%s)",
@@ -360,7 +353,7 @@ async def promote_model(
     model_id: UUID,
     payload: PromoteModelRequest,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> PromoteModelResponse:
     """Promote a model version to an environment."""
     tenant_id = caller.tenant_id
@@ -436,9 +429,6 @@ async def promote_model(
             )
         )
 
-    await db.commit()
-    await db.refresh(deployment)
-
     logger.info(
         "Promoted model %s/%s@%s to %s (traffic=%d%%)",
         model.provider,
@@ -469,7 +459,7 @@ async def promote_model(
 async def get_model_deployments(
     model_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelDeploymentListResponse:
     """Get deployments for a model version."""
     tenant_id = caller.tenant_id
@@ -498,7 +488,7 @@ async def get_model_deployments(
 )
 async def list_deployments(
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     environment: DeploymentEnvironment | None = Query(default=None),
     status: str | None = Query(default=None),
 ) -> ModelDeploymentListResponse:
@@ -533,7 +523,7 @@ async def rollback_deployment(
     deployment_id: UUID,
     payload: RollbackModelRequest,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> RollbackModelResponse:
     """Rollback a deployment."""
     tenant_id = caller.tenant_id
@@ -560,9 +550,6 @@ async def rollback_deployment(
     deployment.rolled_back_at = datetime.now(UTC)
     deployment.rolled_back_by = caller.user_id or caller.email
     deployment.rollback_reason = payload.reason
-
-    await db.commit()
-    await db.refresh(deployment)
 
     logger.info(
         "Rolled back deployment %s (reason: %s)",
@@ -594,7 +581,7 @@ async def rollback_deployment(
 async def create_evaluation(
     payload: ModelEvaluationCreate,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelEvaluationResponse:
     """Record a model evaluation."""
     tenant_id = caller.tenant_id
@@ -633,8 +620,6 @@ async def create_evaluation(
     )
 
     db.add(evaluation)
-    await db.commit()
-    await db.refresh(evaluation)
 
     logger.info(
         "Recorded evaluation for %s/%s@%s: %s=%.4f",
@@ -656,7 +641,7 @@ async def create_evaluation(
 )
 async def list_evaluations(
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
     model_version_id: UUID | None = Query(default=None),
     benchmark_name: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=500),
@@ -699,7 +684,7 @@ async def list_evaluations(
 async def get_model_evaluations(
     model_id: UUID,
     caller: TokenClaims = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ModelEvaluationListResponse:
     """Get evaluations for a model version."""
     tenant_id = caller.tenant_id

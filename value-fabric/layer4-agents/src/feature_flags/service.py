@@ -17,7 +17,7 @@ except ImportError as e:
         "shared.audit and shared.identity packages are required for feature flag functionality. "
         "Install the shared package or set PYTHONPATH to include value-fabric/shared"
     ) from e
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import FeatureFlag
@@ -179,11 +179,13 @@ class FeatureFlagService:
 
 async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] | None:
     """DB lookup callback registered with ``shared.identity.feature_flags``."""
-    from ..database import db_session
+    from ..database import db_session_for_context, get_session_factory
+    from shared.identity.context import RequestContext
 
-    async with db_session() as db:
-        # Try tenant-specific first
-        if tenant_id is not None:
+    # Try tenant-specific first
+    if tenant_id is not None:
+        context = RequestContext(tenant_id=tenant_id)
+        async with db_session_for_context(context) as db:
             result = await db.execute(
                 select(FeatureFlag).where(
                     FeatureFlag.tenant_id == tenant_id,
@@ -197,7 +199,10 @@ async def _lookup_flag(flag_key: str, tenant_id: UUID | None) -> dict[str, Any] 
                     "rollout_percentage": row.rollout_percentage,
                 }
 
-        # Fall back to platform-wide
+    # Fall back to platform-wide (no tenant context)
+    factory = get_session_factory()
+    async with factory() as db:
+        await db.execute(text("SET LOCAL app.tenant_id = ''"))
         result = await db.execute(
             select(FeatureFlag).where(
                 FeatureFlag.tenant_id.is_(None),

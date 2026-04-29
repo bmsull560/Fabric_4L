@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # SECURITY: Registration endpoints are pre-authentication flows.
 # New tenants/users don't have JWTs yet, so get_db (no tenant context)
 # is intentional. Tenant isolation begins AFTER registration completes.
-from ....database import get_db
+from ....database import get_db_from_context
 from ...email_verification import EmailVerificationService
 from ...models.tenant import Tenant, IsolationTier
 from ...provisioning import TenantProvisioningService, ProvisioningStatus
@@ -88,7 +88,7 @@ class TierInfo(BaseModel):
 @router.post("/register", status_code=status.HTTP_202_ACCEPTED, response_model=RegisterTenantResponse)
 async def register_tenant(
     request: RegisterTenantRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> RegisterTenantResponse:
     """Register a new tenant.
 
@@ -166,7 +166,7 @@ async def register_tenant(
 @router.post("/verify-email", response_model=VerifyEmailResponse)
 async def verify_email(
     request: VerifyEmailRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> VerifyEmailResponse:
     """Verify email address and trigger provisioning workflow."""
     email_service = EmailVerificationService()
@@ -208,7 +208,7 @@ async def verify_email(
 @router.get("/validate-slug", response_model=ValidateSlugResponse)
 async def validate_slug(
     slug: str,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_from_context),
 ) -> ValidateSlugResponse:
     """Check if a tenant slug is available."""
     existing = await get_tenant_by_slug(db, slug)
