@@ -27,6 +27,13 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import {
+  getSidebarTreeModel,
+  isTierVisible,
+  resolveWorkspacePath,
+  TIER_LABELS as NAV_TIER_LABELS,
+  type NavNode,
+} from "@/navigation/schema";
+import {
   Building2,
   Radar,
   GitBranch,
@@ -46,15 +53,8 @@ import {
 
 export type UserTier = "standard" | "advanced" | "admin";
 
-export interface NavItem {
-  id: string;
-  label: string;
+export interface NavItem extends NavNode {
   icon?: React.ReactNode;
-  path: string;
-  tier: UserTier;
-  children?: NavItem[];
-  badge?: string | number;
-  description?: string;
 }
 
 export interface TieredNavProps {
@@ -65,473 +65,10 @@ export interface TieredNavProps {
   onAdvancedModeToggle?: (enabled: boolean) => void;
 }
 
-// ── Navigation Spine ─────────────────────────────────────────────────────────
-// Single source of truth for the 7-domain left rail.
-// Intelligence and Value Studio children are shown here for nav-tree expansion,
-// but the actual workspace tabs are rendered by their respective workspace shells.
-
-const NAV_SPINE: NavItem[] = [
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 1. ACCOUNTS — Entry Point
-  // "Which prospect am I working on?"
-  // ═══════════════════════════════════════════════════════════════════════════
-  {
-    id: "accounts",
-    label: "Accounts",
-    icon: <Building2 size={16} />,
-    path: "/accounts",
-    tier: "standard",
-    description: "Select or create a prospect account",
-  },
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 2. INTELLIGENCE — Discovery Workspace
-  // "What is happening in the prospect's business and why?"
-  // ═══════════════════════════════════════════════════════════════════════════
-  {
-    id: "intelligence",
-    label: "Intelligence",
-    icon: <Radar size={16} />,
-    path: "/intelligence",
-    tier: "standard",
-    description: "Discover and validate prospect pain signals",
-    children: [
-      {
-        id: "signals",
-        label: "Signals",
-        path: "/intelligence/signals",
-        tier: "standard",
-      },
-      {
-        id: "drivers",
-        label: "Drivers",
-        path: "/intelligence/drivers",
-        tier: "standard",
-      },
-      {
-        id: "evidence",
-        label: "Evidence",
-        path: "/intelligence/evidence",
-        tier: "standard",
-      },
-      {
-        id: "stakeholders",
-        label: "Stakeholders",
-        path: "/intelligence/stakeholders",
-        tier: "standard",
-      },
-    ],
-  },
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 3. VALUE STUDIO — Synthesis Workspace
-  // "How does our product solve the prospect's validated problems?"
-  // ═══════════════════════════════════════════════════════════════════════════
-  {
-    id: "studio",
-    label: "Value Studio",
-    icon: <GitBranch size={16} />,
-    path: "/studio",
-    tier: "standard",
-    description: "Build the product-anchored business case",
-    children: [
-      {
-        id: "action-plan",
-        label: "Action Plan",
-        path: "/studio/action-plan",
-        tier: "standard",
-      },
-      {
-        id: "value-model",
-        label: "Value Model",
-        path: "/studio/value-model",
-        tier: "standard",
-      },
-      {
-        id: "narrative",
-        label: "Narrative",
-        path: "/studio/narrative",
-        tier: "standard",
-      },
-    ],
-  },
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 4. CONTEXT ENGINE — Vendor Knowledge Base
-  // "What does the vendor know about its own products and proof points?"
-  // ═══════════════════════════════════════════════════════════════════════════
-  {
-    id: "context",
-    label: "Context Engine",
-    icon: <Package size={16} />,
-    path: "/context",
-    tier: "standard",
-    description: "Vendor knowledge: Value Packs, models, formulas",
-    children: [
-      {
-        id: "packs",
-        label: "Value Packs",
-        path: "/context/packs",
-        tier: "standard",
-      },
-      {
-        id: "models",
-        label: "Models",
-        path: "/context/models",
-        tier: "standard",
-      },
-      {
-        id: "value-tree-explorer",
-        label: "Tree Explorer",
-        path: "/context/value-trees/explorer",
-        tier: "advanced",
-      },
-      {
-        id: "formulas",
-        label: "Formulas",
-        path: "/context/formulas",
-        tier: "advanced",
-      },
-      {
-        id: "agents",
-        label: "Agents",
-        path: "/context/agents",
-        tier: "advanced",
-      },
-      {
-        id: "ontology",
-        label: "Ontology",
-        path: "/context/ontology",
-        tier: "advanced",
-        children: [
-          {
-            id: "ontology-editor",
-            label: "Schema Editor",
-            path: "/context/ontology",
-            tier: "advanced",
-          },
-          {
-            id: "entities",
-            label: "Entities",
-            path: "/context/ontology/entities",
-            tier: "advanced",
-          },
-          {
-            id: "graph",
-            label: "Graph View",
-            path: "/context/ontology/graph",
-            tier: "advanced",
-          },
-        ],
-      },
-      {
-        id: "ingestion",
-        label: "Ingestion Jobs",
-        path: "/context/ingestion/jobs",
-        tier: "advanced",
-      },
-      {
-        id: "extraction",
-        label: "Extraction",
-        path: "/context/extraction",
-        tier: "advanced",
-      },
-      {
-        id: "integrations",
-        label: "Integrations",
-        path: "/context/integrations",
-        tier: "admin",
-        badge: "Admin",
-      },
-      {
-        id: "sources",
-        label: "Sources",
-        path: "/context/sources",
-        tier: "admin",
-        badge: "Admin",
-      },
-    ],
-  },
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 5. DELIVERABLES — Activation Layer
-  // "How does the business case reach the prospect?"
-  // ═══════════════════════════════════════════════════════════════════════════
-  {
-    id: "deliverables",
-    label: "Deliverables",
-    icon: <FileOutput size={16} />,
-    path: "/deliverables",
-    tier: "standard",
-    description: "Packaged outputs for sharing with prospects",
-    children: [
-      {
-        id: "cases",
-        label: "Business Cases",
-        path: "/deliverables/cases",
-        tier: "standard",
-      },
-      {
-        id: "calculators",
-        label: "Calculators",
-        path: "/deliverables/calculators",
-        tier: "advanced",
-      },
-      {
-        id: "views",
-        label: "Stakeholder Views",
-        path: "/deliverables/views",
-        tier: "standard",
-        children: [
-          {
-            id: "cfo",
-            label: "CFO View",
-            path: "/deliverables/views/cfo",
-            tier: "standard",
-          },
-          {
-            id: "executive",
-            label: "Executive View",
-            path: "/deliverables/views/executive",
-            tier: "standard",
-          },
-          {
-            id: "technical",
-            label: "Technical View",
-            path: "/deliverables/views/technical",
-            tier: "standard",
-          },
-        ],
-      },
-      {
-        id: "api",
-        label: "API & Webhooks",
-        path: "/deliverables/api",
-        tier: "admin",
-        badge: "Admin",
-      },
-      {
-        id: "embeds",
-        label: "Embeds",
-        path: "/deliverables/embeds",
-        tier: "admin",
-        badge: "Admin",
-      },
-    ],
-  },
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 6. GOVERNANCE — Trust Layer
-  // "Can I trust this, and can I prove it?"
-  // ═══════════════════════════════════════════════════════════════════════════
-  {
-    id: "governance",
-    label: "Governance",
-    icon: <Shield size={16} />,
-    path: "/governance",
-    tier: "standard",
-    description: "Audit, provenance, and compliance",
-    children: [
-      {
-        id: "traces",
-        label: "Decision Traces",
-        path: "/governance/traces",
-        tier: "standard",
-      },
-      {
-        id: "evidence-gov",
-        label: "Evidence",
-        path: "/governance/evidence",
-        tier: "standard",
-      },
-      {
-        id: "provenance",
-        label: "Provenance",
-        path: "/governance/provenance",
-        tier: "advanced",
-      },
-      {
-        id: "integrity",
-        label: "Integrity",
-        path: "/governance/integrity",
-        tier: "advanced",
-      },
-      {
-        id: "compliance",
-        label: "Compliance",
-        path: "/governance/compliance",
-        tier: "advanced",
-      },
-      {
-        id: "benchmarks",
-        label: "Benchmarks",
-        path: "/governance/benchmarks",
-        tier: "admin",
-        badge: "Admin",
-      },
-      {
-        id: "audit",
-        label: "Audit",
-        path: "/governance/audit",
-        tier: "admin",
-        badge: "Admin",
-        children: [
-          {
-            id: "audit-log",
-            label: "Audit Log",
-            path: "/governance/audit/log",
-            tier: "admin",
-          },
-          {
-            id: "changes",
-            label: "Change History",
-            path: "/governance/audit/changes",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "health",
-        label: "System Health",
-        path: "/governance/health",
-        tier: "admin",
-        badge: "Admin",
-      },
-    ],
-  },
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 7. SETTINGS — Tenant Configuration
-  // "How is the platform configured?"
-  // ═══════════════════════════════════════════════════════════════════════════
-  {
-    id: "settings",
-    label: "Settings",
-    icon: <Settings size={16} />,
-    path: "/settings",
-    tier: "admin",
-    description: "Platform configuration and user management",
-    badge: "Admin",
-    children: [
-      {
-        id: "content",
-        label: "Content",
-        path: "/settings/content",
-        tier: "admin",
-        children: [
-          {
-            id: "formula-registry",
-            label: "Formula Registry",
-            path: "/settings/content/formulas",
-            tier: "admin",
-          },
-          {
-            id: "versions",
-            label: "Version History",
-            path: "/settings/content/versions",
-            tier: "admin",
-          },
-          {
-            id: "approvals",
-            label: "Approval Queue",
-            path: "/settings/content/approvals",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "data",
-        label: "Data",
-        path: "/settings/data",
-        tier: "admin",
-        children: [
-          {
-            id: "variables",
-            label: "Variable Registry",
-            path: "/settings/data/variables",
-            tier: "admin",
-          },
-          {
-            id: "bindings",
-            label: "Source Bindings",
-            path: "/settings/data/bindings",
-            tier: "admin",
-          },
-          {
-            id: "quality",
-            label: "Quality Rules",
-            path: "/settings/data/quality",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "access",
-        label: "Access",
-        path: "/settings/access",
-        tier: "admin",
-        children: [
-          {
-            id: "roles",
-            label: "Roles & Permissions",
-            path: "/settings/access/roles",
-            tier: "admin",
-          },
-          {
-            id: "teams",
-            label: "Teams",
-            path: "/settings/access/teams",
-            tier: "admin",
-          },
-          {
-            id: "keys",
-            label: "API Keys",
-            path: "/settings/access/keys",
-            tier: "admin",
-          },
-        ],
-      },
-      {
-        id: "system",
-        label: "System",
-        path: "/settings/system",
-        tier: "admin",
-        children: [
-          {
-            id: "system-settings",
-            label: "Settings",
-            path: "/settings/system/settings",
-            tier: "admin",
-          },
-          {
-            id: "system-billing",
-            label: "Billing",
-            path: "/settings/system/billing",
-            tier: "admin",
-          },
-          {
-            id: "system-billing-usage",
-            label: "Usage",
-            path: "/settings/system/billing/usage",
-            tier: "admin",
-          },
-          {
-            id: "system-billing-invoices",
-            label: "Invoices",
-            path: "/settings/system/billing/invoices",
-            tier: "admin",
-          },
-          {
-            id: "system-billing-payments",
-            label: "Payments",
-            path: "/settings/system/billing/payments",
-            tier: "admin",
-          },
-        ],
-      },
-    ],
-  },
-];
+const NAV_ICONS: Record<string, React.ReactNode> = {
+  accounts: <Building2 size={16} />, intelligence: <Radar size={16} />, studio: <GitBranch size={16} />,
+  context: <Package size={16} />, deliverables: <FileOutput size={16} />, governance: <Shield size={16} />, settings: <Settings size={16} />,
+};
 
 // ── Styling Constants ──────────────────────────────────────────────────────────
 
@@ -556,34 +93,13 @@ const TIER_STYLES = {
   },
 } as const;
 
-const TIER_LABELS: Record<
-  UserTier,
-  { label: string; description: string; icon: React.ReactNode }
-> = {
-  standard: {
-    label: "Standard",
-    description: "Simplified flows for business users",
-    icon: <Eye size={14} />,
-  },
-  advanced: {
-    label: "Advanced",
-    description: "Power-user modeling & inspection tools",
-    icon: <Wrench size={14} />,
-  },
-  admin: {
-    label: "Admin",
-    description: "Governance controls & tenant configuration",
-    icon: <Crown size={14} />,
-  },
+const TIER_LABELS: Record<UserTier, { label: string; description: string; icon: React.ReactNode }> = {
+  standard: { label: NAV_TIER_LABELS.standard.label, description: NAV_TIER_LABELS.standard.description, icon: <Eye size={14} /> },
+  advanced: { label: NAV_TIER_LABELS.advanced.label, description: NAV_TIER_LABELS.advanced.description, icon: <Wrench size={14} /> },
+  admin: { label: NAV_TIER_LABELS.admin.label, description: NAV_TIER_LABELS.admin.description, icon: <Crown size={14} /> },
 };
 
 // ── Visibility Filter ─────────────────────────────────────────────────────────
-
-function isItemVisible(item: NavItem, userTier: UserTier): boolean {
-  if (userTier === "admin") return true;
-  if (userTier === "advanced") return item.tier !== "admin";
-  return item.tier === "standard";
-}
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -591,22 +107,6 @@ interface SidebarItemProps {
   item: NavItem;
   currentTier: UserTier;
   depth?: number;
-}
-
-function resolveWorkspacePath(path: string, accountId: string | null): string {
-  if (!accountId) return path;
-
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
-  if (path.startsWith("/intelligence/")) {
-    return path.replace("/intelligence/", `/intelligence/${accountId}/`);
-  }
-
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) {
-    return path.replace("/studio/", `/studio/${accountId}/`);
-  }
-
-  return path;
 }
 
 const SidebarItem = memo(function SidebarItem({
@@ -625,10 +125,10 @@ const SidebarItem = memo(function SidebarItem({
   const isActive = location.startsWith(resolvedPath);
   const [open, setOpen] = useState(isActive);
 
-  const tierStyle = TIER_STYLES[item.tier];
+  const tierStyle = TIER_STYLES[(item.tier === "unknown" ? "standard" : item.tier) as "standard" | "advanced" | "admin"];
 
   const visibleChildren = useMemo(
-    () => item.children?.filter(child => isItemVisible(child, currentTier)),
+    () => item.children?.filter(child => isTierVisible(child.tier, currentTier)),
     [item.children, currentTier]
   );
   const hasVisibleChildren = visibleChildren && visibleChildren.length > 0;
@@ -850,7 +350,7 @@ export function TieredNav({
   );
 
   const visibleNavItems = useMemo(
-    () => NAV_SPINE.filter(item => isItemVisible(item, effectiveTier)),
+    () => getSidebarTreeModel(effectiveTier).filter(item => item.id !== "home").map(item => ({ ...item, icon: NAV_ICONS[item.id] } as NavItem)),
     [effectiveTier]
   );
 

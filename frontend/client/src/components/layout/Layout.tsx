@@ -30,214 +30,41 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useUserTierStore, type UserTier } from "@/hooks";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import {
+  getBreadcrumbs,
+  getNavSlices,
+  getSidebarTreeModel,
+  isTierVisible,
+  resolveWorkspacePath,
+  TIER_LABELS as NAV_TIER_LABELS,
+  type NavNode,
+} from "@/navigation/schema";
 
 /* ─── Nav Data ─── */
-interface NavItem {
-  id: string;
-  label: string;
+interface NavItem extends NavNode {
   icon: React.ElementType;
-  path: string;
-  tier: UserTier;
-  children?: NavChild[];
-  description?: string;
 }
 
-interface NavChild {
-  id: string;
-  label: string;
-  path: string;
-  tier: UserTier;
-  badge?: string;
-  children?: NavChild[];
-}
+const NAV_ICONS: Record<string, React.ElementType> = {
+  home: Frame, accounts: Building2, intelligence: Radar, studio: GitBranch, context: Package,
+  deliverables: FileOutput, governance: Shield, settings: Settings,
+};
 
-const NAV_DOMAINS: NavItem[] = [
-  {
-    id: "home",
-    label: "Home",
-    icon: Frame,
-    path: "/home",
-    tier: "standard",
-    description: "Dashboard & prospect prompt builder",
-  },
-  {
-    id: "accounts",
-    label: "Accounts",
-    icon: Building2,
-    path: "/accounts",
-    tier: "standard",
-    description: "Select or create a prospect account",
-  },
-  {
-    id: "intelligence",
-    label: "Intelligence",
-    icon: Radar,
-    path: "/intelligence",
-    tier: "standard",
-    description: "Discover and validate prospect pain signals",
-    children: [
-      { id: "intel-signals", label: "Signals", path: "/intelligence/signals", tier: "standard" },
-      { id: "intel-drivers", label: "Drivers", path: "/intelligence/drivers", tier: "standard" },
-      { id: "intel-evidence", label: "Evidence", path: "/intelligence/evidence", tier: "standard" },
-      { id: "intel-stakeholders", label: "Stakeholders", path: "/intelligence/stakeholders", tier: "standard" },
-      { id: "intel-enrichment", label: "Enrichment", path: "/intelligence/enrichment", tier: "advanced" },
-      { id: "intel-hypotheses", label: "Hypotheses", path: "/intelligence/hypotheses", tier: "advanced" },
-      { id: "intel-competitive", label: "Competitive", path: "/intelligence/competitive", tier: "advanced" },
-      { id: "intel-roi", label: "ROI", path: "/intelligence/roi", tier: "advanced" },
-      { id: "intel-evidence-library", label: "Evidence Library", path: "/intelligence/evidence-library", tier: "advanced" },
-    ],
-  },
-  {
-    id: "studio",
-    label: "Value Studio",
-    icon: GitBranch,
-    path: "/studio",
-    tier: "advanced",
-    description: "Build the product-anchored business case",
-    children: [
-      { id: "studio-action-plan", label: "Action Plan", path: "/studio/action-plan", tier: "standard" },
-      { id: "studio-value-model", label: "Value Model", path: "/studio/value-model", tier: "standard" },
-      { id: "studio-narrative", label: "Narrative", path: "/studio/narrative", tier: "standard" },
-      { id: "studio-enrichment", label: "Enrichment", path: "/studio/enrichment", tier: "advanced" },
-      { id: "studio-competitive", label: "Competitive", path: "/studio/competitive", tier: "advanced" },
-      { id: "studio-roi", label: "ROI", path: "/studio/roi", tier: "advanced" },
-      { id: "studio-evidence", label: "Evidence", path: "/studio/evidence", tier: "advanced" },
-    ],
-  },
-  {
-    id: "context",
-    label: "Context Engine",
-    icon: Package,
-    path: "/context",
-    tier: "advanced",
-    description: "Vendor knowledge: Value Packs, models, formulas",
-    children: [
-      { id: "packs", label: "Value Packs", path: "/context/packs", tier: "standard" },
-      { id: "models", label: "Models", path: "/context/models", tier: "standard" },
-      { id: "value-trees", label: "Tree Explorer", path: "/context/value-trees/explorer", tier: "advanced" },
-      { id: "formulas", label: "Formulas", path: "/context/formulas", tier: "advanced" },
-      { id: "agents", label: "Agents", path: "/context/agents", tier: "advanced" },
-      { id: "ontology", label: "Ontology", path: "/context/ontology", tier: "advanced" },
-      { id: "ingestion", label: "Ingestion", path: "/context/ingestion/jobs", tier: "advanced" },
-      { id: "extraction", label: "Extraction", path: "/context/extraction", tier: "advanced" },
-      { id: "integrations", label: "Integrations", path: "/context/integrations", tier: "admin", badge: "Admin" },
-      { id: "sources", label: "Sources", path: "/context/sources", tier: "admin", badge: "Admin" },
-    ],
-  },
-  {
-    id: "deliverables",
-    label: "Deliverables",
-    icon: FileOutput,
-    path: "/deliverables",
-    tier: "standard",
-    description: "Packaged outputs for sharing with prospects",
-    children: [
-      { id: "cases", label: "Business Cases", path: "/deliverables/cases", tier: "standard" },
-      { id: "calculators", label: "Calculators", path: "/deliverables/calculators", tier: "advanced" },
-      { id: "cfo", label: "CFO View", path: "/deliverables/views/cfo", tier: "standard" },
-      { id: "executive", label: "Executive View", path: "/deliverables/views/executive", tier: "standard" },
-      { id: "technical", label: "Technical View", path: "/deliverables/views/technical", tier: "standard" },
-    ],
-  },
-  {
-    id: "governance",
-    label: "Governance",
-    icon: Shield,
-    path: "/governance",
-    tier: "admin",
-    description: "Audit, provenance, and compliance",
-    children: [
-      { id: "traces", label: "Decision Traces", path: "/governance/traces", tier: "standard" },
-      { id: "evidence-gov", label: "Evidence", path: "/governance/evidence", tier: "standard" },
-      { id: "provenance", label: "Provenance", path: "/governance/provenance", tier: "advanced" },
-      { id: "integrity", label: "Integrity", path: "/governance/integrity", tier: "advanced" },
-      { id: "compliance", label: "Compliance", path: "/governance/compliance", tier: "advanced" },
-      { id: "benchmarks", label: "Benchmarks", path: "/governance/benchmarks", tier: "admin", badge: "Admin" },
-      { id: "audit-log", label: "Audit Log", path: "/governance/audit/log", tier: "admin", badge: "Admin" },
-      { id: "health", label: "System Health", path: "/governance/health", tier: "admin", badge: "Admin" },
-    ],
-  },
-];
-
-const SUPPORT_ITEMS: NavItem[] = [
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    path: "/settings",
-    tier: "admin",
-    description: "Platform configuration and user management",
-    children: [
-      { id: "content-formulas", label: "Formulas", path: "/settings/content/formulas", tier: "admin" },
-      { id: "data-variables", label: "Variables", path: "/settings/data/variables", tier: "admin" },
-      { id: "access-roles", label: "Roles", path: "/settings/access/roles", tier: "admin" },
-      { id: "system-settings", label: "System", path: "/settings/system/settings", tier: "admin" },
-      { id: "system-billing", label: "Billing", path: "/settings/system/billing", tier: "admin" },
-    ],
-  },
-];
-
-const BOTTOM_ITEMS = [
+const SUPPORT_ITEMS = [
   { icon: LifeBuoy, label: "Support" },
   { icon: Send, label: "Feedback" },
 ];
 
+const BOTTOM_ITEMS = SUPPORT_ITEMS;
+
 const TIER_LABELS: Record<UserTier, { label: string; icon: React.ElementType }> = {
-  unknown: { label: "Standard", icon: Eye },
-  standard: { label: "Standard", icon: Eye },
-  advanced: { label: "Advanced", icon: Wrench },
-  admin: { label: "Admin", icon: Crown },
+  unknown: { label: NAV_TIER_LABELS.unknown.label, icon: Eye },
+  standard: { label: NAV_TIER_LABELS.standard.label, icon: Eye },
+  advanced: { label: NAV_TIER_LABELS.advanced.label, icon: Wrench },
+  admin: { label: NAV_TIER_LABELS.admin.label, icon: Crown },
 };
 
 /* ─── Helpers ─── */
-function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
-  if (userTier === "admin") return true;
-  if (userTier === "advanced") return tier !== "admin";
-  return tier === "standard";
-}
-
-function resolveWorkspacePath(path: string, accountId: string | null): string {
-  if (!accountId) return path;
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
-  if (path.startsWith("/intelligence/")) return path.replace("/intelligence/", `/intelligence/${accountId}/`);
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) return path.replace("/studio/", `/studio/${accountId}/`);
-  return path;
-}
-
-function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
-  // Map top-level domains to readable labels
-  const domainLabels: Record<string, string> = {
-    home: "Home",
-    accounts: "Accounts",
-    intelligence: "Intelligence",
-    studio: "Value Studio",
-    context: "Context Engine",
-    deliverables: "Deliverables",
-    governance: "Governance",
-    settings: "Settings",
-    workflow: "Workflow",
-    "command-center": "Command Center",
-  };
-
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return [{ label: "Value Fabric" }];
-
-  const crumbs: { label: string; path?: string }[] = [];
-  const domain = segments[0];
-  crumbs.push({ label: domainLabels[domain] || domain, path: `/${domain}` });
-
-  // Add sub-segments as breadcrumbs
-  for (let i = 1; i < segments.length; i++) {
-    const seg = segments[i];
-    // Skip account IDs (UUIDs or numeric)
-    if (/^[0-9a-f-]{8,}$/i.test(seg) || /^\d+$/.test(seg)) continue;
-    const label = seg.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-    crumbs.push({ label, path: "/" + segments.slice(0, i + 1).join("/") });
-  }
-
-  return crumbs;
-}
 
 /* ─── Tooltip ─── */
 function SidebarTooltip({ text, children }: { text: string; children: React.ReactNode }) {
@@ -350,7 +177,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
   const [isOpen, setIsOpen] = useState(isActive);
 
   const visibleChildren = useMemo(
-    () => item.children?.filter(c => isItemVisible(c.tier, effectiveTier)),
+    () => item.children?.filter(c => isTierVisible(c.tier, effectiveTier)),
     [item.children, effectiveTier]
   );
 
@@ -548,14 +375,15 @@ const Layout = memo(function Layout({
   const userInitials = userName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   // Filter nav items by tier
-  const visibleDomains = useMemo(
-    () => NAV_DOMAINS.filter(item => isItemVisible(item.tier, effectiveTier)),
-    [effectiveTier]
-  );
-  const visibleSupport = useMemo(
-    () => SUPPORT_ITEMS.filter(item => isItemVisible(item.tier, effectiveTier)),
-    [effectiveTier]
-  );
+  const visibleDomains = useMemo(() => {
+    const slices = getNavSlices(effectiveTier);
+    return getSidebarTreeModel(effectiveTier)
+      .filter(item => [...slices.workflow, ...slices.configuration, ...slices.governance].some(s => s.id === item.id))
+      .map(item => ({ ...item, icon: NAV_ICONS[item.id] } as NavItem));
+  }, [effectiveTier]);
+  const visibleSupport = useMemo(() => getSidebarTreeModel(effectiveTier)
+    .filter(item => item.tags?.includes("settings"))
+    .map(item => ({ ...item, icon: NAV_ICONS[item.id] } as NavItem)), [effectiveTier]);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
