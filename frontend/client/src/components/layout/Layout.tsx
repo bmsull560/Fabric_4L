@@ -24,6 +24,7 @@ import {
   Building2, Radar, Settings,
   Command, Sun, Moon, Frame, LifeBuoy, Send,
   PanelLeft, Eye, Lock, Wrench, Crown, Cog,
+  Lightbulb, GitBranch, Calculator, FileText, Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -76,7 +77,47 @@ const NAV_DOMAINS: NavItem[] = [
     icon: Radar,
     path: "/intelligence",
     tier: "standard",
-    description: "Account Intelligence workspace — all workflow steps as tabs",
+    description: "Account Intelligence workspace",
+  },
+  {
+    id: "hypothesis",
+    label: "Hypothesis",
+    icon: Lightbulb,
+    path: "/hypothesis",
+    tier: "standard",
+    description: "AI-generated value hypotheses",
+  },
+  {
+    id: "drivers",
+    label: "Driver Tree",
+    icon: GitBranch,
+    path: "/drivers",
+    tier: "standard",
+    description: "Value drivers and evidence",
+  },
+  {
+    id: "calculator",
+    label: "Calculator",
+    icon: Calculator,
+    path: "/calculator",
+    tier: "standard",
+    description: "ROI and value model calculator",
+  },
+  {
+    id: "value-case",
+    label: "Value Case",
+    icon: FileText,
+    path: "/value-case",
+    tier: "standard",
+    description: "Executive value case narrative",
+  },
+  {
+    id: "realization",
+    label: "Value Realization",
+    icon: Target,
+    path: "/realization",
+    tier: "standard",
+    description: "Implementation and realization plan",
   },
 ];
 
@@ -120,12 +161,22 @@ function isItemVisible(tier: UserTier, userTier: UserTier): boolean {
 
 function resolveWorkspacePath(path: string, accountId: string | null): string {
   if (!accountId) return path;
-  // New unified workspace route: /accounts/:accountId/intelligence/:tabId
-  if (path === "/intelligence") return `/accounts/${accountId}/intelligence/signals`;
+  // Account-scoped workspace routes
+  if (path === "/intelligence") return `/intelligence/${accountId}`;
   if (path.startsWith("/intelligence/")) {
     const tab = path.replace("/intelligence/", "");
-    return `/accounts/${accountId}/intelligence/${tab}`;
+    return `/intelligence/${accountId}/${tab}`;
   }
+  if (path === "/hypothesis") return `/hypothesis/${accountId}`;
+  if (path.startsWith("/hypothesis/")) return path.replace("/hypothesis/", `/hypothesis/${accountId}/`);
+  if (path === "/drivers") return `/drivers/${accountId}`;
+  if (path.startsWith("/drivers/")) return path.replace("/drivers/", `/drivers/${accountId}/`);
+  if (path === "/calculator") return `/calculator/${accountId}`;
+  if (path.startsWith("/calculator/")) return path.replace("/calculator/", `/calculator/${accountId}/`);
+  if (path === "/value-case") return `/value-case/${accountId}`;
+  if (path.startsWith("/value-case/")) return path.replace("/value-case/", `/value-case/${accountId}/`);
+  if (path === "/realization") return `/realization/${accountId}`;
+  if (path.startsWith("/realization/")) return path.replace("/realization/", `/realization/${accountId}/`);
   // Legacy studio routes (backward compat)
   if (path === "/studio") return `/studio/${accountId}`;
   if (path.startsWith("/studio/")) return path.replace("/studio/", `/studio/${accountId}/`);

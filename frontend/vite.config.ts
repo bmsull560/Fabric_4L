@@ -202,6 +202,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/v1\/graph/, '/v1'),
       },
+      '/api/v1/audit': {
+        target: 'http://localhost:8004',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v1\/audit/, '/v1/audit'),
+      },
       '/api/v1/agents': {
         target: 'http://localhost:8004',
         changeOrigin: true,
