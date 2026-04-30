@@ -30,9 +30,6 @@ import {
   Building2,
   Radar,
   GitBranch,
-  Package,
-  FileOutput,
-  Shield,
   Settings,
   ChevronDown,
   ChevronRight,
@@ -40,6 +37,10 @@ import {
   Lock,
   Crown,
   Wrench,
+  Lightbulb,
+  Calculator,
+  FileText,
+  TrendingUp,
 } from "lucide-react";
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -71,341 +72,98 @@ export interface TieredNavProps {
 // but the actual workspace tabs are rendered by their respective workspace shells.
 
 const NAV_SPINE: NavItem[] = [
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // 1. ACCOUNTS â€” Entry Point
-  // "Which prospect am I working on?"
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── 1. HOME ──────────────────────────────────────────────────────────────────
+  {
+    id: "home",
+    label: "Home",
+    icon: <Building2 size={16} />,
+    path: "/home",
+    tier: "standard",
+    description: "Dashboard overview",
+  },
+  // ─── 2. ACCOUNTS ──────────────────────────────────────────────────────────────
   {
     id: "accounts",
     label: "Accounts",
     icon: <Building2 size={16} />,
     path: "/accounts",
     tier: "standard",
-    description: "Select or create a prospect account",
+    description: "Manage prospect accounts",
   },
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // 2. INTELLIGENCE â€” Discovery Workspace
-  // "What is happening in the prospect's business and why?"
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── 3. INTELLIGENCE ──────────────────────────────────────────────────────────
+  // Tabs (rendered by IntelligenceShell): Signals, Stakeholder Map, Ontology Match, Enrichment
   {
     id: "intelligence",
     label: "Intelligence",
     icon: <Radar size={16} />,
     path: "/intelligence",
     tier: "standard",
-    description: "Discover and validate prospect pain signals",
-    children: [
-      {
-        id: "signals",
-        label: "Signals",
-        path: "/intelligence/signals",
-        tier: "standard",
-      },
-      {
-        id: "drivers",
-        label: "Drivers",
-        path: "/intelligence/drivers",
-        tier: "standard",
-      },
-      {
-        id: "evidence",
-        label: "Evidence",
-        path: "/intelligence/evidence",
-        tier: "standard",
-      },
-      {
-        id: "stakeholders",
-        label: "Stakeholders",
-        path: "/intelligence/stakeholders",
-        tier: "standard",
-      },
-    ],
+    description: "AI-enriched prospect profile: signals, stakeholders, ontology",
   },
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // 3. VALUE STUDIO â€” Synthesis Workspace
-  // "How does our product solve the prospect's validated problems?"
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── 4. HYPOTHESIS ────────────────────────────────────────────────────────────
   {
-    id: "studio",
-    label: "Value Studio",
+    id: "hypothesis",
+    label: "Hypothesis",
+    icon: <Lightbulb size={16} />,
+    path: "/hypothesis",
+    tier: "standard",
+    description: "AI-generated value hypotheses for the account",
+  },
+  // ─── 5. DRIVER TREE ───────────────────────────────────────────────────────────
+  // Tabs (rendered by DriverTreeShell): Evidence, Alternatives, Solution Cost
+  {
+    id: "drivers",
+    label: "Driver Tree",
     icon: <GitBranch size={16} />,
-    path: "/studio",
+    path: "/drivers",
     tier: "standard",
-    description: "Build the product-anchored business case",
-    children: [
-      {
-        id: "action-plan",
-        label: "Action Plan",
-        path: "/studio/action-plan",
-        tier: "standard",
-      },
-      {
-        id: "value-model",
-        label: "Value Model",
-        path: "/studio/value-model",
-        tier: "standard",
-      },
-      {
-        id: "narrative",
-        label: "Narrative",
-        path: "/studio/narrative",
-        tier: "standard",
-      },
-    ],
+    description: "Map signals to business value drivers with evidence",
   },
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // 4. CONTEXT ENGINE â€” Vendor Knowledge Base
-  // "What does the vendor know about its own products and proof points?"
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── 6. CALCULATOR ────────────────────────────────────────────────────────────
   {
-    id: "context",
-    label: "Context Engine",
-    icon: <Package size={16} />,
-    path: "/context",
+    id: "calculator",
+    label: "Calculator",
+    icon: <Calculator size={16} />,
+    path: "/calculator",
     tier: "standard",
-    description: "Vendor knowledge: Value Packs, models, formulas",
-    children: [
-      {
-        id: "packs",
-        label: "Value Packs",
-        path: "/context/packs",
-        tier: "standard",
-      },
-      {
-        id: "models",
-        label: "Models",
-        path: "/context/models",
-        tier: "standard",
-      },
-      {
-        id: "value-tree-explorer",
-        label: "Tree Explorer",
-        path: "/context/value-trees/explorer",
-        tier: "advanced",
-      },
-      {
-        id: "formulas",
-        label: "Formulas",
-        path: "/context/formulas",
-        tier: "advanced",
-      },
-      {
-        id: "agents",
-        label: "Agents",
-        path: "/context/agents",
-        tier: "advanced",
-      },
-      {
-        id: "ontology",
-        label: "Ontology",
-        path: "/context/ontology",
-        tier: "advanced",
-        children: [
-          {
-            id: "ontology-editor",
-            label: "Schema Editor",
-            path: "/context/ontology",
-            tier: "advanced",
-          },
-          {
-            id: "entities",
-            label: "Entities",
-            path: "/context/ontology/entities",
-            tier: "advanced",
-          },
-          {
-            id: "graph",
-            label: "Graph View",
-            path: "/context/ontology/graph",
-            tier: "advanced",
-          },
-        ],
-      },
-      {
-        id: "ingestion",
-        label: "Ingestion Jobs",
-        path: "/context/ingestion/jobs",
-        tier: "advanced",
-      },
-      {
-        id: "extraction",
-        label: "Extraction",
-        path: "/context/extraction",
-        tier: "advanced",
-      },
-      {
-        id: "integrations",
-        label: "Integrations",
-        path: "/context/integrations",
-        tier: "admin",
-        badge: "Admin",
-      },
-      {
-        id: "sources",
-        label: "Sources",
-        path: "/context/sources",
-        tier: "admin",
-        badge: "Admin",
-      },
-    ],
+    description: "ROI calculator and value model",
   },
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // 5. DELIVERABLES â€” Activation Layer
-  // "How does the business case reach the prospect?"
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── 7. VALUE CASE ────────────────────────────────────────────────────────────
   {
-    id: "deliverables",
-    label: "Deliverables",
-    icon: <FileOutput size={16} />,
-    path: "/deliverables",
+    id: "value-case",
+    label: "Value Case",
+    icon: <FileText size={16} />,
+    path: "/value-case",
     tier: "standard",
-    description: "Packaged outputs for sharing with prospects",
-    children: [
-      {
-        id: "cases",
-        label: "Business Cases",
-        path: "/deliverables/cases",
-        tier: "standard",
-      },
-      {
-        id: "calculators",
-        label: "Calculators",
-        path: "/deliverables/calculators",
-        tier: "advanced",
-      },
-      {
-        id: "views",
-        label: "Stakeholder Views",
-        path: "/deliverables/views",
-        tier: "standard",
-        children: [
-          {
-            id: "cfo",
-            label: "CFO View",
-            path: "/deliverables/views/cfo",
-            tier: "standard",
-          },
-          {
-            id: "executive",
-            label: "Executive View",
-            path: "/deliverables/views/executive",
-            tier: "standard",
-          },
-          {
-            id: "technical",
-            label: "Technical View",
-            path: "/deliverables/views/technical",
-            tier: "standard",
-          },
-        ],
-      },
-      {
-        id: "api",
-        label: "API & Webhooks",
-        path: "/deliverables/api",
-        tier: "admin",
-        badge: "Admin",
-      },
-      {
-        id: "embeds",
-        label: "Embeds",
-        path: "/deliverables/embeds",
-        tier: "admin",
-        badge: "Admin",
-      },
-    ],
+    description: "Generated narrative and executive value case",
   },
-
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-  // 6. MY SETTINGS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ─── 8. VALUE REALIZATION ─────────────────────────────────────────────────────
   {
-    id: "my-settings",
-    label: "My Settings",
-    icon: <Settings size={16} />,
-    path: "/my-settings",
+    id: "realization",
+    label: "Value Realization",
+    icon: <TrendingUp size={16} />,
+    path: "/realization",
     tier: "standard",
-    description: "Personal profile and preferences",
-    children: [
-      { id: "my-profile", label: "Profile", path: "/my-settings/profile", tier: "standard" },
-      { id: "my-preferences", label: "Preferences", path: "/my-settings/preferences", tier: "standard" },
-      { id: "my-notifications", label: "Notifications", path: "/my-settings/notifications", tier: "standard" },
-      { id: "my-appearance", label: "Appearance", path: "/my-settings/appearance", tier: "standard" },
-      { id: "my-accounts", label: "Accounts", path: "/my-settings/accounts", tier: "standard" },
-    ],
+    description: "Track realized value post-sale",
   },
+  // ─── SETUP ────────────────────────────────────────────────────────────────────
   {
-    id: "workspace-settings",
-    label: "Workspace Settings",
-    icon: <Settings size={16} />,
-    path: "/workspace-settings",
-    tier: "admin",
-    badge: "Admin",
-    children: [
-      { id: "workspace-integrations", label: "Integrations", path: "/workspace-settings/integrations", tier: "admin" },
-      { id: "workspace-sources", label: "Sources", path: "/workspace-settings/sources", tier: "admin" },
-    ],
-  },
-  {
-    id: "organization-admin",
-    label: "Organization Admin",
-    icon: <Shield size={16} />,
-    path: "/organization-admin",
-    tier: "admin",
-    badge: "Admin",
-    children: [
-      { id: "org-members", label: "Members", path: "/organization-admin/members", tier: "admin" },
-      { id: "org-roles", label: "Roles", path: "/organization-admin/roles", tier: "admin" },
-      { id: "org-billing", label: "Billing", path: "/organization-admin/billing", tier: "admin" },
-      { id: "org-teams", label: "Teams", path: "/organization-admin/teams", tier: "admin" },
-    ],
-  },
-  {
-    id: "platform-configuration",
-    label: "Platform Configuration",
-    icon: <GitBranch size={16} />,
-    path: "/platform-configuration",
-    tier: "admin",
-    badge: "Admin",
-    children: [
-      { id: "platform-integrations", label: "Integrations", path: "/platform-configuration/integrations", tier: "admin" },
-      { id: "platform-api-keys", label: "API Keys", path: "/platform-configuration/api-keys", tier: "admin" },
-      { id: "platform-webhooks", label: "Webhooks", path: "/platform-configuration/webhooks", tier: "admin" },
-      { id: "platform-model-routing", label: "Model Routing", path: "/platform-configuration/model-routing", tier: "admin" },
-      { id: "platform-feature-flags", label: "Feature Flags", path: "/platform-configuration/feature-flags", tier: "admin" },
-    ],
-  },
-  {
-    id: "governance-center",
-    label: "Governance Center",
-    icon: <Shield size={16} />,
-    path: "/governance-center",
-    tier: "admin",
-    badge: "Admin",
-    children: [
-      { id: "gov-evidence-policy", label: "Evidence Policy", path: "/governance-center/evidence-policy", tier: "admin" },
-      { id: "gov-compliance", label: "Compliance", path: "/governance-center/compliance", tier: "admin" },
-      { id: "gov-audit-retention", label: "Audit Retention", path: "/governance-center/audit-retention", tier: "admin" },
-      { id: "gov-residency", label: "Residency", path: "/governance-center/residency", tier: "admin" },
-    ],
-  },
-  {
-    id: "developer-console",
-    label: "Developer Console",
+    id: "setup",
+    label: "Setup",
     icon: <Wrench size={16} />,
-    path: "/developer-console",
+    path: "/workflow/prospect",
+    tier: "standard",
+    description: "Prospect setup and configuration",
+  },
+  // ─── SETTINGS (Admin) ─────────────────────────────────────────────────────────
+  {
+    id: "settings",
+    label: "Settings",
+    icon: <Settings size={16} />,
+    path: "/settings",
     tier: "admin",
     badge: "Admin",
-    children: [
-      { id: "dev-health", label: "Health", path: "/developer-console/health", tier: "admin" },
-      { id: "dev-traces", label: "Traces", path: "/developer-console/traces", tier: "admin" },
-      { id: "dev-queue-diagnostics", label: "Queue Diagnostics", path: "/developer-console/queue-diagnostics", tier: "admin" },
-      { id: "dev-log-diagnostics", label: "Log Diagnostics", path: "/developer-console/log-diagnostics", tier: "admin" },
-    ],
+    description: "Tenant configuration and administration",
   },
 ];
 
@@ -472,11 +230,14 @@ interface SidebarItemProps {
 function resolveWorkspacePath(path: string, accountId: string | null): string {
   if (!accountId) return path;
 
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
-  if (path.startsWith("/intelligence/")) {
-    return path.replace("/intelligence/", `/intelligence/${accountId}/`);
+  // Account-scoped workflow steps
+  const ACCOUNT_PREFIXES = ["/intelligence", "/hypothesis", "/drivers", "/calculator", "/value-case", "/realization"];
+  for (const prefix of ACCOUNT_PREFIXES) {
+    if (path === prefix) return `${prefix}/${accountId}`;
+    if (path.startsWith(prefix + "/")) return path.replace(prefix + "/", `${prefix}/${accountId}/`);
   }
 
+  // Legacy studio routes
   if (path === "/studio") return `/studio/${accountId}`;
   if (path.startsWith("/studio/")) {
     return path.replace("/studio/", `/studio/${accountId}/`);
