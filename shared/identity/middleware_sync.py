@@ -12,9 +12,16 @@ import os
 import threading
 from typing import Any, Callable, Optional
 from uuid import UUID, uuid4
-from shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT
+from shared.identity.context import (
+    AUTH_SOURCE_SERVICE_ACCOUNT,
+    AUTH_SOURCE_JWT,
+    AUTH_SOURCE_API_KEY,
+    AUTH_SOURCE_UNKNOWN,
+    ISOLATION_TIER_SHARED,
+)
 from shared.models.typed_dict import TypedDictModel
 
+DEFAULT_API_KEY_ROLE = "read_only"
 
 class SyncRequestContext_to_dictResult(TypedDictModel):
     api_key_id: Any
@@ -53,8 +60,8 @@ class SyncRequestContext:
         request_id: str | None = None,
         org_id: UUID | None = None,
         tenant_role: str | None = None,
-        isolation_tier: str = "shared",
-        auth_source: str = "unknown",
+        isolation_tier: str = ISOLATION_TIER_SHARED,
+        auth_source: str = AUTH_SOURCE_UNKNOWN,
         service_account_id: UUID | None = None,
         service_account_scopes: list[str] | None = None,
     ):
@@ -253,19 +260,13 @@ class GovernanceMiddlewareSync:
 
     def _build_context_from_jwt_sync(self, payload: dict[str, Any]) -> SyncRequestContext:
         """Build SyncRequestContext from JWT payload."""
-        tenant_id = UUID(payload.get("tenant_id")) if payload.get("tenant_id") else None
-        user_id = UUID(payload.get("sub")) if payload.get("sub") else None
-        org_id = UUID(payload.get("org_id")) if payload.get("org_id") else None
+        tenant_id = _parse_uuid(payload.get("tenant_id"))
+        user_id = _parse_uuid(payload.get("sub"))
+        org_id = _parse_uuid(payload.get("org_id"))
 
-        service_account_id = None
-        service_account_scopes = []
-        auth_source = payload.get("auth_source", "jwt_claim")
-
-        svc_id = payload.get("service_account_id")
-        if svc_id:
-            service_account_id = UUID(svc_id)
-            service_account_scopes = payload.get("scopes", [])
-            auth_source = "service_account"
+        service_account_id = _parse_uuid(payload.get("service_account_id"))
+        service_account_scopes = payload.get("scopes", [])
+        auth_source = AUTH_SOURCE_SERVICE_ACCOUNT if service_account_id else payload.get("auth_source", AUTH_SOURCE_JWT)
 
         roles = payload.get("roles", [])
         permissions = self._derive_permissions_sync(roles)
@@ -275,7 +276,7 @@ class GovernanceMiddlewareSync:
             user_id=user_id,
             org_id=org_id,
             tenant_role=payload.get("tenant_role"),
-            isolation_tier=payload.get("isolation_tier", "shared"),
+            isolation_tier=payload.get("isolation_tier", ISOLATION_TIER_SHARED),
             roles=roles,
             permissions=permissions,
             auth_source=auth_source,
@@ -285,10 +286,10 @@ class GovernanceMiddlewareSync:
 
     def _build_context_from_api_key_sync(self, record: dict[str, Any]) -> SyncRequestContext:
         """Build SyncRequestContext from API key record."""
-        tenant_id = UUID(str(record["tenant_id"])) if record.get("tenant_id") else None
-        user_id = UUID(str(record["user_id"])) if record.get("user_id") else None
+        tenant_id = _parse_uuid(record.get("tenant_id"))
+        user_id = _parse_uuid(record.get("user_id"))
 
-        role = record.get("role", "read_only")
+        role = record.get("role", DEFAULT_API_KEY_ROLE)
         roles = [role]
 
         permissions = self._derive_permissions_sync(roles)
@@ -299,10 +300,10 @@ class GovernanceMiddlewareSync:
         return SyncRequestContext(
             tenant_id=tenant_id,
             user_id=user_id,
-            api_key_id=record.get("key_id"),
+            api_key_id=_parse_uuid(record.get("key_id")),
             roles=roles,
             permissions=permissions,
-            auth_source="api_key",
+            auth_source=AUTH_SOURCE_API_KEY,
         )
 
     def _derive_permissions_sync(self, roles: list[str]) -> list[str]:
@@ -315,7 +316,18 @@ class GovernanceMiddlewareSync:
                 perms.extend(get_permissions_for_role(role))
             return list(set(perms))
         except ImportError:
+            logger.debug("Permissions module not available, returning empty permissions")
             return []
+
+
+def _parse_uuid(value: Any) -> UUID | None:
+    """Safely parse a value into a UUID, returning None on failure."""
+    if not value:
+        return None
+    try:
+        return UUID(str(value))
+    except ValueError:
+        return None
 
 
 def get_request_context_sync() -> SyncRequestContext | None:

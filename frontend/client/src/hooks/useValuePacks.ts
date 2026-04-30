@@ -206,6 +206,11 @@ export interface ValuePackFrameworkData {
     feedback_loop_speed: 'slow' | 'medium' | 'fast';
   };
   completeness_score?: number;
+  proof_requirements?: Array<{
+    id: string;
+    requirement: string;
+    evidence_type: string;
+  } | null>;
 }
 
 /**

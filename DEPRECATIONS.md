@@ -295,6 +295,7 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | Pattern | Removal Date | PR |
 |---------|-------------|-----|
 | layer2_client.py tenant_id parameter | 2026-04-29 | Removed tenant_id from extract_operational_signals() |
+| llm_budget_guardrails.py tenant_id parameters | 2026-04-30 | Removed tenant_id from precheck_or_raise() and record_usage() |
 
 ---
 

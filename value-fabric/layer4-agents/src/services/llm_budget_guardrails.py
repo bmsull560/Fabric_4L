@@ -9,6 +9,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from shared.identity.context import require_context
+
 from ..metrics import get_metrics
 
 logger = logging.getLogger(__name__)
@@ -48,13 +50,15 @@ class LLMBudgetGuardrails:
         self._usage_events: dict[str, list[tuple[datetime, float]]] = defaultdict(list)
         self._lock = asyncio.Lock()
 
-    async def precheck_or_raise(self, tenant_id: str, model: str) -> LLMBudgetDecision:
+    async def precheck_or_raise(self, model: str) -> LLMBudgetDecision:
         """Check budget state and return throttling/escalation decision.
 
         Raises:
             LLMBudgetExceededError: if hard cap was exceeded and request must be blocked.
         """
-        normalized_tenant = (tenant_id or "unknown").strip() or "unknown"
+        ctx = require_context()
+        tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
+        normalized_tenant = tenant_id.strip() or "unknown"
 
         async with self._lock:
             now = datetime.now(timezone.utc)  # noqa: UP017 (Python 3.10 compatibility)
@@ -82,9 +86,11 @@ class LLMBudgetGuardrails:
 
         return LLMBudgetDecision(model=model, throttle_seconds=0, escalation_required=False)
 
-    async def record_usage(self, tenant_id: str, cost_usd: float) -> None:
+    async def record_usage(self, cost_usd: float) -> None:
         """Record observed LLM usage for budget window accounting."""
-        normalized_tenant = (tenant_id or "unknown").strip() or "unknown"
+        ctx = require_context()
+        tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
+        normalized_tenant = tenant_id.strip() or "unknown"
         if cost_usd <= 0:
             return
 

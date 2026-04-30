@@ -84,7 +84,7 @@ interface FormulaRowProps {
 }
 
 function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) {
-  const status = STATUS_CONFIG[formula.status];
+  const status = STATUS_CONFIG[formula.status as FormulaStatus];
   const [, navigate] = useLocation();
 
   return (
@@ -118,7 +118,7 @@ function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) 
         </div>
         <div className="text-right">
           <div className="font-medium text-muted-foreground">
-            {formatRelativeTime(formula.updated_at)}
+            {formatRelativeTime(formula.updated_at ?? '')}
           </div>
           <div>Updated</div>
         </div>
@@ -127,21 +127,21 @@ function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
-          onClick={() => navigate(`/model/value-studio/formulas/${formula.formula_id}`)}
+          onClick={() => navigate(`/model/value-studio/formulas/${formula.formula_id ?? formula.id}`)}
           className="p-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
           title="Edit"
         >
           <Edit3 size={16} />
         </button>
         <button
-          onClick={() => onEdit(formula.formula_id)}
+          onClick={() => formula.formula_id && onEdit(formula.formula_id)}
           className="p-2 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
           title="Test"
         >
           <Play size={16} />
         </button>
         <button
-          onClick={() => onDelete(formula.formula_id)}
+          onClick={() => formula.formula_id && onDelete(formula.formula_id)}
           disabled={isDeleting}
           className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
           title="Delete"

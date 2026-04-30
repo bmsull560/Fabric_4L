@@ -161,7 +161,8 @@ class ApiClient {
    */
   private cleanupStaleRequests(): void {
     const now = Date.now();
-    for (const [key, entry] of this.inFlightRequests.entries()) {
+    const entries = Array.from(this.inFlightRequests.entries());
+    for (const [key, entry] of entries) {
       if (now - entry.timestamp > this.DEDUPE_TTL_MS) {
         this.inFlightRequests.delete(key);
       }

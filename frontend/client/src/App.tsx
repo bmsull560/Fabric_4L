@@ -38,7 +38,7 @@ function ProspectSetupWithNav() {
   const createAccount = useCreateAccount();
 
   const handleCreateSetup = async (payload: {
-    companyName: string;
+    companyName?: string;
     industry?: string;
     painPoints?: string[];
     stakeholders?: Record<string, string>;

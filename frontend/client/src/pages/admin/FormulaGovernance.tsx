@@ -462,7 +462,7 @@ function FormulaGovernanceContent() {
                 </td>
                 <td className="px-3 py-3 text-neutral-500">{f.pack_name || "—"}</td>
                 <td className="px-3 py-3 font-mono text-neutral-600">{f.version}</td>
-                <td className="px-3 py-3"><FormulaStatusChip status={f.status}/></td>
+                <td className="px-3 py-3"><FormulaStatusChip status={f.status as FormulaStatus}/></td>
                 <td className="px-3 py-3 text-neutral-500">{f.owner}</td>
                 <td className="px-3 py-3"><GovernanceScoreBadge score={f.governance_score}/></td>
                 <td className="px-3 py-3 text-neutral-600">{f.used_in_count || 0} assets</td>

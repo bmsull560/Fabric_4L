@@ -4,6 +4,8 @@ import asyncio
 import logging
 from typing import Any
 
+from shared.identity.context import require_context
+
 from ..metrics import get_metrics
 from ..metrics.llm_cost_calculator import LLMCostCalculator
 from ..models.agent_state import (
@@ -131,9 +133,8 @@ class WhitespaceAnalysisWorkflow(BaseWorkflow):
         from openai import AsyncOpenAI
 
         api_key = self.config.get("openai_api_key") if self.config else None
-        tenant_id = str(state.metadata.get("tenant_id", "unknown"))
         initial_model = "gpt-4o-mini"
-        decision = await get_llm_budget_guardrails().precheck_or_raise(tenant_id, initial_model)
+        decision = await get_llm_budget_guardrails().precheck_or_raise(initial_model)
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
         client = AsyncOpenAI(api_key=api_key)
@@ -176,7 +177,9 @@ Return ONLY the JSON array, no other text."""
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
             )
-            await get_llm_budget_guardrails().record_usage(tenant_id=tenant_id, cost_usd=cost)
+            await get_llm_budget_guardrails().record_usage(cost_usd=cost)
+            ctx = require_context()
+            tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
             metrics = get_metrics()
             if metrics:
                 metrics.record_llm_cost(

@@ -7,8 +7,8 @@
  * - Account detail panel with actions (Create Case, View Traces, Export)
  * - Search and pagination
  */
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useParams } from "wouter";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
 import AccountIntakeModal from "@/components/workspace/AccountIntakeModal";
 import {
@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import { useAccountContextStore } from "@/stores/accountContextStore";
 
 const PROVIDER_COLORS: Record<CRMProvider, { bg: string; text: string; border: string }> = {
   salesforce: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -449,14 +450,25 @@ interface FilterOptions {
 
 function Accounts() {
   const [, navigate] = useLocation();
+  const params = useParams<{ id: string }>();
+  const urlAccountId = params.id ?? null;
+  const setGlobalAccountId = useAccountContextStore((s) => s.setSelectedAccountId);
+
   const [filters, setFilters] = useState<AccountFilters>({
     sync_status: "all",
     search: "",
     page: 1,
     page_size: 20,
   });
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(urlAccountId);
   const [intakeOpen, setIntakeOpen] = useState(false);
+
+  // Sync URL account ID to global store so sidebar/workspace links resolve correctly
+  useEffect(() => {
+    if (urlAccountId) {
+      setGlobalAccountId(urlAccountId);
+    }
+  }, [urlAccountId, setGlobalAccountId]);
 
   const { data, isLoading, error } = useAccounts(filters);
   const { data: filterOptions } = useAccountFilterOptions();
@@ -465,6 +477,11 @@ function Accounts() {
 
   const accounts = data?.items || [];
   const total = data?.total || 0;
+
+  const handleSelectAccount = (id: string | null) => {
+    setSelectedAccountId(id);
+    if (id) setGlobalAccountId(id);
+  };
 
   const handleExport = () => {
     const csvContent = [
@@ -604,7 +621,7 @@ function Accounts() {
                             "cursor-pointer",
                             selectedAccountId === account.id && "bg-primary/5"
                           )}
-                          onClick={() => setSelectedAccountId(account.id)}
+                          onClick={() => handleSelectAccount(account.id)}
                         >
                           <TableCell>
                             <div className="flex items-center gap-3">
@@ -675,7 +692,7 @@ function Accounts() {
               <div className="bg-card border border-border rounded-lg h-[calc(100vh-200px)] sticky top-8">
                 <AccountDetailPanel
                   accountId={selectedAccountId}
-                  onClose={() => setSelectedAccountId(null)}
+                  onClose={() => handleSelectAccount(null)}
                   onLaunchIntelligence={(id) => navigate(`/intelligence/${id}/signals`)}
                 />
               </div>

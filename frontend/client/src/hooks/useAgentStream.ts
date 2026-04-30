@@ -193,7 +193,7 @@ export function useAgentStream({
 
         const data = response.data;
         const agentContent =
-          data.content ?? "I received your message but couldn't generate a response.";
+          data?.content ?? "I received your message but couldn't generate a response.";
 
         const agentMsg: AgentMessage = {
           id: `a-${Date.now()}`,
@@ -201,10 +201,10 @@ export function useAgentStream({
           content: agentContent,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           metadata: {
-            traceId: data.metadata?.trace_id,
-            workflowId: data.metadata?.workflow_id,
-            tenantId: data.metadata?.tenant_id,
-            auditEventId: data.metadata?.audit_event_id,
+            traceId: data?.metadata?.trace_id,
+            workflowId: data?.metadata?.workflow_id,
+            tenantId: data?.metadata?.tenant_id,
+            auditEventId: data?.metadata?.audit_event_id,
           },
         };
         setMessages((prev) => [...prev, agentMsg]);

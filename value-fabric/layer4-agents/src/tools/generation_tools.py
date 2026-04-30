@@ -6,6 +6,7 @@ from io import BytesIO
 from typing import Any
 
 from openai import AsyncOpenAI
+from shared.identity.context import require_context
 
 # Optional weasyprint import - allows tests to run without GTK libraries
 try:
@@ -84,9 +85,8 @@ Maximum {max_length} words.""",
     async def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
         """Call LLM to generate content."""
         api_key = self.config.get("openai_api_key") if self.config else None
-        tenant_id = str(self.config.get("tenant_id", "unknown")) if self.config else "unknown"
         initial_model = "gpt-4o"
-        decision = await get_llm_budget_guardrails().precheck_or_raise(tenant_id, initial_model)
+        decision = await get_llm_budget_guardrails().precheck_or_raise(initial_model)
         if decision.throttle_seconds > 0:
             await asyncio.sleep(decision.throttle_seconds)
 
@@ -113,7 +113,10 @@ Maximum {max_length} words.""",
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
-        await get_llm_budget_guardrails().record_usage(tenant_id=tenant_id, cost_usd=cost)
+        await get_llm_budget_guardrails().record_usage(cost_usd=cost)
+
+        ctx = require_context()
+        tenant_id = str(ctx.tenant_id) if ctx.tenant_id else "unknown"
 
         metrics = get_metrics()
         if metrics:
