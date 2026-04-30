@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Global Component Library
  * 
  * Single import source for all shared components across the application.
@@ -16,19 +16,21 @@
  * ```
  */
 
-// ── Layout / Shell Components ─────────────────────────────────────────────────
+// â”€â”€ Layout / Shell Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { default as AppShell } from "./AppShell";
 export { default as Layout } from "./layout/Layout";
 export { PageShell } from "./layout/PageShell";
 
-// ── Navigation ─────────────────────────────────────────────────────────────────
+// â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export { TieredNav, type UserTier } from "./navigation/TieredNav";
-// ── Workspace Shells ───────────────────────────────────────────────────────────
+export { TieredNav, type UserTier, NAV_SPINE } from "./navigation/TieredNav";
+export { AccountPicker, type AccountPickerProps } from "./navigation/AccountPicker";
+export { MobilePersistentSidebar, type MobilePersistentSidebarProps } from "./navigation/MobilePersistentSidebar";
+// â”€â”€ Workspace Shells â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export { default as IntelligenceShell } from "./workspace/IntelligenceShell";
 
-// ── UI Primitives (shadcn/ui) ──────────────────────────────────────────────────
+// â”€â”€ UI Primitives (shadcn/ui) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export * from "./ui/accordion";
 export * from "./ui/alert";
@@ -84,7 +86,7 @@ export * from "./ui/toggle";
 export * from "./ui/toggle-group";
 export * from "./ui/tooltip";
 
-// ── Block Components (Design System) ──────────────────────────────────────────
+// â”€â”€ Block Components (Design System) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export {
   StatCard,
   StatusBadgeBlock,
@@ -110,7 +112,7 @@ export type {
   ModelReadinessMeterProps,
 } from "./blocks";
 
-// ── Domain Components (Fabric-specific) ───────────────────────────────────────
+// â”€â”€ Domain Components (Fabric-specific) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export {
   PageHeader,
@@ -126,34 +128,34 @@ export {
   EntityBadge,
 } from "./ui/fabric";
 
-// ── Shared Contextual Components ───────────────────────────────────────────────
+// â”€â”€ Shared Contextual Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as ValueNarrativeHero } from "./ValueNarrativeHero";
 export { QueryState } from "./QueryState";
 
-// ── Graph Components ───────────────────────────────────────────────────────────
+// â”€â”€ Graph Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { GraphVisualization } from "./graph/GraphVisualization";
 export { GraphInspectorPanel } from "./graph/GraphInspectorPanel";
 
-// ── Ontology Components ────────────────────────────────────────────────────────
+// â”€â”€ Ontology Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { PropertyEditor } from "./ontology/PropertyEditor";
 export { RelationshipMap } from "./ontology/RelationshipMap";
 export { TypeTree } from "./ontology/TypeTree";
 
-// ── Integration Components ───────────────────────────────────────────────────
+// â”€â”€ Integration Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { IntegrationConfigPanel } from "./integrations/IntegrationConfigPanel";
 export { IntegrationGrid } from "./integrations/IntegrationGrid";
 export { IntegrationList } from "./integrations/IntegrationList";
 
-// ── Auth Components ────────────────────────────────────────────────────────────
+// â”€â”€ Auth Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { SSOButtons } from "./auth/SSOButtons";
 
-// ── Error Handling & Loading States ───────────────────────────────────────────
+// â”€â”€ Error Handling & Loading States â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { ErrorFallback, InlineError, SectionError } from "./ui/ErrorFallback";
 export {
@@ -167,7 +169,7 @@ export {
   SkeletonForm,
 } from "./ui/SkeletonViews";
 
-// ── ValuePack Framework Components ─────────────────────────────────────────────
+// â”€â”€ ValuePack Framework Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export {
   ValuePackCard,
@@ -181,6 +183,7 @@ export {
   type ProspectProfile,
 } from "./valuepack";
 
-// ── Re-export toast utilities for convenience ──────────────────────────────────
+// â”€â”€ Re-export toast utilities for convenience â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export { toast } from "sonner";
+

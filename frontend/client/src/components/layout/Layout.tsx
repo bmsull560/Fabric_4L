@@ -214,7 +214,7 @@ function getBreadcrumbs(pathname: string): { label: string; path?: string }[] {
   for (let i = 1; i < segments.length; i++) {
     const seg = segments[i];
     // Skip account IDs (UUIDs or numeric)
-    if (/^[0-9a-f-]{8,}$/i.test(seg) || /^\d+$/.test(seg)) continue;
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seg) || /^\d+$/.test(seg)) continue;
     const label = seg.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
     crumbs.push({ label, path: "/" + segments.slice(0, i + 1).join("/") });
   }

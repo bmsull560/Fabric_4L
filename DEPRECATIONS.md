@@ -29,7 +29,7 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 | **Migration Strategy** | Strangler Fig |
 | **Target Removal** | Q3 2026 |
 | **Status** | 🔄 In Progress |
-| **Instance Count** | ~47 (as of 2026-04-23) |
+| **Instance Count** | ~200 (as of 2026-04-29, corrected from ~47) |
 | **Owning Team** | Platform Engineering |
 
 **Locations:**
@@ -294,7 +294,7 @@ This document tracks all non-canonical patterns in the codebase and their migrat
 
 | Pattern | Removal Date | PR |
 |---------|-------------|-----|
-| *(None yet - this section will track completed removals)* | | |
+| layer2_client.py tenant_id parameter | 2026-04-29 | Removed tenant_id from extract_operational_signals() |
 
 ---
 

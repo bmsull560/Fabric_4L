@@ -1,14 +1,14 @@
-/**
- * TieredNav — Progressive Synthesis Navigation
+﻿/**
+ * TieredNav â€” Progressive Synthesis Navigation
  *
  * 7-Domain Left Rail (Navigation Architecture Specification):
- *   1. Accounts     — Entry point: select or create a prospect account
- *   2. Intelligence — Discovery workspace: Signals → Drivers → Evidence → Stakeholders
- *   3. Value Studio — Synthesis workspace: Action Plan → Value Model → Narrative
- *   4. Context Engine — Vendor knowledge base: Value Packs, Models, Formulas, Agents
- *   5. Deliverables — Activation layer: packaged outputs for sharing
- *   6. Governance   — Trust layer: audit, provenance, compliance
- *   7. Settings     — Tenant configuration, integrations, user management
+ *   1. Accounts     â€” Entry point: select or create a prospect account
+ *   2. Intelligence â€” Discovery workspace: Signals â†’ Drivers â†’ Evidence â†’ Stakeholders
+ *   3. Value Studio â€” Synthesis workspace: Action Plan â†’ Value Model â†’ Narrative
+ *   4. Context Engine â€” Vendor knowledge base: Value Packs, Models, Formulas, Agents
+ *   5. Deliverables â€” Activation layer: packaged outputs for sharing
+ *   6. Governance   â€” Trust layer: audit, provenance, compliance
+ *   7. Settings     â€” Tenant configuration, integrations, user management
  *
  * Three-Layer Model:
  *   Left rail  = Global navigation (this component)
@@ -42,7 +42,7 @@ import {
   Wrench,
 } from "lucide-react";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export type UserTier = "standard" | "advanced" | "admin";
 
@@ -65,16 +65,16 @@ export interface TieredNavProps {
   onAdvancedModeToggle?: (enabled: boolean) => void;
 }
 
-// ── Navigation Spine ─────────────────────────────────────────────────────────
+// â”€â”€ Navigation Spine â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Single source of truth for the 7-domain left rail.
 // Intelligence and Value Studio children are shown here for nav-tree expansion,
 // but the actual workspace tabs are rendered by their respective workspace shells.
 
 const NAV_SPINE: NavItem[] = [
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 1. ACCOUNTS — Entry Point
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 1. ACCOUNTS â€” Entry Point
   // "Which prospect am I working on?"
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   {
     id: "accounts",
     label: "Accounts",
@@ -84,10 +84,10 @@ const NAV_SPINE: NavItem[] = [
     description: "Select or create a prospect account",
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 2. INTELLIGENCE — Discovery Workspace
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 2. INTELLIGENCE â€” Discovery Workspace
   // "What is happening in the prospect's business and why?"
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   {
     id: "intelligence",
     label: "Intelligence",
@@ -123,10 +123,10 @@ const NAV_SPINE: NavItem[] = [
     ],
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 3. VALUE STUDIO — Synthesis Workspace
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 3. VALUE STUDIO â€” Synthesis Workspace
   // "How does our product solve the prospect's validated problems?"
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   {
     id: "studio",
     label: "Value Studio",
@@ -156,10 +156,10 @@ const NAV_SPINE: NavItem[] = [
     ],
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 4. CONTEXT ENGINE — Vendor Knowledge Base
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 4. CONTEXT ENGINE â€” Vendor Knowledge Base
   // "What does the vendor know about its own products and proof points?"
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   {
     id: "context",
     label: "Context Engine",
@@ -253,10 +253,10 @@ const NAV_SPINE: NavItem[] = [
     ],
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 5. DELIVERABLES — Activation Layer
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // 5. DELIVERABLES â€” Activation Layer
   // "How does the business case reach the prospect?"
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   {
     id: "deliverables",
     label: "Deliverables",
@@ -320,9 +320,9 @@ const NAV_SPINE: NavItem[] = [
     ],
   },
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   // 6. MY SETTINGS
-  // ═══════════════════════════════════════════════════════════════════════════
+  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
   {
     id: "my-settings",
     label: "My Settings",
@@ -409,7 +409,7 @@ const NAV_SPINE: NavItem[] = [
   },
 ];
 
-// ── Styling Constants ──────────────────────────────────────────────────────────
+// â”€â”€ Styling Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TIER_STYLES = {
   standard: {
@@ -453,7 +453,7 @@ const TIER_LABELS: Record<
   },
 };
 
-// ── Visibility Filter ─────────────────────────────────────────────────────────
+// â”€â”€ Visibility Filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function isItemVisible(item: NavItem, userTier: UserTier): boolean {
   if (userTier === "admin") return true;
@@ -461,7 +461,7 @@ function isItemVisible(item: NavItem, userTier: UserTier): boolean {
   return item.tier === "standard";
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface SidebarItemProps {
   item: NavItem;
@@ -709,7 +709,7 @@ function TierSwitcher({
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function TieredNav({
   currentTier,
@@ -748,4 +748,6 @@ export function TieredNav({
   );
 }
 
+export { NAV_SPINE };
 export default TieredNav;
+

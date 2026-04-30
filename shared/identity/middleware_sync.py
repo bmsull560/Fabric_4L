@@ -12,6 +12,7 @@ import os
 import threading
 from typing import Any, Callable, Optional
 from uuid import UUID, uuid4
+from shared.identity.context import AUTH_SOURCE_SERVICE_ACCOUNT
 from shared.models.typed_dict import TypedDictModel
 
 
@@ -239,9 +240,9 @@ class GovernanceMiddlewareSync:
                 tenant_id = UUID(x_tenant_header)
                 return SyncRequestContext(
                     tenant_id=tenant_id,
-                    user_id="service",
+                    user_id=None,
                     roles=["system"],
-                    auth_source="header",
+                    auth_source=AUTH_SOURCE_SERVICE_ACCOUNT,
                 )
             except ValueError:
                 logger.debug("Invalid X-Tenant-ID: %s", x_tenant_header)

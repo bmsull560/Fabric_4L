@@ -42,7 +42,7 @@ class GovernanceCore_create_audit_payloadResult(TypedDictModel):
     request_path: Any
     resolution_source: Any
     resolved_tenant_id: Any
-    roles: bool
+    roles: list[str]
     service_account_id: Any
     tenant_role: Any
     user_id: Any

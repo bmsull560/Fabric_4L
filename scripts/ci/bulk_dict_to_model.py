@@ -25,8 +25,11 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Import to inject when missing
-TYPED_DICT_IMPORT = "from shared.models.typed_dict import TypedDictModel\n"
+# Import configuration - change this if module path changes
+TYPED_DICT_MODULE = "shared.models.typed_dict"
+TYPED_DICT_CLASS = "TypedDictModel"
+TYPED_DICT_IMPORT_LINE = f"from {TYPED_DICT_MODULE} import {TYPED_DICT_CLASS}"
+TYPED_DICT_IMPORT = TYPED_DICT_IMPORT_LINE + "\n"
 
 
 def _infer_type(node: ast.AST) -> str:
@@ -165,6 +168,7 @@ def _build_models(
         key_types: dict[str, set[str]] = {}
         key_required: dict[str, bool] = {}
 
+        all_keys_per_return: list[set[str]] = []
         for _ret, dict_node, _segment in returns:
             present_keys: set[str] = set()
             if isinstance(dict_node, ast.Dict):
@@ -181,8 +185,12 @@ def _build_models(
                     t = _infer_type(v)
                     key_types.setdefault(key_name, set()).add(t)
 
-                for key_name in key_types:
-                    key_required[key_name] = key_required.get(key_name, True) and (key_name in present_keys)
+                all_keys_per_return.append(present_keys)
+
+        # A key is required only if present in ALL returns
+        all_return_keys = set(key_types.keys())
+        for key_name in all_return_keys:
+            key_required[key_name] = all(key_name in keys for keys in all_keys_per_return)
 
         if not key_types:
             # All returns had only unpacking; fallback to generic wrapper
@@ -265,7 +273,7 @@ def _apply_changes(source: str, models_text: str, replacements: list[tuple[int, 
                 lines[i] = ""
 
     # Insert import if missing
-    has_import = "from shared.models.typed_dict import TypedDictModel" in source
+    has_import = TYPED_DICT_IMPORT_LINE in source
     if not has_import:
         # Use AST to find last top-level import for reliable insertion
         try:
@@ -280,7 +288,7 @@ def _apply_changes(source: str, models_text: str, replacements: list[tuple[int, 
                     last_import_line = max(last_import_line, getattr(node, "end_lineno", node.lineno) - 1)
 
         if last_import_line >= 0:
-            lines.insert(last_import_line + 1, "from shared.models.typed_dict import TypedDictModel")
+            lines.insert(last_import_line + 1, TYPED_DICT_IMPORT_LINE)
         else:
             # Insert after module docstring if present
             insert_at = 0
@@ -289,13 +297,13 @@ def _apply_changes(source: str, models_text: str, replacements: list[tuple[int, 
                     if '"""' in line and i > 0:
                         insert_at = i + 1
                         break
-            lines.insert(insert_at, "from shared.models.typed_dict import TypedDictModel")
+            lines.insert(insert_at, TYPED_DICT_IMPORT_LINE)
 
     # Insert model definitions after import (or after last import)
     # Find the line we just inserted
     import_line = -1
     for i, line in enumerate(lines):
-        if "from shared.models.typed_dict import TypedDictModel" in line:
+        if TYPED_DICT_IMPORT_LINE in line:
             import_line = i
             break
 
@@ -313,7 +321,33 @@ def _apply_changes(source: str, models_text: str, replacements: list[tuple[int, 
     return new_source
 
 
-def process_file(path: Path) -> int:
+def _write_file_atomic(path: Path, content: str, create_backup: bool = True) -> None:
+    """Write file atomically using temp file + rename, optionally creating backup."""
+    import tempfile
+
+    # Create backup if requested
+    if create_backup:
+        backup_path = path.with_suffix(path.suffix + ".bak")
+        try:
+            backup_path.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"  WARN: Failed to create backup for {path}: {e}", file=sys.stderr)
+
+    # Atomic write using temp file
+    fd, temp_path = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(temp_path, path)
+    except Exception:
+        try:
+            os.unlink(temp_path)
+        except OSError:
+            pass
+        raise
+
+
+def process_file(path: Path, create_backup: bool = True) -> int:
     """Process a single file. Returns number of dict returns converted."""
     try:
         source = path.read_text(encoding="utf-8")
@@ -321,9 +355,9 @@ def process_file(path: Path) -> int:
         return 0
 
     try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        print(f"  SKIP (syntax error): {path}", file=sys.stderr)
+        tree = ast.parse(source, filename=str(path))
+    except SyntaxError as e:
+        print(f"  SKIP (syntax error in {path}:{e.lineno}): {e.msg}", file=sys.stderr)
         return 0
 
     grouped = _gather_returns(tree, source)
@@ -340,7 +374,7 @@ def process_file(path: Path) -> int:
         return 0
 
     new_source = _apply_changes(source, all_models_text, all_replacements)
-    path.write_text(new_source, encoding="utf-8")
+    _write_file_atomic(path, new_source, create_backup=create_backup)
     return len(all_replacements)
 
 
@@ -367,6 +401,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Bulk convert raw dict returns to typed models")
     parser.add_argument("files", nargs="*", help="Python files to process")
     parser.add_argument("--from-lint", action="store_true", help="Process all files flagged by platform_contract_lint.py")
+    parser.add_argument("--no-backup", action="store_true", help="Skip creating .bak backups (for CI)")
     args = parser.parse_args()
 
     files: list[Path] = []
@@ -381,9 +416,10 @@ def main() -> None:
         sys.exit(0)
 
     total_converted = 0
+    create_backup = not args.no_backup
     for f in files:
         rel = f.relative_to(PROJECT_ROOT) if f.is_relative_to(PROJECT_ROOT) else f
-        count = process_file(f)
+        count = process_file(f, create_backup=create_backup)
         if count:
             print(f"  + {rel}: {count} dict returns converted")
             total_converted += count

@@ -245,7 +245,6 @@ class Layer2ExtractionClient:
     async def extract_operational_signals(
         self,
         prospect_data: dict[str, Any],
-        tenant_id: str,
         trace_id: str | None = None,
     ) -> dict[str, Any]:
         """Extract operational pain signals from prospect setup data.
@@ -253,11 +252,14 @@ class Layer2ExtractionClient:
         Args:
             prospect_data: Prospect setup information including company details,
                          business pains, friction points, desired outcomes
-            tenant_id: Tenant identifier for scoping
             trace_id: Optional trace ID for observability
 
         Returns:
             Extraction result with signals list and metadata
+
+        Note:
+            Tenant context is automatically propagated via request-scoped context.
+            Do NOT pass tenant_id as a parameter (CONTRACT.md §2.1).
         """
         payload = {
             "prospect_data": prospect_data,
@@ -268,7 +270,8 @@ class Layer2ExtractionClient:
         headers = {}
         if trace_id:
             headers["X-Trace-ID"] = trace_id
-        headers["X-Tenant-ID"] = tenant_id
+        # Tenant context propagated via client initialization, not headers
+        # See shared.identity.context for AsyncLocalStorage-based propagation
 
         try:
             response = await self.client.post(

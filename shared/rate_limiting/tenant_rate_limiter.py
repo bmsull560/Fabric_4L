@@ -58,9 +58,9 @@ def validate_redis_config() -> None:
                 "Must start with redis:// or rediss://"
             )
     elif environment == "development" and not redis_url:
-        logger.warning(
-            "REDIS_URL is not configured in development mode. "
-            "Using in-memory fallback. This is not safe for production."
+        raise ValueError(
+            "REDIS_URL is required in development mode. "
+            "Configure Redis or set REDIS_URL=redis://localhost:6379"
         )
 
 

@@ -12,6 +12,7 @@ import { BillingProvider } from "./context/BillingContext";
 import { useUserTierStore, useCreateAccount, type UserTier } from "@/hooks";
 import { Route, Switch, useLocation, useParams } from "wouter";
 import { useAccountContextStore } from "@/stores/accountContextStore";
+import AccountPickerModal from "@/components/workspace/AccountPickerModal";
 
 import { WorkspaceRoutes } from "./routes/workspace";
 import { GovernanceRoutes } from "./routes/governance";
@@ -249,6 +250,10 @@ function WorkspaceContextRedirect({
   );
 
   const resolvedTab = getWorkspaceTabOrDefault(workspace, explicitTab ?? params.tab);
+
+  if (!selectedAccountId) {
+    return <AccountPickerModal workspace={workspace} tab={resolvedTab} />;
+  }
 
   return (
     <Navigate

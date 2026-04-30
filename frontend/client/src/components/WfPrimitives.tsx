@@ -11,16 +11,18 @@
 // Re-export from new Fabric primitives with legacy names
 export { PageHeader } from "./ui/fabric/PageHeader";
 
-// Backward-compatible SectionCard that accepts noPad prop
+// Backward-compatible SectionCard that accepts noPad and subtitle props
 import { FabricCard } from "./ui/fabric/FabricCard";
 
 export function SectionCard({
   title,
+  subtitle,
   children,
   className,
   noPad,
 }: {
   title?: string;
+  subtitle?: string;
   children: React.ReactNode;
   className?: string;
   noPad?: boolean;
@@ -28,6 +30,7 @@ export function SectionCard({
   return (
     <FabricCard
       title={title}
+      description={subtitle}
       className={className}
       padding={noPad ? "none" : "normal"}
     >

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AppShell — Refined Enterprise SaaS layout
  * Three-mode navigation per gap analysis spec:
  *   Standard  — task-oriented for business users
@@ -12,7 +12,11 @@
  */
 import { memo, useState, useCallback } from "react";
 import { Link } from "wouter";
-import { TieredNav, type UserTier } from "./navigation/TieredNav";
+import { TieredNav, type UserTier, NAV_SPINE } from "./navigation/TieredNav";
+import { MobilePersistentSidebar } from "./navigation/MobilePersistentSidebar";
+import { useAccountContextStore } from "@/stores/accountContextStore";
+import { useAccounts } from "@/hooks";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { Search, Bell, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n";
@@ -64,6 +68,12 @@ const AppShell = memo(function AppShell({
     setIsAdvancedMode(enabled);
   }, []);
 
+  const selectedAccountId = useAccountContextStore(state => state.selectedAccountId);
+  const setSelectedAccountId = useAccountContextStore(state => state.setSelectedAccountId);
+  const { data: accountsData, isLoading: accountsLoading, error: accountsError } = useAccounts({ page_size: 100 });
+  const accounts = accountsData?.items ?? [];
+  const { user: currentUser, logout } = useAuthContext();
+
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       {/* Header */}
@@ -98,13 +108,34 @@ const AppShell = memo(function AppShell({
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Using TieredNav for progressive disclosure */}
-        <TieredNav
-          currentTier={currentTier}
-          onTierChange={handleTierChange}
-          isAdvancedModeEnabled={isAdvancedMode}
-          onAdvancedModeToggle={handleAdvancedModeToggle}
-        />
+        {/* Desktop sidebar — hidden on mobile */}
+        <div className="hidden md:block">
+          <TieredNav
+            currentTier={currentTier}
+            onTierChange={handleTierChange}
+            isAdvancedModeEnabled={isAdvancedMode}
+            onAdvancedModeToggle={handleAdvancedModeToggle}
+          />
+        </div>
+
+        {/* Mobile persistent sidebar — visible only below md breakpoint */}
+        <div className="flex md:hidden">
+          <MobilePersistentSidebar
+            currentTier={currentTier}
+            effectiveTier={effectiveTier}
+            onTierChange={handleTierChange}
+            isAdvancedModeEnabled={isAdvancedMode}
+            onAdvancedModeToggle={handleAdvancedModeToggle}
+            navItems={NAV_SPINE}
+            accounts={accounts}
+            selectedAccountId={selectedAccountId}
+            onSelectAccount={setSelectedAccountId}
+            isAccountsLoading={accountsLoading}
+            accountsError={accountsError}
+            user={currentUser ? { email: currentUser.email } : null}
+            onSignOut={logout}
+          />
+        </div>
 
         {/* Main — children change on every route; AppShell shell stays stable */}
         <main className="flex-1 overflow-y-auto bg-background" data-tier={effectiveTier}>
@@ -122,3 +153,4 @@ const AppShell = memo(function AppShell({
 });
 
 export default AppShell;
+

@@ -76,7 +76,7 @@ class RequestContext:
     service_account_scopes: list[str] = field(default_factory=list)
     
     # Task 2: Multi-Tenancy Hardening - Super-admin bypass tracking
-    accessed_tenant_ids: set[str] = field(default_factory=set)
+    accessed_tenant_ids: set[UUID] = field(default_factory=set)
     privileged_session_start: float | None = None  # Unix timestamp
 
     # P1: Class-level validation
