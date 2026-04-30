@@ -153,7 +153,10 @@ const StudioROITab = lazy(() => import("./pages/studio/StudioROITab"));
 const StudioEvidenceTab = lazy(() => import("./pages/studio/StudioEvidenceTab"));
 // ── New Workflow Tab Pages ────────────────────────────────────────────────────
 // Intelligence new tabs
-const IntelligenceWorkspacePage = lazy(() => import("./pages/intelligence/IntelligenceWorkspacePage"));
+const OntologyMatchTab = lazy(() => import("./pages/intelligence/OntologyMatchTab"));
+const IntelligenceShell = lazy(() => import("./components/workspace/IntelligenceShell"));
+const DriverTreeShell = lazy(() => import("./components/workspace/DriverTreeShell"));
+// Intelligence workspace uses IntelligenceShell directly (4 tabs: Signals, Stakeholder Map, Ontology Match, Enrichment)
 // Value Hypothesis tabs
 // Evidence tabs
 const AlternativesTab = lazy(() => import("./pages/evidence/AlternativesTab"));
@@ -431,18 +434,6 @@ function Router() {
           ACCOUNT INTELLIGENCE WORKSPACE — Unified tab-based workspace
           Route: /accounts/:accountId/intelligence/:tabId
           ═══════════════════════════════════════════════════════════════ */}
-      <Route path="/accounts/:accountId/intelligence/:tabId">
-        <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <IntelligenceWorkspacePage />
-        </AuthenticatedRoute>
-      </Route>
-      <Route path="/accounts/:accountId/intelligence">
-        <AuthenticatedRoute {...tierProps}>
-          <AccountContextSync />
-          <IntelligenceWorkspacePage />
-        </AuthenticatedRoute>
-      </Route>
 
       {/* Guided Workflow Routes */}
       <Route path="/workflow/prospect">

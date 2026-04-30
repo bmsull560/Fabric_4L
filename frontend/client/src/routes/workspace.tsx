@@ -1,3 +1,12 @@
+/**
+ * WorkspaceRoutes — Intelligence & Studio workspace routes
+ *
+ * Intelligence (4 tabs): Signals, Stakeholder Map, Ontology Match, Enrichment
+ * Studio (legacy): Action Plan, Value Model, Narrative
+ *
+ * Other workflow steps (Hypothesis, Driver Tree, Calculator, Value Case, Realization)
+ * are handled by their own top-level routes in App.tsx.
+ */
 import { Route } from "wouter";
 import type { ComponentType } from "react";
 import type { RouteComposerContext } from "./types";
@@ -24,19 +33,14 @@ interface WorkspacePages {
 export function WorkspaceRoutes(context: RouteComposerContext, p: WorkspacePages) {
   const { tierProps, AuthenticatedRoute, WorkspaceContextRedirect, AccountContextSync, IntelligenceRedirect, StudioRedirect } = context;
   return <>
+    {/* ── Intelligence workspace (4 tabs) ── */}
     <Route path="/intelligence"><AuthenticatedRoute {...tierProps}><WorkspaceContextRedirect workspace="intelligence" /></AuthenticatedRoute></Route>
-    <Route path="/intelligence/:tab"><AuthenticatedRoute {...tierProps}><WorkspaceContextRedirect workspace="intelligence" /></AuthenticatedRoute></Route>
     <Route path="/intelligence/:accountId"><AuthenticatedRoute {...tierProps}><AccountContextSync /><IntelligenceRedirect /></AuthenticatedRoute></Route>
     <Route path="/intelligence/:accountId/signals"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.SignalsTab /></AuthenticatedRoute></Route>
-    <Route path="/intelligence/:accountId/drivers"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.DriversTab /></AuthenticatedRoute></Route>
-    <Route path="/intelligence/:accountId/evidence"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.EvidenceTab /></AuthenticatedRoute></Route>
     <Route path="/intelligence/:accountId/stakeholders"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.StakeholdersTab /></AuthenticatedRoute></Route>
     <Route path="/intelligence/:accountId/enrichment"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.EnrichmentTab /></AuthenticatedRoute></Route>
-    <Route path="/intelligence/:accountId/hypotheses"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.HypothesesTab /></AuthenticatedRoute></Route>
-    <Route path="/intelligence/:accountId/competitive"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.CompetitiveTab /></AuthenticatedRoute></Route>
-    <Route path="/intelligence/:accountId/roi"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.ROITab /></AuthenticatedRoute></Route>
-    <Route path="/intelligence/:accountId/evidence-library"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.EvidenceLibraryTab /></AuthenticatedRoute></Route>
 
+    {/* ── Legacy studio routes (backward compat) ── */}
     <Route path="/studio"><AuthenticatedRoute {...tierProps}><WorkspaceContextRedirect workspace="studio" /></AuthenticatedRoute></Route>
     <Route path="/studio/:tab"><AuthenticatedRoute {...tierProps}><WorkspaceContextRedirect workspace="studio" /></AuthenticatedRoute></Route>
     <Route path="/studio/:accountId"><AuthenticatedRoute {...tierProps}><AccountContextSync /><StudioRedirect /></AuthenticatedRoute></Route>
