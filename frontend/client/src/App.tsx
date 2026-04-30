@@ -1,7 +1,7 @@
 import { lazy, memo, Suspense, useEffect } from "react";
 import {
-  // AppShell, // unused - kept for reference
-  Layout,
+  AppShell,
+  // Layout, // replaced by AppShell
   ErrorBoundary,
   Toaster,
   TooltipProvider,
@@ -347,11 +347,11 @@ const AuthenticatedRoute = memo(function AuthenticatedRoute({
   effectiveTier,
 }: AuthenticatedRouteProps) {
   return (
-    <Layout currentTier={currentTier} effectiveTier={effectiveTier}>
+    <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
       <RouteGuard requiredTier={requiredTier}>
         <ErrorBoundary>{children}</ErrorBoundary>
       </RouteGuard>
-    </Layout>
+    </AppShell>
   );
 });
 
@@ -1168,11 +1168,11 @@ function Router() {
 
       {/* ─── Catch-all ─── */}
       <Route>
-        <Layout currentTier={currentTier} effectiveTier={effectiveTier}>
+        <AppShell currentTier={currentTier} effectiveTier={effectiveTier}>
           <ErrorBoundary>
             <NotFound />
           </ErrorBoundary>
-        </Layout>
+        </AppShell>
       </Route>
      </Switch>
     </Suspense>

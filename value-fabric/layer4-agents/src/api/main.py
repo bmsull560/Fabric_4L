@@ -71,7 +71,7 @@ from ..tenants.api import (
 )
 from ..tenants.api.routes.oidc import router as oidc_router
 from ..tools import create_default_registry
-from .routes import accounts, agent_stream, analysis, signals, tools, workflows
+from .routes import accounts, agent_stream, analysis, audit as audit_router, signals, tools, workflows
 from .routes.enrichment import router as enrichment_router
 from .routes.value_hypotheses import router as value_hypotheses_router
 from .routes.narratives import router as narratives_router
@@ -400,6 +400,7 @@ if SHARED_ERROR_HANDLING_AVAILABLE:
 # Include routers
 app.include_router(workflows.router, prefix="/v1", tags=["workflows"])
 app.include_router(tools.router, prefix="/v1", tags=["tools"])
+app.include_router(audit_router.router, prefix="/v1", tags=["audit"])
 app.include_router(analysis.router, prefix="/v1", tags=["analysis"])
 app.include_router(accounts.router, prefix="/v1", tags=["Accounts"])
 app.include_router(signals.router, prefix="/v1", tags=["signals"])
