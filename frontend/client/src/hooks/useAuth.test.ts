@@ -12,13 +12,13 @@ import { createWrapper, createWrapperWithRouterPath } from '../test-utils';
 import { useAuth, useRequireAuth, useAuthRedirect } from './useAuth';
 import { useAuthContext, type UserInfo } from '../contexts/AuthContext';
 
-// Mock wouter at top level
+// Mock react-router-dom at top level
 const mockNavigate = vi.fn();
-vi.mock('wouter', async () => {
-  const actual = await vi.importActual('wouter');
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
   return {
-    ...actual,
-    useLocation: () => ['/protected', mockNavigate],
+    ...actual as object,
+    useNavigate: () => mockNavigate,
   };
 });
 

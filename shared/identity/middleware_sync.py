@@ -94,6 +94,14 @@ class SyncRequestContext:
         """Check if context represents a service account."""
         return self.service_account_id is not None
 
+    def is_auth_source_valid(self) -> bool:
+        """Check if the auth_source is a valid/recognized source."""
+        return self.auth_source in {
+            AUTH_SOURCE_JWT,
+            AUTH_SOURCE_API_KEY,
+            AUTH_SOURCE_SERVICE_ACCOUNT,
+        }
+
     def to_dict(self) -> dict[str, Any]:
         """Convert context to dictionary."""
         return SyncRequestContext_to_dictResult.model_validate({

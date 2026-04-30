@@ -1,13 +1,10 @@
 import { lazy } from "react";
 import { createBrowserRouter, Navigate, useNavigate, useParams } from "react-router-dom";
-import { Route as WouterRoute } from "wouter";
-import { WouterAdapter } from "@/components/routing/WouterAdapter";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { GlobalLayout } from "@/components/layout/GlobalLayout";
 import { ProtectedRoute } from "@/components/routing/ProtectedRoute";
 import { AccountContextSync } from "@/components/routing/AccountContextSync";
 import { AccountScopedRedirect } from "@/components/routing/AccountScopedRedirect";
-import { WorkspacePage } from "@/components/routing/WorkspacePage";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { useCreateAccount } from "@/hooks/useAccounts";
 import { SettingsLayout } from "@/app/settings/SettingsLayout";
@@ -122,15 +119,6 @@ const WorkflowValueCase = lazy(() => import("@/workflow/pages/ValueCase"));
 // ── Dev Tools ──
 const IntegrationDashboard = lazy(() => import("@/pages/dev/IntegrationDashboard"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
-
-// ── Wouter Bridge for legacy wouter-based pages inside React Router ──
-function WouterBridge({ path, children }: { path?: string; children: React.ReactNode }) {
-  return (
-    <WouterAdapter>
-      {path ? <WouterRoute path={path}>{children}</WouterRoute> : children}
-    </WouterAdapter>
-  );
-}
 
 function ProspectSetupWithNav() {
   const navigate = useNavigate();
@@ -269,9 +257,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/intelligence/:accountId/signals">
-              <SignalsTab />
-            </WorkspacePage>
+            <SignalsTab />
           </ProtectedRoute>
         ),
       },
@@ -280,9 +266,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/intelligence/:accountId/stakeholders">
-              <StakeholdersTab />
-            </WorkspacePage>
+            <StakeholdersTab />
           </ProtectedRoute>
         ),
       },
@@ -291,9 +275,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/intelligence/:accountId/ontology-match">
-              <OntologyMatchTab />
-            </WorkspacePage>
+            <OntologyMatchTab />
           </ProtectedRoute>
         ),
       },
@@ -302,9 +284,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/intelligence/:accountId/enrichment">
-              <EnrichmentTab />
-            </WorkspacePage>
+            <EnrichmentTab />
           </ProtectedRoute>
         ),
       },
@@ -332,9 +312,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/hypothesis/:accountId/hypothesis">
-              <HypothesesTab />
-            </WorkspacePage>
+            <HypothesesTab />
           </ProtectedRoute>
         ),
       },
@@ -343,9 +321,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/hypothesis/:accountId/discovery-questions">
-              <DiscoveryQuestionsTab />
-            </WorkspacePage>
+            <DiscoveryQuestionsTab />
           </ProtectedRoute>
         ),
       },
@@ -354,9 +330,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/hypothesis/:accountId/persona-fit">
-              <PersonaFitTab />
-            </WorkspacePage>
+            <PersonaFitTab />
           </ProtectedRoute>
         ),
       },
@@ -365,9 +339,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/hypothesis/:accountId/assumptions">
-              <AssumptionsTab />
-            </WorkspacePage>
+            <AssumptionsTab />
           </ProtectedRoute>
         ),
       },
@@ -386,9 +358,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/drivers/:accountId">
-              <DriverTreePage />
-            </WorkspacePage>
+            <DriverTreePage />
           </ProtectedRoute>
         ),
       },
@@ -397,9 +367,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/drivers/:accountId/:tab">
-              <DriverTreePage />
-            </WorkspacePage>
+            <DriverTreePage />
           </ProtectedRoute>
         ),
       },
@@ -427,9 +395,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/calculator/:accountId/roi">
-              <CalcROITab />
-            </WorkspacePage>
+            <CalcROITab />
           </ProtectedRoute>
         ),
       },
@@ -438,9 +404,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/calculator/:accountId/value-model">
-              <CalcValueModelTab />
-            </WorkspacePage>
+            <CalcValueModelTab />
           </ProtectedRoute>
         ),
       },
@@ -459,9 +423,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/value-case/:accountId">
-              <ValueCasePage />
-            </WorkspacePage>
+            <ValueCasePage />
           </ProtectedRoute>
         ),
       },
@@ -480,9 +442,7 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AccountContextSync />
-            <WorkspacePage path="/realization/:accountId">
-              <RealizationPage />
-            </WorkspacePage>
+            <RealizationPage />
           </ProtectedRoute>
         ),
       },
@@ -493,33 +453,33 @@ export const router = createBrowserRouter([
       { path: "/context", element: <Navigate to="/context/packs" replace /> },
       { path: "/context/packs", element: <ProtectedRoute><ValuePacks /></ProtectedRoute> },
       { path: "/context/models", element: <ProtectedRoute><MyModels /></ProtectedRoute> },
-      { path: "/context/formulas", element: <ProtectedRoute requiredTier="advanced"><WouterBridge><FormulaList /></WouterBridge></ProtectedRoute> },
-      { path: "/context/formulas/new", element: <ProtectedRoute requiredTier="advanced"><WouterBridge path="/context/formulas/new"><FormulaBuilder isNew /></WouterBridge></ProtectedRoute> },
-      { path: "/context/formulas/:formulaId", element: <ProtectedRoute requiredTier="advanced"><WouterBridge path="/context/formulas/:formulaId"><FormulaBuilder /></WouterBridge></ProtectedRoute> },
-      { path: "/context/value-trees/explorer", element: <ProtectedRoute requiredTier="advanced"><WouterBridge><ValueTreeExplorer /></WouterBridge></ProtectedRoute> },
+      { path: "/context/formulas", element: <ProtectedRoute requiredTier="advanced"><FormulaList /></ProtectedRoute> },
+      { path: "/context/formulas/new", element: <ProtectedRoute requiredTier="advanced"><FormulaBuilder isNew /></ProtectedRoute> },
+      { path: "/context/formulas/:formulaId", element: <ProtectedRoute requiredTier="advanced"><FormulaBuilder /></ProtectedRoute> },
+      { path: "/context/value-trees/explorer", element: <ProtectedRoute requiredTier="advanced"><ValueTreeExplorer /></ProtectedRoute> },
       { path: "/context/agents", element: <ProtectedRoute requiredTier="advanced"><AgentWorkflows /></ProtectedRoute> },
       { path: "/context/ontology", element: <ProtectedRoute requiredTier="advanced"><OntologyEditor /></ProtectedRoute> },
       { path: "/context/ontology/entities", element: <ProtectedRoute requiredTier="advanced"><EntityBrowser /></ProtectedRoute> },
-      { path: "/context/ontology/entities/:entityId", element: <ProtectedRoute requiredTier="advanced"><WouterBridge path="/context/ontology/entities/:entityId"><EntityDetail /></WouterBridge></ProtectedRoute> },
+      { path: "/context/ontology/entities/:entityId", element: <ProtectedRoute requiredTier="advanced"><EntityDetail /></ProtectedRoute> },
       { path: "/context/ontology/graph", element: <ProtectedRoute requiredTier="advanced"><GraphExplorer /></ProtectedRoute> },
-      { path: "/context/ingestion/jobs", element: <ProtectedRoute requiredTier="advanced"><WouterBridge><IngestionJobs /></WouterBridge></ProtectedRoute> },
+      { path: "/context/ingestion/jobs", element: <ProtectedRoute requiredTier="advanced"><IngestionJobs /></ProtectedRoute> },
       { path: "/context/extraction", element: <ProtectedRoute requiredTier="advanced"><ExtractionEngine /></ProtectedRoute> },
-      { path: "/context/integrations", element: <ProtectedRoute requiredTier="admin"><WouterBridge><Integrations /></WouterBridge></ProtectedRoute> },
+      { path: "/context/integrations", element: <ProtectedRoute requiredTier="admin"><Integrations /></ProtectedRoute> },
       { path: "/context/sources", element: <ProtectedRoute requiredTier="admin"><SourceConfiguration /></ProtectedRoute> },
       { path: "/graph-explorer", element: <ProtectedRoute requiredTier="advanced"><GraphExplorer /></ProtectedRoute> },
-      { path: "/formula-builder", element: <ProtectedRoute requiredTier="advanced"><WouterBridge><FormulaBuilder /></WouterBridge></ProtectedRoute> },
+      { path: "/formula-builder", element: <ProtectedRoute requiredTier="advanced"><FormulaBuilder /></ProtectedRoute> },
 
       // ═══════════════════════════════════════════════════════════════
       // DELIVERABLES
       // ═══════════════════════════════════════════════════════════════
       { path: "/deliverables", element: <Navigate to="/deliverables/cases" replace /> },
-      { path: "/deliverables/cases", element: <ProtectedRoute><WouterBridge><BusinessCaseList /></WouterBridge></ProtectedRoute> },
-      { path: "/deliverables/cases/:caseId", element: <ProtectedRoute><WouterBridge><BusinessCase /></WouterBridge></ProtectedRoute> },
-      { path: "/deliverables/calculators", element: <ProtectedRoute requiredTier="advanced"><WouterBridge><InteractiveBusinessCase /></WouterBridge></ProtectedRoute> },
-      { path: "/deliverables/views/cfo", element: <ProtectedRoute><WouterBridge><CFOView /></WouterBridge></ProtectedRoute> },
-      { path: "/deliverables/views/executive", element: <ProtectedRoute><WouterBridge><ExecutiveView /></WouterBridge></ProtectedRoute> },
-      { path: "/deliverables/views/technical", element: <ProtectedRoute><WouterBridge><TechnicalView /></WouterBridge></ProtectedRoute> },
-      { path: "/deliverables/api", element: <ProtectedRoute requiredTier="admin"><WouterBridge><Integrations /></WouterBridge></ProtectedRoute> },
+      { path: "/deliverables/cases", element: <ProtectedRoute><BusinessCaseList /></ProtectedRoute> },
+      { path: "/deliverables/cases/:caseId", element: <ProtectedRoute><BusinessCase /></ProtectedRoute> },
+      { path: "/deliverables/calculators", element: <ProtectedRoute requiredTier="advanced"><InteractiveBusinessCase /></ProtectedRoute> },
+      { path: "/deliverables/views/cfo", element: <ProtectedRoute><CFOView /></ProtectedRoute> },
+      { path: "/deliverables/views/executive", element: <ProtectedRoute><ExecutiveView /></ProtectedRoute> },
+      { path: "/deliverables/views/technical", element: <ProtectedRoute><TechnicalView /></ProtectedRoute> },
+      { path: "/deliverables/api", element: <ProtectedRoute requiredTier="admin"><Integrations /></ProtectedRoute> },
 
       // ═══════════════════════════════════════════════════════════════
       // GOVERNANCE (top-level)
@@ -535,60 +495,6 @@ export const router = createBrowserRouter([
       { path: "/governance/audit/log", element: <ProtectedRoute requiredTier="admin"><GovernanceAuditLogPage /></ProtectedRoute> },
       { path: "/governance/audit/changes", element: <ProtectedRoute requiredTier="admin"><GovernanceChangeHistoryPage /></ProtectedRoute> },
       { path: "/governance/health", element: <ProtectedRoute requiredTier="admin"><HealthMonitorPage /></ProtectedRoute> },
-
-      // ═══════════════════════════════════════════════════════════════
-      // LEGACY REDIRECTS
-      // ═══════════════════════════════════════════════════════════════
-      { path: "/trust", element: <Navigate to="/governance/traces" replace /> },
-      { path: "/trust/traces", element: <Navigate to="/governance/traces" replace /> },
-      { path: "/trust/evidence", element: <Navigate to="/governance/evidence" replace /> },
-      { path: "/trust/provenance", element: <Navigate to="/governance/provenance" replace /> },
-      { path: "/trust/integrity", element: <Navigate to="/governance/integrity" replace /> },
-      { path: "/trust/compliance", element: <Navigate to="/governance/compliance" replace /> },
-      { path: "/trust/benchmarks", element: <Navigate to="/governance/benchmarks" replace /> },
-      { path: "/trust/audit", element: <Navigate to="/governance/audit/log" replace /> },
-      { path: "/trust/audit/log", element: <Navigate to="/governance/audit/log" replace /> },
-      { path: "/trust/audit/changes", element: <Navigate to="/governance/audit/changes" replace /> },
-      { path: "/trust/health", element: <Navigate to="/governance/health" replace /> },
-
-      { path: "/evidence", element: <Navigate to="/governance/traces" replace /> },
-      { path: "/evidence/traces", element: <Navigate to="/governance/traces" replace /> },
-      { path: "/evidence/export", element: <Navigate to="/governance/evidence" replace /> },
-      { path: "/evidence/lineage", element: <Navigate to="/governance/provenance" replace /> },
-      { path: "/evidence/compliance", element: <Navigate to="/governance/compliance" replace /> },
-      { path: "/evidence/changelog", element: <Navigate to="/governance/audit/changes" replace /> },
-
-      { path: "/governance-center", element: <Navigate to="/governance/evidence" replace /> },
-      { path: "/governance-center/evidence-policy", element: <Navigate to="/governance/evidence" replace /> },
-      { path: "/governance-center/compliance", element: <Navigate to="/governance/compliance" replace /> },
-      { path: "/governance-center/audit-retention", element: <Navigate to="/governance/audit/log" replace /> },
-      { path: "/governance-center/residency", element: <Navigate to="/governance/compliance" replace /> },
-
-      { path: "/developer-console", element: <Navigate to="/governance/health" replace /> },
-      { path: "/developer-console/health", element: <Navigate to="/governance/health" replace /> },
-      { path: "/developer-console/traces", element: <Navigate to="/governance/traces" replace /> },
-      { path: "/developer-console/queue-diagnostics", element: <Navigate to="/dev/integration" replace /> },
-      { path: "/developer-console/log-diagnostics", element: <Navigate to="/dev/integration" replace /> },
-
-      { path: "/discover", element: <Navigate to="/accounts" replace /> },
-      { path: "/discover/accounts", element: <Navigate to="/accounts" replace /> },
-      { path: "/discover/jobs", element: <Navigate to="/context/ingestion/jobs" replace /> },
-      { path: "/discover/extraction", element: <Navigate to="/context/extraction" replace /> },
-      { path: "/discover/knowledge", element: <Navigate to="/context/ontology" replace /> },
-      { path: "/discover/knowledge/entities", element: <Navigate to="/context/ontology/entities" replace /> },
-      { path: "/discover/knowledge/graph", element: <Navigate to="/context/ontology/graph" replace /> },
-      { path: "/discover/knowledge/ontology", element: <Navigate to="/context/ontology" replace /> },
-      { path: "/discover/integrations", element: <Navigate to="/context/integrations" replace /> },
-      { path: "/discover/sources", element: <Navigate to="/context/sources" replace /> },
-
-      { path: "/library", element: <Navigate to="/context/packs" replace /> },
-      { path: "/library/packs", element: <Navigate to="/context/packs" replace /> },
-      { path: "/library/models", element: <Navigate to="/context/models" replace /> },
-
-      { path: "/deliver", element: <Navigate to="/deliverables/cases" replace /> },
-      { path: "/deliver/cases", element: <Navigate to="/deliverables/cases" replace /> },
-      { path: "/deliver/agents", element: <Navigate to="/context/agents" replace /> },
-      { path: "/deliver/cases/explore", element: <Navigate to="/deliverables/calculators" replace /> },
 
       // ═══════════════════════════════════════════════════════════════
       // WORKFLOW
@@ -608,13 +514,13 @@ export const router = createBrowserRouter([
       { path: "/studio", element: <ProtectedRoute><StudioAccountRedirect /></ProtectedRoute> },
       { path: "/studio/:tab", element: <ProtectedRoute><StudioAccountRedirect /></ProtectedRoute> },
       { path: "/studio/:accountId", element: <ProtectedRoute><AccountContextSync /><Navigate to="action-plan" replace /></ProtectedRoute> },
-      { path: "/studio/:accountId/action-plan", element: <ProtectedRoute><AccountContextSync /><WorkspacePage path="/studio/:accountId/action-plan"><ActionPlanTab /></WorkspacePage></ProtectedRoute> },
-      { path: "/studio/:accountId/value-model", element: <ProtectedRoute><AccountContextSync /><WorkspacePage path="/studio/:accountId/value-model"><ValueModelTab /></WorkspacePage></ProtectedRoute> },
-      { path: "/studio/:accountId/narrative", element: <ProtectedRoute><AccountContextSync /><WorkspacePage path="/studio/:accountId/narrative"><NarrativeTab /></WorkspacePage></ProtectedRoute> },
-      { path: "/studio/:accountId/enrichment", element: <ProtectedRoute><AccountContextSync /><WorkspacePage path="/studio/:accountId/enrichment"><StudioEnrichmentTab /></WorkspacePage></ProtectedRoute> },
-      { path: "/studio/:accountId/competitive", element: <ProtectedRoute><AccountContextSync /><WorkspacePage path="/studio/:accountId/competitive"><StudioCompetitiveTab /></WorkspacePage></ProtectedRoute> },
-      { path: "/studio/:accountId/roi", element: <ProtectedRoute><AccountContextSync /><WorkspacePage path="/studio/:accountId/roi"><StudioROITab /></WorkspacePage></ProtectedRoute> },
-      { path: "/studio/:accountId/evidence", element: <ProtectedRoute><AccountContextSync /><WorkspacePage path="/studio/:accountId/evidence"><StudioEvidenceTab /></WorkspacePage></ProtectedRoute> },
+      { path: "/studio/:accountId/action-plan", element: <ProtectedRoute><AccountContextSync /><ActionPlanTab /></ProtectedRoute> },
+      { path: "/studio/:accountId/value-model", element: <ProtectedRoute><AccountContextSync /><ValueModelTab /></ProtectedRoute> },
+      { path: "/studio/:accountId/narrative", element: <ProtectedRoute><AccountContextSync /><NarrativeTab /></ProtectedRoute> },
+      { path: "/studio/:accountId/enrichment", element: <ProtectedRoute><AccountContextSync /><StudioEnrichmentTab /></ProtectedRoute> },
+      { path: "/studio/:accountId/competitive", element: <ProtectedRoute><AccountContextSync /><StudioCompetitiveTab /></ProtectedRoute> },
+      { path: "/studio/:accountId/roi", element: <ProtectedRoute><AccountContextSync /><StudioROITab /></ProtectedRoute> },
+      { path: "/studio/:accountId/evidence", element: <ProtectedRoute><AccountContextSync /><StudioEvidenceTab /></ProtectedRoute> },
 
       // ═══════════════════════════════════════════════════════════════
       // DEVELOPER TOOLS
@@ -684,16 +590,6 @@ export const router = createBrowserRouter([
           { path: "/settings/governance/audit-trail", element: <GovernanceAuditTrail />, handle: { title: "Audit Trail", category: "Governance" } },
           { path: "/settings/governance/admin-controls", element: <GovernanceAdminControls />, handle: { title: "Admin Controls", category: "Governance" } },
 
-          // Legacy redirects (old wouter settings URLs)
-          { path: "/settings/content/*", element: <Navigate to="/settings/governance/policies" replace /> },
-          { path: "/settings/access/roles", element: <Navigate to="/settings/team/roles" replace /> },
-          { path: "/settings/access/teams", element: <Navigate to="/settings/team" replace /> },
-          { path: "/settings/access/keys", element: <Navigate to="/settings/team/api-keys" replace /> },
-          { path: "/settings/system/settings", element: <Navigate to="/settings/workspace" replace /> },
-          { path: "/settings/system/billing", element: <Navigate to="/settings/billing" replace /> },
-          { path: "/settings/system/billing/usage", element: <Navigate to="/settings/billing/usage" replace /> },
-          { path: "/settings/system/billing/invoices", element: <Navigate to="/settings/billing/invoices" replace /> },
-          { path: "/settings/system/billing/payments", element: <Navigate to="/settings/billing/payment-methods" replace /> },
         ],
       },
     ],

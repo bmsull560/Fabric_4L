@@ -1,7 +1,7 @@
 import { ReactElement, ReactNode, useState } from "react";
 import { render, RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Router } from "wouter";
+import { MemoryRouter } from "react-router-dom";
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // Re-export for AuthContext tests (avoids circular dependency)
@@ -36,11 +36,11 @@ export function createWrapper() {
   return function Wrapper({ children }: { children: ReactNode }) {
     const [queryClient] = useState(() => createTestQueryClient());
     return (
-      <Router>
+      <MemoryRouter>
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>
-      </Router>
+      </MemoryRouter>
     );
   };
 }
@@ -64,11 +64,11 @@ export function createWrapperWithRouterPath(path: string) {
       window.history.replaceState({}, "", path);
     }
     return (
-      <Router>
+      <MemoryRouter>
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>
-      </Router>
+      </MemoryRouter>
     );
   };
 }
@@ -100,11 +100,11 @@ export function createWrapperWithRetry(enableRetry: boolean) {
       })
     );
     return (
-      <Router>
+      <MemoryRouter>
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>
-      </Router>
+      </MemoryRouter>
     );
   };
 }

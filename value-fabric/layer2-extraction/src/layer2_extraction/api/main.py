@@ -17,6 +17,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 # Third-party imports for health check

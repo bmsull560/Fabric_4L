@@ -10,6 +10,12 @@ import pytest
 src_path = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_path))
 
+# Add shared module (at repo root) to Python path
+repo_root = Path(__file__).parent.parent.parent
+shared_path = repo_root / "shared"
+sys.path.insert(0, str(shared_path))
+sys.path.insert(0, str(repo_root))
+
 # Set test environment variables
 os.environ.setdefault("NEO4J_PASSWORD", "test_password")
 os.environ.setdefault("LOG_LEVEL", "DEBUG")

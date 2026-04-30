@@ -10,11 +10,11 @@ const mockSetSelectedAccountId = vi.fn();
 // Polyfill scrollIntoView for cmdk in jsdom
 Element.prototype.scrollIntoView = vi.fn();
 
-vi.mock("wouter", async () => {
-  const actual = await vi.importActual("wouter");
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
   return {
     ...actual as object,
-    useLocation: () => ["/hypothesis", mockNavigate],
+    useNavigate: () => mockNavigate,
   };
 });
 
@@ -81,7 +81,7 @@ describe("AccountPickerModal", () => {
     if (item) await user.click(item);
 
     expect(mockSetSelectedAccountId).toHaveBeenCalledWith("acc-001");
-    expect(mockNavigate).toHaveBeenCalledWith("/accounts/acc-001/intelligence/signals");
+    expect(mockNavigate).toHaveBeenCalledWith("/intelligence/acc-001/signals");
   });
 
   it("shows error state when accounts fail to load", () => {

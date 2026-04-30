@@ -111,17 +111,9 @@ export function GlobalLayout() {
         />
 
         <main className="min-h-0 flex-1 overflow-auto">
-          <div className="mx-auto w-full max-w-screen-2xl p-4 md:p-6">
-            <Suspense
-              fallback={
-                <div className="flex h-full min-h-[200px] items-center justify-center">
-                  <Spinner className="h-6 w-6" />
-                </div>
-              }
-            >
-              <Outlet />
-            </Suspense>
-          </div>
+          <WorkspaceLayoutWrapper>
+            <Outlet />
+          </WorkspaceLayoutWrapper>
         </main>
       </div>
 

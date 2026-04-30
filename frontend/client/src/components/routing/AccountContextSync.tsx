@@ -15,9 +15,7 @@ export function AccountContextSync() {
   );
 
   useEffect(() => {
-    if (accountId) {
-      setSelectedAccountId(accountId);
-    }
+    setSelectedAccountId(accountId ?? null);
   }, [accountId, setSelectedAccountId]);
 
   return null;

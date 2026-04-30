@@ -3,9 +3,10 @@
  *
  * React Router-native layout. Renders child routes via <Outlet />.
  */
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   settingsCategories,
   settingsNavigation,
@@ -65,6 +66,10 @@ function useScreenMeta(pathname: string) {
 
 export function SettingsLayout() {
   const { pathname } = useLocation();
+
+  const handleSave = useCallback(() => {
+    toast.info("Settings saved successfully");
+  }, []);
   const activeCategory = useActiveCategory(pathname);
   const subnavItems = useActiveSubnav(activeCategory.basePath);
   const { screen, access } = useScreenMeta(pathname);
@@ -93,6 +98,7 @@ export function SettingsLayout() {
             </button>
             <button
               type="button"
+              onClick={handleSave}
               className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"
             >
               <Save className="h-3.5 w-3.5" />

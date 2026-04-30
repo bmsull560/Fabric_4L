@@ -39,12 +39,12 @@ test.describe('UI End-User Satisfaction', () => {
     await expect(page.getByRole('heading', { name: /value packs/i })).toBeVisible();
     await page.screenshot({ path: 'e2e-results/debug-context-packs.png', fullPage: true });
 
-    // ── 4. Settings / Content Formulas (admin) ─────────────────────────────
-    await page.goto('/settings/content/formulas');
+    // ── 4. Settings / Governance (admin) ───────────────────────────────────
+    await page.goto('/settings/governance/policies');
     await expect(page.locator('aside').first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: /formula governance|content governance/i })).toBeVisible().catch(() => {
+    await expect(page.getByRole('heading', { name: /governance|policies/i })).toBeVisible().catch(() => {
       // Fallback: just verify sidebar + some settings text
-      return expect(page.getByText(/governance|formulas|settings/i).first()).toBeVisible();
+      return expect(page.getByText(/governance|policies|settings/i).first()).toBeVisible();
     });
     await page.screenshot({ path: 'e2e-results/debug-settings-formulas.png', fullPage: true });
 

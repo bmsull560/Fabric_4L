@@ -15,13 +15,13 @@ vi.mock("@/api/client", () => ({
   },
 }));
 
-// Mock the wouter location hook - only mock useLocation, let Router come from actual module
+// Mock react-router-dom navigation
 const mockSetLocation = vi.fn();
-vi.mock("wouter", async () => {
-  const actual = await vi.importActual("wouter");
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
   return {
     ...actual as object,
-    useLocation: () => ["/discover/jobs", mockSetLocation],
+    useNavigate: () => mockSetLocation,
   };
 });
 

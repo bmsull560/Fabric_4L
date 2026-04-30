@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime as real_datetime
 from datetime import timedelta
+from typing import Any
 
 import httpx
 import pytest
@@ -117,8 +118,16 @@ class FrozenClock:
 
         class _FrozenDateTime:
             @classmethod
+            def now(cls, tz=None) -> real_datetime:
+                return clock.current
+
+            @classmethod
             def utcnow(cls) -> real_datetime:
                 return clock.current
+
+            @classmethod
+            def fromtimestamp(cls, ts: float, tz=None) -> real_datetime:
+                return naive_utc_from_timestamp(ts)
 
             @classmethod
             def utcfromtimestamp(cls, ts: float) -> real_datetime:
@@ -201,13 +210,13 @@ def request_payload() -> dict:
     return request_payloadResult.model_validate({
         "content_id": "content-123",
         "source_url": "https://example.com/doc",
-        "markdown_content": "# Test\n\nPipeline orchestration content.",
+        "markdown_content": "Test Header\n\nPipeline orchestration content.",
         "extraction_config": {
             "chunk_size": 200,
             "chunk_overlap": 20,
             "confidence_threshold": 0.8,
         },
-    })
+    }).model_dump()
 
 
 @pytest.fixture(autouse=True)

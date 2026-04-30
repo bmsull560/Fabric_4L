@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Router } from 'wouter';
+import { MemoryRouter } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import DecisionTrace from './DecisionTrace';
@@ -14,9 +14,9 @@ function createWrapper(path: string = '/') {
     });
 
     return (
-      <Router ssrPath={path}>
+      <MemoryRouter initialEntries={[path]}>
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </Router>
+      </MemoryRouter>
     );
   };
 }
