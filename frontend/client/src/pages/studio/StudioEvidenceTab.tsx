@@ -5,7 +5,7 @@
  * Uses DIL evidence hooks for case study browsing and search.
  */
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   BookOpen,
   Search,

@@ -11,7 +11,7 @@
  * on every route change. Only re-renders when tier or i18n locale changes.
  */
 import { memo, useState, useCallback } from "react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { TieredNav, type UserTier, NAV_SPINE } from "./navigation/TieredNav";
 import { MobilePersistentSidebar } from "./navigation/MobilePersistentSidebar";
 import { useAccountContextStore } from "@/stores/accountContextStore";
@@ -78,7 +78,7 @@ const AppShell = memo(function AppShell({
     <div className="flex flex-col h-screen bg-background overflow-hidden">
       {/* Header */}
       <header className="h-[52px] shrink-0 bg-card border-b border-border flex items-center px-4 gap-4 z-30">
-        <Link href="/command-center">
+        <Link to="/command-center">
           <div className="flex flex-col leading-none cursor-pointer select-none">
             <span className="text-[14px] font-extrabold text-foreground tracking-tight">{t("appShell.platformName")}</span>
             <span className="text-[10px] text-muted-foreground font-normal">{t("appShell.platformTagline")}</span>

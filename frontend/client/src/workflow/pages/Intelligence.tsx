@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Building2, Users, AlertTriangle, Sparkles, ArrowRight,
   Target, Globe, Briefcase, BarChart3, CheckCircle2, Shield
@@ -36,7 +36,7 @@ const ontologyMatch = [
 ];
 
 export default function Intelligence() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { setCurrentStep, setEnrichedEntities } = useWorkflowStore();
   const [activeSection, setActiveSection] = useState<string>("pain");
 

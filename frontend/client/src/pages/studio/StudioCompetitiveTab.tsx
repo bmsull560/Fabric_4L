@@ -5,7 +5,7 @@
  * Uses DIL competitive intel hooks for landscape analysis and battlecards.
  */
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Swords,
   Shield,

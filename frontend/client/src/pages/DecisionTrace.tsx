@@ -3,8 +3,7 @@
  * Design: Refined Enterprise SaaS
  */
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
-import { useSearchParams } from "wouter";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { Shield, Download, CheckCircle2, Loader2 } from "lucide-react";
 import { PageHeader, Btn, Toolbar, SectionCard, StatusBadge, DataTable } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,7 +16,7 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export default function DecisionTrace() {
-  const [location] = useLocation();
+  const { pathname: location } = useLocation();
   const activeSection = useMemo(() => {
     if (location.includes("/audit/changes")) return "changes";
     if (location.includes("/audit/log")) return "audit";

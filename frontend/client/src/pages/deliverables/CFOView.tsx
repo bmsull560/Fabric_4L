@@ -6,8 +6,7 @@
  * Route: /deliverables/views/cfo
  * Hooks: useBusinessCase, useBusinessCaseExport
  */
-import { useRoute } from "wouter";
-import { useSearchParams } from "wouter";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   DollarSign, TrendingUp, Clock, BarChart3, Download,
   AlertCircle, Loader2, ArrowLeft, Shield,
@@ -15,7 +14,7 @@ import {
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport } from "@/hooks/useDocuments";
-import { Link } from "wouter";
+
 import { cn } from "@/lib/utils";
 
 function fmt(n: number | undefined, prefix = "$"): string {
@@ -61,7 +60,7 @@ export default function CFOView() {
       <div className="flex flex-col items-center py-16">
         <AlertCircle size={24} className="text-red-500 mb-2" />
         <p className="text-[13px] text-neutral-600">{caseId ? "Failed to load business case." : "No case selected. Navigate from the case list."}</p>
-        <Link href="/deliverables/cases" className="mt-3 text-[12px] text-blue-600 hover:underline">Back to Cases</Link>
+        <Link to="/deliverables/cases" className="mt-3 text-[12px] text-blue-600 hover:underline">Back to Cases</Link>
       </div>
     </div>
   );
@@ -80,7 +79,7 @@ export default function CFOView() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Link href={`/deliverables/cases/${bc.case_id}`}>
+            <Link to={`/deliverables/cases/${bc.case_id}`}>
               <Btn variant="ghost"><ArrowLeft size={14} /> Full Case</Btn>
             </Link>
             <Btn

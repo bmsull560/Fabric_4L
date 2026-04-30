@@ -11,7 +11,7 @@
  * - View formula status and metadata
  */
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -85,7 +85,7 @@ interface FormulaRowProps {
 
 function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) {
   const status = STATUS_CONFIG[formula.status as FormulaStatus];
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
 
   return (
     <div className="flex items-center gap-4 p-4 bg-card rounded-lg border border-border hover:border-neutral-300 hover:shadow-sm transition-all group">
@@ -160,7 +160,7 @@ function FormulaRow({ formula, onEdit, onDelete, isDeleting }: FormulaRowProps) 
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function FormulaList() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);

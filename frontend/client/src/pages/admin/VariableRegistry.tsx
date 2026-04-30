@@ -13,7 +13,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useLocation } from "react-router-dom";
 import {
   ListChecks, Plus, Search, Filter, Edit3, Trash2, Eye, Link2,
   CheckCircle2, AlertCircle, Database, Code2, Hash, DollarSign,
@@ -193,7 +193,7 @@ function VariableRegistrySkeleton() {
 type TabType = "catalog" | "bindings";
 
 function VariableRegistryContent() {
-  const [location] = useLocation();
+  const { pathname: location } = useLocation();
   const initialTab: TabType = location.includes("/bindings") ? "bindings" : "catalog";
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [search, setSearch] = useState("");

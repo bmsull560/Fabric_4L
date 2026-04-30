@@ -40,11 +40,11 @@ export function useAuth() {
  *   }
  */
 import { useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 
 export function useRequireAuth() {
   const { isLoading, isAuthenticated } = useAuthContext();
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -57,7 +57,7 @@ export function useRequireAuth() {
  * Hook for handling 401 responses and redirecting to login
  */
 export function useAuthRedirect() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { logout } = useAuthContext();
 
   const handleUnauthorized = () => {

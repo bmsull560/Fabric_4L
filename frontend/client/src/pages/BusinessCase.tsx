@@ -4,14 +4,14 @@
  */
 import { useState } from "react";
 import { Download, Share2, AlertCircle, Loader2, Sparkles } from "lucide-react";
-import { useSearchParams, useLocation } from "wouter";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport, downloadExport } from "@/hooks/useDocuments";
 
 export default function BusinessCase() {
   const [searchParams] = useSearchParams();
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const businessCaseId = searchParams.get("id");
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);

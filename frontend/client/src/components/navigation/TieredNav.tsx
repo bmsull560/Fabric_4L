@@ -22,8 +22,16 @@
  *   - Tier switcher in footer
  */
 
-import { useState, useMemo, memo } from "react";
-import { Link, useLocation } from "wouter";
+import { useState, useMemo, memo, useEffect } from "react";
+import {
+  resolveWorkspacePath,
+  isItemVisible,
+  isRouteActive,
+  type NavItem,
+  type UserTier,
+} from "@/navigation/navHelpers";
+export type { UserTier } from "@/navigation/navHelpers";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import {
@@ -45,18 +53,7 @@ import {
 
 // â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export type UserTier = "standard" | "advanced" | "admin";
 
-export interface NavItem {
-  id: string;
-  label: string;
-  icon?: React.ReactNode;
-  path: string;
-  tier: UserTier;
-  children?: NavItem[];
-  badge?: string | number;
-  description?: string;
-}
 
 export interface TieredNavProps {
   currentTier: UserTier;
@@ -213,11 +210,7 @@ const TIER_LABELS: Record<
 
 // â”€â”€ Visibility Filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function isItemVisible(item: NavItem, userTier: UserTier): boolean {
-  if (userTier === "admin") return true;
-  if (userTier === "advanced") return item.tier !== "admin";
-  return item.tier === "standard";
-}
+
 
 // â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -227,31 +220,14 @@ interface SidebarItemProps {
   depth?: number;
 }
 
-function resolveWorkspacePath(path: string, accountId: string | null): string {
-  if (!accountId) return path;
 
-  // Account-scoped workflow steps
-  const ACCOUNT_PREFIXES = ["/intelligence", "/hypothesis", "/drivers", "/calculator", "/value-case", "/realization"];
-  for (const prefix of ACCOUNT_PREFIXES) {
-    if (path === prefix) return `${prefix}/${accountId}`;
-    if (path.startsWith(prefix + "/")) return path.replace(prefix + "/", `${prefix}/${accountId}/`);
-  }
-
-  // Legacy studio routes
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) {
-    return path.replace("/studio/", `/studio/${accountId}/`);
-  }
-
-  return path;
-}
 
 const SidebarItem = memo(function SidebarItem({
   item,
   currentTier,
   depth = 0,
 }: SidebarItemProps) {
-  const [location] = useLocation();
+  const location = useLocation().pathname;
   const selectedAccountId = useAccountContextStore(
     state => state.selectedAccountId
   );
@@ -259,8 +235,9 @@ const SidebarItem = memo(function SidebarItem({
     () => resolveWorkspacePath(item.path, selectedAccountId),
     [item.path, selectedAccountId]
   );
-  const isActive = location.startsWith(resolvedPath);
+  const isActive = isRouteActive(location, resolvedPath);
   const [open, setOpen] = useState(isActive);
+  useEffect(() => { setOpen(isActive); }, [isActive]);
 
   const tierStyle = TIER_STYLES[item.tier];
 
@@ -279,7 +256,7 @@ const SidebarItem = memo(function SidebarItem({
 
   return (
     <div className="group">
-      <Link href={resolvedPath}>
+      <Link to={resolvedPath}>
         <div
           className={cn(
             "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12px] font-medium transition-all select-none cursor-pointer",

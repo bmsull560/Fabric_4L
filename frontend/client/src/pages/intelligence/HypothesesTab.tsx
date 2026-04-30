@@ -9,7 +9,7 @@
  * lifecycle management (draft → validated → converted).
  */
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Lightbulb,
   Sparkles,
@@ -20,7 +20,7 @@ import {
   Filter,
   Target,
 } from "lucide-react";
-import IntelligenceShell from "@/components/workspace/IntelligenceShell";
+import HypothesisShell from "@/components/workspace/HypothesisShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";
 import { useAgentEvents } from "@/agui";
 import { useAccount } from "@/hooks/useAccounts";
@@ -183,7 +183,7 @@ export default function HypothesesTab() {
   }
 
   return (
-    <IntelligenceShell
+    <HypothesisShell
       account={{
         accountName: account?.name ?? "Account",
         industry: account?.industry ?? "Unknown",
@@ -340,6 +340,6 @@ export default function HypothesesTab() {
           </div>
         </SectionCard>
       )}
-    </IntelligenceShell>
+    </HypothesisShell>
   );
 }

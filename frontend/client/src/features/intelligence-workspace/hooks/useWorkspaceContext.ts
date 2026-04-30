@@ -1,7 +1,7 @@
 /**
  * useWorkspaceContext — Provides account + workspace context to tabs
  */
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import { useAccountContextStore } from "@/stores/accountContextStore";
 import { useAccount } from "@/hooks";
 

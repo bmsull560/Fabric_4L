@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useLocation, Link } from 'wouter';
+import { useLocation, Link } from 'react-router-dom';
 import { Radar, Building2, BrainCircuit, GitFork, Database, Calculator, FileText, ChevronRight, Sparkles, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWorkflowStore } from '../store/workflowStore';
@@ -17,7 +17,7 @@ function getIcon(name: string): LucideIcon {
 }
 
 export function WorkflowLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const location = useLocation().pathname;
   const { sessionId, initSession } = useWorkflowStore();
 
   React.useEffect(() => {
@@ -44,7 +44,7 @@ export function WorkflowLayout({ children }: { children: React.ReactNode }) {
             <div className="hidden md:flex items-center gap-1">
               {WORKFLOW_STEPS.map((step, idx) => (
                 <React.Fragment key={step.path}>
-                  <Link href={step.path}>
+                  <Link to={step.path}>
                     <div className={cn(
                       'flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer transition-colors',
                       idx === currentStepIndex ? 'bg-primary/10' : 'hover:bg-muted'

@@ -10,7 +10,7 @@
  * - useEntities (for related entities list)
  */
 import { useState } from "react";
-import { useParams, useLocation, Link } from "wouter";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft, Zap, ExternalLink, Clock, Shield, GitBranch,
   AlertCircle, ChevronRight
@@ -56,7 +56,7 @@ function formatDate(iso?: string) {
 // ── Main Component ───────────────────────────────────────────────────────────────────────
 export default function EntityDetail() {
   const params = useParams<{ entityId: string }>();
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const entityId = params.entityId || null;
   const [activeTab, setActiveTab] = useState("details");
 
@@ -113,11 +113,11 @@ export default function EntityDetail() {
     <div className="p-6 max-w-4xl">
       {/* Breadcrumb */}
       <div className="mb-4 text-[11px] text-neutral-400 flex items-center gap-1">
-        <Link href="/context/ontology/entities" className="hover:text-neutral-600 cursor-pointer">
+        <Link to="/context/ontology/entities" className="hover:text-neutral-600 cursor-pointer">
           Ontology
         </Link>
         <ChevronRight size={10} />
-        <Link href="/context/ontology/entities" className="hover:text-neutral-600 cursor-pointer">
+        <Link to="/context/ontology/entities" className="hover:text-neutral-600 cursor-pointer">
           Entity Browser
         </Link>
         <ChevronRight size={10} />
@@ -227,7 +227,7 @@ export default function EntityDetail() {
           <div className="text-[12px] text-neutral-500 mb-3">
             <GitBranch size={14} className="inline mr-1" />
             Relationships loaded from the Knowledge Graph. View the full graph at{" "}
-            <Link href="/context/ontology/graph" className="text-blue-600 hover:underline">
+            <Link to="/context/ontology/graph" className="text-blue-600 hover:underline">
               Graph Explorer
             </Link>.
           </div>
@@ -239,7 +239,7 @@ export default function EntityDetail() {
               relatedEntities.map((rel: Entity) => (
                 <Link
                   key={rel.id}
-                  href={`/context/ontology/entities/${encodeURIComponent(rel.id)}`}
+                  to={`/context/ontology/entities/${encodeURIComponent(rel.id)}`}
                   className="flex items-center gap-3 p-2.5 bg-neutral-50 rounded-md border border-neutral-100 hover:border-blue-200 transition-colors cursor-pointer"
                 >
                   <EntityBadge type={rel.type.toLowerCase()} />
@@ -304,7 +304,7 @@ export default function EntityDetail() {
               {relatedEntities.map((rel: Entity) => (
                 <Link
                   key={rel.id}
-                  href={`/context/ontology/entities/${encodeURIComponent(rel.id)}`}
+                  to={`/context/ontology/entities/${encodeURIComponent(rel.id)}`}
                   className="flex items-center gap-3 p-2.5 bg-neutral-50 rounded-md border border-neutral-100 hover:border-blue-200 transition-colors cursor-pointer"
                 >
                   <EntityBadge type={rel.type.toLowerCase()} />

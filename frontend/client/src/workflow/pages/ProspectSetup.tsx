@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useLocation } from "wouter"
+import { useNavigate } from "react-router-dom"
 import {
   ArrowUp,
   Briefcase,
@@ -1239,7 +1239,7 @@ export default function ProspectSetup({
   onNavigateToWorkspace,
   isSubmitting: externalIsSubmitting,
 }: ProspectPromptBuilderProps) {
-  const [, navigate] = useLocation()
+  const navigate = useNavigate()
   const { setProspect, setCurrentStep } = useWorkflowStore()
   
   const [state, dispatch] = React.useReducer(

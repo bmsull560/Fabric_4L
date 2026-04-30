@@ -17,15 +17,15 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { useLocation, useSearch } from 'wouter';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { LoginForm } from '../components/login-form';
 import { SSO_PROVIDER_TENANT, getSSOTenantSlug } from '../config/auth';
 
 export default function Login() {
-  const [, navigate] = useLocation();
-  const search = useSearch();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     isAuthenticated, isLoading,
     initiateLogin, handleCallback, devBypass,
@@ -37,11 +37,10 @@ export default function Login() {
 
   // ── Trace 2: OIDC Callback handling ──────────────────────────────────────
   useEffect(() => {
-    const params = new URLSearchParams(search);
-    const code = params.get('code');
-    const state = params.get('state');
-    const redirect = params.get('redirect');
-    const signup = params.get('signup');
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const redirect = searchParams.get('redirect');
+    const signup = searchParams.get('signup');
 
     // Show success message after signup redirect
     if (signup === 'success') {
@@ -58,7 +57,7 @@ export default function Login() {
     if (code && state) {
       handleCallbackFlow(code, state);
     }
-  }, [search, navigate]);
+  }, [searchParams, navigate]);
 
   // Skip login if already authenticated (Skill §3: "Skip login if session valid")
   useEffect(() => {

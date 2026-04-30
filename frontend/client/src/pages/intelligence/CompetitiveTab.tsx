@@ -8,7 +8,7 @@
  * Shows competitor landscape, win/loss records, battlecards, and threat analysis.
  */
 import { useState, useMemo } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Swords,
   Trophy,

@@ -5,7 +5,7 @@
  * DIL enrichment: value hypotheses + product portfolio for richer context
  */
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import { ChevronDown, ChevronUp, Lightbulb, Package, Sparkles } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";

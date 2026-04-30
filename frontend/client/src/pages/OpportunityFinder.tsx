@@ -13,7 +13,7 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Plus, Search, Filter, TrendingUp, Target, Zap, Building2,
   ArrowRight, Loader2, AlertCircle, Lightbulb, DollarSign,
@@ -91,7 +91,7 @@ function OpportunityCard({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const status = STATUS_CONFIG[opportunity.status];
   const impact = IMPACT_CONFIG[opportunity.impact];
 
@@ -245,7 +245,7 @@ function OpportunitySkeleton() {
 // ── Main Component ─────────────────────────────────────────────────────────
 
 function OpportunityFinderContent() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<OpportunityStatus | 'all'>('all');

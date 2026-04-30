@@ -10,7 +10,7 @@
  * - Loading, error, and empty states
  */
 import { useState, useMemo } from "react";
-import { useSearchParams } from "wouter";
+import { useSearchParams } from "react-router-dom";
 import { 
   ChevronDown, 
   ChevronRight, 

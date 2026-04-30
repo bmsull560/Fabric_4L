@@ -15,7 +15,7 @@
  *        /context/formulas/:formulaId
  */
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useParams, useLocation } from "wouter";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Save, CheckCircle2, AlertCircle, ChevronRight, Loader2,
   Target, GitBranch, Network, Beaker, Shield, Clock,
@@ -370,7 +370,7 @@ interface FormulaBuilderProps {
 export default function FormulaBuilder({ isNew = false }: FormulaBuilderProps) {
   const params = useParams();
   const formulaId = params.formulaId;
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const [tested, setTested] = useState(false);
   const [formulaExpression, setFormulaExpression] = useState(DEFAULT_FORMULA_EXPRESSION);
   const [formulaName, setFormulaName] = useState("Customer Churn Reduction ROI");

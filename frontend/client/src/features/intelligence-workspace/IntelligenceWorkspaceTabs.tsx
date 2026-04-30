@@ -3,7 +3,7 @@
  *
  * Renders all workspace tabs as deep-linkable route-driven buttons.
  */
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { workspaceTabs, getTabOrDefault } from "./workspaceTabRegistry";
 import { useWorkspaceContext } from "./hooks/useWorkspaceContext";
@@ -15,7 +15,7 @@ export default function IntelligenceWorkspaceTabs() {
   return (
     <div className="flex border-b border-border px-6 overflow-x-auto" role="tablist">
       {workspaceTabs.map((tab) => (
-        <Link key={tab.id} href={`/accounts/${accountId}/intelligence/${tab.id}`}>
+        <Link key={tab.id} to={`/accounts/${accountId}/intelligence/${tab.id}`}>
           <button
             role="tab"
             aria-selected={activeTab === tab.id}

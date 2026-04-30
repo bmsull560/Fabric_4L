@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   BrainCircuit, CheckCircle2, XCircle, RefreshCw, Sparkles, ArrowRight,
   TrendingUp, Shield, Zap, Star
@@ -24,7 +24,7 @@ const initialHypotheses: AIHypothesis[] = [
 ];
 
 export default function AIModel() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { setCurrentStep } = useWorkflowStore();
   const [hypotheses, setHypotheses] = useState<AIHypothesis[]>(initialHypotheses);
   const [generating, setGenerating] = useState(false);

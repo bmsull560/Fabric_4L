@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "react-router-dom";
 import {
   Search, Bell, ChevronRight,
   Radar, Building2, BrainCircuit, GitFork, Database, Calculator,
@@ -60,7 +60,7 @@ interface ValuePilotLayoutProps {
 }
 
 export default function ValuePilotLayout({ children }: ValuePilotLayoutProps) {
-  const [currentPath] = useLocation();
+  const currentPath = useLocation().pathname;
   const inWorkflow = isWorkflowPath(currentPath);
   const currentStep = workflowSteps.findIndex((s) => s.path === currentPath);
 
@@ -85,7 +85,7 @@ export default function ValuePilotLayout({ children }: ValuePilotLayoutProps) {
     if (isCollapsed) {
       return (
         <Tooltip text={item.label}>
-          <Link href={item.path}>
+          <Link to={item.path}>
             <div
               className={`w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                 isActive ? "bg-sidebar-primary/15 text-sidebar-primary" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
@@ -98,7 +98,7 @@ export default function ValuePilotLayout({ children }: ValuePilotLayoutProps) {
       );
     }
     return (
-      <Link href={item.path}>
+      <Link to={item.path}>
         <div
           className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${
             isActive ? "bg-sidebar-primary/15 text-sidebar-primary font-semibold" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
@@ -201,7 +201,7 @@ export default function ValuePilotLayout({ children }: ValuePilotLayoutProps) {
                 if (collapsed) {
                   return (
                     <Tooltip key={item.path} text={item.label}>
-                      <Link href={item.path}>
+                      <Link to={item.path}>
                         <div
                           className={`w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                             isActive ? "bg-sidebar-primary/15 text-sidebar-primary" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
@@ -214,7 +214,7 @@ export default function ValuePilotLayout({ children }: ValuePilotLayoutProps) {
                   );
                 }
                 return (
-                  <Link key={item.path} href={item.path}>
+                  <Link key={item.path} to={item.path}>
                     <div
                       className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer ${
                         isActive ? "bg-sidebar-primary/15 text-sidebar-primary font-semibold" : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"

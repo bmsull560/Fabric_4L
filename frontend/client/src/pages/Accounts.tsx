@@ -8,7 +8,7 @@
  * - Search and pagination
  */
 import { useState, useEffect } from "react";
-import { useLocation, useParams } from "wouter";
+import { useNavigate, useParams } from "react-router-dom";
 import { PageHeader, Btn, StatusBadge } from "@/components/WfPrimitives";
 import AccountIntakeModal from "@/components/workspace/AccountIntakeModal";
 import {
@@ -449,7 +449,7 @@ interface FilterOptions {
 }
 
 function Accounts() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const urlAccountId = params.id ?? null;
   const setGlobalAccountId = useAccountContextStore((s) => s.setSelectedAccountId);

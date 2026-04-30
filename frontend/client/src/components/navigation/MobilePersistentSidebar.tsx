@@ -9,8 +9,8 @@
  *   • Respects prefers-reduced-motion
  */
 
-import { useState, useMemo, useCallback } from "react";
-import { Link, useLocation } from "wouter";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/useAccessibility";
 import {
@@ -29,7 +29,7 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-import type { NavItem, UserTier } from "./TieredNav";
+import type { NavItem, UserTier } from "@/navigation/navHelpers";
 import type { Account } from "@/hooks/useAccounts";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -53,24 +53,11 @@ export interface MobilePersistentSidebarProps {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function resolveWorkspacePath(path: string, accountId: string | null): string {
-  if (!accountId) return path;
-  if (path === "/intelligence") return `/intelligence/${accountId}`;
-  if (path.startsWith("/intelligence/")) {
-    return path.replace("/intelligence/", `/intelligence/${accountId}/`);
-  }
-  if (path === "/studio") return `/studio/${accountId}`;
-  if (path.startsWith("/studio/")) {
-    return path.replace("/studio/", `/studio/${accountId}/`);
-  }
-  return path;
-}
-
-function isItemVisible(item: NavItem, userTier: UserTier): boolean {
-  if (userTier === "admin") return true;
-  if (userTier === "advanced") return item.tier !== "admin";
-  return item.tier === "standard";
-}
+import {
+  resolveWorkspacePath,
+  isItemVisible,
+  isRouteActive,
+} from "@/navigation/navHelpers";
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -82,10 +69,11 @@ interface MobileNavItemProps {
 }
 
 function MobileNavItem({ item, currentTier, accountId, depth = 0 }: MobileNavItemProps) {
-  const [location] = useLocation();
+  const location = useLocation().pathname;
   const resolvedPath = useMemo(() => resolveWorkspacePath(item.path, accountId), [item.path, accountId]);
-  const isActive = location.startsWith(resolvedPath);
+  const isActive = isRouteActive(location, resolvedPath);
   const [open, setOpen] = useState(isActive);
+  useEffect(() => { setOpen(isActive); }, [isActive]);
 
   const visibleChildren = useMemo(
     () => item.children?.filter(child => isItemVisible(child, currentTier)),
@@ -102,7 +90,7 @@ function MobileNavItem({ item, currentTier, accountId, depth = 0 }: MobileNavIte
 
   if (depth > 0) {
     return (
-      <Link href={resolvedPath}>
+      <Link to={resolvedPath}>
         <div className={cn(
           "flex items-center gap-2 px-2 py-1.5 rounded-md text-[10px] font-medium transition-colors select-none cursor-pointer",
           isActive ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -115,7 +103,7 @@ function MobileNavItem({ item, currentTier, accountId, depth = 0 }: MobileNavIte
 
   return (
     <div className="w-full">
-      <Link href={resolvedPath}>
+      <Link to={resolvedPath}>
         <button
           onClick={handleClick}
           className={cn(
@@ -182,7 +170,7 @@ export function MobilePersistentSidebar({
   }, [isAdvancedModeEnabled, onAdvancedModeToggle]);
 
   return (
-    <aside
+    <nav
       className={cn(
         "flex flex-col h-svh w-20 shrink-0 bg-sidebar border-r border-sidebar-border z-20",
         !prefersReducedMotion && "transition-colors duration-200"
@@ -265,7 +253,7 @@ export function MobilePersistentSidebar({
           </DropdownMenu>
         )}
       </div>
-    </aside>
+    </nav>
   );
 }
 

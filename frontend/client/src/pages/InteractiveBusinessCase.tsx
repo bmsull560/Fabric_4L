@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { Send, RotateCcw, Save, GitCompare, AlertCircle, Loader2 } from "lucide-react";
-import { useSearchParams, useLocation } from "wouter";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -237,7 +237,7 @@ function C1ComponentRenderer({
 
 export default function InteractiveBusinessCase() {
   const [searchParams] = useSearchParams();
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const businessCaseId = searchParams.get("id");
 
   const [query, setQuery] = useState('');

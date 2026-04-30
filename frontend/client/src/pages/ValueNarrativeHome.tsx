@@ -11,7 +11,7 @@ import { useRecentIngestionJobs, useIngestionStats, type IngestionJob } from "@/
 import { MetricCard, DataTable, StatusBadge } from "@/components/WfPrimitives";
 import { ProspectPromptBuilder } from "@/components/workspace/ProspectPromptBuilder";
 import type { ProspectSetupPromptPayload } from "@/components/workspace/ProspectPromptBuilder";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { apiClient } from "@/api/client";
 
 export default function ValueNarrativeHome() {
@@ -19,7 +19,7 @@ export default function ValueNarrativeHome() {
   const {
     data: kpiData = { totalDomains: 0, pagesSynthesized: 0, sourcesAnalyzed: 0, avgProcessingTime: 0 },
   } = useIngestionStats();
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
 
   const handleCreateSetup = async (payload: ProspectSetupPromptPayload) => {
     const response = await apiClient.post("l4", "/prospects/setup", {

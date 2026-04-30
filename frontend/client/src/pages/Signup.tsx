@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { authClient } from '../services/authClient';
@@ -61,7 +61,7 @@ function getSignupErrorMessage(err: unknown): string {
 }
 
 export default function Signup() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading, initiateLogin } = useAuthContext();
 
   const [isSubmitting, setIsSubmitting] = useState(false);

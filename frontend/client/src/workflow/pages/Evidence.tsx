@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Database, Search, CheckCircle2, AlertTriangle,
   Sparkles, ArrowRight, Zap, FileText
@@ -22,7 +22,7 @@ const evidenceItems = [
 ];
 
 export default function Evidence() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { setCurrentStep } = useWorkflowStore();
   const [selectedId, setSelectedId] = useState<string | null>("e1");
   const [search, setSearch] = useState("");

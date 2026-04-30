@@ -8,7 +8,7 @@
  * and deal readiness score for the selected account.
  */
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Building2,
   RefreshCw,

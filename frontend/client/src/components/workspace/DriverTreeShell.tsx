@@ -3,7 +3,7 @@
  *
  * Tabs: Evidence → Alternatives → Solution Cost
  */
-import { Link, useLocation, useParams } from "wouter";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,7 @@ interface DriverTreeShellProps {
 export default function DriverTreeShell({ accountName = "Account", industry = "Unknown", revenue = "N/A", children }: DriverTreeShellProps) {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? "";
-  const [location] = useLocation();
+  const location = useLocation().pathname;
 
   const segments = location.split("/");
   const activeTab = segments[3] || "evidence";
@@ -43,7 +43,7 @@ export default function DriverTreeShell({ accountName = "Account", industry = "U
       {/* Workspace tabs */}
       <div className="flex border-b border-border px-6" role="tablist">
         {TABS.map((tab) => (
-          <Link key={tab.key} href={`/drivers/${accountId}/${tab.key}`}>
+          <Link key={tab.key} to={`/drivers/${accountId}/${tab.key}`}>
             <button
               role="tab"
               aria-selected={activeTab === tab.key}

@@ -14,7 +14,7 @@
  *   2. Navigates to /intelligence/{accountId}/signals
  */
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   X,
   Search,
@@ -148,7 +148,7 @@ export default function AccountIntakeModal({
   onClose,
   onSubmit,
 }: AccountIntakeModalProps) {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const createAccount = useCreateAccount();
 
   // Form state

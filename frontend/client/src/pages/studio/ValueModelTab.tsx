@@ -5,7 +5,7 @@
  * DIL enrichment: ROI calculator for financial modeling + industry benchmarks
  */
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import { Settings2, Calculator, TrendingUp, BarChart3 } from "lucide-react";
 import ValueStudioShellComponent from "@/components/workspace/ValueStudioShell";
 import RightRail, { type RightRailMode } from "@/components/workspace/RightRail";

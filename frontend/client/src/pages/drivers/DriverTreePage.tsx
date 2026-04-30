@@ -5,7 +5,7 @@
  *
  * Tabs: Evidence | Alternatives | Solution Cost
  */
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import DriverTreeShell from "@/components/workspace/DriverTreeShell";
 import { useAccount } from "@/hooks/useAccounts";
 import { EvidenceTabContent } from "@/pages/intelligence/EvidenceTab";

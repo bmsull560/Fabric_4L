@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Building2, Briefcase, Globe,
   CheckCircle2, BrainCircuit, AlertTriangle, ArrowRight
@@ -37,7 +37,7 @@ const objectives = [
 ];
 
 export default function ProspectSetup() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const [company, setCompany] = useState("Meridian Automotive Components");
   const [contact, setContact] = useState("Patricia Chen");
   const [title, setTitle] = useState("VP Manufacturing Operations");

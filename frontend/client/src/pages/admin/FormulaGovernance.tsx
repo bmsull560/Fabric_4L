@@ -13,7 +13,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useLocation } from "react-router-dom";
 import {
   FlaskConical, CheckCircle2, Clock, AlertCircle, History, ChevronRight,
   Plus, Search, Filter, Tag, Users, Eye, Edit3, Trash2, GitBranch,
@@ -208,7 +208,7 @@ function FormulaGovernanceSkeleton() {
 }
 
 function FormulaGovernanceContent() {
-  const [location] = useLocation();
+  const { pathname: location } = useLocation();
   const initialTab: TabType = location.includes("/approvals") ? "approvals"
     : location.includes("/versions") ? "versions"
     : "registry";

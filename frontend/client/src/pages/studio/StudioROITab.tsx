@@ -5,7 +5,7 @@
  * Uses DIL ROI calculator hooks for scenario modeling.
  */
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Calculator,
   TrendingUp,

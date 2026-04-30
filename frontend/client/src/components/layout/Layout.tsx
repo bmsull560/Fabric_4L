@@ -2,7 +2,7 @@
  * Layout — Global App Shell
  *
  * Migrated from the prototype's Layout.tsx, adapted to:
- *   - wouter (useLocation) instead of react-router-dom (Outlet)
+ *   - react-router-dom (useLocation, useNavigate) instead of wouter
  *   - Fabric_4L's 7-domain navigation spine with tier-based progressive disclosure
  *   - ThemeContext integration for dark mode
  *   - AuthContext integration for user profile
@@ -18,7 +18,7 @@
  */
 import * as React from "react";
 import { memo, useState, useCallback, useMemo } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Search, Bell, ChevronRight, ChevronDown,
   Building2, Radar, Settings,
@@ -253,7 +253,7 @@ function NavButton({ icon: Icon, label, path, isActive, isCollapsed, badge, hasC
     return (
       <SidebarTooltip text={label}>
         <Link
-          href={path}
+          to={path}
           onClick={(e: React.MouseEvent) => { e.preventDefault(); onClick(); }}
           className={cn(
             "w-8 h-8 mx-auto rounded-lg flex items-center justify-center transition-colors",
@@ -273,7 +273,7 @@ function NavButton({ icon: Icon, label, path, isActive, isCollapsed, badge, hasC
     // Use <a> for role="link" semantics but handle via onClick
     return (
       <Link
-        href={path}
+        to={path}
         onClick={(e: React.MouseEvent) => { e.preventDefault(); if (onToggle) onToggle(); }}
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
@@ -296,7 +296,7 @@ function NavButton({ icon: Icon, label, path, isActive, isCollapsed, badge, hasC
 
   return (
     <Link
-      href={path}
+      to={path}
       onClick={(e: React.MouseEvent) => { e.preventDefault(); onClick(); }}
       className={cn(
         "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
@@ -360,7 +360,7 @@ function NavSection({ item, isCollapsed, currentPath, effectiveTier, selectedAcc
             return (
               <Link
                 key={child.id}
-                href={childResolved}
+                to={childResolved}
                 onClick={(e: React.MouseEvent) => { e.preventDefault(); onNavigate(childResolved); }}
                 aria-label={`Navigate to ${child.label}`}
                 className={cn(
@@ -466,7 +466,8 @@ const Layout = memo(function Layout({
   currentTier: externalCurrentTier,
   effectiveTier: externalEffectiveTier,
 }: LayoutProps) {
-  const [location, navigate] = useLocation();
+  const location = useLocation().pathname;
+  const navigate = useNavigate();
   const { theme, toggleTheme, switchable } = useTheme();
   const { user, logout } = useAuthContext();
 

@@ -11,7 +11,7 @@
  *   - Logs/Output panel (right bottom)
  */
 import { useState, useMemo, useCallback } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Plus, Play, Pause, ChevronLeft, ChevronRight, AlertCircle, Info } from 'lucide-react';
 import { PageHeader, Btn } from '@/components/WfPrimitives';
 import { DataTable, type DataTableColumn } from '@/components/ui/fabric/DataTable';
@@ -100,7 +100,7 @@ export default function IngestionJobs() {
   const jobs = listData?.jobs ?? [];
   const pagination = listData?.pagination ?? { page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 };
 
-  const [, setLocation] = useLocation();
+  const setLocation = useNavigate();
 
   // Handlers
   const handleRefresh = useCallback(() => {

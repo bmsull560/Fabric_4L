@@ -10,7 +10,7 @@ import hmac
 import logging
 import os
 import threading
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 from uuid import UUID, uuid4
 from shared.identity.context import (
     AUTH_SOURCE_SERVICE_ACCOUNT,

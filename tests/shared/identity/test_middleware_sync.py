@@ -51,21 +51,16 @@ class TestGovernanceMiddlewareSync:
     """Test middleware creates valid contexts."""
 
     def test_service_auth_creates_valid_context(self):
-        """Test service auth creates properly typed context."""
+        """Test X-Tenant-ID with valid service secret creates service account context."""
         with patch.dict("os.environ", {"SERVICE_AUTH_SECRET": "test-secret"}):
             middleware = GovernanceMiddlewareSync(None)
             
-            # Mock request headers
-            class MockRequest:
-                headers = {
-                    "X-Tenant-ID": "12345678-1234-5678-1234-567812345678",
-                    "X-Service-Auth": "test-secret",
-                }
+            ctx = middleware._resolve_identity_sync(
+                x_tenant_header="12345678-1234-5678-1234-567812345678",
+                x_service_auth="test-secret",
+            )
             
-            request = MockRequest()
-            ctx = middleware._resolve_identity_sync(request)
-            
-            if ctx:  # If auth succeeded
-                assert ctx.user_id is None
-                assert ctx.auth_source == AUTH_SOURCE_SERVICE_ACCOUNT
-                assert "system" in ctx.roles
+            assert ctx is not None, "Service auth should succeed with valid secret"
+            assert ctx.user_id is None, "Service context should have None user_id"
+            assert ctx.auth_source == AUTH_SOURCE_SERVICE_ACCOUNT
+            assert "system" in ctx.roles

@@ -23,25 +23,25 @@ test.describe('UI End-User Satisfaction', () => {
     await expect(page.getByTestId('login-heading')).toBeVisible();
     await page.getByRole('button', { name: /development bypass/i }).click();
     await expect(page).toHaveURL(/\/home/);
-    await expect(page.locator('aside')).toBeVisible();
+    await expect(page.locator('aside, nav').filter({ hasText: /Home|Accounts|Intelligence/ }).first()).toBeVisible();
     await expect(page.getByText(/create a value case/i)).toBeVisible();
     await page.screenshot({ path: 'e2e-results/debug-home.png', fullPage: true });
 
     // ── 2. Accounts ────────────────────────────────────────────────────────
     await page.goto('/accounts');
-    await expect(page.locator('aside')).toBeVisible();
+    await expect(page.locator('aside').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: /accounts/i })).toBeVisible();
     await page.screenshot({ path: 'e2e-results/debug-accounts.png', fullPage: true });
 
     // ── 3. Context / Value Packs ───────────────────────────────────────────
     await page.goto('/context/packs');
-    await expect(page.locator('aside')).toBeVisible();
+    await expect(page.locator('aside').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: /value packs/i })).toBeVisible();
     await page.screenshot({ path: 'e2e-results/debug-context-packs.png', fullPage: true });
 
     // ── 4. Settings / Content Formulas (admin) ─────────────────────────────
     await page.goto('/settings/content/formulas');
-    await expect(page.locator('aside')).toBeVisible();
+    await expect(page.locator('aside').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: /formula governance|content governance/i })).toBeVisible().catch(() => {
       // Fallback: just verify sidebar + some settings text
       return expect(page.getByText(/governance|formulas|settings/i).first()).toBeVisible();
@@ -50,7 +50,7 @@ test.describe('UI End-User Satisfaction', () => {
 
     // ── 5. Deliverables / Cases ────────────────────────────────────────────
     await page.goto('/deliverables/cases');
-    await expect(page.locator('aside')).toBeVisible();
+    await expect(page.locator('aside').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: /business cases|cases/i })).toBeVisible().catch(() => {
       return expect(page.getByText(/cases|deliverables/i).first()).toBeVisible();
     });
@@ -58,13 +58,13 @@ test.describe('UI End-User Satisfaction', () => {
 
     // ── 6. Workflow / Prospect ─────────────────────────────────────────────
     await page.goto('/workflow/prospect');
-    await expect(page.locator('aside')).toBeVisible();
+    await expect(page.locator('aside').first()).toBeVisible();
     await expect(page.getByText(/prospect|company|setup/i).first()).toBeVisible();
     await page.screenshot({ path: 'e2e-results/debug-workflow-prospect.png', fullPage: true });
 
     // ── 7. Studio / Value Model (legacy route via redirect) ──────────────────
     await page.goto('/studio/value-model');
-    await expect(page.locator('aside')).toBeVisible();
+    await expect(page.locator('aside').first()).toBeVisible();
     await page.screenshot({ path: 'e2e-results/debug-studio-value-model.png', fullPage: true });
 
     // ── Diagnostics ────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
  * Account Picker Modal
  */
 import { useCallback } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { Building2, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAccounts } from "@/hooks";
@@ -52,7 +52,7 @@ export default function AccountPickerModal({
   workspace,
   tab,
 }: AccountPickerModalProps) {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const setSelectedAccountId = useAccountContextStore(
     (state) => state.setSelectedAccountId
   );

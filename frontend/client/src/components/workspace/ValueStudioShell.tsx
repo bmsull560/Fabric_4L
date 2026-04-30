@@ -10,7 +10,7 @@
  *   - Center canvas (flex) + Right rail slot (320px)
  *   - "Back to Intelligence" link in header
  */
-import { Link, useLocation, useParams } from "wouter";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { Building2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Btn } from "@/components/WfPrimitives";
@@ -53,7 +53,7 @@ function AccountHeader({ account, accountId }: { account: AccountContext; accoun
       <span className="text-muted-foreground">·</span>
       <span className="text-muted-foreground">{account.revenue}</span>
       <div className="flex-1" />
-      <Link href={`/intelligence/${accountId}/signals`}>
+      <Link to={`/intelligence/${accountId}/signals`}>
         <Btn variant="outline" className="gap-1.5">
           <ArrowLeft size={13} />
           Back to Intelligence
@@ -69,7 +69,7 @@ function WorkspaceTabs({ accountId, activeTab }: { accountId: string; activeTab:
   return (
     <div className="flex border-b border-border px-6" role="tablist">
       {TABS.map((tab) => (
-        <Link key={tab.key} href={`/studio/${accountId}/${tab.key}`}>
+        <Link key={tab.key} to={`/studio/${accountId}/${tab.key}`}>
           <button
             role="tab"
             aria-selected={activeTab === tab.key}
@@ -97,7 +97,7 @@ export default function ValueStudioShell({
 }: ValueStudioShellProps) {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? "";
-  const [location] = useLocation();
+  const location = useLocation().pathname;
 
   // Derive active tab from URL
   const segments = location.split("/");

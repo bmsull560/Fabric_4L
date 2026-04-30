@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Plus, ChevronDown, ChevronRight, Trash2, GripVertical,
   CheckCircle2, Sparkles, ArrowRight
@@ -96,7 +96,7 @@ function NodeRow({ node, depth, onToggle }: { node: TreeNode; depth: number; onT
 }
 
 export default function DriverTree() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { setCurrentStep, setSelectedTreeId } = useWorkflowStore();
   const [tree, setTree] = useState<TreeNode>(initialTree);
   const [rightPanel, setRightPanel] = useState<"formula" | "validation">("formula");

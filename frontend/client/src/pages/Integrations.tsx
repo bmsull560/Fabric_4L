@@ -8,7 +8,7 @@
  * - Manage OAuth tokens
  */
 import React from "react";
-import { useLocation } from "wouter";
+import { useLocation, useNavigate } from "react-router-dom";
 import { PageHeader, Btn } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -37,7 +37,8 @@ import {
 } from "lucide-react";
 
 function Integrations() {
-  const [location, setLocation] = useLocation();
+  const location = useLocation().pathname;
+  const setLocation = useNavigate();
   const { data: integrations, isLoading, error, refetch } = useIntegrations();
   const createOrUpdateMutation = useCreateOrUpdateIntegration();
   const deleteMutation = useDeleteIntegration();

@@ -14,7 +14,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Plus, Search, Filter, Archive, ArrowUpRight, Clock,
   CheckCircle2, TrendingUp, Users, Building2, Loader2, AlertCircle
@@ -83,7 +83,7 @@ function CaseCard({
   onArchive: (id: string) => void;
   isArchiving: boolean;
 }) {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const status = STATUS_CONFIG[caseItem.status];
 
   return (
@@ -176,7 +176,7 @@ function CaseListSkeleton() {
 // ── Main Component ─────────────────────────────────────────────────────────
 
 function BusinessCaseListContent() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<BusinessCaseFilters['status']>('all');
   const [sortField, setSortField] = useState<SortField>('updatedAt');

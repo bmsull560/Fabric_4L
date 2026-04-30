@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { Save, RotateCcw, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import { ProgressBar } from "@/components/blocks";
 import { SectionCard } from "@/value-pilot/components";
@@ -17,7 +17,7 @@ const levers = [
 ];
 
 export default function Calculator() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { setGeneratedCaseId, setCurrentStep } = useWorkflowStore();
   const [values, setValues] = useState<Record<string, { a: number; b: number }>>(
     Object.fromEntries(levers.map((l) => [l.id, { a: l.valA, b: l.valB }]))

@@ -8,7 +8,7 @@
  * multi-year projections, and industry benchmarks.
  */
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Calculator,
   DollarSign,

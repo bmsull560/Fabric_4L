@@ -5,7 +5,7 @@
  * Uses DIL enrichment hooks for multi-source data enrichment.
  */
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Database,
   Globe,

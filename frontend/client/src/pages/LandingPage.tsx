@@ -5,7 +5,7 @@
  * Uses platform design tokens for consistent theming.
  */
 
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Shield, Database, FileText, BarChart3, ArrowRight } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
@@ -100,7 +100,7 @@ const ValueVisualization = () => (
 );
 
 export default function LandingPage() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, isLoading, devBypass } = useAuthContext();
 
   // Redirect if already authenticated

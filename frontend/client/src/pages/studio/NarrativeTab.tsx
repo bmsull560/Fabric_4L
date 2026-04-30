@@ -5,7 +5,7 @@
  * DIL enrichment: DIL Narrative Builder for tone/audience-specific generation
  */
 import { useEffect, useState } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   Users,
   Download,

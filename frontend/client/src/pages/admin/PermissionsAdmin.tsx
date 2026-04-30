@@ -12,7 +12,7 @@
  */
 
 import { useState, useMemo, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useLocation } from "react-router-dom";
 import {
   Users, Key, Plus, Search, Shield, UserPlus,
   CheckCircle2, Clock, AlertCircle, RefreshCw,
@@ -106,7 +106,7 @@ function getTabFromPath(path: string): TabType {
 }
 
 function PermissionsContent() {
-  const [location] = useLocation();
+  const { pathname: location } = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>(() => getTabFromPath(location));
   const [search, setSearch] = useState("");
 

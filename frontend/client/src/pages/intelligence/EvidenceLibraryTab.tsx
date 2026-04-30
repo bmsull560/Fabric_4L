@@ -8,7 +8,7 @@
  * before/after metrics and improvement percentages.
  */
 import { useState, useMemo } from "react";
-import { useParams } from "wouter";
+import { useParams } from "react-router-dom";
 import {
   FileText,
   Search,

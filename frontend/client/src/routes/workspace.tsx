@@ -17,6 +17,7 @@ interface WorkspacePages {
   EvidenceTab: ComponentType;
   StakeholdersTab: ComponentType;
   EnrichmentTab: ComponentType;
+  OntologyMatchTab: ComponentType;
   HypothesesTab: ComponentType;
   CompetitiveTab: ComponentType;
   ROITab: ComponentType;
@@ -39,6 +40,7 @@ export function WorkspaceRoutes(context: RouteComposerContext, p: WorkspacePages
     <Route path="/intelligence/:accountId/signals"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.SignalsTab /></AuthenticatedRoute></Route>
     <Route path="/intelligence/:accountId/stakeholders"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.StakeholdersTab /></AuthenticatedRoute></Route>
     <Route path="/intelligence/:accountId/enrichment"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.EnrichmentTab /></AuthenticatedRoute></Route>
+    <Route path="/intelligence/:accountId/ontology-match"><AuthenticatedRoute {...tierProps}><AccountContextSync /><p.OntologyMatchTab /></AuthenticatedRoute></Route>
 
     {/* ── Legacy studio routes (backward compat) ── */}
     <Route path="/studio"><AuthenticatedRoute {...tierProps}><WorkspaceContextRedirect workspace="studio" /></AuthenticatedRoute></Route>

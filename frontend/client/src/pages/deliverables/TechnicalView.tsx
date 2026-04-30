@@ -6,7 +6,7 @@
  * Route: /deliverables/views/technical
  * Hooks: useBusinessCase, useBusinessCaseExport
  */
-import { useSearchParams } from "wouter";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   Code2, Database, GitBranch, FileText, Download,
   AlertCircle, Loader2, ArrowLeft, ExternalLink,
@@ -15,7 +15,7 @@ import {
 import { PageHeader, Btn, SectionCard } from "@/components/WfPrimitives";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBusinessCase, useBusinessCaseExport } from "@/hooks/useDocuments";
-import { Link } from "wouter";
+
 import { cn } from "@/lib/utils";
 
 export default function TechnicalView() {
@@ -37,7 +37,7 @@ export default function TechnicalView() {
       <div className="flex flex-col items-center py-16">
         <AlertCircle size={24} className="text-red-500 mb-2" />
         <p className="text-[13px] text-neutral-600">{caseId ? "Failed to load business case." : "No case selected."}</p>
-        <Link href="/deliverables/cases" className="mt-3 text-[12px] text-blue-600 hover:underline">Back to Cases</Link>
+        <Link to="/deliverables/cases" className="mt-3 text-[12px] text-blue-600 hover:underline">Back to Cases</Link>
       </div>
     </div>
   );
@@ -56,7 +56,7 @@ export default function TechnicalView() {
         ]}
         actions={
           <div className="flex gap-2">
-            <Link href={`/deliverables/cases/${bc.case_id}`}>
+            <Link to={`/deliverables/cases/${bc.case_id}`}>
               <Btn variant="ghost"><ArrowLeft size={14} /> Full Case</Btn>
             </Link>
             <Btn variant="primary" disabled={exportMutation.isPending}

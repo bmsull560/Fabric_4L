@@ -12,7 +12,7 @@
  */
 
 import { useState, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import {
   Search, Filter, Grid3X3, Download, ChevronRight, Check,
   Minus, Square, Building2, BarChart3, PieChart, ArrowRight,
@@ -375,7 +375,7 @@ function WhitespaceSkeleton() {
 // ── Main Component ─────────────────────────────────────────────────────────
 
 function WhitespaceAnalysisContent() {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState<string>('all');
   const [regionFilter, setRegionFilter] = useState<string>('all');

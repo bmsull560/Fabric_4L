@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "wouter";
+import { useSearchParams } from "react-router-dom";
 import { Download, Loader2 } from "lucide-react";
 import {
   PageHeader,

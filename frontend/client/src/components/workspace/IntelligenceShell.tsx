@@ -10,7 +10,7 @@
  *   - Center canvas (flex) + Right rail slot (320px)
  *   - "Generate AI Value Model" CTA in header
  */
-import { Link, useLocation, useParams } from "wouter";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Building2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Btn } from "@/components/WfPrimitives";
@@ -41,7 +41,7 @@ const TABS = [
 // ── Account Context Header ────────────────────────────────────────────────────
 
 function AccountHeader({ account, accountId }: { account: AccountContext; accountId: string }) {
-  const [, navigate] = useLocation();
+  const navigate = useNavigate();
 
   return (
     <div className="h-11 bg-muted/50 border-b border-border flex items-center px-6 gap-3 text-[12px] shrink-0">
@@ -70,7 +70,7 @@ function WorkspaceTabs({ accountId, activeTab }: { accountId: string; activeTab:
   return (
     <div className="flex border-b border-border px-6" role="tablist">
       {TABS.map((tab) => (
-        <Link key={tab.key} href={`/intelligence/${accountId}/${tab.key}`}>
+        <Link key={tab.key} to={`/intelligence/${accountId}/${tab.key}`}>
           <button
             role="tab"
             aria-selected={activeTab === tab.key}
@@ -98,7 +98,7 @@ export default function IntelligenceShell({
 }: IntelligenceShellProps) {
   const params = useParams<{ accountId: string }>();
   const accountId = params.accountId ?? "";
-  const [location] = useLocation();
+  const location = useLocation().pathname;
 
   // Derive active tab from URL
   const segments = location.split("/");
