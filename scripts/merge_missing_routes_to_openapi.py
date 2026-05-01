@@ -75,25 +75,26 @@ def extract_routes_from_file(path: Path) -> list[dict[str, str]]:
     return routes
 
 
-def collect_routes_from_routers(router_dir: Path, app_prefix: str = "/v1") -> list[dict[str, str]]:
-    """Collect all routes from router files in a directory."""
+def collect_routes_from_routers(router_dirs: Path | list[Path], app_prefix: str = "/v1") -> list[dict[str, str]]:
+    """Collect all routes from router files in one or more directories."""
     routes: list[dict[str, str]] = []
-    if not router_dir.exists():
-        return routes
-
-    for py_file in sorted(router_dir.glob("*.py")):
-        if py_file.name.startswith("_"):
+    dirs = [router_dirs] if isinstance(router_dirs, Path) else router_dirs
+    for router_dir in dirs:
+        if not router_dir.exists():
             continue
-        router_prefix = extract_router_prefix(py_file)
-        file_routes = extract_routes_from_file(py_file)
-        for r in file_routes:
-            # Build full path: app_prefix + router_prefix + route_path
-            segments = []
-            for p in [app_prefix, router_prefix, r["path"]]:
-                if p:
-                    segments.append(p.strip("/"))
-            full_path = "/" + "/".join(segments)
-            routes.append({"method": r["method"], "path": full_path, "source": str(py_file)})
+        for py_file in sorted(router_dir.glob("*.py")):
+            if py_file.name.startswith("_"):
+                continue
+            router_prefix = extract_router_prefix(py_file)
+            file_routes = extract_routes_from_file(py_file)
+            for r in file_routes:
+                # Build full path: app_prefix + router_prefix + route_path
+                segments = []
+                for p in [app_prefix, router_prefix, r["path"]]:
+                    if p:
+                        segments.append(p.strip("/"))
+                full_path = "/" + "/".join(segments)
+                routes.append({"method": r["method"], "path": full_path, "source": str(py_file)})
 
     return routes
 
@@ -175,7 +176,12 @@ def main() -> int:
             "prefix": "/v1",
         },
         "layer4-agents": {
-            "router_dir": Path("value-fabric/layer4-agents/src/api/routes"),
+            "router_dir": [
+                Path("value-fabric/layer4-agents/src/api/routes"),
+                Path("value-fabric/layer4-agents/src/tenants/api/routes"),
+                Path("value-fabric/layer4-agents/src/registry/api"),
+                Path("value-fabric/layer4-agents/src/messaging"),
+            ],
             "spec_path": Path("contracts/openapi/layer4-agents.json"),
             "prefix": "/v1",
         },
@@ -187,7 +193,7 @@ def main() -> int:
         "layer6-benchmarks": {
             "router_dir": Path("value-fabric/layer6-benchmarks/src/api/routes"),
             "spec_path": Path("contracts/openapi/layer6-benchmarks.json"),
-            "prefix": "/v1",
+            "prefix": "",
         },
     }
 
@@ -207,7 +213,8 @@ def main() -> int:
 
         print(f"\n📦 Processing {layer}...")
         routes = collect_routes_from_routers(router_dir, prefix)
-        print(f"   Discovered {len(routes)} routes from {router_dir}")
+        dirs_display = router_dir if isinstance(router_dir, Path) else ", ".join(str(d) for d in router_dir)
+        print(f"   Discovered {len(routes)} routes from {dirs_display}")
 
         spec = load_openapi(spec_path)
         before_paths = len(spec.get("paths", {}))

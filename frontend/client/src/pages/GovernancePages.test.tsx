@@ -29,11 +29,12 @@ function useGovernanceHandlers() {
       return HttpResponse.json({
         items: [
           {
-            truth_id: 'truth-001',
+            id: 'truth-001',
+            claim: 'Compliance requirement verified',
             claim_type: 'compliance_requirement',
             status: 'verified',
             maturity_level: 3,
-            freshness: 'fresh',
+            confidence: 0.92,
             is_stale: false,
             updated_at: '2026-04-27T10:00:00Z',
           },
@@ -45,6 +46,23 @@ function useGovernanceHandlers() {
       return HttpResponse.json([
         { level: 3, name: 'Validated', description: 'Validated with corroborated evidence' },
       ]);
+    }),
+    http.get('/api/v1/truths/freshness-summary', () => {
+      return HttpResponse.json({
+        stale_count: 0,
+        fresh_count: 1,
+        expiring_soon_count: 0,
+        total_count: 1,
+      });
+    }),
+    http.get('/api/v1/truths/stale', () => {
+      return HttpResponse.json({
+        items: [],
+        total: 0,
+        limit: 50,
+        offset: 0,
+        has_more: false,
+      });
     }),
     http.get('/api/v1/truths/:truthId/audit', () => {
       return HttpResponse.json([

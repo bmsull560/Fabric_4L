@@ -605,6 +605,27 @@ class OrchestrationController:
 
         return cancelled
 
+    async def archive_workflow(self, workflow_id: str) -> bool:
+        """Archive a workflow.
+
+        Args:
+            workflow_id: Workflow to archive
+
+        Returns:
+            True if archived
+        """
+        logger.info(f"Archiving workflow {workflow_id}")
+
+        # Update state metadata
+        state = await self.state_manager.load_state(workflow_id)
+        if state:
+            state.metadata["archived"] = True
+            state.metadata["archived_at"] = datetime.now(UTC).isoformat()
+            await self.state_manager.save_state(workflow_id, state)
+            return True
+
+        return False
+
     async def resume_workflow(
         self,
         workflow_id: str,

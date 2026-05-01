@@ -534,6 +534,7 @@ async def list_active_workflows(
     limit: int = Query(default=50, ge=1, le=100, description="Maximum number of workflows to return"),
     offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
     status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
+    workflow_type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
     _ctx: RequestContext = Depends(require_authenticated),
     executor: OrchestrationController = Depends(get_executor),
 ) -> dict[str, Any]:
@@ -549,6 +550,11 @@ async def list_active_workflows(
     if status:
         status_lower = status.lower()
         all_active = [w for w in all_active if w.get("status", "").lower() == status_lower]
+    
+    # Apply workflow type filter if specified
+    if workflow_type:
+        type_lower = workflow_type.lower()
+        all_active = [w for w in all_active if w.get("workflow_type", "").lower() == type_lower]
     
     # Calculate pagination
     total = len(all_active)
@@ -635,4 +641,38 @@ async def get_workflow_events(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
         },
+    )
+
+
+class ArchiveWorkflowResponse(TypedDictModel):
+    """Archive workflow response."""
+
+    workflow_id: Any
+    status: str
+    archived_at: str
+
+
+@router.post("/workflows/{workflow_id}/archive", response_model=ArchiveWorkflowResponse)
+async def archive_workflow(
+    workflow_id: str,
+    executor: OrchestrationController = Depends(get_executor),
+    _ctx: RequestContext = Depends(require_authenticated),
+) -> ArchiveWorkflowResponse:
+    """Archive a workflow.
+
+    Sets the workflow status to 'archived' for soft-delete / hide from active lists.
+    """
+    status = await executor.get_workflow_status(workflow_id)
+    if not status:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+
+    # Update workflow status to archived via the executor's state store
+    archived = await executor.archive_workflow(workflow_id)
+    if not archived:
+        raise HTTPException(status_code=500, detail=f"Failed to archive workflow {workflow_id}")
+
+    return ArchiveWorkflowResponse(
+        workflow_id=workflow_id,
+        status="archived",
+        archived_at=datetime.now(UTC).isoformat(),
     )

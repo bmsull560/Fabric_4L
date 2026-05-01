@@ -7,12 +7,28 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+# Add paths so imports match Docker layout:
+# - shared.* -> value-fabric/shared
+# - src.*    -> layer1-ingestion/src (when layer1-ingestion is on path)
+layer1_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+value_fabric_root = os.path.abspath(os.path.join(layer1_root, '..'))
 
-# Import models
-from shared.config import settings
-from shared.models import Base
+# Remove src direct path if present (prevents shadowing)
+src_path = os.path.join(layer1_root, 'src')
+if src_path in sys.path:
+    sys.path.remove(src_path)
+
+# Add layer1-ingestion root so 'src' is importable as a package
+if layer1_root not in sys.path:
+    sys.path.insert(0, layer1_root)
+
+# Add value-fabric root so 'shared' resolves correctly
+if value_fabric_root not in sys.path:
+    sys.path.insert(0, value_fabric_root)
+
+# Import models (use src.* to avoid shadowing value-fabric/shared)
+from src.shared.config import settings
+from src.shared.models import Base
 
 # this is the Alembic Config object
 config = context.config

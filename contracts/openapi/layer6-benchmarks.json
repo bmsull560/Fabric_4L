@@ -1,0 +1,118 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Layer 6 — Benchmarks API",
+    "version": "1.0.0",
+    "description": "Benchmark and dataset comparison endpoints. Generated via merge script."
+  },
+  "paths": {
+    "/v1/benchmarks/datasets": {
+      "get": {
+        "tags": [
+          "layer6-benchmarks"
+        ],
+        "summary": "GET /v1/benchmarks/datasets",
+        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
+        "operationId": "discovered_get_v1_benchmarks_datasets",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/benchmarks/datasets/{dataset_id}": {
+      "get": {
+        "tags": [
+          "layer6-benchmarks"
+        ],
+        "summary": "GET /v1/benchmarks/datasets/{dataset_id}",
+        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
+        "operationId": "discovered_get_v1_benchmarks_datasets_dataset_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/benchmarks/compare": {
+      "post": {
+        "tags": [
+          "layer6-benchmarks"
+        ],
+        "summary": "POST /v1/benchmarks/compare",
+        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
+        "operationId": "discovered_post_v1_benchmarks_compare",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/benchmarks/validate": {
+      "post": {
+        "tags": [
+          "layer6-benchmarks"
+        ],
+        "summary": "POST /v1/benchmarks/validate",
+        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
+        "operationId": "discovered_post_v1_benchmarks_validate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/benchmarks/industries": {
+      "get": {
+        "tags": [
+          "layer6-benchmarks"
+        ],
+        "summary": "GET /v1/benchmarks/industries",
+        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\benchmarks.py).",
+        "operationId": "discovered_get_v1_benchmarks_industries",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "layer6-benchmarks"
+        ],
+        "summary": "GET /health",
+        "description": "Discovered from router source (value-fabric\\layer6-benchmarks\\src\\api\\routes\\system.py).",
+        "operationId": "discovered_get_health",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    }
+  }
+}

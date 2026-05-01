@@ -9,9 +9,11 @@ import { http, HttpResponse, delay, type PathParams } from 'msw';
 // Base API paths from environment config
 // Note: L3_PREFIX must match api/client.ts LAYER_PREFIXES.l3 which is '/graph'
 const API_BASE = '/api/v1';
+const L2_PREFIX = '/extract';
 const L3_PREFIX = '/graph';  // Layer 3 routes: /v1/graph/variables, /v1/graph/query, etc.
 const L4_PREFIX = '/agents';
-const L2_PREFIX = '/extract';
+const L5_PREFIX = '/truths';
+const L6_PREFIX = '/benchmarks';
 
 // ===== Auth Mocks (L4) =====
 
@@ -1507,6 +1509,243 @@ export const errorMocks = [
   }),
 ];
 
+// ===== L6 Benchmark Dataset Mocks =====
+export const l6BenchmarkMocks = [
+  http.get(`${API_BASE}${L6_PREFIX}/datasets`, async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const industry = url.searchParams.get('industry');
+    const status = url.searchParams.get('status');
+    const confidence = url.searchParams.get('confidence');
+
+    let benchmarks = [
+      {
+        id: 'bench-1',
+        benchmark_id: 'bench-1',
+        name: 'Industry Average ROI',
+        industry: industry || 'Software',
+        vertical: 'SaaS',
+        value_range: '2.5x - 4.0x',
+        confidence: 'High',
+        source: 'Industry Research',
+        year: 2024,
+        status: 'active',
+        tags: ['roi', 'saas'],
+        usage_count: 15,
+      },
+      {
+        id: 'bench-2',
+        benchmark_id: 'bench-2',
+        name: 'Implementation Timeline',
+        industry: industry || 'Software',
+        vertical: 'Enterprise',
+        value_range: '3-6 months',
+        confidence: 'Medium',
+        source: 'Survey Data',
+        year: 2024,
+        status: 'active',
+        tags: ['timeline'],
+        usage_count: 8,
+      },
+    ];
+
+    if (status) benchmarks = benchmarks.filter((b: any) => b.status === status);
+    if (confidence) benchmarks = benchmarks.filter((b: any) => b.confidence === confidence);
+
+    return HttpResponse.json(benchmarks);
+  }),
+
+  http.get(`${API_BASE}${L6_PREFIX}/datasets/:id`, async ({ params }) => {
+    await delay(100);
+    const id = params.id as string;
+    return HttpResponse.json({
+      id,
+      benchmark_id: id,
+      name: 'Detailed Benchmark',
+      industry: 'Software',
+      value_range: '2.5x - 4.0x',
+      confidence: 'High',
+      source: 'Industry Research',
+      year: 2024,
+      status: 'active',
+      tags: ['detailed'],
+      usage_count: 10,
+    });
+  }),
+];
+
+// ===== L5 Governance Mocks =====
+export const governanceMocks = [
+  http.get(`${API_BASE}${L5_PREFIX}/truths`, async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status');
+    const limit = url.searchParams.get('limit');
+
+    let items = [
+      { id: 'truth-1', claim: 'Revenue increase', claim_type: 'financial', status: 'validated', maturity_level: 3, confidence: 0.85, is_stale: false, updated_at: '2024-01-15T10:00:00Z' },
+      { id: 'truth-2', claim: 'Cost reduction', claim_type: 'operational', status: 'pending', maturity_level: 2, confidence: 0.65, is_stale: false, updated_at: '2024-01-14T09:00:00Z' },
+    ];
+
+    if (status) items = items.filter((t: any) => t.status === status);
+
+    return HttpResponse.json({
+      items: limit ? items.slice(0, parseInt(limit, 10)) : items,
+      total: items.length,
+      limit: limit ? parseInt(limit, 10) : 25,
+      offset: 0,
+      has_more: false,
+    });
+  }),
+
+  http.get(`${API_BASE}${L5_PREFIX}/maturity-ladder`, async () => {
+    await delay(100);
+    return HttpResponse.json([
+      { level: 1, name: 'Initial', description: 'Basic validation' },
+      { level: 2, name: 'Developing', description: 'Partial evidence' },
+      { level: 3, name: 'Mature', description: 'Strong evidence' },
+      { level: 4, name: 'Optimized', description: 'Continuous validation' },
+    ]);
+  }),
+
+  http.get(`${API_BASE}${L5_PREFIX}/truths/freshness-summary`, async () => {
+    await delay(100);
+    return HttpResponse.json({
+      stale_count: 0,
+      fresh_count: 2,
+      expiring_soon_count: 0,
+      total_count: 2,
+    });
+  }),
+
+  http.get(`${API_BASE}${L5_PREFIX}/truths/stale`, async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const limit = url.searchParams.get('limit');
+    const items: any[] = [];
+    return HttpResponse.json({
+      items: limit ? items.slice(0, parseInt(limit, 10)) : items,
+      total: items.length,
+      limit: limit ? parseInt(limit, 10) : 25,
+      offset: 0,
+      has_more: false,
+    });
+  }),
+
+  http.get(`${API_BASE}${L5_PREFIX}/truths/:truthId/audit`, async ({ params }) => {
+    await delay(100);
+    const truthId = params.truthId as string;
+    if (truthId === 'broken') {
+      return new HttpResponse(JSON.stringify({ error: 'Audit service unavailable' }), { status: 500 });
+    }
+    return HttpResponse.json([
+      { id: 'audit-1', timestamp: '2024-01-15T10:00:00Z', action: 'created', actor: 'user@example.com', notes: 'Initial creation' },
+    ]);
+  }),
+];
+
+// ===== Graph Query Double-Prefix Mocks (frontend calls /graph/subgraph via apiClient l3) =====
+export const graphQueryFixMocks = [
+  http.get(`${API_BASE}${L3_PREFIX}/graph/subgraph`, async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const query = url.searchParams.get('query') || '';
+    const centerEntityId = url.searchParams.get('center_entity_id');
+    const depth = parseInt(url.searchParams.get('depth') || '2', 10);
+    const limit = parseInt(url.searchParams.get('limit') || '100', 10);
+
+    const nodes = [
+      { id: 'ent-1', name: query || 'Root', entity_type: 'capability', confidence_score: 0.95 },
+      { id: 'ent-2', name: 'Related', entity_type: 'usecase', confidence_score: 0.88 },
+    ];
+
+    return HttpResponse.json({
+      root_entity_id: centerEntityId || '',
+      nodes: nodes.slice(0, limit),
+      edges: [
+        { source: 'ent-1', target: 'ent-2', type: 'RELATED_TO', properties: {} },
+      ],
+      depth,
+      stats: {
+        total_nodes: nodes.length,
+        total_edges: 1,
+        density: 0.5,
+      },
+    });
+  }),
+];
+
+// ===== ValuePack Framework Mocks (v1.0) =====
+export const valuePackFrameworkMocks = [
+  http.get(`${API_BASE}${L3_PREFIX}/valuepacks`, async ({ request }) => {
+    await delay(100);
+    const url = new URL(request.url);
+    const tier = url.searchParams.get('tier');
+    const search = url.searchParams.get('search');
+
+    let items = [
+      {
+        id: 'vpf-1',
+        industry_id: 'software-saas',
+        industry_name: 'Software / SaaS',
+        tier: 1,
+        description: 'SaaS value framework',
+        driver_count: 5,
+        formula_count: 8,
+        updated_at: '2024-01-15T10:00:00Z',
+      },
+      {
+        id: 'vpf-2',
+        industry_id: 'financial-services',
+        industry_name: 'Financial Services',
+        tier: 2,
+        description: 'FinServ value framework',
+        driver_count: 7,
+        formula_count: 12,
+        updated_at: '2024-01-14T09:00:00Z',
+      },
+    ];
+
+    if (tier) items = items.filter((i: any) => i.tier === parseInt(tier, 10));
+    if (search) items = items.filter((i: any) => i.industry_name.toLowerCase().includes(search.toLowerCase()));
+
+    return HttpResponse.json({ items, total: items.length });
+  }),
+
+  http.get(`${API_BASE}${L3_PREFIX}/valuepacks/ontology-map`, async () => {
+    await delay(100);
+    return HttpResponse.json({
+      domains: ['Finance', 'IT', 'Healthcare', 'Manufacturing'],
+      entity_types: ['Capability', 'Outcome', 'Persona', 'Process'],
+      relationship_types: ['ENABLES', 'DEPENDS_ON', 'DRIVES', 'USES'],
+    });
+  }),
+
+  http.get(`${API_BASE}${L3_PREFIX}/valuepacks/composable-templates`, async () => {
+    await delay(100);
+    return HttpResponse.json({
+      templates: [
+        { id: 'tpl-1', name: 'ROI Calculator', category: 'financial', composable: true },
+        { id: 'tpl-2', name: 'TVM Analysis', category: 'financial', composable: true },
+      ],
+    });
+  }),
+];
+
+// ===== Opportunities Mocks =====
+export const opportunityMocks = [
+  http.get(`${API_BASE}${L4_PREFIX}/discover/opportunities`, async () => {
+    await delay(100);
+    return HttpResponse.json({
+      opportunities: [
+        { id: 'opp-1', title: 'Cost Optimization', potential_value: 1200000, confidence: 0.85, status: 'open' },
+        { id: 'opp-2', title: 'Revenue Growth', potential_value: 2500000, confidence: 0.72, status: 'open' },
+      ],
+      total: 2,
+    });
+  }),
+];
+
 // ===== Combine all handlers =====
 
 export const handlers = [
@@ -1514,15 +1753,20 @@ export const handlers = [
   ...workflowMocks,
   ...jobStreamMocks,
   ...graphMocks,
+  ...graphQueryFixMocks,
   ...benchmarkMocks,
+  ...l6BenchmarkMocks,
   ...formulaMocks,
   ...variableMocks,
   ...provenanceMocks,
   ...businessCaseMocks,
   ...valuePackMocks,
+  ...valuePackFrameworkMocks,
   ...valueTreeMocks,
   ...healthMocks,
   ...tenantSettingsMocks,
   ...userMocks,
+  ...governanceMocks,
+  ...opportunityMocks,
   ...errorMocks,
 ];

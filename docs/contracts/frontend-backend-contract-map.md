@@ -67,15 +67,15 @@
 | Graph Stream | — | L3 | `/v1/query/graph/stream` | POST | — | `GraphQueryRequest` | Streaming response | `X-Tenant-ID`, Bearer JWT | `implemented` | Not yet consumed by frontend hooks. |
 | Entity Context | `QK.graph.context(entityId, hops)` | L3 | `/v1/entity/{entity_id}/context` | GET | `entity_id` path, `hops` query | — | `EntityContextResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Zod-validated (`EntityContextResponseSchema`). |
 | Entity Traversal | `QK.graph.traversal(params)` | L3 | `/v1/entity/traverse` | POST | — | `EntityTraversalRequest` | `EntityTraversalResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Zod-validated (`EntityTraversalResponseSchema`). |
-| Subgraph | `QK.graph.subgraph(...)` | L3 | `/v1/subgraph` | GET | `query`, `center_entity_id`, `depth`, `limit` | — | `SubgraphResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend uses GET; backend supports this shape. |
+| Subgraph | `QK.graph.subgraph(...)` | L3 | `/v1/graph/subgraph` | GET | `query`, `center_entity_id`, `depth`, `limit` | — | `SubgraphResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend path updated to `/graph/subgraph` to align with backend router prefix. |
 | Entity List | `QK.entities.list()` | L3 | `/v1/entities` | GET | `page`, `limit`, `search_text`, `entity_type` | — | `EntityListResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Entity Search | `QK.entities.search(query)` | L3 | `/v1/entities?search_text={query}` | GET | `search_text` | — | `EntityListResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Entity Detail | `QK.entities.detail(id)` | L3 | `/v1/entities/{entity_id}` | GET | `entity_id` path, `include_provenance`, `include_relationships` | — | `Entity` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Formula List | `QK.formulas.list(filters)` | L3 | `/v1/formulas` | GET | `status`, `owner`, `search` | — | `Formula[]` paginated | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Formula Detail | `QK.formulas.detail(id)` | L3 | `/v1/formulas/{id}` | GET | `id` path param | — | `Formula` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
-| Formula Create | — | L3 | `/v1/formulas` | POST | — | `CreateFormulaInput` | `Formula` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
-| Formula Update | — | L3 | `/v1/formulas/{id}` | PATCH | `id` path param | `UpdateFormulaInput` | `Formula` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
-| Formula Delete | — | L3 | `/v1/formulas/{id}` | DELETE | `id` path param | — | `{ status: string }` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
+| Formula Create | — | L3 | `/v1/formulas` | POST | — | `CreateFormulaInput` | `Formula` | `X-Tenant-ID`, Bearer JWT | `missing` | Backend router does not implement plain POST /formulas. Use `/v1/formulas/evaluate` or `/v1/formulas/scenario` instead. |
+| Formula Update | — | L3 | `/v1/formulas/{id}` | PATCH | `id` path param | `UpdateFormulaInput` | `Formula` | `X-Tenant-ID`, Bearer JWT | `missing` | Backend router does not implement PATCH /formulas/{id}. |
+| Formula Delete | — | L3 | `/v1/formulas/{id}` | DELETE | `id` path param | — | `{ status: string }` | `X-Tenant-ID`, Bearer JWT | `missing` | Backend router does not implement DELETE /formulas/{id}. |
 | Formula Evaluate | — | L3 | `/v1/formulas/evaluate` | POST | — | `FormulaEvaluationInput` | `FormulaEvaluationResult` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Formula Scenario | — | L3 | `/v1/formulas/scenario` | POST | — | `{ formula_id, variables }` | `FormulaEvaluationResult` | `X-Tenant-ID`, Bearer JWT | `implemented` | Consumed by Thesys C1 (`thesysClient.ts`). |
 | Formula Approvals | `QK.formulas.approvals` | L3 | `/v1/formulas/approvals/pending` | GET | — | — | `ApprovalRequest[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
@@ -96,18 +96,18 @@
 | Value Tree Paths | `QK.valueTrees.paths(...)` | L3 | `/v1/value-trees/{entity_id}/paths` | GET | `entity_id` path, `direction`, `max_depth` | — | `ValueTreePath[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Product List | `QK.products.list(filters)` | L3 | `/v1/products` | GET | `page`, `limit`, `search` | — | `ProductListResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Backend route exists; frontend types inferred, not strongly typed. |
 | Product Detail | `QK.products.detail(id)` | L3 | `/v1/products/{id}` | GET | `id` path param | — | `Product` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Evidence List | `QK.evidence.list(filters)` | L3 | `/v1/case-studies` | GET | `page`, `limit`, `industry`, `product_id` | — | `CaseStudyListResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Frontend query key exists but route alias not verified in dev proxy. |
-| Evidence Detail | `QK.evidence.detail(id)` | L3 | `/v1/case-studies/{id}` | GET | `id` path param | — | `CaseStudy` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
+| Evidence List | `QK.evidence.list(filters)` | L3 | `/v1/evidence/case-studies` | GET | `page`, `limit`, `industry`, `product_id` | — | `CaseStudyListResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/evidence/case-studies`. |
+| Evidence Detail | `QK.evidence.detail(id)` | L3 | `/v1/evidence/case-studies/{id}` | GET | `id` path param | — | `CaseStudy` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/evidence/case-studies/{id}`. |
 | Competitive List | `QK.competitive.list(filters)` | L3 | `/v1/competitive/competitors` | GET | `page`, `limit`, `industry` | — | `CompetitorListResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/competitors`. |
 | Competitive Detail | `QK.competitive.detail(id)` | L3 | `/v1/competitive/competitors/{id}` | GET | `id` path param | — | `Competitor` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/competitors/${id}`. |
 | Competitive Battlecards | `QK.competitive.battlecards(id)` | L3 | `/v1/competitive/competitors/{id}/battlecards` | GET | `id` path param | — | `Battlecard` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/competitors/${id}/battlecards`. Alias `/battlecard` also added for compatibility. |
-| Competitive Win/Loss | `QK.competitive.winLoss(id)` | L3 | `/v1/competitive/win-loss` | GET | `id` path param | — | `WinLossRecord[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/win-loss`. |
+| Competitive Win/Loss Summary | `QK.competitive.winLoss(id)` | L3 | `/v1/competitive/win-loss/summary` | GET | `competitor_id` query param | — | `WinLossSummary[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/competitive/win-loss/summary`. |
 | Competitive Landscape | `QK.competitive.landscape(productId)` | L3 | `/v1/competitive/landscape` | GET | `product_id` query | — | `LandscapeResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/landscape`. |
-| ROI List | `QK.roi.list(filters)` | L3 | `/v1/calculations` | GET | `page`, `limit`, `prospect_id` | — | `ROICalculationListResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| ROI Detail | `QK.roi.detail(id)` | L3 | `/v1/calculations/{id}` | GET | `id` path param | — | `ROICalculation` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| ROI Templates | `QK.roi.templates()` | L3 | `/v1/templates` | GET | — | — | `ROITemplate[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| ROI Benchmarks | `QK.roi.benchmarks(industry)` | L3 | `/v1/benchmarks/{industry}` | GET | `industry` path param | — | `IndustryBenchmark` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Benchmark List | `QK.benchmarks.list(filters)` | L3 | `/v1/benchmarks` | GET | `category`, `industry` | — | `Benchmark[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
+| ROI List | `QK.roi.list(filters)` | L3 | `/v1/roi/calculations` | GET | `page`, `limit`, `prospect_id` | — | `ROICalculationListResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/roi/calculations`. |
+| ROI Detail | `QK.roi.detail(id)` | L3 | `/v1/roi/calculations/{id}` | GET | `id` path param | — | `ROICalculation` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/roi/calculations/{id}`. |
+| ROI Templates | `QK.roi.templates()` | L3 | `/v1/roi/templates` | GET | — | — | `ROITemplate[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/roi/templates`. |
+| ROI Benchmarks | `QK.roi.benchmarks(industry)` | L3 | `/v1/roi/benchmarks/{industry}` | GET | `industry` path param | — | `IndustryBenchmark` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/roi/benchmarks/{industry}`. |
+| Benchmark List | `QK.benchmarks.list(filters)` | L3 | `/v1/roi/benchmarks` | GET | `category`, `industry` | — | `Benchmark[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Frontend query key exists but no hook actively consumes this endpoint. |
 | Variable List | `QK.variables.list(filters)` | L3 | `/v1/variables` | GET | `category`, `search` | — | `Variable[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
 
 ---
@@ -167,7 +167,7 @@
 | C1 Stream | — | L4 | `/v1/c1/stream` | POST | — | `C1Message[]` | SSE stream (`C1StreamChunk`) | `X-Tenant-ID`, Bearer JWT | `implemented` | Thesys C1 generative UI proxy. |
 | Analysis ROI | — | L4 | `/v1/analysis/roi` | POST | — | `ROIAnalysisRequest` | `ROIAnalysisResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Analysis Whitespace | — | L4 | `/v1/analysis/whitespace` | POST | — | `WhitespaceAnalysisRequest` | `WhitespaceAnalysisResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
-| Auth Register | — | L4 | `/auth/register` | POST | — | `RegisterRequest` (Zod) | `RegisterResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Raw `fetch` in `api/auth.ts`. Path does NOT include `/v1` prefix. |
+| Auth Register | — | L4 | `/v1/tenants/register` | POST | — | `RegisterRequest` (Zod) | `RegisterResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/auth/register` via apiClient (L4 proxy rewrites to `/v1/auth/register`). Added backend alias `/v1/auth/register` → tenant registration for compatibility. |
 | Auth OIDC Login | — | L4 | `/auth/oidc/{tenantSlug}/login` | GET | `tenantSlug` path param | — | Redirect to IdP | `X-Tenant-ID`, Bearer JWT | `implemented` | Raw `fetch` in `services/authClient.ts`. Path does NOT include `/v1` prefix. |
 | Auth OIDC Callback | — | L4 | `/auth/oidc/callback` | GET | `code`, `state` query | — | Sets cookies/tokens | `X-Tenant-ID`, Bearer JWT | `implemented` | Path does NOT include `/v1` prefix. |
 | Enrichment Status | `QK.enrichment.status()` | L4 | `/v1/enrichment/status` | GET | — | — | `EnrichmentStatus` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Route inferred from router; verify exact shape. |
@@ -206,9 +206,9 @@
 
 | Frontend Module | Query Key | Backend Owner | Canonical Endpoint | HTTP Method | Request Params | Request Body Schema | Response Schema | Auth / Tenant | Current Status | Notes / Migration Needs |
 |-----------------|-----------|---------------|--------------------|-------------|----------------|---------------------|-----------------|---------------|----------------|------------------------|
-| Benchmark Datasets | — | L6 | `/v1/datasets` | GET | — | — | `Dataset[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Frontend query key exists (`QK.benchmarks`) but no hook actively consumes L6. |
-| Benchmark Compare | — | L6 | `/v1/compare` | POST | — | `{ dataset_ids, metrics }` | `ComparisonResult` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Benchmark Industries | — | L6 | `/v1/industries` | GET | — | — | `Industry[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
+| Benchmark Datasets | — | L6 | `/v1/benchmarks/datasets` | GET | — | — | `Dataset[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Frontend query key exists (`QK.benchmarks`) but no hook actively consumes L6. |
+| Benchmark Compare | — | L6 | `/v1/benchmarks/compare` | POST | — | `{ dataset_ids, metrics }` | `ComparisonResult` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
+| Benchmark Industries | — | L6 | `/v1/benchmarks/industries` | GET | — | — | `Industry[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
 | Platform Health | `QK.platform.health` | L6 / L1-L5 | `/health` (per layer) | GET | — | — | `{ status: string }` | Public (no auth) | `partially-implemented` | Frontend defines query key but no active hook found. Each layer exposes its own `/health`. |
 | Platform Settings | `QK.platform.settings` | L4 | `/v1/tenant/settings` | GET | — | — | `TenantSettings` | `X-Tenant-ID`, Bearer JWT | `implemented` | Listed under L4 above; repeated here for completeness. |
 

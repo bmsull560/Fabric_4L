@@ -26,19 +26,19 @@ def upgrade() -> None:
     op.drop_index('idx_crawl_queue_domain_priority', table_name='crawl_queue')
     op.drop_index('idx_crawl_queue_job_status', table_name='crawl_queue')
     op.drop_index('idx_crawl_queue_next_retry', table_name='crawl_queue')
-    op.drop_index('uq_crawl_queue_job_url', table_name='crawl_queue')
-    op.drop_table('crawl_queue')
+    op.drop_constraint('uq_crawl_queue_job_url', table_name='crawl_queue', type_='unique')
+    op.execute('DROP TABLE IF EXISTS crawl_queue CASCADE')
     
     op.drop_index('idx_crawled_content_domain_extracted', table_name='crawled_content')
     op.drop_index('idx_crawled_content_job_type', table_name='crawled_content')
-    op.drop_table('crawled_content')
+    op.execute('DROP TABLE IF EXISTS crawled_content CASCADE')
     
     op.drop_index('idx_audit_logs_domain_action', table_name='audit_logs')
     op.drop_index('idx_audit_logs_timestamp', table_name='audit_logs')
-    op.drop_table('audit_logs')
+    op.execute('DROP TABLE IF EXISTS audit_logs CASCADE')
     
     op.drop_index('idx_crawl_jobs_status_created', table_name='crawl_jobs')
-    op.drop_table('crawl_jobs')
+    op.execute('DROP TABLE IF EXISTS crawl_jobs CASCADE')
     
     # Create new tables
     op.create_table('scraping_targets',

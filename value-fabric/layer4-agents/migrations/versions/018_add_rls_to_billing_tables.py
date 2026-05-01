@@ -37,26 +37,29 @@ def upgrade() -> None:
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
 
         # Tenant isolation policy — matches the pattern from migration 007/013
+        # SECURITY FIX: Removed tenant_id IS NULL check that caused global data leak
         op.execute(f"""
             CREATE POLICY tenant_isolation_policy ON {table}
                 FOR ALL
                 TO PUBLIC
                 USING (
-                    tenant_id IS NULL OR
                     tenant_id::text = current_setting('app.tenant_id', true)
                 )
                 WITH CHECK (
-                    tenant_id IS NULL OR
                     tenant_id::text = current_setting('app.tenant_id', true)
                 )
         """)
 
         # Admin bypass policy for system-level operations
+        # Allows admins to manage NULL tenant_id rows (system-level records)
         op.execute(f"""
             CREATE POLICY admin_bypass_policy ON {table}
                 FOR ALL
                 TO admin_role, system_role
-                USING (current_setting('app.tenant_id', true) = '')
+                USING (
+                    current_setting('app.tenant_id', true) = ''
+                    OR tenant_id IS NULL
+                )
         """)
 
 

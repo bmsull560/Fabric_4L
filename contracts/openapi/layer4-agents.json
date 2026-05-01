@@ -5036,6 +5036,452 @@
           }
         }
       }
+    },
+    "/v1/tenants/{tenant_id}/users": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenants/{tenant_id}/users",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin.py).",
+        "operationId": "discovered_get_v1_tenants_tenant_id_users",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/usage": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenants/{tenant_id}/usage",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin.py).",
+        "operationId": "discovered_get_v1_tenants_tenant_id_usage",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/audit-log": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenants/{tenant_id}/audit-log",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin.py).",
+        "operationId": "discovered_get_v1_tenants_tenant_id_audit-log",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/settings": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenants/{tenant_id}/settings",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin.py).",
+        "operationId": "discovered_get_v1_tenants_tenant_id_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "PATCH /v1/tenants/{tenant_id}/settings",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin.py).",
+        "operationId": "discovered_patch_v1_tenants_tenant_id_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/dashboard/usage": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/{tenant_id}/dashboard/usage",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin_dashboard.py).",
+        "operationId": "discovered_get_v1_tenant_id_dashboard_usage",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/dashboard/daily-usage": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/{tenant_id}/dashboard/daily-usage",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin_dashboard.py).",
+        "operationId": "discovered_get_v1_tenant_id_dashboard_daily-usage",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/dashboard/tier-usage": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/{tenant_id}/dashboard/tier-usage",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin_dashboard.py).",
+        "operationId": "discovered_get_v1_tenant_id_dashboard_tier-usage",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/dashboard/top-endpoints": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/{tenant_id}/dashboard/top-endpoints",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin_dashboard.py).",
+        "operationId": "discovered_get_v1_tenant_id_dashboard_top-endpoints",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/dashboard/audit-log": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/{tenant_id}/dashboard/audit-log",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin_dashboard.py).",
+        "operationId": "discovered_get_v1_tenant_id_dashboard_audit-log",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/{tenant_id}/settings": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/{tenant_id}/settings",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin_dashboard.py).",
+        "operationId": "discovered_get_v1_tenant_id_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "PATCH /v1/{tenant_id}/settings",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\admin_dashboard.py).",
+        "operationId": "discovered_patch_v1_tenant_id_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/auth/oidc/{tenant_slug}/login": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/auth/oidc/{tenant_slug}/login",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\oidc.py).",
+        "operationId": "discovered_get_v1_auth_oidc_tenant_slug_login",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/auth/oidc/callback": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/auth/oidc/callback",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\oidc.py).",
+        "operationId": "discovered_get_v1_auth_oidc_callback",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/auth/oidc/{tenant_slug}/metadata": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/auth/oidc/{tenant_slug}/metadata",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\oidc.py).",
+        "operationId": "discovered_get_v1_auth_oidc_tenant_slug_metadata",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/provisioning/status": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenants/{tenant_id}/provisioning/status",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\provisioning.py).",
+        "operationId": "discovered_get_v1_tenants_tenant_id_provisioning_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/provisioning/retry": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/tenants/{tenant_id}/provisioning/retry",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\provisioning.py).",
+        "operationId": "discovered_post_v1_tenants_tenant_id_provisioning_retry",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/provisioning/webhook": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/tenants/{tenant_id}/provisioning/webhook",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\provisioning.py).",
+        "operationId": "discovered_post_v1_tenants_tenant_id_provisioning_webhook",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/register": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/tenants/register",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\registration.py).",
+        "operationId": "discovered_post_v1_tenants_register",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/verify-email": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/tenants/verify-email",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\registration.py).",
+        "operationId": "discovered_post_v1_tenants_verify-email",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/validate-slug": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenants/validate-slug",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\registration.py).",
+        "operationId": "discovered_get_v1_tenants_validate-slug",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/tiers": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenants/tiers",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\registration.py).",
+        "operationId": "discovered_get_v1_tenants_tiers",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/suspend": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/tenants/{tenant_id}/suspend",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\tenants.py).",
+        "operationId": "discovered_post_v1_tenants_tenant_id_suspend",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/activate": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/tenants/{tenant_id}/activate",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\tenants.py).",
+        "operationId": "discovered_post_v1_tenants_tenant_id_activate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenants/{tenant_id}/status": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/tenants/{tenant_id}/status",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\tenants.py).",
+        "operationId": "discovered_post_v1_tenants_tenant_id_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
     }
   },
   "components": {

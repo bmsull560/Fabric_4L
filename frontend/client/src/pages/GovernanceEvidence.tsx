@@ -32,8 +32,8 @@ export default function GovernanceEvidence() {
     const query = search.trim().toLowerCase();
     return items.filter(
       item =>
-        item.claim.toLowerCase().includes(query) ||
-        item.id.toLowerCase().includes(query)
+        (item.claim ?? '').toLowerCase().includes(query) ||
+        (item.id ?? '').toLowerCase().includes(query)
     );
   }, [data?.items, search]);
 
@@ -107,7 +107,7 @@ export default function GovernanceEvidence() {
               </span>,
               <span key="stale">{item.is_stale ? "Yes" : "No"}</span>,
               <span key="freshness" className="text-[11px] text-neutral-500">
-                {new Date(item.freshness).toLocaleDateString()}
+                {item.freshness ? new Date(item.freshness).toLocaleDateString() : (item.is_stale ? 'Stale' : 'Fresh')}
               </span>,
             ])}
             emptyMessage="No truth objects matched the selected filters"
