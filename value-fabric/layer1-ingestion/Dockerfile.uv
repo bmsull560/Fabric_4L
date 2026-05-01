@@ -1,6 +1,6 @@
 # Multi-stage build for Layer 1: Data Ingestion Service (uv edition)
 # Stage 1: Builder - installs dependencies using uv.lock
-FROM python:3.11.11-slim-bookworm AS builder
+FROM python:3.14.0-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN python -m playwright install chromium
 RUN python -m playwright install-deps chromium
 
 # Stage 2: Runtime - minimal image with only runtime dependencies
-FROM python:3.11.11-slim-bookworm AS runtime
+FROM python:3.14.0-slim-bookworm AS runtime
 
 # Install runtime dependencies (Playwright libs + curl for healthcheck)
 RUN apt-get update && apt-get install -y --no-install-recommends \
