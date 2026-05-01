@@ -286,6 +286,18 @@ async def get_battlecards(
     return await svc.get_battlecard(competitor_id, product_id)
 
 
+# Compatibility alias: frontend contract uses singular "battlecard".
+@router.get("/competitors/{competitor_id}/battlecard")
+async def get_battlecard_compat(
+    competitor_id: str,
+    request: Request,
+    product_id: str | None = Query(None),
+    tenant_id: str = Depends(get_verified_tenant_id),
+):
+    """Compatibility alias for /competitors/{id}/battlecards."""
+    return await get_battlecards(competitor_id, request, product_id, tenant_id)
+
+
 # ---------------------------------------------------------------------------
 # Win/Loss Endpoints
 # ---------------------------------------------------------------------------

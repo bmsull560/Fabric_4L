@@ -12,6 +12,7 @@ import {
   settingsNavigation,
   settingsAccessRules,
   settingsScreens,
+  type SettingsCategoryKey,
 } from "./schemas";
 import {
   User,
@@ -25,7 +26,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+const CATEGORY_ICONS: Record<SettingsCategoryKey, React.ReactNode> = {
   personal: <User className="h-4 w-4" />,
   billing: <CreditCard className="h-4 w-4" />,
   teamAccess: <Users className="h-4 w-4" />,
@@ -208,7 +209,7 @@ export function SettingsLayout() {
             )}
 
             {/* Warnings */}
-            {access && "restrictions" in access && access.restrictions && (
+            {access && access.restrictions.length > 0 && (
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-900 dark:bg-yellow-950">
                 <div className="flex items-start gap-2">
                   <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-yellow-600 dark:text-yellow-400" />

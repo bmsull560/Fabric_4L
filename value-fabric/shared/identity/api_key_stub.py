@@ -4,10 +4,10 @@ Layers that do not implement API-key lookup can import ``reject_api_key_unsuppor
 and pass it to ``GovernanceMiddleware`` to keep API-key auth disabled.
 """
 
-from typing import Optional
+__all__ = ["reject_api_key_unsupported"]
 
 
-async def reject_api_key_unsupported(raw_key: str) -> Optional[dict]:
+async def reject_api_key_unsupported(raw_key: str) -> dict | None:
     """Always returns ``None`` — API-key authentication is not supported.
 
     Args:

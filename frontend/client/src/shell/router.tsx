@@ -1,5 +1,6 @@
 import { lazy } from "react";
 import { createBrowserRouter, Navigate, useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { GlobalLayout } from "@/components/layout/GlobalLayout";
 import { ProtectedRoute } from "@/components/routing/ProtectedRoute";
@@ -130,13 +131,18 @@ function ProspectSetupWithNav() {
     painPoints?: string[];
     stakeholders?: Record<string, string>;
   }) => {
-    const result = await createAccount.mutateAsync({
-      name: payload.companyName ?? 'Unknown Account',
-      industry: payload.industry,
-      stage: 'prospect',
-      enrichment_input: payload.painPoints?.join('\n'),
-    });
-    return { accountId: result.account.id };
+    try {
+      const result = await createAccount.mutateAsync({
+        name: payload.companyName ?? 'Unknown Account',
+        industry: payload.industry,
+        stage: 'prospect',
+        enrichment_input: payload.painPoints?.join('\n'),
+      });
+      return { accountId: result.account.id };
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create account');
+      throw error;
+    }
   };
 
   return (

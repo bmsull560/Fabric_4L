@@ -5,6 +5,7 @@ and metrics collection - following the skill framework's pytest patterns.
 """
 
 import asyncio
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

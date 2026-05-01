@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, confloat, conint, constr, field_validator
+from pydantic import BaseModel, Field, confloat, conint, constr, field_validator, model_validator
 
 
 # Health Check
@@ -441,31 +441,27 @@ class EntitySummary(BaseModel):
         None, description="Originating extraction job ID"
     )
 
-    @field_validator("confidence_label")
+    @model_validator(mode="before")
     @classmethod
-    def derive_confidence_label(cls, v: str | None, info) -> str:
-        """Derive confidence label from confidence score if not provided."""
-        if v is not None:
-            return v
-        confidence = info.data.get("confidence", 0.0)
-        if confidence >= 0.9:
-            return "high"
-        if confidence >= 0.7:
-            return "medium"
-        return "low"
-
-    @field_validator("status")
-    @classmethod
-    def derive_status(cls, v: str | None, info) -> str:
-        """Derive status from confidence if not explicitly provided."""
-        if v is not None:
-            return v
-        confidence = info.data.get("confidence", 0.0)
-        if confidence >= 0.9:
-            return "validated"
-        if confidence >= 0.7:
-            return "pending"
-        return "draft"
+    def derive_confidence_and_status(cls, data: Any) -> Any:
+        """Derive confidence_label and status from confidence score if not provided."""
+        if isinstance(data, dict):
+            confidence = data.get("confidence", 0.0)
+            if data.get("confidence_label") is None:
+                if confidence >= 0.9:
+                    data["confidence_label"] = "high"
+                elif confidence >= 0.7:
+                    data["confidence_label"] = "medium"
+                else:
+                    data["confidence_label"] = "low"
+            if data.get("status") is None:
+                if confidence >= 0.9:
+                    data["status"] = "validated"
+                elif confidence >= 0.7:
+                    data["status"] = "pending"
+                else:
+                    data["status"] = "draft"
+        return data
 
 
 class RelationshipPreview(BaseModel):
@@ -533,6 +529,28 @@ class EntityDetail(BaseModel):
     extraction_job_id: constr(max_length=255) | None = Field(
         None, description="Extraction job ID"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def derive_confidence_and_status(cls, data: Any) -> Any:
+        """Derive confidence_label and status from confidence score if not provided."""
+        if isinstance(data, dict):
+            confidence = data.get("confidence", 0.0)
+            if data.get("confidence_label") is None:
+                if confidence >= 0.9:
+                    data["confidence_label"] = "high"
+                elif confidence >= 0.7:
+                    data["confidence_label"] = "medium"
+                else:
+                    data["confidence_label"] = "low"
+            if data.get("status") is None:
+                if confidence >= 0.9:
+                    data["status"] = "validated"
+                elif confidence >= 0.7:
+                    data["status"] = "pending"
+                else:
+                    data["status"] = "draft"
+        return data
 
     # ═════════════════════════════════════════════════════════════════════════
     # Extended fields for detail view

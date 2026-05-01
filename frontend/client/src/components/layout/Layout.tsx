@@ -135,7 +135,7 @@ const SUPPORT_ITEMS: NavItem[] = [
     id: "settings",
     label: "Settings (admin only)",
     icon: Settings,
-    path: "/settings/system/settings",
+    path: "/settings",
     tier: "admin",
     description: "Platform configuration and user management",
   },

@@ -93,7 +93,7 @@ function getEnvVar(name: string, fallback: string): string {
 }
 
 // Base API path - layer prefixes must include /v1 to match backend OpenAPI routes
-const API_BASE = getEnvVar('VITE_API_BASE', '/api');
+const API_BASE = getEnvVar('VITE_API_BASE', '/api/v1');
 
 // Layer prefixes (must match .env.example to avoid double-/v1 when VITE_API_BASE is set)
 const LAYER_PREFIXES = {

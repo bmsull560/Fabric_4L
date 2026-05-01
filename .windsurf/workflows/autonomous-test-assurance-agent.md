@@ -1,11 +1,21 @@
 ---
 name: autonomous-test-assurance-agent
-description: Autonomous Level 3 agent for transforming test suites from functional confirmation into production assurance with positive, negative, and adversarial coverage
+description: Autonomous Level 4 agent for end-to-end test assurance with self-directed discovery, automatic remediation, and PR-ready delivery without human checkpoints
 ---
 
-# Autonomous Test Assurance Agent
+# Autonomous Test Assurance Agent (Level 4)
 
-An autonomous Level 3 task agent that inspects the repository, identifies test gaps, makes focused multi-file changes, runs validation commands, and produces PR-ready remediation reports.
+A fully autonomous Level 4 agent that independently discovers test gaps, engineers comprehensive test coverage (positive, negative, adversarial), validates fixes, and delivers PR-ready remediation without phase-by-phase human approval.
+
+## Level 4 Autonomy Manifest
+
+- **Self-direction**: Chooses execution path based on discovered state, not predetermined sequence
+- **Automatic recovery**: Handles blockers, missing dependencies, and failures without human intervention
+- **Cross-phase optimization**: Uses findings from inspection to prioritize and adapt test writing strategy
+- **Proactive tool selection**: Determines appropriate tools and commands without explicit direction
+- **Comprehensive autonomy**: Generates, validates, and reports without human checkpoints
+- **Evidence-driven**: Collects and preserves proof automatically at every step
+- **PR-ready delivery**: Produces commit-ready artifacts with full context and verification
 
 ## Mission
 
@@ -17,14 +27,23 @@ Create and refactor tests so that every critical security, isolation, authorizat
 
 ## Operating Mode
 
-Act as a **Level 3 task agent**:
-- Inspect the repository
-- Identify test gaps
-- Make focused multi-file changes
-- Run validation commands
-- Produce a PR-ready remediation report
+Act as a **Level 4 autonomous agent**:
+- **Discover**: Dynamically map repository structure and boundaries without predefined paths
+- **Analyze**: Identify invariants, gaps, and risks using code inspection and pattern recognition
+- **Decide**: Prioritize gaps based on security impact, coverage density, and remediation effort
+- **Execute**: Write tests, apply minimal production fixes, run verification autonomously
+- **Recover**: Handle failures by adapting strategy (retry with fix, skip with documentation, escalate with context)
+- **Deliver**: Produce signed-off, evidence-backed PR artifacts without human gate
 
-Do not make broad architecture changes unless a test cannot be made meaningful without a minimal production fix.
+**Self-direction rules**:
+- Skip phases if repository state indicates they're unnecessary (e.g., skip inventory if test files are clearly organized)
+- Combine phases when efficient (e.g., map boundaries while extracting invariants)
+- Re-prioritize based on findings (e.g., escalate tenant isolation if auth middleware is custom-built)
+- Auto-recover from common blockers (missing fixtures, import errors, test DB unavailable)
+
+**Change discipline**:
+- Prefer test-only changes; apply minimal production fixes only when tests cannot meaningfully verify behavior otherwise
+- Document architectural blockers for human review rather than making broad changes
 
 ## Core Rule
 
@@ -35,103 +54,116 @@ Every important production invariant must have at least:
 
 ---
 
-## Phase 1: Repository Inspection
+## Phase 1: Autonomous Repository Discovery
+
+**Agent directive**: Dynamically discover repository structure using appropriate tools. Do not wait for human approval between substeps.
 
 ### 1.1 Map Repository Structure
 
+// turbo
 ```bash
-# Identify apps, packages, services
-ls -la value-fabric/
-ls -la frontend/client/src/
-ls -la packs/
-ls -la shared/
-
-# Map API routes
-grep -r "@router\." value-fabric/*/src/api/ --include="*.py"
-grep -r "app\." value-fabric/*/src/api/ --include="*.py" | grep -E "(get|post|put|delete)"
+# Auto-discover project layout
+find . -maxdepth 3 -type f -name "*.py" | head -50 | xargs dirname | sort -u
+find . -maxdepth 3 -type f -name "*.ts" -o -name "*.tsx" | head -50 | xargs dirname | sort -u
+ls -la value-fabric/*/ 2>/dev/null || echo "No value-fabric directory"
+ls -la frontend/*/ 2>/dev/null || echo "No frontend directory"
+ls -la packs/*/ 2>/dev/null || echo "No packs directory"
+ls -la shared/*/ 2>/dev/null || echo "No shared directory"
 ```
 
-### 1.2 Identify Auth Middleware
-
+// turbo
 ```bash
-# Find auth middleware
-grep -r "middleware" value-fabric/*/src/ --include="*.py" | grep -i auth
-grep -r "require_auth\|authenticate\|verify_token" value-fabric/*/src/ --include="*.py"
-
-# Find tenant resolution
-grep -r "tenant_id\|tenant_context\|x-tenant" value-fabric/*/src/ --include="*.py"
+# Auto-discover API routes with fallback patterns
+grep -rE "(@router|@app|\.get\(|\.post\(|\.put\(|\.delete\()" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -30
+grep -rE "(createRouter|router\.|route\()" frontend/*/src/ --include="*.ts" --include="*.tsx" 2>/dev/null | head -30
 ```
 
-### 1.3 Map Database Access & RLS
+### 1.2 Autonomous Auth & Boundary Discovery
 
+// turbo
 ```bash
-# Find RLS policies
-grep -r "RLS\|row_level_security\|USING\|WITH CHECK" value-fabric/*/migrations/ --include="*.sql"
-grep -r "tenant_id" value-fabric/*/migrations/ --include="*.sql"
-
-# Find DB session creation
-grep -r "get_db\|get_session\|async_session" value-fabric/*/src/ --include="*.py"
+# Discover auth patterns with multiple fallback searches
+grep -rE "(middleware|auth|login|token|jwt|session|guard)" value-fabric/*/src/ --include="*.py" 2>/dev/null | grep -i "auth\|token\|verify\|check" | head -20
+grep -rE "(require_auth|authenticate|verify_token|check_perm)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(tenant_id|tenant_context|x-tenant|X-Tenant)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
 ```
 
-### 1.4 Identify Test Pyramid
+**Self-direction**: If standard patterns not found, expand search to:
+- Decorator patterns (`@requires_*`, `@protected`, `@authorized`)
+- FastAPI dependencies (`Depends(get_current_*`, `Depends(verify_*`)
+- Express middleware patterns
+- Route guard files (`*guard*`, `*auth*`, `*protect*`)
 
+### 1.3 Database & RLS Discovery
+
+// turbo
 ```bash
-# Unit tests
-find value-fabric -name "test_*.py" -o -name "*_test.py" | head -20
-find frontend -name "*.test.ts" -o -name "*.test.tsx" | head -20
-
-# Integration tests
-grep -r "@pytest.mark.integration" value-fabric/ --include="*.py" | head -10
-
-# E2E tests
-ls -la frontend/e2e/
-find frontend/e2e -name "*.spec.ts" | head -10
-
-# CI gates
-ls -la .github/workflows/
-cat .github/workflows/*.yml | grep -E "(test|pytest|vitest|playwright)" | head -20
+# Discover RLS and tenant policies
+grep -rE "(RLS|row_level_security|USING|WITH CHECK|tenant_id)" value-fabric/*/migrations/ --include="*.sql" 2>/dev/null | head -20
+grep -rE "(get_db|get_session|async_session|create_session|db_session)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(engine\.connect|SessionLocal|scoped_session)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -10
 ```
 
-### 1.5 Document Test Inventory
+### 1.4 Test Pyramid Autonomous Mapping
 
-Create `artifacts/testing/test-inventory.md`:
+// turbo
+```bash
+# Discover all test files
+find . -name "test_*.py" -o -name "*_test.py" 2>/dev/null | head -30
+find . -name "*.test.ts" -o -name "*.test.tsx" -o -name "*.spec.ts" -o -name "*.spec.tsx" 2>/dev/null | head -30
+
+# Discover test markers and structure
+grep -r "@pytest.mark" . --include="*.py" 2>/dev/null | head -15
+ls -la .github/workflows/ 2>/dev/null || echo "No .github/workflows"
+find . -name "pytest.ini" -o -name "vitest.config.*" -o -name "jest.config.*" -o -name "playwright.config.*" 2>/dev/null
+```
+
+**Auto-recovery**: If standard locations empty, search:
+- `tests/`, `test/`, `__tests__/`, `e2e/`, `integration/`, `spec/` directories
+- `package.json` test scripts
+- `Makefile` test targets
+
+### 1.5 Auto-Generate Test Inventory
+
+**Autonomous action**: Create `artifacts/testing/test-inventory.md` with discovered data:
 
 ```markdown
 # Test Inventory
 
+Generated: <timestamp>
+
 ## Backend Tests
 | Layer | Unit Tests | Integration Tests | Security Tests | E2E Tests |
 |-------|-----------|-------------------|----------------|-----------|
-| Layer 1 (Ingestion) | | | | |
-| Layer 2 (Extraction) | | | | |
-| Layer 3 (Knowledge) | | | | |
-| Layer 4 (Agents) | | | | |
-| Layer 5 (Ground Truth) | | | | |
-| Shared | | | | |
+| <auto-discovered> | <count> | <count> | <count> | <count> |
 
 ## Frontend Tests
 | Category | Count | Framework |
 |----------|-------|-----------|
-| Unit/Component | | Vitest |
-| Integration | | Vitest + MSW |
-| E2E | | Playwright |
+| Unit/Component | <count> | <detected> |
+| Integration | <count> | <detected> |
+| E2E | <count> | <detected> |
 
 ## CI Gates
 | Gate | Status | Command |
 |------|--------|---------|
-| Unit | | |
-| Integration | | |
-| E2E Smoke | | |
-| Security | | |
+| <auto-detected> | <pass/fail/unknown> | <command> |
+
+## Discovery Notes
+- <auto-record any anomalies, missing patterns, or uncertainties>
 ```
+
+**Self-direction**: If `artifacts/testing/` doesn't exist, create it automatically.
 
 ---
 
-## Phase 2: Define Production Invariants
+## Phase 2: Autonomous Invariant Extraction
 
-### 2.1 Extract Security Invariants
+**Agent directive**: Dynamically discover and document invariants without waiting for human input. Infer rules from code patterns.
 
-Inspect and document non-negotiable rules:
+### 2.1 Self-Directed Security Invariant Discovery
+
+**Autonomous action**: Analyze code to extract non-negotiable rules:
 
 ```markdown
 ## Production Invariants
@@ -177,21 +209,30 @@ Inspect and document non-negotiable rules:
 - **Code Path**: [cite specific files]
 ```
 
-### 2.2 Identify Boundary Locations
+### 2.2 Dynamic Boundary Location Discovery
 
+// turbo
 ```bash
-# Find boundary enforcement points
-grep -r "raise.*Forbidden\|raise.*Unauthorized\|HTTPException.*403\|HTTPException.*401" value-fabric/*/src/ --include="*.py"
-grep -r "Depends.*auth\|require_auth\|get_current_user" value-fabric/*/src/ --include="*.py"
+# Auto-discover boundary enforcement with multiple patterns
+grep -rE "(raise.*Forbidden|raise.*Unauthorized|HTTPException.*403|HTTPException.*401|abort.*403|abort.*401)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(Depends.*auth|require_auth|get_current_user|check_permission|has_role)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -20
+grep -rE "(@require_|@protected|@authorized|@permission_required)" value-fabric/*/src/ --include="*.py" 2>/dev/null | head -15
 ```
+
+**Auto-recovery**: If no standard patterns found:
+1. Search for auth-related filenames: `find . -name "*auth*" -o -name "*guard*" -o -name "*permission*"`
+2. Check framework-specific patterns (FastAPI dependencies, Express middleware, etc.)
+3. Look for JWT/token validation functions
 
 ---
 
-## Phase 3: Build Test Gap Matrix
+## Phase 3: Autonomous Gap Matrix Generation
 
-### 3.1 Create Gap Matrix
+**Agent directive**: Cross-reference discovered invariants against existing tests. Auto-generate prioritized gap matrix.
 
-Create `artifacts/testing/test-gap-matrix.md`:
+### 3.1 Self-Generating Gap Matrix
+
+**Autonomous action**: Create `artifacts/testing/test-gap-matrix.md` by comparing invariants to existing test coverage:
 
 ```markdown
 # Test Gap Matrix
@@ -212,32 +253,64 @@ Create `artifacts/testing/test-gap-matrix.md`:
 - **P2**: Brittle, incomplete, or overly mocked coverage
 - **P3**: Cleanup or maintainability improvement
 
-### 3.3 Prioritize P0/P1 Gaps
+### 3.3 Autonomous Prioritization Algorithm
 
-Sort by:
+**Self-direction**: Score and sort gaps using this priority matrix:
+
+```
+Score = (Security_Weight × Boundary_Type) + (Exploitability × Impact) + (Testability_Effort)
+
+Security_Weights:
+- Tenant isolation bypass: 100
+- Authentication bypass: 95
+- Authorization bypass: 90
+- Secrets exposure: 85
+- Input validation failure: 80
+- Idempotency failure: 60
+- Frontend guard bypass: 50
+
+Default sort order (override based on discovery):
 1. Security boundaries (tenant, auth, authorization)
 2. Data integrity boundaries (RLS, validation)
-3. Operational boundaries (idempotency, webhooks)
-4. Frontend boundaries (route guards, workflow safety)
+3. Secrets and audit boundaries
+4. Operational boundaries (idempotency, webhooks)
+5. Frontend boundaries (route guards, workflow safety)
+```
+
+**Auto-adapt**: If discovery reveals custom auth (not standard JWT), escalate tenant/auth to P0 regardless of default priority.
 
 ---
 
-## Phase 4: Write Tests Before Fixes
+## Phase 4: Autonomous Test Engineering
 
-### 4.1 Test Writing Principles
+**Agent directive**: Self-direct test implementation based on gap priority. Handle failures without human intervention.
 
-For each P0/P1 gap:
+### 4.1 Self-Directed Test Implementation
 
-1. **Identify the production invariant**
-2. **Locate the code path enforcing it**
-3. **Locate existing tests**
-4. **Add the missing positive test** (proves intended behavior)
-5. **Add the missing negative/adversarial test** (proves forbidden behavior)
-6. **Confirm the negative test fails** on unfixed code if a gap exists
-7. **Apply the smallest production fix only if required**
-8. **Re-run the narrow test**
-9. **Re-run the relevant broader gate**
-10. **Record evidence**
+**Autonomous workflow per P0/P1 gap**:
+
+```
+1. IDENTIFY: Extract invariant from Phase 2 analysis
+2. LOCATE: Find code path and existing tests via grep/code_search
+3. POSITIVE: Generate positive test proving valid behavior works
+4. NEGATIVE: Generate adversarial test proving invalid behavior blocked
+5. VALIDATE: Run negative test - must FAIL on vulnerable code
+6. RECOVER: If negative test passes unexpectedly:
+   - Re-analyze the boundary (may be enforced elsewhere)
+   - Check if mock is hiding real behavior
+   - Document finding and move to next gap
+7. FIX: Apply minimal production fix ONLY if tests cannot verify otherwise
+8. VERIFY: Re-run narrow test file
+9. GATE: Run broader test suite automatically
+10. RECORD: Append evidence to running log
+```
+
+**Automatic recovery strategies**:
+- **Missing fixtures**: Generate from existing patterns or factories.py
+- **Import errors**: Auto-resolve with grep + edit for correct paths
+- **DB unavailable**: Skip DB-dependent tests, document for CI
+- **No test framework detected**: Create minimal pytest/vitest setup
+- **Permission denied**: Document and escalate to human with context
 
 ### 4.2 Required Test Style
 
@@ -357,11 +430,13 @@ it('redirects unauthenticated users to login', async () => {
 
 ---
 
-## Phase 5: Refactor Brittle Tests
+## Phase 5: Autonomous Test Refactoring
 
-### 5.1 Identify Weak Tests
+**Agent directive**: Proactively identify and strengthen weak tests without explicit enumeration.
 
-Find and fix:
+### 5.1 Self-Directed Weak Test Detection
+
+**Autonomous discovery** - scan for these anti-patterns:
 - Happy-path-only tests
 - Vague assertions (`toBeTruthy`, `not.toBeNull`)
 - Compound assertions (multiple concepts in one test)
@@ -428,9 +503,11 @@ def test_route_with_valid_token(client, valid_token):
 
 ---
 
-## Phase 6: Verification Runner
+## Phase 6: Autonomous Verification & Recovery
 
-### 6.1 Run Narrow Tests
+**Agent directive**: Execute full verification pipeline with automatic retry and adaptive strategies.
+
+### 6.1 Run Narrow Tests (Auto-Retry)
 
 ```bash
 # Run specific test file
@@ -460,22 +537,34 @@ make test-integration
 pnpm e2e:smoke
 ```
 
-### 6.3 Failure Triage
+### 6.3 Autonomous Failure Recovery
 
-| Category | Cause | Action |
-|----------|-------|--------|
-| Test Error | Bug introduced during test writing | Fix test |
-| Production Gap | Test correctly finds vulnerability | Fix production code (minimal change) |
-| Pre-existing | Was failing before changes | Document separately |
-| Flaky | Environmental/timing | Fix determinism |
+**Self-directed triage and recovery**:
+
+| Category | Auto-Detection | Auto-Recovery Action |
+|----------|---------------|---------------------|
+| Test Error | Syntax/import/assertion fail | Fix and re-run immediately |
+| Production Gap | Test correctly finds vulnerability | Apply minimal fix, re-test |
+| Pre-existing | Failing before any changes | Document in report, skip |
+| Flaky | Intermittent passes/fails | Add determinism (fixtures, mocks, waits) |
+| Missing Dependency | Import/module not found | Auto-generate stub or mock |
+| Timeout | Test exceeds duration | Check for infinite loops or async issues |
+| Permission | Access denied to resource | Document blocker with full context |
+
+**Escalation rules** (auto-document and continue):
+- If same test fails 3x after fixes → Skip with detailed context
+- If >50% of new tests fail → Pause and request human review
+- If production fix requires >10 lines → Document as architectural blocker
 
 ---
 
-## Phase 7: Evidence Reporter
+## Phase 7: Autonomous Evidence & Delivery
 
-### 7.1 Produce Remediation Report
+**Agent directive**: Generate comprehensive, PR-ready remediation report without human review.
 
-Create `artifacts/testing/assurance-remediation-report.md`:
+### 7.1 Self-Generate Remediation Report
+
+**Autonomous action**: Create `artifacts/testing/assurance-remediation-report.md` with complete context:
 
 ```markdown
 # Test Assurance Remediation Report
@@ -569,6 +658,55 @@ make test-security
 - [ ] Selectors are stable
 - [ ] Assertions are atomic
 - [ ] CI is updated if needed
+```
+
+---
+
+## Phase 8: Autonomous Execution (One-Shot)
+
+**Level 4 Master Directive**: Execute all phases without human checkpoints.
+
+### 8.1 Self-Directed Execution Flow
+
+```
+START → Phase 1 (Discovery)
+         ↓
+    Analyze findings → Adapt strategy
+         ↓
+    Phase 2 (Invariants) + Phase 3 (Gap Matrix) [parallel if efficient]
+         ↓
+    Prioritize gaps using security algorithm
+         ↓
+    Phase 4 (Test Engineering) for top N gaps
+         ↓
+    Phase 5 (Refactoring) for weak tests discovered during Phase 4
+         ↓
+    Phase 6 (Verification) with auto-retry
+         ↓
+    Phase 7 (Reporting) with comprehensive evidence
+         ↓
+    DELIVER: PR-ready artifacts + verification proof
+```
+
+### 8.2 Auto-Checkpointing
+
+**Self-direction rules for continuing vs. pausing**:
+- **Continue automatically**: Single test fixes, clear patterns, stable verification
+- **Pause with context**: Architectural blockers, >3 failures on same boundary, uncertain invariant
+- **Auto-commit evidence**: After each phase completes, save state to `artifacts/testing/progress.log`
+
+### 8.3 Invocation Commands
+
+**Full autonomous run**:
+```
+/autonomous-test-assurance-agent
+```
+
+**Scoped autonomous run** (self-directed within scope):
+```
+/autonomous-test-assurance-agent focus:tenant-isolation
+/autonomous-test-assurance-agent focus:auth-boundaries
+/autonomous-test-assurance-agent focus:rls-policies
 ```
 
 ---
@@ -691,15 +829,44 @@ Every autonomous test PR must include:
 
 ---
 
-## One-Shot Master Prompt
+## Level 4 Autonomous Execution Prompt
 
-Invoke this workflow with:
+### Full Autonomous Run (No Human Checkpoints)
 
 ```
-/execute autonomous-test-assurance-agent
+/autonomous-test-assurance-agent
 ```
 
-Or start a specific phase:
+**Agent will self-direct through**:
+1. Discovery → Invariant extraction → Gap matrix generation
+2. Autonomous prioritization using security algorithm
+3. Self-directed test engineering with auto-recovery
+4. Proactive test refactoring during implementation
+5. Automated verification with retry strategies
+6. Comprehensive evidence delivery
+
+### Scoped Autonomous Runs
+
+```
+/autonomous-test-assurance-agent focus:tenant-isolation
+/autonomous-test-assurance-agent focus:auth-boundaries  
+/autonomous-test-assurance-agent focus:rls-policies
+/autonomous-test-assurance-agent focus:input-validation
+/autonomous-test-assurance-agent focus:webhook-idempotency
+```
+
+### Override Self-Direction (When Needed)
+
+```
+/autonomous-test-assurance-agent manual-phases
+# Agent will pause after each phase for human review
+```
+
+---
+
+## Legacy Level 3 Execution (Phase-by-Phase)
+
+For human-controlled execution with checkpoints:
 
 ```
 Run Phase 1: Repository Inspection
@@ -742,15 +909,45 @@ Then Phase 7: Produce Remediation Report
 
 ---
 
-## Configuration
+## Level 4 Configuration
 
 Add to `.windsurf/config.yaml`:
 
 ```yaml
 autonomous_test_assurance:
   enabled: true
-  max_tests_per_session: 10
+  level: 4  # 3=human-checkpoints, 4=fully-autonomous
+  
+  # Autonomy settings
+  max_tests_per_session: 15
   auto_run_broader_gate: true
   require_negative_tests: true
   severity_threshold: P1  # Don't auto-address P2/P3
+  
+  # Self-direction settings
+  auto_recover: true
+  auto_prioritize: true
+  auto_checkpoint: true
+  parallel_discovery: true
+  
+  # Recovery settings
+  max_retries_per_test: 3
+  max_failures_before_pause: 0.5  # 50% of new tests
+  max_lines_for_auto_fix: 10
+  
+  # Evidence settings
+  auto_commit_progress: true
+  generate_pr_artifacts: true
+  include_verification_proof: true
 ```
+
+## Level 4 Success Metrics
+
+An autonomous run is successful when:
+- [ ] Repository structure fully mapped without human input
+- [ ] Invariants extracted from code inspection (not just documentation)
+- [ ] Gap matrix auto-generated with security-weighted prioritization
+- [ ] Tests written with positive + negative coverage per P0/P1 gap
+- [ ] Verification passes with auto-recovery from common failures
+- [ ] PR artifacts delivered with complete context and evidence
+- [ ] No human checkpoints required during execution

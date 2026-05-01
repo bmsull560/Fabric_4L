@@ -28,7 +28,7 @@ class TestXXEPrevention:
         assert 'html.parser' in source, "Must use html.parser for XXE prevention"
 
         # Should NOT have lxml as parser
-        assert '"lxml"' not in source, "Must NOT use lxml parser (XXE risk)'
+        assert '"lxml"' not in source, "Must NOT use lxml parser (XXE risk)"
         assert "'lxml'" not in source, "Must NOT use lxml parser (XXE risk)"
 
     def test_beautifulsoup_html_parser_no_xxe(self):

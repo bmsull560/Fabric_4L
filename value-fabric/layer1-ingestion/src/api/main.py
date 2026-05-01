@@ -56,6 +56,7 @@ from ..shared.models import (
     create_scraping_target,
 )
 from ..shared.tasks import cleanup_old_content, process_scraping_job
+from shared.models.typed_dict import TypedDictModel
 
 # Hard imports - fail fast if security components unavailable
 from shared.security import add_security_middleware, SecurityConfig
@@ -88,6 +89,9 @@ logger = structlog.get_logger()
 # DEPRECATION REGISTER
 # =============================================================================
 
+class _load_deprecation_registerResult(TypedDictModel):
+    deprecations: list[Any]
+
 
 def _load_deprecation_register() -> dict:
     """Load deprecation register from docs/deprecation_register.json."""
@@ -99,7 +103,7 @@ def _load_deprecation_register() -> dict:
                 return json.load(f)
     except Exception as e:
         logger.warning("Failed to load deprecation register", error=str(e))
-    return _load_deprecation_registerResult.model_validate({"deprecations": []})
+    return _load_deprecation_registerResult.model_validate({"deprecations": []}).model_dump()
 
 
 def _check_deprecation_warnings(register: dict) -> None:
@@ -220,9 +224,6 @@ except Exception:
 from shared.identity.api_key_stub import reject_api_key_unsupported
 from shared.models.typed_dict import TypedDictModel
 
-
-class _load_deprecation_registerResult(TypedDictModel):
-    deprecations: list[Any]
 
 class cancel_jobResult(TypedDictModel):
     job_id: Any

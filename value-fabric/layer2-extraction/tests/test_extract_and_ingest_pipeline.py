@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 import pytest
+from shared.models.typed_dict import TypedDictModel
 
 from layer2_extraction.api import main as api_main
 from layer2_extraction.integration.layer3_client import IngestionResponse, IngestionStatus
@@ -17,7 +18,6 @@ from layer2_extraction.models import (
     Relationship,
     UseCase,
 )
-from shared.models.typed_dict import TypedDictModel
 
 
 class request_payloadResult(TypedDictModel):
@@ -103,7 +103,7 @@ class FakePendingIngestionStore:
             "retry_count": record.retry_count,
             "last_error": record.last_error,
             "next_retry_at": record.next_retry_at.isoformat(),
-        })
+        }).model_dump()
 
 
 class FrozenClock:
@@ -567,3 +567,26 @@ async def test_cross_layer_extract_ingest_status_flow(
     assert status_body["extraction_status"] == "completed"
     assert status_body["ingestion_status"] == "completed"
     assert status_body["completed_at"] is not None
+
+
+
+# ── BLOCKER-001 regression: compatibility alias ──────────────────────────────
+
+@pytest.mark.asyncio
+async def test_jobs_alias_returns_same_status_as_canonical(async_client, monkeypatch: pytest.MonkeyPatch) -> None:
+    """GET /v1/jobs/{job_id} must return the same response as GET /v1/extract/status/{job_id}."""
+    async def fake_pipeline_runner(job_id: str, source_url: str, content: str, config: dict) -> None:
+        return None
+
+    monkeypatch.setattr(api_main, "run_extract_and_ingest", fake_pipeline_runner)
+
+    kickoff = await async_client.post("/v1/extract-and-ingest", json=request_payload())
+    assert kickoff.status_code == 200
+    body = kickoff.json()
+    job_id = body["job_id"]
+
+    canonical = await async_client.get(f"/v1/extract/status/{job_id}")
+    alias = await async_client.get(f"/v1/jobs/{job_id}")
+
+    assert alias.status_code == canonical.status_code == 200
+    assert alias.json() == canonical.json()

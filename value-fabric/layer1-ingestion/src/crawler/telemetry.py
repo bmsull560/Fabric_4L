@@ -7,6 +7,7 @@ established in Layer 4 agent tracing (per AGENTS.md).
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import wraps
+from typing import Any
 
 import structlog
 from opentelemetry import trace
@@ -18,25 +19,25 @@ from shared.models.typed_dict import TypedDictModel
 
 
 class CrawlMetrics_to_dictResult(TypedDictModel):
-    crawl.avg_duration_ms: Any
-    crawl.blocked_resources: Any
-    crawl.count: Any
-    crawl.error_rate: Any
-    crawl.errors: Any
-    crawl.rate_limit_delays: Any
+    avg_duration_ms: Any
+    blocked_resources: Any
+    count: Any
+    error_rate: Any
+    errors: Any
+    rate_limit_delays: Any
 
 class ExecutionMetrics_to_dictResult(TypedDictModel):
-    execution.avg_browser_duration_ms: Any
-    execution.avg_fast_duration_ms: Any
-    execution.browser_path.count: Any
-    execution.fallback.count: Any
-    execution.fallback.rate: Any
-    execution.fallback_reasons: Any
-    execution.fast_path.count: Any
-    execution.fast_path.rate: Any
-    execution.quality_failures: Any
-    execution.spa_detection.count: Any
-    execution.spa_detection.rate: Any
+    avg_browser_duration_ms: Any
+    avg_fast_duration_ms: Any
+    browser_path_count: Any
+    fallback_count: Any
+    fallback_rate: Any
+    fallback_reasons: Any
+    fast_path_count: Any
+    fast_path_rate: Any
+    quality_failures: Any
+    spa_detection_count: Any
+    spa_detection_rate: Any
 
 logger = structlog.get_logger()
 
@@ -271,13 +272,13 @@ class CrawlMetrics:
     def to_dict(self) -> dict:
         """Export metrics as dictionary for telemetry."""
         return CrawlMetrics_to_dictResult.model_validate({
-            "crawl.count": self._crawl_count,
-            "crawl.errors": self._error_count,
-            "crawl.error_rate": self.error_rate,
-            "crawl.avg_duration_ms": self.avg_duration_ms,
-            "crawl.rate_limit_delays": self._rate_limit_delays,
-            "crawl.blocked_resources": self._blocked_resources_count,
-        })
+            "count": self._crawl_count,
+            "errors": self._error_count,
+            "error_rate": self.error_rate,
+            "avg_duration_ms": self.avg_duration_ms,
+            "rate_limit_delays": self._rate_limit_delays,
+            "blocked_resources": self._blocked_resources_count,
+        }).model_dump()
 
 
 class ExecutionMetrics:
@@ -438,17 +439,17 @@ class ExecutionMetrics:
     def to_dict(self) -> dict:
         """Export metrics as dictionary for telemetry."""
         return ExecutionMetrics_to_dictResult.model_validate({
-            "execution.fast_path.count": self._fast_path_count,
-            "execution.browser_path.count": self._browser_path_count,
-            "execution.fallback.count": self._fallback_count,
-            "execution.fast_path.rate": self.fast_path_rate,
-            "execution.fallback.rate": self.fallback_rate,
-            "execution.avg_fast_duration_ms": self.avg_fast_path_duration_ms,
-            "execution.avg_browser_duration_ms": self.avg_browser_path_duration_ms,
-            "execution.spa_detection.rate": self.spa_detection_rate,
-            "execution.spa_detection.count": self._spa_detected_count,
-            "execution.quality_failures": self._quality_failures,
-            "execution.fallback_reasons": self._fallback_reasons,
-        })
+            "fast_path_count": self._fast_path_count,
+            "browser_path_count": self._browser_path_count,
+            "fallback_count": self._fallback_count,
+            "fast_path_rate": self.fast_path_rate,
+            "fallback_rate": self.fallback_rate,
+            "avg_fast_duration_ms": self.avg_fast_path_duration_ms,
+            "avg_browser_duration_ms": self.avg_browser_path_duration_ms,
+            "spa_detection_rate": self.spa_detection_rate,
+            "spa_detection_count": self._spa_detected_count,
+            "quality_failures": self._quality_failures,
+            "fallback_reasons": self._fallback_reasons,
+        }).model_dump()
 
 

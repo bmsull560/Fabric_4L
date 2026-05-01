@@ -29,7 +29,6 @@ except ImportError:
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
-from pydantic import BaseModel, Field
 
 # P1-29: OpenTelemetry imports for distributed tracing
 from opentelemetry import trace
@@ -38,26 +37,33 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-from layer2_extraction.api.deps import RequestContext
+from pydantic import BaseModel, Field
 from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.rate_limiter import RedisRateLimiter
 
 # Load secrets from Infisical if available (optional in dev, required in prod)
 from shared.secrets import load_infisical_secrets
+
+from layer2_extraction.api.deps import RequestContext
+
 try:
     load_infisical_secrets()
 except Exception:
     if os.getenv("ENVIRONMENT") == "production":
         raise RuntimeError("Failed to load Infisical secrets in production")
 
+from shared.identity.vault_check import is_vault_healthy
+
+# Hard imports - fail fast if security components unavailable
+from shared.security import SecurityConfig, add_security_middleware
+
 from layer2_extraction.alignment import SemanticAligner
 from layer2_extraction.api.websocket import PipelineStage, get_pipeline_ws_manager, websocket_router
 from layer2_extraction.extraction.chunker import chunk_markdown
 from layer2_extraction.extraction.deduplicator import deduplicate_entities
 from layer2_extraction.extraction.llm_extractor import EntityExtractor, RelationshipExtractor
-from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
 from layer2_extraction.integration.job_store import JobStore, PipelineJob, build_job_store
+from layer2_extraction.integration.layer3_client import Layer3KnowledgeClient
 from layer2_extraction.integration.pending_ingestion_store import (
     PendingIngestionRecord,
     PendingIngestionStore,
@@ -75,10 +81,6 @@ from layer2_extraction.output.provenance import (
 )
 from layer2_extraction.output.rdf_generator import generate_rdf
 from layer2_extraction.validation import EntailmentValidator, ValidationSeverity
-
-# Hard imports - fail fast if security components unavailable
-from shared.security import add_security_middleware, SecurityConfig
-from shared.identity.vault_check import is_vault_healthy
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +168,9 @@ add_security_middleware(app, config=_security_config_l2)
 
 # Redis rate limiter - initialized in startup event
 redis_rate_limiter: RedisRateLimiter | None = None
+
+# Background retry task for pending ingestion
+_retry_task: asyncio.Task | None = None
 
 
 async def _init_redis_rate_limiter() -> RedisRateLimiter | None:
@@ -1521,8 +1526,9 @@ async def stream_job_events(job_id: str):
     )
 
 
-from .routes import audit, extraction, ontology, system
 from shared.models.typed_dict import TypedDictModel
+
+from .routes import audit, extraction, ontology, system
 
 
 class health_checkResult(TypedDictModel):

@@ -6,6 +6,7 @@ bridging the skill framework's config validation approach with production code.
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 from shared.models.typed_dict import TypedDictModel
@@ -141,7 +142,7 @@ class CrawlerConfig:
     @property
     def viewport(self) -> dict:
         """Get viewport configuration as dict for Playwright."""
-        return CrawlerConfig_viewportResult.model_validate({"width": self.viewport_width, "height": self.viewport_height})
+        return CrawlerConfig_viewportResult.model_validate({"width": self.viewport_width, "height": self.viewport_height}).model_dump()
 
 
 def load_config(path: Path | str | None = None) -> CrawlerConfig:

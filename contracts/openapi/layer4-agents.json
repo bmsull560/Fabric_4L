@@ -778,6 +778,22 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/cases",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\analysis.py).",
+        "operationId": "discovered_get_v1_cases",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
       }
     },
     "/v1/cases/{case_id}": {
@@ -1066,6 +1082,22 @@
                 }
               }
             }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/accounts",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\accounts.py).",
+        "operationId": "discovered_post_v1_accounts",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
           }
         }
       }
@@ -4062,6 +4094,948 @@
           }
         }
       }
+    },
+    "/v1/agent-stream/chat": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/agent-stream/chat",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\agent_stream.py).",
+        "operationId": "discovered_post_v1_agent-stream_chat",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/cases/{case_id}/workspace/{tab_key}": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/cases/{case_id}/workspace/{tab_key}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\analysis.py).",
+        "operationId": "discovered_get_v1_cases_case_id_workspace_tab_key",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "PUT /v1/cases/{case_id}/workspace/{tab_key}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\analysis.py).",
+        "operationId": "discovered_put_v1_cases_case_id_workspace_tab_key",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/cases/{case_id}/workspace/generate": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/cases/{case_id}/workspace/generate",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\analysis.py).",
+        "operationId": "discovered_post_v1_cases_case_id_workspace_generate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/audit/logs": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/audit/logs",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\audit.py).",
+        "operationId": "discovered_get_v1_audit_logs",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/subscription": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/subscription",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_subscription",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/checkout": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/checkout",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_checkout",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/portal": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/portal",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_portal",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/entitlements": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/entitlements",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_entitlements",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/check-feature": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/check-feature",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_check-feature",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/sync-customer": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/sync-customer",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_sync-customer",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/webhook": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/webhook",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_webhook",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/events": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/events",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_events",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/events/batch": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/events/batch",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_events_batch",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/usage/{customer_id}/summary": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/usage/{customer_id}/summary",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_usage_customer_id_summary",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/usage/{customer_id}/events": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/usage/{customer_id}/events",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_usage_customer_id_events",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/usage/{customer_id}/sync": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/usage/{customer_id}/sync",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_usage_customer_id_sync",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/limits/{customer_id}": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/limits/{customer_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_limits_customer_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/limits/{customer_id}/check": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/limits/{customer_id}/check",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_limits_customer_id_check",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/plans/{plan_id}/limits": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/plans/{plan_id}/limits",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_plans_plan_id_limits",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/invoices",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_invoices",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/invoices",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_invoices",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/invoices/{invoice_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_invoices_invoice_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}/items": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/invoices/{invoice_id}/items",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_invoices_invoice_id_items",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}/finalize": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/invoices/{invoice_id}/finalize",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_invoices_invoice_id_finalize",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/invoices/{invoice_id}/void": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/invoices/{invoice_id}/void",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_invoices_invoice_id_void",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/charges": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/charges",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_charges",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/billing/charges",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_post_v1_billing_charges",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/reports/revenue": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/reports/revenue",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_reports_revenue",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/billing/customers/{customer_id}/balance": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/billing/customers/{customer_id}/balance",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\billing.py).",
+        "operationId": "discovered_get_v1_billing_customers_customer_id_balance",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/enrichment/{account_id}": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/enrichment/{account_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\enrichment.py).",
+        "operationId": "discovered_post_v1_enrichment_account_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/enrichment/{account_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\enrichment.py).",
+        "operationId": "discovered_get_v1_enrichment_account_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/enrichment/batch": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/enrichment/batch",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\enrichment.py).",
+        "operationId": "discovered_post_v1_enrichment_batch",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/enrichment/status": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/enrichment/status",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\enrichment.py).",
+        "operationId": "discovered_get_v1_enrichment_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/intelligence/account/{account_id}/briefing": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/intelligence/account/{account_id}/briefing",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\intelligence.py).",
+        "operationId": "discovered_get_v1_intelligence_account_account_id_briefing",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/intelligence/account/{account_id}/deal-readiness": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/intelligence/account/{account_id}/deal-readiness",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\intelligence.py).",
+        "operationId": "discovered_get_v1_intelligence_account_account_id_deal-readiness",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/intelligence/pipeline-summary": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/intelligence/pipeline-summary",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\intelligence.py).",
+        "operationId": "discovered_get_v1_intelligence_pipeline-summary",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/narratives/generate": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/narratives/generate",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\narratives.py).",
+        "operationId": "discovered_post_v1_narratives_generate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/narratives/{narrative_id}": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/narratives/{narrative_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\narratives.py).",
+        "operationId": "discovered_get_v1_narratives_narrative_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "DELETE /v1/narratives/{narrative_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\narratives.py).",
+        "operationId": "discovered_delete_v1_narratives_narrative_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/narratives/{narrative_id}/status": {
+      "patch": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "PATCH /v1/narratives/{narrative_id}/status",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\narratives.py).",
+        "operationId": "discovered_patch_v1_narratives_narrative_id_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/prospects/setup": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/prospects/setup",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\signals.py).",
+        "operationId": "discovered_post_v1_prospects_setup",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/accounts/{account_id}/signals": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/accounts/{account_id}/signals",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\signals.py).",
+        "operationId": "discovered_get_v1_accounts_account_id_signals",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/signals/{signal_id}": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/signals/{signal_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\signals.py).",
+        "operationId": "discovered_get_v1_signals_signal_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tools/governance/audit/exports": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tools/governance/audit/exports",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\tools.py).",
+        "operationId": "discovered_get_v1_tools_governance_audit_exports",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/hypotheses/generate": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/hypotheses/generate",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\value_hypotheses.py).",
+        "operationId": "discovered_post_v1_hypotheses_generate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/hypotheses/{hypothesis_id}": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/hypotheses/{hypothesis_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\value_hypotheses.py).",
+        "operationId": "discovered_get_v1_hypotheses_hypothesis_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "DELETE /v1/hypotheses/{hypothesis_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\value_hypotheses.py).",
+        "operationId": "discovered_delete_v1_hypotheses_hypothesis_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/hypotheses/account/{account_id}": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/hypotheses/account/{account_id}",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\value_hypotheses.py).",
+        "operationId": "discovered_get_v1_hypotheses_account_account_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/hypotheses/{hypothesis_id}/validate": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/hypotheses/{hypothesis_id}/validate",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\value_hypotheses.py).",
+        "operationId": "discovered_post_v1_hypotheses_hypothesis_id_validate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/hypotheses/summary/stats": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/hypotheses/summary/stats",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\value_hypotheses.py).",
+        "operationId": "discovered_get_v1_hypotheses_summary_stats",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/hypotheses/rank": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/hypotheses/rank",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\value_hypotheses.py).",
+        "operationId": "discovered_post_v1_hypotheses_rank",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/narratives": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/narratives",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\narratives.py).",
+        "operationId": "discovered_get_v1_narratives",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4149,7 +5123,7 @@
           "api_key": {
             "type": "string",
             "title": "Api Key",
-            "description": "Full key \u2014 shown ONCE, store securely"
+            "description": "Full key — shown ONCE, store securely"
           },
           "prefix": {
             "type": "string",
@@ -4209,7 +5183,7 @@
           "created_at"
         ],
         "title": "APIKeyCreateResponse",
-        "description": "Returned once on key creation \u2014 includes the raw secret (shown only once)."
+        "description": "Returned once on key creation — includes the raw secret (shown only once)."
       },
       "APIKeyModel": {
         "properties": {
@@ -6949,7 +7923,7 @@
           "system"
         ],
         "title": "Role",
-        "description": "Business roles used across all layers.\n\nHierarchy (highest \u2192 lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
+        "description": "Business roles used across all layers.\n\nHierarchy (highest → lowest):\n    super_admin > tenant_admin > content_admin > analyst > read_only\n\nThe ``system`` role is reserved for internal service-to-service calls."
       },
       "StateDiffRequest": {
         "properties": {
@@ -7806,7 +8780,7 @@
           "email"
         ],
         "title": "UserModel",
-        "description": "Read-only representation of a user (returned by API \u2014 no password)."
+        "description": "Read-only representation of a user (returned by API — no password)."
       },
       "UserStatus": {
         "type": "string",

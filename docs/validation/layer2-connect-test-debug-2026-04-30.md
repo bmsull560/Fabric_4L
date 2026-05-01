@@ -140,6 +140,7 @@ value-fabric/layer2-extraction/
 **CRITICAL FINDING:** Together.ai is **NOT supported** in current codebase.
 
 **Supported Providers (from llm_client.py):**
+
 ```python
 class LLMProvider(str, Enum):
     OPENAI = "openai"
@@ -149,6 +150,7 @@ class LLMProvider(str, Enum):
 **Default Model:** `gpt-4o` (from main.py lines 226, 236)
 
 **Environment Variables Used:**
+
 ```bash
 OPENAI_API_KEY          # Required for OpenAI
 ANTHROPIC_API_KEY       # Required for Anthropic
@@ -162,6 +164,7 @@ LLM_MODEL              # Optional, default: gpt-4o
 ### 1.5 Tenant Header Naming
 
 **From Shared Identity Middleware (line 313):**
+
 ```python
 header_tenant_id = request.headers.get("X-Tenant-ID")
 ```
@@ -169,6 +172,7 @@ header_tenant_id = request.headers.get("X-Tenant-ID")
 **Canonical Header:** `X-Tenant-ID`
 
 **From Extraction Routes (line 72):**
+
 ```python
 x_tenant_id: str = Header(..., description="Tenant ID for scoping")
 ```
@@ -176,6 +180,7 @@ x_tenant_id: str = Header(..., description="Tenant ID for scoping")
 **CRITICAL FINDING:** Layer 1 plan mentioned `X-Organization-ID`, but **actual canonical header is `X-Tenant-ID`**.
 
 **Additional Headers Used:**
+
 - `X-Trace-ID` - Request tracing (optional)
 
 ---
@@ -185,6 +190,7 @@ x_tenant_id: str = Header(..., description="Tenant ID for scoping")
 **Discovery Result:** Redis queues use **HASH maps, not list queues**.
 
 **From job_store.py:**
+
 ```python
 # Job storage uses Redis Hash (HSET/HGET), not LIST (LPUSH/LLEN)
 key = f"layer2:jobs:{job_id}"  # Individual job storage
@@ -193,11 +199,13 @@ key = f"layer2:jobs:{job_id}"  # Individual job storage
 **CRITICAL FINDING:** Cannot use `LLEN` commands as originally assumed.
 
 **Actual Keys (from code analysis):**
+
 - `layer2:jobs:{job_id}` - Individual job hash
 - `layer2:job_index` - Job lookup index (likely)
 - `rate_limit:{tenant_id}` - Rate limiting sorted set
 
 **Queue Monitoring Commands:**
+
 ```bash
 # List all keys (not recommended for production)
 redis-cli KEYS 'layer2:*'
@@ -216,6 +224,7 @@ redis-cli ZCARD 'rate_limit:{tenant_id}'
 ### 2.1 Environment Configuration
 
 **Required Environment Variables:**
+
 ```bash
 # Core LLM (one required)
 export OPENAI_API_KEY="sk-..."
@@ -241,6 +250,7 @@ export RDF_OUTPUT_DIR="/tmp/rdf"
 ### 2.2 Startup Commands (Hardened)
 
 **Standalone Startup:**
+
 ```bash
 # 1. Navigate to source
 cd value-fabric/layer2-extraction
@@ -257,6 +267,7 @@ uvicorn layer2_extraction.api.main:app --reload --port 8002 --log-level debug
 ```
 
 **Health Check:**
+
 ```bash
 # Verify startup
 curl -s http://localhost:8002/health | jq .
@@ -267,6 +278,7 @@ curl -s http://localhost:8002/health | jq .
 ### 2.3 Unit Tests (No External Calls)
 
 **Test Configuration:**
+
 ```bash
 cd value-fabric/layer2-extraction
 
@@ -286,6 +298,7 @@ pytest tests/test_extract_and_ingest_pipeline.py -v
 ### 2.4 Tenant Isolation Validation
 
 **Test Sequence:**
+
 ```bash
 # 1. Tenant A creates extraction
 TENANT_A="tenant-a-$(date +%s)"
@@ -302,6 +315,7 @@ curl -H "X-Tenant-ID: $TENANT_B" http://localhost:8002/v1/extract/status/{tenant
 ```
 
 **Pass Criteria:**
+
 - Cross-tenant access returns 403/404
 - Tenant A's data not visible to Tenant B
 - Logs include tenant context for audit
@@ -313,7 +327,7 @@ curl -H "X-Tenant-ID: $TENANT_B" http://localhost:8002/v1/extract/status/{tenant
 **Validation Criteria:**
 
 | Check | Rule | Enforcement |
-|-------|------|-------------|
+| ----- | ---- | ----------- |
 | Evidence Required | All entities must have evidence snippet | Pydantic validation |
 | Evidence Grounding | Evidence must appear in source text | Logprob confidence + manual review |
 | Entity Types | Only [Capability, UseCase, Persona, ValueDriver, Feature] | Schema validation |
@@ -321,6 +335,7 @@ curl -H "X-Tenant-ID: $TENANT_B" http://localhost:8002/v1/extract/status/{tenant
 | Provenance | Model, timestamp, job_id required | Automatic injection |
 
 **Test Command:**
+
 ```bash
 # Submit extraction and validate output
 curl -X POST http://localhost:8002/v1/extract \
@@ -334,11 +349,13 @@ curl -X POST http://localhost:8002/v1/extract \
 ### 2.6 Idempotency (Graph-Safe)
 
 **Expected Behavior:**
+
 - Duplicate submissions create multiple extraction jobs (expected)
 - Graph writes use `tenant_id + source_id + entity_key` for deduplication
 - Response indicates duplicate/reused/merged status
 
 **Test Sequence:**
+
 ```bash
 # Submit same content twice
 for i in 1 2; do
@@ -364,6 +381,7 @@ curl "http://localhost:8003/v1/entities?tenant_id=test-tenant&source_id=http://s
 **Response Format:** Prometheus exposition format
 
 **Required Metrics:**
+
 - `layer2_extraction_jobs_total{status}`
 - `layer2_extraction_duration_seconds`
 - `layer2_llm_api_calls_total{provider}`
@@ -374,12 +392,14 @@ curl "http://localhost:8003/v1/entities?tenant_id=test-tenant&source_id=http://s
 ### 3.2 Tracing Configuration
 
 **From main.py (lines 91-111):**
+
 ```python
 # OpenTelemetry tracing integrated
 # Requires: OTEL_EXPORTER_OTLP_ENDPOINT
 ```
 
 **Required Env Var:**
+
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT="http://jaeger:4318"
 ```
@@ -389,6 +409,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT="http://jaeger:4318"
 ### 3.3 Retry/Dead-Letter Configuration
 
 **From main.py (lines 327-331):**
+
 ```python
 RETRY_POLL_SECONDS = int(os.getenv("INGESTION_RETRY_POLL_SECONDS", "30"))
 RETRY_BASE_SECONDS = int(os.getenv("INGESTION_RETRY_BASE_SECONDS", "60"))
@@ -419,7 +440,7 @@ MAX_INGESTION_RETRIES = int(os.getenv("INGESTION_MAX_RETRIES", "5"))
 ## Phase 5: Pass/Fail Summary
 
 | Phase | Status | Notes |
-|-------|--------|-------|
+| ----- | ------ | ----- |
 | 1.1 Service Discovery | ✅ PASS | Confirmed actual service names |
 | 1.2 Route Discovery | ✅ PASS | All routes confirmed from source |
 | 1.3 Module Path | ✅ PASS | `layer2_extraction.api.main:app` verified |
@@ -441,6 +462,7 @@ MAX_INGESTION_RETRIES = int(os.getenv("INGESTION_MAX_RETRIES", "5"))
 ## Files Changed
 
 **Discovery Report Created:**
+
 - `docs/validation/layer2-connect-test-debug-2026-04-30.md` (this file)
 
 **No source files modified** - This is a validation report only.

@@ -7,6 +7,7 @@ import random
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from shared.testability import Clock, SystemClock
@@ -183,7 +184,7 @@ class PriorityScheduler:
             "top_domains": dict(
                 sorted(domain_counts.items(), key=lambda x: x[1], reverse=True)[:10]
             ),
-        })
+        }).model_dump()
 
 
     def get_estimated_wait_time(self, domain: str) -> float:

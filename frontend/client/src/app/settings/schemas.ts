@@ -119,6 +119,7 @@ export const settingsAccessRules = {
       viewer: [],
     },
     rule: "Admins configure data sources, integrations, variables, ingestion rules, and value packs.",
+    restrictions: [],
   },
 
   governance: {

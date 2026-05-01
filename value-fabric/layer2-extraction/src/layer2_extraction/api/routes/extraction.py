@@ -194,6 +194,15 @@ async def get_extraction_status(job_id: str):
     return await handlers.get_extraction_status(job_id)
 
 
+# BLOCKER-001 compatibility alias: frontend calls /jobs/{id} directly.
+# This alias preserves frontend contract stability while the canonical path
+# remains /extract/status/{job_id}. Consider deprecating once frontend migrates.
+@router.get("/jobs/{job_id}", response_model=handlers.ExtractionStatusResponse)
+async def get_extraction_status_compat(job_id: str):
+    """Compatibility alias for /extract/status/{job_id}."""
+    return await handlers.get_extraction_status(job_id)
+
+
 @router.post("/extract/batch")
 async def extract_batch(requests: list[handlers.ExtractRequest], background_tasks: BackgroundTasks):
     return await handlers.extract_batch(requests, background_tasks)

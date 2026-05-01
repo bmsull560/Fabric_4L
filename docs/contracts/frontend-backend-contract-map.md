@@ -44,7 +44,7 @@
 
 | Frontend Module | Query Key | Backend Owner | Canonical Endpoint | HTTP Method | Request Params | Request Body Schema | Response Schema | Auth / Tenant | Current Status | Notes / Migration Needs |
 |-----------------|-----------|---------------|--------------------|-------------|----------------|---------------------|-----------------|---------------|----------------|------------------------|
-| Extraction Job | `QK.extraction.job(id)` | L2 | `/v1/extract/status/{job_id}` | GET | `job_id` path param | — | `ExtractionStatusResponse` | `X-Tenant-ID`, Bearer JWT | **MISMATCH** | **CRITICAL:** Frontend calls `GET l2 /jobs/{jobId}`. Backend exposes `/v1/extract/status/{job_id}`. Path does not align after proxy rewrite. Gateway alias or frontend fix required. |
+| Extraction Job | `QK.extraction.job(id)` | L2 | `/v1/extract/status/{job_id}` | GET | `job_id` path param | — | `ExtractionStatusResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | **FIXED (BLOCKER-001):** Added backend compatibility alias `GET /v1/jobs/{job_id}` → `get_extraction_status`. Frontend path `/jobs/{id}` now resolves correctly. |
 | Extraction Results | `QK.extraction.results(id)` | L2 | — | — | — | — | — | — | `missing` | Frontend defines query key but no corresponding backend endpoint found for raw results retrieval. |
 | Extraction Create | — | L2 | `/v1/extract` | POST | — | `ExtractRequest` | `ExtractResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Not currently consumed by frontend hooks; used directly in workflows. |
 | Extraction Batch | — | L2 | `/v1/extract/batch` | POST | — | `ExtractRequest[]` | `{ total_jobs: number }` | `X-Tenant-ID`, Bearer JWT | `implemented` | Not currently consumed by frontend hooks. |
@@ -98,11 +98,11 @@
 | Product Detail | `QK.products.detail(id)` | L3 | `/v1/products/{id}` | GET | `id` path param | — | `Product` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
 | Evidence List | `QK.evidence.list(filters)` | L3 | `/v1/case-studies` | GET | `page`, `limit`, `industry`, `product_id` | — | `CaseStudyListResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Frontend query key exists but route alias not verified in dev proxy. |
 | Evidence Detail | `QK.evidence.detail(id)` | L3 | `/v1/case-studies/{id}` | GET | `id` path param | — | `CaseStudy` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Competitive List | `QK.competitive.list(filters)` | L3 | `/v1/competitors` | GET | `page`, `limit`, `industry` | — | `CompetitorListResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Competitive Detail | `QK.competitive.detail(id)` | L3 | `/v1/competitors/{id}` | GET | `id` path param | — | `Competitor` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Competitive Battlecards | `QK.competitive.battlecards(id)` | L3 | `/v1/competitors/{id}/battlecard` | GET | `id` path param | — | `Battlecard` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Route inferred from router; verify exact backend path. |
-| Competitive Win/Loss | `QK.competitive.winLoss(id)` | L3 | `/v1/win-loss/{id}` | GET | `id` path param | — | `WinLossRecord[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Competitive Landscape | `QK.competitive.landscape(productId)` | L3 | `/v1/landscape` | GET | `product_id` query | — | `LandscapeResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
+| Competitive List | `QK.competitive.list(filters)` | L3 | `/v1/competitive/competitors` | GET | `page`, `limit`, `industry` | — | `CompetitorListResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/competitors`. |
+| Competitive Detail | `QK.competitive.detail(id)` | L3 | `/v1/competitive/competitors/{id}` | GET | `id` path param | — | `Competitor` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/competitors/${id}`. |
+| Competitive Battlecards | `QK.competitive.battlecards(id)` | L3 | `/v1/competitive/competitors/{id}/battlecards` | GET | `id` path param | — | `Battlecard` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/competitors/${id}/battlecards`. Alias `/battlecard` also added for compatibility. |
+| Competitive Win/Loss | `QK.competitive.winLoss(id)` | L3 | `/v1/competitive/win-loss` | GET | `id` path param | — | `WinLossRecord[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/win-loss`. |
+| Competitive Landscape | `QK.competitive.landscape(productId)` | L3 | `/v1/competitive/landscape` | GET | `product_id` query | — | `LandscapeResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/competitive/landscape`. |
 | ROI List | `QK.roi.list(filters)` | L3 | `/v1/calculations` | GET | `page`, `limit`, `prospect_id` | — | `ROICalculationListResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
 | ROI Detail | `QK.roi.detail(id)` | L3 | `/v1/calculations/{id}` | GET | `id` path param | — | `ROICalculation` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
 | ROI Templates | `QK.roi.templates()` | L3 | `/v1/templates` | GET | — | — | `ROITemplate[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
@@ -167,13 +167,13 @@
 | C1 Stream | — | L4 | `/v1/c1/stream` | POST | — | `C1Message[]` | SSE stream (`C1StreamChunk`) | `X-Tenant-ID`, Bearer JWT | `implemented` | Thesys C1 generative UI proxy. |
 | Analysis ROI | — | L4 | `/v1/analysis/roi` | POST | — | `ROIAnalysisRequest` | `ROIAnalysisResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Analysis Whitespace | — | L4 | `/v1/analysis/whitespace` | POST | — | `WhitespaceAnalysisRequest` | `WhitespaceAnalysisResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
-| Auth Register | — | L4 | `/v1/auth/register` | POST | — | `RegisterRequest` (Zod) | `RegisterResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Raw `fetch` in `api/auth.ts`. |
-| Auth OIDC Login | — | L4 | `/v1/auth/oidc/{tenantSlug}/login` | GET | `tenantSlug` path param | — | Redirect to IdP | `X-Tenant-ID`, Bearer JWT | `implemented` | Raw `fetch` in `services/authClient.ts`. |
-| Auth OIDC Callback | — | L4 | `/v1/auth/oidc/callback` | GET | `code`, `state` query | — | Sets cookies/tokens | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
+| Auth Register | — | L4 | `/auth/register` | POST | — | `RegisterRequest` (Zod) | `RegisterResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Raw `fetch` in `api/auth.ts`. Path does NOT include `/v1` prefix. |
+| Auth OIDC Login | — | L4 | `/auth/oidc/{tenantSlug}/login` | GET | `tenantSlug` path param | — | Redirect to IdP | `X-Tenant-ID`, Bearer JWT | `implemented` | Raw `fetch` in `services/authClient.ts`. Path does NOT include `/v1` prefix. |
+| Auth OIDC Callback | — | L4 | `/auth/oidc/callback` | GET | `code`, `state` query | — | Sets cookies/tokens | `X-Tenant-ID`, Bearer JWT | `implemented` | Path does NOT include `/v1` prefix. |
 | Enrichment Status | `QK.enrichment.status()` | L4 | `/v1/enrichment/status` | GET | — | — | `EnrichmentStatus` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Route inferred from router; verify exact shape. |
 | Enrichment Detail | `QK.enrichment.detail(accountId)` | L4 | `/v1/enrichment/{account_id}` | GET | `account_id` path param | — | `EnrichmentResult` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
-| Hypothesis Detail | `QK.hypotheses.detail(id)` | L4 | `/v1/value-hypotheses/{id}` | GET | `id` path param | — | `ValueHypothesis` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Router prefix in L4 is `value_hypotheses.py`. |
-| Hypothesis by Account | `QK.hypotheses.byAccount(id, filters)` | L4 | `/v1/value-hypotheses/account/{account_id}` | GET | `account_id` path, filters query | — | `ValueHypothesis[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
+| Hypothesis Detail | `QK.hypotheses.detail(id)` | L4 | `/v1/hypotheses/{id}` | GET | `id` path param | — | `ValueHypothesis` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend calls `/v1/hypotheses/...` correctly. |
+| Hypothesis by Account | `QK.hypotheses.byAccount(id, filters)` | L4 | `/v1/hypotheses/account/{account_id}` | GET | `account_id` path, filters query | — | `ValueHypothesis[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Hypothesis Stats | `QK.hypotheses.stats()` | L4 | — | — | — | — | — | — | `missing` | No dedicated stats endpoint found in L4 backend. |
 | Document Export | `QK.documents.export(id)` | L4 | `/v1/tools/export-document` | POST | — | `{ workflow_id, format }` | Blob / file | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Exact export endpoint inferred from tools router. |
 | Business Case Export | `QK.documents.businessCase(id)` | L4 | `/v1/cases/{id}/export` | GET | `id` path, `format` query | — | Blob / file | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
@@ -184,7 +184,7 @@
 
 | Frontend Module | Query Key | Backend Owner | Canonical Endpoint | HTTP Method | Request Params | Request Body Schema | Response Schema | Auth / Tenant | Current Status | Notes / Migration Needs |
 |-----------------|-----------|---------------|--------------------|-------------|----------------|---------------------|-----------------|---------------|----------------|------------------------|
-| Truth List | `QK.groundTruth.list(filters)` | L5 | `/api/v1/truths` | GET | `status`, `claim_type`, `min_maturity`, `min_confidence`, `is_stale`, `limit`, `offset` | — | `TruthObjectListResponse` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | **ENV MISMATCH:** `frontend/.env.example` uses `VITE_API_BASE=/api/v1` + `VITE_L5_PREFIX=/truths` → baseURL `/api/v1/truths`. `frontend/client/.env.example` uses `VITE_API_BASE=/api` + `VITE_L5_PREFIX=/v1/truths` → baseURL `/api/v1/truths`. Both happen to resolve to the same string, but `api/client.ts` fallback is `/api` + `/truths` = `/api/truths`. Frontend hook calls `/api/v1/truths/*` which may double-prefix. Normalize env config. |
+| Truth List | `QK.groundTruth.list(filters)` | L5 | `/api/v1/truths` | GET | `status`, `claim_type`, `min_maturity`, `min_confidence`, `is_stale`, `limit`, `offset` | — | `TruthObjectListResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | **FIXED:** Both `.env.example` files now use `VITE_API_BASE=/api/v1`, `VITE_L5_PREFIX=/truths`. Hook paths updated to `/truths/*` (relative to baseURL). Vite proxy rewrites `/api/v1/truths/*` → `/api/v1/*`. |
 | Truth Audit | `QK.groundTruth.audit(truthId)` | L5 | `/api/v1/truths/{truth_id}/audit` | GET | `truth_id` path param | — | `ValidationEventResponse[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Truth Freshness | `QK.groundTruth.freshnessSummary()` | L5 | `/api/v1/truths/freshness-summary` | GET | — | — | `FreshnessSummaryResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
 | Truth Stale | `QK.groundTruth.stale(filters)` | L5 | `/api/v1/truths/stale` | GET | `limit`, `offset` | — | `TruthObjectListResponse` (subset) | `X-Tenant-ID`, Bearer JWT | `implemented` | — |
@@ -193,14 +193,12 @@
 | Truth Validate | — | L5 | `/api/v1/truths/{truth_id}/validate` | POST | `truth_id` path param | — | `ValidationEventResponse` | `X-Tenant-ID`, Bearer JWT | `implemented` | Not yet consumed by frontend hooks. |
 | Truth Delete | — | L5 | `/api/v1/truths/{truth_id}` | DELETE | `truth_id` path param | — | `{ status: string }` | `X-Tenant-ID`, Bearer JWT | `implemented` | Not yet consumed by frontend hooks. |
 
-**🟡 Layer 5 Environment Inconsistency Detail:**
-- `frontend/client/src/api/client.ts` fallback: `API_BASE=/api`, `L5_PREFIX=/truths` → baseURL `/api/truths`.
-- `frontend/client/src/lib/apiConfig.ts` fallback: `API_BASE=/api/v1`, `L5_PREFIX=/truths` → baseURL `/api/v1/truths`.
-- Frontend hook calls: `apiClient.get('l5', '/api/v1/truths')`.
-- **If client.ts fallback active:** request URL = `/api/truths/api/v1/truths` → **does not match** Vite proxy `/api/v1/truths`.
-- **If apiConfig.ts values active:** request URL = `/api/v1/truths/api/v1/truths` → **also does not match** cleanly.
-- **Production gateway** routes `/layer5` → L5 service; frontend may rely on a different gateway config than dev proxy.
-- **Recommendation:** Standardize L5 env vars and add gateway rewrite for `/api/truths/*` → `/api/v1/*` OR update frontend to call paths relative to baseURL without repeating `/api/v1`.
+**✅ Layer 5 Environment Fix Detail (BLOCKER-002 resolved):**
+- `frontend/.env.example` and `frontend/client/.env.example` both now use `VITE_API_BASE=/api/v1`, `VITE_L5_PREFIX=/truths`.
+- `frontend/client/src/api/client.ts` fallback updated to `API_BASE=/api/v1`.
+- `frontend/client/src/hooks/useGroundTruthGovernance.ts` updated to call relative paths (`/truths/*`, `/maturity-ladder`) instead of repeating `/api/v1/truths`.
+- `frontend/vite.config.ts` L5 proxy rewrite updated: `/api/v1/truths/*` → `/api/v1/*`.
+- Result: baseURL `/api/v1/truths` + path `/truths/...` → full `/api/v1/truths/truths/...` → proxy → `/api/v1/truths/...` → matches L5 backend.
 
 ---
 

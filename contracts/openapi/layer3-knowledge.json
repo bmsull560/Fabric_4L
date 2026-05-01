@@ -3656,7 +3656,7 @@
     "/v1/entities": {
       "get": {
         "summary": "List Entities",
-        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence\u2014eliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
+        "description": "List entities with server-backed filtering and sorting.\n\nThis endpoint provides a canonical entity summary contract optimized for\nbrowser table views. It supports filtering by domain, status, type, and\nconfidence—eliminating the need for client-side filtering of large datasets.\n\n**Query Parameters:**\n- `search_text`: Full-text search across entity names and descriptions\n- `entity_types`: Filter by one or more entity types (e.g., Capability, UseCase)\n- `domains`: Filter by business domain (e.g., Finance, Healthcare)\n- `statuses`: Filter by lifecycle status (validated, pending, draft, deprecated)\n- `min_confidence`/`max_confidence`: Filter by confidence score range (0.0-1.0)\n- `sort_by`: Sort field (name, updated_at, confidence, entity_type, status)\n- `sort_order`: Sort direction (asc, desc)\n- `limit`/`offset`: Pagination control\n\n**Response:** Returns EntityListResponse with canonical EntitySummary objects.",
         "operationId": "list_entities_v1_entities_get",
         "parameters": [
           {
@@ -5390,6 +5390,758 @@
           },
           "404": {
             "description": "ValuePack not found"
+          }
+        }
+      }
+    },
+    "/v1/competitive/competitors": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/competitive/competitors",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_post_v1_competitive_competitors",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/competitive/competitors",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_get_v1_competitive_competitors",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/competitive/competitors/{competitor_id}": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/competitive/competitors/{competitor_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_get_v1_competitive_competitors_competitor_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "PUT /v1/competitive/competitors/{competitor_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_put_v1_competitive_competitors_competitor_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "DELETE /v1/competitive/competitors/{competitor_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_delete_v1_competitive_competitors_competitor_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/competitive/competitors/{competitor_id}/battlecards": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/competitive/competitors/{competitor_id}/battlecards",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_post_v1_competitive_competitors_competitor_id_battlecards",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/competitive/competitors/{competitor_id}/battlecards",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_get_v1_competitive_competitors_competitor_id_battlecards",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/competitive/competitors/{competitor_id}/battlecard": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/competitive/competitors/{competitor_id}/battlecard",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_get_v1_competitive_competitors_competitor_id_battlecard",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/competitive/win-loss": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/competitive/win-loss",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_post_v1_competitive_win-loss",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/competitive/win-loss/summary": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/competitive/win-loss/summary",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_get_v1_competitive_win-loss_summary",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/competitive/landscape": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/competitive/landscape",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\competitive_intel.py).",
+        "operationId": "discovered_get_v1_competitive_landscape",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/v1/entities": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/v1/entities",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\entities.py).",
+        "operationId": "discovered_get_v1_v1_entities",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/v1/entities/{entity_id}": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/v1/entities/{entity_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\entities.py).",
+        "operationId": "discovered_get_v1_v1_entities_entity_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/v1/entities/query": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/v1/entities/query",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\entities.py).",
+        "operationId": "discovered_post_v1_v1_entities_query",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/v1/entity/traverse": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/v1/entity/traverse",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\entities.py).",
+        "operationId": "discovered_post_v1_v1_entity_traverse",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/evidence/case-studies": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/evidence/case-studies",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_post_v1_evidence_case-studies",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/evidence/case-studies",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_get_v1_evidence_case-studies",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/evidence/case-studies/{case_study_id}": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/evidence/case-studies/{case_study_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_get_v1_evidence_case-studies_case_study_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "PUT /v1/evidence/case-studies/{case_study_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_put_v1_evidence_case-studies_case_study_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "DELETE /v1/evidence/case-studies/{case_study_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_delete_v1_evidence_case-studies_case_study_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/evidence/case-studies/bulk-import": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/evidence/case-studies/bulk-import",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_post_v1_evidence_case-studies_bulk-import",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/evidence/stats/by-industry": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/evidence/stats/by-industry",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_get_v1_evidence_stats_by-industry",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/evidence/stats/by-product": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/evidence/stats/by-product",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_get_v1_evidence_stats_by-product",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/evidence/search": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/evidence/search",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\evidence.py).",
+        "operationId": "discovered_post_v1_evidence_search",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/{product_id}": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/products/{product_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_get_v1_products_product_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "PATCH /v1/products/{product_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_patch_v1_products_product_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "DELETE /v1/products/{product_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_delete_v1_products_product_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/{product_id}/features": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/products/{product_id}/features",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_post_v1_products_product_id_features",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/{product_id}/features/{feature_id}": {
+      "delete": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "DELETE /v1/products/{product_id}/features/{feature_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_delete_v1_products_product_id_features_feature_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/{product_id}/capabilities": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/products/{product_id}/capabilities",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_post_v1_products_product_id_capabilities",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/{product_id}/capabilities/{capability_id}": {
+      "delete": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "DELETE /v1/products/{product_id}/capabilities/{capability_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_delete_v1_products_product_id_capabilities_capability_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/matching/signals": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/products/matching/signals",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_get_v1_products_matching_signals",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/analytics/summary": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/products/analytics/summary",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_get_v1_products_analytics_summary",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products/analytics/coverage": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/products/analytics/coverage",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_get_v1_products_analytics_coverage",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/roi/calculate": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/roi/calculate",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\roi_calculator.py).",
+        "operationId": "discovered_post_v1_roi_calculate",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/roi/compare": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/roi/compare",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\roi_calculator.py).",
+        "operationId": "discovered_post_v1_roi_compare",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/roi/templates": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/roi/templates",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\roi_calculator.py).",
+        "operationId": "discovered_get_v1_roi_templates",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/roi/templates",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\roi_calculator.py).",
+        "operationId": "discovered_post_v1_roi_templates",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/roi/calculations": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/roi/calculations",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\roi_calculator.py).",
+        "operationId": "discovered_get_v1_roi_calculations",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/roi/calculations/{calc_id}": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/roi/calculations/{calc_id}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\roi_calculator.py).",
+        "operationId": "discovered_get_v1_roi_calculations_calc_id",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/roi/benchmarks/{industry}": {
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/roi/benchmarks/{industry}",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\roi_calculator.py).",
+        "operationId": "discovered_get_v1_roi_benchmarks_industry",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/products": {
+      "post": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "POST /v1/products",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_post_v1_products",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "layer3-knowledge"
+        ],
+        "summary": "GET /v1/products",
+        "description": "Discovered from router source (value-fabric\\layer3-knowledge\\src\\api\\routes\\products.py).",
+        "operationId": "discovered_get_v1_products",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
           }
         }
       }
@@ -12277,145 +13029,405 @@
         "title": "ValuePackResponse",
         "description": "Complete ValuePack Framework v1.0 data",
         "type": "object",
-        "required": ["industry_id", "display_name", "tier", "description", "primary_value_drivers", "core_use_cases", "economic_model_types", "proof_requirements", "why_it_wins", "endpoint_mappings", "metadata"],
+        "required": [
+          "industry_id",
+          "display_name",
+          "tier",
+          "description",
+          "primary_value_drivers",
+          "core_use_cases",
+          "economic_model_types",
+          "proof_requirements",
+          "why_it_wins",
+          "endpoint_mappings",
+          "metadata"
+        ],
         "properties": {
-          "industry_id": {"type": "string", "description": "Unique industry slug"},
-          "display_name": {"type": "string", "description": "Human-readable industry name"},
-          "tier": {"type": "integer", "enum": [1, 2, 3], "description": "1=Immediate Traction, 2=High ROI Underserved, 3=Complex but Powerful"},
-          "description": {"type": "string", "description": "Industry overview"},
-          "primary_value_drivers": {"type": "array", "items": {"$ref": "#/components/schemas/ValueDriver"}, "maxItems": 4},
-          "core_use_cases": {"type": "array", "items": {"$ref": "#/components/schemas/CoreUseCase"}, "maxItems": 4},
-          "economic_model_types": {"type": "array", "items": {"$ref": "#/components/schemas/EconomicModelType"}, "maxItems": 4},
-          "proof_requirements": {"type": "array", "items": {"$ref": "#/components/schemas/ProofRequirement"}, "maxItems": 3},
-          "why_it_wins": {"type": "array", "items": {"$ref": "#/components/schemas/WinStatement"}, "maxItems": 3},
-          "endpoint_mappings": {"$ref": "#/components/schemas/EndpointMappings"},
-          "completeness_score": {"type": "number", "minimum": 0, "maximum": 1, "description": "Schema completeness 0-1"},
-          "metadata": {"$ref": "#/components/schemas/ValuePackMetadata"}
+          "industry_id": {
+            "type": "string",
+            "description": "Unique industry slug"
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Human-readable industry name"
+          },
+          "tier": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3
+            ],
+            "description": "1=Immediate Traction, 2=High ROI Underserved, 3=Complex but Powerful"
+          },
+          "description": {
+            "type": "string",
+            "description": "Industry overview"
+          },
+          "primary_value_drivers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValueDriver"
+            },
+            "maxItems": 4
+          },
+          "core_use_cases": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CoreUseCase"
+            },
+            "maxItems": 4
+          },
+          "economic_model_types": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EconomicModelType"
+            },
+            "maxItems": 4
+          },
+          "proof_requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProofRequirement"
+            },
+            "maxItems": 3
+          },
+          "why_it_wins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WinStatement"
+            },
+            "maxItems": 3
+          },
+          "endpoint_mappings": {
+            "$ref": "#/components/schemas/EndpointMappings"
+          },
+          "completeness_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Schema completeness 0-1"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/ValuePackMetadata"
+          }
         }
       },
       "ValueDriver": {
         "title": "ValueDriver",
         "type": "object",
-        "required": ["id", "name", "description", "typical_impact", "measurement_approach"],
+        "required": [
+          "id",
+          "name",
+          "description",
+          "typical_impact",
+          "measurement_approach"
+        ],
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "typical_impact": {"type": "string"},
-          "measurement_approach": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "typical_impact": {
+            "type": "string"
+          },
+          "measurement_approach": {
+            "type": "string"
+          }
         }
       },
       "CoreUseCase": {
         "title": "CoreUseCase",
         "type": "object",
-        "required": ["id", "name", "description", "target_persona", "business_problem"],
+        "required": [
+          "id",
+          "name",
+          "description",
+          "target_persona",
+          "business_problem"
+        ],
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "description": {"type": "string"},
-          "target_persona": {"type": "string"},
-          "business_problem": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "target_persona": {
+            "type": "string"
+          },
+          "business_problem": {
+            "type": "string"
+          }
         }
       },
       "EconomicModelType": {
         "title": "EconomicModelType",
         "type": "object",
-        "required": ["id", "name", "formula_shape", "inputs", "output_unit"],
+        "required": [
+          "id",
+          "name",
+          "formula_shape",
+          "inputs",
+          "output_unit"
+        ],
         "properties": {
-          "id": {"type": "string"},
-          "name": {"type": "string"},
-          "formula_shape": {"type": "string", "description": "Input → Calculation → Output"},
-          "inputs": {"type": "array", "items": {"type": "string"}},
-          "output_unit": {"type": "string"},
-          "typical_range": {"type": "string"}
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "formula_shape": {
+            "type": "string",
+            "description": "Input → Calculation → Output"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "output_unit": {
+            "type": "string"
+          },
+          "typical_range": {
+            "type": "string"
+          }
         }
       },
       "ProofRequirement": {
         "title": "ProofRequirement",
         "type": "object",
-        "required": ["id", "requirement", "evidence_type", "minimum_level"],
+        "required": [
+          "id",
+          "requirement",
+          "evidence_type",
+          "minimum_level"
+        ],
         "properties": {
-          "id": {"type": "string"},
-          "requirement": {"type": "string"},
-          "evidence_type": {"type": "string"},
-          "minimum_level": {"type": "integer", "minimum": 1, "maximum": 5}
+          "id": {
+            "type": "string"
+          },
+          "requirement": {
+            "type": "string"
+          },
+          "evidence_type": {
+            "type": "string"
+          },
+          "minimum_level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
         }
       },
       "WinStatement": {
         "title": "WinStatement",
         "type": "object",
-        "required": ["statement", "differentiation", "proof_point"],
+        "required": [
+          "statement",
+          "differentiation",
+          "proof_point"
+        ],
         "properties": {
-          "statement": {"type": "string"},
-          "differentiation": {"type": "string"},
-          "proof_point": {"type": "string"}
+          "statement": {
+            "type": "string"
+          },
+          "differentiation": {
+            "type": "string"
+          },
+          "proof_point": {
+            "type": "string"
+          }
         }
       },
       "EndpointMappings": {
         "title": "EndpointMappings",
         "type": "object",
-        "required": ["intelligence", "ai_model", "driver_tree", "calculator", "value_case"],
+        "required": [
+          "intelligence",
+          "ai_model",
+          "driver_tree",
+          "calculator",
+          "value_case"
+        ],
         "properties": {
-          "intelligence": {"$ref": "#/components/schemas/EndpointContribution"},
-          "ai_model": {"$ref": "#/components/schemas/EndpointContribution"},
-          "driver_tree": {"$ref": "#/components/schemas/EndpointContribution"},
-          "calculator": {"$ref": "#/components/schemas/EndpointContribution"},
-          "value_case": {"$ref": "#/components/schemas/EndpointContribution"}
+          "intelligence": {
+            "$ref": "#/components/schemas/EndpointContribution"
+          },
+          "ai_model": {
+            "$ref": "#/components/schemas/EndpointContribution"
+          },
+          "driver_tree": {
+            "$ref": "#/components/schemas/EndpointContribution"
+          },
+          "calculator": {
+            "$ref": "#/components/schemas/EndpointContribution"
+          },
+          "value_case": {
+            "$ref": "#/components/schemas/EndpointContribution"
+          }
         }
       },
       "EndpointContribution": {
         "title": "EndpointContribution",
         "type": "object",
-        "required": ["enabled", "contribution_summary", "data_format"],
+        "required": [
+          "enabled",
+          "contribution_summary",
+          "data_format"
+        ],
         "properties": {
-          "enabled": {"type": "boolean"},
-          "contribution_summary": {"type": "string"},
-          "data_format": {"type": "string"},
-          "specific_assets": {"type": "array", "items": {"type": "string"}}
+          "enabled": {
+            "type": "boolean"
+          },
+          "contribution_summary": {
+            "type": "string"
+          },
+          "data_format": {
+            "type": "string"
+          },
+          "specific_assets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         }
       },
       "ValuePackMetadata": {
         "title": "ValuePackMetadata",
         "type": "object",
-        "required": ["deal_size_range", "sales_cycle_length", "switching_cost", "data_richness", "feedback_loop_speed"],
+        "required": [
+          "deal_size_range",
+          "sales_cycle_length",
+          "switching_cost",
+          "data_richness",
+          "feedback_loop_speed"
+        ],
         "properties": {
-          "deal_size_range": {"type": "string"},
-          "sales_cycle_length": {"type": "string"},
-          "switching_cost": {"type": "string", "enum": ["low", "medium", "high"]},
-          "data_richness": {"type": "string", "enum": ["low", "medium", "high"]},
-          "feedback_loop_speed": {"type": "string", "enum": ["slow", "medium", "fast"]}
+          "deal_size_range": {
+            "type": "string"
+          },
+          "sales_cycle_length": {
+            "type": "string"
+          },
+          "switching_cost": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "data_richness": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "feedback_loop_speed": {
+            "type": "string",
+            "enum": [
+              "slow",
+              "medium",
+              "fast"
+            ]
+          }
         }
       },
       "ValuePackListResponse": {
         "title": "ValuePackListResponse",
         "type": "object",
-        "required": ["items", "total", "page", "page_size", "has_more"],
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "has_more"
+        ],
         "properties": {
-          "items": {"type": "array", "items": {"$ref": "#/components/schemas/ValuePackResponse"}},
-          "total": {"type": "integer"},
-          "page": {"type": "integer"},
-          "page_size": {"type": "integer"},
-          "has_more": {"type": "boolean"}
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValuePackResponse"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "has_more": {
+            "type": "boolean"
+          }
         }
       },
       "OntologyMapResponse": {
         "title": "OntologyMapResponse",
         "type": "object",
-        "required": ["shared_drivers", "shared_model_types", "shared_proof_patterns", "cross_reference_matrix"],
+        "required": [
+          "shared_drivers",
+          "shared_model_types",
+          "shared_proof_patterns",
+          "cross_reference_matrix"
+        ],
         "properties": {
-          "shared_drivers": {"type": "array", "items": {"type": "object"}},
-          "shared_model_types": {"type": "array", "items": {"type": "object"}},
-          "shared_proof_patterns": {"type": "array", "items": {"type": "object"}},
-          "cross_reference_matrix": {"type": "object"}
+          "shared_drivers": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "shared_model_types": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "shared_proof_patterns": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "cross_reference_matrix": {
+            "type": "object"
+          }
         }
       },
       "ComposableTemplateLibraryResponse": {
         "title": "ComposableTemplateLibraryResponse",
         "type": "object",
-        "required": ["templates", "template_usage"],
+        "required": [
+          "templates",
+          "template_usage"
+        ],
         "properties": {
-          "templates": {"type": "array", "items": {"type": "object"}},
-          "template_usage": {"type": "object"}
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "template_usage": {
+            "type": "object"
+          }
         }
       }
     },

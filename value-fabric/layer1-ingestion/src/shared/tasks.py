@@ -7,7 +7,7 @@ Manages ScrapingJob lifecycle through 11 PipelineStages.
 import asyncio
 import hashlib
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import structlog
@@ -71,7 +71,7 @@ class cleanup_old_contentResult(TypedDictModel):
     deleted_count: Any
 
 class compliance_check_stageResult(TypedDictModel):
-    error: str
+    error: str | None = None
     job_id: Any
     success: bool
 
@@ -135,6 +135,7 @@ celery_app.conf.update(
     task_time_limit=3600,  # 1 hour max per task
     worker_prefetch_multiplier=1,
     result_expires=3600,
+    task_routes={},
 )
 
 

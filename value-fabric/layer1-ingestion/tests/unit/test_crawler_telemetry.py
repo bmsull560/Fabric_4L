@@ -118,10 +118,10 @@ class TestCrawlMetrics:
         
         result = metrics.to_dict()
         
-        assert result["crawl.count"] == 1
-        assert result["crawl.errors"] == 0
-        assert result["crawl.blocked_resources"] == 3
-        assert "crawl.avg_duration_ms" in result
+        assert result["count"] == 1
+        assert result["errors"] == 0
+        assert result["blocked_resources"] == 3
+        assert "avg_duration_ms" in result
         
     def test_error_rate_calculation(self):
         """Test error rate calculation with mixed results."""

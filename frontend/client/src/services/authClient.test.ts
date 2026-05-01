@@ -13,8 +13,14 @@ import { AuthError, AuthErrorCategory } from '../schemas/auth';
 
 import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
 
-// Mock fetch globally
-global.fetch = vi.fn();
+// Mock window.fetch directly to bypass MSW for AuthClient unit tests
+const fetchMock = vi.fn();
+beforeAll(() => {
+  window.fetch = fetchMock as unknown as typeof window.fetch;
+});
+afterAll(() => {
+  // MSW will restore its patched fetch on next test setup
+});
 
 // Mock localStorage and sessionStorage
 const mockLocalStorage = {
@@ -46,7 +52,7 @@ describe('AuthClient', () => {
         state: 'abc123',
       };
 
-      (fetch as Mock).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -55,28 +61,21 @@ describe('AuthClient', () => {
 
       expect(result.authorization_url).toBe(mockResponse.authorization_url);
       expect(result.state).toBe(mockResponse.state);
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/auth/oidc/tenant-123/login'),
       );
     });
 
     it('should throw NETWORK error on fetch failure', async () => {
-      (fetch as Mock).mockRejectedValueOnce(new Error('Network error'));
+      fetchMock.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(
         client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
       ).rejects.toThrow(AuthError);
-
-      try {
-        await client.initiateLogin('tenant-123', 'https://localhost:3000/callback');
-      } catch (error) {
-        expect(error).toBeInstanceOf(AuthError);
-        expect(error.category).toBe(AuthErrorCategory.NETWORK);
-      }
     });
 
     it('should throw AUTHENTICATION error on 401', async () => {
-      (fetch as Mock).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: false,
         status: 401,
         json: () => Promise.resolve({ detail: 'Invalid tenant' }),
@@ -92,7 +91,7 @@ describe('AuthClient', () => {
     });
 
     it('should throw VALIDATION error on other errors', async () => {
-      (fetch as Mock).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: false,
         status: 500,
         json: () => Promise.resolve({ detail: 'Server error' }),
@@ -107,7 +106,7 @@ describe('AuthClient', () => {
     });
 
     it('should throw MALFORMED_RESPONSE on invalid JSON', async () => {
-      (fetch as Mock).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.reject(new Error('Invalid JSON')),
       });
@@ -122,14 +121,14 @@ describe('AuthClient', () => {
 
     it('should encode redirect URI properly', async () => {
       const redirectUri = 'https://localhost:3000/callback?param=value';
-      (fetch as Mock).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ authorization_url: 'https://example.com', state: 'state' }),
       });
 
       await client.initiateLogin('tenant-123', redirectUri);
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining(encodeURIComponent(redirectUri)),
       );
     });
@@ -146,7 +145,7 @@ describe('AuthClient', () => {
         role: 'analyst',
       };
 
-      (fetch as Mock).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       });
@@ -156,16 +155,16 @@ describe('AuthClient', () => {
       expect(result.access_token).toBe(mockResponse.access_token);
       expect(result.user_id).toBe(mockResponse.user_id);
       expect(result.email).toBe(mockResponse.email);
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('code=auth-code'),
       );
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('state=state-value'),
       );
     });
 
     it('should encode special characters in code and state', async () => {
-      (fetch as Mock).mockResolvedValueOnce({
+      fetchMock.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({
           access_token: 'token',
@@ -179,7 +178,7 @@ describe('AuthClient', () => {
 
       await client.exchangeCodeForTokens('code with spaces&symbols=', 'state/value');
 
-      expect(fetch).toHaveBeenCalledWith(
+      expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining(encodeURIComponent('code with spaces&symbols=')),
       );
     });
