@@ -25,6 +25,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
@@ -301,7 +307,7 @@ def detect_drift(entries: list[ContractEntry], endpoints: list[OpenApiEndpoint])
 # ---------------------------------------------------------------------------
 
 
-def print_report(result: DriftResult) -> int:
+def print_report(result: DriftResult, fail_on_missing: bool = False) -> int:
     print("=" * 80)
     print("Frontend-Backend Contract Drift Report")
     print("=" * 80)
@@ -347,12 +353,60 @@ def print_report(result: DriftResult) -> int:
 
     print("=" * 80)
 
-    if result.mismatched or result.missing:
+    has_drift = bool(result.mismatched) or (fail_on_missing and bool(result.missing))
+    if has_drift:
         print("RESULT: FAIL — drift detected")
         return 1
 
     print("RESULT: PASS — no drift detected")
     return 0
+
+
+# ---------------------------------------------------------------------------
+# Allowlist
+# ---------------------------------------------------------------------------
+
+
+def load_allowlist(path: Path) -> list[dict[str, Any]]:
+    """Load drift allowlist from YAML file."""
+    if not path.exists():
+        return []
+    if not YAML_AVAILABLE:
+        print(f"[WARN] PyYAML not installed, cannot load allowlist: {path}")
+        return []
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return data.get("allowed_mismatches", []) if isinstance(data, dict) else []
+    except Exception as exc:
+        print(f"[WARN] Failed to load allowlist: {exc}")
+        return []
+
+
+def is_allowed_mismatch(entry: ContractEntry, allowlist: list[dict[str, Any]]) -> bool:
+    """Check if a mismatched entry is in the allowlist."""
+    entry_layer = entry.backend_owner.lower().strip()
+    entry_path = entry.canonical_endpoint.strip()
+    entry_method = entry.method.upper().strip()
+
+    for rule in allowlist:
+        rule_layer = str(rule.get("layer", "")).lower().strip()
+        rule_path = str(rule.get("path", "")).strip()
+        rule_method = str(rule.get("method", "")).upper().strip()
+
+        # Match layer
+        if rule_layer != "all" and rule_layer != entry_layer:
+            continue
+
+        # Match path (normalize)
+        if normalize_path(rule_path) != normalize_path(entry_path):
+            continue
+
+        # Match method (optional)
+        if rule_method and rule_method != entry_method:
+            continue
+
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -376,6 +430,17 @@ def main() -> int:
         default=Path("contracts/openapi"),
         help="Directory containing backend OpenAPI JSON specs",
     )
+    parser.add_argument(
+        "--allowlist",
+        type=Path,
+        default=Path("contracts/drift-allowlist.yaml"),
+        help="Path to drift allowlist YAML file",
+    )
+    parser.add_argument(
+        "--fail-on-missing",
+        action="store_true",
+        help="Treat 'missing' contract entries as failures (default: only mismatched are failures)",
+    )
     args = parser.parse_args()
 
     if not args.frontend_contract.exists():
@@ -384,13 +449,31 @@ def main() -> int:
 
     entries = parse_contract_map(args.frontend_contract)
     endpoints = load_openapi_specs(args.openapi_dir)
+    allowlist = load_allowlist(args.allowlist)
 
     print(f"Loaded {len(entries)} contract entries from {args.frontend_contract}")
     print(f"Loaded {len(endpoints)} backend endpoints from {args.openapi_dir}")
+    if allowlist:
+        print(f"Loaded {len(allowlist)} allowed mismatch rules from {args.allowlist}")
     print()
 
     result = detect_drift(entries, endpoints)
-    return print_report(result)
+
+    # Filter allowed mismatches
+    if allowlist:
+        allowed: list[tuple[ContractEntry, str]] = []
+        blocked: list[tuple[ContractEntry, str]] = []
+        for entry, reason in result.mismatched:
+            if is_allowed_mismatch(entry, allowlist):
+                allowed.append((entry, reason))
+            else:
+                blocked.append((entry, reason))
+        result.mismatched = blocked
+        if allowed:
+            print(f"[INFO] {len(allowed)} mismatched entries excluded by allowlist")
+            print()
+
+    return print_report(result, fail_on_missing=args.fail_on_missing)
 
 
 if __name__ == "__main__":

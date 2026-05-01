@@ -44,7 +44,7 @@ except ImportError:  # pragma: no cover
 
 from ..config import get_settings
 from ..database import close_db, init_db
-from ..metrics import initialize_metrics, MetricsMiddleware, get_metrics
+from metrics import initialize_metrics, MetricsMiddleware, get_metrics
 from .router import router
 
 # ---------------------------------------------------------------------------

@@ -32,6 +32,11 @@ RLS_TABLES = [
 def upgrade() -> None:
     """Enable RLS and create policies for tenant isolation."""
     # Create roles if they don't exist (idempotent)
+    # NOTE: These roles need table-level GRANTs (SELECT/INSERT/UPDATE/DELETE)
+    # for the bypass policy to work at runtime. The application layer is
+    # responsible for ensuring admin/system users have these privileges.
+    # Example: GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA
+    # public TO admin_role, system_role;
     op.execute("DO $$ BEGIN CREATE ROLE admin_role; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
     op.execute("DO $$ BEGIN CREATE ROLE system_role; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
 

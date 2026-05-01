@@ -81,7 +81,7 @@ export interface JobResources {
 export interface IngestionJobDetail {
   id: string;
   targetId: string;
-  organizationId: string;
+  tenantId: string;
   domain: string;
   configuration: Record<string, unknown>;
   status: 'pending' | 'processing' | 'completed' | 'failed';
@@ -273,7 +273,7 @@ export function useIngestionJobDetail(jobId: string | null) {
       return {
         id: data.id,
         targetId: data.target_id,
-        organizationId: data.organization_id,
+        tenantId: data.tenant_id,
         domain: String(data.configuration?.url || 'unknown'),
         configuration: data.configuration || {},
         status: mapJobStatus(data.status || ''),

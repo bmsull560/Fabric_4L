@@ -446,16 +446,26 @@ class FetchInteractionHistoryTool(BaseTool):
         self, client: httpx.AsyncClient, input_data: FetchInteractionHistoryInput
     ) -> FetchInteractionHistoryOutput:
         """Fetch interactions from Salesforce."""
-        prospect_id = input_data.prospect_id
+        # P0-1 FIX: Validate prospect_id is a valid Salesforce ID before any query
+        prospect_id = self._soql_safe_id(input_data.prospect_id)
 
         # Build SOQL query
         since_clause = ""
         if input_data.since_date:
+            # Validate date format (ISO 8601 or Salesforce date)
+            if not re.match(r"^\d{4}-\d{2}-\d{2}$", input_data.since_date):
+                raise ValueError("Invalid since_date format: expected YYYY-MM-DD")
             since_clause = f" AND ActivityDate >= {input_data.since_date}"
 
         type_filter = ""
         if input_data.interaction_types:
-            types_str = ",".join([f"'{t}'" for t in input_data.interaction_types])
+            # Sanitize interaction types — allow only alphanumeric + space
+            safe_types = []
+            for t in input_data.interaction_types:
+                if not re.match(r"^[\w\s]+$", t):
+                    raise ValueError(f"Invalid interaction type: {t}")
+                safe_types.append(t.replace("'", "''"))
+            types_str = ",".join([f"'{t}'" for t in safe_types])
             type_filter = f" AND Type IN ({types_str})"
 
         query = f"""

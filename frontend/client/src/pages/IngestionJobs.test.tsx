@@ -56,7 +56,7 @@ describe("IngestionJobs", () => {
   const mockJobDetailResponse = {
     id: "job-1",
     target_id: "target-1",
-    organization_id: "org-1",
+    tenant_id: "tenant-1",
     configuration: { url: "https://example.com" },
     status: "COMPLETED",
     priority: 5,

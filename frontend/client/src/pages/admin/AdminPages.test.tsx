@@ -18,12 +18,9 @@ import { createWrapper, renderWithRouter } from '../../test-utils';
 // Mock the hooks to avoid backend dependencies
 vi.mock('@/hooks/useFormulas', () => ({
   useFormulas: () => ({
-    data: {
-      formulas: [
-        { id: '1', formula_id: 'f-001', name: 'Test Formula', version: '1.0.0', status: 'active' },
-      ],
-      total: 1,
-    },
+    data: [
+      { id: '1', formula_id: 'f-001', name: 'Test Formula', version: '1.0.0', status: 'active' },
+    ],
     isLoading: false,
     error: null,
   }),
@@ -32,9 +29,22 @@ vi.mock('@/hooks/useFormulas', () => ({
     isLoading: false,
     error: null,
   }),
+  useApproveFormula: () => ({
+    mutate: () => {},
+    isPending: false,
+  }),
+  useSubmitFormula: () => ({
+    mutate: () => {},
+    isPending: false,
+  }),
 }));
 
 vi.mock('@/hooks/useBenchmarks', () => ({
+  useBenchmarks: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
   useBenchmarkPolicies: () => ({
     data: [],
     isLoading: false,
@@ -87,6 +97,81 @@ vi.mock('@/hooks/useGovernance', () => ({
   useRevokeApiKey: () => ({
     mutate: vi.fn(),
     isPending: false,
+  }),
+  useInviteUser: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}));
+
+vi.mock('@/hooks/usePlatformSettings', () => ({
+  usePlatformSettings: () => ({
+    data: {
+      tenant_id: 't-1',
+      tenant_name: 'Test Tenant',
+      features: {
+        advanced_analytics: true,
+        custom_integrations: false,
+        ai_assistant: true,
+        audit_trail: false,
+      },
+      limits: {
+        max_users: 100,
+        max_api_calls_per_day: 50000,
+        storage_gb: 500,
+      },
+      notifications: {
+        email_alerts: true,
+      },
+      security: {
+        require_2fa: false,
+        session_timeout_minutes: 60,
+        ip_allowlist: [],
+      },
+      updated_at: '2026-01-01T00:00:00Z',
+    },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useUpdatePlatformSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}));
+
+vi.mock('@/hooks/useHealthMonitor', () => ({
+  useSystemHealth: () => ({
+    data: {
+      overall_status: 'healthy',
+      checked_at: '2026-01-01T00:00:00Z',
+      services: [
+        {
+          name: 'l1-ingestion',
+          status: 'healthy',
+          version: '1.0.0',
+          uptime_seconds: 3600,
+          last_check_at: '2026-01-01T00:00:00Z',
+          response_time_ms: 45,
+        },
+      ],
+      summary: {
+        healthy: 1,
+        degraded: 0,
+        unhealthy: 0,
+        unknown: 0,
+        total: 1,
+      },
+    },
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
+  useHealthAlerts: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
   }),
 }));
 
@@ -159,8 +244,8 @@ describe('PermissionsAdmin', () => {
     renderWithRouter(<PermissionsAdmin />, { path: '/settings/access/keys' });
 
     await waitFor(() => {
-      const apiKeysTab = screen.getByRole('button', { name: /api keys/i });
-      const usersTab = screen.getByRole('button', { name: /users/i });
+      const apiKeysTab = screen.getByRole('button', { name: /^API Keys/i });
+      const usersTab = screen.getByRole('button', { name: /^Users/i });
       expect(apiKeysTab).toHaveClass('text-blue-700');
       expect(usersTab).not.toHaveClass('text-blue-700');
     });
@@ -171,8 +256,8 @@ describe('PermissionsAdmin', () => {
     renderWithRouter(<PermissionsAdmin />, { path: '/settings/access/roles' });
 
     await waitFor(() => {
-      const usersTab = screen.getByRole('button', { name: /users/i });
-      const apiKeysTab = screen.getByRole('button', { name: /api keys/i });
+      const usersTab = screen.getByRole('button', { name: /^Users/i });
+      const apiKeysTab = screen.getByRole('button', { name: /^API Keys/i });
       expect(usersTab).toHaveClass('text-blue-700');
       expect(apiKeysTab).not.toHaveClass('text-blue-700');
     });
@@ -200,7 +285,7 @@ describe('HealthMonitor', () => {
     render(<HealthMonitor />, { wrapper });
 
     await waitFor(() => {
-      expect(screen.getByText('Health Monitor')).toBeInTheDocument();
+      expect(screen.getByText('System Health')).toBeInTheDocument();
     });
   });
 });

@@ -1279,10 +1279,10 @@ export interface components {
              */
             id: string;
             /**
-             * Organization Id
+             * Tenant Id
              * Format: uuid
              */
-            organization_id: string;
+            tenant_id: string;
             /**
              * Target Id
              * Format: uuid
@@ -1365,10 +1365,10 @@ export interface components {
             /** Tags */
             tags: string[];
             /**
-             * Organization Id
+             * Tenant Id
              * Format: uuid
              */
-            organization_id: string;
+            tenant_id: string;
             /** Description */
             description: string | null;
             /** Url Pattern */
@@ -1587,7 +1587,9 @@ export interface operations {
                 sort_by?: string;
                 sort_order?: string;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1616,7 +1618,9 @@ export interface operations {
     create_target_api_v1_ingestion_targets_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1649,7 +1653,9 @@ export interface operations {
     get_target_api_v1_ingestion_targets__target_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 target_id: string;
             };
@@ -1680,7 +1686,9 @@ export interface operations {
     update_target_api_v1_ingestion_targets__target_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 target_id: string;
             };
@@ -1718,7 +1726,9 @@ export interface operations {
                 /** @description Hard delete if no jobs exist */
                 force?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 target_id: string;
             };
@@ -1747,7 +1757,9 @@ export interface operations {
     validate_target_api_v1_ingestion_targets__target_id__validate_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 target_id: string;
             };
@@ -1782,7 +1794,9 @@ export interface operations {
     execute_target_api_v1_ingestion_targets__target_id__execute_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 target_id: string;
             };
@@ -1819,7 +1833,9 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 target_id: string;
             };
@@ -1850,7 +1866,9 @@ export interface operations {
     get_job_router_report_api_v1_ingestion_jobs__job_id__router_report_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 job_id: string;
             };
@@ -1883,7 +1901,9 @@ export interface operations {
             query?: {
                 days?: number;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 domain: string;
             };
@@ -1927,7 +1947,9 @@ export interface operations {
                 sort_by?: string;
                 sort_order?: string;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -1956,7 +1978,9 @@ export interface operations {
     get_job_api_v1_ingestion_jobs__job_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 job_id: string;
             };
@@ -1987,7 +2011,9 @@ export interface operations {
     cancel_job_api_v1_ingestion_jobs__job_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 job_id: string;
             };
@@ -2018,7 +2044,9 @@ export interface operations {
     get_job_progress_api_v1_ingestion_jobs__job_id__progress_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 job_id: string;
             };
@@ -2055,7 +2083,9 @@ export interface operations {
                 include_raw?: boolean;
                 fields?: string[] | null;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 job_id: string;
             };
@@ -2086,7 +2116,9 @@ export interface operations {
     retry_job_api_v1_ingestion_jobs__job_id__retry_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 job_id: string;
             };
@@ -2125,7 +2157,9 @@ export interface operations {
                 include_screenshot?: boolean;
                 include_har?: boolean;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 content_id: string;
             };
@@ -2158,7 +2192,9 @@ export interface operations {
             query?: {
                 format?: string;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path: {
                 extracted_data_id: string;
             };
@@ -2195,7 +2231,9 @@ export interface operations {
                 page?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2233,7 +2271,9 @@ export interface operations {
                 page?: number;
                 limit?: number;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2265,7 +2305,9 @@ export interface operations {
                 period_start: string;
                 period_end: string;
             };
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2294,7 +2336,9 @@ export interface operations {
     health_check_api_v1_ingestion_health_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2307,6 +2351,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthCheckResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -2365,7 +2418,9 @@ export interface operations {
     create_proxy_pool_endpoint_api_v1_ingestion_proxy_pools_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Organization-ID"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

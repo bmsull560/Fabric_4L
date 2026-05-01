@@ -74,6 +74,25 @@ class TestSecurityConfig:
         assert config.sanitize_json_strings is False
 
 
+class TestMiddlewareImportPath:
+    """Guard against importing the wrong shared/security/middleware.py."""
+
+    def test_authoritative_middleware_is_imported(self):
+        """Layer 2+ tests must resolve to value-fabric/shared/security/middleware.py.
+
+        There are two 'shared' packages in this repo (root and value-fabric/).
+        This test fails if pytest resolves the root one, preventing silent
+        regression when the wrong file is patched.
+        """
+        import shared.security.middleware as _middleware
+
+        assert "value-fabric/shared/security/middleware.py" in _middleware.__file__.replace(
+            "\\", "/"
+        ), (
+            f"Expected value-fabric/shared/security/middleware.py, got {_middleware.__file__}"
+        )
+
+
 class TestSecurityValidator:
     """Test SecurityValidator static methods."""
 
@@ -309,6 +328,46 @@ class TestSecurityMiddlewareRDFHandling:
         middleware = SecurityMiddleware(app=None, config=SecurityConfig())
         assert middleware._is_rdf_data("normal text") is False
         assert middleware._is_rdf_data("SELECT * FROM table") is False
+
+
+class TestSqlInjectionFalsePositives:
+    """Regression tests for SQL injection pattern false positives.
+
+    The # character is common in benign content (markdown headers, color codes,
+    issue references) but was previously matched by an overly broad pattern.
+    """
+
+    def test_benign_hash_inputs_not_flagged(self):
+        """Common # uses must not trigger SQL injection detection."""
+        from shared.security.middleware import SQL_INJECTION_PATTERNS
+
+        benign_inputs = [
+            "# Test Header",           # markdown header
+            "Learn C# programming",    # language name
+            "Color #18c3a5",           # hex color code
+            "Issue #123",              # issue reference
+            "section#anchor",          # URL fragment
+            "#hashtag",                # social tag
+        ]
+        for text in benign_inputs:
+            assert SecurityValidator.detect_injection(text, SQL_INJECTION_PATTERNS) is False, (
+                f"False positive on: {text}"
+            )
+
+    def test_malicious_sql_comments_still_detected(self):
+        """Actual SQL comment syntax must still be caught."""
+        from shared.security.middleware import SQL_INJECTION_PATTERNS
+
+        malicious_inputs = [
+            "' OR 1=1 --",             # line comment
+            "admin'--",                # trailing comment
+            "1; DROP TABLE users",     # command injection
+            "/* comment */ SELECT",    # block comment
+        ]
+        for text in malicious_inputs:
+            assert SecurityValidator.detect_injection(text, SQL_INJECTION_PATTERNS) is True, (
+                f"Should detect: {text}"
+            )
 
 
 if __name__ == "__main__":

@@ -1368,6 +1368,16 @@ async def get_entity_provenance(
 
 
 # SSE Event Generator Constants
+#
+# LIFECYCLE POLICY (see TestOverallStatusMatrix in test_sse_streaming.py):
+# - "partial" (extraction=completed, ingestion=pending/queued) is INTENTIONALLY
+#   NON-TERMINAL. The stream keeps polling because ingestion may still progress.
+# - The stream only terminates when overall_status reaches "completed" or "failed".
+# - ingestion_status must become "completed", "skipped", or "failed" for the
+#   SSE generator to break and send the terminal event.
+# - TIMEOUT / HEARTBEAT behavior is NOT YET IMPLEMENTED. Before production
+#   hardening, decide: server-side max idle polls, client-side timeout, or
+#   heartbeat events to detect stalled "partial" jobs.
 _SSE_POLL_INTERVAL_SECONDS = 0.5
 _SSE_PROGRESS_THRESHOLD_PERCENT = 5
 _SSE_PROGRESS_BOUNDARY_VALUES = {0, 50, 100}

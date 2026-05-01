@@ -42,8 +42,11 @@ def get_request_context_sync(
                 detail="Invalid X-Organization-ID header",
             )
     else:
-        # For validation purposes, default to a test tenant
-        tenant_id = UUID("00000000-0000-0000-0000-000000000001")
+        # P0 FIX: Never fall back to a hardcoded tenant — require authentication
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
 
     return SyncRequestContext(tenant_id=tenant_id, source="header")
 

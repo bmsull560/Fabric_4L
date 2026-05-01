@@ -2,6 +2,27 @@
 
 These routes provide backward-compatible paths that the frontend expects,
 mapping to canonical backend handlers.
+
+ROUTE LIFECYCLE DOCUMENTATION
+------------------------------
+Canonical API routes (do NOT delete without frontend coordination):
+  GET  /tenant/settings     -> current tenant settings (auth required)
+  PATCH /tenant/settings    -> update current tenant settings (auth required)
+
+Temporary frontend compatibility routes (plan migration to canonical paths):
+  POST /auth/register       -> alias for /v1/tenants/register
+    - FRONTEND CALLER: frontend/client/src/api/auth.ts
+    - MIGRATION PLAN: update frontend to call /v1/tenants/register directly
+    - REVIEW DATE: 2026-06-01
+
+Deprecated aliases (should be removed once frontend stops using them):
+  None currently.
+
+NOTES
+-----
+- This router is mounted at prefix="/v1" in src/api/main.py.
+- All aliases should enforce the same auth/tenant isolation as canonical routes.
+- When adding a new alias, document it above and update the contract map.
 """
 
 from __future__ import annotations

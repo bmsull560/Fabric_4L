@@ -1,0 +1,800 @@
+﻿
+> value-fabric-wireframes@1.0.0 test C:\Users\BBB\Fabric_4L\frontend
+> vitest run "--run" "client/src/pages/ValuePacks.test.tsx"
+
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/BBB/Fabric_4L/frontend[39m
+
+node.exe : [90mstderr[2m | 
+client/src/pages/ValuePacks.test.tsx[2m > 
+[22m[2mValuePacks[2m > [22m[2mPage Load[2m > 
+[22m[2mrenders pack grid with loaded packs
+At C:\Users\BBB\AppData\Roaming\npm\pnpm.ps1:24 char:5
++     & "node$exe"  
+"$basedir/node_modules/pnpm/bin/pnpm.cjs" $args
++     
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([90mstderr[2m 
+   ...th loaded packs:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[22m[39mEach child in a list should have a unique "key" 
+prop.
+
+Check the render method of `TemplateLibraryPanel`. See 
+https://react.dev/link/warning-keys for more information.
+
+ [31mΓ¥»[39m client/src/pages/ValuePacks.test.tsx [2m([22m[2m19 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 9702[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPage Load[2m > [22mrenders page header with Import Pack button [33m348[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPage Load[2m > [22mdisplays pack description on cards [33m350[2mms[22m[39m
+[31m   [31m├ù[31m ValuePacks[2m > [22mPack Filtering[2m > [22mfilters packs by search query when user types[33m 1579[2mms[22m[31m[39m
+[31m     ΓåÆ Found multiple elements with the text: Customer Churn Reduction
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<h3[31m
+  [33mclass[31m=[32m"text-[13px] font-bold text-foreground leading-tight mb-1.5 truncate"[31m
+[36m>[31m
+  [0mCustomer Churn Reduction[0m
+[36m</h3>[31m
+
+Ignored nodes: comments, script, style
+[36m<option[31m
+  [33mvalue[31m=[32m"churn-reduction"[31m
+[36m>[31m
+  [0mCustomer Churn Reduction[0m
+[36m</option>[31m
+
+Ignored nodes: comments, script, style
+[36m<option[31m
+  [33mvalue[31m=[32m"churn-reduction"[31m
+[36m>[31m
+  [0mCustomer Churn Reduction[0m
+[36m</option>[31m
+
+(If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[31m
+  [36m<div>[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"p-6 max-w-7xl"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"flex items-start justify-between mb-6"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"pb-6 mb-6 border-b border-border"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"flex-1 min-w-0"[31m
+            [36m>[31m
+              [36m<h1[31m
+                [33mclass[31m=[32m"text-[24px] font-semibold tracking-[-0.01em] text-foreground leading-[1.2]"[31m
+              [36m>[31m
+                [0mValue Packs[0m
+              [36m</h1>[31m
+              [36m<p[31m
+                [33mclass[31m=[32m"text-[13px] text-muted-foreground mt-1 leading-relaxed"[31m
+              [36m>[31m
+                [0mBrowse and deploy value pack content[0m
+              [36m</p>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-center gap-2 shrink-0"[31m
+        [36m>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-[12px] font-semibold"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33mclass[31m=[32m"lucide lucide-filter mr-1"[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mheight[31m=[32m"13"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-linecap[31m=[32m"round"[31m
+              [33mstroke-linejoin[31m=[32m"round"[31m
+              [33mstroke-width[31m=[32m"2"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mwidth[31m=[32m"13"[31m
+              [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+            [36m>[31m
+              [36m<polygon[31m
+                [33mpoints[31m=[32m"22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+            [0m Filter[0m
+          [36m</button>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-[12px] font-semibold"[31m
+          [36m>[31m
+            [36m<svg[31m
+              [33mclass[31m=[32m"lucide lucide-upload mr-1"[31m
+              [33mfill[31m=[32m"none"[31m
+              [33mheight[31m=[32m"13"[31m
+              [33mstroke[31m=[32m"currentColor"[31m
+              [33mstroke-linecap[31m=[32m"round"[31m
+              [33mstroke-linejoin[31m=[32m"round"[31m
+              [33mstroke-width[31m=[32m"2"[31m
+              [33mviewBox[31m=[32m"0 0 24 24"[31m
+              [33mwidth[31m=[32m"13"[31m
+              [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+            [36m>[31m
+              [36m<path[31m
+                [33md[31m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[31m
+              [36m/>[31m
+              [36m<polyline[31m
+                [33mpoints[31m=[32m"17 8 12 3 7 8"[31m
+              [36m/>[31m
+              [36m<line[31m
+                [33mx1[31m=[32m"12"[31m
+                [33mx2[31m=[32m"12"[31m
+                [33my1[31m=[32m"3"[31m
+                [33my2[31m=[32m"15"[31m
+              [36m/>[31m
+            [36m</svg>[31m
+            [0m Import Pack[0m
+          [36m</button>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"grid gap-5 grid-cols-[1fr_280px]"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"min-w-0"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"bg-card border border-border rounded-lg px-4 py-3 mb-5"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"flex items-center gap-3 flex-wrap"[31m
+            [36m>[31m
+              [36m<button[31m
+                [33maria-autocomplete[31m=[32m"none"[31m
+                [33maria-controls[31m=[32m"radix-_r_43_"[31m
+                [33maria-expanded[31m=[32m"false"[31m
+                [33mclass[31m=[32m"border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 h-8 text-[11px] min-w-[120px]"[31m
+                [33mdata-size[31m=[32m"default"[31m
+                [33mdata-slot[31m=[32m"select-trigger"[31m
+                [33mdata-state[31m=[32m"closed"[31m
+                [33mdir[31m=[32m"ltr"[31m
+                [33mrole[31m=[32m"combobox"[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mdata-slot[31m=[32m"select-value"[31m
+                  [33mstyle[31m=[32m"pointer-events: none;"[31m
+                [36m>[31m
+                  [0mAll Categories[0m
+                [36m</span>[31m
+                [36m<svg[31m
+                  [33maria-hidden[31m=[32m"true"[31m
+                  [33mclass[31m=[32m"lucide lucide-chevron-down size-4 opacity-50"[31m
+                  [33mfill[31m=[32m"none"[31m
+                  [33mheight[31m=[32m"24"[31m
+                  [33mstroke[31m=[32m"currentColor"[31m
+                  [33mstroke-linecap[31m=[32m"round"[31m
+                  [33mstroke-linejoin[31m=[32m"round"[31m
+                  [33mstroke-width[31m=[32m"2"[31m
+                  [33mviewBox[31m=[32m"0 0 24 24"[31m
+                  [...
+
+Ignored nodes: comments, script, style
+[36m<html>[31m
+  [36m<head />[31m
+  [36m<body>[31m
+    [36m<div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"p-6 max-w-7xl"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-start justify-between mb-6"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"pb-6 mb-6 border-b border-border"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+            [36m>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"flex-1 min-w-0"[31m
+              [36m>[31m
+                [36m<h1[31m
+                  [33mclass[31m=[32m"text-[24px] font-semibold tracking-[-0.01em] text-foreground leading-[1.2]"[31m
+                [36m>[31m
+                  [0mValue Packs[0m
+                [36m</h1>[31m
+                [36m<p[31m
+                  [33mclass[31m=[32m"text-[13px] text-muted-foreground mt-1 leading-relaxed"[31m
+                [36m>[31m
+                  [0mBrowse and deploy value pack content[0m
+                [36m</p>[31m
+              [36m</div>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex items-center gap-2 shrink-0"[31m
+          [36m>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-[12px] font-semibold"[31m
+            [36m>[31m
+              [36m<svg[31m
+                [33mclass[31m=[32m"lucide lucide-filter mr-1"[31m
+                [33mfill[31m=[32m"none"[31m
+                [33mheight[31m=[32m"13"[31m
+                [33mstroke[31m=[32m"currentColor"[31m
+                [33mstroke-linecap[31m=[32m"round"[31m
+                [33mstroke-linejoin[31m=[32m"round"[31m
+                [33mstroke-width[31m=[32m"2"[31m
+                [33mviewBox[31m=[32m"0 0 24 24"[31m
+                [33mwidth[31m=[32m"13"[31m
+                [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+              [36m>[31m
+                [36m<polygon[31m
+                  [33mpoints[31m=[32m"22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"[31m
+                [36m/>[31m
+              [36m</svg>[31m
+              [0m Filter[0m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-[12px] font-semibold"[31m
+            [36m>[31m
+              [36m<svg[31m
+                [33mclass[31m=[32m"lucide lucide-upload mr-1"[31m
+                [33mfill[31m=[32m"none"[31m
+                [33mheight[31m=[32m"13"[31m
+                [33mstroke[31m=[32m"currentColor"[31m
+                [33mstroke-linecap[31m=[32m"round"[31m
+                [33mstroke-linejoin[31m=[32m"round"[31m
+                [33mstroke-width[31m=[32m"2"[31m
+                [33mviewBox[31m=[32m"0 0 24 24"[31m
+                [33mwidth[31m=[32m"13"[31m
+                [33mxmlns[31m=[32m"http://www.w3.org/2000/svg"[31m
+              [36m>[31m
+                [36m<path[31m
+                  [33md[31m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"[31m
+                [36m/>[31m
+                [36m<polyline[31m
+                  [33mpoints[31m=[32m"17 8 12 3 7 8"[31m
+                [36m/>[31m
+                [36m<line[31m
+                  [33mx1[31m=[32m"12"[31m
+                  [33mx2[31m=[32m"12"[31m
+                  [33my1[31m=[32m"3"[31m
+                  [33my2[31m=[32m"15"[31m
+                [36m/>[31m
+              [36m</svg>[31m
+              [0m Import Pack[0m
+            [36m</button>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"grid gap-5 grid-cols-[1fr_280px]"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"min-w-0"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"bg-card border border-border rounded-lg px-4 py-3 mb-5"[31m
+            [36m>[31m
+              [36m<div[31m
+                [33mclass[31m=[32m"flex items-center gap-3 flex-wrap"[31m
+              [36m>[31m
+                [36m<button[31m
+                  [33maria-autocomplete[31m=[32m"none"[31m
+                  [33maria-controls[31m=[32m"radix-_r_43_"[31m
+                  [33maria-expanded[31m=[32m"false"[31m
+                  [33mclass[31m=[32m"border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 h-8 text-[11px] min-w-[120px]"[31m
+                  [33mdata-size[31m=[32m"default"[31m
+                  [33mdata-slot[31m=[32m"select-trigger"[31m
+                  [33mdata-state[31m=[32m"closed"[31m
+                  [33mdir[31m=[32m"ltr"[31m
+                  [33mrole[31m=[32m"combobox"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mdata-slot[31m=[32m"select-value"[31m
+                    [33mstyle[31m=[32m"pointer-events: none;"[31m
+                  [36m>[31m
+                    [0mAll Categories[0m
+                  [36m</span>[31m
+                  [36m<svg[31m
+                    [33maria-hidden[31m=[32m"true"[31m
+                    [33mclass[31m=[32m"lucide lucide-chevron-down size-4 opacity-50"[31m
+                    [33mfill[31m=[32m"none"[31m
+                    [33mheight[31m=[32m"24"[31m
+                    [33mstroke[31m...[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPack Filtering[2m > [22mshows industry tags on pack cards [33m664[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPack Filtering[2m > [22mshows version tags on pack cards [33m776[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mPack Selection & Preview[2m > [22mpopulates preview panel when user selects a pack [33m448[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mDeploy Flow[2m > [22menables Deploy button after user selects a pack [33m457[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mDeploy Flow[2m > [22mexecutes deploy mutation and shows deploying state [33m1985[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mDeploy Flow - Error Paths[2m > [22mdisables deploy button when pack selection is required [33m793[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m ValuePacks[2m > [22mDeploy Flow - Error Paths[2m > [22mdisplays deploy error in pack actions panel when API returns 400 [33m1076[2mms[22m[39m
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Failed Tests 1 
+[27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+
+[31m[1m[7m FAIL [27m[22m[39m 
+client/src/pages/ValuePacks.test.tsx[2m > 
+[22mValuePacks[2m > [22mPack Filtering[2m > [22mfilters 
+packs by search query when user types
+[31m[1mTestingLibraryElementError[22m[39m: Found 
+multiple elements with the text: Customer Churn Reduction
+
+Here are the matching elements:
+
+Ignored nodes: comments, script, style
+[36m<h3[39m
+  [33mclass[39m=[32m"text-[13px] font-bold 
+text-foreground leading-tight mb-1.5 truncate"[39m
+[36m>[39m
+  [0mCustomer Churn Reduction[0m
+[36m</h3>[39m
+
+Ignored nodes: comments, script, style
+[36m<option[39m
+  [33mvalue[39m=[32m"churn-reduction"[39m
+[36m>[39m
+  [0mCustomer Churn Reduction[0m
+[36m</option>[39m
+
+Ignored nodes: comments, script, style
+[36m<option[39m
+  [33mvalue[39m=[32m"churn-reduction"[39m
+[36m>[39m
+  [0mCustomer Churn Reduction[0m
+[36m</option>[39m
+
+(If this is intentional, then use the `*AllBy*` variant of 
+the query (like `queryAllByText`, `getAllByText`, or 
+`findAllByText`)).
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"p-6 max-w-7xl"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start 
+justify-between mb-6"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"pb-6 mb-6 border-b 
+border-border"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-start 
+justify-between gap-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex-1 min-w-0"[39m
+            [36m>[39m
+              [36m<h1[39m
+                [33mclass[39m=[32m"text-[24px] 
+font-semibold tracking-[-0.01em] text-foreground 
+leading-[1.2]"[39m
+              [36m>[39m
+                [0mValue Packs[0m
+              [36m</h1>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"text-[13px] 
+text-muted-foreground mt-1 leading-relaxed"[39m
+              [36m>[39m
+                [0mBrowse and deploy value pack content[0m
+              [36m</p>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-center gap-2 
+shrink-0"[39m
+        [36m>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex items-center 
+justify-center gap-2 whitespace-nowrap transition-colors 
+focus-visible:outline-none focus-visible:ring-1 
+focus-visible:ring-ring disabled:pointer-events-none 
+disabled:opacity-50 [&_svg]:pointer-events-none 
+[&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent 
+hover:text-accent-foreground h-8 rounded-md px-3 text-[12px] 
+font-semibold"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-filter 
+mr-1"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"13"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"13"[39m
+              
+[33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<polygon[39m
+                [33mpoints[39m=[32m"22 3 2 3 10 12.46 10 
+19 14 21 14 12.46 22 3"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0m Filter[0m
+          [36m</button>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex items-center 
+justify-center gap-2 whitespace-nowrap transition-colors 
+focus-visible:outline-none focus-visible:ring-1 
+focus-visible:ring-ring disabled:pointer-events-none 
+disabled:opacity-50 [&_svg]:pointer-events-none 
+[&_svg]:size-4 [&_svg]:shrink-0 bg-primary 
+text-primary-foreground shadow hover:bg-primary/90 h-8 
+rounded-md px-3 text-[12px] font-semibold"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-upload 
+mr-1"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"13"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"13"[39m
+              
+[33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M21 15v4a2 2 0 0 1-2 2H5a2 
+2 0 0 1-2-2v-4"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"17 8 12 3 7 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"12"[39m
+                [33mx2[39m=[32m"12"[39m
+                [33my1[39m=[32m"3"[39m
+                [33my2[39m=[32m"15"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [0m Import Pack[0m
+          [36m</button>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"grid gap-5 
+grid-cols-[1fr_280px]"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"min-w-0"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-card border 
+border-border rounded-lg px-4 py-3 mb-5"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-3 
+flex-wrap"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33maria-autocomplete[39m=[32m"none"[39m
+                
+[33maria-controls[39m=[32m"radix-_r_43_"[39m
+                [33maria-expanded[39m=[32m"false"[39m
+                [33mclass[39m=[32m"border-input 
+data-[placeholder]:text-muted-foreground 
+[&_svg:not([class*='text-'])]:text-muted-foreground 
+focus-visible:border-ring focus-visible:ring-ring/50 
+aria-invalid:ring-destructive/20 
+dark:aria-invalid:ring-destructive/40 
+aria-invalid:border-destructive dark:bg-input/30 
+dark:hover:bg-input/50 flex w-fit items-center 
+justify-between gap-2 rounded-md border bg-transparent px-3 
+py-2 whitespace-nowrap shadow-xs 
+transition-[color,box-shadow] outline-none 
+focus-visible:ring-[3px] disabled:cursor-not-allowed 
+disabled:opacity-50 data-[size=default]:h-9 
+data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 
+*:data-[slot=select-value]:flex 
+*:data-[slot=select-value]:items-center 
+*:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none 
+[&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 h-8 
+text-[11px] min-w-[120px]"[39m
+                [33mdata-size[39m=[32m"default"[39m
+                
+[33mdata-slot[39m=[32m"select-trigger"[39m
+                [33mdata-state[39m=[32m"closed"[39m
+                [33mdir[39m=[32m"ltr"[39m
+                [33mrole[39m=[32m"combobox"[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [36m<span[39m
+                  
+[33mdata-slot[39m=[32m"select-value"[39m
+                  [33mstyle[39m=[32m"pointer-events: 
+none;"[39m
+                [36m>[39m
+                  [0mAll Categories[0m
+                [36m</span>[39m
+                [36m<svg[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"lucide 
+lucide-chevron-down size-4 opacity-50"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [...
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"p-6 max-w-7xl"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-start 
+justify-between mb-6"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"pb-6 mb-6 border-b 
+border-border"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-start 
+justify-between gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex-1 min-w-0"[39m
+              [36m>[39m
+                [36m<h1[39m
+                  [33mclass[39m=[32m"text-[24px] 
+font-semibold tracking-[-0.01em] text-foreground 
+leading-[1.2]"[39m
+                [36m>[39m
+                  [0mValue Packs[0m
+                [36m</h1>[39m
+                [36m<p[39m
+                  [33mclass[39m=[32m"text-[13px] 
+text-muted-foreground mt-1 leading-relaxed"[39m
+                [36m>[39m
+                  [0mBrowse and deploy value pack 
+content[0m
+                [36m</p>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex items-center gap-2 
+shrink-0"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"inline-flex items-center 
+justify-center gap-2 whitespace-nowrap transition-colors 
+focus-visible:outline-none focus-visible:ring-1 
+focus-visible:ring-ring disabled:pointer-events-none 
+disabled:opacity-50 [&_svg]:pointer-events-none 
+[&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent 
+hover:text-accent-foreground h-8 rounded-md px-3 text-[12px] 
+font-semibold"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-filter 
+mr-1"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"13"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"13"[39m
+                
+[33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<polygon[39m
+                  [33mpoints[39m=[32m"22 3 2 3 10 12.46 
+10 19 14 21 14 12.46 22 3"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [0m Filter[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"inline-flex items-center 
+justify-center gap-2 whitespace-nowrap transition-colors 
+focus-visible:outline-none focus-visible:ring-1 
+focus-visible:ring-ring disabled:pointer-events-none 
+disabled:opacity-50 [&_svg]:pointer-events-none 
+[&_svg]:size-4 [&_svg]:shrink-0 bg-primary 
+text-primary-foreground shadow hover:bg-primary/90 h-8 
+rounded-md px-3 text-[12px] font-semibold"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-upload 
+mr-1"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"13"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"13"[39m
+                
+[33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"M21 15v4a2 2 0 0 1-2 
+2H5a2 2 0 0 1-2-2v-4"[39m
+                [36m/>[39m
+                [36m<polyline[39m
+                  [33mpoints[39m=[32m"17 8 12 3 7 8"[39m
+                [36m/>[39m
+                [36m<line[39m
+                  [33mx1[39m=[32m"12"[39m
+                  [33mx2[39m=[32m"12"[39m
+                  [33my1[39m=[32m"3"[39m
+                  [33my2[39m=[32m"15"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [0m Import Pack[0m
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Unhandled Errors [27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[31m[1m
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.[22m[39m
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m17 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (19)[39m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 23:39:11
+[2m   Duration [22m 15.77s[2m (transform 1.28s, setup 452ms, collect 4.20s, tests 9.70s, environment 921ms, prepare 110ms)[22m
+
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"grid gap-5 
+grid-cols-[1fr_280px]"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"min-w-0"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-card border 
+border-border rounded-lg px-4 py-3 mb-5"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center 
+gap-3 flex-wrap"[39m
+              [36m>[39m
+                [36m<button[39m
+                  
+[33maria-autocomplete[39m=[32m"none"[39m
+                  
+[33maria-controls[39m=[32m"radix-_r_43_"[39m
+                  [33maria-expanded[39m=[32m"false"[39m
+                  [33mclass[39m=[32m"border-input 
+data-[placeholder]:text-muted-foreground 
+[&_svg:not([class*='text-'])]:text-muted-foreground 
+focus-visible:border-ring focus-visible:ring-ring/50 
+aria-invalid:ring-destructive/20 
+dark:aria-invalid:ring-destructive/40 
+aria-invalid:border-destructive dark:bg-input/30 
+dark:hover:bg-input/50 flex w-fit items-center 
+justify-between gap-2 rounded-md border bg-transparent px-3 
+py-2 whitespace-nowrap shadow-xs 
+transition-[color,box-shadow] outline-none 
+focus-visible:ring-[3px] disabled:cursor-not-allowed 
+disabled:opacity-50 data-[size=default]:h-9 
+data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 
+*:data-[slot=select-value]:flex 
+*:data-[slot=select-value]:items-center 
+*:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none 
+[&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 h-8 
+text-[11px] min-w-[120px]"[39m
+                  [33mdata-size[39m=[32m"default"[39m
+                  
+[33mdata-slot[39m=[32m"select-trigger"[39m
+                  [33mdata-state[39m=[32m"closed"[39m
+                  [33mdir[39m=[32m"ltr"[39m
+                  [33mrole[39m=[32m"combobox"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    
+[33mdata-slot[39m=[32m"select-value"[39m
+                    [33mstyle[39m=[32m"pointer-events: 
+none;"[39m
+                  [36m>[39m
+                    [0mAll Categories[0m
+                  [36m</span>[39m
+                  [36m<svg[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"lucide 
+lucide-chevron-down size-4 opacity-50"[39m
+                    [33mfill[39m=[32m"none"[39m
+                    [33mheight[39m=[32m"24"[39m
+                    [33mstroke[39m...
+[90m [2mΓ¥»[22m Proxy.waitForWrapper node_modules/.pnpm/@t
+esting-library+dom@10.4.1/node_modules/@testing-library/dom/d
+ist/wait-for.js:[2m163:27[22m[39m
+[36m [2mΓ¥»[22m 
+client/src/pages/ValuePacks.test.tsx:[2m153:13[22m[39m
+    [90m151| [39m      [35mawait[39m 
+user[33m.[39m[34mtype[39m(searchInput[33m,[39m 
+[32m'Churn'[39m)[33m;[39m
+    [90m152| [39m
+    [90m153| [39m      [35mawait[39m 
+[34mwaitFor[39m(() [33m=>[39m {
+    [90m   | [39m            [31m^[39m
+    [90m154| [39m        [34mexpect[39m(screen[33m.[39m
+[34mqueryByText[39m([32m'Customer Churn 
+Reduction'[39m))[33m.[39m[34mtoBeInT[39mΓÇª
+    [90m155| [39m        [34mexpect[39m(screen[33m.[39m
+[34mqueryByText[39m([32m'Enterprise Security 
+ROI'[39m))[33m.[39mnot[33m.[39m[34mtoBe[39mΓÇª
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»Γ
+Ä»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»[22m[39m
+
+
+[31mΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Unhandled Rejection 
+[27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+[31m[1mApiError[22m: Request failed with status code 
+400[39m
+[36m [2mΓ¥»[22m 
+client/src/api/client.ts:[2m298:28[22m[39m
+    [90m296| [39m
+    [90m297| [39m          [90m// Transform to ApiError 
+with trace ID for ErrorBoundary[39m
+    [90m298| [39m          [35mconst[39m apiError 
+[33m=[39m [35mnew[39m [33mApiError[39m(
+    [90m   | [39m                           [31m^[39m
+    [90m299| [39m            errorData[33m.[39mmessage 
+[33m??[39m error[33m.[39mmessage [33m??[39m [32m'API 
+request failed'[39m[33m,[39m
+    [90m300| [39m            
+error[33m.[39mresponse[33m?.[39mstatus [33m??[39m 
+[34m500[39m[33m,[39m
+[90m [2mΓ¥»[22m runNextTicks 
+node:internal/process/task_queues:[2m65:5[22m[39m
+[90m [2mΓ¥»[22m processTimers 
+node:internal/timers:[2m538:9[22m[39m
+[90m [2mΓ¥»[22m Axios.request node_modules/.pnpm/axios@1.1
+2.2/node_modules/axios/lib/core/Axios.js:[2m40:14[22m[39m
+[90m [2mΓ¥»[22m Axios.request node_modules/.pnpm/axios@1.1
+2.2/node_modules/axios/lib/core/Axios.js:[2m45:41[22m[39m
+[90m [2mΓ¥»[22m runNextTicks 
+node:internal/process/task_queues:[2m65:5[22m[39m
+[90m [2mΓ¥»[22m processTimers 
+node:internal/timers:[2m538:9[22m[39m
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»Γ
+Ä»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ traceId: null, 
+statusCode: 400, errorCode: 'INTERNAL_ERROR' }[39m
+[31mThis error originated in 
+"[1mclient/src/pages/ValuePacks.test.tsx[22m" test file. 
+It doesn't mean the error was thrown inside the file itself, 
+but while it was running.[39m
+[31mThe latest test that might've caused the error is 
+"[1mdisplays deploy error in pack actions panel when API 
+returns 400[22m". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, 
+this was the last documented test before it was thrown.[39m
+
+ΓÇëELIFECYCLEΓÇë Test failed. See above for more details.

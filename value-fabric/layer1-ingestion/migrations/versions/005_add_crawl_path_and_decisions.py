@@ -112,6 +112,10 @@ def upgrade() -> None:
     op.execute("ALTER TABLE crawl_decisions FORCE ROW LEVEL SECURITY")
 
     # Create RLS policy for crawl_decisions
+    # NOTE: tenant_id may be NULL for global/router-level decisions.
+    # The policy intentionally allows tenant users to read NULL-tenant rows
+    # (e.g., Smart Router observability data). Tenant-specific decisions
+    # must set tenant_id. Unset tenant context only sees NULL-tenant rows.
     op.execute("""
         CREATE POLICY tenant_isolation_policy ON crawl_decisions
             FOR ALL

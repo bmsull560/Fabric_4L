@@ -46,11 +46,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Remove indexes
-    op.drop_index('idx_crawled_content_pii_status', table_name='crawled_content')
+    # Remove indexes (use if_exists because migration 003 may have dropped the table)
+    op.drop_index('idx_crawled_content_pii_status', table_name='crawled_content', if_exists=True)
     op.execute("DROP INDEX IF EXISTS idx_crawled_content_sec_filing")
     
-    # Remove columns
-    op.drop_column('crawled_content', 'pii_status')
-    op.drop_column('crawled_content', 'pii_scan_results')
-    op.drop_column('crawl_queue', 'robots_status')
+    # Remove columns (use if_exists because migration 003 may have dropped the table)
+    op.drop_column('crawled_content', 'pii_status', if_exists=True)
+    op.drop_column('crawled_content', 'pii_scan_results', if_exists=True)
+    op.drop_column('crawl_queue', 'robots_status', if_exists=True)

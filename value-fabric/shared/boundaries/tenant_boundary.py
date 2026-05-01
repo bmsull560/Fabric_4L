@@ -19,7 +19,7 @@ from uuid import UUID
 if TYPE_CHECKING:
     from fastapi import Request
 
-from identity.context import (
+from ..identity.context import (
     RequestContext,
     get_request_context,
     require_context as _require_context,

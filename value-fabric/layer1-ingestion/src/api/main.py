@@ -60,6 +60,7 @@ from shared.models.typed_dict import TypedDictModel
 
 # Hard imports - fail fast if security components unavailable
 from shared.security import add_security_middleware, SecurityConfig
+from shared.identity.api_key_stub import reject_api_key_unsupported
 from shared.identity.middleware import GovernanceMiddleware
 from shared.identity.rate_limiter import RedisRateLimiter
 from shared.identity.vault_check import is_vault_healthy
@@ -326,7 +327,9 @@ def get_current_user_id(request: Request) -> UUID:
             return UUID(ctx.user_id)
         except ValueError:
             pass
-    return UUID("00000000-0000-0000-0000-000000000001")
+    # P0 FIX: Never fall back to a hardcoded user — require authentication
+    from fastapi import HTTPException
+    raise HTTPException(status_code=401, detail="Authentication required")
 
 
 # =============================================================================

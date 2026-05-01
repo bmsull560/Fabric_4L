@@ -366,11 +366,17 @@ class TestOpenApiSchemaDrift:
         # This is the shape used in frontend/e2e/helpers/api-harness.ts
         mock_account = {
             "id": "acct-test-001",
+            "provider": "salesforce",
+            "provider_record_id": "001-test-001",
             "name": "Test Account",
             "industry": "Technology",
             "website": "https://example.com",
             "tier": "enterprise",
             "created_at": "2025-01-01T00:00:00Z",
+            "updated_at": "2025-01-01T00:00:00Z",
+            "sync_status": "synced",
+            "source_attribution": "manual",
+            "provider_badge": "salesforce",
         }
         assert_matches_schema(mock_account, schema_info["_resolved"], root=schema_info["_root"])
 
@@ -381,12 +387,18 @@ class TestOpenApiSchemaDrift:
         if not schema_info:
             pytest.skip("No OpenAPI schema found for /api/v1/ingestion/jobs")
 
-        mock_jobs = [
-            {
-                "id": "job-001",
-                "domain": "https://example.com",
-                "status": "completed",
-                "progress": 100,
-            }
-        ]
+        mock_jobs = {
+            "data": [
+                {
+                    "id": "job-001",
+                    "target_id": "target-001",
+                    "status": "completed",
+                    "priority": 5,
+                    "progress_percent_complete": 100,
+                    "created_at": "2025-01-01T00:00:00Z",
+                }
+            ],
+            "aggregation": {},
+            "pagination": {},
+        }
         assert_matches_schema(mock_jobs, schema_info["_resolved"], root=schema_info["_root"])

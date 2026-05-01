@@ -265,7 +265,7 @@ export interface ApiJobErrorDto {
 export interface ApiJobDetailDto {
   id: string;
   target_id: string;
-  organization_id: string;
+  tenant_id: string;
   configuration: Record<string, unknown>;
   status: string;
   priority: number;

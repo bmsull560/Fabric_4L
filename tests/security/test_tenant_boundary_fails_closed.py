@@ -14,8 +14,7 @@ import re
 import sys
 from pathlib import Path
 
-# Add shared to path - insert at 0 to prioritize
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "value-fabric" / "shared"))
+# Add value-fabric to path so shared.* imports resolve
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "value-fabric"))
 
 import pytest
@@ -28,22 +27,37 @@ TENANT_A_STR = f"aaaaaaaa-aaaa-aaaa-aaaa-{TENANT_A_UUID.split('-')[-1]}"
 TENANT_B_STR = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
 USER_TEST = "test-user"
 
+# The deprecated root `shared/` package may already be cached in
+# `sys.modules` (imported by earlier-collected tests).  Evict it
+# temporarily so the canonical `value-fabric/shared/` package is found.
+_existing_shared_modules = {
+    name: mod for name, mod in sys.modules.items()
+    if name == "shared" or name.startswith("shared.")
+}
+for name in list(_existing_shared_modules.keys()):
+    del sys.modules[name]
+
 # Import the boundary module directly
-from boundaries.tenant_boundary import (
+from shared.boundaries.tenant_boundary import (
     TenantBoundaryError,
     get_tenant_context,
     require_tenant_context,
     get_tenant_id,
     require_tenant_id,
 )
-from identity.context import RequestContext, set_request_context
+from shared.identity.context import RequestContext, set_request_context
+
+# Restore the original root `shared` package so later tests that rely
+# on root-only submodules (e.g. `shared.crypto`) are not affected.
+for name, mod in _existing_shared_modules.items():
+    sys.modules[name] = mod
 
 
 # Fixture to reset context between tests
 @pytest.fixture(autouse=True)
 def reset_context():
     """Reset context before each test."""
-    from identity.context import _current_context
+    from shared.identity.context import _current_context
     _current_context.set(None)
     yield
 
@@ -95,7 +109,7 @@ class TestTenantBoundaryWithContext:
             assert result == ctx
             assert result.tenant_id == ctx.tenant_id
         finally:
-            from identity.context import _current_context
+            from shared.identity.context import _current_context
             _current_context.reset(token)
 
     def test_require_tenant_id_returns_uuid_when_context_set(self):
@@ -115,7 +129,7 @@ class TestTenantBoundaryWithContext:
             assert tenant_id == ctx.tenant_id
             assert isinstance(tenant_id, UUID)
         finally:
-            from identity.context import _current_context
+            from shared.identity.context import _current_context
             _current_context.reset(token)
 
 
@@ -191,7 +205,7 @@ class TestToolBoundaryIntegration:
             result = mock_query_graph_tool_execution()
             assert result["tenant_id"] == TENANT_A_UUID
         finally:
-            from identity.context import _current_context
+            from shared.identity.context import _current_context
             _current_context.reset(token)
 
 

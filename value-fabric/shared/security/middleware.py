@@ -2,6 +2,11 @@
 
 Provides centralized security validation with per-layer configuration support.
 Uses stream caching with receive() override to avoid body consumption issues.
+
+NOTE: This is the authoritative security middleware for Layer 2+ runtime.
+Do not confuse with shared/security/middleware.py at the repo root, which is
+a separate package for repo-wide utilities.
+See: docs/security/shared-package-collision.md
 """
 
 import html
@@ -36,7 +41,7 @@ SQL_INJECTION_PATTERNS = [
     r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)",
     r"(\b(OR|AND)\s+\d+\s*=\s*\d+)",
     r"(\b(OR|AND)\s+['\"]\w+['\"]\s*=\s*['\"]\w+['\"])",
-    r"(--\s|\/\*|\*\/)",
+    r"(--(?:\s|$)|\/\*|\*\/)",
     r"(\b(LOAD_FILE|INTO\s+OUTFILE|DUMPFILE)\b)",
     r"(\b(WAITFOR\s+DELAY|BENCHMARK|SLEEP)\b)",
 ]
@@ -418,12 +423,11 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             nonlocal body_sent
             if not body_sent and cached_body:
                 body_sent = True
-                return SecurityMiddleware_receiveResult.model_validate({
+                return {
                     "type": "http.request",
                     "body": cached_body,
                     "more_body": False,
-                })
-
+                }
 
             # After body is consumed, delegate to original receive
             return await original_receive()
@@ -458,7 +462,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     def _sanitize_json_data(self, data: Any) -> Any:
         """Recursively sanitize all user-supplied string fields."""
         if isinstance(data, dict):
-            return SecurityMiddleware__sanitize_json_dataResult.model_validate({key: self._sanitize_json_data(value) for key, value in data.items()})
+            return {key: self._sanitize_json_data(value) for key, value in data.items()}
         if isinstance(data, list):
             return [self._sanitize_json_data(item) for item in data]
         if isinstance(data, str):

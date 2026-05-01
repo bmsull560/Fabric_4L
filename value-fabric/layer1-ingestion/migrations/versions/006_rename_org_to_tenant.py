@@ -159,11 +159,10 @@ def upgrade():
     )
 
     # crawl_queue
-    op.create_index(
+    op.create_unique_constraint(
         "uq_crawl_queue_tenant_job_url",
         "crawl_queue",
         ["tenant_id", "job_id", "url"],
-        unique=True,
     )
     op.create_index(
         "idx_crawl_queue_tenant_job_status",
@@ -213,6 +212,7 @@ def downgrade():
         # Drop indexes/constraints first
         for index_name in index_names:
             if index_name == "uq_crawl_queue_tenant_job_url":
+                # Created as unique constraint in upgrade; dropping constraint drops backing index
                 op.drop_constraint(index_name, table_name=table_name, type_="unique")
             else:
                 op.drop_index(index_name, table_name=table_name)
@@ -282,11 +282,10 @@ def downgrade():
         "robots_txt_cache",
         ["organization_id", "domain"],
     )
-    op.create_index(
+    op.create_unique_constraint(
         "uq_crawl_queue_org_job_url",
         "crawl_queue",
         ["organization_id", "job_id", "url"],
-        unique=True,
     )
     op.create_index(
         "idx_crawl_queue_org_job_status",

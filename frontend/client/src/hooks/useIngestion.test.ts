@@ -158,7 +158,7 @@ describe("useIngestion", () => {
       const mockDetail = {
         id: "job-1",
         target_id: "target-1",
-        organization_id: "org-1",
+        tenant_id: "tenant-1",
         configuration: { url: "https://example.com" },
         status: "COMPLETED",
         priority: 5,
@@ -221,7 +221,7 @@ describe("useIngestion", () => {
       const mockDetail = {
         id: "job-1",
         target_id: "target-1",
-        organization_id: "org-1",
+        tenant_id: "tenant-1",
         configuration: { url: "https://example.com" },
         status: "EXTRACTING",
         priority: 3,
@@ -261,7 +261,7 @@ describe("useIngestion", () => {
 
       const data = result.current.data!;
       expect(data.targetId).toBe("target-1");
-      expect(data.organizationId).toBe("org-1");
+      expect(data.tenantId).toBe("tenant-1");
       expect(data.triggeredBy).toBe("scheduler");
       expect(data.createdBy).toBe("user-1");
       expect(data.progress.totalPages).toBe(50);
@@ -279,7 +279,7 @@ describe("useIngestion", () => {
       const mockDetail = {
         id: "job-1",
         target_id: "target-1",
-        organization_id: "org-1",
+        tenant_id: "tenant-1",
         configuration: { url: "https://example.com" },
         status: "FAILED",
         priority: 5,

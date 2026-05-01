@@ -96,7 +96,14 @@ describe("ApiClient", () => {
         })
       );
 
-      await expect(apiClient.get("l3", "/test")).rejects.toThrow();
+      // Wrap in try/catch to prevent unhandled rejection warning
+      let error: Error | undefined;
+      try {
+        await apiClient.get("l3", "/test");
+      } catch (e) {
+        error = e as Error;
+      }
+      expect(error).toBeDefined();
     });
 
     it("should throw on HTTP error status", async () => {
@@ -106,7 +113,15 @@ describe("ApiClient", () => {
         })
       );
 
-      await expect(apiClient.get("l3", "/test")).rejects.toThrow("Request failed with status code 500");
+      // Wrap in try/catch to prevent unhandled rejection warning
+      let error: Error | undefined;
+      try {
+        await apiClient.get("l3", "/test");
+      } catch (e) {
+        error = e as Error;
+      }
+      expect(error).toBeDefined();
+      expect(error?.message).toContain("Request failed with status code 500");
     });
   });
 

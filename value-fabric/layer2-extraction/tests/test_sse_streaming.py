@@ -394,3 +394,69 @@ def _parse_sse_events(raw_text: str) -> list[dict]:
             except json.JSONDecodeError:
                 pass
     return events
+
+
+class TestOverallStatusMatrix:
+    """Matrix test for _compute_overall_status and SSE terminal semantics.
+
+    The SSE generator (_job_event_generator) polls until the job reaches a
+    terminal status and then yields a complete/error event and breaks.
+    Terminal statuses must be unambiguous to prevent infinite loops.
+    """
+
+    @pytest.mark.asyncio
+    async def test_compute_overall_status_matrix(self):
+        """All extraction + ingestion combinations produce expected overall status."""
+        matrix = [
+            # (extraction, ingestion, expected)
+            ("pending",   "pending",   "pending"),
+            ("pending",   "queued",    "running"),   # extraction in progress
+            ("running",   "pending",   "running"),
+            ("running",   "running",   "running"),
+            ("completed", "completed", "completed"),
+            ("completed", "skipped",   "completed"),
+            ("completed", "pending",   "partial"),   # extraction done, ingestion waiting
+            ("completed", "queued",    "partial"),
+            ("completed", "running",   "running"),   # ingestion still active
+            ("failed",    "pending",   "failed"),
+            ("failed",    "completed", "failed"),
+            ("pending",   "failed",    "failed"),
+        ]
+        for extraction_status, ingestion_status, expected in matrix:
+            result = api_main._compute_overall_status(extraction_status, ingestion_status)
+            assert result == expected, (
+                f"compute_overall_status({extraction_status!r}, {ingestion_status!r}) == {result!r}, expected {expected!r}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_terminal_statuses_are_unambiguous(self):
+        """Document which statuses terminate the SSE stream.
+
+        The generator breaks when overall_status is in _SSE_TERMINAL_STATUSES.
+        Any status NOT in this set causes the generator to sleep and poll again,
+        which can hang clients if the status never transitions.
+        """
+        terminal = api_main._SSE_TERMINAL_STATUSES
+        assert "completed" in terminal
+        assert "failed" in terminal
+        assert "pending" not in terminal
+        assert "running" not in terminal
+        assert "partial" not in terminal  # extraction done, ingestion may continue
+
+    @pytest.mark.asyncio
+    async def test_partial_status_is_not_terminal(self):
+        """partial means extraction completed but ingestion is pending/queued.
+
+        The SSE stream must keep polling because ingestion may still transition
+        to completed/failed. If a test needs the stream to terminate, it must
+        set ingestion_status to "completed" or "skipped".
+        """
+        await _create_job(
+            job_id="partial-test",
+            overall_status="pending",
+            extraction_status="completed",
+            ingestion_status="pending",  # -> overall_status = "partial"
+        )
+        overall = api_main._compute_overall_status("completed", "pending")
+        assert overall == "partial"
+        assert overall not in api_main._SSE_TERMINAL_STATUSES

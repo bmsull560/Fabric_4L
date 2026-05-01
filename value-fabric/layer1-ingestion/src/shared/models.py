@@ -931,7 +931,12 @@ class CrawlDecision(Base):
 
     # Foreign keys
     job_id = Column(UUID(as_uuid=True), ForeignKey("scraping_jobs.id"), nullable=True, index=True)
-    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)  # Tenant UUID (no FK — tenant table is in Layer 4)
+    # Tenant context
+    # - NULL = global/router-level decision not tied to a specific tenant
+    # - UUID = tenant-scoped decision
+    # RLS policy intentionally allows all tenants to read NULL-tenant rows
+    # (global routing rules, Smart Router observability data)
+    tenant_id = Column(UUID(as_uuid=True), nullable=True, index=True)  # no FK — tenant table is in Layer 4
 
     # Request context
     url = Column(Text, nullable=False)

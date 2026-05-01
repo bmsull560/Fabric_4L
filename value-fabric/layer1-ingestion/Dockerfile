@@ -19,7 +19,7 @@ COPY layer1-ingestion/pyproject.toml .
 COPY layer1-ingestion/uv.lock .
 
 # Install dependencies using uv (creates .venv)
-RUN uv sync --frozen
+RUN uv sync --frozen --no-install-project
 
 # Install Playwright browsers
 RUN python -m playwright install chromium

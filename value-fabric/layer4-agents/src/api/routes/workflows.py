@@ -16,6 +16,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from shared.audit import AuditAction, AuditOutcome, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
 
@@ -293,6 +294,91 @@ async def create_workflow(
         raise HTTPException(status_code=500, detail="Workflow execution failed")
 
 
+
+async def _filter_and_paginate_workflows(
+    executor: OrchestrationController,
+    tenant_id: str,
+    limit: int,
+    offset: int,
+    status: str | None,
+    workflow_type: str | None,
+) -> dict[str, Any]:
+    """Shared helper: filter and paginate workflows for a tenant."""
+    all_active = await executor.list_active_workflows(tenant_id=tenant_id)
+
+    if status:
+        status_lower = status.lower()
+        all_active = [w for w in all_active if w.get("status", "").lower() == status_lower]
+
+    if workflow_type:
+        type_lower = workflow_type.lower()
+        all_active = [w for w in all_active if w.get("workflow_type", "").lower() == type_lower]
+
+    total = len(all_active)
+    paginated = all_active[offset:offset + limit]
+    has_more = (offset + limit) < total
+
+    return {
+        "items": paginated,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": has_more,
+    }
+
+
+@router.get("/workflows")
+async def list_workflows(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of workflows to return"),
+    offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
+    status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
+    type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
+    _ctx: RequestContext = Depends(require_authenticated),
+    executor: OrchestrationController = Depends(get_executor),
+) -> dict[str, Any]:
+    """List workflows for the authenticated tenant (frontend compatibility alias).
+
+    Supports ?type=business_case filter used by the business-cases hook.
+    """
+    result = await _filter_and_paginate_workflows(
+        executor, _ctx.tenant_id, limit, offset, status, type
+    )
+    return list_active_workflowsResult.model_validate(result)
+
+
+@router.get("/workflows/active")
+async def list_active_workflows(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of workflows to return"),
+    offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
+    status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
+    workflow_type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
+    _ctx: RequestContext = Depends(require_authenticated),
+    executor: OrchestrationController = Depends(get_executor),
+) -> dict[str, Any]:
+    """List currently active workflows for the authenticated tenant with pagination.
+    
+    Returns a paginated list of workflows with metadata for efficient client-side rendering.
+    """
+    result = await _filter_and_paginate_workflows(
+        executor, _ctx.tenant_id, limit, offset, status, workflow_type
+    )
+    return list_active_workflowsResult.model_validate(result)
+
+
+@router.get("/workflows/types")
+async def list_available_workflows() -> dict[str, Any]:
+    """List available workflow types."""
+    types = list_workflow_types()
+
+    return list_available_workflowsResult.model_validate({
+        "workflows": [
+            {"type": key, "name": info["name"], "description": info["description"]}
+            for key, info in types.items()
+        ]
+    })
+
 @router.get("/workflows/{workflow_id}", response_model=WorkflowStatusResponse)
 async def get_workflow_status(
     workflow_id: str,
@@ -515,89 +601,6 @@ async def pause_workflow(
         raise HTTPException(status_code=500, detail="Failed to pause workflow")
 
 
-@router.get("/workflows/types")
-async def list_available_workflows() -> dict[str, Any]:
-    """List available workflow types."""
-    types = list_workflow_types()
-
-    return list_available_workflowsResult.model_validate({
-        "workflows": [
-            {"type": key, "name": info["name"], "description": info["description"]}
-            for key, info in types.items()
-        ]
-    })
-
-
-async def _filter_and_paginate_workflows(
-    executor: OrchestrationController,
-    tenant_id: str,
-    limit: int,
-    offset: int,
-    status: str | None,
-    workflow_type: str | None,
-) -> dict[str, Any]:
-    """Shared helper: filter and paginate workflows for a tenant."""
-    all_active = await executor.list_active_workflows(tenant_id=tenant_id)
-
-    if status:
-        status_lower = status.lower()
-        all_active = [w for w in all_active if w.get("status", "").lower() == status_lower]
-
-    if workflow_type:
-        type_lower = workflow_type.lower()
-        all_active = [w for w in all_active if w.get("workflow_type", "").lower() == type_lower]
-
-    total = len(all_active)
-    paginated = all_active[offset:offset + limit]
-    has_more = (offset + limit) < total
-
-    return {
-        "items": paginated,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": has_more,
-    }
-
-
-@router.get("/workflows")
-async def list_workflows(
-    request: Request,
-    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of workflows to return"),
-    offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
-    status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
-    type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
-    _ctx: RequestContext = Depends(require_authenticated),
-    executor: OrchestrationController = Depends(get_executor),
-) -> dict[str, Any]:
-    """List workflows for the authenticated tenant (frontend compatibility alias).
-
-    Supports ?type=business_case filter used by the business-cases hook.
-    """
-    result = await _filter_and_paginate_workflows(
-        executor, _ctx.tenant_id, limit, offset, status, type
-    )
-    return list_active_workflowsResult.model_validate(result)
-
-
-@router.get("/workflows/active")
-async def list_active_workflows(
-    request: Request,
-    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of workflows to return"),
-    offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
-    status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
-    workflow_type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
-    _ctx: RequestContext = Depends(require_authenticated),
-    executor: OrchestrationController = Depends(get_executor),
-) -> dict[str, Any]:
-    """List currently active workflows for the authenticated tenant with pagination.
-    
-    Returns a paginated list of workflows with metadata for efficient client-side rendering.
-    """
-    result = await _filter_and_paginate_workflows(
-        executor, _ctx.tenant_id, limit, offset, status, workflow_type
-    )
-    return list_active_workflowsResult.model_validate(result)
 
 
 @router.get("/workflows/{workflow_id}/events")
@@ -690,19 +693,48 @@ async def archive_workflow(
 ) -> ArchiveWorkflowResponse:
     """Archive a workflow.
 
-    Sets the workflow status to 'archived' for soft-delete / hide from active lists.
+    Soft-deletes a workflow by setting metadata["archived"] = True.
+    Archived workflows are excluded from list endpoints.
+    Idempotent: repeated calls return the existing archived_at timestamp.
     """
     status = await executor.get_workflow_status(workflow_id)
     if not status:
         raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
 
-    # Update workflow status to archived via the executor's state store
-    archived = await executor.archive_workflow(workflow_id)
-    if not archived:
+    # Enforce tenant isolation
+    workflow_tenant = status.get("tenant_id")
+    if workflow_tenant and str(workflow_tenant) != str(_ctx.tenant_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Workflow {workflow_id} does not belong to the current tenant",
+        )
+
+    try:
+        result = await executor.archive_workflow(workflow_id, tenant_id=_ctx.tenant_id)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+
+    if result is None:
         raise HTTPException(status_code=500, detail=f"Failed to archive workflow {workflow_id}")
+
+    archived_at = result.get("archived_at", datetime.now(UTC).isoformat())
+
+    # Emit audit event (best-effort)
+    try:
+        await emit_audit_event(
+            AuditAction.UPDATE,
+            outcome=AuditOutcome.SUCCESS,
+            tenant_id=_ctx.tenant_id,
+            actor_id=_ctx.user_id,
+            resource_type="Workflow",
+            resource_id=workflow_id,
+            details={"archived_at": archived_at},
+        )
+    except Exception:
+        logger.exception(f"Audit logging failed for archive of workflow {workflow_id}")
 
     return ArchiveWorkflowResponse(
         workflow_id=workflow_id,
         status="archived",
-        archived_at=datetime.now(UTC).isoformat(),
+        archived_at=archived_at,
     )

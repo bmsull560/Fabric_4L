@@ -607,7 +607,7 @@ export const formulaMocks = [
     await delay(100);
     return HttpResponse.json([
       {
-        id: 'approval-1',
+        id: '550e8400-e29b-41d4-a716-446655440001',
         formula_id: 'formula-2',
         formula_name: 'Payback Period',
         submitted_by: 'user@example.com',

@@ -64,7 +64,7 @@ export function createWrapperWithRouterPath(path: string) {
       window.history.replaceState({}, "", path);
     }
     return (
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <QueryClientProvider client={queryClient}>
           {children}
         </QueryClientProvider>

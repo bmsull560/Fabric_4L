@@ -159,7 +159,7 @@ async function main(): Promise<void> {
     const outputPath = resolve(OUTPUT_DIR, layer.outputFile);
     if (existsSync(outputPath)) {
       const moduleName = layer.outputFile.replace('.ts', '');
-      indexLines.push(`export type * from './${moduleName}';`);
+      indexLines.push(`export * as ${layer.key} from './${moduleName}';`);
     }
   }
   indexLines.push('');

@@ -5,12 +5,15 @@ to prevent XXE attacks.
 """
 
 import pytest
-from bs4 import BeautifulSoup
 from unittest.mock import MagicMock, patch, mock_open
 
-from value_fabric.layer1_ingestion.src.post_processor.content_extractor import (
-    ContentExtractor,
-)
+try:
+    from bs4 import BeautifulSoup
+    from value_fabric.layer1_ingestion.src.post_processor.content_extractor import (
+        ContentExtractor,
+    )
+except ImportError as exc:
+    pytest.skip(f"Missing dependency: {exc}", allow_module_level=True)
 
 
 class TestXXEPrevention:

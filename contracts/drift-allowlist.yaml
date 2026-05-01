@@ -1,0 +1,44 @@
+# Drift Allowlist
+#
+# These are known/expected frontend-backend contract mismatches that are
+# intentionally accepted. The drift script (scripts/check_frontend_backend_contracts.py)
+# should read this file and exclude allowed mismatches from the failure count.
+#
+# Each entry must include:
+#   - layer: l1, l2, l3, l4, l5, l6, or "all"
+#   - path: the frontend expected path (as it appears in the contract map)
+#   - reason: human-readable explanation
+#   - owner: team or individual responsible
+#   - review_by: ISO date for next review (YYYY-MM-DD)
+
+allowed_mismatches:
+  - layer: l2
+    path: /v1/extract/jobs/{job_id}/events
+    method: SSE
+    reason: >
+      SSE endpoint exists in code as GET but the drift script expects
+      method="SSE" in the contract map. OpenAPI specs represent SSE as
+      regular GET with text/event-stream response. Frontend polls instead
+      of using SSE today.
+    owner: platform
+    review_by: 2026-05-15
+
+  - layer: l4
+    path: /v1/workflows/{workflow_id}/events
+    method: SSE
+    reason: >
+      Same SSE representation gap as L2. The endpoint is implemented as
+      GET with StreamingResponse in FastAPI but flagged by drift script
+      because contract map marks it as method="SSE".
+    owner: platform
+    review_by: 2026-05-15
+
+  - layer: all
+    path: /health` (per layer)
+    method: GET
+    reason: >
+      Operational health endpoints exist per layer but are excluded from
+      the frontend contract map by design. Frontend defines a query key
+      but no active hook consumes these endpoints.
+    owner: platform
+    review_by: 2026-05-15

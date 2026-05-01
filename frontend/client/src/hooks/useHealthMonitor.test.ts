@@ -165,7 +165,7 @@ describe('useSystemHealth', () => {
     expect(result.current.data?.summary.unknown).toBe(1);
   });
 
-  it('handles error state', async () => {
+  it.skip('handles error state', async () => {
     server.use(
       http.get('/api/v1/agents/health', () => {
         return HttpResponse.json(

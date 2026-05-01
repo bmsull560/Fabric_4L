@@ -58,7 +58,7 @@ export interface DataSource {
     credentialsRef?: string;
   } | null;
   // Metadata
-  organizationId: string;
+  tenantId: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -170,7 +170,7 @@ interface ApiScrapingTargetDetail {
   error_count: number;
   average_execution_time_ms: number;
   tags: string[];
-  organization_id: string;
+  tenant_id: string;
   description: string | null;
   url_pattern: string | null;
   extraction_config: Record<string, unknown>;
@@ -355,7 +355,7 @@ function normalizeDataSource(api: ApiScrapingTargetDetail): DataSource {
     authentication: api.authentication
       ? { type: api.authentication.type, credentialsRef: api.authentication.credentials_ref }
       : null,
-    organizationId: api.organization_id,
+    tenantId: api.tenant_id,
     createdBy: api.created_by,
     createdAt: api.created_at,
     updatedAt: api.updated_at,

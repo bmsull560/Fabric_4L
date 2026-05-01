@@ -47,6 +47,7 @@ describe('AuthClient', () => {
 
   describe('initiateLogin', () => {
     it('should initiate login and return authorization URL', async () => {
+      // Arrange: Mock successful OIDC initiation response
       const mockResponse = {
         authorization_url: 'https://idp.example.com/auth?client_id=test&state=abc123',
         state: 'abc123',
@@ -57,8 +58,10 @@ describe('AuthClient', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
+      // Act: Initiate login flow
       const result = await client.initiateLogin('tenant-123', 'https://localhost:3000/callback');
 
+      // Assert: Verify response contains expected auth data
       expect(result.authorization_url).toBe(mockResponse.authorization_url);
       expect(result.state).toBe(mockResponse.state);
       expect(fetchMock).toHaveBeenCalledWith(
@@ -81,13 +84,12 @@ describe('AuthClient', () => {
         json: () => Promise.resolve({ detail: 'Invalid tenant' }),
       });
 
-      try {
-        await client.initiateLogin('tenant-123', 'https://localhost:3000/callback');
-      } catch (error) {
-        expect(error).toBeInstanceOf(AuthError);
-        expect(error.category).toBe(AuthErrorCategory.AUTHENTICATION);
-        expect(error.statusCode).toBe(401);
-      }
+      await expect(
+        client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
+      ).rejects.toMatchObject({
+        category: AuthErrorCategory.AUTHENTICATION,
+        statusCode: 401,
+      });
     });
 
     it('should throw VALIDATION error on other errors', async () => {
@@ -97,12 +99,11 @@ describe('AuthClient', () => {
         json: () => Promise.resolve({ detail: 'Server error' }),
       });
 
-      try {
-        await client.initiateLogin('tenant-123', 'https://localhost:3000/callback');
-      } catch (error) {
-        expect(error).toBeInstanceOf(AuthError);
-        expect(error.category).toBe(AuthErrorCategory.VALIDATION);
-      }
+      await expect(
+        client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
+      ).rejects.toMatchObject({
+        category: AuthErrorCategory.VALIDATION,
+      });
     });
 
     it('should throw MALFORMED_RESPONSE on invalid JSON', async () => {
@@ -111,12 +112,11 @@ describe('AuthClient', () => {
         json: () => Promise.reject(new Error('Invalid JSON')),
       });
 
-      try {
-        await client.initiateLogin('tenant-123', 'https://localhost:3000/callback');
-      } catch (error) {
-        expect(error).toBeInstanceOf(AuthError);
-        expect(error.category).toBe(AuthErrorCategory.MALFORMED_RESPONSE);
-      }
+      await expect(
+        client.initiateLogin('tenant-123', 'https://localhost:3000/callback'),
+      ).rejects.toMatchObject({
+        category: AuthErrorCategory.MALFORMED_RESPONSE,
+      });
     });
 
     it('should encode redirect URI properly', async () => {
@@ -136,13 +136,14 @@ describe('AuthClient', () => {
 
   describe('exchangeCodeForTokens', () => {
     it('should exchange code for tokens successfully', async () => {
+      // Arrange: Mock successful token exchange response
       const mockResponse = {
         access_token: 'jwt_token_here',
         token_type: 'Bearer',
         expires_in: 3600,
         user_id: 'user-123',
         email: 'user@example.com',
-        role: 'analyst',
+        role: 'analyst' as const,
       };
 
       fetchMock.mockResolvedValueOnce({
@@ -150,8 +151,10 @@ describe('AuthClient', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
+      // Act: Exchange authorization code for tokens
       const result = await client.exchangeCodeForTokens('auth-code', 'state-value');
 
+      // Assert: Verify token data and URL parameters
       expect(result.access_token).toBe(mockResponse.access_token);
       expect(result.user_id).toBe(mockResponse.user_id);
       expect(result.email).toBe(mockResponse.email);
@@ -206,10 +209,11 @@ describe('AuthClient', () => {
     });
 
     it('should return valid session when both token and user exist', () => {
+      // Arrange: Set up valid session data in localStorage
       const userInfo = {
         id: 'user-123',
         email: 'user@example.com',
-        role: 'analyst',
+        role: 'analyst' as const,
         tenantId: 'tenant-123',
         tenantSlug: 'tenant',
       };
@@ -220,29 +224,33 @@ describe('AuthClient', () => {
         return null;
       });
 
+      // Act: Retrieve the current session
       const session = client.getCurrentSession();
 
       expect(session).toEqual(userInfo);
     });
 
     it('should clear session on invalid user JSON', () => {
+      // Arrange: Mock localStorage with malformed JSON
       mockLocalStorage.getItem.mockImplementation((key: string) => {
         if (key === 'accessToken') return 'token';
         if (key === 'userInfo') return 'invalid json{';
         return null;
       });
 
+      // Act: Attempt to retrieve session
       const session = client.getCurrentSession();
 
+      // Assert: Session should be null and storage cleared
       expect(session).toBeNull();
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('userInfo');
     });
 
     it('should clear session on schema validation failure', () => {
+      // Arrange: Set up invalid user data (missing required fields)
       const invalidUser = {
         id: 'user-123',
-        // Missing required fields
       };
 
       mockLocalStorage.getItem.mockImplementation((key: string) => {
@@ -251,8 +259,10 @@ describe('AuthClient', () => {
         return null;
       });
 
+      // Act: Attempt to get session with invalid data
       const session = client.getCurrentSession();
 
+      // Assert: Session should be cleared and null returned
       expect(session).toBeNull();
       expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('accessToken');
     });
@@ -346,16 +356,18 @@ describe('AuthClient', () => {
 
   describe('persistSession', () => {
     it('should persist all session data to localStorage', () => {
+      // Arrange: Prepare session data
       const token = 'jwt_token';
       const userInfo = {
         id: 'user-123',
         email: 'user@example.com',
-        role: 'analyst',
+        role: 'analyst' as const,
         tenantId: 'tenant-123',
         tenantSlug: 'tenant',
       };
       const tenantId = 'tenant-123';
 
+      // Act: Persist the session
       client.persistSession(token, userInfo, tenantId);
 
       expect(mockLocalStorage.setItem).toHaveBeenCalledWith('accessToken', token);

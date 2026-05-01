@@ -605,26 +605,39 @@ class OrchestrationController:
 
         return cancelled
 
-    async def archive_workflow(self, workflow_id: str) -> bool:
+    async def archive_workflow(self, workflow_id: str, tenant_id: str | None = None) -> dict[str, Any] | None:
         """Archive a workflow.
 
         Args:
             workflow_id: Workflow to archive
+            tenant_id: Optional tenant for ownership verification
 
         Returns:
-            True if archived
+            Dict with archived_at timestamp if archived, None if not found,
+            or raises PermissionError if tenant mismatch.
         """
         logger.info(f"Archiving workflow {workflow_id}")
 
-        # Update state metadata
         state = await self.state_manager.load_state(workflow_id)
-        if state:
-            state.metadata["archived"] = True
-            state.metadata["archived_at"] = datetime.now(UTC).isoformat()
-            await self.state_manager.save_state(workflow_id, state)
-            return True
+        if not state:
+            return None
 
-        return False
+        # Verify tenant ownership if requested
+        metadata = self._workflow_metadata.get(workflow_id, {})
+        workflow_tenant = metadata.get("tenant_id")
+        if tenant_id and workflow_tenant and str(workflow_tenant) != str(tenant_id):
+            raise PermissionError(
+                f"Workflow {workflow_id} belongs to tenant {workflow_tenant}, not {tenant_id}"
+            )
+
+        # Idempotent: return existing timestamp if already archived
+        if state.metadata.get("archived"):
+            return {"archived_at": state.metadata.get("archived_at")}
+
+        state.metadata["archived"] = True
+        state.metadata["archived_at"] = datetime.now(UTC).isoformat()
+        await self.state_manager.save_state(workflow_id, state)
+        return {"archived_at": state.metadata["archived_at"]}
 
     async def resume_workflow(
         self,
@@ -715,6 +728,8 @@ class OrchestrationController:
     ) -> list[dict[str, Any]]:
         """List active workflows.
 
+        Excludes archived workflows regardless of status.
+
         Args:
             tenant_id: Filter by tenant
 
@@ -725,6 +740,11 @@ class OrchestrationController:
 
         for workflow_id, metadata in self._workflow_metadata.items():
             if tenant_id and metadata.get("tenant_id") != tenant_id:
+                continue
+
+            # Skip archived workflows
+            state = await self.state_manager.load_state(workflow_id)
+            if state and state.metadata.get("archived"):
                 continue
 
             status = await self.get_workflow_status(workflow_id)

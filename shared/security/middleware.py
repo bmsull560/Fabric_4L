@@ -1,5 +1,10 @@
 """Security middleware for FastAPI applications."""
 
+# WARNING: This is NOT the authoritative application security middleware.
+# Layer apps (Layer 1-6) import from value-fabric/shared/security/middleware.py.
+# Patching this file will NOT affect Layer 2 runtime behavior.
+# See: docs/security/shared-package-collision.md
+
 from __future__ import annotations
 
 import html

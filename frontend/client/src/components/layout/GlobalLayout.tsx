@@ -16,15 +16,27 @@ import type { AgentChatMode } from "@/types/layout";
 // entire content area. Regular pages keep the padded container.
 
 function WorkspaceLayoutWrapper({ children }: { children: React.ReactNode }) {
-  const isWorkspace = useMatch("/intelligence/*")
-    || useMatch("/hypothesis/*")
-    || useMatch("/drivers/*")
-    || useMatch("/calculator/*")
-    || useMatch("/value-case/*")
-    || useMatch("/realization/*");
+  // Hooks must be called unconditionally on every render — do not use ||
+  // short-circuiting because it changes the hook count between renders.
+  const matchIntelligence = useMatch("/intelligence/*");
+  const matchHypothesis = useMatch("/hypothesis/*");
+  const matchDrivers = useMatch("/drivers/*");
+  const matchCalculator = useMatch("/calculator/*");
+  const matchValueCase = useMatch("/value-case/*");
+  const matchRealization = useMatch("/realization/*");
+  const matchPersonal = useMatch("/personal/*");
+  const matchSettings = useMatch("/settings/*");
 
-  const isSettings = useMatch("/personal/*")
-    || useMatch("/settings/*");
+  const isWorkspace = Boolean(
+    matchIntelligence
+      || matchHypothesis
+      || matchDrivers
+      || matchCalculator
+      || matchValueCase
+      || matchRealization
+  );
+
+  const isSettings = Boolean(matchPersonal || matchSettings);
 
   const noPadding = isWorkspace || isSettings;
 

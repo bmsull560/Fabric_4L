@@ -4,6 +4,14 @@ Revision ID: 003
 Revises: 002
 Create Date: 2024-01-01 00:00:00.000000
 
+WARNING: This migration is DESTRUCTIVE.
+It drops old pre-spec tables (crawl_jobs, crawled_content, audit_logs,
+crawl_queue) via DROP TABLE ... CASCADE and replaces them with new
+spec-compliant tables. Data in the old tables is NOT preserved.
+
+Before running against any environment at revision 002 or earlier:
+- Confirm the old tables are empty, OR
+- Run a data migration / backup plan first.
 """
 from collections.abc import Sequence
 from typing import Union
@@ -305,14 +313,14 @@ def downgrade() -> None:
     op.drop_index('idx_crawl_queue_domain_priority', table_name='crawl_queue')
     op.drop_index('idx_crawl_queue_next_retry', table_name='crawl_queue')
     op.drop_index('idx_crawl_queue_org_job_status', table_name='crawl_queue')
-    op.drop_index('uq_crawl_queue_org_job_url', table_name='crawl_queue')
+    op.drop_constraint('uq_crawl_queue_org_job_url', table_name='crawl_queue', type_='unique')
     op.drop_table('crawl_queue')
     
     op.drop_index('idx_robots_txt_cache_org', table_name='robots_txt_cache')
     op.drop_column('robots_txt_cache', 'organization_id')
     
     op.drop_index('idx_proxy_pools_org', table_name='proxy_pools')
-    op.drop_index('uq_proxy_pool_org_name', table_name='proxy_pools')
+    op.drop_constraint('uq_proxy_pool_org_name', table_name='proxy_pools', type_='unique')
     op.drop_table('proxy_pools')
     
     op.drop_index('idx_compliance_logs_job', table_name='compliance_logs')
@@ -334,7 +342,7 @@ def downgrade() -> None:
     op.drop_table('job_errors')
     
     op.drop_index('idx_job_stage_details_job_stage', table_name='job_stage_details')
-    op.drop_index('uq_job_stage', table_name='job_stage_details')
+    op.drop_constraint('uq_job_stage', table_name='job_stage_details', type_='unique')
     op.drop_table('job_stage_details')
     
     op.drop_index('idx_scraping_jobs_status_created', table_name='scraping_jobs')

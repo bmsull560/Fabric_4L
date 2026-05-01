@@ -109,6 +109,22 @@
               "default": "desc",
               "title": "Sort Order"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -138,6 +154,24 @@
         "summary": "Create Target",
         "description": "Create a new scraping target.",
         "operationId": "create_target_api_v1_ingestion_targets_post",
+        "parameters": [
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -187,6 +221,22 @@
               "format": "uuid",
               "title": "Target Id"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -225,6 +275,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Target Id"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -287,6 +353,22 @@
               "title": "Force"
             },
             "description": "Hard delete if no jobs exist"
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -320,6 +402,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Target Id"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -371,6 +469,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Target Id"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -435,6 +549,22 @@
               "default": 50,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -479,6 +609,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -531,6 +677,22 @@
               "minimum": 1,
               "default": 7,
               "title": "Days"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -746,6 +908,22 @@
               "default": "desc",
               "title": "Sort Order"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -787,6 +965,22 @@
               "format": "uuid",
               "title": "Job Id"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -826,6 +1020,22 @@
               "format": "uuid",
               "title": "Job Id"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -864,6 +1074,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -969,6 +1195,22 @@
               ],
               "title": "Fields"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -1007,6 +1249,22 @@
               "type": "string",
               "format": "uuid",
               "title": "Job Id"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -1087,6 +1345,22 @@
               "default": false,
               "title": "Include Har"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -1138,6 +1412,22 @@
               "pattern": "^(json|markdown|flattened)$",
               "default": "json",
               "title": "Format"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -1241,6 +1531,22 @@
               "minimum": 1,
               "default": 20,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
             }
           }
         ],
@@ -1396,6 +1702,22 @@
               "default": 20,
               "title": "Limit"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -1445,6 +1767,22 @@
               "format": "date-time",
               "title": "Period End"
             }
+          },
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
           }
         ],
         "responses": {
@@ -1476,6 +1814,24 @@
         "summary": "Health Check",
         "description": "Enhanced health check endpoint.",
         "operationId": "health_check_api_v1_ingestion_health_get",
+        "parameters": [
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1483,6 +1839,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HealthCheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -1553,15 +1919,33 @@
         "summary": "Create Proxy Pool Endpoint",
         "description": "Create a proxy pool.",
         "operationId": "create_proxy_pool_endpoint_api_v1_ingestion_proxy_pools_post",
+        "parameters": [
+          {
+            "name": "X-Organization-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Organization-Id"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateProxyPoolRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -3260,10 +3644,10 @@
             "format": "uuid",
             "title": "Id"
           },
-          "organization_id": {
+          "tenant_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Organization Id"
+            "title": "Tenant Id"
           },
           "target_id": {
             "type": "string",
@@ -3382,7 +3766,7 @@
         "type": "object",
         "required": [
           "id",
-          "organization_id",
+          "tenant_id",
           "target_id",
           "configuration",
           "status",
@@ -3463,10 +3847,10 @@
             "type": "array",
             "title": "Tags"
           },
-          "organization_id": {
+          "tenant_id": {
             "type": "string",
             "format": "uuid",
-            "title": "Organization Id"
+            "title": "Tenant Id"
           },
           "description": {
             "anyOf": [
@@ -3574,7 +3958,7 @@
           "error_count",
           "average_execution_time_ms",
           "tags",
-          "organization_id",
+          "tenant_id",
           "description",
           "url_pattern",
           "crawl_path",

@@ -143,7 +143,7 @@ def test_x_tenant_id_requires_service_secret():
         request_method="GET",
     )
     assert ctx is not None
-    assert ctx.tenant_id == tenant_id
+    assert str(ctx.tenant_id) == tenant_id
 
 
 # ============================================================================

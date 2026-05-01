@@ -115,7 +115,7 @@ class TestCollectionVerification:
             if test_file.name == "test_collection_verification.py":
                 continue
 
-            content = test_file.read_text()
+            content = test_file.read_text(encoding="utf-8")
             # Find function parameters that might be fixtures
             func_params = re.findall(r"def test_\w+\([^)]*\b(\w+)\b", content)
 
@@ -168,7 +168,7 @@ class TestProductionAssuranceMetrics:
             if test_file.name == "test_collection_verification.py":
                 continue
 
-            content = test_file.read_text()
+            content = test_file.read_text(encoding="utf-8")
             test_names = [l for l in content.split("\n") if l.strip().startswith("def test_")]
 
             for test_line in test_names:
