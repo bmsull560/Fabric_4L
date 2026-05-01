@@ -119,6 +119,9 @@ def merge_routes(spec: dict[str, Any], routes: list[dict[str, str]], layer: str)
         if not path or not method:
             continue
 
+        # Normalize path: remove double slashes
+        path = re.sub(r"/+", "/", path)
+
         path_node = paths.setdefault(path, {})
         if method in path_node:
             existing += 1

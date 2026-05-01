@@ -528,6 +528,58 @@ async def list_available_workflows() -> dict[str, Any]:
     })
 
 
+async def _filter_and_paginate_workflows(
+    executor: OrchestrationController,
+    tenant_id: str,
+    limit: int,
+    offset: int,
+    status: str | None,
+    workflow_type: str | None,
+) -> dict[str, Any]:
+    """Shared helper: filter and paginate workflows for a tenant."""
+    all_active = await executor.list_active_workflows(tenant_id=tenant_id)
+
+    if status:
+        status_lower = status.lower()
+        all_active = [w for w in all_active if w.get("status", "").lower() == status_lower]
+
+    if workflow_type:
+        type_lower = workflow_type.lower()
+        all_active = [w for w in all_active if w.get("workflow_type", "").lower() == type_lower]
+
+    total = len(all_active)
+    paginated = all_active[offset:offset + limit]
+    has_more = (offset + limit) < total
+
+    return {
+        "items": paginated,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": has_more,
+    }
+
+
+@router.get("/workflows")
+async def list_workflows(
+    request: Request,
+    limit: int = Query(default=50, ge=1, le=100, description="Maximum number of workflows to return"),
+    offset: int = Query(default=0, ge=0, description="Number of workflows to skip"),
+    status: str | None = Query(default=None, description="Filter by status (pending, running, completed, failed, cancelled)"),
+    type: str | None = Query(default=None, description="Filter by workflow type (e.g. business_case)"),
+    _ctx: RequestContext = Depends(require_authenticated),
+    executor: OrchestrationController = Depends(get_executor),
+) -> dict[str, Any]:
+    """List workflows for the authenticated tenant (frontend compatibility alias).
+
+    Supports ?type=business_case filter used by the business-cases hook.
+    """
+    result = await _filter_and_paginate_workflows(
+        executor, _ctx.tenant_id, limit, offset, status, type
+    )
+    return list_active_workflowsResult.model_validate(result)
+
+
 @router.get("/workflows/active")
 async def list_active_workflows(
     request: Request,
@@ -542,32 +594,10 @@ async def list_active_workflows(
     
     Returns a paginated list of workflows with metadata for efficient client-side rendering.
     """
-    # tenant_id is guaranteed by require_authenticated dependency
-    # Get all active workflows for tenant
-    all_active = await executor.list_active_workflows(tenant_id=_ctx.tenant_id)
-    
-    # Apply status filter if specified
-    if status:
-        status_lower = status.lower()
-        all_active = [w for w in all_active if w.get("status", "").lower() == status_lower]
-    
-    # Apply workflow type filter if specified
-    if workflow_type:
-        type_lower = workflow_type.lower()
-        all_active = [w for w in all_active if w.get("workflow_type", "").lower() == type_lower]
-    
-    # Calculate pagination
-    total = len(all_active)
-    paginated = all_active[offset:offset + limit]
-    has_more = (offset + limit) < total
-    
-    return list_active_workflowsResult.model_validate({
-        "items": paginated,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": has_more,
-    })
+    result = await _filter_and_paginate_workflows(
+        executor, _ctx.tenant_id, limit, offset, status, workflow_type
+    )
+    return list_active_workflowsResult.model_validate(result)
 
 
 @router.get("/workflows/{workflow_id}/events")

@@ -36,7 +36,7 @@ SQL_INJECTION_PATTERNS = [
     r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)",
     r"(\b(OR|AND)\s+\d+\s*=\s*\d+)",
     r"(\b(OR|AND)\s+['\"]\w+['\"]\s*=\s*['\"]\w+['\"])",
-    r"(--|#|\/\*|\*\/)",
+    r"(--\s|\/\*|\*\/)",
     r"(\b(LOAD_FILE|INTO\s+OUTFILE|DUMPFILE)\b)",
     r"(\b(WAITFOR\s+DELAY|BENCHMARK|SLEEP)\b)",
 ]

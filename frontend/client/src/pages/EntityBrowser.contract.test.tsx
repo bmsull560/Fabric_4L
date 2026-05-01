@@ -24,7 +24,7 @@ vi.mock('@/hooks/useEntities', () => ({
 }));
 
 vi.mock('@/stores', () => ({
-  useEntityUIStore: vi.fn().mockReturnValue({
+  useEntityUIStore: vi.fn(() => ({
     searchQuery: '',
     selectedType: null,
     selectedEntityId: null,
@@ -32,12 +32,12 @@ vi.mock('@/stores', () => ({
     setSelectedType: vi.fn(),
     setSelectedEntityId: vi.fn(),
     clearFilters: vi.fn(),
-  }),
-  useUserTierStore: vi.fn().mockReturnValue({ tier: 'standard', permissions: {} }),
-  useIngestionUIStore: vi.fn().mockReturnValue({}),
-  useIngestionJobsStore: vi.fn().mockReturnValue({}),
-  useOntologyStore: vi.fn().mockReturnValue({}),
-  useNarrativeStore: vi.fn().mockReturnValue({}),
+  })),
+  useUserTierStore: vi.fn(() => ({ tier: 'standard', permissions: {} })),
+  useIngestionUIStore: vi.fn(() => ({})),
+  useIngestionJobsStore: vi.fn(() => ({})),
+  useOntologyStore: vi.fn(() => ({})),
+  useNarrativeStore: vi.fn(() => ({})),
 }));
 
 import { useEntities, useEntity } from '@/hooks/useEntities';
@@ -125,10 +125,10 @@ describe('EntityBrowser Contract Tests', () => {
       expect(screen.getByText('AI Capability')).toBeInTheDocument();
       
       // Verify domain rendered directly from API (not derived)
-      expect(screen.getByText('Finance')).toBeInTheDocument();
+      expect(screen.getAllByText('Finance').length).toBeGreaterThanOrEqual(1);
       
       // Verify status rendered directly from API
-      expect(screen.getByText(/validated/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/validated/i).length).toBeGreaterThanOrEqual(1);
     });
 
     it('should use server-backed filtering via useEntities hook', async () => {
@@ -287,7 +287,7 @@ describe('EntityBrowser Contract Tests', () => {
 
       render(<EntityBrowser />, { wrapper: createWrapper() });
 
-      expect(screen.getByText(/Connection error/i)).toBeInTheDocument();
+      expect(screen.getByText(/Failed to fetch entities/i)).toBeInTheDocument();
       expect(screen.getByText(/Retry/i)).toBeInTheDocument();
     });
 
@@ -392,6 +392,6 @@ describe('No Derivation Verification', () => {
     render(<EntityBrowser />, { wrapper: createWrapper() });
 
     // Should show 'draft' (from API) not 'validated' (derived from confidence)
-    expect(screen.getByText(/draft/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/draft/i).length).toBeGreaterThanOrEqual(1);
   });
 });

@@ -83,6 +83,7 @@ from .routes.crm_webhooks import router as crm_webhooks_router
 from .routes.health_badges import health_badges_router
 from .routes.integrations import router as integrations_router
 from .routes.state_inspector import state_inspector_router
+from .routes.frontend_compat import router as frontend_compat_router
 from .websocket import get_ws_manager, websocket_router
 from shared.models.typed_dict import TypedDictModel
 
@@ -442,6 +443,9 @@ else:
 
 # Thesys C1 streaming proxy
 app.include_router(c1_router, prefix="/v1", tags=["c1"])
+
+# Frontend compatibility aliases (drift-matched paths)
+app.include_router(frontend_compat_router, prefix="/v1")
 
 
 @app.get("/health")

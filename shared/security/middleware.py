@@ -18,7 +18,7 @@ DEFAULT_MAX_JSON_KEYS = 1000
 
 # Injection detection patterns
 SQL_INJECTION_PATTERNS = [
-    r"(\%27)|(\')|(\-\-)|(\%23)|(#)",  # Single quotes, comments
+    r"(\%27)|(\')|(\-\-)|(\%23)",  # Single quotes, comments
     r"((\%3D)|(=))[^\n]*((\%27)|(\')|(\-\-)|(\%3B)|(;))",  # Equals followed by quote/comment
     r"\w*((\%27)|(\'))((\%6F)|o|(\%4F))((\%72)|r|(\%52))",  # 'OR' patterns
     r"((\%27)|(\'))\s*((\%6F)|o|(\%4F))((\%72)|r|(\%52))",  # ' OR' with space

@@ -16,7 +16,7 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-# Tables that have tenant_id and need RLS policies
+# Tables that have organization_id and need RLS policies
 RLS_TABLES = [
     "scraping_targets",
     "scraping_jobs",
@@ -31,6 +31,10 @@ RLS_TABLES = [
 
 def upgrade() -> None:
     """Enable RLS and create policies for tenant isolation."""
+    # Create roles if they don't exist (idempotent)
+    op.execute("DO $$ BEGIN CREATE ROLE admin_role; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
+    op.execute("DO $$ BEGIN CREATE ROLE system_role; EXCEPTION WHEN duplicate_object THEN NULL; END $$;")
+
     # Enable RLS on each table
     for table in RLS_TABLES:
         op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
@@ -45,12 +49,10 @@ def upgrade() -> None:
                 FOR ALL
                 TO PUBLIC
                 USING (
-                    tenant_id IS NULL OR
-                    tenant_id::text = current_setting('app.tenant_id', true)
+                    organization_id::text = current_setting('app.tenant_id', true)
                 )
                 WITH CHECK (
-                    tenant_id IS NULL OR
-                    tenant_id::text = current_setting('app.tenant_id', true)
+                    organization_id::text = current_setting('app.tenant_id', true)
                 )
         """)
 
@@ -67,11 +69,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Remove RLS policies and disable RLS."""
-    # Revoke bypass privilege from admin roles first (defense in depth)
-    for table in RLS_TABLES:
-        op.execute(f"REVOKE ALL ON {table} FROM admin_role, system_role")
-    
-    # Drop policies
+    # Drop policies first (idempotent)
     for table in RLS_TABLES:
         op.execute(f"DROP POLICY IF EXISTS tenant_isolation_policy ON {table}")
         op.execute(f"DROP POLICY IF EXISTS admin_bypass_policy ON {table}")
@@ -80,3 +78,6 @@ def downgrade() -> None:
     for table in RLS_TABLES:
         op.execute(f"ALTER TABLE {table} NO FORCE ROW LEVEL SECURITY")
         op.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
+
+    # Note: we intentionally do NOT drop admin_role/system_role here
+    # as they may be used by other databases/migrations.

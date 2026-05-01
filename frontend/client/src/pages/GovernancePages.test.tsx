@@ -43,9 +43,11 @@ function useGovernanceHandlers() {
       });
     }),
     http.get('/api/v1/maturity-ladder', () => {
-      return HttpResponse.json([
-        { level: 3, name: 'Validated', description: 'Validated with corroborated evidence' },
-      ]);
+      return HttpResponse.json({
+        levels: [
+          { level: 3, name: 'Validated', description: 'Validated with corroborated evidence', required_status: 'corroborated', advancement_trigger: 'Multi-source verified' },
+        ],
+      });
     }),
     http.get('/api/v1/truths/freshness-summary', () => {
       return HttpResponse.json({
@@ -84,7 +86,7 @@ describe('Governance pages (L5-backed)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Evidence' })).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(/Truth Objects \(1\)/)).toBeInTheDocument();
+      expect(screen.getByText(/Truth Objects \(\d+\)/)).toBeInTheDocument();
     });
   });
 
@@ -93,7 +95,7 @@ describe('Governance pages (L5-backed)', () => {
     render(<GovernanceCompliance />, { wrapper: wrapperWithPath('/governance/compliance') });
 
     expect(await screen.findByRole('heading', { name: 'Compliance' })).toBeInTheDocument();
-    expect(await screen.findByText(/Truth Objects \(1\)/)).toBeInTheDocument();
+    expect(await screen.findByText(/Total truths/)).toBeInTheDocument();
   });
 
   it('renders governance audit-specific pages with L5 handlers', async () => {

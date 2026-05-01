@@ -107,7 +107,7 @@
 | ROI Detail | `QK.roi.detail(id)` | L3 | `/v1/roi/calculations/{id}` | GET | `id` path param | — | `ROICalculation` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/roi/calculations/{id}`. |
 | ROI Templates | `QK.roi.templates()` | L3 | `/v1/roi/templates` | GET | — | — | `ROITemplate[]` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/roi/templates`. |
 | ROI Benchmarks | `QK.roi.benchmarks(industry)` | L3 | `/v1/roi/benchmarks/{industry}` | GET | `industry` path param | — | `IndustryBenchmark` | `X-Tenant-ID`, Bearer JWT | `implemented` | Frontend hook calls `/v1/roi/benchmarks/{industry}`. |
-| Benchmark List | `QK.benchmarks.list(filters)` | L3 | `/v1/roi/benchmarks` | GET | `category`, `industry` | — | `Benchmark[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | Frontend query key exists but no hook actively consumes this endpoint. |
+| Benchmark List | `QK.benchmarks.list(filters)` | L3 | `/v1/roi/benchmarks` | GET | `category`, `industry` | — | `Benchmark[]` | `X-Tenant-ID`, Bearer JWT | `missing` | Backend only provides `/v1/roi/benchmarks/{industry}`; no list endpoint without industry param. |
 | Variable List | `QK.variables.list(filters)` | L3 | `/v1/variables` | GET | `category`, `search` | — | `Variable[]` | `X-Tenant-ID`, Bearer JWT | `partially-implemented` | — |
 
 ---

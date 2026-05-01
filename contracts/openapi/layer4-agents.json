@@ -46,6 +46,22 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/workflows",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\workflows.py).",
+        "operationId": "discovered_get_v1_workflows",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
       }
     },
     "/v1/workflows/{workflow_id}": {
@@ -5473,6 +5489,76 @@
         "summary": "POST /v1/tenants/{tenant_id}/status",
         "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\tenants\\api\\routes\\tenants.py).",
         "operationId": "discovered_post_v1_tenants_tenant_id_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/tenant/settings": {
+      "get": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "GET /v1/tenant/settings",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\frontend_compat.py).",
+        "operationId": "discovered_get_v1_tenant_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "PATCH /v1/tenant/settings",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\frontend_compat.py).",
+        "operationId": "discovered_patch_v1_tenant_settings",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/auth/register": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/auth/register",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\frontend_compat.py).",
+        "operationId": "discovered_post_v1_auth_register",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error"
+          }
+        }
+      }
+    },
+    "/v1/workflows/{workflow_id}/archive": {
+      "post": {
+        "tags": [
+          "layer4-agents"
+        ],
+        "summary": "POST /v1/workflows/{workflow_id}/archive",
+        "description": "Discovered from router source (value-fabric\\layer4-agents\\src\\api\\routes\\workflows.py).",
+        "operationId": "discovered_post_v1_workflows_workflow_id_archive",
         "responses": {
           "200": {
             "description": "Successful Response"

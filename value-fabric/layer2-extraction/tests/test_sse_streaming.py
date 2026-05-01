@@ -347,7 +347,7 @@ class TestSSEPendingJob:
                 updated_job = PipelineJob(
                     job_id=job.job_id,
                     extraction_status="completed",
-                    ingestion_status=job.ingestion_status,
+                    ingestion_status="skipped",
                     created_at=job.created_at,
                     entities_extracted=job.entities_extracted,
                     relationships_extracted=job.relationships_extracted,

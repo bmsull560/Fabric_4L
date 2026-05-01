@@ -96,7 +96,7 @@ export default function GovernanceCompliance() {
             columns={["Truth ID", "Claim", "Status", "Maturity", "Freshness"]}
             rows={(staleTruths?.items ?? []).map(truth => [
               <span key="id" className="font-mono text-[11px]">
-                {truth.id.slice(0, 12)}
+                {(truth.id ?? '').slice(0, 12)}
               </span>,
               <span key="claim" className="line-clamp-2">
                 {truth.claim}
@@ -104,7 +104,7 @@ export default function GovernanceCompliance() {
               <span key="status">{truth.status}</span>,
               <span key="maturity">L{truth.maturity_level}</span>,
               <span key="freshness" className="text-[11px] text-neutral-500">
-                {new Date(truth.freshness).toLocaleDateString()}
+                {truth.freshness ? new Date(truth.freshness).toLocaleDateString() : (truth.is_stale ? 'Stale' : 'Fresh')}
               </span>,
             ])}
             emptyMessage="No stale truths currently detected"

@@ -705,7 +705,7 @@ const Layout = memo(function Layout({
                     Profile
                   </button>
                   <button
-                    onClick={() => handleNavigate("/settings/system/settings")}
+                    onClick={() => handleNavigate("/settings/workspace")}
                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground rounded-md hover:bg-sidebar-accent"
                   >
                     Settings

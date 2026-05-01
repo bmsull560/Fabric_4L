@@ -63,6 +63,23 @@ vi.mock('@/hooks/useWorkflows', () => ({
   useCancelWorkflow: () => ({
     mutate: mockMutate,
     isPending: false
+  }),
+  usePauseWorkflow: () => ({
+    mutate: mockMutate,
+    isPending: false
+  }),
+  useResumeWorkflow: () => ({
+    mutate: mockMutate,
+    isPending: false
+  }),
+  useCreateWorkflow: () => ({
+    mutate: mockMutate,
+    isPending: false
+  }),
+  useWorkflowTypes: () => ({
+    data: ['standard', 'batch', 'scheduled'],
+    isLoading: false,
+    error: null,
   })
 }));
 

@@ -1600,12 +1600,14 @@ export const governanceMocks = [
 
   http.get(`${API_BASE}${L5_PREFIX}/maturity-ladder`, async () => {
     await delay(100);
-    return HttpResponse.json([
-      { level: 1, name: 'Initial', description: 'Basic validation' },
-      { level: 2, name: 'Developing', description: 'Partial evidence' },
-      { level: 3, name: 'Mature', description: 'Strong evidence' },
-      { level: 4, name: 'Optimized', description: 'Continuous validation' },
-    ]);
+    return HttpResponse.json({
+      levels: [
+        { level: 1, name: 'Initial', description: 'Basic validation', required_status: 'extracted', advancement_trigger: 'Manual review' },
+        { level: 2, name: 'Developing', description: 'Partial evidence', required_status: 'supported', advancement_trigger: 'Evidence attached' },
+        { level: 3, name: 'Mature', description: 'Strong evidence', required_status: 'corroborated', advancement_trigger: 'Multi-source verified' },
+        { level: 4, name: 'Optimized', description: 'Continuous validation', required_status: 'approved', advancement_trigger: 'Auto-validation passed' },
+      ],
+    });
   }),
 
   http.get(`${API_BASE}${L5_PREFIX}/truths/freshness-summary`, async () => {

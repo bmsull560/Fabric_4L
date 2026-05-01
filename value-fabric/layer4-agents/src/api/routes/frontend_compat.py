@@ -15,11 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
 from ....database import get_db_from_context
-from ...models.tenant import Tenant
-from ...service import get_tenant, update_tenant
-from ...email_verification import EmailVerificationService
-from ...provisioning import TenantProvisioningService, ProvisioningStatus
-from ...tiers import get_tier_config
+from ....tenants.service import get_tenant, update_tenant
+from ....tenants.email_verification import EmailVerificationService
+from ....tenants.tiers import get_tier_config
 
 router = APIRouter(tags=["Frontend Compatibility"])
 

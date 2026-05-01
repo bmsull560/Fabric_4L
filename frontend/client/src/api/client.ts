@@ -149,11 +149,25 @@ class ApiClient {
   private inFlightRequests: Map<string, InFlightRequest<unknown>> = new Map();
   // Maximum age for in-flight request entries (prevents memory leaks)
   private readonly DEDUPE_TTL_MS = 30000;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.initializeClients();
     // Cleanup stale entries periodically
-    setInterval(() => this.cleanupStaleRequests(), this.DEDUPE_TTL_MS);
+    this.cleanupInterval = setInterval(() => this.cleanupStaleRequests(), this.DEDUPE_TTL_MS);
+  }
+
+  /**
+   * Destroy the ApiClient instance and clean up resources.
+   * Call this in tests and during hot-reload to prevent interval leaks.
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.inFlightRequests.clear();
+    this.clients.clear();
   }
 
   /**
@@ -171,9 +185,28 @@ class ApiClient {
 
   /**
    * Generate unique key for request deduplication
+   * Uses sorted keys to ensure consistent hashing regardless of object key order
    */
   private getRequestKey(layer: LayerKey, method: string, path: string, data?: unknown): string {
-    return `${layer}:${method}:${path}:${data ? JSON.stringify(data) : ''}`;
+    const dataKey = data
+      ? JSON.stringify(data, this.stableReplacer)
+      : '';
+    return `${layer}:${method}:${path}:${dataKey}`;
+  }
+
+  /**
+   * JSON replacer that sorts object keys for stable serialization
+   */
+  private stableReplacer(key: string, value: unknown): unknown {
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.keys(value as Record<string, unknown>)
+        .sort()
+        .reduce((sorted, k) => {
+          sorted[k] = (value as Record<string, unknown>)[k];
+          return sorted;
+        }, {} as Record<string, unknown>);
+    }
+    return value;
   }
 
   private initializeClients() {

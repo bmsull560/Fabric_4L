@@ -64,15 +64,18 @@ def upgrade():
             "idx_robots_txt_cache_org",
         ]),
         ("crawl_queue", [
-            "uq_crawl_queue_org_job_url",
+            "uq_crawl_queue_org_job_url",  # unique constraint — handled separately
             "idx_crawl_queue_org_job_status",
         ]),
     ]
 
     for table_name, index_names in tables_and_indexes:
-        # Drop indexes first
+        # Drop indexes/constraints first
         for index_name in index_names:
-            op.drop_index(index_name, table_name=table_name)
+            if index_name == "uq_crawl_queue_org_job_url":
+                op.drop_constraint(index_name, table_name=table_name, type_="unique")
+            else:
+                op.drop_index(index_name, table_name=table_name)
 
         # Rename column
         op.alter_column(
@@ -201,15 +204,18 @@ def downgrade():
             "idx_robots_txt_cache_tenant",
         ]),
         ("crawl_queue", [
-            "uq_crawl_queue_tenant_job_url",
+            "uq_crawl_queue_tenant_job_url",  # unique constraint — handled separately
             "idx_crawl_queue_tenant_job_status",
         ]),
     ]
 
     for table_name, index_names in tables_and_indexes:
-        # Drop indexes first
+        # Drop indexes/constraints first
         for index_name in index_names:
-            op.drop_index(index_name, table_name=table_name)
+            if index_name == "uq_crawl_queue_tenant_job_url":
+                op.drop_constraint(index_name, table_name=table_name, type_="unique")
+            else:
+                op.drop_index(index_name, table_name=table_name)
 
         # Rename column back
         op.alter_column(

@@ -48,8 +48,8 @@ def upgrade() -> None:
         sa.Column(
             "tenant_id",
             UUID(as_uuid=True),
-            sa.ForeignKey("organizations.id", ondelete="CASCADE"),
             nullable=True,
+            index=True,
         ),
         sa.Column("url", sa.Text(), nullable=False),
         sa.Column("domain", sa.String(255), nullable=False, index=True),

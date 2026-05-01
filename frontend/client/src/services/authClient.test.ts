@@ -11,7 +11,7 @@
 import { AuthClient, authClient } from './authClient';
 import { AuthError, AuthErrorCategory } from '../schemas/auth';
 
-import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, type Mock } from "vitest";
 
 // Mock window.fetch directly to bypass MSW for AuthClient unit tests
 const fetchMock = vi.fn();
