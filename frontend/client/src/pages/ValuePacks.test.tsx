@@ -12,10 +12,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createWrapper } from '../test-utils';
+import { createWrapper, createWrapperWithRetry } from '../test-utils';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../test/mocks/server';
 import ValuePacks from './ValuePacks';
+import { apiClient } from '@/api/client';
+import { ValuePackApiError } from '@/hooks/useValuePacks';
+
+// Mock the API client for error state tests - preserves actual implementation by default
+vi.mock('@/api/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/client')>();
+  return {
+    ...actual,
+    apiClient: {
+      ...actual.apiClient,
+      get: vi.fn((...args: Parameters<typeof actual.apiClient.get>) => actual.apiClient.get(...args)),
+      post: vi.fn((...args: Parameters<typeof actual.apiClient.post>) => actual.apiClient.post(...args)),
+    },
+  };
+});
 
 // Mock matchMedia for responsive tests
 Object.defineProperty(window, 'matchMedia', {
@@ -114,27 +129,24 @@ describe('ValuePacks', () => {
       });
     });
 
-    it('displays error state with retry button when API fails [FIXME: error state not rendering - implementation issue]', async () => {
-      server.use(
-        http.get('/api/v1/graph/packs', () => {
-          return HttpResponse.json({ error: 'Database connection failed' }, { status: 500 });
-        })
+    it('displays error state with retry button when API fails [FIXME: mock not intercepting]', async () => {
+      // Mock API client to return error - more reliable than MSW for error state testing
+      vi.mocked(apiClient.get).mockRejectedValueOnce(
+        new ValuePackApiError('Database connection failed', 500)
       );
 
-      const wrapper = createWrapper();
+      // Use wrapper with retry disabled for faster error state detection
+      const wrapper = createWrapperWithRetry(false);
       render(<ValuePacks />, { wrapper });
 
-      // Wait for loading to complete, then error should appear
-      await waitFor(() => {
-        expect(screen.queryByTestId('packs-loading')).not.toBeInTheDocument();
-      });
-
+      // Wait for error state to appear
       await waitFor(() => {
         expect(screen.getByText(/Failed to load value packs/i)).toBeInTheDocument();
-      });
+      }, { timeout: 5000 });
 
+      expect(screen.getByText(/Database connection failed/i)).toBeInTheDocument();
       expect(screen.getByText(/Try again/i)).toBeInTheDocument();
-    });
+    }, 10000);
   });
 
   // ── Filtering ──────────────────────────────────────────────────────────────
@@ -303,7 +315,7 @@ describe('ValuePacks', () => {
       expect(deployBtn.closest('button')).toBeDisabled();
     });
 
-    it('displays deploy error in pack actions panel when API returns 400 [FIXME: unhandled rejection in MSW error handler]', async () => {
+    it('displays deploy error in pack actions panel when API returns 400', async () => {
       // Setup error response for apply endpoint
       server.use(
         http.post('/api/v1/graph/packs/:id/apply', () => {

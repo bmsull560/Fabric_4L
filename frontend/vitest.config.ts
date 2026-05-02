@@ -9,6 +9,9 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./test/setup.ts"],
     include: ["client/src/**/*.{test,spec}.{ts,tsx}"],
+    env: {
+      VITEST: "true",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

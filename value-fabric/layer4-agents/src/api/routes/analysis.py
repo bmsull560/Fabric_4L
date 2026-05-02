@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from shared.audit import AuditAction, AuditEmitter, emit_audit_event
 from shared.identity.context import RequestContext
 from shared.identity.dependencies import require_authenticated
@@ -37,7 +37,8 @@ class export_business_caseResult(TypedDictModel):
     url_expires_at: Any | None = None
 
 class get_workspace_tabResult(TypedDictModel):
-    pass
+    """Workspace tab data result - allows any fields for dynamic tab data."""
+    model_config = ConfigDict(extra="allow")
 
 class update_workspace_tabResult(TypedDictModel):
     case_id: Any

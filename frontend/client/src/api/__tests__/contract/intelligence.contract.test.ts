@@ -8,17 +8,4 @@ import { describe, it } from 'vitest';
  * of whether the backing implementation is a single layer or a BFF.
  */
 
-describe('Contract: Account Intelligence Briefing', () => {
-});
-
-describe('Contract: Deal Readiness', () => {
-});
-
-describe('Contract: Pipeline Summary', () => {
-});
-
-describe('Contract: Narratives', () => {
-});
-
-describe('Contract: Intelligence Composition (BFF candidate)', () => {
-});
+it.todo('contract placeholder');

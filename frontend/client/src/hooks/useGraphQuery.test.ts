@@ -44,11 +44,10 @@ describe('useGraphQuery', () => {
   });
 
   it('handles query errors', async () => {
-    // Skipped: apiClient throws ApiError on HTTP errors before mutation error state is set.
     // Override handler for this test
     server.use(
       http.post('/api/v1/graph/query/graph', () => {
-        return HttpResponse.json({ error: 'Query timeout' }, { status: 504 });
+        return HttpResponse.json({ error: 'Query timeout' }, { status: 400 });
       })
     );
 

@@ -8,11 +8,4 @@ import { describe, it } from 'vitest';
  * These tests document the intended contract regardless of current alignment.
  */
 
-describe('Contract: Extraction Status', () => {
-});
-
-describe('Contract: Extraction Results', () => {
-});
-
-describe('Contract: Extraction Events (SSE)', () => {
-});
+it.todo('contract placeholder');

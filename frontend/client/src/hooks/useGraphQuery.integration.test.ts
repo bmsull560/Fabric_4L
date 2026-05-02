@@ -162,6 +162,13 @@ describe('useSubgraph Integration [L2-Integration]', () => {
     ] as [Role, boolean][])('role %s can query: %s', async (role, shouldSucceed) => {
       const roleConfig = ROLES[role];
 
+      // Set up localStorage with the role's token (apiClient reads from localStorage)
+      if (roleConfig.token) {
+        window.localStorage.setItem('accessToken', roleConfig.token);
+      } else {
+        window.localStorage.removeItem('accessToken');
+      }
+
       server.use(
         http.get('/api/v1/graph/graph/subgraph', ({ request }) => {
           const auth = request.headers.get('Authorization');
@@ -192,9 +199,9 @@ describe('useSubgraph Integration [L2-Integration]', () => {
       );
 
       if (shouldSucceed) {
-        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 5000 });
       } else {
-        await waitFor(() => expect(result.current.isError).toBe(true));
+        await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 5000 });
       }
     });
   });

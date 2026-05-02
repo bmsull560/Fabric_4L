@@ -8,17 +8,4 @@ import { describe, it } from 'vitest';
  * is fully ratified and stable.
  */
 
-describe('Contract: Graph Query', () => {
-});
-
-describe('Contract: Entity Context', () => {
-});
-
-describe('Contract: Entity Traversal', () => {
-});
-
-describe('Contract: Subgraph', () => {
-});
-
-describe('Contract: Entities', () => {
-});
+it.todo('contract placeholder');

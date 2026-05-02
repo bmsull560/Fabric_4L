@@ -39,6 +39,11 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+        # SECURITY: Mount JWT RSA keys for RS256 token signing
+        - name: jwt-keys
+          secret:
+            secretName: jwt-keys
+            defaultMode: 0400  # Read-only
       containers:
         # NOTE: Use kustomize images.newTag in production; :latest is dev-only
         - name: api
@@ -63,6 +68,10 @@ spec:
                 optional: false
             - secretRef:
                 name: layer4-auth
+                optional: false
+            # SECURITY: API key cache HMAC secret for secure key fingerprinting
+            - secretRef:
+                name: api-key-cache-secret
                 optional: false
           env:
             # Dynamic database credentials (required)
@@ -94,6 +103,23 @@ spec:
                   key: NEO4J_PASSWORD
             - name: LOG_LEVEL
               value: "info"
+            # SECURITY: JWT RS256 key paths (asymmetric signing)
+            - name: JWT_PRIVATE_KEY_PATH
+              value: "/secrets/jwt-private.pem"
+            - name: JWT_PUBLIC_KEY_PATH
+              value: "/secrets/jwt-public.pem"
+            - name: JWT_ALGORITHM
+              value: "RS256"
+            # SECURITY: Production environment for auth bypass hard-block
+            - name: ENVIRONMENT
+              value: "production"
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # SECURITY: Mount JWT keys to /secrets/
+            - name: jwt-keys
+              mountPath: /secrets
+              readOnly: true
           resources:
             requests:
               memory: "256Mi"

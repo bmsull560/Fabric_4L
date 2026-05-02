@@ -471,8 +471,9 @@ describe('useSubgraph [L1-Unit-Async]', () => {
         { wrapper }
       );
 
-      await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 3000 });
-    });
+      // Axios timeout is 30s; MSW delay is 10s. Wait long enough for MSW to win.
+      await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 15000 });
+    }, 20000);
 
     it('handles malformed response (validation error)', async () => {
       server.use(

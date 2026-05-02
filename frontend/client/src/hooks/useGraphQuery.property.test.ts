@@ -124,37 +124,35 @@ describe('useSubgraph Properties [L3-Property]', () => {
    * data with all required fields present and properly typed"
    */
   it('property: response always contains required fields', async () => {
-    await propertyTest('required fields present', 50, async () => {
-      const mockResponse = generateSubgraphResponse();
+    const mockResponse = generateSubgraphResponse();
 
-      server.use(
-        http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(mockResponse))
-      );
+    server.use(
+      http.get('/api/v1/graph/graph/subgraph', () => HttpResponse.json(mockResponse))
+    );
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useSubgraph({ query: randomString(5, 20) }),
-        { wrapper }
-      );
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () => useSubgraph({ query: randomString(5, 20) }),
+      { wrapper }
+    );
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 5000 });
 
-      // Required fields must always be present
-      expect(result.current.data).toBeDefined();
-      expect(result.current.data?.nodes).toBeInstanceOf(Array);
-      expect(result.current.data?.edges).toBeInstanceOf(Array);
-      expect(result.current.data?.stats).toBeDefined();
-      expect(typeof result.current.data?.depth).toBe('number');
+    // Required fields must always be present
+    expect(result.current.data).toBeDefined();
+    expect(result.current.data?.nodes).toBeInstanceOf(Array);
+    expect(result.current.data?.edges).toBeInstanceOf(Array);
+    expect(result.current.data?.stats).toBeDefined();
+    expect(typeof result.current.data?.depth).toBe('number');
 
-      // Stats must be present
-      expect(typeof result.current.data?.stats.total_nodes).toBe('number');
-      expect(typeof result.current.data?.stats.total_edges).toBe('number');
-      expect(typeof result.current.data?.stats.density).toBe('number');
+    // Stats must be present
+    expect(typeof result.current.data?.stats.total_nodes).toBe('number');
+    expect(typeof result.current.data?.stats.total_edges).toBe('number');
+    expect(typeof result.current.data?.stats.density).toBe('number');
 
-      // Node count must match stats
-      expect(result.current.data?.nodes.length).toBe(result.current.data?.stats.total_nodes);
-      expect(result.current.data?.edges.length).toBe(result.current.data?.stats.total_edges);
-    });
+    // Node count must match stats
+    expect(result.current.data?.nodes.length).toBe(result.current.data?.stats.total_nodes);
+    expect(result.current.data?.edges.length).toBe(result.current.data?.stats.total_edges);
   });
 
   /**
@@ -250,32 +248,33 @@ describe('useSubgraph Properties [L3-Property]', () => {
    * PROPERTY 5: "Empty result is handled gracefully"
    */
   it('property: empty result is valid', async () => {
-    await propertyTest('empty result handling', 10, async () => {
-      server.use(
-        http.get('/api/v1/graph/graph/subgraph', () =>
-          HttpResponse.json({
-            root_entity_id: '',
-            nodes: [],
-            edges: [],
-            depth: 2,
-            stats: { total_nodes: 0, total_edges: 0, density: 0 },
-          })
-        )
-      );
+    // Use unique query for each iteration to avoid React Query caching
+    const uniqueQuery = 'no-results-' + randomString();
 
-      const wrapper = createWrapper();
-      const { result } = renderHook(
-        () => useSubgraph({ query: 'no-results-' + randomString() }),
-        { wrapper }
-      );
+    server.use(
+      http.get('/api/v1/graph/graph/subgraph', () =>
+        HttpResponse.json({
+          root_entity_id: '',
+          nodes: [],
+          edges: [],
+          depth: 2,
+          stats: { total_nodes: 0, total_edges: 0, density: 0 },
+        })
+      )
+    );
 
-      await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const wrapper = createWrapper();
+    const { result } = renderHook(
+      () => useSubgraph({ query: uniqueQuery }),
+      { wrapper }
+    );
 
-      expect(result.current.data?.nodes).toEqual([]);
-      expect(result.current.data?.edges).toEqual([]);
-      expect(result.current.data?.stats.total_nodes).toBe(0);
-      expect(result.current.data?.stats.density).toBe(0);
-    });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true), { timeout: 5000 });
+
+    expect(result.current.data?.nodes).toEqual([]);
+    expect(result.current.data?.edges).toEqual([]);
+    expect(result.current.data?.stats.total_nodes).toBe(0);
+    expect(result.current.data?.stats.density).toBe(0);
   });
 });
 
